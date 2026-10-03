@@ -1,0 +1,20 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# A video seed path is video-to-video. --video-lengths is rejected;
+# the output follows the input clip. Trim with frame-start= / frame-end=.
+# --wan-timesteps is optional.
+
+Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--animation-format mp4
+--output-path wan-v2v
+--image-seeds "../../media/rickroll-roll.gif;frame-start=0;frame-end=24"
+--prompts "A man in a suit dances in a hallway. The camera stays fixed."

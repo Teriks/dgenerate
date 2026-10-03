@@ -69,8 +69,14 @@ Available encoder classes are:
 * ``CLIPTextModel``
 * ``CLIPTextModelWithProjection``
 * ``T5EncoderModel``
+* ``UMT5EncoderModel`` (Wan)
 * ``DistillT5EncoderModel`` (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
-* ``ChatGLMModel`` (for Kolors models)
+* ``ChatGLMModel`` (Kolors)
+* ``Gemma4UnifiedForConditionalGeneration`` (LTX-2.5)
+* ``Mistral3ForConditionalGeneration`` (Flux.2)
+* ``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image)
+* ``Qwen3ForCausalLM`` (Flux.2 Klein)
+* ``Qwen3Model`` (Z-Image)
 
 You can query the text encoder types and position for a model by passing ``help``
 as an argument to ``--text-encoders`` or ``--second-model-text-encoders``. This feature

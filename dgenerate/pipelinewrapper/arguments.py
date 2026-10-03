@@ -1074,16 +1074,17 @@ class DiffusionArguments(_types.SetFromMixin):
     Guidance rescale factor should fix overexposure when using zero terminal SNR.
     """
 
-    ltx_video_length: _types.OptionalFloat = None
+    video_length: _types.OptionalFloat = None
     """
-    Requested clip length in seconds for ``--model-type ltx``.
+    Requested clip length in seconds for video model types.
 
-    ``None`` leaves the length to LTX-2.5's duration head.
+    ``None`` leaves the length to the model: LTX-2.5's duration head,
+    or Wan's pipeline default.
     """
 
-    ltx_video_fps: _types.OptionalFloat = None
+    video_fps: _types.OptionalFloat = None
     """
-    Frame rate of a generated LTX clip.
+    Frame rate of a generated video clip.
     """
 
     ltx_audio_guidance_scale: _types.OptionalFloat = None
@@ -1241,6 +1242,61 @@ class DiffusionArguments(_types.SetFromMixin):
     separated by `` ++ `` and each one included ``ltx-index``.
     """
 
+    wan_low_noise_guidance_scale: _types.OptionalFloat = None
+    """
+    Low-noise expert CFG for Wan 2.2 MoE, from ``--wan-low-noise-guidance-scales``.
+    """
+
+    wan_boundary_ratio: _types.OptionalFloat = None
+    """
+    MoE expert switch point, from ``--wan-boundary-ratios``.
+    """
+
+    wan_expand_timesteps: _types.OptionalBoolean = None
+    """
+    Per-token timestep expansion, from ``--wan-expand-timesteps``.
+    """
+
+    wan_timesteps: collections.abc.Sequence[int] | None = None
+    """
+    Explicit timestep schedule for Wan video-to-video, from ``--wan-timesteps``.
+    """
+
+    wan_conditioning_scale: float | collections.abc.Sequence[float] | None = None
+    """
+    VACE conditioning scale, from ``--wan-conditioning-scales``.
+    """
+
+    wan_animate_mode: _types.OptionalString = None
+    """
+    Wan-Animate mode, ``animate`` or ``replace``.
+    """
+
+    wan_segment_frame_length: _types.OptionalInteger = None
+    """
+    Wan-Animate segment length, from ``--wan-segment-frame-lengths``.
+    """
+
+    wan_prev_segment_frames: _types.OptionalInteger = None
+    """
+    Previous-segment overlap frames, from ``--wan-prev-segment-frames``.
+    """
+
+    wan_motion_encode_batch_size: _types.OptionalInteger = None
+    """
+    Motion-encoder batch size, from ``--wan-motion-encode-batch-size``.
+    """
+
+    wan_animate_preprocess: _types.OptionalBoolean = None
+    """
+    Derive pose and face clips from ``wan-driving=``.
+    """
+
+    wan_animate_cache_dir: _types.OptionalPath = None
+    """
+    Directory for cached Wan-Animate pose and face clips.
+    """
+
     end_images: _types.OptionalImages = None
     """
     Last-frame conditioning image for LTX, from the image seed ``end`` argument.
@@ -1263,6 +1319,57 @@ class DiffusionArguments(_types.SetFromMixin):
     IC-LoRA reference clip for LTX-2, from the image seed ``control`` argument.
     The frames are not placed in the output. An IC-LoRA loaded with ``--loras``
     reads them as guidance, for example canny edges, depth, or pose.
+    """
+
+    wan_pose_video_frames: _types.OptionalImages = None
+    """
+    Wan-Animate pose skeleton clip, from the image seed ``wan-pose`` argument.
+    """
+
+    wan_face_video_frames: _types.OptionalImages = None
+    """
+    Wan-Animate cropped face clip, from the image seed ``wan-face`` argument.
+    """
+
+    wan_background_video_frames: _types.OptionalImages = None
+    """
+    Wan-Animate background clip, from the image seed ``wan-background`` argument.
+    Used in ``replace`` mode.
+    """
+
+    mask_video_frames: _types.OptionalImages = None
+    """
+    Subject mask clip for Wan-Animate replace mode or Wan VACE, from ``mask=``.
+    """
+
+    wan_driving_video_frames: _types.OptionalImages = None
+    """
+    Driving clip for ``--wan-animate-preprocess``, from the image seed ``wan-driving`` argument.
+    """
+
+    wan_driving_video_path: _types.OptionalPath = None
+    """
+    Original path of the driving clip, used to cache derived pose and face files.
+    """
+
+    wan_driving_video_fps: _types.OptionalFloat = None
+    """
+    Frame rate of the driving clip, passed to Wan-Animate-2 as ``driving_video_fps``.
+    """
+
+    vace_video_frames: _types.OptionalImages = None
+    """
+    Wan VACE control clip, from the image seed ``control`` argument.
+    """
+
+    vace_mask_frames: _types.OptionalImages = None
+    """
+    Wan VACE mask clip, from the image seed ``mask`` argument.
+    """
+
+    vace_reference_images: _types.OptionalImages = None
+    """
+    Wan VACE reference stills, from the image seed ``reference`` argument.
     """
 
     inference_steps: _types.OptionalInteger = None
@@ -1664,8 +1771,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.image_guidance_scale, "Image Guidance Scale:"),
             (self.guidance_rescale, "Guidance Rescale:"),
             (self.inference_steps, "Inference Steps:"),
-            (self.ltx_video_length, "Video Length (seconds):"),
-            (self.ltx_video_fps, "Video FPS:"),
+            (self.video_length, "Video Length (seconds):"),
+            (self.video_fps, "Video FPS:"),
             (self.ltx_audio_guidance_scale, "Audio Guidance Scale:"),
             (self.ltx_audio_guidance_rescale, "Audio Guidance Rescale:"),
             (self.ltx_stg_scale, "STG Scale:"),
@@ -1681,6 +1788,10 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.ltx_video_decoder, "Video Decoder:"),
             (self.ltx_image_crf, "Image CRF:"),
             (self.ltx_prompt_enhancer, "Prompt Enhancer:"),
+            (self.wan_low_noise_guidance_scale, "Wan Low-Noise Guidance Scale:"),
+            (self.wan_boundary_ratio, "Wan Boundary Ratio:"),
+            (self.wan_animate_mode, "Wan-Animate Mode:"),
+            (self.wan_segment_frame_length, "Wan Segment Frame Length:"),
             (self.adetailer_class_filter, "Adetailer Class Filter:"),
             (self.adetailer_index_filter, "Adetailer Index Filter:"),
             (self.adetailer_mask_shape, "Adetailer Mask Shape:"),

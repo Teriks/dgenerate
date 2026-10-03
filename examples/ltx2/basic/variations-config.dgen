@@ -17,7 +17,7 @@ Lightricks/LTX-2.5-Diffusers
 --guidance-scales 1
 --gen-seeds 1
 --output-size 640x384
---ltx-video-lengths 2
+--video-lengths 2
 --animation-format mp4
 --output-path ltx-variations
 --prompts "A tabby cat walks from left to right across a sunlit oak floor. Side view, camera locked off." "A golden retriever walks from left to right across the same sunlit oak floor. Side view, camera locked off."

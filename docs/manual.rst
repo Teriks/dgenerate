@@ -97,13 +97,20 @@ Help Output
                      [-se SEED [SEED ...] | -gse COUNT] [-sei] [-af FORMAT] [-if FORMAT] [-nf]
                      [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
                      [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
-                     [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] |
-                     -uns INTEGER [INTEGER ...]] [-ic] [-icp PADDING [PADDING ...]] [-icm]
-                     [-icf FEATHER [FEATHER ...]] [-gs FLOAT [FLOAT ...]]
+                     [-cip PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [--last-frame-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [--reference-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [--adapter-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [--wan-pose-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [--wan-face-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [--wan-driving-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [--wan-background-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [--image-processor-help [PROCESSOR_NAME ...]] [-pp PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [-iss FLOAT [FLOAT ...] | -uns INTEGER [INTEGER ...]] [-ic] [-icp PADDING [PADDING ...]]
+                     [-icm] [-icf FEATHER [FEATHER ...]] [-gs FLOAT [FLOAT ...]]
                      [-si CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-igs FLOAT [FLOAT ...]]
                      [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]]
-                     [--ltx-video-lengths SECONDS [SECONDS ...]] [--ltx-video-fps FPS [FPS ...]]
+                     [--video-lengths SECONDS [SECONDS ...]] [--video-fps FPS [FPS ...]]
                      [--ltx-audio-guidance-scales FLOAT [FLOAT ...]]
                      [--ltx-audio-guidance-rescales FLOAT [FLOAT ...]] [--ltx-stg-scales FLOAT [FLOAT ...]]
                      [--ltx-audio-stg-scales FLOAT [FLOAT ...]] [--ltx-modality-scales FLOAT [FLOAT ...]]
@@ -116,7 +123,14 @@ Help Output
                      [--ltx-decode-timesteps FLOAT [FLOAT ...]] [--ltx-decode-noise-scales FLOAT [FLOAT ...]]
                      [--ltx-image-crfs INTEGER [INTEGER ...]] [--ltx-video-min-seconds SECONDS [SECONDS ...]]
                      [--ltx-video-max-seconds SECONDS [SECONDS ...]] [--ltx-prompt-enhancer MODEL]
-                     [--ltx-system-prompt TEXT] [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]]
+                     [--ltx-system-prompt TEXT] [--wan-low-noise-guidance-scales FLOAT [FLOAT ...]]
+                     [--wan-boundary-ratios FLOAT [FLOAT ...]] [--wan-expand-timesteps]
+                     [--wan-second-transformer TRANSFORMER_URI] [--wan-timesteps CSV_INT [CSV_INT ...]]
+                     [--wan-conditioning-scales FLOAT_OR_CSV [FLOAT_OR_CSV ...]] [--wan-animate-mode MODE]
+                     [--wan-segment-frame-lengths INTEGER [INTEGER ...]]
+                     [--wan-prev-segment-frames INTEGER [INTEGER ...]]
+                     [--wan-motion-encode-batch-size INTEGER [INTEGER ...]] [--wan-animate-preprocess]
+                     [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]]
                      [-sir CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-ds FLOAT] [-de FLOAT]
                      model_path
     
@@ -236,8 +250,8 @@ Help Output
             Use when loading different model types. Currently supported: sd, pix2pix, sdxl, sdxl-pix2pix,
             kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, sd3-pix2pix, flux,
             flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
-            qwen-image-layered, or ltx. (default: sd)
-            -----------------------------------------
+            qwen-image-layered, ltx, wan, wan-animate, or wan-animate-2. (default: sd)
+            --------------------------------------------------------------------------
       -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -291,7 +305,11 @@ Help Output
             areas. This can be used for face detailing, face swapping, hand detailing, etc. on any arbitrary
             image provided using an image generation model of your choice.
             
-            This option supports: --model-type sd, sdxl, kolors, sd3, flux, and flux-fill
+            This option supports: --model-type sd, sdxl, kolors, sd3, flux, flux-fill, flux2, z-image,
+            qwen-image, and qwen-image-edit.
+            
+            Full Flux.2, Flux.2 Klein KV, Z-Image Omni, Qwen-Image Layered, and Qwen edit-plus have no inpaint
+            pipeline, so adetailer is rejected for those checkpoints.
             
             Example: --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
             
@@ -499,6 +517,11 @@ Help Output
             "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main"
             "T5EncoderModel;model=text_encoder_folder_on_disk"
             "DistillT5EncoderModel;model=text_encoder_folder_on_disk"
+            "UMT5EncoderModel;model=Wan-AI/Wan2.1-T2V-1.3B-Diffusers;subfolder=text_encoder"
+            "Mistral3ForConditionalGeneration;model=black-forest-labs/FLUX.2-dev;subfolder=text_encoder"
+            "Qwen2_5_VLForConditionalGeneration;model=Qwen/Qwen-Image;subfolder=text_encoder"
+            "Qwen3Model;model=Tongyi-MAI/Z-Image-Turbo;subfolder=text_encoder"
+            "Gemma4UnifiedForConditionalGeneration;model=Lightricks/LTX-2.5-Diffusers;subfolder=text_encoder"
             
             For main models which require multiple text encoders, the + symbol may be used to indicate that a
             default value should be used for a particular text encoder, for example: --text-encoders + +
@@ -552,8 +575,14 @@ Help Output
             * CLIPTextModel
             * CLIPTextModelWithProjection
             * T5EncoderModel
+            * UMT5EncoderModel (Wan)
             * DistillT5EncoderModel (see: LifuWang/DistillT5)
-            * ChatGLMModel (for Kolors models)
+            * ChatGLMModel (Kolors)
+            * Gemma4UnifiedForConditionalGeneration (LTX-2.5)
+            * Mistral3ForConditionalGeneration (Flux.2)
+            * Qwen2_5_VLForConditionalGeneration (Qwen-Image)
+            * Qwen3ForCausalLM (Flux.2 Klein)
+            * Qwen3Model (Z-Image)
             
             If you wish to load weights directly from a path on disk, you must point this argument at the folder
             they exist in, which should also contain the config.json file for the Text Encoder. For example, a
@@ -602,8 +631,10 @@ Help Output
             -------------------------------------------------------------------
       -tf, --transformer TRANSFORMER_URI
             Specify a Stable Diffusion 3, Flux, Flux.2, Flux.2 Klein KV, Z-Image, Z-Image Omni, Qwen-Image,
-            Qwen-Image edit, Qwen-Image layered, or LTX Transformer model using a URI. ``--model-type ltx``
-            accepts one replacement diffusion transformer.
+            Qwen-Image edit, Qwen-Image layered, LTX, Wan, or Wan-Animate Transformer model using a URI.
+            ``--model-type ltx``, ``wan``, ``wan-animate``, and ``wan-animate-2`` accept one replacement
+            diffusion transformer. Wan 2.2 MoE checkpoints can load the low-noise expert with
+            --wan-second-transformer.
             
             Examples:
             
@@ -658,12 +689,20 @@ Help Output
             "AsymmetricAutoencoderKL;model=huggingface/vae"
             "AutoencoderTiny;model=huggingface/vae"
             "ConsistencyDecoderVAE;model=huggingface/vae"
+            "AutoencoderKLFlux2;model=black-forest-labs/FLUX.2-dev;subfolder=vae"
+            "AutoencoderKLQwenImage;model=Qwen/Qwen-Image;subfolder=vae"
+            "AutoencoderKLWan;model=Wan-AI/Wan2.1-T2V-1.3B-Diffusers;subfolder=vae;dtype=float32"
+            "AutoencoderKLLTXVideo;model=Lightricks/LTX-Video;subfolder=vae"
+            "AutoencoderKLLTX2Video;model=Lightricks/LTX-2.5-Diffusers;subfolder=vae"
             
             The AutoencoderKL encoder class accepts Hugging Face repository slugs/blob links, .pt, .pth, .bin,
             .ckpt, and .safetensors files.
             
             Other encoders can only accept Hugging Face repository slugs/blob links, or a path to a folder on
             disk with the model configuration and model file(s).
+            
+            Wan pipelines default the checkpoint VAE to float32 (AutoencoderKLWan is fragile in bfloat16). Use
+            --vae with AutoencoderKLWan and dtype= to override.
             
             If an AutoencoderKL VAE model file exists at a URL which serves the file as a raw download, you may
             provide an http/https link to it and it will be downloaded to dgenerate's web cache.
@@ -2265,9 +2304,10 @@ Help Output
             The amount of processors / processor chains must not exceed the amount of input images, or you will
             receive a syntax error message.
             
-            For --model-type ltx, one chain runs on every frame of both the opening media and the "last-frame"
-            image seed argument. With two chains, the first runs on the opening media and the second on
-            "last-frame", for example: (--seed-image-processors grayscale +) processes only the opening media.
+            For video models, one chain runs on every frame of the opening media and the "last-frame" image seed
+            argument. With two chains, the first runs on the opening media and the second on "last-frame", for
+            example: (--seed-image-processors grayscale +) processes only the opening media. Prefer
+            --last-frame-image-processors when only the last-frame clip should be processed.
             
             To obtain more information about what image processors are available and how to use them, see:
             --image-processor-help.
@@ -2334,6 +2374,35 @@ Help Output
             example: --ltx-ic-lora ... --image-seeds "video.mp4" --control-image-processors canny.
             
             To obtain more information about what image processors are available and how to use them, see:
+            --image-processor-help.
+            -----------------------
+      --last-frame-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+            Specify one or more image processor actions to perform on the last-frame= clip in --image-seeds.
+            Video models accept one chain. This is an alternative to a second --seed-image-processors chain.
+            See: --image-processor-help.
+            ----------------------------
+      --reference-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+            Specify one or more image processor actions to perform on reference= images in --image-seeds. Use +
+            to separate a chain per reference image. See: --image-processor-help.
+            ---------------------------------------------------------------------
+      --adapter-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+            Specify one or more image processor actions to perform on adapter= / adapter: IP adapter images in
+            --image-seeds. Use + to separate a chain per adapter group. See: --image-processor-help.
+            ----------------------------------------------------------------------------------------
+      --wan-pose-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+            Specify one or more image processor actions to perform on the wan-pose= clip, or on wan-driving=
+            when wan-pose= is omitted. One chain. See: --image-processor-help.
+            ------------------------------------------------------------------
+      --wan-face-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+            Specify one or more image processor actions to perform on the wan-face= clip, or on wan-driving=
+            when wan-face= is omitted. One chain. See: --image-processor-help.
+            ------------------------------------------------------------------
+      --wan-driving-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+            Specify one or more image processor actions to perform on the wan-driving= clip before pose/face
+            derivation. One chain. See: --image-processor-help.
+            ---------------------------------------------------
+      --wan-background-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+            Specify one or more image processor actions to perform on the wan-background= clip. One chain. See:
             --image-processor-help.
             -----------------------
       --image-processor-help [PROCESSOR_NAME ...]
@@ -2505,20 +2574,26 @@ Help Output
             
             (default: [30])
             ---------------
-      --ltx-video-lengths SECONDS [SECONDS ...]
-            One or more clip lengths in seconds, for --model-type ltx. Each value will be tried in turn, and
+      --video-lengths SECONDS [SECONDS ...]
+            One or more clip lengths in seconds for video model types. Each value will be tried in turn, and
             each combination writes one clip.
             
-            LTX snaps the length to a frame count of 8k+1 at --ltx-video-fps. Omit this option and LTX-2.5
-            predicts the length from the prompt.
+            LTX snaps the length to a frame count of 8k+1 at --video-fps. Omit this option and LTX-2.5 predicts
+            the length from the prompt.
+            
+            Wan snaps to temporal*k+1 at --video-fps. The temporal factor comes from the loaded VAE (4 on Wan
+            2.1). Cannot be used with Wan video-to-video or --model-type wan-animate, where the output follows
+            the input clip.
             
             (default: model chooses)
             ------------------------
-      --ltx-video-fps FPS [FPS ...]
-            One or more frame rates for --model-type ltx. Each value will be tried in turn. The default is 24.
+      --video-fps FPS [FPS ...]
+            One or more output frame rates for video model types. Each value will be tried in turn.
             
-            (default: [24] for video model types)
-            -------------------------------------
+            Defaults to 24 for --model-type ltx, 16 for wan, 30 for wan-animate, and 24 for wan-animate-2.
+            
+            (default: model type default)
+            -----------------------------
       --ltx-audio-guidance-scales FLOAT [FLOAT ...]
             One or more audio CFG scales to try, for --model-type ltx. Each value will be tried in turn.
             
@@ -2607,8 +2682,11 @@ Help Output
             ---------------------------------------------
       --ltx-video-decoder DECODER
             How an LTX-2 clip is decoded. conv is the convolutional VAE. diffusion is the diffusion decoder in
-            the checkpoint's diffusion_decoder folder. The decode is part of the same generation.
-            -------------------------------------------------------------------------------------
+            the checkpoint's diffusion_decoder folder. The decode is part of the same generation. It uses NATTEN
+            through the kernels package, which is installed with dgenerate. The first decode downloads that
+            kernel from the Hub, so leave DIFFUSERS_DISABLE_REMOTE_CODE unset. The FlexAttention fallback does
+            not fit in GPU memory.
+            ----------------------
       --ltx-decode-timesteps FLOAT [FLOAT ...]
             Decode timestep for the LTX video decode. Several values are tried in turn.
             ---------------------------------------------------------------------------
@@ -2628,7 +2706,7 @@ Help Output
             That writes two clips, one from 2 to 6 seconds and one from 4 to 8. A single value with the other
             option omitted uses that option's pipeline default, 20 for the upper bound. Several values require
             the same number of upper bounds. Each bound pair is then tried in turn with the other arguments.
-            Both options apply only when --ltx-video-lengths is omitted.
+            Both options apply only when --video-lengths is omitted.
             
             (default: None; 1 when only an upper bound is given)
             ----------------------------------------------------
@@ -2641,7 +2719,7 @@ Help Output
             That writes two clips, one from 2 to 6 seconds and one from 4 to 8. A single value with the other
             option omitted uses that option's pipeline default, 1 for the lower bound. Several values require
             the same number of lower bounds. Each bound pair is then tried in turn with the other arguments.
-            Both options apply only when --ltx-video-lengths is omitted.
+            Both options apply only when --video-lengths is omitted.
             
             (default: None; 20 when only a lower bound is given)
             ----------------------------------------------------
@@ -2653,6 +2731,45 @@ Help Output
             System prompt for --ltx-prompt-enhancer. Omit it and LTX-2.5 uses its text-to-video or
             image-to-video default.
             -----------------------
+      --wan-low-noise-guidance-scales FLOAT [FLOAT ...]
+            CFG scales for the Wan 2.2 MoE low-noise expert. When omitted, that expert copies --guidance-scales.
+            ----------------------------------------------------------------------------------------------------
+      --wan-boundary-ratios FLOAT [FLOAT ...]
+            MoE expert switch points for Wan 2.2. Values are 0 to 1. When omitted the checkpoint value is kept.
+            ---------------------------------------------------------------------------------------------------
+      --wan-expand-timesteps
+            Enable per-token timestep expansion on Wan 2.2.
+            -----------------------------------------------
+      --wan-second-transformer TRANSFORMER_URI
+            Replacement URI for the Wan 2.2 MoE low-noise transformer, the same grammar as --transformer,
+            including GGUF files.
+            ---------------------
+      --wan-timesteps CSV_INT [CSV_INT ...]
+            Explicit integer timestep schedules for Wan video-to-video. Each value is a comma-separated list,
+            tried in turn.
+            --------------
+      --wan-conditioning-scales FLOAT_OR_CSV [FLOAT_OR_CSV ...]
+            VACE conditioning scales. A single float is one scale. A comma-separated list is a per-VACE-layer
+            scale. Multiple values are tried in turn.
+            -----------------------------------------
+      --wan-animate-mode MODE
+            Wan-Animate mode. animate is character animation. replace needs wan-background= and mask= clips.
+            ------------------------------------------------------------------------------------------------
+      --wan-segment-frame-lengths INTEGER [INTEGER ...]
+            Wan-Animate segment lengths. Each value must be 4N+1. The default is 77.
+            ------------------------------------------------------------------------
+      --wan-prev-segment-frames INTEGER [INTEGER ...]
+            Previous-segment overlap frames for Wan-Animate. 1 or 5 is recommended. The default is 1.
+            -----------------------------------------------------------------------------------------
+      --wan-motion-encode-batch-size INTEGER [INTEGER ...]
+            Motion-encoder batch size for Wan-Animate. Larger values use more memory and can be faster.
+            -------------------------------------------------------------------------------------------
+      --wan-animate-preprocess
+            Derive wan-pose= and wan-face= from a wan-driving= clip. Pose uses the openpose processor. Face uses
+            the yolo processor in crop mode (Bingsu/adetailer face_yolov8n.pt, square crop-scale=1.4). Cached
+            clips are written next to the driving file when it is local. Custom plugins can be used instead with
+            --wan-pose-image-processors and --wan-face-image-processors on wan-driving=.
+            ----------------------------------------------------------------------------
       -ifs2, --second-model-inference-steps INTEGER [INTEGER ...]
             One or more inference steps values for the SDXL refiner or Stable Cascade decoder when in use.
             Override the number of inference steps used by the second model, which defaults to the value taken
@@ -3745,6 +3862,11 @@ img2img mode with a ControlNet for example, see: `Specifying ControlNets`_ for m
 On ``--model-type ltx`` the same keyword is the condition weight, and
 ``--image-seed-strengths`` fills groups that omit it.
 
+Wan-Animate reads ``wan-pose=``, ``wan-face=``, ``wan-driving=``, and ``wan-background=``
+on the same URI. VACE reads ``control=``, ``mask=``, and ``reference=``.
+``last-frame=`` is first-last-frame on an I2V checkpoint. See
+`Video Generation`_.
+
 IP Adapter images may be provided via a special ``adapters: ...`` syntax and
 via the ``adapters`` URI argument discussed in: `Specifying IP Adapters`_
 
@@ -4177,11 +4299,11 @@ Video Generation
 ================
 
 ``--model-type ltx`` generates a clip in one pipeline call.
-One combination of prompt, seed, guidance, steps, image seed, ``--ltx-video-lengths``,
-``--ltx-video-fps``, ``--ltx-audio-guidance-scales``, and ``--ltx-audio-guidance-rescales``
+One combination of prompt, seed, guidance, steps, image seed, ``--video-lengths``,
+``--video-fps``, ``--ltx-audio-guidance-scales``, and ``--ltx-audio-guidance-rescales``
 writes one animation file. LTX does not run once per input frame.
 
-``--ltx-video-lengths`` is a length in seconds. ``--ltx-video-fps`` is the frame rate.
+``--video-lengths`` is a length in seconds. ``--video-fps`` is the frame rate.
 ``--ltx-audio-guidance-scales`` and ``--ltx-audio-guidance-rescales`` are the audio CFG
 and audio rescale. All of those are combinatorial arguments, the same way
 ``--prompts`` and ``--seeds`` are. The frame count inside a clip is not a
@@ -4196,7 +4318,7 @@ LTX-2.5 (``ltx``)
 
 Repository: ``Lightricks/LTX-2.5-Diffusers``.
 
-* No image seed is text to video. Omitting ``--ltx-video-lengths`` lets the model's duration head choose the length.
+* No image seed is text to video. Omitting ``--video-lengths`` lets the model's duration head choose the length.
 * One image is the first frame.
 * ``last-frame=`` is the last frame. A first frame and ``last-frame=`` can be used together.
 * ``ltx-index`` and ``strength`` place a condition on a chosen latent frame.
@@ -4228,8 +4350,8 @@ head, and no IC-LoRA.
 ``--inference-steps`` and ``--guidance-scales`` are sent as written. The distilled
 sigma table and the guidance rewrites under `Guidance, steps, and sigmas`_ apply
 to LTX-2.5 only. The published configs use 50 steps, guidance ``3``,
-``--ltx-video-fps 25``, and ``--ltx-video-lengths 4.84``, which is 121 frames,
-at ``768x512``. Omitting ``--ltx-video-lengths`` uses the pipeline default of
+``--video-fps 25``, and ``--video-lengths 4.84``, which is 121 frames,
+at ``768x512``. Omitting ``--video-lengths`` uses the pipeline default of
 161 frames. dgenerate warns when the clip is shorter than 121 frames or smaller
 than about 704 by 480, because the model follows the prompt at the published size.
 
@@ -4278,19 +4400,19 @@ single frame is treated as a still.
 
     # continue an existing clip
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
-    --ltx-video-fps 25 --ltx-video-lengths 4 --output-size 512x512 \
+    --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds "input.gif" \
     --prompts "The singer keeps swaying, then points at the camera."
 
     # lead into an existing clip
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
-    --ltx-video-fps 25 --ltx-video-lengths 4 --output-size 512x512 \
+    --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds ";last-frame=input.gif" \
     --prompts "A singer walks in and starts to sway at the microphone."
 
     # frames 16 through 40 of a clip, then a still last frame
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
-    --ltx-video-fps 25 --ltx-video-lengths 4 --output-size 512x512 \
+    --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds "input.gif;frame-start=16;frame-end=40;last-frame=last.png" \
     --prompts "The scene fades into a pencil sketch of mountains."
 
@@ -4303,30 +4425,32 @@ Frame counts:
 
 * Each conditioning clip is cut to a frame count of ``8k+1``, the same rule as the
   output length. A 54 frame gif gives 49 conditioning frames.
-* A clip longer than the output is cut to fit. With ``--ltx-video-lengths`` set, only the
+* A clip longer than the output is cut to fit. With ``--video-lengths`` set, only the
   frames that can be used are decoded. Without it the whole slice is decoded, so use
   ``--frame-end`` on long files.
 * When there is an opening and a closing condition, the opening clip is shortened so
   the two do not overlap.
 * A closing video needs a fixed output length. LTX-2.5 picks its own length when
-  ``--ltx-video-lengths`` is omitted, so set ``--ltx-video-lengths`` when ``last-frame=`` is a video.
+  ``--video-lengths`` is omitted, so set ``--video-lengths`` when ``last-frame=`` is a video.
   An opening video works either way.
 
 Frames are used as they are and are not resampled. When the file's frame rate differs
-from ``--ltx-video-fps`` dgenerate prints a warning, because motion will play faster or
-slower. Set ``--ltx-video-fps`` to the file's rate to keep the speed.
+from ``--video-fps`` dgenerate prints a warning, because motion will play faster or
+slower. Set ``--video-fps`` to the file's rate to keep the speed.
 
 ``resize=``, ``aspect=``, and ``align=`` in the seed apply to every conditioning frame.
 
 ``--seed-image-processors`` runs on every frame of the main path and of ``last-frame=``. Give it two
 chains separated by ``+`` to process them differently. The first chain runs on the main path and
 the second on ``last-frame=``. A leading or trailing ``+`` leaves one side unprocessed.
+``--last-frame-image-processors`` is a dedicated chain for ``last-frame=`` and overrides the second
+seed chain when both are set.
 
 .. code-block:: bash
 
     # grayscale first frame, original last frame
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
-    --ltx-video-lengths 3 --output-size 512x512 \
+    --video-lengths 3 --output-size 512x512 \
     --image-seeds "painting.png;last-frame=painting.png" \
     --seed-image-processors grayscale + \
     --prompts "A black and white painting slowly fills with warm color."
@@ -4358,7 +4482,7 @@ frame, put the reference in ``control=``:
     # reference clip only
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
     --ltx-ic-lora "Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control;weight-name=ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors" \
-    --ltx-video-fps 25 --ltx-video-lengths 4 --output-size 512x512 \
+    --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds "input.gif" \
     --control-image-processors "canny;lower=50;upper=100" \
     --prompts "A man in a shiny silver suit sings at a vintage microphone."
@@ -4375,8 +4499,8 @@ frame, put the reference in ``control=``:
   ``Lightricks/LTX-2.5-Diffusers`` loads by default.
 * The reference is one video, animated image, or still. It uses the same frame slicing,
   ``resize=``, and frame count rules as `Video conditioning`_.
-* Without ``--ltx-video-lengths`` the output is as long as the reference clip, cut to ``8k+1``
-  frames. With ``--ltx-video-lengths`` a longer reference is cut to the output length.
+* Without ``--video-lengths`` the output is as long as the reference clip, cut to ``8k+1``
+  frames. With ``--video-lengths`` a longer reference is cut to the output length.
 * Some IC-LoRAs read the reference at a reduced size. dgenerate reads
   ``reference_downscale_factor`` from the IC-LoRA's safetensors metadata, and ``downscale``
   in the URI overrides it. The union control LoRA uses 2, so the output width and height
@@ -4445,7 +4569,7 @@ This path wins over both of the above.
 
 ``--sigmas`` is combinatorial with ``--guidance-scales``, ``--inference-steps``,
 ``--guidance-rescales``, ``--ltx-audio-guidance-scales``,
-``--ltx-audio-guidance-rescales``, ``--ltx-video-lengths``, and ``--ltx-video-fps``. See
+``--ltx-audio-guidance-rescales``, ``--video-lengths``, and ``--video-fps``. See
 :ref:`specifying-sigmas` and `examples/ltx2/sigmas/sigmas-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/sigmas/sigmas-config.dgen>`_.
 
 ``--guidance-rescales``
@@ -4499,8 +4623,10 @@ The pipeline cache counts the video checkpoint and moves the previous pipeline b
 Submodels
 ---------
 
-``--vae``, ``--unet``, and ``--text-encoders`` are rejected. Those slots do not match this pipeline.
-``--transformer`` and ``--loras`` do.
+``--unet`` is rejected. ``--vae`` and ``--text-encoders`` work like they do
+for image models, including ``+`` to keep a slot's checkpoint default.
+``--vae`` accepts ``AutoencoderKLLTX2Video`` (and ``AutoencoderKLLTXVideo``
+for LTX-Video). ``--transformer`` and ``--loras`` do.
 
 ``--quantizer`` quantizes the diffusion transformer, the text encoder, and the text
 connectors. ``--quantizer-map`` can limit that to ``transformer``, ``text_encoder``, or
@@ -4567,6 +4693,10 @@ Decode, prompts, and duration
 
 ``--ltx-video-decoder diffusion`` decodes with the checkpoint diffusion decoder
 instead of the convolutional VAE, in the same generation. ``conv`` is the default.
+That decoder uses NATTEN through the ``kernels`` package, which is installed with
+dgenerate. The first decode downloads the kernel from the Hub, so leave
+``DIFFUSERS_DISABLE_REMOTE_CODE`` unset. The FlexAttention path builds a neighborhood
+mask that does not fit in GPU memory at video resolution.
 ``--ltx-decode-timesteps`` and ``--ltx-decode-noise-scales`` are the decode arguments.
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
@@ -4579,7 +4709,7 @@ and the pipeline default is used (``18`` on LTX-2.5). ``0`` skips recompression.
 See `examples/ltx2/image_conditioning/image-crf-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/image_conditioning/image-crf-config.dgen>`_.
 
 ``--ltx-video-min-seconds`` and ``--ltx-video-max-seconds`` clamp the duration head.
-They apply only when ``--ltx-video-lengths`` is omitted. Give the same number of
+They apply only when ``--video-lengths`` is omitted. Give the same number of
 values to each. The value in each position is used together:
 ``--ltx-video-min-seconds 2 4 --ltx-video-max-seconds 6 8`` writes two clips, one
 from 2 to 6 seconds and one from 4 to 8. A single value with the other option
@@ -4668,7 +4798,7 @@ See `examples/ltx2/image_conditioning/indexed-config.dgen <https://github.com/Te
 What LTX rejects
 ----------------
 
-ControlNets, T2I adapters, IP adapters, textual inversions, a replacement UNet, VAE, or text encoder,
+ControlNets, T2I adapters, IP adapters, textual inversions, a replacement UNet,
 an image encoder, the SDXL refiner, Stable Cascade, Adetailer, PAG and PAG scales,
 any scheduler other than ``FlowMatchEulerDiscreteScheduler``, prompt weighters, second or third prompts,
 clip skip, inpaint crop, HiDiffusion, TeaCache, DeepCache, SADA, RAS,
@@ -4682,6 +4812,44 @@ control processors to one.
 LTX-2.5 configs are in `examples/ltx2 <examples/ltx2_>`_,
 including a distilled Comfy GGUF under `examples/ltx2/gguf <examples/ltx2/gguf_>`_.
 LTX-Video configs are in `examples/ltx_video <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx_video>`_.
+
+Wan (2.1 / 2.2)
+---------------
+
+``--model-type wan`` and ``--model-type wan-animate`` also generate a clip in
+one pipeline call. Clip length and frame rate are the shared ``--video-lengths``
+and ``--video-fps`` options. Other Wan options use the ``--wan-`` prefix.
+
+* No image seed is text to video.
+* One image is the first frame.
+* ``last-frame=`` is first-last-frame (FLF2V) on an I2V checkpoint.
+* A video seed path is video-to-video. ``--video-lengths`` is rejected; the
+  output follows the input clip.
+* ``control=``, ``mask=``, and ``reference=`` are VACE.
+* ``--model-type wan-animate`` takes a character still plus ``wan-pose=`` and
+  ``wan-face=``. ``wan-driving=`` with ``--wan-animate-preprocess`` runs the existing
+  ``openpose`` processor and ``yolo`` in crop mode
+  (``Bingsu/adetailer;weight-name=face_yolov8n.pt;crops=True;crop-square=True;crop-scale=1.4``).
+  Custom plugins can run on those clips with ``--wan-pose-image-processors``,
+  ``--wan-face-image-processors``, ``--wan-driving-image-processors``, and
+  ``--wan-background-image-processors``. ``--video-lengths`` is rejected; the
+  output follows the pose clip.
+* ``wan-background=`` and ``mask=`` are replace mode.
+* ``--model-type wan-animate-2`` takes a character still plus ``wan-driving=``.
+  The driving clip is the motion source. ``Wan-AI/Wan2.2-Animate-2-14B-Diffusers``
+  samples in 40 steps. ``Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers`` samples
+  in 10. ``--video-lengths`` is rejected; the output follows the driving clip.
+* Wan 2.2 MoE can take ``--wan-second-transformer`` for the low-noise expert.
+* The VAE defaults to ``float32``, including when ``--vae`` omits ``dtype=``.
+  Set ``dtype=`` on the ``AutoencoderKLWan`` URI only when you want another
+  precision. ``--quantizer-map`` may name ``transformer``, ``transformer_2``,
+  ``text_encoder``, ``text_encoder_2``, or ``image_encoder`` — not ``vae``.
+* ``--text-encoders`` replaces the UMT5 text encoder. Use ``+`` to keep the
+  checkpoint default, or ``null`` to skip a slot.
+* ``--video-fps`` defaults to 16 for wan, 30 for wan-animate, and 24 for wan-animate-2.
+
+Configs are in `examples/wan <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan>`_
+and `examples/wan_animate <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan_animate>`_.
 
 Animation Slicing
 =================
@@ -5754,7 +5922,7 @@ value as written. See :ref:`video-generation`.
     --guidance-scales 1
     --gen-seeds 1
     --output-size 640x384
-    --ltx-video-lengths 2
+    --video-lengths 2
     --sigmas "expr: sigmas * 0.95"
     --animation-format mp4
     --output-path ltx-sigmas
@@ -5776,6 +5944,13 @@ VAEs are supported for these model types:
     * ``--model-type kolors``
     * ``--model-type sd3``
     * ``--model-type flux``
+    * ``--model-type flux2``
+    * ``--model-type qwen-image`` / ``qwen-image-edit`` / ``qwen-image-layered``
+    * ``--model-type z-image``
+    * ``--model-type ltx``
+    * ``--model-type wan``
+    * ``--model-type wan-animate``
+    * ``--model-type wan-animate-2``
 
 The URI syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)``
 
@@ -5796,11 +5971,20 @@ Available encoder classes are:
 * AsymmetricAutoencoderKL (Does not support ``--vae-slicing`` or ``--vae-tiling``)
 * AutoencoderTiny
 * ConsistencyDecoderVAE
+* AutoencoderKLFlux2
+* AutoencoderKLQwenImage
+* AutoencoderKLWan
+* AutoencoderKLLTXVideo
+* AutoencoderKLLTX2Video
 
 The AutoencoderKL encoder class accepts huggingface repository slugs/blob links,
 .pt, .pth, .bin, .ckpt, and .safetensors files. Other encoders can only accept huggingface
 repository slugs/blob links, or a path to a folder on disk with the model
 configuration and model file(s).
+
+Wan pipelines default the checkpoint VAE to ``float32`` (``AutoencoderKLWan`` is
+fragile in ``bfloat16``). Override with ``--vae`` and ``dtype=``, for example:
+``AutoencoderKLWan;model=Wan-AI/Wan2.1-T2V-1.3B-Diffusers;subfolder=vae;dtype=float16``.
 
 
 .. code-block:: bash
@@ -6974,11 +7158,13 @@ See `examples/qwen-image/gguf <examples/qwen-image/gguf_>`_.
 
 ControlNet stays ``--model-type qwen-image`` with ``--control-nets``.
 More than one ControlNet is allowed. Text to image uses the seed image as
-the control image. Inpaint uses ``--image-seeds "image.png;mask.png"`` with
-one ControlNet: that image and mask are ``control_image`` and ``control_mask``.
-``start`` and ``end`` are passed through. The union repository is
-``InstantX/Qwen-Image-ControlNet-Union``. ``scale=1`` matches the pipeline
-default.
+the control image with ``InstantX/Qwen-Image-ControlNet-Union``. Inpaint
+uses ``--image-seeds "image.png;mask.png"`` with one inpainting ControlNet
+(``InstantX/Qwen-Image-ControlNet-Inpainting``): that image and mask are
+``control_image`` and ``control_mask``. Union ControlNets have
+``extra_condition_channels=0`` and cannot be used with a mask; the
+inpainting ControlNet has ``extra_condition_channels=4``. ``start`` and
+``end`` are passed through. ``scale=1`` matches the pipeline default.
 
 See `examples/qwen-image/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/config.dgen>`_
 and `examples/qwen-image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/inpaint-config.dgen>`_.
@@ -7393,8 +7579,14 @@ Available encoder classes are:
 * ``CLIPTextModel``
 * ``CLIPTextModelWithProjection``
 * ``T5EncoderModel``
+* ``UMT5EncoderModel`` (Wan)
 * ``DistillT5EncoderModel`` (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
-* ``ChatGLMModel`` (for Kolors models)
+* ``ChatGLMModel`` (Kolors)
+* ``Gemma4UnifiedForConditionalGeneration`` (LTX-2.5)
+* ``Mistral3ForConditionalGeneration`` (Flux.2)
+* ``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image)
+* ``Qwen3ForCausalLM`` (Flux.2 Klein)
+* ``Qwen3Model`` (Z-Image)
 
 You can query the text encoder types and position for a model by passing ``help``
 as an argument to ``--text-encoders`` or ``--second-model-text-encoders``. This feature
@@ -8939,8 +9131,8 @@ these are the arguments that are available for use:
     sdxl-refiner-pag-adaptive-scale: float
     image-guidance-scale: float
     guidance-rescale: float
-    ltx-video-length: float
-    ltx-video-fps: float
+    video-length: float
+    video-fps: float
     ltx-audio-guidance-scale: float
     ltx-audio-guidance-rescale: float
     ltx-stg-scale: float
@@ -8962,6 +9154,17 @@ these are the arguments that are available for use:
     ltx-video-max-seconds: float
     ltx-condition-index: int
     ltx-condition-strength: float
+    wan-low-noise-guidance-scale: float
+    wan-boundary-ratio: float
+    wan-expand-timesteps: bool
+    wan-animate-mode: str
+    wan-segment-frame-length: int
+    wan-prev-segment-frames: int
+    wan-motion-encode-batch-size: int
+    wan-animate-preprocess: bool
+    wan-animate-cache-dir: str
+    wan-driving-video-path: str
+    wan-driving-video-fps: float
     inference-steps: int
     clip-skip: int
     sdxl-refiner-clip-skip: int
@@ -9148,8 +9351,10 @@ Image Processors
 ================
 
 Images provided through ``--image-seeds`` can be processed before being used for image generation
-through the use of the arguments ``--seed-image-processors``, ``--mask-image-processors``, and
-``--control-image-processors``. In addition, dgenerate's output can be post processed with the
+through the use of the arguments ``--seed-image-processors``, ``--mask-image-processors``,
+``--control-image-processors``, ``--last-frame-image-processors``, ``--reference-image-processors``,
+``--adapter-image-processors``, ``--wan-pose-image-processors``, ``--wan-face-image-processors``,
+``--wan-driving-image-processors``, and ``--wan-background-image-processors``. In addition, dgenerate's output can be post processed with the
 used of the ``--post-processors`` argument, which is useful for using the ``upscaler`` processor.
 An important note about ``--post-processors`` is that post processing occurs before any image grid
 rendering is performed when ``--batch-grid-size`` is specified with a ``--batch-size`` greater than one,
@@ -10745,7 +10950,11 @@ adetailer processor help output below.
         The "inference-steps" argument specifies the amount of inference steps when performing inpainting on the
         input image.
     
-        The "guidance-scale" argument specifies the guidance scale for inpainting.
+        The "guidance-scale" argument specifies the guidance scale for inpainting. On Qwen-Image and Qwen-Image
+        Edit this is true CFG, the same value as --guidance-scales. Flux.2 Klein, Z-Image, Qwen-Image, and
+        Qwen-Image Edit can be used because they have an inpaint pipeline. Full Flux.2, Flux.2 Klein KV, Z-Image
+        Omni, Qwen-Image Layered, and Qwen edit-plus do not. Flux.2 Klein has no negative prompt. These models do
+        not support prompt-weighter.
     
         The "pag-scale" argument indicates the perturbed attention guidance scale, this enables a PAG inpaint
         pipeline if supported. If the previously used pipeline was a PAG pipeline, PAG is automatically enabled
@@ -11018,6 +11227,12 @@ processor chaining if desired.
             confidence: float = 0.3
             model-masks: bool = False
             masks: bool = False
+            crops: bool = False
+            crop-square: bool = False
+            crop-scale: float = 1.0
+            crop-size: str | int | None = None
+            crop-aspect-correct: bool = False
+            crop-all: bool = False
             outpaint: bool = False
             detector-padding: int | str = 0
             mask-shape: str = "rectangle"
@@ -11029,9 +11244,9 @@ processor chaining if desired.
     
         Process the input image with Ultralytics YOLO object detection.
     
-        This processor operates in two distinct modes:
+        This processor operates in three distinct modes:
     
-        Detection Mode (default, masks=False):
+        Detection Mode (default, masks=False, crops=False):
     
         Returns the original image with bounding boxes or mask outlines drawn around detected objects, along with
         labels showing the detection index, class ID, and class name. The colors of the boxes and text are
@@ -11041,6 +11256,13 @@ processor chaining if desired.
     
         Returns a single composite mask image containing all detected objects combined together. This is useful
         for inpainting, outpainting, or other mask-based image processing operations.
+    
+        Crop Mode (crops=True):
+    
+        Returns a crop of one detection from the input image. When ``index-filter`` is set, the first matching
+        detection in reading order is used. Otherwise the largest detection by area is used. With
+        ``crop-all=True``, the crop box is expanded to cover every matching detection instead. With no detections,
+        a centered upper square of the image is returned. ``masks`` and ``crops`` cannot be used together.
     
         -----
     
@@ -11130,13 +11352,35 @@ processor chaining if desired.
         The "masks" argument enables mask generation mode. When True, the processor returns a composite mask image
         instead of the annotated detection image. This defaults to False.
     
+        The "crops" argument enables crop mode. When True, the processor returns a crop of one detected object
+        instead of an annotated image or mask. This defaults to False.
+    
+        The "crop-square" argument forces the crop region to a square centered on the detection. The side length
+        is the larger of the padded box width and height. This only has an effect when "crops" is True. This
+        defaults to False.
+    
+        The "crop-scale" argument scales the detection box about its center before cropping. Values greater than
+        1.0 include more context around the detection. This only has an effect when "crops" is True. This defaults
+        to 1.0.
+    
+        The "crop-size" argument resizes the crop to a target size. Accepts a single integer (square) or
+        WIDTHxHEIGHT. This only has an effect when "crops" is True.
+    
+        The "crop-aspect-correct" argument controls whether "crop-size" preserves aspect ratio. When False (the
+        default), the crop is stretched to exactly "crop-size". When True, the crop is fit inside "crop-size"
+        without distortion. This only has an effect when both "crops" and "crop-size" are set.
+    
+        The "crop-all" argument expands the crop box to cover every matching detection after class and index
+        filters. When False (the default), only one detection is cropped as described above. This only has an
+        effect when "crops" is True.
+    
         The "outpaint" argument inverts the generated masks, creating inverted masks suitable for outpainting
         operations. This only has an effect when "masks" is True. This defaults to False.
     
         The "detector-padding" argument specifies the amount of padding that will be added to the detection
-        rectangle for both bounding box drawing and mask generation. The default is 0, you can make the bounding
-        box and mask area around the detected feature larger with positive padding and smaller with negative
-        padding.
+        rectangle for bounding box drawing, mask generation, and crop regions. The default is 0, you can make the
+        bounding box, mask, and crop area around the detected feature larger with positive padding and smaller
+        with negative padding.
     
         Padding examples:
     
@@ -12122,6 +12366,9 @@ The ``\templates_help`` output from the above example is:
         Name: "injected_verbose"
             Type: bool | None
             Value: False
+        Name: "last_adapter_image_processors"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
         Name: "last_adetailer_class_filter"
             Type: collections.abc.Collection[int | str] | None
             Value: None
@@ -12209,6 +12456,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_frame_end"
             Type: int | None
             Value: None
+        Name: "last_frame_image_processors"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
         Name: "last_frame_start"
             Type: <class 'int'>
             Value: 0
@@ -12350,12 +12600,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ltx_video_decoder"
             Type: str | None
             Value: None
-        Name: "last_ltx_video_fps"
-            Type: collections.abc.Sequence[float] | None
-            Value: []
-        Name: "last_ltx_video_lengths"
-            Type: collections.abc.Sequence[float] | None
-            Value: []
         Name: "last_ltx_video_max_seconds"
             Type: collections.abc.Sequence[float] | None
             Value: []
@@ -12496,6 +12740,9 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_ras_starvation_scales"
             Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_reference_image_processors"
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_revision"
             Type: <class 'str'>
@@ -12688,7 +12935,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [95056112728455]
+            Value: [20428915997131]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -12743,6 +12990,57 @@ The ``\templates_help`` output from the above example is:
         Name: "last_verbose"
             Type: <class 'bool'>
             Value: False
+        Name: "last_video_fps"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_video_lengths"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_wan_animate_mode"
+            Type: str | None
+            Value: None
+        Name: "last_wan_animate_preprocess"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_wan_background_image_processors"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
+        Name: "last_wan_boundary_ratios"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_wan_conditioning_scales"
+            Type: collections.abc.Sequence[float | collections.abc.Sequence[float]] | None
+            Value: []
+        Name: "last_wan_driving_image_processors"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
+        Name: "last_wan_expand_timesteps"
+            Type: bool | None
+            Value: None
+        Name: "last_wan_face_image_processors"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
+        Name: "last_wan_low_noise_guidance_scales"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_wan_motion_encode_batch_sizes"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_wan_pose_image_processors"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
+        Name: "last_wan_prev_segment_frames"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_wan_second_transformer_uri"
+            Type: str | None
+            Value: None
+        Name: "last_wan_segment_frame_lengths"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_wan_timesteps"
+            Type: collections.abc.Sequence[collections.abc.Sequence[int]] | None
+            Value: []
         Name: "last_z_image_cfg_normalization"
             Type: bool | None
             Value: None

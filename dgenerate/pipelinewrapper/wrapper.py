@@ -424,6 +424,7 @@ class DiffusionPipelineWrapper:
                  unet_uri: _types.OptionalUri = None,
                  second_model_unet_uri: _types.OptionalUri = None,
                  transformer_uri: _types.OptionalUri = None,
+                 wan_second_transformer_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  lora_uris: _types.OptionalUris = None,
                  lora_fuse_scale: _types.OptionalFloat = None,
@@ -481,7 +482,9 @@ class DiffusionPipelineWrapper:
         :param unet_uri: main model UNet URI string
         :param second_model_unet_uri: secondary model unet uri (SDXL Refiner, Stable Cascade decoder)
         :param transformer_uri: Optional transformer URI string for specifying a specific Transformer,
-            currently this is only supported for Stable Diffusion 3 models.
+            currently this is only supported for Stable Diffusion 3, Flux, flow-image, and video models.
+        :param wan_second_transformer_uri: Optional ``--wan-second-transformer`` URI for the
+            Wan 2.2 MoE low-noise expert.
         :param vae_uri: main model VAE URI string
         :param lora_uris: One or more LoRA URI strings
         :param lora_fuse_scale: Optional global LoRA fuse scale value. Once all LoRAs are merged with
@@ -641,10 +644,21 @@ class DiffusionPipelineWrapper:
                     and not _enums.model_type_is_video(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     '--transformer is only supported for --model-type sd3, flux, flux2, flux2-klein-kv, '
-                    'z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, and ltx.')
+                    'z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, ltx, '
+                    'wan, wan-animate, and wan-animate-2.')
+
+        if wan_second_transformer_uri:
+            if _enums.get_model_type_enum(model_type) not in (
+                    _enums.ModelType.WAN, _enums.ModelType.WAN_ANIMATE):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    '--wan-second-transformer is only supported for --model-type wan and wan-animate.')
+            try:
+                _uris.TransformerUri.parse(wan_second_transformer_uri)
+            except _uris.InvalidTransformerUriError as e:
+                raise _pipelines.UnsupportedPipelineConfigError(str(e)) from e
 
         if ltx_ic_lora_uri:
-            if not _enums.model_type_is_video(model_type):
+            if _enums.get_model_type_enum(model_type) != _enums.ModelType.LTX:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     '--ltx-ic-lora is only supported for --model-type ltx.')
             try:
@@ -673,9 +687,12 @@ class DiffusionPipelineWrapper:
         quantizer_map_vals = [
             'unet',
             'transformer',
+            'transformer_2',
             'text_encoder',
             'text_encoder_2',
             'text_encoder_3',
+            'image_encoder',
+            'vae',
             'controlnet',
             'connectors'
         ]
@@ -711,6 +728,7 @@ class DiffusionPipelineWrapper:
         self._unet_uri = unet_uri
         self._second_model_unet_uri = second_model_unet_uri
         self._transformer_uri = transformer_uri
+        self._wan_second_transformer_uri = wan_second_transformer_uri
         self._image_encoder_uri = image_encoder_uri
         self._vae_uri = vae_uri
         self._safety_checker = safety_checker
@@ -1033,6 +1051,13 @@ class DiffusionPipelineWrapper:
         Supplied ``--ltx-ic-lora`` uri string or ``None``.
         """
         return self._ic_lora_uri
+
+    @property
+    def wan_second_transformer_uri(self) -> _types.OptionalUri:
+        """
+        Supplied ``--wan-second-transformer`` uri string or ``None``.
+        """
+        return self._wan_second_transformer_uri
 
     @property
     def auth_token(self) -> _types.OptionalString:

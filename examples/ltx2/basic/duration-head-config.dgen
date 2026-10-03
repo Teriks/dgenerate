@@ -1,7 +1,7 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# No --ltx-video-lengths. The duration head chooses the frame count.
+# No --video-lengths. The duration head chooses the frame count.
 
 \set token %HF_TOKEN%
 

@@ -926,6 +926,35 @@ class TestImageSeedParser(unittest.TestCase):
         self.assertEqual(parsed.images, ['photo++2.png'])
         self.assertIsNone(parsed.ltx_extra_conditions)
 
+    def test_wan_animate_keywords(self):
+        parsed = _mi.parse_image_seed_uri(
+            'examples/media/earth.jpg;wan-pose=examples/media/rickroll-roll.gif;'
+            'wan-face=examples/media/rickroll-roll.gif')
+        self.assertEqual(parsed.images, ['examples/media/earth.jpg'])
+        self.assertEqual(parsed.wan_pose_video, 'examples/media/rickroll-roll.gif')
+        self.assertEqual(parsed.wan_face_video, 'examples/media/rickroll-roll.gif')
+
+        parsed = _mi.parse_image_seed_uri(
+            'examples/media/earth.jpg;wan-driving=examples/media/rickroll-roll.gif;'
+            'wan-background=examples/media/kitten.gif')
+        self.assertEqual(parsed.wan_driving_video, 'examples/media/rickroll-roll.gif')
+        self.assertEqual(parsed.wan_background_video, 'examples/media/kitten.gif')
+
+        with self.assertRaises(_mi.ImageSeedFileNotFoundError) as error:
+            _mi.parse_image_seed_uri(
+                'examples/media/earth.jpg;wan-pose=examples/media/missing-pose.mp4')
+        self.assertIn('missing-pose', str(error.exception))
+
+        with self.assertRaises(_mi.ImageSeedParseError):
+            _mi.parse_image_seed_uri(
+                'examples/media/earth.jpg;pose=examples/media/rickroll-roll.gif')
+
+        parsed = _mi.parse_image_seed_uri(
+            'control=examples/media/rickroll-roll.gif;reference=examples/media/earth.jpg')
+        self.assertIsNone(parsed.images)
+        self.assertEqual(parsed.control_images, ['examples/media/rickroll-roll.gif'])
+        self.assertEqual(parsed.reference_images, ['examples/media/earth.jpg'])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,40 @@
+title: Wan-Animate-2
+order: 31
+
+# Wan-Animate-2. The seed is the character still. wan-driving= is the
+# motion clip. The distilled checkpoint samples in 10 steps; the base
+# checkpoint samples in 40. --video-lengths is rejected.
+
+\setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
+
+\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+\setp character "@file[{"label":"Character Image", "optional":false, "mode":"input", "file-types":["images-in"]}]"
+\setp driving_clip "@file[{"label":"Driving Clip", "optional":false, "mode":"input", "file-types":["videos-in"], "divider-after":true}]"
+
+\set image_seeds {{ character + ';wan-driving=' + driving_clip }}
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Wan-AI/Wan2.2-Animate-2-14B-Diffusers", "optional":false, "file-types":["models"]}]
+--model-type wan-animate-2 {{ auth_token }}
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["DPMSolverMultistepScheduler", "FlowMatchEulerDiscreteScheduler", "EulerDiscreteScheduler", "UniPCMultistepScheduler"]}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
+@quantizer[{"divider-after":true}]
+@submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "divider-after":true}]
+@int[{"label":"Segment Frame Length", "arg":"--wan-segment-frame-lengths", "default":81, "min":1}]
+@int[{"label":"Previous Segment Frames", "arg":"--wan-prev-segment-frames", "default":1, "min":1, "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":40, "min":1}]
+@float[{"label":"Video FPS", "arg":"--video-fps", "default":"24", "min":1, "divider-after":true}]
+@dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@switchradio[{"labels":["Output Dgenerate Image Metadata", "Output Automatic1111 Image Metadata"], "args":["--output-metadata", "--output-auto1111-metadata"]}]
+@switch[{"label":"Output Configs", "arg":"--output-configs"}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"640x800", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--wan-driving-image-processors", "label":"Driving Clip Processor"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here" --image-seeds {{ quote(image_seeds) }}

@@ -1,7 +1,7 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# No --ltx-video-lengths. The duration head chooses the length, clamped
+# No --video-lengths. The duration head chooses the length, clamped
 # to this pair. A second pair would write a second clip.
 
 \set token %HF_TOKEN%

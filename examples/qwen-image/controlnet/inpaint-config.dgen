@@ -1,8 +1,12 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# One ControlNet. The image and mask are control_image and control_mask.
-# Do not add a separate control= file.
+# One inpainting ControlNet. The image and mask are control_image and
+# control_mask. Do not add a separate control= file.
+#
+# Use InstantX/Qwen-Image-ControlNet-Inpainting here (extra_condition_channels=4).
+# InstantX/Qwen-Image-ControlNet-Union is for structural control only and will
+# fail with a channel mismatch if used with a mask.
 #
 # horse1-mask.jpg is black on the horse and white on the background.
 # White is repainted, so this changes the field and keeps the horse,
@@ -25,7 +29,7 @@ Qwen/Qwen-Image
 --scheduler FlowMatchEulerDiscreteScheduler
 --inference-steps 30
 --guidance-scales 4
---control-nets "InstantX/Qwen-Image-ControlNet-Union;scale=1"
+--control-nets "InstantX/Qwen-Image-ControlNet-Inpainting;scale=1"
 --image-seeds "../../media/horse1.jpg;mask=../../media/horse1-mask.jpg"
 --gen-seeds 1
 --output-path qwen-image-controlnet-inpaint

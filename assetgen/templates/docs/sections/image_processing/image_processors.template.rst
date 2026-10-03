@@ -2,8 +2,10 @@ Image Processors
 ================
 
 Images provided through ``--image-seeds`` can be processed before being used for image generation
-through the use of the arguments ``--seed-image-processors``, ``--mask-image-processors``, and
-``--control-image-processors``. In addition, dgenerate's output can be post processed with the
+through the use of the arguments ``--seed-image-processors``, ``--mask-image-processors``,
+``--control-image-processors``, ``--last-frame-image-processors``, ``--reference-image-processors``,
+``--adapter-image-processors``, ``--wan-pose-image-processors``, ``--wan-face-image-processors``,
+``--wan-driving-image-processors``, and ``--wan-background-image-processors``. In addition, dgenerate's output can be post processed with the
 used of the ``--post-processors`` argument, which is useful for using the ``upscaler`` processor.
 An important note about ``--post-processors`` is that post processing occurs before any image grid
 rendering is performed when ``--batch-grid-size`` is specified with a ``--batch-size`` greater than one,

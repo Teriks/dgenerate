@@ -4,11 +4,11 @@ Video Generation
 ================
 
 ``--model-type ltx`` generates a clip in one pipeline call.
-One combination of prompt, seed, guidance, steps, image seed, ``--ltx-video-lengths``,
-``--ltx-video-fps``, ``--ltx-audio-guidance-scales``, and ``--ltx-audio-guidance-rescales``
+One combination of prompt, seed, guidance, steps, image seed, ``--video-lengths``,
+``--video-fps``, ``--ltx-audio-guidance-scales``, and ``--ltx-audio-guidance-rescales``
 writes one animation file. LTX does not run once per input frame.
 
-``--ltx-video-lengths`` is a length in seconds. ``--ltx-video-fps`` is the frame rate.
+``--video-lengths`` is a length in seconds. ``--video-fps`` is the frame rate.
 ``--ltx-audio-guidance-scales`` and ``--ltx-audio-guidance-rescales`` are the audio CFG
 and audio rescale. All of those are combinatorial arguments, the same way
 ``--prompts`` and ``--seeds`` are. The frame count inside a clip is not a
@@ -23,7 +23,7 @@ LTX-2.5 (``ltx``)
 
 Repository: ``Lightricks/LTX-2.5-Diffusers``.
 
-* No image seed is text to video. Omitting ``--ltx-video-lengths`` lets the model's duration head choose the length.
+* No image seed is text to video. Omitting ``--video-lengths`` lets the model's duration head choose the length.
 * One image is the first frame.
 * ``last-frame=`` is the last frame. A first frame and ``last-frame=`` can be used together.
 * ``ltx-index`` and ``strength`` place a condition on a chosen latent frame.
@@ -55,8 +55,8 @@ head, and no IC-LoRA.
 ``--inference-steps`` and ``--guidance-scales`` are sent as written. The distilled
 sigma table and the guidance rewrites under `Guidance, steps, and sigmas`_ apply
 to LTX-2.5 only. The published configs use 50 steps, guidance ``3``,
-``--ltx-video-fps 25``, and ``--ltx-video-lengths 4.84``, which is 121 frames,
-at ``768x512``. Omitting ``--ltx-video-lengths`` uses the pipeline default of
+``--video-fps 25``, and ``--video-lengths 4.84``, which is 121 frames,
+at ``768x512``. Omitting ``--video-lengths`` uses the pipeline default of
 161 frames. dgenerate warns when the clip is shorter than 121 frames or smaller
 than about 704 by 480, because the model follows the prompt at the published size.
 
@@ -105,19 +105,19 @@ single frame is treated as a still.
 
     # continue an existing clip
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
-    --ltx-video-fps 25 --ltx-video-lengths 4 --output-size 512x512 \
+    --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds "input.gif" \
     --prompts "The singer keeps swaying, then points at the camera."
 
     # lead into an existing clip
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
-    --ltx-video-fps 25 --ltx-video-lengths 4 --output-size 512x512 \
+    --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds ";last-frame=input.gif" \
     --prompts "A singer walks in and starts to sway at the microphone."
 
     # frames 16 through 40 of a clip, then a still last frame
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
-    --ltx-video-fps 25 --ltx-video-lengths 4 --output-size 512x512 \
+    --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds "input.gif;frame-start=16;frame-end=40;last-frame=last.png" \
     --prompts "The scene fades into a pencil sketch of mountains."
 
@@ -130,30 +130,32 @@ Frame counts:
 
 * Each conditioning clip is cut to a frame count of ``8k+1``, the same rule as the
   output length. A 54 frame gif gives 49 conditioning frames.
-* A clip longer than the output is cut to fit. With ``--ltx-video-lengths`` set, only the
+* A clip longer than the output is cut to fit. With ``--video-lengths`` set, only the
   frames that can be used are decoded. Without it the whole slice is decoded, so use
   ``--frame-end`` on long files.
 * When there is an opening and a closing condition, the opening clip is shortened so
   the two do not overlap.
 * A closing video needs a fixed output length. LTX-2.5 picks its own length when
-  ``--ltx-video-lengths`` is omitted, so set ``--ltx-video-lengths`` when ``last-frame=`` is a video.
+  ``--video-lengths`` is omitted, so set ``--video-lengths`` when ``last-frame=`` is a video.
   An opening video works either way.
 
 Frames are used as they are and are not resampled. When the file's frame rate differs
-from ``--ltx-video-fps`` dgenerate prints a warning, because motion will play faster or
-slower. Set ``--ltx-video-fps`` to the file's rate to keep the speed.
+from ``--video-fps`` dgenerate prints a warning, because motion will play faster or
+slower. Set ``--video-fps`` to the file's rate to keep the speed.
 
 ``resize=``, ``aspect=``, and ``align=`` in the seed apply to every conditioning frame.
 
 ``--seed-image-processors`` runs on every frame of the main path and of ``last-frame=``. Give it two
 chains separated by ``+`` to process them differently. The first chain runs on the main path and
 the second on ``last-frame=``. A leading or trailing ``+`` leaves one side unprocessed.
+``--last-frame-image-processors`` is a dedicated chain for ``last-frame=`` and overrides the second
+seed chain when both are set.
 
 .. code-block:: bash
 
     # grayscale first frame, original last frame
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
-    --ltx-video-lengths 3 --output-size 512x512 \
+    --video-lengths 3 --output-size 512x512 \
     --image-seeds "painting.png;last-frame=painting.png" \
     --seed-image-processors grayscale + \
     --prompts "A black and white painting slowly fills with warm color."
@@ -185,7 +187,7 @@ frame, put the reference in ``control=``:
     # reference clip only
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
     --ltx-ic-lora "Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control;weight-name=ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors" \
-    --ltx-video-fps 25 --ltx-video-lengths 4 --output-size 512x512 \
+    --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds "input.gif" \
     --control-image-processors "canny;lower=50;upper=100" \
     --prompts "A man in a shiny silver suit sings at a vintage microphone."
@@ -202,8 +204,8 @@ frame, put the reference in ``control=``:
   ``Lightricks/LTX-2.5-Diffusers`` loads by default.
 * The reference is one video, animated image, or still. It uses the same frame slicing,
   ``resize=``, and frame count rules as `Video conditioning`_.
-* Without ``--ltx-video-lengths`` the output is as long as the reference clip, cut to ``8k+1``
-  frames. With ``--ltx-video-lengths`` a longer reference is cut to the output length.
+* Without ``--video-lengths`` the output is as long as the reference clip, cut to ``8k+1``
+  frames. With ``--video-lengths`` a longer reference is cut to the output length.
 * Some IC-LoRAs read the reference at a reduced size. dgenerate reads
   ``reference_downscale_factor`` from the IC-LoRA's safetensors metadata, and ``downscale``
   in the URI overrides it. The union control LoRA uses 2, so the output width and height
@@ -272,7 +274,7 @@ This path wins over both of the above.
 
 ``--sigmas`` is combinatorial with ``--guidance-scales``, ``--inference-steps``,
 ``--guidance-rescales``, ``--ltx-audio-guidance-scales``,
-``--ltx-audio-guidance-rescales``, ``--ltx-video-lengths``, and ``--ltx-video-fps``. See
+``--ltx-audio-guidance-rescales``, ``--video-lengths``, and ``--video-fps``. See
 :ref:`specifying-sigmas` and `examples/ltx2/sigmas/sigmas-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/sigmas/sigmas-config.dgen>`_.
 
 ``--guidance-rescales``
@@ -326,8 +328,10 @@ The pipeline cache counts the video checkpoint and moves the previous pipeline b
 Submodels
 ---------
 
-``--vae``, ``--unet``, and ``--text-encoders`` are rejected. Those slots do not match this pipeline.
-``--transformer`` and ``--loras`` do.
+``--unet`` is rejected. ``--vae`` and ``--text-encoders`` work like they do
+for image models, including ``+`` to keep a slot's checkpoint default.
+``--vae`` accepts ``AutoencoderKLLTX2Video`` (and ``AutoencoderKLLTXVideo``
+for LTX-Video). ``--transformer`` and ``--loras`` do.
 
 ``--quantizer`` quantizes the diffusion transformer, the text encoder, and the text
 connectors. ``--quantizer-map`` can limit that to ``transformer``, ``text_encoder``, or
@@ -394,6 +398,10 @@ Decode, prompts, and duration
 
 ``--ltx-video-decoder diffusion`` decodes with the checkpoint diffusion decoder
 instead of the convolutional VAE, in the same generation. ``conv`` is the default.
+That decoder uses NATTEN through the ``kernels`` package, which is installed with
+dgenerate. The first decode downloads the kernel from the Hub, so leave
+``DIFFUSERS_DISABLE_REMOTE_CODE`` unset. The FlexAttention path builds a neighborhood
+mask that does not fit in GPU memory at video resolution.
 ``--ltx-decode-timesteps`` and ``--ltx-decode-noise-scales`` are the decode arguments.
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
@@ -406,7 +414,7 @@ and the pipeline default is used (``18`` on LTX-2.5). ``0`` skips recompression.
 See `examples/ltx2/image_conditioning/image-crf-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/image_conditioning/image-crf-config.dgen>`_.
 
 ``--ltx-video-min-seconds`` and ``--ltx-video-max-seconds`` clamp the duration head.
-They apply only when ``--ltx-video-lengths`` is omitted. Give the same number of
+They apply only when ``--video-lengths`` is omitted. Give the same number of
 values to each. The value in each position is used together:
 ``--ltx-video-min-seconds 2 4 --ltx-video-max-seconds 6 8`` writes two clips, one
 from 2 to 6 seconds and one from 4 to 8. A single value with the other option
@@ -495,7 +503,7 @@ See `examples/ltx2/image_conditioning/indexed-config.dgen <https://github.com/Te
 What LTX rejects
 ----------------
 
-ControlNets, T2I adapters, IP adapters, textual inversions, a replacement UNet, VAE, or text encoder,
+ControlNets, T2I adapters, IP adapters, textual inversions, a replacement UNet,
 an image encoder, the SDXL refiner, Stable Cascade, Adetailer, PAG and PAG scales,
 any scheduler other than ``FlowMatchEulerDiscreteScheduler``, prompt weighters, second or third prompts,
 clip skip, inpaint crop, HiDiffusion, TeaCache, DeepCache, SADA, RAS,
@@ -509,3 +517,41 @@ control processors to one.
 LTX-2.5 configs are in `examples/ltx2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2>`_,
 including a distilled Comfy GGUF under `examples/ltx2/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/gguf>`_.
 LTX-Video configs are in `examples/ltx_video <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx_video>`_.
+
+Wan (2.1 / 2.2)
+---------------
+
+``--model-type wan`` and ``--model-type wan-animate`` also generate a clip in
+one pipeline call. Clip length and frame rate are the shared ``--video-lengths``
+and ``--video-fps`` options. Other Wan options use the ``--wan-`` prefix.
+
+* No image seed is text to video.
+* One image is the first frame.
+* ``last-frame=`` is first-last-frame (FLF2V) on an I2V checkpoint.
+* A video seed path is video-to-video. ``--video-lengths`` is rejected; the
+  output follows the input clip.
+* ``control=``, ``mask=``, and ``reference=`` are VACE.
+* ``--model-type wan-animate`` takes a character still plus ``wan-pose=`` and
+  ``wan-face=``. ``wan-driving=`` with ``--wan-animate-preprocess`` runs the existing
+  ``openpose`` processor and ``yolo`` in crop mode
+  (``Bingsu/adetailer;weight-name=face_yolov8n.pt;crops=True;crop-square=True;crop-scale=1.4``).
+  Custom plugins can run on those clips with ``--wan-pose-image-processors``,
+  ``--wan-face-image-processors``, ``--wan-driving-image-processors``, and
+  ``--wan-background-image-processors``. ``--video-lengths`` is rejected; the
+  output follows the pose clip.
+* ``wan-background=`` and ``mask=`` are replace mode.
+* ``--model-type wan-animate-2`` takes a character still plus ``wan-driving=``.
+  The driving clip is the motion source. ``Wan-AI/Wan2.2-Animate-2-14B-Diffusers``
+  samples in 40 steps. ``Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers`` samples
+  in 10. ``--video-lengths`` is rejected; the output follows the driving clip.
+* Wan 2.2 MoE can take ``--wan-second-transformer`` for the low-noise expert.
+* The VAE defaults to ``float32``, including when ``--vae`` omits ``dtype=``.
+  Set ``dtype=`` on the ``AutoencoderKLWan`` URI only when you want another
+  precision. ``--quantizer-map`` may name ``transformer``, ``transformer_2``,
+  ``text_encoder``, ``text_encoder_2``, or ``image_encoder`` — not ``vae``.
+* ``--text-encoders`` replaces the UMT5 text encoder. Use ``+`` to keep the
+  checkpoint default, or ``null`` to skip a slot.
+* ``--video-fps`` defaults to 16 for wan, 30 for wan-animate, and 24 for wan-animate-2.
+
+Configs are in `examples/wan <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan>`_
+and `examples/wan_animate <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan_animate>`_.

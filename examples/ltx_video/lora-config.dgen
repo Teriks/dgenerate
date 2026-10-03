@@ -18,10 +18,10 @@ Lightricks/LTX-Video
 --loras "finetrainers/LTX-Video-0.9.0-crush-smol-v0;scale=0.9"
 --inference-steps 50
 --guidance-scales 3
---ltx-video-fps 25
+--video-fps 25
 --gen-seeds 1
 --output-size 768x512
---ltx-video-lengths 4
+--video-lengths 4
 --animation-format mp4
 --output-path ltx-video-lora
 --prompts "PIKA_CRUSH A red toy car is being crushed by a large hydraulic press, which is flattening objects as if they were under a hydraulic press.; worst quality, inconsistent motion, blurry, jittery, distorted"

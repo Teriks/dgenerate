@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# First-last-frame on an I2V checkpoint. The seed is the opening still;
+# last-frame= is the closing still. --last-frame-image-processors runs
+# only on last-frame=.
+
+Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 3
+--animation-format mp4
+--output-path wan-flf
+--last-frame-image-processors flip
+--image-seeds "../../media/earth.jpg;last-frame=../../media/mountain.png"
+--prompts "The camera travels from the Earth toward a mountain range. The mountain is mirrored left to right."

@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Same simplified path as animate/animate-config.dgen: wan-driving= plus
+# --wan-animate-preprocess. Pose is openpose; face is the internal yolo
+# crop (crop-square + crop-scale=1.4). Cached clips are written next to
+# the driving file.
+
+Wan-AI/Wan2.2-Animate-14B-Diffusers
+--model-type wan-animate
+--dtype bfloat16
+--model-sequential-offload
+--wan-animate-preprocess
+--inference-steps 20
+--guidance-scales 1
+--video-fps 30
+--gen-seeds 1
+--output-size 832x480
+--animation-format mp4
+--output-path wan-animate-preprocess
+--image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;frame-end=24"
+--prompts "A boxer dances in place. The camera stays fixed."

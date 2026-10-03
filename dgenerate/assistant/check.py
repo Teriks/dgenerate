@@ -327,7 +327,8 @@ def _repo_problem(repo: str, cache: dict) -> str | None:
 # Options whose URIs name a model, either first ("repo;scale=0.5") or as model= ("AutoencoderKL;model=repo").
 _MODEL_URI_OPTIONS = (
     'sdxl_refiner_uri', 's_cascade_decoder_uri', 'unet_uri', 'second_model_unet_uri', 'transformer_uri',
-    'vae_uri', 'lora_uris', 'ltx_ic_lora_uri', 'image_encoder_uri', 'ip_adapter_uris', 'textual_inversion_uris',
+    'vae_uri', 'lora_uris', 'ltx_ic_lora_uri', 'wan_second_transformer_uri', 'image_encoder_uri',
+    'ip_adapter_uris', 'textual_inversion_uris',
     'text_encoder_uris', 'second_model_text_encoder_uris', 'controlnet_uris', 't2i_adapter_uris',
 )
 
@@ -544,7 +545,11 @@ _LATENT_FORMATS = frozenset({'pt', 'pth', 'safetensors'})
 
 
 _IMAGE_PROCESSOR_OPTIONS = ('seed_image_processors', 'mask_image_processors',
-                            'control_image_processors', 'post_processors')
+                            'control_image_processors', 'last_frame_image_processors',
+                            'reference_image_processors', 'adapter_image_processors',
+                            'wan_pose_image_processors', 'wan_face_image_processors',
+                            'wan_driving_image_processors', 'wan_background_image_processors',
+                            'post_processors')
 _LATENTS_PROCESSOR_OPTIONS = ('latents_processors', 'latents_post_processors', 'img2img_latents_processors')
 _PROMPT_WEIGHTER_OPTIONS = ('prompt_weighter_uri', 'second_model_prompt_weighter_uri')
 _PROMPT_UPSCALER_OPTIONS = ('prompt_upscaler_uri', 'second_model_prompt_upscaler_uri', 'second_prompt_upscaler_uri',
@@ -627,11 +632,11 @@ def check_config(text: str) -> dict:
     errors.extend(_template_delayed_expansion(text))
     errors.extend(_runaway_comments(text))
     errors.extend(_print_says_example(text))
-    if _LAST_ANIM_SEED.search(text) and not re.search(r'--model-type\s+ltx\b', text):
+    if _LAST_ANIM_SEED.search(text) and not re.search(r'--model-type\s+(ltx|wan|wan-animate)\b', text):
         errors.append({
             'line': None,
-            'message': '--image-seeds uses last_animations, but this config has no LTX '
-                       'video step. Image models and image-to-video take last_images or '
+            'message': '--image-seeds uses last_animations, but this config has no video '
+                       'step. Image models and image-to-video take last_images or '
                        'the user photo, never last_animations.',
         })
 
@@ -840,7 +845,7 @@ def check_config(text: str) -> dict:
                     'message': 'A .gguf file is a transformer or UNet replacement, not the '
                                'model path. Use the Hugging Face repo as the first line and '
                                '--transformer path/to/file.gguf (see the Flux, Flux.2, SD3, '
-                               'Z-Image, Qwen-Image, and LTX GGUF examples).',
+                               'Z-Image, Qwen-Image, LTX, and Wan GGUF examples).',
                 })
             problem = _model_path_problem(model_path) or \
                 _repo_problem(model_path, repo_problems) or \
@@ -896,7 +901,7 @@ def check_config(text: str) -> dict:
                                        f'or the user photo as --image-seeds, not last_animations.',
                         })
                         break
-            if mt == 'ltx' and not prev_was_video:
+            if mt in ('ltx', 'wan') and not prev_was_video:
                 for seed in seeds:
                     if 'last_animations' in seed or (
                             prev_animation and prev_animation.replace('\\', '/')
@@ -963,7 +968,7 @@ def check_config(text: str) -> dict:
                 except _schedulers.SchedulerLoadError as e:
                     errors.append({'line': line, 'message': str(e).strip()})
             prev_image_format = config.image_format
-            prev_was_video = mt == 'ltx'
+            prev_was_video = mt in ('ltx', 'wan', 'wan-animate')
             _img, prev_animation = _placeholder_outputs(list(argv))
         except SystemExit:
             errors.append({'line': line, 'message': 'dgenerate exited while parsing the invocation.'})

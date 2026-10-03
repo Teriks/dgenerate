@@ -1,0 +1,29 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan-Animate replace mode (simplified). --wan-animate-preprocess derives
+# wan-pose= and wan-face= from wan-driving=. wan-background= is the scene
+# to edit; mask= is a person segmentation of that scene (built on the fly).
+
+\image_process "../../media/rickroll-roll.gif"
+-o replace-mask.gif
+--processors "yolo;model=https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n-seg.pt;model-masks=True;masks=True;class-filter=person"
+--frame-end 24
+--align 1
+--no-frames
+
+Wan-AI/Wan2.2-Animate-14B-Diffusers
+--model-type wan-animate
+--dtype bfloat16
+--model-sequential-offload
+--wan-animate-mode replace
+--wan-animate-preprocess
+--inference-steps 20
+--guidance-scales 1
+--video-fps 30
+--gen-seeds 1
+--output-size 832x480
+--animation-format mp4
+--output-path wan-animate-replace
+--image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;wan-background=../../media/rickroll-roll.gif;mask=replace-mask.gif;frame-end=24"
+--prompts "A boxer dances in a hallway. The camera stays fixed."

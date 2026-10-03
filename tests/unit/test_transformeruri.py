@@ -75,6 +75,12 @@ class TestTransformerUri(unittest.TestCase):
         result = _transformeruri.TransformerUri.parse(uri)
         self.assertEqual(result.quantizer, False)
 
+    def test_wan_second_transformer_gguf(self):
+        result = _transformeruri.TransformerUri.parse(
+            'https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/LowNoise/Wan2.2-T2V-A14B-LowNoise-Q4_K_S.gguf')
+        self.assertTrue(result.model.lower().endswith('.gguf'))
+        self.assertFalse(result.quantizer)
+
 
 if __name__ == '__main__':
     unittest.main() 

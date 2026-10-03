@@ -35,6 +35,7 @@ from torchvision.transforms.functional import to_pil_image as _to_pil_image
 from ultralytics import YOLO as _YOLO
 
 import dgenerate.hfhub as _hfhub
+import dgenerate.image as _image
 import dgenerate.imageprocessors.util as _util
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
@@ -48,9 +49,9 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
     """
     Process the input image with Ultralytics YOLO object detection.
     
-    This processor operates in two distinct modes:
+    This processor operates in three distinct modes:
     
-    Detection Mode (default, masks=False):
+    Detection Mode (default, masks=False, crops=False):
 
     Returns the original image with bounding boxes or mask outlines drawn around detected objects,
     along with labels showing the detection index, class ID, and class name. The colors of the 
@@ -60,6 +61,14 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
 
     Returns a single composite mask image containing all detected objects combined together.
     This is useful for inpainting, outpainting, or other mask-based image processing operations.
+
+    Crop Mode (crops=True):
+
+    Returns a crop of one detection from the input image. When ``index-filter`` is set, the
+    first matching detection in reading order is used. Otherwise the largest detection by
+    area is used. With ``crop-all=True``, the crop box is expanded to cover every matching
+    detection instead. With no detections, a centered upper square of the image is returned.
+    ``masks`` and ``crops`` cannot be used together.
     
     -----
     
@@ -164,13 +173,36 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
     The "masks" argument enables mask generation mode. When True, the processor returns a
     composite mask image instead of the annotated detection image. This defaults to False.
 
+    The "crops" argument enables crop mode. When True, the processor returns a crop of one
+    detected object instead of an annotated image or mask. This defaults to False.
+
+    The "crop-square" argument forces the crop region to a square centered on the detection.
+    The side length is the larger of the padded box width and height. This only has an effect
+    when "crops" is True. This defaults to False.
+
+    The "crop-scale" argument scales the detection box about its center before cropping.
+    Values greater than 1.0 include more context around the detection. This only has an
+    effect when "crops" is True. This defaults to 1.0.
+
+    The "crop-size" argument resizes the crop to a target size. Accepts a single integer
+    (square) or WIDTHxHEIGHT. This only has an effect when "crops" is True.
+
+    The "crop-aspect-correct" argument controls whether "crop-size" preserves aspect ratio.
+    When False (the default), the crop is stretched to exactly "crop-size". When True, the
+    crop is fit inside "crop-size" without distortion. This only has an effect when both
+    "crops" and "crop-size" are set.
+
+    The "crop-all" argument expands the crop box to cover every matching detection after
+    class and index filters. When False (the default), only one detection is cropped as
+    described above. This only has an effect when "crops" is True.
+
     The "outpaint" argument inverts the generated masks, creating inverted masks suitable
     for outpainting operations. This only has an effect when "masks" is True. This defaults to False.
 
     The "detector-padding" argument specifies the amount of padding that will be added to the
-    detection rectangle for both bounding box drawing and mask generation. The default is 0, you can make
-    the bounding box and mask area around the detected feature larger with positive padding
-    and smaller with negative padding.
+    detection rectangle for bounding box drawing, mask generation, and crop regions. The default
+    is 0, you can make the bounding box, mask, and crop area around the detected feature larger
+    with positive padding and smaller with negative padding.
 
     Padding examples:
 
@@ -233,6 +265,12 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
                  confidence: float = 0.3,
                  model_masks: bool = False,
                  masks: bool = False,
+                 crops: bool = False,
+                 crop_square: bool = False,
+                 crop_scale: float = 1.0,
+                 crop_size: str | int | None = None,
+                 crop_aspect_correct: bool = False,
+                 crop_all: bool = False,
                  outpaint: bool = False,
                  detector_padding: int | str = _constants.DEFAULT_YOLO_DETECTOR_PADDING,
                  mask_shape: str = _constants.DEFAULT_YOLO_MASK_SHAPE,
@@ -256,8 +294,14 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
         :param confidence: confidence threshold for detections (0.0 to 1.0)
         :param model_masks: overlay model-generated masks instead of bounding boxes when available, default is ``False``
         :param masks: generate mask images for detected objects, default is ``False``
+        :param crops: return a crop of one detection instead of an annotated image, default is ``False``
+        :param crop_square: force a square crop region centered on the detection, default is ``False``
+        :param crop_scale: scale factor applied to the detection box about its center before cropping
+        :param crop_size: optional output size for crops, integer square or ``WIDTHxHEIGHT``
+        :param crop_aspect_correct: preserve aspect ratio when applying ``crop_size``, default is ``False``
+        :param crop_all: expand the crop box around every matching detection, default is ``False``
         :param outpaint: invert generated masks for outpainting, only effective when masks is ``True``, default is ``False``
-        :param detector_padding: padding around detection rectangles for both bounding box drawing and mask generation
+        :param detector_padding: padding around detection rectangles for bounding box drawing, mask generation, and crops
         :param mask_shape: shape of generated masks ("rectangle" or "circle")
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
         :param kwargs: forwarded to base class
@@ -272,6 +316,22 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
 
         if font_size is not None and font_size < 8:
             raise self.argument_error('Argument "font-size" must be at least 8.')
+
+        if masks and crops:
+            raise self.argument_error('Arguments "masks" and "crops" cannot be used together.')
+
+        if crop_scale <= 0:
+            raise self.argument_error('Argument "crop-scale" must be greater than 0.')
+
+        parsed_crop_size = None
+        if crop_size is not None:
+            try:
+                parsed_crop_size = _textprocessing.parse_image_size(str(crop_size))
+            except ValueError as e:
+                raise self.argument_error(
+                    'Argument "crop-size" must be an integer or WIDTHxHEIGHT.') from e
+            if parsed_crop_size[0] < 1 or parsed_crop_size[1] < 1:
+                raise self.argument_error('Argument "crop-size" dimensions must be at least 1.')
 
         # Validate color arguments
         if line_color is not None and not self._match_hex_color(line_color):
@@ -317,6 +377,12 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
         self._line_color = line_color
         self._model_masks = model_masks
         self._masks = masks
+        self._crops = crops
+        self._crop_square = crop_square
+        self._crop_scale = float(crop_scale)
+        self._crop_size = parsed_crop_size
+        self._crop_aspect_correct = crop_aspect_correct
+        self._crop_all = crop_all
         self._outpaint = outpaint
         self._detector_padding = detector_padding
         self._mask_shape = mask_shape
@@ -599,29 +665,68 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
             
         return line_width, font_size, text_padding
 
+    def _fallback_crop_box(self, image_size):
+        """Centered upper square used when crop mode has no detections."""
+        width, height = image_size
+        side = min(width, height)
+        left = (width - side) // 2
+        top = max(0, (height - side) // 4)
+        return left, top, left + side, top + side
+
+    def _build_crop_box(self, bbox, image_size):
+        """
+        Build a crop rectangle from a detection box.
+
+        Applies detector padding, optional scale about center, and optional
+        square expansion, then clamps to the image bounds.
+        """
+        width, height = image_size
+        x1, y1, x2, y2 = (float(value) for value in bbox)
+        x1, y1, x2, y2 = self._apply_padding_to_bbox(
+            x1, y1, x2, y2, self._detector_padding, image_size)
+
+        cx = (x1 + x2) / 2.0
+        cy = (y1 + y2) / 2.0
+        box_w = max(x2 - x1, 1.0) * self._crop_scale
+        box_h = max(y2 - y1, 1.0) * self._crop_scale
+
+        if self._crop_square:
+            side = max(box_w, box_h)
+            box_w = side
+            box_h = side
+
+        left = int(round(cx - box_w / 2.0))
+        top = int(round(cy - box_h / 2.0))
+        right = int(round(cx + box_w / 2.0))
+        bottom = int(round(cy + box_h / 2.0))
+
+        crop_w = max(1, right - left)
+        crop_h = max(1, bottom - top)
+        left = min(max(left, 0), max(0, width - crop_w))
+        top = min(max(top, 0), max(0, height - crop_h))
+        right = min(width, left + crop_w)
+        bottom = min(height, top + crop_h)
+        return left, top, right, bottom
+
+    def _crop_detection(self, image, bbox=None):
+        """Crop one detection (or the fallback region) and optionally resize."""
+        box = self._fallback_crop_box(image.size) if bbox is None else self._build_crop_box(bbox, image.size)
+        cropped = image.crop(box)
+        if self._crop_size is None or cropped.size == self._crop_size:
+            return cropped
+        resized = _image.resize_image(
+            cropped, self._crop_size, aspect_correct=self._crop_aspect_correct)
+        if cropped is not image:
+            cropped.close()
+        return resized
+
     @torch.no_grad()
     def _process(self, image):
         # Convert PIL image to numpy array for YOLO
         input_image = numpy.array(image)
 
-        # Calculate dynamic sizes based on image dimensions
-        line_width, font_size, text_padding = self._calculate_line_width_font_size(image.size)
-
         # Run YOLO detection
         results = self._model(input_image, conf=self._confidence)
-
-        # Create a copy of the image to draw on
-        output_image = image.copy()
-        draw = PIL.ImageDraw.Draw(output_image)
-
-        # Try to load a font, fall back to default if not available
-        try:
-            font = PIL.ImageFont.truetype("arial.ttf", font_size)
-        except IOError:
-            try:
-                font = PIL.ImageFont.truetype(PIL.ImageFont.load_default().path, font_size)
-            except:
-                font = PIL.ImageFont.load_default()
 
         sorted_indices = []
         bboxes = None
@@ -669,8 +774,51 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
             filtered_count = original_count - len(sorted_indices)
             if filtered_count > 0:
                 _messages.debug_log(f"YOLO detection: Filtered out {filtered_count} tiny boxes (< 3x3 pixels)")
-            
 
+        if self._crops:
+            if sorted_indices:
+                if self._crop_all and len(sorted_indices) > 1:
+                    matched = bboxes[sorted_indices]
+                    union_box = (
+                        float(matched[:, 0].min()),
+                        float(matched[:, 1].min()),
+                        float(matched[:, 2].max()),
+                        float(matched[:, 3].max()),
+                    )
+                    _messages.debug_log(
+                        f'YOLO detection: Returning crop covering {len(sorted_indices)} detections.')
+                    return self._crop_detection(image, union_box)
+                if self._index_filter is None and len(sorted_indices) > 1:
+                    # Prefer the largest detection when the caller did not pick an index.
+                    crop_index = max(
+                        sorted_indices,
+                        key=lambda i: float(
+                            (bboxes[i][2] - bboxes[i][0]) * (bboxes[i][3] - bboxes[i][1])))
+                else:
+                    crop_index = sorted_indices[0]
+                _messages.debug_log(
+                    f'YOLO detection: Returning crop of detection index {sorted_indices.index(crop_index)}.')
+                return self._crop_detection(image, bboxes[crop_index])
+            _messages.debug_log('YOLO detection: No objects detected, returning fallback crop.')
+            return self._crop_detection(image)
+
+        # Calculate dynamic sizes based on image dimensions
+        line_width, font_size, text_padding = self._calculate_line_width_font_size(image.size)
+
+        # Create a copy of the image to draw on
+        output_image = image.copy()
+        draw = PIL.ImageDraw.Draw(output_image)
+
+        # Try to load a font, fall back to default if not available
+        try:
+            font = PIL.ImageFont.truetype("arial.ttf", font_size)
+        except IOError:
+            try:
+                font = PIL.ImageFont.truetype(PIL.ImageFont.load_default().path, font_size)
+            except:
+                font = PIL.ImageFont.load_default()
+
+        if sorted_indices:
             # Check if we should use model masks and they are available
             use_masks = self._model_masks and results[0].masks is not None
             masks = None
@@ -803,10 +951,10 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
                 text_y = box_y_top + text_padding + text_offset_y
                 draw.text((text_x, text_y), label, fill=text_color, font=font)
 
-            if not sorted_indices:
-                _messages.debug_log("YOLO detection: No objects matched the filters.")
-            elif use_masks and results[0].masks is not None:
+            if use_masks and results[0].masks is not None:
                 _messages.debug_log(f"YOLO detection: Drew mask outlines for {len(sorted_indices)} detections.")
+            else:
+                _messages.debug_log(f"YOLO detection: Drew bounding boxes for {len(sorted_indices)} detections.")
         else:
             _messages.debug_log("YOLO detection: No objects detected in the image.")
 

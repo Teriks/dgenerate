@@ -101,10 +101,36 @@ def reconstruct_dgenerate_opts(
     opts.append(('--guidance-scales', args.guidance_scale))
 
     if _enums.model_type_is_video(wrapper.model_type):
-        if args.ltx_video_length is not None:
-            opts.append(('--ltx-video-lengths', args.ltx_video_length))
-        if args.ltx_video_fps is not None:
-            opts.append(('--ltx-video-fps', args.ltx_video_fps))
+        if getattr(wrapper, 'wan_second_transformer_uri', None):
+            opts.append(('--wan-second-transformer', wrapper.wan_second_transformer_uri))
+        if args.video_length is not None:
+            opts.append(('--video-lengths', args.video_length))
+        if args.video_fps is not None:
+            opts.append(('--video-fps', args.video_fps))
+        if args.wan_low_noise_guidance_scale is not None:
+            opts.append(('--wan-low-noise-guidance-scales', args.wan_low_noise_guidance_scale))
+        if args.wan_boundary_ratio is not None:
+            opts.append(('--wan-boundary-ratios', args.wan_boundary_ratio))
+        if args.wan_expand_timesteps:
+            opts.append(('--wan-expand-timesteps',))
+        if args.wan_timesteps:
+            opts.append(('--wan-timesteps', ','.join(str(step) for step in args.wan_timesteps)))
+        if args.wan_conditioning_scale is not None:
+            scale = args.wan_conditioning_scale
+            if isinstance(scale, (list, tuple)):
+                opts.append(('--wan-conditioning-scales', ','.join(str(value) for value in scale)))
+            else:
+                opts.append(('--wan-conditioning-scales', scale))
+        if args.wan_animate_mode:
+            opts.append(('--wan-animate-mode', args.wan_animate_mode))
+        if args.wan_segment_frame_length is not None:
+            opts.append(('--wan-segment-frame-lengths', args.wan_segment_frame_length))
+        if args.wan_prev_segment_frames is not None:
+            opts.append(('--wan-prev-segment-frames', args.wan_prev_segment_frames))
+        if args.wan_motion_encode_batch_size is not None:
+            opts.append(('--wan-motion-encode-batch-size', args.wan_motion_encode_batch_size))
+        if args.wan_animate_preprocess:
+            opts.append(('--wan-animate-preprocess',))
         if args.ltx_audio_guidance_scale is not None:
             opts.append(('--ltx-audio-guidance-scales', args.ltx_audio_guidance_scale))
         if args.ltx_audio_guidance_rescale is not None:

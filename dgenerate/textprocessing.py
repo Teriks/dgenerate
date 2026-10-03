@@ -1828,6 +1828,10 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                           frame_start: int | None = None,
                           frame_end: int | None = None,
                           end_image: str | None = None,
+                          wan_pose_video: str | None = None,
+                          wan_face_video: str | None = None,
+                          wan_background_video: str | None = None,
+                          wan_driving_video: str | None = None,
                           ltx_index: int | None = None,
                           ltx_strength: float | None = None,
                           ltx_extra_conditions: collections.abc.Sequence | None = None) -> str:
@@ -1866,7 +1870,11 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     :param aspect: Preserve aspect ratio?
     :param frame_start: Optional frame start index
     :param frame_end: Optional frame end index
-    :param end_image: LTX last frame or closing clip path (``last-frame=``). Always strength 1.
+    :param end_image: Last frame or closing clip path (``last-frame=``). Always strength 1.
+    :param wan_pose_video: Wan-Animate pose clip (``wan-pose=``).
+    :param wan_face_video: Wan-Animate face clip (``wan-face=``).
+    :param wan_background_video: Wan-Animate background clip (``wan-background=``).
+    :param wan_driving_video: Wan-Animate driving clip (``wan-driving=``).
     :param ltx_index: Latent frame of the primary path (``ltx-index=``). ``-1`` is the last latent frame.
     :param ltx_strength: Image-seed ``strength`` from 0 to 1. On LTX this is the
         condition weight. On img2img it overrides ``--image-seed-strengths`` for
@@ -2041,6 +2049,10 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         not floyd_image and
         not end_image and
         not reference_images and
+        not wan_pose_video and
+        not wan_face_video and
+        not wan_background_video and
+        not wan_driving_video and
         ltx_index is None and
         ltx_strength is None and
         not ltx_extra_conditions and
@@ -2082,6 +2094,14 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
             add_component_if_valid(control_images, "control")
         if reference_images:
             add_component_if_valid(reference_images, "reference")
+        if wan_pose_video:
+            add_component_if_valid(_quote_ltx_path(wan_pose_video), "wan-pose")
+        if wan_face_video:
+            add_component_if_valid(_quote_ltx_path(wan_face_video), "wan-face")
+        if wan_background_video:
+            add_component_if_valid(_quote_ltx_path(wan_background_video), "wan-background")
+        if wan_driving_video:
+            add_component_if_valid(_quote_ltx_path(wan_driving_video), "wan-driving")
         if resize:
             add_component_if_valid(resize, "resize")
         if aspect is False:

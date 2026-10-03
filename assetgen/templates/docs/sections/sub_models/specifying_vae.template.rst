@@ -14,6 +14,13 @@ VAEs are supported for these model types:
     * ``--model-type kolors``
     * ``--model-type sd3``
     * ``--model-type flux``
+    * ``--model-type flux2``
+    * ``--model-type qwen-image`` / ``qwen-image-edit`` / ``qwen-image-layered``
+    * ``--model-type z-image``
+    * ``--model-type ltx``
+    * ``--model-type wan``
+    * ``--model-type wan-animate``
+    * ``--model-type wan-animate-2``
 
 The URI syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)``
 
@@ -34,11 +41,20 @@ Available encoder classes are:
 * AsymmetricAutoencoderKL (Does not support ``--vae-slicing`` or ``--vae-tiling``)
 * AutoencoderTiny
 * ConsistencyDecoderVAE
+* AutoencoderKLFlux2
+* AutoencoderKLQwenImage
+* AutoencoderKLWan
+* AutoencoderKLLTXVideo
+* AutoencoderKLLTX2Video
 
 The AutoencoderKL encoder class accepts huggingface repository slugs/blob links,
 .pt, .pth, .bin, .ckpt, and .safetensors files. Other encoders can only accept huggingface
 repository slugs/blob links, or a path to a folder on disk with the model
 configuration and model file(s).
+
+Wan pipelines default the checkpoint VAE to ``float32`` (``AutoencoderKLWan`` is
+fragile in ``bfloat16``). Override with ``--vae`` and ``dtype=``, for example:
+``AutoencoderKLWan;model=Wan-AI/Wan2.1-T2V-1.3B-Diffusers;subfolder=vae;dtype=float16``.
 
 
 .. code-block:: bash

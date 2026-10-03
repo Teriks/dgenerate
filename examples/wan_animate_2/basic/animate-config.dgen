@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan-Animate-2. The seed is the character still. wan-driving= is the
+# motion clip. Output length follows that clip. --video-lengths is rejected.
+# This checkpoint samples in 40 steps. The VAE stays float32.
+
+Wan-AI/Wan2.2-Animate-2-14B-Diffusers
+--model-type wan-animate-2
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 40
+--wan-segment-frame-lengths 81
+--wan-prev-segment-frames 1
+--max-sequence-length 512
+--video-fps 24
+--gen-seeds 1
+--output-size 640x800
+--animation-format mp4
+--output-path wan-animate-2
+--image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;frame-end=24"
+--prompts "A boxer dances in place. The camera stays fixed."

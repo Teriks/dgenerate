@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan-Animate (simplified). The seed is the character still. wan-driving=
+# is the motion clip. --wan-animate-preprocess derives wan-pose= (openpose)
+# and wan-face= (yolo face crop) internally and caches them next to the
+# driving file. Output length follows the pose clip.
+
+Wan-AI/Wan2.2-Animate-14B-Diffusers
+--model-type wan-animate
+--dtype bfloat16
+--model-sequential-offload
+--wan-animate-preprocess
+--inference-steps 20
+--guidance-scales 1
+--video-fps 30
+--gen-seeds 1
+--output-size 832x480
+--animation-format mp4
+--output-path wan-animate
+--image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;frame-end=24"
+--prompts "A boxer dances in place. The camera stays fixed."

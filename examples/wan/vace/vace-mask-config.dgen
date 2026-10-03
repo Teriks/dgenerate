@@ -1,0 +1,28 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# VACE with control=, mask=, and reference=. The mask is a person
+# segmentation of the control clip, built on the fly.
+
+\image_process "../../media/rickroll-roll.gif"
+-o vace-person-mask.gif
+--processors "yolo;model=https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n-seg.pt;model-masks=True;masks=True;class-filter=person"
+--frame-end 24
+--align 1
+--no-frames
+
+Wan-AI/Wan2.1-VACE-1.3B-diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 3
+--animation-format mp4
+--output-path wan-vace-mask
+--control-image-processors canny
+--image-seeds "control=../../media/rickroll-roll.gif;mask=vace-person-mask.gif;reference=../../media/beach.jpg;frame-end=24"
+--prompts "A person dances on a sunny beach. The camera stays fixed."

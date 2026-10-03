@@ -23,7 +23,7 @@ Lightricks/LTX-2.5-Diffusers
 --guidance-scales 1
 --gen-seeds 1
 --output-size 512x512
---ltx-video-lengths 3
+--video-lengths 3
 --animation-format mp4
 --output-path last-frame-processor
 --image-seeds "../../media/monalisa.png;last-frame=../../media/monalisa.png"

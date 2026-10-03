@@ -234,6 +234,45 @@ def _type_video_fps(val):
     return val
 
 
+def _type_wan_timesteps(val):
+    parts = [part.strip() for part in str(val).split(',') if part.strip()]
+    if not parts:
+        raise argparse.ArgumentTypeError('Wan timesteps cannot be empty')
+    try:
+        steps = [int(part) for part in parts]
+    except ValueError:
+        raise argparse.ArgumentTypeError('Wan timesteps must be integers')
+    if any(step < 0 for step in steps):
+        raise argparse.ArgumentTypeError('Wan timesteps must be greater than or equal to 0')
+    return steps
+
+
+def _type_wan_conditioning_scale(val):
+    parts = [part.strip() for part in str(val).split(',') if part.strip()]
+    if not parts:
+        raise argparse.ArgumentTypeError('Wan conditioning scales cannot be empty')
+    try:
+        values = [float(part) for part in parts]
+    except ValueError:
+        raise argparse.ArgumentTypeError('Wan conditioning scales must be floating point numbers')
+    if any(value < 0 for value in values):
+        raise argparse.ArgumentTypeError(
+            'Wan conditioning scales must be greater than or equal to 0')
+    if len(values) == 1:
+        return values[0]
+    return values
+
+
+def _type_segment_frames(val):
+    try:
+        frames = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if frames < 1:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 1')
+    return frames
+
+
 def _type_stg_blocks(val):
     parts = [part.strip() for part in str(val).split(',') if part.strip()]
     if not parts:
@@ -1588,6 +1627,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main"
                     "T5EncoderModel;model=text_encoder_folder_on_disk"
                     "DistillT5EncoderModel;model=text_encoder_folder_on_disk"
+                    "UMT5EncoderModel;model=Wan-AI/Wan2.1-T2V-1.3B-Diffusers;subfolder=text_encoder"
+                    "Mistral3ForConditionalGeneration;model=black-forest-labs/FLUX.2-dev;subfolder=text_encoder"
+                    "Qwen2_5_VLForConditionalGeneration;model=Qwen/Qwen-Image;subfolder=text_encoder"
+                    "Qwen3Model;model=Tongyi-MAI/Z-Image-Turbo;subfolder=text_encoder"
+                    "Gemma4UnifiedForConditionalGeneration;model=Lightricks/LTX-2.5-Diffusers;subfolder=text_encoder"
                     
                     For main models which require multiple text encoders, the + symbol may be used
                     to indicate that a default value should be used for a particular text encoder,
@@ -1648,8 +1692,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     * CLIPTextModel
                     * CLIPTextModelWithProjection
                     * T5EncoderModel
+                    * UMT5EncoderModel (Wan)
                     * DistillT5EncoderModel (see: LifuWang/DistillT5)
-                    * ChatGLMModel (for Kolors models)
+                    * ChatGLMModel (Kolors)
+                    * Gemma4UnifiedForConditionalGeneration (LTX-2.5)
+                    * Mistral3ForConditionalGeneration (Flux.2)
+                    * Qwen2_5_VLForConditionalGeneration (Qwen-Image)
+                    * Qwen3ForCausalLM (Flux.2 Klein)
+                    * Qwen3Model (Z-Image)
                     
                     If you wish to load weights directly from a path on disk, you must point this argument at the folder
                     they exist in, which should also contain the config.json file for the Text Encoder.
@@ -1718,9 +1768,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-tf', '--transformer', action='store', default=None, metavar="TRANSFORMER_URI", dest='transformer_uri',
             help=f"""Specify a Stable Diffusion 3, Flux, Flux.2, Flux.2 Klein KV, Z-Image,
-                    Z-Image Omni, Qwen-Image, Qwen-Image edit, Qwen-Image layered, or LTX
-                    Transformer model using a URI.
-                    ``--model-type ltx`` accepts one replacement diffusion transformer.
+                    Z-Image Omni, Qwen-Image, Qwen-Image edit, Qwen-Image layered, LTX,
+                    Wan, or Wan-Animate Transformer model using a URI.
+                    ``--model-type ltx``, ``wan``, ``wan-animate``, and ``wan-animate-2`` accept one
+                    replacement diffusion transformer. Wan 2.2 MoE checkpoints can
+                    load the low-noise expert with --wan-second-transformer.
                     
                     Examples: 
                     
@@ -1783,12 +1835,20 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     "AsymmetricAutoencoderKL;model=huggingface/vae"
                     "AutoencoderTiny;model=huggingface/vae"
                     "ConsistencyDecoderVAE;model=huggingface/vae"
+                    "AutoencoderKLFlux2;model=black-forest-labs/FLUX.2-dev;subfolder=vae"
+                    "AutoencoderKLQwenImage;model=Qwen/Qwen-Image;subfolder=vae"
+                    "AutoencoderKLWan;model=Wan-AI/Wan2.1-T2V-1.3B-Diffusers;subfolder=vae;dtype=float32"
+                    "AutoencoderKLLTXVideo;model=Lightricks/LTX-Video;subfolder=vae"
+                    "AutoencoderKLLTX2Video;model=Lightricks/LTX-2.5-Diffusers;subfolder=vae"
                     
                     The AutoencoderKL encoder class accepts Hugging Face repository slugs/blob links,
                     .pt, .pth, .bin, .ckpt, and .safetensors files.
                     
                     Other encoders can only accept Hugging Face repository slugs/blob links, or a path to
                     a folder on disk with the model configuration and model file(s).
+                    
+                    Wan pipelines default the checkpoint VAE to float32 (AutoencoderKLWan is
+                    fragile in bfloat16). Use --vae with AutoencoderKLWan and dtype= to override.
                     
                     If an AutoencoderKL VAE model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
@@ -4260,10 +4320,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     The amount of processors / processor chains must not exceed the amount of input images,
                     or you will receive a syntax error message.
 
-                    For --model-type ltx, one chain runs on every frame of both the opening media and
+                    For video models, one chain runs on every frame of the opening media and
                     the "last-frame" image seed argument. With two chains, the first runs on the opening media
                     and the second on "last-frame", for example: (--seed-image-processors grayscale +) processes
-                    only the opening media.
+                    only the opening media. Prefer --last-frame-image-processors when only the last-frame
+                    clip should be processed.
 
                     To obtain more information about what image
                     processors are available and how to use them, see: --image-processor-help."""
@@ -4353,6 +4414,90 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
                     To obtain more information about what image processors
                     are available and how to use them, see: --image-processor-help."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--last-frame-image-processors',
+            type=_type_image_processor,
+            action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
+            dest='last_frame_image_processors',
+            help="""Specify one or more image processor actions to perform on the
+                    last-frame= clip in --image-seeds. Video models accept one chain.
+                    This is an alternative to a second --seed-image-processors chain.
+                    See: --image-processor-help."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--reference-image-processors',
+            type=_type_image_processor,
+            action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
+            dest='reference_image_processors',
+            help="""Specify one or more image processor actions to perform on
+                    reference= images in --image-seeds. Use + to separate a chain
+                    per reference image. See: --image-processor-help."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--adapter-image-processors',
+            type=_type_image_processor,
+            action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
+            dest='adapter_image_processors',
+            help="""Specify one or more image processor actions to perform on
+                    adapter= / adapter: IP adapter images in --image-seeds. Use +
+                    to separate a chain per adapter group. See: --image-processor-help."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-pose-image-processors',
+            type=_type_image_processor,
+            action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
+            dest='wan_pose_image_processors',
+            help="""Specify one or more image processor actions to perform on the
+                    wan-pose= clip, or on wan-driving= when wan-pose= is omitted.
+                    One chain. See: --image-processor-help."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-face-image-processors',
+            type=_type_image_processor,
+            action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
+            dest='wan_face_image_processors',
+            help="""Specify one or more image processor actions to perform on the
+                    wan-face= clip, or on wan-driving= when wan-face= is omitted.
+                    One chain. See: --image-processor-help."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-driving-image-processors',
+            type=_type_image_processor,
+            action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
+            dest='wan_driving_image_processors',
+            help="""Specify one or more image processor actions to perform on the
+                    wan-driving= clip before pose/face derivation.
+                    One chain. See: --image-processor-help."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-background-image-processors',
+            type=_type_image_processor,
+            action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
+            dest='wan_background_image_processors',
+            help="""Specify one or more image processor actions to perform on the
+                    wan-background= clip. One chain. See: --image-processor-help."""
         )
     )
 
@@ -4625,14 +4770,19 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ltx-video-lengths', action='store', nargs='+', default=None,
-            dest='ltx_video_lengths', type=_type_video_length, metavar="SECONDS",
-            help="""One or more clip lengths in seconds, for --model-type ltx.
+            '--video-lengths', action='store', nargs='+', default=None,
+            dest='video_lengths', type=_type_video_length, metavar="SECONDS",
+            help="""One or more clip lengths in seconds for video model types.
                     Each value will be tried in turn, and each combination
                     writes one clip.
 
-                    LTX snaps the length to a frame count of 8k+1 at --ltx-video-fps.
+                    LTX snaps the length to a frame count of 8k+1 at --video-fps.
                     Omit this option and LTX-2.5 predicts the length from the prompt.
+
+                    Wan snaps to temporal*k+1 at --video-fps. The temporal
+                    factor comes from the loaded VAE (4 on Wan 2.1). Cannot be
+                    used with Wan video-to-video or --model-type wan-animate,
+                    where the output follows the input clip.
 
                     NOWRAP!
                     (default: model chooses)"""
@@ -4641,13 +4791,16 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ltx-video-fps', action='store', nargs='+', default=None,
-            dest='ltx_video_fps', type=_type_video_fps, metavar="FPS",
-            help="""One or more frame rates for --model-type ltx. Each value will
-                    be tried in turn. The default is 24.
+            '--video-fps', action='store', nargs='+', default=None,
+            dest='video_fps', type=_type_video_fps, metavar="FPS",
+            help="""One or more output frame rates for video model types.
+                    Each value will be tried in turn.
+
+                    Defaults to 24 for --model-type ltx, 16 for wan,
+                    30 for wan-animate, and 24 for wan-animate-2.
 
                     NOWRAP!
-                    (default: [24] for video model types)"""
+                    (default: model type default)"""
         )
     )
 
@@ -4840,7 +4993,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""How an LTX-2 clip is decoded. conv is the convolutional VAE.
                     diffusion is the diffusion decoder in the checkpoint's
                     diffusion_decoder folder. The decode is part of the same
-                    generation."""
+                    generation. It uses NATTEN through the kernels package, which is
+                    installed with dgenerate. The first decode downloads that kernel
+                    from the Hub, so leave DIFFUSERS_DISABLE_REMOTE_CODE unset.
+                    The FlexAttention fallback does not fit in GPU memory."""
         )
     )
 
@@ -4890,7 +5046,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     that option's pipeline default, 20 for the upper bound.
                     Several values require the same number of upper bounds.
                     Each bound pair is then tried in turn with the other
-                    arguments. Both options apply only when --ltx-video-lengths
+                    arguments. Both options apply only when --video-lengths
                     is omitted.
 
                     NOWRAP!
@@ -4915,7 +5071,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     that option's pipeline default, 1 for the lower bound.
                     Several values require the same number of lower bounds.
                     Each bound pair is then tried in turn with the other
-                    arguments. Both options apply only when --ltx-video-lengths
+                    arguments. Both options apply only when --video-lengths
                     is omitted.
 
                     NOWRAP!
@@ -4940,6 +5096,114 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             dest='ltx_system_prompt',
             help="""System prompt for --ltx-prompt-enhancer. Omit it and LTX-2.5
                     uses its text-to-video or image-to-video default."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-low-noise-guidance-scales', action='store', nargs='+', default=None,
+            dest='wan_low_noise_guidance_scales', metavar="FLOAT", type=_type_guidance_scale,
+            help="""CFG scales for the Wan 2.2 MoE low-noise expert. When
+                    omitted, that expert copies --guidance-scales."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-boundary-ratios', action='store', nargs='+', default=None,
+            dest='wan_boundary_ratios', metavar="FLOAT", type=_type_guidance_scale,
+            help="""MoE expert switch points for Wan 2.2. Values are 0 to 1.
+                    When omitted the checkpoint value is kept."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-expand-timesteps', action='store_true', default=None,
+            dest='wan_expand_timesteps',
+            help="""Enable per-token timestep expansion on Wan 2.2."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-second-transformer', action='store', default=None,
+            metavar="TRANSFORMER_URI", dest='wan_second_transformer_uri',
+            help="""Replacement URI for the Wan 2.2 MoE low-noise transformer,
+                    the same grammar as --transformer, including GGUF files."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-timesteps', action='store', nargs='+', default=None,
+            dest='wan_timesteps', metavar="CSV_INT", type=_type_wan_timesteps,
+            help="""Explicit integer timestep schedules for Wan video-to-video.
+                    Each value is a comma-separated list, tried in turn."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-conditioning-scales', action='store', nargs='+', default=None,
+            dest='wan_conditioning_scales', metavar="FLOAT_OR_CSV",
+            type=_type_wan_conditioning_scale,
+            help="""VACE conditioning scales. A single float is one scale.
+                    A comma-separated list is a per-VACE-layer scale. Multiple
+                    values are tried in turn."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-animate-mode', action='store', default=None, metavar="MODE",
+            dest='wan_animate_mode', choices=['animate', 'replace'],
+            help="""Wan-Animate mode. animate is character animation.
+                    replace needs wan-background= and mask= clips."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-segment-frame-lengths', action='store', nargs='+', default=None,
+            dest='wan_segment_frame_lengths', metavar="INTEGER",
+            type=_type_segment_frames,
+            help="""Wan-Animate segment lengths. Each value must be 4N+1.
+                    The default is 77."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-prev-segment-frames', action='store', nargs='+', default=None,
+            dest='wan_prev_segment_frames', metavar="INTEGER",
+            type=_type_segment_frames,
+            help="""Previous-segment overlap frames for Wan-Animate.
+                    1 or 5 is recommended. The default is 1."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-motion-encode-batch-size', action='store', nargs='+', default=None,
+            dest='wan_motion_encode_batch_sizes', metavar="INTEGER",
+            type=_type_segment_frames,
+            help="""Motion-encoder batch size for Wan-Animate. Larger values
+                    use more memory and can be faster."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-animate-preprocess', action='store_true', default=False,
+            dest='wan_animate_preprocess',
+            help="""Derive wan-pose= and wan-face= from a wan-driving= clip.
+                    Pose uses the openpose processor. Face uses the yolo
+                    processor in crop mode (Bingsu/adetailer face_yolov8n.pt,
+                    square crop-scale=1.4). Cached clips are written next to
+                    the driving file when it is local. Custom plugins can be
+                    used instead with --wan-pose-image-processors and
+                    --wan-face-image-processors on wan-driving=."""
         )
     )
 

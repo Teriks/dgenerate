@@ -250,6 +250,15 @@ class ModelType(enum.Enum):
     FLUX2_KLEIN_KV = 24
     """Flux.2 Klein with KV-cached reference images. No guidance scale."""
 
+    WAN = 25
+    """Wan 2.1 / 2.2 text, image, first-last-frame, video-to-video, and VACE."""
+
+    WAN_ANIMATE = 26
+    """Wan-Animate character animation and replacement."""
+
+    WAN_ANIMATE_2 = 27
+    """Wan-Animate-2. A character still plus a driving clip. The checkpoint class selects distilled."""
+
 
 def supported_model_type_strings():
     """
@@ -278,7 +287,10 @@ def supported_model_type_strings():
             'qwen-image',
             'qwen-image-edit',
             'qwen-image-layered',
-            'ltx']
+            'ltx',
+            'wan',
+            'wan-animate',
+            'wan-animate-2']
 
 
 def supported_model_type_enums() -> list[ModelType]:
@@ -326,7 +338,10 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'qwen-image': ModelType.QWEN_IMAGE,
                 'qwen-image-edit': ModelType.QWEN_IMAGE_EDIT,
                 'qwen-image-layered': ModelType.QWEN_IMAGE_LAYERED,
-                'ltx': ModelType.LTX}[id_str.strip().lower()]
+                'ltx': ModelType.LTX,
+                'wan': ModelType.WAN,
+                'wan-animate': ModelType.WAN_ANIMATE,
+                'wan-animate-2': ModelType.WAN_ANIMATE_2}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid ModelType string')
 
@@ -365,7 +380,10 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.QWEN_IMAGE: 'qwen-image',
             ModelType.QWEN_IMAGE_EDIT: 'qwen-image-edit',
             ModelType.QWEN_IMAGE_LAYERED: 'qwen-image-layered',
-            ModelType.LTX: 'ltx'}[model_type]
+            ModelType.LTX: 'ltx',
+            ModelType.WAN: 'wan',
+            ModelType.WAN_ANIMATE: 'wan-animate',
+            ModelType.WAN_ANIMATE_2: 'wan-animate-2'}[model_type]
 
 
 def model_type_is_sd15(model_type: ModelType | str) -> bool:
@@ -631,7 +649,21 @@ def model_type_is_video(model_type: ModelType | str) -> bool:
     """
     model_type = get_model_type_enum(model_type)
 
-    return model_type == ModelType.LTX
+    return model_type in {
+        ModelType.LTX, ModelType.WAN, ModelType.WAN_ANIMATE, ModelType.WAN_ANIMATE_2}
+
+
+def model_type_is_wan_family(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent
+    Wan, Wan-Animate, or Wan-Animate-2?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    model_type = get_model_type_enum(model_type)
+
+    return model_type in {ModelType.WAN, ModelType.WAN_ANIMATE, ModelType.WAN_ANIMATE_2}
 
 
 def model_type_is_s_cascade(model_type: ModelType | str) -> bool:

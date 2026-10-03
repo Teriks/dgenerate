@@ -57,6 +57,11 @@ img2img mode with a ControlNet for example, see: `Specifying ControlNets`_ for m
 On ``--model-type ltx`` the same keyword is the condition weight, and
 ``--image-seed-strengths`` fills groups that omit it.
 
+Wan-Animate reads ``wan-pose=``, ``wan-face=``, ``wan-driving=``, and ``wan-background=``
+on the same URI. VACE reads ``control=``, ``mask=``, and ``reference=``.
+``last-frame=`` is first-last-frame on an I2V checkpoint. See
+`Video Generation`_.
+
 IP Adapter images may be provided via a special ``adapters: ...`` syntax and
 via the ``adapters`` URI argument discussed in: `Specifying IP Adapters`_
 

@@ -159,7 +159,12 @@ def get_torch_vae_types() -> list[str]:
     return ["AutoencoderKL",
             "AsymmetricAutoencoderKL",
             "AutoencoderTiny",
-            "ConsistencyDecoderVAE"]
+            "ConsistencyDecoderVAE",
+            "AutoencoderKLFlux2",
+            "AutoencoderKLQwenImage",
+            "AutoencoderKLWan",
+            "AutoencoderKLLTXVideo",
+            "AutoencoderKLLTX2Video"]
 
 
 def get_torch_devices() -> list[str]:

@@ -47,9 +47,12 @@ Video generation (LTX)
 * Process the opening and closing conditioning separately, for example ``--seed-image-processors grayscale + canny``
 * Guide LTX-2.5 with an IC-LoRA from ``--ltx-ic-lora``, such as canny, depth, or pose control, from a reference clip processed by ``--control-image-processors``
 * Load style or effect LoRAs with ``--loras``, on their own or together with an IC-LoRA
-* Set clip length and frame rate with ``--ltx-video-lengths`` and ``--ltx-video-fps``; LTX-2.5 can predict duration from the prompt when length is omitted
+* Set clip length and frame rate with ``--video-lengths`` and ``--video-fps``; LTX-2.5 can predict duration from the prompt when length is omitted
 * LTX-2.5 muxes generated audio into mp4 output; the earlier LTX-Video model accepts a GGUF diffusion transformer
-* Example configs under ``examples/ltx2`` and ``examples/ltx_video``, and LTX recipes in the Console UI; see the `video generation manual <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#video-generation>`_
+* Generate Wan 2.1 / 2.2 clips with ``--model-type wan`` (`Wan-AI <https://huggingface.co/Wan-AI>`_): text-to-video, image-to-video, first-last-frame, video-to-video, and VACE
+* Animate a character still with ``--model-type wan-animate`` using ``wan-pose=`` and ``wan-face=``, or ``wan-driving=`` with ``--wan-animate-preprocess`` (the existing ``openpose`` and ``yolo`` processors) or ``--wan-pose-image-processors`` / ``--wan-face-image-processors``
+* Animate a character still with ``--model-type wan-animate-2`` using ``wan-driving=`` as the motion clip
+* Example configs under ``examples/ltx2``, ``examples/ltx_video``, ``examples/wan``, ``examples/wan_animate``, and ``examples/wan_animate_2``; see the `video generation manual <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#video-generation>`_
 
 Image Processing
 ----------------
