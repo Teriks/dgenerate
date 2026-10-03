@@ -26,7 +26,7 @@ Tongyi-MAI/Z-Image-Turbo
 --guidance-scales 0
 --control-nets "https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0/resolve/main/Z-Image-Turbo-Fun-Controlnet-Union-2.1.safetensors;scale=0.75"
 --image-seeds "{{ image }};mask={{ mask }};control={{ control }}"
---gen-seeds 43
+--gen-seeds 1
 --output-path z-image-controlnet-inpaint
 --output-size 992x1728
 --prompts "A young woman on a sunny coastline, full-body vertical composition, body angled slightly right, left hand relaxed at her side, right arm bent with hand on her waist, fingers clearly visible. She wears a light white sleeveless dress, semi-sheer soft fabric fluttering in the sea breeze. Long vivid purple hair to her waist, blown by the wind, with a delicate black bow. Fair skin, gentle shy expression, eyes toward the distant horizon. Vast ocean and clear blue sky, warm golden sunlight on glittering water."

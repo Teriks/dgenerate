@@ -23,7 +23,7 @@ Qwen/Qwen-Image
 --guidance-scales 4
 --control-nets "InstantX/Qwen-Image-ControlNet-Union;scale=1"
 --image-seeds https://huggingface.co/InstantX/Qwen-Image-ControlNet-Union/resolve/main/conds/canny.png
---gen-seeds 42
+--gen-seeds 1
 --output-path qwen-image-controlnet
 --output-size 1024
 --prompts "Aesthetics art, traditional asian pagoda, elaborate golden accents, sky blue and white color palette, swirling cloud pattern, digital illustration, east asian architecture, ornamental rooftop, intricate detailing on building, cultural representation."
