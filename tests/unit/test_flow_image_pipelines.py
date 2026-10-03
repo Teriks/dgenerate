@@ -415,6 +415,26 @@ class TestFlowImagePipelines(unittest.TestCase):
             wrapper._set_accepted_call_argument(
                 {}, 'caption_upsample_temperature', 0.4, 'Klein rejects caption upsampling.')
 
+    def test_qwen_layered_reference_images_are_rgba(self):
+        from PIL import Image
+
+        import dgenerate.image as _image
+
+        rgb = Image.new('RGB', (8, 8), (10, 20, 30))
+        rgb.filename = 'seed.png'
+        rgba = Image.new('RGBA', (8, 8), (10, 20, 30, 128))
+
+        converted = _image.to_rgba(rgb)
+        self.assertEqual(converted.mode, 'RGBA')
+        self.assertEqual(converted.getpixel((0, 0))[3], 255)
+        self.assertEqual(converted.filename, 'seed.png')
+        self.assertIs(_image.to_rgba(rgba), rgba)
+
+        out = _pipelinewrapper.DiffusionPipelineWrapper._qwen_layered_reference_images(
+            [rgb, rgba])
+        self.assertEqual(out[0].mode, 'RGBA')
+        self.assertIs(out[1], rgba)
+
     def test_condition_model_types(self):
         beach = 'examples/media/beach.jpg'
         edit = _pipelinewrapper.ModelType.QWEN_IMAGE_EDIT

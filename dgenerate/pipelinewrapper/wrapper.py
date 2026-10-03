@@ -1456,6 +1456,16 @@ class DiffusionPipelineWrapper:
         return output
 
     @staticmethod
+    def _qwen_layered_reference_images(images: _types.Images) -> list[PIL.Image.Image]:
+        """
+        Qwen-Image layered VAE expects RGBA. Seed loading is RGB, so convert here.
+        """
+        return [
+            _image.to_rgba(img) if isinstance(img, PIL.Image.Image) else img
+            for img in images
+        ]
+
+    @staticmethod
     def _process_floyd_image(image: _types.ImageOrTensor):
         """
         Align floyd image by 8
@@ -2946,6 +2956,8 @@ class DiffusionPipelineWrapper:
 
         if user_args.reference_images:
             references = user_args.reference_images
+            if _enums.model_type_is_qwen_image_layered(self._model_type):
+                references = self._qwen_layered_reference_images(references)
             reference_value = references if len(references) > 1 else references[0]
             if user_args.mask_images is not None or self._parsed_adetailer_detector_uris:
                 pipeline_args['image_reference'] = reference_value
