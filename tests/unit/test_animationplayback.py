@@ -233,6 +233,9 @@ class TestAnimationTimeline(unittest.TestCase):
         clip._audio = audio
         try:
             clip.start()
+            # start() seeks to 0; clear that so unmute can be checked alone.
+            self.assertEqual(audio.played_at, 0.0)
+            audio.played_at = None
             audio.position = 0.25
             clip.set_gain(0.0)
             self.assertEqual(audio.pause_calls, 0)
@@ -463,8 +466,10 @@ class TestAnimationFiles(unittest.TestCase):
 
 class TestPreviewAudioRestart(unittest.TestCase):
 
-    def test_loop_keeps_the_running_device(self):
+    def test_loop_flushes_and_restarts_the_device(self):
+        """A loop must drop queued ending samples before the new start plays."""
         player = _MiniaudioPlayer.__new__(_MiniaudioPlayer)
+        player._miniaudio = None
         player._channels = 1
         player._cursor = 40
         player._paused_samples = 3
@@ -476,18 +481,27 @@ class TestPreviewAudioRestart(unittest.TestCase):
         player._samples = np.ones((80, 1), dtype=np.int16)
 
         class Device:
-            starts = 0
+            def __init__(self):
+                self.starts = 0
+                self.stopped = 0
 
-            def start(self, generator):
+            def stop(self):
+                self.stopped += 1
+
+            def start(self, _generator):
                 self.starts += 1
-                raise RuntimeError('failed to start audio device')
+
+            def close(self):
+                return None
 
         player._device = Device()
         player.start(np.zeros((80, 1), dtype=np.int16))
-        self.assertEqual(player._device.starts, 0)
+        self.assertEqual(player._device.stopped, 1)
+        self.assertEqual(player._device.starts, 1)
         self.assertEqual(player._cursor, 0)
         self.assertTrue(player.active)
         self.assertTrue(player._running)
+        self.assertTrue(player._started)
 
     def test_play_drops_a_backend_that_cannot_start(self):
         player = PcmPlayer.__new__(PcmPlayer)
