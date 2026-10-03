@@ -1036,6 +1036,35 @@ class TestFlowImagePipelines(unittest.TestCase):
             'transformer_blocks.0.txt_mod.1.weight',
             cn_sdnq.modules_to_not_convert)
 
+        # Wan-Animate aliases reuse WanTransformer3DModel skips for BnB/SDNQ.
+        animate = diffusers.BitsAndBytesConfig(load_in_4bit=True)
+        apply_architecture_quant_skips(animate, 'WanAnimateTransformer3DModel')
+        animate_skipped = animate.llm_int8_skip_modules
+        self.assertIn('scale_shift_table', animate_skipped)
+        self.assertIn('patch_embedding', animate_skipped)
+
+        animate2_sdnq = Config()
+        apply_architecture_quant_skips(
+            animate2_sdnq, 'WanAnimate2Transformer3DModel')
+        self.assertIn('scale_shift_table', animate2_sdnq.modules_to_not_convert)
+        self.assertIn('condition_embedder', animate2_sdnq.modules_to_not_convert)
+
+        # LTX-Video (1.x) is absent from SDNQ's table; keep embeds/projections.
+        ltx1 = diffusers.BitsAndBytesConfig(load_in_4bit=True)
+        apply_architecture_quant_skips(ltx1, 'LTXVideoTransformer3DModel')
+        ltx1_skipped = ltx1.llm_int8_skip_modules
+        self.assertIn('time_embed', ltx1_skipped)
+        self.assertIn('caption_projection', ltx1_skipped)
+        self.assertIn('proj_in', ltx1_skipped)
+        self.assertIn('proj_out', ltx1_skipped)
+        self.assertIn('scale_shift_table', ltx1_skipped)
+        self.assertIn('norm_out', ltx1_skipped)
+
+        ltx1_sdnq = Config()
+        apply_architecture_quant_skips(ltx1_sdnq, 'LTXVideoTransformer3DModel')
+        self.assertIn('time_embed', ltx1_sdnq.modules_to_not_convert)
+        self.assertIn('scale_shift_table', ltx1_sdnq.modules_to_not_convert)
+
 
 if __name__ == '__main__':
     unittest.main()

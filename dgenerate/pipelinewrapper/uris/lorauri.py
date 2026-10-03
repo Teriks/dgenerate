@@ -24,6 +24,7 @@ import typing
 
 import diffusers
 import huggingface_hub
+import torch
 
 import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
@@ -48,6 +49,19 @@ def _collapse_zimage_lora_prefix(state_dict):
         key.replace('transformer..', 'transformer.', 1): value
         for key, value in state_dict.items()
     }
+
+
+def _pipeline_has_quantized_modules(pipeline) -> bool:
+    """True when fusing LoRA would write into BnB, SDNQ, or GGUF weights."""
+    from dgenerate.pipelinewrapper import pipelines as _pipelines
+
+    components = getattr(pipeline, 'components', None)
+    if not isinstance(components, dict):
+        return False
+    for module in components.values():
+        if isinstance(module, torch.nn.Module) and _pipelines.module_skips_group_offload(module):
+            return True
+    return False
 
 
 def _pipeline_is_z_image(pipeline) -> bool:
@@ -244,6 +258,12 @@ class LoRAUri:
 
             pipeline.set_adapters(adapter_names, adapter_weights=adapter_weights)
             if fuse:
+                if _pipeline_has_quantized_modules(pipeline):
+                    _messages.warning(
+                        'Fusing LoRA adapters into quantized or GGUF pipeline '
+                        'weights can fail or produce poor results. Prefer '
+                        'full-precision weights, or load LoRAs without fusing '
+                        'when the loader allows it.')
                 _messages.debug_log(f'Fusing all LoRAs into pipeline with global scale: {fuse_scale}')
                 pipeline.fuse_lora(adapter_names=adapter_names, lora_scale=fuse_scale)
             else:
