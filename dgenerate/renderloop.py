@@ -1390,8 +1390,14 @@ class RenderLoop:
                         reference_image_processor=reference_image_processor,
                         adapter_image_processor=adapter_image_processor,
                         path_opener=self._get_media_reader_path_opener(),
-                        check_dimensions_match=
-                        not _pipelinewrapper.model_type_is_s_cascade(self._c_config.model_type))
+                        # Cascade style refs and Qwen edit-plus multi-image
+                        # seeds may differ in size; masks are still checked
+                        # later in the pipeline wrapper when present.
+                        check_dimensions_match=not (
+                            _pipelinewrapper.model_type_is_s_cascade(
+                                self._c_config.model_type)
+                            or _pipelinewrapper.model_type_is_qwen_image_edit(
+                                self._c_config.model_type)))
 
             if seed_info.is_animation:
 

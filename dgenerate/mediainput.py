@@ -3045,9 +3045,9 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         Extra processors compared to adapter groups will cause :py:exc:`ValueError` to be raised.
 
     :param check_dimensions_match: Check the dimensions of input images, mask images,
-        and control images to confirm that they match? For pipelines like stable cascade,
-        this does not matter, input images can be any dimension as they are used as a
-        style reference and not a noise base similar to IP Adapters.
+        and control images to confirm that they match? For pipelines like stable cascade
+        or Qwen-Image edit-plus, this does not matter: seed images may differ in size
+        (style / multi-image edit refs), and are not a shared noise canvas.
 
     :param path_opener: a function that opens a file stream from a path,
         defaults to :py:func:`dgenerate.media.fetch_media_data_stream`.

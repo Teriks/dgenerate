@@ -9,8 +9,12 @@
 # fail with a channel mismatch if used with a mask.
 #
 # horse1-mask.jpg is black on the horse and white on the background.
-# White is repainted, so this changes the field and keeps the horse,
-# as in the other horse inpaint examples.
+# White is repainted. Leaving that mask as-is paints ~96% of the frame
+# (the field), which this ControlNet tends to leave black. Invert it so
+# the horse is painted instead, same pattern as
+# examples/z-image/controlnet/inpaint-config.dgen.
+# For field replacement with this mask, use examples/qwen-image/inpaint
+# (strength-based) instead.
 
 \setp gpu_memory_gib total_memory(unit='gib')
 
@@ -31,6 +35,7 @@ Qwen/Qwen-Image
 --guidance-scales 4
 --control-nets "InstantX/Qwen-Image-ControlNet-Inpainting;scale=1"
 --image-seeds "../../media/horse1.jpg;mask=../../media/horse1-mask.jpg"
+--mask-image-processors invert
 --gen-seeds 1
 --output-path qwen-image-controlnet-inpaint
---prompts "A horse standing on the surface of mars, photo"
+--prompts "A pink fantasy horse standing in a green field, photo"

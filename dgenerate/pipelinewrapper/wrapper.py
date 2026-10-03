@@ -1783,8 +1783,12 @@ class DiffusionPipelineWrapper:
 
         # Resize input images to user-specified dimensions first thing
         if images:
-            if not _enums.model_type_is_s_cascade(self._model_type):
+            # Stable Cascade and Qwen-Image edit-plus accept mixed sizes.
+            # Edit-inpaint still checks image vs mask below.
+            if not (_enums.model_type_is_s_cascade(self._model_type)
+                    or _enums.model_type_is_qwen_image_edit(self._model_type)):
                 self._validate_images_all_same_size('img2img images', images)
+            if not _enums.model_type_is_s_cascade(self._model_type):
                 images = self._resize_images_to_user_dimensions(images, user_args)
 
         if self._model_type != _enums.ModelType.UPSCALER_X2 and \
