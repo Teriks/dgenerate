@@ -1,8 +1,8 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# The seed image is the control image. scale=1 matches the pipeline default.
-# OpenPose turns the reference photo into the rig, as in the other boxer examples.
+# Matches InstantX / Diffusers QwenImageControlNetPipeline docs:
+# precomputed canny condition + pagoda prompt. scale=1 is the default.
 
 \setp gpu_memory_gib total_memory(unit='gib')
 
@@ -22,9 +22,8 @@ Qwen/Qwen-Image
 --inference-steps 30
 --guidance-scales 4
 --control-nets "InstantX/Qwen-Image-ControlNet-Union;scale=1"
---image-seeds "../../media/man-fighting-pose.jpg"
---control-image-processors "openpose;include-hand=true;include-face=true;output-file=qwen-image-controlnet/boxer-openpose.png"
---gen-seeds 1
+--image-seeds https://huggingface.co/InstantX/Qwen-Image-ControlNet-Union/resolve/main/conds/canny.png
+--gen-seeds 42
 --output-path qwen-image-controlnet
 --output-size 1024
---prompts "A boxer throwing a punch in the ring"
+--prompts "Aesthetics art, traditional asian pagoda, elaborate golden accents, sky blue and white color palette, swirling cloud pattern, digital illustration, east asian architecture, ornamental rooftop, intricate detailing on building, cultural representation."

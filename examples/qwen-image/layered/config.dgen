@@ -1,7 +1,8 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# One image in, one file per layer out. Defaults are 4 layers at 640.
+# Matches the Diffusers QwenImageLayeredPipeline docstring
+# (yarn-art Pikachu, 4 layers at 640, English prompt path).
 
 \setp gpu_memory_gib total_memory(unit='gib')
 
@@ -23,7 +24,7 @@ Qwen/Qwen-Image-Layered
 --qwen-layered-layers 4
 --qwen-layered-resolution 640
 --qwen-layered-use-en-prompt
---image-seeds "../../media/beach.jpg"
+--image-seeds https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/yarn-art-pikachu.png
 --gen-seeds 1
 --output-path qwen-image-layered
---prompts "a tropical beach"
+--prompts " "

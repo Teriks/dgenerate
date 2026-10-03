@@ -24,7 +24,7 @@ Qwen/Qwen-Image-Layered
 --qwen-layered-layers 4
 --qwen-layered-resolution 640
 --qwen-layered-use-en-prompt
---image-seeds "../../media/beach.jpg"
+--image-seeds https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/yarn-art-pikachu.png
 --gen-seeds 1
 --output-path qwen-image-layered-gguf
---prompts "a tropical beach"
+--prompts " "
