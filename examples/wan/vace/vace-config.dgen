@@ -2,7 +2,12 @@
 #! dgenerate 6.0.0
 
 # VACE control. control= is the control clip, reference= is a still for
-# appearance. --control-image-processors turns the clip into canny edges.
+# appearance. Assets match Diffusers docs (hiker.mp4 + astronaut.jpg);
+# prompt matches the Diffusers blue-bird VACE example.
+
+\setp control "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/hiker.mp4"
+\setp reference "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg"
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
 
 Wan-AI/Wan2.1-VACE-1.3B-diffusers
 --model-type wan
@@ -11,11 +16,11 @@ Wan-AI/Wan2.1-VACE-1.3B-diffusers
 --inference-steps 30
 --guidance-scales 5
 --video-fps 16
---gen-seeds 1
+--gen-seeds 42
 --output-size 832x480
 --video-lengths 3
 --animation-format mp4
 --output-path wan-vace
 --control-image-processors canny
---image-seeds "control=../../media/rickroll-roll.gif;reference=../../media/man-fighting-pose.jpg;frame-end=24"
---prompts "A boxer dances energetically in place. The camera stays fixed."
+--image-seeds "control={{ control }};reference={{ reference }}"
+--prompts "CG animation style, a small blue bird takes off from the ground, flapping its wings. The bird's feathers are delicate, with a unique pattern on its chest. The background shows a blue sky with white clouds under bright sunshine. The camera follows the bird upward, capturing its flight and the vastness of the sky from a close-up, low-angle perspective.;{{ neg }}"

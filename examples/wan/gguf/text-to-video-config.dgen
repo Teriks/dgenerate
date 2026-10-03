@@ -1,8 +1,10 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Wan transformer as a GGUF. The repository still supplies the VAE
-# and text encoder. The file is recognized from patch_embedding.
+# Wan transformer as a GGUF. Same Diffusers T2V prompt as
+# examples/wan/basic/text-to-video-config.dgen.
+
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
 
 Wan-AI/Wan2.1-T2V-14B-Diffusers
 --model-type wan
@@ -12,9 +14,9 @@ Wan-AI/Wan2.1-T2V-14B-Diffusers
 --inference-steps 30
 --guidance-scales 5
 --video-fps 16
---gen-seeds 1
+--gen-seeds 42
 --output-size 832x480
---video-lengths 3
+--video-lengths 5
 --animation-format mp4
 --output-path wan-gguf
---prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+--prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"

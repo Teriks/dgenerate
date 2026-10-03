@@ -2,12 +2,16 @@
 #! dgenerate 6.0.0
 
 # VACE with control=, mask=, and reference=. The mask is a person
-# segmentation of the control clip, built on the fly.
+# segmentation of the control clip, built on the fly. Hosted control
+# and reference match Diffusers docs assets.
 
-\image_process "../../media/rickroll-roll.gif"
+\setp control "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/hiker.mp4"
+\setp reference "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg"
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+
+\image_process {{ control }}
 -o vace-person-mask.gif
 --processors "yolo;model=https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n-seg.pt;model-masks=True;masks=True;class-filter=person"
---frame-end 24
 --align 1
 --no-frames
 
@@ -18,11 +22,11 @@ Wan-AI/Wan2.1-VACE-1.3B-diffusers
 --inference-steps 30
 --guidance-scales 5
 --video-fps 16
---gen-seeds 1
+--gen-seeds 42
 --output-size 832x480
 --video-lengths 3
 --animation-format mp4
 --output-path wan-vace-mask
 --control-image-processors canny
---image-seeds "control=../../media/rickroll-roll.gif;mask=vace-person-mask.gif;reference=../../media/beach.jpg;frame-end=24"
---prompts "A person dances on a sunny beach. The camera stays fixed."
+--image-seeds "control={{ control }};mask=vace-person-mask.gif;reference={{ reference }}"
+--prompts "An astronaut hiking on a mountain trail at sunset. High quality, ultrarealistic detail.;{{ neg }}"

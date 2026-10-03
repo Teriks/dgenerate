@@ -2,10 +2,11 @@
 #! dgenerate 6.0.0
 
 # Derive pose and face from wan-driving= with dedicated processors
-# instead of --wan-animate-preprocess. --wan-pose-image-processors runs
-# openpose on the driving frames; --wan-face-image-processors uses yolo
-# crop mode for a square face crop. --wan-driving-image-processors can
-# also alter the driving clip before those chains run (flip here).
+# instead of --wan-animate-preprocess. Official Wan2.2 animate assets;
+# --wan-driving-image-processors can alter the driving clip first (flip).
+
+\setp image "https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/examples/wan_animate/animate/image.jpeg"
+\setp driving "https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/examples/wan_animate/animate/video.mp4"
 
 Wan-AI/Wan2.2-Animate-14B-Diffusers
 --model-type wan-animate
@@ -14,12 +15,12 @@ Wan-AI/Wan2.2-Animate-14B-Diffusers
 --inference-steps 20
 --guidance-scales 1
 --video-fps 30
---gen-seeds 1
+--gen-seeds 42
 --output-size 832x480
 --animation-format mp4
 --output-path wan-animate-driving-processors
 --wan-driving-image-processors flip
 --wan-pose-image-processors "openpose;include-hand=true"
 --wan-face-image-processors "yolo;model=Bingsu/adetailer;weight-name=face_yolov8n.pt;crops=True;crop-square=True;crop-scale=1.4;crop-size=512"
---image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;frame-end=24"
---prompts "A boxer dances in place. The camera stays fixed."
+--image-seeds "{{ image }};wan-driving={{ driving }};frame-end=48"
+--prompts "A fantasy woman with pale lavender skin, glowing yellow eyes, pointed ears, and long dark hair, wearing dark ornate armor with gold accents. She performs the motion from the driving video. Cinematic lighting, ultrarealistic detail."

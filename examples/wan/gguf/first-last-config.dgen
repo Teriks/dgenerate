@@ -1,8 +1,12 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Wan first-last-frame transformer as a GGUF. last-frame= is the
-# closing still. The repository still supplies the image encoder.
+# Wan first-last-frame GGUF. Same Diffusers flf2v assets/prompt as
+# examples/wan/flf2v/first-last-config.dgen.
+
+\setp first "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/flf2v_input_first_frame.png"
+\setp last "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/flf2v_input_last_frame.png"
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
 
 Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers
 --model-type wan
@@ -12,10 +16,10 @@ Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers
 --inference-steps 30
 --guidance-scales 5
 --video-fps 16
---gen-seeds 1
+--gen-seeds 42
 --output-size 1280x720
---video-lengths 3
+--video-lengths 5
 --animation-format mp4
 --output-path wan-flf2v-gguf
---image-seeds "../../media/earth.jpg;last-frame=../../media/mountain.png"
---prompts "The camera travels from the Earth toward a mountain range."
+--image-seeds "{{ first }};last-frame={{ last }}"
+--prompts "CG animation style, a small blue bird takes off from the ground, flapping its wings. The bird's feathers are delicate, with a unique pattern on its chest. The background shows a blue sky with white clouds under bright sunshine. The camera follows the bird upward, capturing its flight and the vastness of the sky from a close-up, low-angle perspective.;{{ neg }}"

@@ -1,10 +1,11 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Wan text to video with a Diffusers LoRA from --loras.
-# benjamin-paine/steamboat-willie-1.3b is the LoRA from the
-# Diffusers Wan docs. Trigger words: steamboat willie style,
-# golden era animation.
+# Wan text to video with the Diffusers Wan LoRA
+# benjamin-paine/steamboat-willie-1.3b. Trigger words: steamboat willie
+# style, golden era animation. Prompt body matches the Diffusers T2V demo.
+
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
 
 Wan-AI/Wan2.1-T2V-1.3B-Diffusers
 --model-type wan
@@ -14,9 +15,9 @@ Wan-AI/Wan2.1-T2V-1.3B-Diffusers
 --inference-steps 30
 --guidance-scales 5
 --video-fps 16
---gen-seeds 1
+--gen-seeds 42
 --output-size 832x480
---video-lengths 3
+--video-lengths 5
 --animation-format mp4
 --output-path wan-lora
---prompts "steamboat willie style, golden era animation, a woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+--prompts "steamboat willie style, golden era animation, a cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon.;{{ neg }}"

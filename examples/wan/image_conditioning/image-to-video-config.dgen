@@ -1,7 +1,12 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# One --image-seeds still is the first frame (image-to-video).
+# Matches Diffusers WanImageToVideoPipeline docstring: astronaut.jpg
+# and the hatching-on-the-moon prompt. One --image-seeds path is the
+# first frame.
+
+\setp image "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg"
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
 
 Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
 --model-type wan
@@ -10,10 +15,10 @@ Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
 --inference-steps 30
 --guidance-scales 5
 --video-fps 16
---gen-seeds 1
+--gen-seeds 42
 --output-size 832x480
---video-lengths 3
+--video-lengths 5
 --animation-format mp4
 --output-path wan-image
---image-seeds ../../media/earth.jpg
---prompts "The camera pulls back from the Earth. Clouds drift. The lighting stays the same."
+--image-seeds {{ image }}
+--prompts "An astronaut hatching from an egg, on the surface of the moon, the darkness and depth of space realised in the background. High quality, ultrarealistic detail and breath-taking movie-like camera shot.;{{ neg }}"
