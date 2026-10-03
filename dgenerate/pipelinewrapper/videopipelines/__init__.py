@@ -994,10 +994,12 @@ def _video_pipeline(wrapper, mode: str, scheduler_uri=None):
     second = getattr(wrapper, 'wan_second_transformer_uri', None)
     if second:
         kwargs['wan_second_transformer_uri'] = second
-    if wrapper.vae_uri:
-        kwargs['vae_uri'] = wrapper.vae_uri
-    if wrapper.text_encoder_uris:
-        kwargs['text_encoder_uris'] = tuple(wrapper.text_encoder_uris)
+    vae_uri = getattr(wrapper, 'vae_uri', None)
+    if vae_uri:
+        kwargs['vae_uri'] = vae_uri
+    text_encoder_uris = getattr(wrapper, 'text_encoder_uris', None)
+    if text_encoder_uris:
+        kwargs['text_encoder_uris'] = tuple(text_encoder_uris)
     held = _create_cached_video_pipeline(**kwargs)
     # Same as still pipelines: scheduler is not a cache key.
     # Overlay the URI on the cached object, then wrap for mode.
