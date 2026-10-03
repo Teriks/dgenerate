@@ -1,9 +1,13 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Wan-Animate-2. The seed is the character still. wan-driving= is the
-# motion clip. Output length follows that clip. --video-lengths is rejected.
-# This checkpoint samples in 40 steps. The VAE stays float32.
+# Matches Diffusers Wan-Animate-2 docs / Wan-Video/Wan-Animate-2 demo1.
+# Official Chinese appearance prompt. Source template is 337 frames; trim
+# with frame-end= for a short local run. Output size 640x800 matches docs.
+
+\setp image "https://raw.githubusercontent.com/Wan-Video/Wan-Animate-2/main/examples/demo1/reference.png"
+\setp driving "https://raw.githubusercontent.com/Wan-Video/Wan-Animate-2/main/examples/demo1/template.mp4"
+\setp prompt "人物外观描述：一只银灰色虎斑纹的小猫，拥有圆润的脸庞、竖立的耳朵和巨大的圆形眼睛。它身穿一套深蓝色的制服套装，包括一件带有金色纽扣的西装外套和一条百褶裙。外套里面搭配着白色衬衫，领口处系着一个红色的蝴蝶结，袖口露出白色的衬衫边缘。背景描述：背景为纯白色，光线均匀明亮，无其他杂物或装饰。"
 
 Wan-AI/Wan2.2-Animate-2-14B-Diffusers
 --model-type wan-animate-2
@@ -14,9 +18,9 @@ Wan-AI/Wan2.2-Animate-2-14B-Diffusers
 --wan-prev-segment-frames 1
 --max-sequence-length 512
 --video-fps 24
---gen-seeds 1
+--gen-seeds 42
 --output-size 640x800
 --animation-format mp4
 --output-path wan-animate-2
---image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;frame-end=24"
---prompts "A boxer dances in place. The camera stays fixed."
+--image-seeds "{{ image }};wan-driving={{ driving }};frame-end=48"
+--prompts "{{ prompt }}"

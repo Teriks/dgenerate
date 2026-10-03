@@ -1,14 +1,17 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Wan-Animate replace mode (simplified). --wan-animate-preprocess derives
-# wan-pose= and wan-face= from wan-driving=. wan-background= is the scene
-# to edit; mask= is a person segmentation of that scene (built on the fly).
+# Wan-Animate replace mode. Official Wan-Video/Wan2.2 replace demo assets.
+# --wan-animate-preprocess derives wan-pose= and wan-face= from wan-driving=.
+# wan-background= is the scene; mask= is a person segmentation of that scene.
 
-\image_process "../../media/rickroll-roll.gif"
+\setp image "https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/examples/wan_animate/replace/image.jpeg"
+\setp driving "https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/examples/wan_animate/replace/video.mp4"
+
+\image_process {{ driving }}
 -o replace-mask.gif
 --processors "yolo;model=https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n-seg.pt;model-masks=True;masks=True;class-filter=person"
---frame-end 24
+--frame-end 48
 --align 1
 --no-frames
 
@@ -21,9 +24,9 @@ Wan-AI/Wan2.2-Animate-14B-Diffusers
 --inference-steps 20
 --guidance-scales 1
 --video-fps 30
---gen-seeds 1
+--gen-seeds 42
 --output-size 832x480
 --animation-format mp4
 --output-path wan-animate-replace
---image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;wan-background=../../media/rickroll-roll.gif;mask=replace-mask.gif;frame-end=24"
---prompts "A boxer dances in a hallway. The camera stays fixed."
+--image-seeds "{{ image }};wan-driving={{ driving }};wan-background={{ driving }};mask=replace-mask.gif;frame-end=48"
+--prompts "A stylized 3D-animated man with a topknot, mustache, and charcoal hanfu robe, standing in a traditional Chinese courtyard. He performs the motion from the driving video. Cinematic lighting, high quality."

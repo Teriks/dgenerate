@@ -1,11 +1,12 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Wan-Animate transformer as a GGUF (simplified). linear1_kv and
-# motion-encoder conv biases are dequantized before Diffusers splits
-# them. --wan-animate-preprocess derives pose and face from wan-driving=
-# with the same internal openpose + yolo crop path as the non-GGUF
-# animate example.
+# Wan-Animate transformer as a GGUF (simplified). Official Wan2.2 animate
+# demo assets. --wan-animate-preprocess derives pose and face from
+# wan-driving=.
+
+\setp image "https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/examples/wan_animate/animate/image.jpeg"
+\setp driving "https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/examples/wan_animate/animate/video.mp4"
 
 Wan-AI/Wan2.2-Animate-14B-Diffusers
 --model-type wan-animate
@@ -16,9 +17,9 @@ Wan-AI/Wan2.2-Animate-14B-Diffusers
 --inference-steps 20
 --guidance-scales 1
 --video-fps 30
---gen-seeds 1
+--gen-seeds 42
 --output-size 832x480
 --animation-format mp4
 --output-path wan-animate-gguf
---image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;frame-end=24"
---prompts "A boxer dances in place. The camera stays fixed."
+--image-seeds "{{ image }};wan-driving={{ driving }};frame-end=48"
+--prompts "A fantasy woman with pale lavender skin, glowing yellow eyes, pointed ears, and long dark hair, wearing dark ornate armor with gold accents. She performs the motion from the driving video. Cinematic lighting, ultrarealistic detail."

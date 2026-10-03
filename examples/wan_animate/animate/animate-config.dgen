@@ -1,10 +1,13 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Wan-Animate (simplified). The seed is the character still. wan-driving=
-# is the motion clip. --wan-animate-preprocess derives wan-pose= (openpose)
-# and wan-face= (yolo face crop) internally and caches them next to the
-# driving file. Output length follows the pose clip.
+# Wan-Animate (simplified). Official Wan-Video/Wan2.2 animate demo assets.
+# wan-driving= is the motion clip; --wan-animate-preprocess derives
+# wan-pose= / wan-face=. Trimmed with frame-end= for a short local run
+# (source is 106 frames @ 30fps).
+
+\setp image "https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/examples/wan_animate/animate/image.jpeg"
+\setp driving "https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/examples/wan_animate/animate/video.mp4"
 
 Wan-AI/Wan2.2-Animate-14B-Diffusers
 --model-type wan-animate
@@ -14,9 +17,9 @@ Wan-AI/Wan2.2-Animate-14B-Diffusers
 --inference-steps 20
 --guidance-scales 1
 --video-fps 30
---gen-seeds 1
+--gen-seeds 42
 --output-size 832x480
 --animation-format mp4
 --output-path wan-animate
---image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;frame-end=24"
---prompts "A boxer dances in place. The camera stays fixed."
+--image-seeds "{{ image }};wan-driving={{ driving }};frame-end=48"
+--prompts "A fantasy woman with pale lavender skin, glowing yellow eyes, pointed ears, and long dark hair, wearing dark ornate armor with gold accents. She performs the motion from the driving video. Cinematic lighting, ultrarealistic detail."
