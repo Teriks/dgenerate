@@ -625,6 +625,8 @@ def _load_quantized_module(component_class, model_path, subfolder, revision, var
     module_name = getattr(component_class, '__module__', '')
     transformers_module = module_name.startswith('transformers')
     config = _quantizer_config(quantizer_uri, dtype, transformers_module)
+    from dgenerate.pipelinewrapper.quant_skips import apply_architecture_quant_skips
+    apply_architecture_quant_skips(config, component_class)
     torch_dtype = _enums.get_torch_dtype(dtype) if isinstance(dtype, _enums.DataType) else None
     _messages.debug_log(
         f'Quantizing {component_class.__name__} from "{model_path}" '
@@ -646,12 +648,22 @@ def _load_quantized_module(component_class, model_path, subfolder, revision, var
             load_kwargs['torch_dtype'] = torch_dtype
     with _hfhub.with_hf_errors_as_model_not_found():
         module = component_class.from_pretrained(model_path, **load_kwargs)
-    if offload:
+    # 8-bit BnB weights cannot leave the GPU. Pin .to() like still pipelines.
+    if _util.is_loaded_in_8bit_bnb(module):
+        _pipelines._disable_to(module)
+    elif offload:
         module.to('cpu')
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         gc.collect()
     return module
+
+
+def _pin_video_8bit_modules(pipe):
+    """Disable ``.to()`` on 8-bit BnB modules after the video pipeline is built."""
+    for module in _pipelines.get_pipeline_modules(pipe).values():
+        if _util.is_loaded_in_8bit_bnb(module):
+            _pipelines._disable_to(module)
 
 
 def _quantized_device_map(device, offload: bool, quantizer_uri=None):
@@ -968,6 +980,7 @@ def _create_cached_video_pipeline(model_path,
             pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
     else:
         _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
+    _pin_video_8bit_modules(pipe)
     _enable_vae_tiling(pipe)
     # Wan VAE defaults to float32. Skip when --vae already chose a dtype
     # (including the float32 fallback above), or when the VAE is quantized.

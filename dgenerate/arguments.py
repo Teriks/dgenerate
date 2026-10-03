@@ -898,9 +898,11 @@ def _type_quantizer_map(val: str):
     vals = [
         'unet',
         'transformer',
+        'transformer_2',
         'text_encoder',
         'text_encoder_2',
         'text_encoder_3',
+        'image_encoder',
         'controlnet',
         'connectors'
     ]
@@ -2363,7 +2365,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             When using --quantizer, you can use this argument to specify exactly which sub-modules undergo
             quantization.
             
-            Accepted values are: "unet", "transformer", "text_encoder", "text_encoder_2", "text_encoder_3", "controlnet", "connectors"
+            Accepted values are: "unet", "transformer", "transformer_2",
+            "text_encoder", "text_encoder_2", "text_encoder_3", "image_encoder",
+            "controlnet", "connectors".
+            
+            Video models also accept the subset that applies to their checkpoint
+            (for example Wan MoE ``transformer_2`` and I2V ``image_encoder``,
+            or LTX-2 ``connectors``). Wan rejects ``vae`` separately because
+            AutoencoderKLWan stays float32.
             """
         )
     )

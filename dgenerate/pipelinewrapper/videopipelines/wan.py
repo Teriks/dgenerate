@@ -752,16 +752,27 @@ def place_wan_animate_2(pipe, device, model_cpu_offload, sequential_cpu_offload,
 
     The modular pipeline has no pipeline-level CPU offload. Offload flags stream
     the transformer in block groups and keep the encoders and VAE on ``device``.
+    Quantized / GGUF transformers stay where they were loaded; group offload
+    would move packed weights the same way it must not for still pipelines.
     """
     names = (
         'text_encoder', 'image_encoder', 'vae', 'transformer',
         'video_processor', 'image_processor', 'guider',
     )
     offload = bool(model_cpu_offload or sequential_cpu_offload or model_group_offload)
-    if offload:
-        from diffusers.hooks import apply_group_offloading
-        transformer = getattr(pipe, 'transformer', None)
-        if transformer is not None:
+    transformer = getattr(pipe, 'transformer', None)
+    if offload and transformer is not None:
+        if _pipelines.module_skips_group_offload(transformer):
+            # No block streaming: packed BnB/SDNQ/GGUF weights are not ordinary
+            # parameters. Still place the module on the run device (8-bit BnB
+            # .to is a no-op after _disable_to) so CPU-quantized SDNQ is not
+            # left stranded without pipeline-level offload hooks.
+            _messages.debug_log(
+                'Not group offloading Wan-Animate-2 transformer (quantized).')
+            if hasattr(transformer, 'to'):
+                transformer.to(device)
+        else:
+            from diffusers.hooks import apply_group_offloading
             onload = torch.device(device)
             apply_group_offloading(
                 transformer,

@@ -641,6 +641,13 @@ class TestVideoModels(unittest.TestCase):
             wan_vae_quant_map.check()
         self.assertIn('vae', str(wan_vae_raised.exception))
 
+        wan_encoder_map = _config(
+            model_path='org/wan',
+            model_type=_pipelinewrapper.ModelType.WAN,
+            quantizer_uri='bnb;bits=4',
+            quantizer_map=['transformer', 'transformer_2', 'image_encoder'])
+        wan_encoder_map.check()
+
         mapped = _config(
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
@@ -845,6 +852,98 @@ class TestVideoModels(unittest.TestCase):
         pipe.vae = _QuantVae()
         _wan._set_wan_vae_dtype(pipe)
         self.assertTrue(_wan._vae_is_quantized(pipe.vae))
+
+    def test_cli_quantizer_map_accepts_wan_component_names(self):
+        import argparse
+
+        from dgenerate.arguments import _type_quantizer_map
+
+        self.assertEqual(_type_quantizer_map('image_encoder'), 'image_encoder')
+        self.assertEqual(_type_quantizer_map('transformer_2'), 'transformer_2')
+        self.assertEqual(_type_quantizer_map('connectors'), 'connectors')
+        with self.assertRaises(argparse.ArgumentTypeError):
+            _type_quantizer_map('vae')
+
+    def test_wan_animate_2_skips_group_offload_when_quantized(self):
+        from dgenerate.pipelinewrapper.videopipelines import wan as _wan
+
+        class _QuantTransformer(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+                self.quantization_config = {'quant_method': 'sdnq'}
+
+        class _Plain(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+        pipe = unittest.mock.Mock()
+        pipe.transformer = _QuantTransformer()
+        pipe.text_encoder = _Plain()
+        pipe.image_encoder = None
+        pipe.vae = _Plain()
+        pipe.video_processor = None
+        pipe.image_processor = None
+        pipe.guider = None
+
+        with unittest.mock.patch(
+                'diffusers.hooks.apply_group_offloading') as apply_offload:
+            _wan.place_wan_animate_2(pipe, 'cpu', True, False, False)
+        apply_offload.assert_not_called()
+
+    def test_wan_animate_2_group_offloads_full_precision_transformer(self):
+        from dgenerate.pipelinewrapper.videopipelines import wan as _wan
+
+        class _Plain(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+        pipe = unittest.mock.Mock()
+        pipe.transformer = _Plain()
+        pipe.text_encoder = _Plain()
+        pipe.image_encoder = None
+        pipe.vae = _Plain()
+        pipe.video_processor = None
+        pipe.image_processor = None
+        pipe.guider = None
+
+        with unittest.mock.patch(
+                'diffusers.hooks.apply_group_offloading') as apply_offload:
+            _wan.place_wan_animate_2(pipe, 'cpu', True, False, False)
+        apply_offload.assert_called_once()
+
+    def test_load_quantized_module_applies_architecture_skips(self):
+        import diffusers
+
+        captured = {}
+
+        class FakeTransformer:
+            __name__ = 'WanTransformer3DModel'
+            __module__ = 'diffusers.models.transformers.transformer_wan'
+
+            @classmethod
+            def from_pretrained(cls, model_path, **kwargs):
+                captured['quantization_config'] = kwargs.get('quantization_config')
+                module = unittest.mock.Mock()
+                module.is_loaded_in_8bit = False
+                return module
+
+        FakeTransformer.__name__ = 'WanTransformer3DModel'
+
+        with unittest.mock.patch.object(
+                _videopipelines, '_quantizer_config',
+                return_value=diffusers.BitsAndBytesConfig(load_in_4bit=True)):
+            _videopipelines._load_quantized_module(
+                FakeTransformer, 'org/wan', 'transformer', None, None,
+                _pipelinewrapper.DataType.BFLOAT16, 'bnb;bits=4', None, True,
+                None, offload=False)
+
+        skipped = captured['quantization_config'].llm_int8_skip_modules
+        self.assertIn('scale_shift_table', skipped)
+        self.assertIn('patch_embedding', skipped)
+        self.assertIn('condition_embedder', skipped)
 
     def test_wan_animate_2_null_text_encoder_not_reloaded(self):
         from dgenerate.pipelinewrapper.videopipelines import wan as _wan
