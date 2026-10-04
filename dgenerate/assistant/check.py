@@ -785,13 +785,39 @@ def check_config(text: str) -> dict:
     runner.template_functions['download'] = lambda url, *a, **kw: os.path.join('downloads', os.path.basename(url))
 
     image_size = runner.template_functions['image_size']
+    image_width = runner.template_functions['image_width']
+    image_height = runner.template_functions['image_height']
+    scale_size = runner.template_functions['scale_size']
 
     def placeholder_image_size(file: str, format_size: bool = True):
         if os.path.exists(file):
             return image_size(file, format_size)
         return '512x512' if format_size else (512, 512)
 
+    def placeholder_image_width(file: str) -> int:
+        if os.path.exists(file):
+            return image_width(file)
+        return 512
+
+    def placeholder_image_height(file: str) -> int:
+        if os.path.exists(file):
+            return image_height(file)
+        return 512
+
+    def placeholder_scale_size(size: str | tuple, scale: float | int, format_size: bool = True):
+        try:
+            return scale_size(size, scale, format_size)
+        except Exception:
+            if isinstance(size, str) and not os.path.exists(size):
+                scaled = (max(1, int(round(512 * float(scale)))),
+                          max(1, int(round(512 * float(scale)))))
+                return scaled if not format_size else f'{scaled[0]}x{scaled[1]}'
+            raise
+
     runner.template_functions['image_size'] = placeholder_image_size
+    runner.template_functions['image_width'] = placeholder_image_width
+    runner.template_functions['image_height'] = placeholder_image_height
+    runner.template_functions['scale_size'] = placeholder_scale_size
 
     try:
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):

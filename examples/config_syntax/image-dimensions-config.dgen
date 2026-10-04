@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Template helpers for reading and scaling image dimensions (#69).
+# Useful when looping over source images of mixed sizes before
+# --output-size / ControlNet Tile upscales.
+
+# Integer width / height for arithmetic in \setp
+\setp w image_width("../media/dog.jpg") * 2
+\setp h image_height("../media/dog.jpg") * 2
+\print {{ w }}x{{ h }}
+
+# Or scale a file / size string in one call
+\setp out_size scale_size("../media/dog.jpg", 2)
+\print {{ out_size }}
+
+\setp half_size scale_size("1024x768", 0.5)
+\print {{ half_size }}
+
+# Typical loop pattern: double each source image's size
+{% for i in unquote("../media/*.jpg", expand=True) %}
+    \setp sized scale_size("{{ i }}", 2)
+    \print {{ i }} -> {{ sized }}
+{% endfor %}

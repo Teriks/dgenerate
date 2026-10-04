@@ -46,6 +46,7 @@ class SiglipImageEncoder:
             revision: str = "main",
             variant: str | None = None,
             subfolder: str | None = None,
+            dtype: torch.dtype | None = None,
             torch_dtype: torch.dtype | None = None,
             token: str | None = None,
             local_files_only: bool = False
@@ -57,18 +58,21 @@ class SiglipImageEncoder:
         :param revision: repo revision (branch)
         :param variant: model variant
         :param subfolder: model subfolder
-        :param torch_dtype: load as dtype
+        :param dtype: load as dtype (preferred; matches Transformers 5 / ImageEncoderUri)
+        :param torch_dtype: alias of ``dtype`` for older call sites
         :param token: HF auth token
         :param local_files_only: only look in cache?
         :return:
         """
+
+        resolved_dtype = dtype if dtype is not None else torch_dtype
 
         image_encoder = transformers.SiglipVisionModel.from_pretrained(
             pretrained_model_name_or_path,
             revision=revision,
             variant=variant,
             subfolder=subfolder if subfolder else '',
-            dtype=torch_dtype,
+            dtype=resolved_dtype,
             token=token,
             local_files_only=local_files_only)
 
