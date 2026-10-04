@@ -400,8 +400,8 @@ mask. For "replace the background" use inpainting with a real mask
 or ``yolo`` / ``sam`` mask processors, not a face detector on the
 whole animal.
 
-flux kontext video ltx
-----------------------
+flux kontext video ltx wan
+--------------------------
 
 Flux Schnell: ``black-forest-labs/FLUX.1-schnell``, 4 steps, guidance
 0. Flux Dev: ``black-forest-labs/FLUX.1-dev``. Flux Kontext edits an
@@ -412,9 +412,11 @@ and audio. Animate a still with that repo, ``--guidance-scales 1``,
 ``--model-sequential-offload``, ``--animation-format mp4``, and
 ``--image-seeds {{ quote(first(last_images)) }}``.
 Clip length and frame rate are ``--video-lengths`` (seconds) and
-``--video-fps``. Every other LTX-only option is prefixed ``--ltx-``. Use the duration the
+``--video-fps``. ``--video-fps`` defaults to 24. Width and height must be
+divisible by 32. ``--video-lengths`` snaps to ``8k+1`` frames. Every other
+LTX-only option is prefixed ``--ltx-``. Use the duration the
 user asked for, including a long one. When they did not name a duration,
-use 4, or omit ``--video-lengths`` so the duration head chooses it.
+omit ``--video-lengths`` so the duration head chooses it.
 ``--ltx-video-min-seconds`` and ``--ltx-video-max-seconds`` clamp that
 head. ``2 4`` with ``6 8`` is two clips, 2 to 6 and 4 to 8. Other
 ``--ltx-`` value lists are tried in turn. Describe sound in the prompt.
@@ -434,21 +436,35 @@ Its refine LoRA is ``--ltx-stage-loras``, not a second config.
 Extra conditions in one clip are separated by `` ++ ``.
 Use ``Lightricks/LTX-Video`` only when the user names that
 older video-only model.
-Wan 2.1 / 2.2 is ``--model-type wan`` with a ``Wan-AI`` repo.
-``--video-lengths`` is seconds and ``--video-fps`` defaults to 16.
-``last-frame=`` is first-last-frame and needs a FLF2V checkpoint such as
-``Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers``. A Wan 2.1 I2V checkpoint only
-embeds the first frame. A video seed is video-to-video.
-``control=``, ``mask=``, and ``reference=`` are VACE.
+Wan 2.1 / 2.2 is ``--model-type wan`` with a public ``Wan-AI`` repo, no
+``HF_TOKEN``. Text to video is ``Wan-AI/Wan2.1-T2V-1.3B-Diffusers``,
+``--guidance-scales 5``, ``--video-fps 16``, ``--output-size 832x480``.
+``--video-lengths`` is seconds and snaps to ``4k+1`` frames. Five seconds
+at 16 fps is 81 frames. Width and height must be divisible by 16.
+Put the negative after ``;`` in ``--prompts``.
+A still is image-to-video on ``Wan-AI/Wan2.1-I2V-14B-480P-Diffusers``.
+``last-frame=`` is first-last-frame and needs
+``Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers`` at ``1280x720``. A Wan 2.1 I2V
+checkpoint only embeds the first frame. A video seed is video-to-video and
+rejects ``--video-lengths``; trim with ``frame-end=``.
+``control=``, ``mask=``, and ``reference=`` are VACE on
+``Wan-AI/Wan2.1-VACE-1.3B-diffusers``.
+Wan 2.2 MoE is ``Wan-AI/Wan2.2-T2V-A14B-Diffusers`` with
+``--wan-low-noise-guidance-scales``.
 The Wan VAE defaults to ``float32``; override with ``--vae`` and
-``AutoencoderKLWan`` plus ``dtype=``.
+``AutoencoderKLWan`` plus ``dtype=``. Do not put ``vae`` in
+``--quantizer-map``.
 Wan-Animate is ``--model-type wan-animate`` with a character still plus
 ``wan-pose=`` and ``wan-face=``, or ``wan-driving=`` with ``--wan-animate-preprocess``
 (openpose and yolo ``crops=True`` face crop) or ``--wan-pose-image-processors`` and
-``--wan-face-image-processors``. ``--video-lengths`` is rejected for animate.
+``--wan-face-image-processors``. ``--video-fps`` defaults to 30.
+Leaving steps at 30 selects 20 and leaving guidance at 5 selects 1.
+``--video-lengths`` is rejected. ``replace`` mode needs ``wan-background=``
+and ``mask=``.
 Wan-Animate-2 is ``--model-type wan-animate-2`` with a character still plus
-``wan-driving=``. The base repo samples in 40 steps and the distilled repo in 10.
-``--video-fps`` defaults to 24. ``--video-lengths`` is rejected.
+``wan-driving=`` only. The base repo samples in 40 steps and the distilled
+repo in 10. ``--video-fps`` defaults to 24. ``--video-lengths`` is rejected.
+No ``wan-pose=``, ``wan-face=``, or ``wan-background=``.
 Do not put ``last_animations`` on ``--image-seeds`` for Kontext, Fill,
 or image-to-video.
 
@@ -465,7 +481,8 @@ Do not set ``quantizer=`` on that URI and do not use
 ``--model-sequential-offload`` works with these GGUF transformers.
 
 Flux, SD3, Flux.2, Z-Image, Qwen-Image, LTX-2.5, and Wan all take a GGUF
-transformer. Flux.2 Klein, Qwen-Image, Z-Image, and LTX-2.5 are
+transformer. The Wan 2.2 low-noise expert uses ``--wan-second-transformer``
+the same way. Flux.2 Klein, Qwen-Image, Z-Image, LTX-2.5, and Wan are
 recognized from the file, including ComfyUI layouts, so
 ``--transformer`` needs no ``config=``. Flux.2 hidden width picks the
 config: 3072 is Klein 4B (``black-forest-labs/FLUX.2-klein-4B``,

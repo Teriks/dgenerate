@@ -632,7 +632,8 @@ def check_config(text: str) -> dict:
     errors.extend(_template_delayed_expansion(text))
     errors.extend(_runaway_comments(text))
     errors.extend(_print_says_example(text))
-    if _LAST_ANIM_SEED.search(text) and not re.search(r'--model-type\s+(ltx|wan|wan-animate)\b', text):
+    if _LAST_ANIM_SEED.search(text) and not re.search(
+            r'--model-type\s+(ltx|wan|wan-animate|wan-animate-2)\b', text):
         errors.append({
             'line': None,
             'message': '--image-seeds uses last_animations, but this config has no video '
@@ -995,7 +996,7 @@ def check_config(text: str) -> dict:
                 except _schedulers.SchedulerLoadError as e:
                     errors.append({'line': line, 'message': str(e).strip()})
             prev_image_format = config.image_format
-            prev_was_video = mt in ('ltx', 'wan', 'wan-animate')
+            prev_was_video = mt in ('ltx', 'wan', 'wan-animate', 'wan-animate-2')
             _img, prev_animation = _placeholder_outputs(list(argv))
         except SystemExit:
             errors.append({'line': line, 'message': 'dgenerate exited while parsing the invocation.'})
