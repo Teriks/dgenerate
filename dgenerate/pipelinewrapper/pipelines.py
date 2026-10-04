@@ -4045,8 +4045,15 @@ def _create_minimal_pipeline_for_component_extraction(
                 else:
                     encoder_subfolder = os.path.join(subfolder, encoder_param) if subfolder else encoder_param
 
-                # Try to determine the encoder class - this is a simplified approach
-                # In practice, we might need to look at model_index or infer from model_type
+                # Infer encoder class from model_type. Do not trust
+                # model_index.json here — some repos ship incorrect class
+                # names. Flow-image models are the exception: their encoder
+                # layout varies enough that the index is still consulted.
+                #
+                # SD3 text_encoder must be CLIPTextModelWithProjection.
+                # Loading it as CLIPTextModel drops text_projection; the
+                # fused cache then reloads with zero matching weights under
+                # bitsandbytes (Parameter without CB).
                 flow_encoder_name = None
                 if (_enums.model_type_is_flow_image(model_type)
                         and not _hfhub.is_single_file_model_load(model_path)):
@@ -4065,7 +4072,10 @@ def _create_minimal_pipeline_for_component_extraction(
                 if flow_encoder_name:
                     encoder_name = flow_encoder_name
                 elif encoder_param == 'text_encoder':
-                    encoder_name = 'CLIPTextModel'  # Default for most SD models
+                    if _enums.model_type_is_sd3(model_type):
+                        encoder_name = 'CLIPTextModelWithProjection'
+                    else:
+                        encoder_name = 'CLIPTextModel'  # Default for most SD models
                 elif encoder_param == 'text_encoder_2':
                     if _enums.model_type_is_sdxl(model_type):
                         encoder_name = 'CLIPTextModelWithProjection'
