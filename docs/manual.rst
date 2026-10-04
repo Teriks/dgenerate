@@ -2919,25 +2919,19 @@ manually with pipx, (or pip if you want) as described below.
 Manual Install
 --------------
 
-Install Visual Studio build tools, make sure "Desktop development with C++" is selected, unselect anything you do not need.
+Install Python 3.14. dgenerate requires Python >=3.11, except 3.14.1, and older than 3.15.
+Use 3.14.8. Do not install 3.14.1.
 
-https://aka.ms/vs/17/release/vs_BuildTools.exe
-
-Or
-
-https://visualstudio.microsoft.com/downloads/
-
-Install rust compiler using rustup-init.exe (x64), use the default install options.
-
-https://www.rust-lang.org/tools/install
-
-Install Python. dgenerate requires Python >=3.11, except 3.14.1, and older than 3.15.
-This installer is 3.12.9, which is inside that range:
-
-https://www.python.org/ftp/python/3.12.9/python-3.12.9-amd64.exe
+https://www.python.org/ftp/python/3.14.8/python-3.14.8-amd64.exe
 
 Make sure you select the option "Add to PATH" in the python installer,
 otherwise invoke python directly using it's full path while installing the tool.
+
+The published packages install from Windows wheels. That includes the Rust
+extensions (``tokenizers``, ``safetensors``, ``hf-xet``, ``pydantic-core``) and
+the C extensions (``sentencepiece``, PyAV, ``patchmatch-cython``, spaCy and its
+compiled dependencies). Visual Studio Build Tools and a Rust compiler are not
+required. They are only needed if pip is told to build a package from source.
 
 Install GIT for Windows:
 
