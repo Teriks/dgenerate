@@ -322,7 +322,7 @@ Dev (full) GGUF: --transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF
 guidance 3, audio guidance 7, STG 1 on block 28, modality 3, and \
 --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1 with --inference-steps 30.
 - Wan video: Wan-AI/Wan2.1-T2V-1.3B-Diffusers, --model-type wan, --animation-format mp4. \
---video-lengths is seconds, --video-fps defaults to 16. last-frame= is first-last-frame on an I2V repo. \
+--video-lengths is seconds, --video-fps defaults to 16. last-frame= needs Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers. A Wan 2.1 I2V repo only embeds the first frame. \
 A video seed path is video-to-video. control=, mask=, and reference= are VACE. \
 Wan-Animate is --model-type wan-animate with a character still plus wan-pose= and wan-face=, or wan-driving= with \
 --wan-animate-preprocess (openpose + yolo face crop) or --wan-pose-image-processors and --wan-face-image-processors. \

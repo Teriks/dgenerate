@@ -436,7 +436,9 @@ Use ``Lightricks/LTX-Video`` only when the user names that
 older video-only model.
 Wan 2.1 / 2.2 is ``--model-type wan`` with a ``Wan-AI`` repo.
 ``--video-lengths`` is seconds and ``--video-fps`` defaults to 16.
-``last-frame=`` is first-last-frame. A video seed is video-to-video.
+``last-frame=`` is first-last-frame and needs a FLF2V checkpoint such as
+``Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers``. A Wan 2.1 I2V checkpoint only
+embeds the first frame. A video seed is video-to-video.
 ``control=``, ``mask=``, and ``reference=`` are VACE.
 The Wan VAE defaults to ``float32``; override with ``--vae`` and
 ``AutoencoderKLWan`` plus ``dtype=``.

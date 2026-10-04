@@ -329,6 +329,35 @@ def _require_image_encoder(pipe, mode: str):
             'or a Wan-Animate checkpoint with --model-type wan-animate or wan-animate-2.')
 
 
+def _wan_flf_clip_kind(transformer) -> str:
+    """
+    How a Wan transformer accepts CLIP image embeddings.
+
+    ``flf`` folds the first and last frame through ``pos_embed_seq_len``.
+    ``first`` is a single-frame I2V embedder. ``none`` takes no image embeddings.
+    """
+    config = getattr(transformer, 'config', None)
+    if config is None or getattr(config, 'image_dim', None) is None:
+        return 'none'
+    if getattr(config, 'pos_embed_seq_len', None):
+        return 'flf'
+    embedder = getattr(getattr(transformer, 'condition_embedder', None), 'image_embedder', None)
+    if getattr(embedder, 'pos_embed', None) is not None:
+        return 'flf'
+    return 'first'
+
+
+def _require_wan_flf_clip(pipe):
+    transformer = getattr(pipe, 'transformer', None)
+    if transformer is None or _wan_flf_clip_kind(transformer) != 'first':
+        return
+    raise _pipelines.UnsupportedPipelineConfigError(
+        'last-frame= needs a first-last-frame checkpoint such as '
+        'Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers. '
+        'This transformer only embeds the first frame, so the first and last '
+        'image embeddings cannot be combined.')
+
+
 def _temporal_factor(pipe) -> int:
     return int(getattr(pipe, 'vae_scale_factor_temporal', 4) or 4)
 
@@ -490,6 +519,7 @@ def _call_wan(wrapper, user_args):
     if mode == 'wan-image':
         kwargs['image'] = user_args.images[0]
     elif mode == 'wan-flf':
+        _require_wan_flf_clip(pipe)
         kwargs['image'] = user_args.images[0]
         kwargs['last_image'] = user_args.end_images[0]
     elif mode == 'wan-video':

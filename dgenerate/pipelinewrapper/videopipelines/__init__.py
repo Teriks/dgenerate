@@ -1041,6 +1041,8 @@ from .wan import (
     wan_animate_family_from_index,
     wan_family_from_index,
     wan_num_frames,
+    _wan_flf_clip_kind,
+    _require_wan_flf_clip,
 )
 from .ltx import (
     LTX_SCHEDULER_NAMES,
