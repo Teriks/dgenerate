@@ -133,9 +133,11 @@ def _patched_hf_hub_download(repo_id: str, filename: str, *args, **kwargs) -> st
     """
     Patched hf_hub_download that uses vendored single-file configs when available.
 
-    Diffusers still points SD2 single-file loads at deleted Stability repos.
-    Serve vendored configs for those (and other) slugs online or offline, and
-    remap network fetches to community mirrors when needed.
+    A local ``.safetensors`` checkpoint can be configured entirely from these
+    files, including ``model_index.json``, with no Hub request. Diffusers still
+    points SD2 single-file loads at deleted Stability repos. Serve vendored
+    configs for those and other slugs online or offline, and remap network
+    fetches to community mirrors when a file is not vendored.
     """
     vendored = _try_vendored_config_file(
         repo_id, filename, subfolder=kwargs.get('subfolder') or None)
