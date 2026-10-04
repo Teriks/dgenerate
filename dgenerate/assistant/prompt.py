@@ -148,12 +148,13 @@ on flux2, z-image, or qwen-image.
 - Add short # comments explaining the choices that matter. Never repeat the same \
 comment. If you are unsure how to finish a step, write the invocation anyway; \
 do not stall in a comment loop.
-- A .gguf file is only a --transformer (or --unet) replacement for Flux, SD3, \
-Flux.2, Z-Image, Qwen-Image, or LTX. The first line is still the Hugging Face \
-repo that supplies the VAE and text encoders, never the .gguf path. Do not set \
-quantizer= on that URI and do not use --quantizer gguf. Flux.2 Klein, Qwen-Image, \
-Z-Image, and LTX-2.5 are detected from the file, including Comfy layouts, so no \
-config= is required. --gen-seeds is a count of images; use 1 unless asked for more. \
+- A .gguf file is only a --transformer (or --unet, or --wan-second-transformer) \
+replacement for Flux, SD3, Flux.2, Z-Image, Qwen-Image, LTX, or Wan. The first \
+line is still the Hugging Face repo that supplies the VAE and text encoders, \
+never the .gguf path. Do not set quantizer= on that URI and do not use \
+--quantizer gguf. Flux.2 Klein, Qwen-Image, Z-Image, LTX-2.5, and Wan are \
+detected from the file, including Comfy layouts, so no config= is required. \
+--gen-seeds is a count of images; use 1 unless asked for more. \
 --seeds 42 is the fixed seed 42.
 - last_images is the stills the last step wrote. last_animations is its video \
 file. Image models (including Flux Kontext and Flux Fill) and image-to-video \
@@ -224,12 +225,21 @@ PROMPT_GUIDES = {
     'wan': ('One paragraph of three to six plain sentences in the order things happen: the main action '
             'first, then specific movements and gestures, how the people and objects look, the setting, '
             'the camera angle and movement, and the lighting. Describe only what fits in the '
-            'clip\'s length. --video-lengths is that length in seconds.'),
-    'wan-animate': ('A short description of the character and the motion being transferred.'),
+            'clip\'s length. --video-lengths is that length in seconds. --video-fps defaults to 16. '
+            'Add a negative after one ; : "Bright tones, overexposed, static, blurred details, '
+            'subtitles, worst quality, low quality, ugly, deformed, extra fingers, still picture". '
+            '--output-size width and height must be divisible by 16.'),
+    'wan-animate': ('A short description of how the character looks. The motion comes from the pose '
+                    'or driving clip, not from a long action paragraph. No --video-lengths. '
+                    'Guidance stays at 1. --video-fps defaults to 30.'),
+    'wan-animate-2': ('A short description of how the character looks and the background. '
+                      'The motion comes from wan-driving=, not from the prompt. '
+                      'No --video-lengths. --video-fps defaults to 24.'),
     'ltx': ('One paragraph of three to six plain sentences in the order things happen: the main action '
             'first, then specific movements and gestures, how the people and objects look, the setting, '
             'the camera angle and movement, and the lighting and color. Describe only what fits in the '
-            'clip\'s length. --video-lengths is that length in seconds. '
+            'clip\'s length. --video-lengths is that length in seconds and snaps to 8k+1 frames. '
+            '--video-fps defaults to 24. Width and height must be divisible by 32. '
             'LTX-2.5 (Lightricks/LTX-2.5-Diffusers) also makes audio, so end with a sentence '
             'about what is heard, like the rain, footsteps, or music, and put spoken words in single quotes. '
             'A negative prompt is optional, like "worst quality, inconsistent motion, blurry, jittery, '
@@ -308,10 +318,12 @@ The extra addition embedding selects the layered config.
 - Kolors: Kwai-Kolors/Kolors-diffusers, --model-type kolors --variant fp16. Public, no HF_TOKEN.
 - DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
 - Animate a still or make a clip: Lightricks/LTX-2.5-Diffusers, --model-type ltx, \
---guidance-scales 1, --model-sequential-offload, --animation-format mp4. Gated, needs HF_TOKEN. \
-Clip length and frame rate are --video-lengths (seconds) and --video-fps. \
+--guidance-scales 1, --video-fps 24, --model-sequential-offload, --animation-format mp4. \
+Gated, needs HF_TOKEN. Clip length and frame rate are --video-lengths (seconds) and --video-fps. \
+--video-lengths snaps to 8k+1 frames. Width and height must be divisible by 32. \
 LTX-only options use the --ltx- prefix. \
-When the user names a duration, use that many seconds, however long. When they do not, use 4. \
+When the user names a duration, use that many seconds, however long. When they do not, \
+omit --video-lengths so the duration head chooses it. \
 --ltx-latent-upscale is the two-stage pass in that same generation; --output-size must be divisible by 64. \
 The last frame is last-frame= on --image-seeds, at strength 1. strength= is the condition weight. \
 --image-seed-strengths fills LTX groups that omit strength=. \
@@ -321,15 +333,27 @@ guidance 1, and no --inference-steps. The parent repo stays Lightricks/LTX-2.5-D
 Dev (full) GGUF: --transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF/blob/main/dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf, \
 guidance 3, audio guidance 7, STG 1 on block 28, modality 3, and \
 --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1 with --inference-steps 30.
-- Wan video: Wan-AI/Wan2.1-T2V-1.3B-Diffusers, --model-type wan, --animation-format mp4. \
---video-lengths is seconds, --video-fps defaults to 16. last-frame= needs Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers. A Wan 2.1 I2V repo only embeds the first frame. \
-A video seed path is video-to-video. control=, mask=, and reference= are VACE. \
-Wan-Animate is --model-type wan-animate with a character still plus wan-pose= and wan-face=, or wan-driving= with \
---wan-animate-preprocess (openpose + yolo face crop) or --wan-pose-image-processors and --wan-face-image-processors. \
---video-lengths is rejected for animate. \
-Wan-Animate-2 is --model-type wan-animate-2 with a character still plus wan-driving=. \
+- Wan video: Wan-AI/Wan2.1-T2V-1.3B-Diffusers, --model-type wan, --dtype bfloat16, \
+--guidance-scales 5, --video-fps 16, --output-size 832x480, --animation-format mp4. \
+Public, no HF_TOKEN. --video-lengths is seconds and snaps to 4k+1 frames \
+(5 seconds at 16 fps is 81). Width and height must be divisible by 16. \
+Put the negative after ; in --prompts. \
+A still is image-to-video on Wan-AI/Wan2.1-I2V-14B-480P-Diffusers. \
+last-frame= needs Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers at 1280x720. \
+A Wan 2.1 I2V repo only embeds the first frame. \
+A video seed path is video-to-video and rejects --video-lengths; trim with frame-end=. \
+control=, mask=, and reference= are VACE on Wan-AI/Wan2.1-VACE-1.3B-diffusers. \
+Wan 2.2 MoE is Wan-AI/Wan2.2-T2V-A14B-Diffusers with --wan-low-noise-guidance-scales. \
+The VAE stays float32. Do not put vae in --quantizer-map. \
+GGUF: --transformer https://huggingface.co/city96/Wan2.1-T2V-14B-gguf/blob/main/wan2.1-t2v-14b-Q4_K_S.gguf \
+with parent Wan-AI/Wan2.1-T2V-14B-Diffusers. \
+Wan-Animate is --model-type wan-animate, Wan-AI/Wan2.2-Animate-14B-Diffusers, a character still plus \
+wan-pose= and wan-face=, or wan-driving= with --wan-animate-preprocess. --video-fps 30. \
+Leaving steps at 30 selects 20 and leaving guidance at 5 selects 1. --video-lengths is rejected. \
+replace mode needs wan-background= and mask=. \
+Wan-Animate-2 is --model-type wan-animate-2, a character still plus wan-driving= only. \
 Wan-AI/Wan2.2-Animate-2-14B-Diffusers uses 40 steps. The distilled repo uses 10. \
---video-fps defaults to 24. --video-lengths is rejected.
+--video-fps 24. --video-lengths is rejected. No pose, face, or background keywords.
 - 4x upscaling with diffusion: stabilityai/stable-diffusion-x4-upscaler, --model-type upscaler-x4 --variant fp16. Public, no HF_TOKEN.
 - 2x latent upscaling: stabilityai/sd-x2-latent-upscaler, --model-type upscaler-x2. Public, no HF_TOKEN.
 - Instruction editing: timbrooks/instruct-pix2pix (--model-type pix2pix), \
@@ -449,7 +473,8 @@ def first_draft_recipes(request: str) -> str:
         'Do not copy that sentence.',
         'HF_TOKEN is only for a gated checkpoint. A public repo gets no token block, '
         'even when an example for a different repo has one.',
-        'Public, no HF_TOKEN: SD 1.5, SD 2.1, SDXL, FLUX.1-schnell, Kolors, Stable Cascade, upscalers, pix2pix.',
+        'Public, no HF_TOKEN: SD 1.5, SD 2.1, SDXL, FLUX.1-schnell, Kolors, Stable Cascade, '
+        'Wan-AI, upscalers, pix2pix.',
         'Gated, HF_TOKEN required: FLUX.1-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, SD3, SD3.5, '
         'LTX-2.5, LTX-Video, DeepFloyd IF.',
         'For a gated repo the \\print is exactly:',
@@ -460,13 +485,18 @@ def first_draft_recipes(request: str) -> str:
     ]
     if re.search(r'\b(animat\w*|video|ltx|wan|clip)\b', request, re.IGNORECASE):
         lines += [
-            'Animate with Lightricks/LTX-2.5-Diffusers, not Lightricks/LTX-Video, unless the user names LTX-Video or Wan.',
-            'Wan uses --model-type wan or wan-animate and Wan-AI repos. --video-lengths and --video-fps are shared.',
-            '--guidance-scales 1, --model-sequential-offload, --animation-format mp4.',
+            'Unless the user names Wan or LTX-Video, animate with Lightricks/LTX-2.5-Diffusers, '
+            '--guidance-scales 1, --video-fps 24, --model-sequential-offload, --animation-format mp4. '
+            'Width and height must be divisible by 32.',
+            'Wan text or image to video is --model-type wan, a Wan-AI repo, --guidance-scales 5, '
+            '--video-fps 16, --output-size 832x480, and a negative prompt after ;. Public, no HF_TOKEN. '
+            'Wan-Animate is --model-type wan-animate. Wan-Animate-2 is --model-type wan-animate-2. '
+            'Do not pass --video-lengths to either.',
             'LTX-only options use the --ltx- prefix, including '
-            '--ltx-audio-guidance-scales, and --ltx-ic-lora. --video-lengths is seconds. '
+            '--ltx-audio-guidance-scales, and --ltx-ic-lora. --video-lengths is seconds and snaps to 8k+1 frames. '
             'If the user names a duration, use that many seconds. '
-            'If they do not, use 4. Do not turn a frame count such as 97 into the length unless they asked for 97 seconds. '
+            'If they do not, omit --video-lengths so the duration head chooses it. '
+            'Do not turn a frame count such as 97 into the length unless they asked for 97 seconds. '
             'For a sharper clip, --ltx-latent-upscale in the same generation; --output-size must be divisible by 64.',
             'The last frame is last-frame= on --image-seeds, at strength 1. strength= is the condition weight. '
             '--image-seed-strengths fills LTX groups that omit strength=.',

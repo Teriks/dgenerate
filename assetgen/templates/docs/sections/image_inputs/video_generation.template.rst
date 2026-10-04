@@ -32,10 +32,13 @@ Repository: ``Lightricks/LTX-2.5-Diffusers``.
 * With ``--ltx-ic-lora``, a plain path is instead the reference clip for an IC-LoRA, such as canny, depth, or pose control. See `IC-LoRA control`_.
 * ``images:`` is rejected.
 
-Width and height must be divisible by 32.
+Width and height must be divisible by 32. ``--video-fps`` defaults to 24.
+``--video-lengths`` snaps to ``8k+1`` frames at that rate, the same rule as a
+conditioning clip.
 
 ``--model-sequential-offload``, ``--model-cpu-offload``, and ``--model-group-offload``
-work the same way they do for image models. The examples under `examples/ltx2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2>`_
+work the same way they do for image models. A GGUF, SDNQ, or bitsandbytes
+transformer follows the placement described under `Precision, GGUF, and offload`_. The examples under `examples/ltx2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2>`_
 use the published
 repository as-is. ``--ltx-latent-upscale`` runs the two-stage sampler in that
 same generation: a half-resolution pass, the checkpoint latent upsampler, then
@@ -163,8 +166,10 @@ seed chain when both are set.
     # process only last-frame=
     --seed-image-processors + "canny;lower=50;upper=100"
 
-Every condition is applied at full strength. The model keeps the conditioning frames
-and generates around them. It does not restyle the whole input video.
+An opening clip is held at full strength unless that path sets ``strength`` or
+``--image-seed-strengths``. ``last-frame=`` stays at strength 1. The model keeps
+those frames and generates around them. It does not restyle the whole input video.
+Partial strength on a chosen latent frame is described under `Condition placement`_.
 
 See `examples/ltx2/video_conditioning <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/video_conditioning>`_,
 `examples/ltx2/image_conditioning <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/image_conditioning>`_,
@@ -521,39 +526,212 @@ LTX-Video configs are in `examples/ltx_video <https://github.com/Teriks/dgenerat
 Wan (2.1 / 2.2)
 ---------------
 
-``--model-type wan`` and ``--model-type wan-animate`` also generate a clip in
-one pipeline call. Clip length and frame rate are the shared ``--video-lengths``
-and ``--video-fps`` options. Other Wan options use the ``--wan-`` prefix.
+``--model-type wan``, ``wan-animate``, and ``wan-animate-2`` each write one clip
+per pipeline call. Wan does not run once per input frame. Clip length and frame
+rate are ``--video-lengths`` and ``--video-fps``. Other Wan options use the
+``--wan-`` prefix. Conditioning stays in ``--image-seeds``.
 
-* No image seed is text to video.
-* One image is the first frame.
-* ``last-frame=`` is first-last-frame (FLF2V). Use a checkpoint such as
-  ``Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers``. A Wan 2.1 I2V checkpoint only
-  embeds the first frame.
-* A video seed path is video-to-video. ``--video-lengths`` is rejected; the
-  output follows the input clip.
-* ``control=``, ``mask=``, and ``reference=`` are VACE.
-* ``--model-type wan-animate`` takes a character still plus ``wan-pose=`` and
-  ``wan-face=``. ``wan-driving=`` with ``--wan-animate-preprocess`` runs the existing
-  ``openpose`` processor and ``yolo`` in crop mode
-  (``Bingsu/adetailer;weight-name=face_yolov8n.pt;crops=True;crop-square=True;crop-scale=1.4``).
-  Custom plugins can run on those clips with ``--wan-pose-image-processors``,
-  ``--wan-face-image-processors``, ``--wan-driving-image-processors``, and
-  ``--wan-background-image-processors``. ``--video-lengths`` is rejected; the
-  output follows the pose clip.
-* ``wan-background=`` and ``mask=`` are replace mode.
-* ``--model-type wan-animate-2`` takes a character still plus ``wan-driving=``.
-  The driving clip is the motion source. ``Wan-AI/Wan2.2-Animate-2-14B-Diffusers``
-  samples in 40 steps. ``Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers`` samples
-  in 10. ``--video-lengths`` is rejected; the output follows the driving clip.
-* Wan 2.2 MoE can take ``--wan-second-transformer`` for the low-noise expert.
-* The VAE defaults to ``float32``, including when ``--vae`` omits ``dtype=``.
-  Set ``dtype=`` on the ``AutoencoderKLWan`` URI only when you want another
-  precision. ``--quantizer-map`` may name ``transformer``, ``transformer_2``,
-  ``text_encoder``, ``text_encoder_2``, or ``image_encoder`` — not ``vae``.
-* ``--text-encoders`` replaces the UMT5 text encoder. Use ``+`` to keep the
-  checkpoint default, or ``null`` to skip a slot.
-* ``--video-fps`` defaults to 16 for wan, 30 for wan-animate, and 24 for wan-animate-2.
+``model_index.json`` selects the checkpoint family. A Wan-Animate repository
+must be loaded with ``--model-type wan-animate``, and a Wan-Animate-2 repository
+with ``--model-type wan-animate-2``.
 
-Configs are in `examples/wan <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan>`_
-and `examples/wan_animate <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan_animate>`_.
+A prompt can name what to avoid after one ``;``. The published examples use a
+long negative that starts ``Bright tones, overexposed, static, blurred details``.
+``--guidance-scales`` defaults to 5. The examples use 5 for Wan 2.1 and 4 with
+``--wan-low-noise-guidance-scales 3`` for Wan 2.2 MoE.
+
+``--video-fps`` defaults to 16 for wan, 30 for wan-animate, and 24 for
+wan-animate-2. ``--video-lengths`` is seconds. Wan snaps that duration to
+``temporal*k+1`` frames, where ``temporal`` comes from the loaded VAE (4 on Wan
+2.1). Five seconds at 16 fps is 81 frames. Width and height must be divisible
+by the checkpoint's spatial multiple, which is 16 on the published Diffusers
+checkpoints. ``832x480`` and ``1280x720`` are the sizes used in the examples.
+
+``--scheduler`` for ``--model-type wan`` is ``FlowMatchEulerDiscreteScheduler``.
+Wan-Animate uses ``UniPCMultistepScheduler``. Wan-Animate-2 also accepts
+``EulerDiscreteScheduler``, ``DPMSolverMultistepScheduler``, and
+``FlowMatchEulerDiscreteScheduler``.
+
+Text to video
+~~~~~~~~~~~~~
+
+No image seed is text to video. ``Wan-AI/Wan2.1-T2V-1.3B-Diffusers`` is the
+small checkpoint. ``Wan-AI/Wan2.1-T2V-14B-Diffusers`` is the large one.
+
+.. code-block:: bash
+
+    Wan-AI/Wan2.1-T2V-1.3B-Diffusers --model-type wan \
+        --video-lengths 5 --video-fps 16 --output-size 832x480 \
+        --prompts "a red fox riding a horse down a highway;static, blurry"
+
+See `examples/wan/basic/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/basic/text-to-video-config.dgen>`_.
+
+Image to video
+~~~~~~~~~~~~~~
+
+One still is the first frame. The checkpoint needs an image encoder.
+``Wan-AI/Wan2.1-I2V-14B-480P-Diffusers`` is the 480p I2V model. A Wan 2.1 I2V
+transformer only embeds that opening still.
+
+.. code-block:: bash
+
+    --image-seeds first.jpg
+
+See `examples/wan/image_conditioning/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/image_conditioning/image-to-video-config.dgen>`_.
+
+First and last frame
+~~~~~~~~~~~~~~~~~~~~
+
+``last-frame=`` is first-last-frame (FLF2V). Load a checkpoint such as
+``Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers``. Combining ``last-frame=`` with a
+Wan 2.1 I2V transformer is rejected, because that transformer cannot embed
+the first and last images together. The published FLF2V size is ``1280x720``.
+
+.. code-block:: bash
+
+    --image-seeds "first.png;last-frame=last.png"
+
+See `examples/wan/flf2v/first-last-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/flf2v/first-last-config.dgen>`_.
+
+Video to video
+~~~~~~~~~~~~~~
+
+A video or animated image in the seed path is video-to-video. ``--video-lengths``
+is rejected. The output follows the input clip. Trim it with ``frame-start=``
+and ``frame-end=`` on the seed, or with ``--frame-start`` and ``--frame-end``.
+``--image-seed-strengths``, or ``strength=`` on the seed, is how strongly the
+result stays with the input. ``--wan-timesteps`` is an explicit integer schedule
+for this mode only. Each value is a comma-separated list, tried in turn.
+
+.. code-block:: bash
+
+    --image-seeds "clip.mp4;frame-end=48" --image-seed-strengths 0.7
+
+See `examples/wan/video_to_video/video-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/video_to_video/video-to-video-config.dgen>`_.
+
+VACE
+~~~~
+
+``control=``, ``mask=``, and ``reference=`` are VACE inputs. They require a VACE
+checkpoint such as ``Wan-AI/Wan2.1-VACE-1.3B-diffusers``. ``control=`` is the
+control clip. ``reference=`` is an appearance still. ``mask=`` limits where the
+control is applied. ``--control-image-processors`` can turn the control clip
+into an edge or depth map before it is read. ``--wan-conditioning-scales`` is
+the VACE scale: one float, or a comma-separated list with one scale per VACE
+layer. Several values are tried in turn.
+
+.. code-block:: bash
+
+    --image-seeds "control=hiker.mp4;reference=astronaut.jpg"
+    --control-image-processors canny
+
+See `examples/wan/vace <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan/vace>`_.
+
+Wan 2.2 MoE
+~~~~~~~~~~~
+
+A Wan 2.2 repository whose ``model_index.json`` lists ``transformer_2`` is a
+mixture of experts. The high-noise expert uses ``--guidance-scales``. The
+low-noise expert uses ``--wan-low-noise-guidance-scales``, and copies
+``--guidance-scales`` when that option is omitted. ``--wan-boundary-ratios``
+is the switch point from 0 to 1. Omit it and the checkpoint value is kept.
+``--wan-expand-timesteps`` turns on per-token timestep expansion.
+``--wan-second-transformer`` replaces the low-noise expert. It uses the same
+URI grammar as ``--transformer``, including a GGUF file.
+
+``Wan-AI/Wan2.2-T2V-A14B-Diffusers`` is the text-to-video MoE checkpoint.
+See `examples/wan/moe/moe-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/moe/moe-config.dgen>`_.
+
+Wan-Animate
+~~~~~~~~~~~
+
+``--model-type wan-animate`` takes one character still plus motion.
+``Wan-AI/Wan2.2-Animate-14B-Diffusers`` is the checkpoint. ``--video-lengths``
+is rejected. The output follows the pose clip. ``--video-fps`` defaults to 30.
+Leaving ``--inference-steps`` at 30 selects 20 steps, and leaving
+``--guidance-scales`` at 5 selects 1, because Wan-Animate runs unguided.
+
+Pass ``wan-pose=`` and ``wan-face=`` clips, or pass ``wan-driving=`` and let
+dgenerate derive them. ``--wan-animate-preprocess`` runs ``openpose`` for the
+pose and ``yolo`` in crop mode for the face
+(``Bingsu/adetailer;weight-name=face_yolov8n.pt;crops=True;crop-square=True;crop-scale=1.4``).
+When the driving file is local, the derived clips are cached beside it.
+Custom plugins can replace that pair: ``--wan-pose-image-processors`` and
+``--wan-face-image-processors`` run on ``wan-driving=`` when the matching clip
+is omitted, and on ``wan-pose=`` or ``wan-face=`` when those clips are given.
+``--wan-driving-image-processors`` runs on the driving clip first.
+``--wan-background-image-processors`` runs on ``wan-background=``.
+
+``--wan-animate-mode animate`` is character animation. ``replace`` needs
+``wan-background=`` and ``mask=`` clips of the scene the character is placed
+into. ``--wan-segment-frame-lengths`` must be ``4N+1``. The default is 77.
+``--wan-prev-segment-frames`` is the overlap from the previous segment. 1 or 5
+is recommended. The default is 1. ``--wan-motion-encode-batch-size`` trades
+memory for speed in the motion encoder.
+
+.. code-block:: bash
+
+    --image-seeds "character.jpg;wan-driving=motion.mp4;frame-end=48" \
+        --wan-animate-preprocess
+
+    --wan-animate-mode replace \
+        --image-seeds "character.jpg;wan-driving=motion.mp4;wan-background=scene.mp4;mask=person.gif"
+
+``last-frame=``, ``control=``, and ``reference=`` are rejected. Those keywords
+belong to FLF2V and VACE. ``wan-driving=`` is rejected on ``--model-type wan``.
+
+See `examples/wan_animate <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan_animate>`_.
+
+Wan-Animate-2
+~~~~~~~~~~~~~
+
+``--model-type wan-animate-2`` takes one character still and ``wan-driving=``.
+The driving clip is the motion source. There is no pose or face clip.
+``--video-lengths`` is rejected. The output follows the driving clip.
+``--video-fps`` defaults to 24. ``wan-pose=``, ``wan-face=``,
+``wan-background=``, ``last-frame=``, ``control=``, ``mask=``, and
+``reference=`` are rejected.
+
+``Wan-AI/Wan2.2-Animate-2-14B-Diffusers`` samples in 40 steps when
+``--inference-steps`` is left at 30. ``Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers``
+samples in 10. The published demo uses ``--wan-segment-frame-lengths 81``,
+``--wan-prev-segment-frames 1``, and ``--max-sequence-length 512``.
+``--wan-driving-image-processors`` can preprocess the driving clip.
+
+.. code-block:: bash
+
+    --image-seeds "character.png;wan-driving=template.mp4;frame-end=48"
+
+See `examples/wan_animate_2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan_animate_2>`_.
+
+Precision, GGUF, and offload
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``--dtype bfloat16`` is the dtype used by the examples. The VAE still loads in
+``float32``, including when ``--vae`` omits ``dtype=``. ``AutoencoderKLWan`` is
+fragile in ``bfloat16``. Set ``dtype=`` on an ``AutoencoderKLWan`` URI only
+when you want another precision. ``--quantizer-map`` may name ``transformer``,
+``transformer_2``, ``text_encoder``, ``text_encoder_2``, or ``image_encoder``.
+It may not name ``vae``.
+
+``--transformer`` replaces the diffusion transformer, including a city96
+``.gguf`` file. The Diffusers repository still supplies the VAE and the UMT5
+text encoder. ``--wan-second-transformer`` does the same for the Wan 2.2
+low-noise expert. ``--text-encoders`` replaces UMT5. Use ``+`` to keep the
+checkpoint default, or ``null`` to skip a slot. ``--loras`` loads a Diffusers
+LoRA onto the transformer.
+
+``--model-sequential-offload``, ``--model-cpu-offload``, and
+``--model-group-offload`` are available. Sequential offload and model CPU
+offload move a GGUF or SDNQ transformer. Bitsandbytes 8-bit stays on the GPU
+where it was loaded, and bitsandbytes 4-bit stays on the GPU under sequential
+offload. Group offload streams the full-precision modules, such as the VAE and text
+encoder, and places a GGUF, SDNQ, or bitsandbytes transformer on the run
+device instead of streaming its packed weights.
+
+See `examples/wan/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan/gguf>`_
+and `examples/wan/lora/lora-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/lora/lora-config.dgen>`_.
+
+Configs are in `examples/wan <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan>`_,
+`examples/wan_animate <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan_animate>`_,
+and `examples/wan_animate_2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan_animate_2>`_.
