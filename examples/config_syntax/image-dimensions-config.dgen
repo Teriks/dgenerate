@@ -17,6 +17,13 @@
 \setp half_size scale_size("1024x768", 0.5)
 \print {{ half_size }}
 
+# Scale width and height independently with a tuple or "WxH" factors
+\setp wide scale_size("512x768", (2, 1))
+\print {{ wide }}
+
+\setp tall scale_size("512x768", "1x2")
+\print {{ tall }}
+
 # Typical loop pattern: double each source image's size
 {% for i in unquote("../media/*.jpg", expand=True) %}
     \setp sized scale_size("{{ i }}", 2)

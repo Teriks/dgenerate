@@ -426,7 +426,57 @@ def image_height(file: str) -> int:
         return img.height
 
 
-def scale_size(size: str | tuple, scale: float | int, format_size: bool = True) -> str | tuple:
+def _parse_scale_factors(scale: float | int | str | collections.abc.Sequence) -> tuple[float, float]:
+    """
+    Parse a uniform or per-axis scale into ``(scale_width, scale_height)``.
+    """
+    if isinstance(scale, bool):
+        raise _batchprocessor.BatchProcessError(
+            'Argument "scale" of scale_size must be a number, '
+            '"WxH" string, or a sequence of one or two numbers.')
+
+    if isinstance(scale, (int, float)):
+        value = float(scale)
+        return value, value
+
+    if isinstance(scale, str):
+        parts = [p.strip() for p in scale.lower().split('x')]
+        try:
+            if len(parts) == 1 and parts[0]:
+                value = float(parts[0])
+                return value, value
+            if len(parts) == 2 and parts[0] and parts[1]:
+                return float(parts[0]), float(parts[1])
+        except ValueError as e:
+            raise _batchprocessor.BatchProcessError(
+                'Argument "scale" of scale_size string must be a number '
+                'or WIDTHxHEIGHT factors such as "2x1.5".') from e
+        raise _batchprocessor.BatchProcessError(
+            'Argument "scale" of scale_size string must be a number '
+            'or WIDTHxHEIGHT factors such as "2x1.5".')
+
+    if isinstance(scale, collections.abc.Sequence):
+        try:
+            values = [float(v) for v in scale]
+        except (TypeError, ValueError) as e:
+            raise _batchprocessor.BatchProcessError(
+                'Argument "scale" of scale_size sequence must contain numbers.') from e
+        if len(values) == 1:
+            return values[0], values[0]
+        if len(values) == 2:
+            return values[0], values[1]
+        raise _batchprocessor.BatchProcessError(
+            'Argument "scale" of scale_size sequence must have 1 or 2 values.')
+
+    raise _batchprocessor.BatchProcessError(
+        'Argument "scale" of scale_size must be a number, '
+        '"WxH" string, or a sequence of one or two numbers.')
+
+
+def scale_size(
+        size: str | tuple,
+        scale: float | int | str | collections.abc.Sequence = 1,
+        format_size: bool = True) -> str | tuple:
     """
     Scale a dimension or an image file's dimensions by a factor.
 
@@ -434,20 +484,25 @@ def scale_size(size: str | tuple, scale: float | int, format_size: bool = True) 
     (512, 768), or a path to an image file on disk. If a string cannot be
     parsed as a dimension, it is treated as an image file path.
 
-    "scale" is applied to each dimension. Results are rounded to the nearest
-    integer and clamped to a minimum of 1.
+    "scale" may be:
+
+    * a single number applied to both width and height
+    * a ``(scale_width, scale_height)`` sequence for independent axes
+    * a ``"WxH"`` string of scale factors such as ``"2x1.5"``
+
+    Results are rounded to the nearest integer and clamped to a minimum of 1.
 
     Returns a WIDTHxHEIGHT string unless "format_size" is False, in which
     case a tuple of integers is returned.
 
     Examples: scale_size("512x512", 2) -> "1024x1024",
     scale_size((512, 768), 1.5) -> "768x1152",
+    scale_size("512x768", (2, 1)) -> "1024x768",
+    scale_size("512x768", "2x1.5") -> "1024x1152",
     scale_size("photo.png", 2) -> scaled dimensions of photo.png,
-    ``\\setp out_size scale_size("input.png", 2)``
+    ``\\setp out_size scale_size("input.png", (2, 1))``
     """
-    if isinstance(scale, bool) or not isinstance(scale, (int, float)):
-        raise _batchprocessor.BatchProcessError(
-            'Argument "scale" of scale_size must be a number.')
+    scale_w, scale_h = _parse_scale_factors(scale)
 
     if isinstance(size, tuple):
         dims = size
@@ -462,7 +517,14 @@ def scale_size(size: str | tuple, scale: float | int, format_size: bool = True) 
             'Unsupported type passed to scale_size.')
 
     try:
-        scaled = tuple(max(1, int(round(int(d) * float(scale)))) for d in dims)
+        if len(dims) == 1:
+            dims = (dims[0], dims[0])
+        if len(dims) != 2:
+            raise ValueError('expected 1 or 2 dimensions')
+        factors = (scale_w, scale_h)
+        scaled = tuple(
+            max(1, int(round(int(d) * float(f))))
+            for d, f in zip(dims, factors))
     except (TypeError, ValueError) as e:
         raise _batchprocessor.BatchProcessError(
             f'Invalid dimensions passed to scale_size: {e}') from e

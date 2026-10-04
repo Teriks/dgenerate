@@ -41,9 +41,21 @@ class TestConfigRunnerBuiltinsSize(unittest.TestCase):
     def test_scale_size_clamps_to_one(self):
         self.assertEqual(_builtins.scale_size('10x10', 0.01), '1x1')
 
+    def test_scale_size_independent_axes(self):
+        self.assertEqual(_builtins.scale_size('512x768', (2, 1)), '1024x768')
+        self.assertEqual(_builtins.scale_size('512x768', [2, 1.5]), '1024x1152')
+        self.assertEqual(_builtins.scale_size('512x768', '2x1.5'), '1024x1152')
+        self.assertEqual(
+            _builtins.scale_size(self.image_path, (2, 0.5), format_size=False),
+            (640, 120))
+
     def test_scale_size_rejects_bad_scale(self):
         with self.assertRaises(_batchprocessor.BatchProcessError):
-            _builtins.scale_size('512x512', 'nope')  # type: ignore[arg-type]
+            _builtins.scale_size('512x512', 'nope')
+        with self.assertRaises(_batchprocessor.BatchProcessError):
+            _builtins.scale_size('512x512', (2, 1, 1))
+        with self.assertRaises(_batchprocessor.BatchProcessError):
+            _builtins.scale_size('512x512', True)
 
     def test_configrunner_registers_functions(self):
         from dgenerate.batchprocess import ConfigRunner
