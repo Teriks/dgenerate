@@ -2607,6 +2607,46 @@ def get_pipeline_class(
     return pipeline_class
 
 
+# ``model_index.json`` entries that do not ship variant weight files.
+# ``from_pretrained`` only needs ``variant`` for modules it still has to load.
+_NON_WEIGHT_INDEX_CLASS_MARKERS = (
+    'Scheduler',
+    'Tokenizer',
+    'ImageProcessor',
+    'FeatureExtractor',
+    'Processor',
+)
+
+
+def _repo_pipeline_variant(variant, model_index, creation_kwargs):
+    """Drop ``variant`` once every weight module is already constructed.
+
+    Single-file loads read ``model_index.json`` from the vendored config tree so
+    a local safetensors file does not need the Hub. ``from_pretrained`` treats
+    that file's directory as the repo snapshot. The tree has configs only, so a
+    ``variant`` such as ``fp16`` makes diffusers reject it even though the UNet,
+    VAE, and text encoder were already loaded from the real weight files.
+    """
+    if not variant or not isinstance(model_index, dict):
+        return variant
+
+    for name, value in model_index.items():
+        if not isinstance(value, (list, tuple)) or len(value) < 2:
+            continue
+        library, class_name = value[0], value[1]
+        if library is None or class_name is None:
+            continue
+        if any(marker in str(class_name) for marker in _NON_WEIGHT_INDEX_CLASS_MARKERS):
+            continue
+        if name not in creation_kwargs:
+            return variant
+
+    _messages.debug_log(
+        f'Not passing variant={variant!r} to from_pretrained; '
+        'weight modules are already loaded and the config snapshot has no variant files.')
+    return None
+
+
 def _enforce_pipeline_cache_size(new_pipeline_size):
     _pipeline_cache.enforce_cpu_mem_constraints(
         _constants.PIPELINE_CACHE_MEMORY_CONSTRAINTS,
@@ -3663,7 +3703,7 @@ def _create_diffusion_pipeline(
                 model=model_path,
                 token=auth_token,
                 revision=revision,
-                variant=variant,
+                variant=_repo_pipeline_variant(variant, model_index, creation_kwargs),
                 torch_dtype=torch_dtype,
                 subfolder=subfolder,
                 local_files_only=local_files_only,
