@@ -5,8 +5,8 @@
 # frames with the blue-bird prompt. The seed is the opening still;
 # last-frame= is the closing still.
 
-\setp first "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/flf2v_input_first_frame.png"
-\setp last "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/flf2v_input_last_frame.png"
+\setp first_frame "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/flf2v_input_first_frame.png"
+\setp last_frame "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/flf2v_input_last_frame.png"
 \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
 
 Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
@@ -21,5 +21,5 @@ Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
 --video-lengths 5
 --animation-format mp4
 --output-path wan-flf
---image-seeds "{{ first }};last-frame={{ last }}"
+--image-seeds "{{ first_frame }};last-frame={{ last_frame }}"
 --prompts "CG animation style, a small blue bird takes off from the ground, flapping its wings. The bird's feathers are delicate, with a unique pattern on its chest. The background shows a blue sky with white clouds under bright sunshine. The camera follows the bird upward, capturing its flight and the vastness of the sky from a close-up, low-angle perspective.;{{ neg }}"
