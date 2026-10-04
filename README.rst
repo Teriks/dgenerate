@@ -38,7 +38,7 @@ Image Generation
 * Text to image, image to image, and inpainting
 * Diffusion-based image upscaling
 
-Video generation
+Video Generation
 ----------------
 
 * Generate a whole clip in one pipeline call with ``--model-type ltx`` (`Lightricks LTX-2.5 <https://huggingface.co/Lightricks/LTX-2.5-Diffusers>`_ and the earlier `LTX-Video <https://huggingface.co/Lightricks/LTX-Video>`_ checkpoints)
