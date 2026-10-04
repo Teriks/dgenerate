@@ -56,10 +56,10 @@ Help Output
                      [-rer CSV_INT [CSV_INT ...]] [-rme RAS_METRIC [RAS_METRIC ...]]
                      [-rst INTEGER [INTEGER ...]] [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]]
                      [-rsl INTEGER [INTEGER ...]] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]]
-                     [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco | -mgo]
-                     [-mqo2 | -mco2 | -mgo2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
-                     [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
-                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [-pagl LAYERS [LAYERS ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
+                     [-rpagl LAYERS [LAYERS ...]] [-mqo | -mco | -mgo] [-mqo2 | -mco2 | -mgo2]
+                     [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
+                     [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-sizes SIZE [SIZE ...]]
                      [--sdxl-target-sizes SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
@@ -1687,6 +1687,15 @@ Help Output
             One or more adaptive perturbed attention guidance scales to try. Specifying values enables PAG for
             the main model. (default: [0.0])
             --------------------------------
+      -pagl, --pag-applied-layers LAYERS [LAYERS ...]
+            Attention layers perturbed by PAG on the main model.
+            
+            One value is a comma-separated list of layer names applied together, for example "mid", "blocks.13",
+            or "mid,blocks.13". Several values are tried in turn. Layer names are matched by the diffusers PAG
+            pipeline and depend on the model architecture. Specifying values enables PAG for the main model.
+            
+            When omitted, the pipeline default is used: "mid" for SD and SDXL, "blocks.1" for SD3.
+            --------------------------------------------------------------------------------------
       -rpag, --sdxl-refiner-pag
             Use perturbed attention guidance in the SDXL refiner? This is supported for --model-type sdxl for
             most use cases. This enables PAG for the SDXL refiner model using default scale values.
@@ -1699,6 +1708,16 @@ Help Output
             One or more adaptive perturbed attention guidance scales to try with the SDXL refiner pass.
             Specifying values enables PAG for the refiner. (default: [0.0])
             ---------------------------------------------------------------
+      -rpagl, --sdxl-refiner-pag-applied-layers LAYERS [LAYERS ...]
+            Attention layers perturbed by PAG on the SDXL refiner.
+            
+            One value is a comma-separated list of layer names applied together, for example "mid" or
+            "mid,down_blocks.2". Several values are tried in turn. Specifying values enables PAG for the
+            refiner.
+            
+            When omitted, the refiner pipeline default "mid" is used. This does not follow --pag-applied-layers;
+            the refiner is a separate pipeline.
+            -----------------------------------
       -mqo, --model-sequential-offload
             Force sequential model offloading for the main pipeline, this may drastically reduce memory
             consumption and allow large models to run when they would otherwise not fit in your GPUs VRAM.
@@ -7875,19 +7894,14 @@ For instance, you can prevent Stable Diffusion 3 from loading and using the T5 e
     {% endif %}
     
     
-    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
-        \set optimization --quantizer bnb;bits=8
-    {% else %}
-        \set optimization --model-sequential-offload
-    {% endif %}
-    
     
     # Stable Diffusion 3 can run without using the T5 encoder
     # this is an example of disabling it entirely by using 
     # the value "null" in place of a text encoder URI
     
     https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors
-    --model-type sd3 {{ optimization }}
+    --model-type sd3 
+    --model-sequential-offload
     --variant fp16
     --dtype float16
     --inference-steps 30
@@ -9317,8 +9331,10 @@ these are the arguments that are available for use:
     ras-skip-num-step-length: int
     pag-scale: float
     pag-adaptive-scale: float
+    pag-applied-layers: [str, ...]
     sdxl-refiner-pag-scale: float
     sdxl-refiner-pag-adaptive-scale: float
+    sdxl-refiner-pag-applied-layers: [str, ...]
     image-guidance-scale: float
     guidance-rescale: float
     video-length: float
@@ -12856,6 +12872,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_pag_adaptive_scales"
             Type: collections.abc.Sequence[float] | None
             Value: []
+        Name: "last_pag_applied_layers"
+            Type: list[list[str]] | None
+            Value: None
         Name: "last_pag_scales"
             Type: collections.abc.Sequence[float] | None
             Value: []
@@ -13048,6 +13067,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_pag_adaptive_scales"
             Type: collections.abc.Sequence[float] | None
             Value: []
+        Name: "last_sdxl_refiner_pag_applied_layers"
+            Type: list[list[str]] | None
+            Value: None
         Name: "last_sdxl_refiner_pag_scales"
             Type: collections.abc.Sequence[float] | None
             Value: []
@@ -13125,7 +13147,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [96630919589757]
+            Value: [61571578841507]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

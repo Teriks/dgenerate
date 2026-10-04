@@ -499,6 +499,9 @@ def reconstruct_dgenerate_opts(
         if args.pag_adaptive_scale is not None:
             opts.append(('--pag-adaptive-scales', args.pag_adaptive_scale))
 
+    if args.pag_applied_layers:
+        opts.append(('--pag-applied-layers', ','.join(args.pag_applied_layers)))
+
     if args.sdxl_refiner_pag_scale == _constants.DEFAULT_SDXL_REFINER_PAG_SCALE and \
             args.sdxl_refiner_pag_adaptive_scale == _constants.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE:
         opts.append(('--sdxl-refiner-pag',))
@@ -507,6 +510,11 @@ def reconstruct_dgenerate_opts(
             opts.append(('--sdxl-refiner-pag-scales', args.sdxl_refiner_pag_scale))
         if args.sdxl_refiner_pag_adaptive_scale is not None:
             opts.append(('--sdxl-refiner-pag-adaptive-scales', args.sdxl_refiner_pag_adaptive_scale))
+
+    if args.sdxl_refiner_pag_applied_layers:
+        opts.append((
+            '--sdxl-refiner-pag-applied-layers',
+            ','.join(args.sdxl_refiner_pag_applied_layers)))
 
     if args.sdxl_high_noise_fraction is not None:
         opts.append(('--sdxl-high-noise-fractions', args.sdxl_high_noise_fraction))

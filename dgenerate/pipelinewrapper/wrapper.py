@@ -3969,10 +3969,55 @@ class DiffusionPipelineWrapper:
 
         return self._recall_secondary_pipeline()
 
+    def _default_pag_applied_layers(self, pipeline):
+        """Remember the layer list the pipeline was constructed with.
+
+        A cached pipeline is the same object. A later call that omits
+        ``--pag-applied-layers`` has to put this list back, or it keeps
+        whatever the previous call wrote.
+        """
+        if pipeline is None or not hasattr(pipeline, 'pag_applied_layers'):
+            return None
+        saved = getattr(pipeline, '_dgenerate_default_pag_applied_layers', None)
+        if saved is None:
+            saved = list(pipeline.pag_applied_layers)
+            pipeline._dgenerate_default_pag_applied_layers = saved
+        return saved
+
+    def _apply_pag_applied_layers(self, pipeline, layers, option='--pag-applied-layers'):
+        """Point an already loaded PAG pipeline at one layer set.
+
+        ``layers`` of ``None`` restores the constructor default. Preserves the
+        attention processors chosen when the pipeline was built. SD3 uses
+        joint-attention processors; the method default would replace them.
+        """
+        default_layers = self._default_pag_applied_layers(pipeline)
+        if not layers:
+            if not default_layers:
+                return
+            layers = default_layers
+        if pipeline is None or not hasattr(pipeline, 'set_pag_applied_layers'):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'{option} is not supported by the loaded pipeline.')
+
+        processors = getattr(pipeline, '_pag_attn_processors', None)
+        try:
+            if processors is None:
+                pipeline.set_pag_applied_layers(list(layers))
+            else:
+                pipeline.set_pag_applied_layers(
+                    list(layers), pag_attn_processors=processors)
+        except ValueError as e:
+            raise _pipelines.UnsupportedPipelineConfigError(str(e)) from e
+
     def _lazy_init_pipeline(self, args: DiffusionArguments):
 
-        pag = args.pag_scale is not None or args.pag_adaptive_scale is not None
-        sdxl_refiner_pag = args.sdxl_refiner_pag_scale is not None or args.sdxl_refiner_pag_adaptive_scale is not None
+        pag = (args.pag_scale is not None or args.pag_adaptive_scale is not None
+               or bool(args.pag_applied_layers))
+        sdxl_refiner_pag = (
+            args.sdxl_refiner_pag_scale is not None
+            or args.sdxl_refiner_pag_adaptive_scale is not None
+            or bool(args.sdxl_refiner_pag_applied_layers))
         pipeline_type = args.determine_pipeline_type()
 
         if self._pipeline is not None:
@@ -5142,6 +5187,11 @@ class DiffusionPipelineWrapper:
                                 copy_args.get_pipeline_wrapper_kwargs()))
 
         self._lazy_init_pipeline(copy_args)
+        self._apply_pag_applied_layers(self._pipeline, copy_args.pag_applied_layers)
+        self._apply_pag_applied_layers(
+            self._sdxl_refiner_pipeline,
+            copy_args.sdxl_refiner_pag_applied_layers,
+            option='--sdxl-refiner-pag-applied-layers')
 
         # this needs to happen even if a cached pipeline
         # was loaded, since the settings for scheduler
@@ -5155,21 +5205,28 @@ class DiffusionPipelineWrapper:
         self._auto_ras_check(copy_args)
 
         try:
-            if self.model_type == _enums.ModelType.S_CASCADE:
-                result = self._call_torch_s_cascade(
-                    pipeline_args=pipeline_args,
-                    user_args=copy_args)
-            elif _enums.model_type_is_flux(self.model_type):
-                result = self._call_torch_flux(pipeline_args=pipeline_args,
-                                               user_args=copy_args)
-            elif _enums.model_type_is_flow_image(self.model_type):
-                result = self._call_torch_flow_image(pipeline_args=pipeline_args,
-                                                     user_args=copy_args)
-            else:
-                result = self._call_torch(pipeline_args=pipeline_args,
-                                          user_args=copy_args)
-        except _DenoiseRangeError as e:
-            raise _pipelines.UnsupportedPipelineConfigError(e) from e
+            try:
+                if self.model_type == _enums.ModelType.S_CASCADE:
+                    result = self._call_torch_s_cascade(
+                        pipeline_args=pipeline_args,
+                        user_args=copy_args)
+                elif _enums.model_type_is_flux(self.model_type):
+                    result = self._call_torch_flux(pipeline_args=pipeline_args,
+                                                   user_args=copy_args)
+                elif _enums.model_type_is_flow_image(self.model_type):
+                    result = self._call_torch_flow_image(pipeline_args=pipeline_args,
+                                                         user_args=copy_args)
+                else:
+                    result = self._call_torch(pipeline_args=pipeline_args,
+                                              user_args=copy_args)
+            except _DenoiseRangeError as e:
+                raise _pipelines.UnsupportedPipelineConfigError(e) from e
+        finally:
+            self._apply_pag_applied_layers(self._pipeline, None)
+            self._apply_pag_applied_layers(
+                self._sdxl_refiner_pipeline,
+                None,
+                option='--sdxl-refiner-pag-applied-layers')
 
         DiffusionPipelineWrapper.__LAST_RECALL_PIPELINE = self._recall_main_pipeline
         DiffusionPipelineWrapper.__LAST_RECALL_SECONDARY_PIPELINE = self._recall_secondary_pipeline

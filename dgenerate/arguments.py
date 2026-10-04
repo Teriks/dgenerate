@@ -273,6 +273,13 @@ def _type_segment_frames(val):
     return frames
 
 
+def _type_pag_applied_layers(val):
+    parts = [part.strip() for part in str(val).split(',') if part.strip()]
+    if not parts:
+        raise argparse.ArgumentTypeError('PAG applied layers cannot be empty')
+    return parts
+
+
 def _type_stg_blocks(val):
     parts = [part.strip() for part in str(val).split(',') if part.strip()]
     if not parts:
@@ -3241,6 +3248,23 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-pagl', '--pag-applied-layers', nargs='+', action='store',
+            type=_type_pag_applied_layers, default=None, metavar='LAYERS',
+            help="""Attention layers perturbed by PAG on the main model.
+
+            One value is a comma-separated list of layer names applied together,
+            for example "mid", "blocks.13", or "mid,blocks.13". Several values
+            are tried in turn. Layer names are matched by the diffusers PAG
+            pipeline and depend on the model architecture. Specifying values
+            enables PAG for the main model.
+
+            When omitted, the pipeline default is used: "mid" for SD and SDXL,
+            "blocks.1" for SD3."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-rpag', '--sdxl-refiner-pag', action='store_true', default=None,
             help=f"""Use perturbed attention guidance in the SDXL refiner? 
             This is supported for --model-type sdxl for most use cases.
@@ -3266,6 +3290,22 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help=f"""One or more adaptive perturbed attention guidance scales to try
             with the SDXL refiner pass. Specifying values enables PAG for the refiner.
             (default: [0.0])"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-rpagl', '--sdxl-refiner-pag-applied-layers', nargs='+', action='store',
+            type=_type_pag_applied_layers, default=None, metavar='LAYERS',
+            help="""Attention layers perturbed by PAG on the SDXL refiner.
+
+            One value is a comma-separated list of layer names applied together,
+            for example "mid" or "mid,down_blocks.2". Several values are tried
+            in turn. Specifying values enables PAG for the refiner.
+
+            When omitted, the refiner pipeline default "mid" is used.
+            This does not follow --pag-applied-layers; the refiner is a
+            separate pipeline."""
         )
     )
 

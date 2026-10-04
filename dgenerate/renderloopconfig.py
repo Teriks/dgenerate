@@ -1559,6 +1559,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     corresponds to the ``--pag-adaptive-scales`` argument of the dgenerate command line tool.
     """
 
+    pag_applied_layers: list[list[str]] | None = None
+    """
+    PAG attention layer sets for the main model. Each entry is one set of layer
+    names applied together. Corresponds to ``--pag-applied-layers``.
+    """
+
     sdxl_refiner_pag: _types.OptionalBoolean = None
     """
     Use perturbed attention guidance in the SDXL refiner?
@@ -1574,6 +1580,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     List of floating point adaptive perturbed attention guidance scales to try with the SDXL refiner, 
     this corresponds to the ``--sdxl-refiner-pag-adaptive-scales`` argument of the dgenerate command line tool.
+    """
+
+    sdxl_refiner_pag_applied_layers: list[list[str]] | None = None
+    """
+    PAG attention layer sets for the SDXL refiner. Each entry is one set of layer
+    names applied together. Corresponds to ``--sdxl-refiner-pag-applied-layers``.
     """
 
     second_model_scheduler_uri: _types.OptionalUriOrUris = None
@@ -2722,6 +2734,11 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _configure_pag_defaults(self):
         """Configure PAG default values if needed."""
+        if self.pag_applied_layers:
+            self.pag = True
+        if self.sdxl_refiner_pag_applied_layers:
+            self.sdxl_refiner_pag = True
+
         if self.pag:
             if not (self.pag_scales or self.pag_adaptive_scales):
                 self.pag_scales = [_pipelinewrapper.constants.DEFAULT_PAG_SCALE]
@@ -3132,6 +3149,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             ('pag', self.pag),
             ('pag_scales', self.pag_scales),
             ('pag_adaptive_scales', self.pag_adaptive_scales),
+            ('pag_applied_layers', self.pag_applied_layers),
             ('hi_diffusion', self.hi_diffusion),
             ('tea_cache', self.tea_cache),
             ('deep_cache', self.deep_cache),
@@ -3389,6 +3407,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             ('pag', self.pag),
             ('pag_scales', self.pag_scales),
             ('pag_adaptive_scales', self.pag_adaptive_scales),
+            ('pag_applied_layers', self.pag_applied_layers),
             ('sdxl_refiner_uri', self.sdxl_refiner_uri),
         )
         for name, value in rejected:
@@ -4195,8 +4214,10 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_negative_crops_coords_top_left,
             self.pag_scales,
             self.pag_adaptive_scales,
+            self.pag_applied_layers,
             self.sdxl_refiner_pag_scales,
             self.sdxl_refiner_pag_adaptive_scales,
+            self.sdxl_refiner_pag_applied_layers,
             self.second_model_inference_steps,
             self.second_model_guidance_scales,
             self.sdxl_refiner_guidance_rescales,
@@ -4490,6 +4511,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                                                      self.sdxl_refiner_deep_cache_branch_ids),
                 pag_scale=ov('pag_scale', self.pag_scales),
                 pag_adaptive_scale=ov('pag_adaptive_scale', self.pag_adaptive_scales),
+                pag_applied_layers=ov('pag_applied_layers', self.pag_applied_layers),
                 image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
                 guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
                 sigmas=ov('sigmas', self.sigmas),
@@ -4541,6 +4563,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 sdxl_refiner_pag_scale=ov('sdxl_refiner_pag_scale', self.sdxl_refiner_pag_scales),
                 sdxl_refiner_pag_adaptive_scale=ov('sdxl_refiner_pag_adaptive_scale',
                                                    self.sdxl_refiner_pag_adaptive_scales),
+                sdxl_refiner_pag_applied_layers=ov(
+                    'sdxl_refiner_pag_applied_layers', self.sdxl_refiner_pag_applied_layers),
                 sdxl_refiner_guidance_rescale=ov('sdxl_refiner_guidance_rescale',
                                                  self.sdxl_refiner_guidance_rescales),
                 upscaler_noise_level=ov('upscaler_noise_level', self.upscaler_noise_levels),

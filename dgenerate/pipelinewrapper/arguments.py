@@ -1043,6 +1043,11 @@ class DiffusionArguments(_types.SetFromMixin):
     Adaptive perturbed attention guidance scale.
     """
 
+    pag_applied_layers: _types.OptionalStrings = None
+    """
+    Attention layer names perturbed together by PAG on the main model.
+    """
+
     sdxl_refiner_pag_scale: _types.OptionalFloat = None
     """
     Perturbed attention guidance scale for the SDXL refiner.
@@ -1051,6 +1056,11 @@ class DiffusionArguments(_types.SetFromMixin):
     sdxl_refiner_pag_adaptive_scale: _types.OptionalFloat = None
     """
     Adaptive perturbed attention guidance scale for the SDXL refiner.
+    """
+
+    sdxl_refiner_pag_applied_layers: _types.OptionalStrings = None
+    """
+    Attention layer names perturbed together by PAG on the SDXL refiner.
     """
 
     image_guidance_scale: _types.OptionalFloat = None
@@ -1721,6 +1731,11 @@ class DiffusionArguments(_types.SetFromMixin):
                 return f"s1={params[0]}, s2={params[1]}, b1={params[2]}, b2={params[3]}"
             return None
 
+        def format_pag_layers(layers):
+            if layers:
+                return ', '.join(layers)
+            return None
+
         def format_size(size: tuple):
             if size is not None:
                 return _textprocessing.format_size(size)
@@ -1744,6 +1759,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.sdxl_t2i_adapter_factor, "SDXL T2I Adapter Factor:"),
             (self.sdxl_refiner_pag_scale, 'SDXL Refiner PAG Scale:'),
             (self.sdxl_refiner_pag_adaptive_scale, 'SDXL Refiner PAG Adaptive Scale:'),
+            (format_pag_layers(self.sdxl_refiner_pag_applied_layers),
+             'SDXL Refiner PAG Applied Layers:'),
             (self.sdxl_refiner_guidance_rescale, "SDXL Refiner Guidance Rescale:"),
             (self.sdxl_refiner_sigmas, "SDXL Refiner Sigmas:"),
             (self.sdxl_aesthetic_score, "SDXL Aesthetic Score:"),
@@ -1765,6 +1782,7 @@ class DiffusionArguments(_types.SetFromMixin):
              "SDXL Refiner Negative Top Left Crop Coords:"),
             (self.pag_scale, "PAG Scale:"),
             (self.pag_adaptive_scale, "PAG Adaptive Scale:"),
+            (format_pag_layers(self.pag_applied_layers), "PAG Applied Layers:"),
             (self.guidance_scale, "Guidance Scale:"),
             (self.sigmas, "Sigmas:"),
             (self.tea_cache_rel_l1_threshold, "TeaCache Relative L1 Threshold:"),
