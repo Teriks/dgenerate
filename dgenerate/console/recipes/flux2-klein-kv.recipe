@@ -1,5 +1,5 @@
 title: Flux.2 Klein KV
-order: 24
+order: 33
 
 # Gated. Reference images are --image-seeds with no mask and no strength.
 # This pipeline has no guidance scale.

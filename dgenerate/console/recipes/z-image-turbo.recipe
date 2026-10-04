@@ -1,5 +1,5 @@
 title: Z-Image (Turbo)
-order: 23
+order: 32
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Tongyi-MAI/Z-Image-Turbo", "optional":false, "file-types":["models"]}]
 --model-type z-image

@@ -1,5 +1,5 @@
 title: Qwen-Image Edit (GGUF)
-order: 25
+order: 34
 
 # The image seed is required. A mask selects edit-inpaint.
 # Strength applies only to inpaint.

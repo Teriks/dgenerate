@@ -1,5 +1,5 @@
 title: Z-Image (ControlNet)
-order: 23
+order: 32
 
 # Text-to-image union. Inpaint needs the 2.0 file instead, and no image seed strength.
 

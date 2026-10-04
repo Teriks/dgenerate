@@ -28,6 +28,7 @@ import typing
 
 import dgenerate.console.formentries as _formentries
 import dgenerate.console.resources as _resources
+import dgenerate.console.textentry as _t_entry
 import dgenerate.console.util as _util
 from dgenerate.console.mousewheelbind import bind_mousewheel, handle_canvas_scroll, un_bind_mousewheel
 from dgenerate.console.combobox import ComboBox
@@ -108,10 +109,15 @@ class _RecipesForm(tk.Toplevel):
 
         self._templates = None
         self._dropdown = None
+        self._filter_entry = None
+        self._filter_frame = None
+        self._filter_toggle = None
+        self._filter_visible = False
         self._templates_dict: dict[str, str] = _resources.get_recipes()
         self._template_names: list[str] = list(_resources.get_recipes().keys())
 
         self._current_template = tk.StringVar(value=self._template_names[0])
+        self._filter_var = tk.StringVar()
         self._entries: list[_formentries._Entry] = []
         self._content: typing.Optional[str] = None
 
@@ -160,10 +166,112 @@ class _RecipesForm(tk.Toplevel):
                 self._insert(value)
             self.destroy()
 
+    def _filtered_template_names(self) -> list[str]:
+        query = self._filter_var.get().strip().lower()
+        if not query:
+            return list(self._template_names)
+        return [name for name in self._template_names if query in name.lower()]
+
+    def _filter_query(self) -> str:
+        return self._filter_var.get().strip()
+
+    def _update_filter_toggle_label(self) -> None:
+        if self._filter_toggle is None:
+            return
+
+        query = self._filter_query()
+        if self._filter_visible:
+            self._filter_toggle.configure(text='Hide Filter')
+        elif query:
+            display = query if len(query) <= 14 else query[:13] + '…'
+            self._filter_toggle.configure(text=f'Filter: {display}')
+        else:
+            self._filter_toggle.configure(text='Filter')
+
+    def _set_filter_visible(self, visible: bool) -> None:
+        if self._filter_frame is None:
+            return
+
+        self._filter_visible = visible
+        if visible:
+            self._filter_frame.grid()
+            self._filter_entry.focus_set()
+            self._filter_entry.icursor(tk.END)
+        else:
+            self._filter_frame.grid_remove()
+            if self._filter_query():
+                self._filter_var.set('')
+        self._update_filter_toggle_label()
+
+    def _toggle_filter(self) -> None:
+        self._set_filter_visible(not self._filter_visible)
+
+    def _on_filter_escape(self, _event=None):
+        if self._filter_query():
+            self._filter_var.set('')
+        else:
+            self._set_filter_visible(False)
+        return 'break'
+
+    def _on_filter_shortcut(self, _event=None):
+        self._set_filter_visible(True)
+        return 'break'
+
+    def _apply_recipe_filter(self, *_args) -> None:
+        if self._dropdown is None:
+            return
+
+        filtered = self._filtered_template_names()
+        self._dropdown['values'] = filtered
+
+        current = self._current_template.get()
+        if filtered and current not in filtered:
+            self._current_template.set(filtered[0])
+            self._update_form(filtered[0])
+
+        self._update_filter_toggle_label()
+
     def _create_scrollable_form(self) -> None:
         """Create a scrollable form for the template entries."""
+        self._filter_frame = tk.Frame(self)
+        self._filter_frame.grid(row=0, column=0, columnspan=2, sticky='ew', padx=5, pady=(5, 0))
+        self._filter_frame.grid_columnconfigure(1, weight=1)
+
+        tk.Label(self._filter_frame, text='Filter').grid(row=0, column=0, sticky='w')
+        self._filter_entry = _t_entry.TextEntry(self._filter_frame, textvariable=self._filter_var)
+        self._filter_entry.grid(row=0, column=1, sticky='ew', padx=(5, 0))
+        self._filter_var.trace_add('write', self._apply_recipe_filter)
+        self._filter_entry.bind('<Escape>', self._on_filter_escape)
+        self._filter_frame.grid_remove()
+
+        recipe_row = tk.Frame(self)
+        recipe_row.grid(row=1, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
+        recipe_row.grid_columnconfigure(0, weight=1)
+
+        self._dropdown = ComboBox(
+            recipe_row,
+            textvariable=self._current_template,
+            values=self._template_names
+        )
+        self._dropdown.bind(
+            '<<ComboboxSelected>>',
+            lambda e: self._update_form(self._current_template.get())
+        )
+        self._dropdown.grid(row=0, column=0, sticky='ew')
+
+        self._filter_toggle = ttk.Button(
+            recipe_row,
+            text='Filter',
+            command=self._toggle_filter,
+            width=14,
+        )
+        self._filter_toggle.grid(row=0, column=1, sticky='e', padx=(5, 0))
+
+        self.bind('<Control-f>', self._on_filter_shortcut)
+        self.bind('<Control-F>', self._on_filter_shortcut)
+
         outer_frame = tk.Frame(self, bd=3, relief="sunken")
-        outer_frame.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+        outer_frame.grid(row=2, column=0, sticky='nsew', padx=5, pady=5)
 
         self.canvas = tk.Canvas(outer_frame, highlightthickness=0)
         self.scrollbar = tk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
@@ -185,28 +293,16 @@ class _RecipesForm(tk.Toplevel):
         outer_frame.grid_rowconfigure(0, weight=1)
         outer_frame.grid_columnconfigure(0, weight=1)
 
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
         self.bind("<Configure>", self._on_resize)
-
-        self._dropdown = ComboBox(
-            self,
-            textvariable=self._current_template,
-            values=self._template_names
-        )
-
-        self._dropdown.bind(
-            '<<ComboboxSelected>>',
-            lambda e: self._update_form(self._current_template.get())
-        )
-
-        self._dropdown.grid(row=0, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
 
         # Bind mouse wheel events
         self.bind_mousewheel()
 
         self._update_form(self._current_template.get())
+        self._update_filter_toggle_label()
 
     def bind_mousewheel(self):
         bind_mousewheel(self.canvas.bind_all, self._on_mouse_wheel)
