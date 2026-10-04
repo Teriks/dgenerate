@@ -804,14 +804,15 @@ def check_config(text: str) -> dict:
             return image_height(file)
         return 512
 
-    def placeholder_scale_size(size: str | tuple, scale: float | int, format_size: bool = True):
+    def placeholder_scale_size(size: str | tuple, scale=1, format_size: bool = True):
         try:
             return scale_size(size, scale, format_size)
         except Exception:
             if isinstance(size, str) and not os.path.exists(size):
-                scaled = (max(1, int(round(512 * float(scale)))),
-                          max(1, int(round(512 * float(scale)))))
-                return scaled if not format_size else f'{scaled[0]}x{scaled[1]}'
+                try:
+                    return scale_size((512, 512), scale, format_size)
+                except Exception:
+                    return (512, 512) if not format_size else '512x512'
             raise
 
     runner.template_functions['image_size'] = placeholder_image_size
