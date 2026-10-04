@@ -237,6 +237,8 @@ class VAEUri:
             :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny`
         """
         def cache_all(e):
+            if isinstance(e, _d_exceptions.ModelNotFoundError):
+                raise
             raise _exceptions.VAEUriLoadError(
                 f'error loading vae "{self.model}": {e}') from e
 
@@ -366,14 +368,22 @@ class VAEUri:
 
             self._enforce_cache_size(estimated_memory_use)
 
-            vae = encoder.from_pretrained(
-                model_path,
-                revision=self.revision,
-                variant=self.variant,
-                torch_dtype=torch_dtype,
-                subfolder=self.subfolder,
-                token=use_auth_token,
-                local_files_only=local_files_only)
+            try:
+                vae = encoder.from_pretrained(
+                    model_path,
+                    revision=self.revision,
+                    variant=self.variant,
+                    torch_dtype=torch_dtype,
+                    subfolder=self.subfolder,
+                    token=use_auth_token,
+                    local_files_only=local_files_only)
+            except OSError as e:
+                # Diffusers reports a missing ``variant`` weight file as an OSError
+                # after the Hub 404, for example ``diffusion_pytorch_model.fp16.bin``.
+                # ``ModelNotFoundError`` lets the pipeline loader retry without the variant.
+                if self.variant and 'does not appear to have a file named' in str(e):
+                    raise _d_exceptions.ModelNotFoundError(e) from e
+                raise
 
         _messages.debug_log('Estimated Torch VAE Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
