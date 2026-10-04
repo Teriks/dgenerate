@@ -108,6 +108,7 @@ try:
     import dgenerate._patches.transformers_dynamiccache_patch
     import dgenerate._patches.transformers_clip_text_model_patch
     import dgenerate._patches.tqdm_huggingface_hub_patch
+    import dgenerate._patches.hfhub_xet_progress_patch
     import dgenerate._patches.hfhub_local_entry_missing_message_patch
     import dgenerate._patches.diffusers_local_files_only_patch
     import dgenerate._patches.diffusers_single_file_config_patch
