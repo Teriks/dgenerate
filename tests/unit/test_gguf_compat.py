@@ -146,6 +146,23 @@ class TestGGUFCompat(unittest.TestCase):
         })
         self.assertEqual(i2v_with_attn.kind, 'wan-i2v-14B')
 
+        flf = _ggufcompat.detect_gguf_layout({
+            'head.modulation': (5120,),
+            'patch_embedding.weight': (5120, 36, 2, 2),
+            'img_emb.emb_pos': (1, 514, 1280),
+        })
+        self.assertEqual(flf.kind, 'wan-flf2v-14B')
+        self.assertEqual(flf.config_repo, 'Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers')
+        self.assertTrue(flf.adapt)
+
+        flf_comfy = _ggufcompat.detect_gguf_layout({
+            'model.diffusion_model.head.modulation': (5120,),
+            'model.diffusion_model.patch_embedding.weight': (5120, 36, 2, 2),
+            'model.diffusion_model.img_emb.emb_pos': (1, 514, 1280),
+        })
+        self.assertEqual(flf_comfy.kind, 'wan-flf2v-14B')
+        self.assertTrue(flf_comfy.comfy)
+
         animate2_comfy = _ggufcompat.detect_gguf_layout({
             'model.diffusion_model.head.modulation': (5120,),
             'model.diffusion_model.patch_embedding.weight': (5120, 36, 1, 2, 2),
@@ -153,6 +170,25 @@ class TestGGUFCompat(unittest.TestCase):
         })
         self.assertEqual(animate2_comfy.kind, 'wan-animate-2-14B')
         self.assertTrue(animate2_comfy.comfy)
+
+    def test_wan_flf_maps_emb_pos(self):
+        table = torch.arange(514 * 1280, dtype=torch.float32).reshape(1, 514, 1280)
+        adapted = _ggufcompat.adapt_wan_flf_checkpoint({
+            'img_emb.emb_pos': table,
+            'patch_embedding.weight': torch.zeros(1),
+        })
+        self.assertNotIn('img_emb.emb_pos', adapted)
+        mapped = adapted['condition_embedder.image_embedder.pos_embed']
+        self.assertEqual(tuple(mapped.shape), (1, 514, 1280))
+        self.assertTrue(torch.equal(mapped, table))
+
+        flat = torch.arange(514 * 1280, dtype=torch.float32).reshape(514, 1280)
+        comfy = _ggufcompat.adapt_wan_flf_checkpoint({
+            'model.diffusion_model.img_emb.emb_pos': flat,
+        })
+        mapped = comfy['condition_embedder.image_embedder.pos_embed']
+        self.assertEqual(tuple(mapped.shape), (1, 514, 1280))
+        self.assertTrue(torch.equal(mapped.reshape(514, 1280), flat))
 
     def test_wan_animate_dequantizes_linear1_kv(self):
         import gguf

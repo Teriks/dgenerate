@@ -172,6 +172,15 @@ def _detect_wan_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
         return GGUFLayout(
             'wan-animate-2-14B', 'Wan-AI/Wan2.2-Animate-2-14B-Diffusers',
             comfy=comfy, adapt=False)
+    # FLF2V adds img_emb.emb_pos. Diffusers names it pos_embed and leaves the
+    # original key unloaded, so the parameter stays a meta tensor.
+    if _has(shapes, 'img_emb.emb_pos',
+            _COMFY_PREFIX + 'img_emb.emb_pos',
+            'condition_embedder.image_embedder.pos_embed',
+            _COMFY_PREFIX + 'condition_embedder.image_embedder.pos_embed'):
+        return GGUFLayout(
+            'wan-flf2v-14B', 'Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers',
+            comfy=comfy, adapt=True)
     patch = _lookup_shape(
         shapes, 'patch_embedding.weight',
         _COMFY_PREFIX + 'patch_embedding.weight')
@@ -336,6 +345,66 @@ def adapt_wan_animate_checkpoint(checkpoint: dict) -> dict:
         key: _slicable_tensor(value) if _wan_animate_hostile_key(key) else value
         for key, value in checkpoint.items()
     }
+
+
+_WAN_FLF_POS_EMBED = 'condition_embedder.image_embedder.pos_embed'
+_WAN_FLF_POS_SOURCE = 'img_emb.emb_pos'
+_WAN_FLF_POS_SHAPE = (1, 514, 1280)
+
+
+def _wan_checkpoint_needs_convert(keys) -> bool:
+    """Original Wan names still need convert_wan_transformer_to_diffusers."""
+    for key in keys:
+        if (key.startswith('img_emb.') or key.startswith('time_embedding.')
+                or '.self_attn.' in key or '.cross_attn.' in key):
+            return True
+    return False
+
+
+def _materialize_wan_pos_embed(param):
+    """
+    Plain ``(1, 514, 1280)`` table for ``image_embedder.pos_embed``.
+
+    The original checkpoint stores this as ``img_emb.emb_pos``. A packed
+    GGUFParameter cannot be copied onto the meta parameter.
+    """
+    if _is_gguf_parameter(param):
+        tensor = _gguf_float_tensor(param)
+    elif isinstance(param, torch.Tensor):
+        tensor = param.detach().contiguous()
+    else:
+        return param
+    current = _shape(tensor.shape)
+    target = _WAN_FLF_POS_SHAPE
+    if current == target:
+        return tensor
+    if current == (target[2], target[1]):
+        return tensor.transpose(0, 1).reshape(target).contiguous()
+    if current == target[1:]:
+        return tensor.reshape(target)
+    if current == (target[0], target[2], target[1]):
+        return tensor.transpose(1, 2).contiguous()
+    if tensor.numel() == math.prod(target):
+        return tensor.reshape(target).contiguous()
+    return tensor
+
+
+def adapt_wan_flf_checkpoint(checkpoint: dict) -> dict:
+    """Map ``img_emb.emb_pos`` onto the Diffusers first-last image embedding."""
+    checkpoint = _strip_comfy_prefix(dict(checkpoint))
+    if _wan_checkpoint_needs_convert(checkpoint):
+        from diffusers.loaders.single_file_utils import convert_wan_transformer_to_diffusers
+        checkpoint = convert_wan_transformer_to_diffusers(checkpoint)
+    source = checkpoint.pop(_WAN_FLF_POS_SOURCE, None)
+    if source is None:
+        source = checkpoint.get(_WAN_FLF_POS_EMBED)
+    if source is None:
+        return checkpoint
+    checkpoint[_WAN_FLF_POS_EMBED] = _materialize_wan_pos_embed(source)
+    _messages.debug_log(
+        'Mapped Wan FLF2V img_emb.emb_pos onto '
+        f'{_WAN_FLF_POS_EMBED} {_WAN_FLF_POS_SHAPE}.')
+    return checkpoint
 
 
 def adapt_qwen_checkpoint(checkpoint: dict) -> dict:
@@ -567,4 +636,6 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
         return adapt_qwen_layered_checkpoint(checkpoint), config, subfolder, False
     if layout.kind == 'wan-animate-14B':
         return adapt_wan_animate_checkpoint(checkpoint), config, subfolder, False
+    if layout.kind == 'wan-flf2v-14B':
+        return adapt_wan_flf_checkpoint(checkpoint), config, subfolder, True
     return None, config, subfolder, False
