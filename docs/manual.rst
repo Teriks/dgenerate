@@ -7830,11 +7830,12 @@ repository on huggingface.
     {% endif %}
     
     
-    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
-        \set optimization --quantizer bnb;bits=8
-    {% else %}
-        \set optimization --model-sequential-offload
-    {% endif %}
+    # "+" loads the CLIP encoders from this single-file checkpoint.
+    # A global --quantizer cannot be applied to those defaults.
+    # Sequential offload is used instead. To quantize, specify each
+    # text encoder explicitly with --text-encoders.
+    
+    \set optimization --model-sequential-offload
     
     
     # This is an example of individually specifying text encoders
