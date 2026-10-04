@@ -1,11 +1,13 @@
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import diffusers
 
+import dgenerate.exceptions
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.uris.vaeuri as _vaeuri
-from dgenerate.pipelinewrapper.uris.exceptions import InvalidVaeUriError
+from dgenerate.pipelinewrapper.uris.exceptions import InvalidVaeUriError, VAEUriLoadError
 
 
 class TestVAEUri(unittest.TestCase):
@@ -189,6 +191,48 @@ class TestVAEUri(unittest.TestCase):
         self._roundtrip_load(
             'AutoencoderKLQwenImage',
             diffusers.AutoencoderKLQwenImage.from_config(config))
+
+    def test_missing_variant_weight_file_is_model_not_found(self):
+        uri = _vaeuri.VAEUri(
+            encoder='AutoencoderKL',
+            model='stabilityai/stable-diffusion-3.5-large',
+            subfolder='vae',
+            variant='fp16',
+            dtype='float16')
+
+        def missing_variant(*args, **kwargs):
+            raise OSError(
+                'stabilityai/stable-diffusion-3.5-large does not appear to have a file named '
+                'diffusion_pytorch_model.fp16.bin.')
+
+        with patch.object(diffusers.AutoencoderKL, 'from_pretrained', missing_variant), \
+                patch.object(
+                    _vaeuri._pipelinewrapper_util,
+                    'estimate_model_memory_use',
+                    return_value=0), \
+                patch.object(_vaeuri.VAEUri, '_enforce_cache_size'):
+            with self.assertRaises(dgenerate.exceptions.ModelNotFoundError):
+                uri.load(no_cache=True)
+
+    def test_other_vae_load_errors_stay_vae_uri_errors(self):
+        uri = _vaeuri.VAEUri(
+            encoder='AutoencoderKL',
+            model='stabilityai/stable-diffusion-3.5-large',
+            subfolder='vae',
+            variant='fp16',
+            dtype='float16')
+
+        def broken(*args, **kwargs):
+            raise OSError('weights failed to deserialize')
+
+        with patch.object(diffusers.AutoencoderKL, 'from_pretrained', broken), \
+                patch.object(
+                    _vaeuri._pipelinewrapper_util,
+                    'estimate_model_memory_use',
+                    return_value=0), \
+                patch.object(_vaeuri.VAEUri, '_enforce_cache_size'):
+            with self.assertRaises(VAEUriLoadError):
+                uri.load(no_cache=True)
 
 
 if __name__ == '__main__':

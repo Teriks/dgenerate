@@ -3369,8 +3369,11 @@ def _create_diffusion_pipeline(
                             dtype=dtype
                         ))
                 except _d_exceptions.ModelNotFoundError:
-                    if vae_extract_from_checkpoint:
+                    if vae_extract_from_checkpoint or not variant:
                         raise
+                    _messages.debug_log(
+                        f'VAE variant {variant!r} is not published for "{model_path}"; '
+                        'loading the default VAE weights.')
                     creation_kwargs['vae'] = \
                         load_vae(_uris.VAEUri(
                             encoder=vae_encoder_name,
