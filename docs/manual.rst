@@ -1119,9 +1119,13 @@ Help Output
             When using --quantizer, you can use this argument to specify exactly which sub-modules undergo
             quantization.
             
-            Accepted values are: "unet", "transformer", "text_encoder", "text_encoder_2", "text_encoder_3",
-            "controlnet", "connectors"
-            --------------------------
+            Accepted values are: "unet", "transformer", "transformer_2", "text_encoder", "text_encoder_2",
+            "text_encoder_3", "image_encoder", "controlnet", "connectors".
+            
+            Video models also accept the subset that applies to their checkpoint (for example Wan MoE
+            ``transformer_2`` and I2V ``image_encoder``, or LTX-2 ``connectors``). Wan rejects ``vae``
+            separately because AutoencoderKLWan stays float32.
+            --------------------------------------------------
       -q2, --second-model-quantizer QUANTIZER_URI
             Global quantization configuration via URI for the secondary model, such as the SDXL Refiner or
             Stable Cascade decoder. See: --quantizer for syntax examples.
@@ -5028,7 +5032,10 @@ Supported Model Types:
 
 - Stable Diffusion 1.5/2.x models (use ``latents: ...`` or ``latents= ...`` syntax)
 - Stable Diffusion 3 models (use ``latents: ...`` or ``latents= ...`` syntax)
-- Flux models (use ``latents: ...`` or ``latents= ...`` syntax)
+- Flux.1 models (use ``latents: ...`` or ``latents= ...`` syntax)
+- Flux.2 models (use ``latents: ...`` or ``latents= ...`` syntax)
+- Qwen-Image models (use ``latents: ...`` or ``latents= ...`` syntax; not Layered)
+- Z-Image models (use ``latents: ...`` or ``latents= ...`` syntax)
 - SDXL / Kolors models (use direct img2img latents input, no special syntax)
 
 Latents Input Syntax
@@ -5050,7 +5057,8 @@ Note for SDXL: SDXL models do not use the ``latents: ...`` syntax (or ``latents=
 cooperative denoising. Instead, SDXL takes latent tensors directly through the standard img2img slot
 without special syntax.
 
-Both SD3 and Flux models use the ``latents:`` syntax similar to SD 1.5/2.x models.
+SD3, Flux.1, Flux.2, Qwen-Image, and Z-Image use the ``latents:`` syntax
+similar to SD 1.5/2.x models.
 
 Combined Image and Latents Input:
 
@@ -5103,7 +5111,8 @@ Cooperative denoising is a technique where the diffusion process is split betwee
 with each model handling a specific portion of the denoising steps. This is accomplished using
 the ``--denoising-start`` and ``--denoising-end`` arguments in combination with latents interchange.
 
-This is supported for SD1.5/2.x (with certain schedulers), SDXL, Kolors, SD3, and Flux models.
+This is supported for SD1.5/2.x (with certain schedulers), SDXL, Kolors, SD3,
+Flux.1, Flux.2, Qwen-Image (not Layered), and Z-Image models.
 
 The process works as follows:
 
@@ -5275,7 +5284,7 @@ Stable Diffusion 3 Cooperative Denoising:
     --denoising-start {{ high_noise_fraction }}
     --prompts "clouds in the sky on a sunny day"
 
-Flux Cooperative Denoising:
+Flux.1 Cooperative Denoising:
 
 .. code-block:: jinja
 
@@ -5326,6 +5335,182 @@ Flux Cooperative Denoising:
     --dtype bfloat16
     --inference-steps 50
     --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path cooperative
+    --image-seeds "latents: {{ quote(last_images) }}"
+    --denoising-start {{ high_noise_fraction }}
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+Flux.2 Cooperative Denoising:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Full Flux.2 cooperative denoising via latents: interchange.
+    # Klein checkpoints also work; their latent output is normalized to the
+    # same external denoise-space layout automatically.
+    
+    {% if "--output-metadata" in injected_args %}
+        \set _ {{ injected_args.remove("--output-metadata") }}
+    {% endif %}
+    
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 24 %}
+        \set optimization --quantizer bnb;bits=4
+    {% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 24 %}
+        \set optimization --quantizer sdnq;type=int4
+    {% else %}
+        \set optimization --model-sequential-offload
+    {% endif %}
+    
+    
+    # how much denoising to apply in the first stage
+    \set high_noise_fraction 0.80
+    
+    
+    black-forest-labs/FLUX.2-dev
+    --model-type flux2 {{ optimization }}
+    --dtype bfloat16
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 50
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path cooperative
+    --image-format pt
+    --denoising-end {{ high_noise_fraction }}
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+    
+    
+    
+    black-forest-labs/FLUX.2-dev
+    --model-type flux2 {{ optimization }}
+    --dtype bfloat16
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 50
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path cooperative
+    --image-seeds "latents: {{ quote(last_images) }}"
+    --denoising-start {{ high_noise_fraction }}
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+Qwen-Image Cooperative Denoising:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    {% if "--output-metadata" in injected_args %}
+        \set _ {{ injected_args.remove("--output-metadata") }}
+    {% endif %}
+    
+    
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 24 %}
+        \set optimization --quantizer bnb;bits=4
+    {% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 24 %}
+        \set optimization --quantizer sdnq;type=int4
+    {% else %}
+        \set optimization --model-sequential-offload
+    {% endif %}
+    
+    
+    # how much denoising to apply in the first stage
+    \set high_noise_fraction 0.80
+    
+    
+    Qwen/Qwen-Image
+    --model-type qwen-image {{ optimization }}
+    --dtype bfloat16
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 50
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path cooperative
+    --image-format pt
+    --denoising-end {{ high_noise_fraction }}
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+    
+    
+    
+    Qwen/Qwen-Image
+    --model-type qwen-image {{ optimization }}
+    --dtype bfloat16
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 50
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path cooperative
+    --image-seeds "latents: {{ quote(last_images) }}"
+    --denoising-start {{ high_noise_fraction }}
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+Z-Image Cooperative Denoising:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    {% if "--output-metadata" in injected_args %}
+        \set _ {{ injected_args.remove("--output-metadata") }}
+    {% endif %}
+    
+    
+    # Z-Image-Turbo is short-schedule; use the base model for a longer
+    # cooperative split, or keep Turbo with a lower high_noise_fraction.
+    
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if not have_cuda() or gpu_memory_gib <= 16 %}
+        \set optimization --model-sequential-offload
+    {% endif %}
+    
+    
+    # how much denoising to apply in the first stage
+    \set high_noise_fraction 0.70
+    \set steps 9
+    
+    
+    Tongyi-MAI/Z-Image-Turbo
+    --model-type z-image {{ optimization }}
+    --dtype bfloat16
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps {{ steps }}
+    --guidance-scales 0
+    --gen-seeds 1
+    --output-path cooperative
+    --image-format pt
+    --denoising-end {{ high_noise_fraction }}
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+    
+    
+    
+    Tongyi-MAI/Z-Image-Turbo
+    --model-type z-image {{ optimization }}
+    --dtype bfloat16
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps {{ steps }}
+    --guidance-scales 0
     --gen-seeds 1
     --output-path cooperative
     --image-seeds "latents: {{ quote(last_images) }}"
@@ -5398,7 +5583,8 @@ when ``--denoising-start`` has been specified with an SDXL or Kolors model:
 Advanced Usage with Image Input:
 
 You can also combine cooperative denoising with img2img input by using the combined syntax,
-this works for SD1.5/2.x, SD3, and Flux models using the ``latents= ...`` syntax:
+this works for SD1.5/2.x, SD3, Flux.1, Flux.2, Qwen-Image, and Z-Image
+models using the ``latents= ...`` syntax:
 
 .. code-block:: bash
 
@@ -7161,7 +7347,10 @@ More than one ControlNet is allowed. Text to image uses the seed image as
 the control image with ``InstantX/Qwen-Image-ControlNet-Union``. Inpaint
 uses ``--image-seeds "image.png;mask.png"`` with one inpainting ControlNet
 (``InstantX/Qwen-Image-ControlNet-Inpainting``): that image and mask are
-``control_image`` and ``control_mask``. Union ControlNets have
+``control_image`` and ``control_mask``. White mask pixels are repainted;
+black are kept. Prefer a small white region — wiping most of the frame
+often yields a black fill. The shipped example inverts ``horse1-mask.jpg``
+so the horse is painted. Union ControlNets have
 ``extra_condition_channels=0`` and cannot be used with a mask; the
 inpainting ControlNet has ``extra_condition_channels=4``. ``start`` and
 ``end`` are passed through. ``scale=1`` matches the pipeline default.
@@ -8030,7 +8219,8 @@ Which is a GPT2 finetune focused specifically on prompt generation.
         "Gustavosta/MagicPrompt-Stable-Diffusion". This can be a folder on disk or a Hugging Face repository slug.
     
         The "dtype" argument specifies the torch dtype (compute dtype) to load the model with, this defaults to:
-        float32, and may be one of: float32, float16, or bfloat16.
+        float32, and may be one of: float32, float16, or bfloat16. With bitsandbytes 8-bit quantization, float32
+        is coerced to float16 (8-bit MatMul always runs in float16).
     
         The "seed" argument can be used to specify a seed for prompt generation.
     
@@ -12935,7 +13125,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [20428915997131]
+            Value: [96630919589757]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -13143,6 +13333,43 @@ The dgenerate specific jinja2 functions/filters are:
         If "format_size" is False, return a tuple instead of a WIDTHxHEIGHT string.
     
     ===============================================================================
+    image_width(file: str) -> int:
+    
+        Return the width of an image file on disk as an integer.
+    
+        Useful for arithmetic in ``\setp``, for example: ``\setp w image_width("input.png") * 2``
+    
+    =============================================================================================
+    image_height(file: str) -> int:
+    
+        Return the height of an image file on disk as an integer.
+    
+        Useful for arithmetic in ``\setp``, for example: ``\setp h image_height("input.png") * 2``
+    
+    ==============================================================================================
+    scale_size(size: str | tuple, scale: float | int | str | collections.abc.Sequence = 1, format_size: bool = True) -> str | tuple:
+    
+        Scale a dimension or an image file's dimensions by a factor.
+    
+        "size" may be a WIDTHxHEIGHT string such as "512x768", a tuple such as (512, 768), or a path to an image
+        file on disk. If a string cannot be parsed as a dimension, it is treated as an image file path.
+    
+        "scale" may be:
+    
+        * a single number applied to both width and height * a ``(scale_width, scale_height)`` sequence for
+        independent axes * a ``"WxH"`` string of scale factors such as ``"2x1.5"``
+    
+        Results are rounded to the nearest integer and clamped to a minimum of 1.
+    
+        Returns a WIDTHxHEIGHT string unless "format_size" is False, in which case a tuple of integers is
+        returned.
+    
+        Examples: scale_size("512x512", 2) -> "1024x1024", scale_size((512, 768), 1.5) -> "768x1152",
+        scale_size("512x768", (2, 1)) -> "1024x768", scale_size("512x768", "2x1.5") -> "1024x1152",
+        scale_size("photo.png", 2) -> scaled dimensions of photo.png, ``\setp out_size scale_size("input.png", (2,
+        1))``
+    
+    ==============================================================================================================
     size_is_aligned(size: str | tuple, align: int) -> bool:
     
         Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700) is aligned to a
