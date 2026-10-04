@@ -3,6 +3,7 @@ order: 27
 
 # Wan image to video with a GGUF transformer. The repository still
 # supplies the VAE, text encoder, and image encoder.
+# last-frame= needs a FLF2V transformer. This I2V checkpoint only embeds the first frame.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

@@ -527,7 +527,9 @@ and ``--video-fps`` options. Other Wan options use the ``--wan-`` prefix.
 
 * No image seed is text to video.
 * One image is the first frame.
-* ``last-frame=`` is first-last-frame (FLF2V) on an I2V checkpoint.
+* ``last-frame=`` is first-last-frame (FLF2V). Use a checkpoint such as
+  ``Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers``. A Wan 2.1 I2V checkpoint only
+  embeds the first frame.
 * A video seed path is video-to-video. ``--video-lengths`` is rejected; the
   output follows the input clip.
 * ``control=``, ``mask=``, and ``reference=`` are VACE.

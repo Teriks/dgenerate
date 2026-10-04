@@ -1,15 +1,15 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Matches Diffusers Wan VACE / FLF docs assets: flf2v first and last
-# frames with the blue-bird prompt. The seed is the opening still;
-# last-frame= is the closing still.
+# First-last-frame needs the FLF2V checkpoint. A Wan 2.1 I2V transformer
+# only embeds the opening still, so last-frame= cannot be combined with it.
+# These are the Diffusers flf2v assets and the blue-bird prompt.
 
 \setp first_frame "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/flf2v_input_first_frame.png"
 \setp last_frame "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/flf2v_input_last_frame.png"
 \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
 
-Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
+Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers
 --model-type wan
 --dtype bfloat16
 --model-sequential-offload
@@ -17,7 +17,7 @@ Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
 --guidance-scales 5
 --video-fps 16
 --gen-seeds 1
---output-size 832x480
+--output-size 1280x720
 --video-lengths 5
 --animation-format mp4
 --output-path wan-flf

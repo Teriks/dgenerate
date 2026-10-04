@@ -2,7 +2,8 @@ title: Wan Image to Video
 order: 22
 
 # Wan image to video. The seed image is the first frame.
-# last-frame= selects first-last-frame (FLF2V) on an I2V checkpoint.
+# last-frame= needs a FLF2V checkpoint such as
+# Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers. This I2V checkpoint only embeds the first frame.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

@@ -59,7 +59,9 @@ On ``--model-type ltx`` the same keyword is the condition weight, and
 
 Wan-Animate reads ``wan-pose=``, ``wan-face=``, ``wan-driving=``, and ``wan-background=``
 on the same URI. VACE reads ``control=``, ``mask=``, and ``reference=``.
-``last-frame=`` is first-last-frame on an I2V checkpoint. See
+``last-frame=`` is first-last-frame on a FLF2V checkpoint such as
+``Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers``. A Wan 2.1 I2V checkpoint only
+embeds the first frame. See
 `Video Generation`_.
 
 IP Adapter images may be provided via a special ``adapters: ...`` syntax and

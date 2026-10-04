@@ -1797,6 +1797,28 @@ class TestWanModels(unittest.TestCase):
         self.assertEqual(_videopipelines.wan_num_frames(1, 16, 4), 17)
         self.assertEqual((_videopipelines.wan_num_frames(2, 16, 4) - 1) % 4, 0)
 
+    def test_wan_flf_clip_kind(self):
+        first = unittest.mock.Mock()
+        first.config.image_dim = 1280
+        first.config.pos_embed_seq_len = None
+        first.condition_embedder = None
+        self.assertEqual(_videopipelines._wan_flf_clip_kind(first), 'first')
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError) as raised:
+            _videopipelines._require_wan_flf_clip(unittest.mock.Mock(transformer=first))
+        self.assertIn('FLF2V', str(raised.exception))
+
+        flf = unittest.mock.Mock()
+        flf.config.image_dim = 1280
+        flf.config.pos_embed_seq_len = 514
+        self.assertEqual(_videopipelines._wan_flf_clip_kind(flf), 'flf')
+        _videopipelines._require_wan_flf_clip(unittest.mock.Mock(transformer=flf))
+
+        later = unittest.mock.Mock()
+        later.config.image_dim = None
+        self.assertEqual(_videopipelines._wan_flf_clip_kind(later), 'none')
+        _videopipelines._require_wan_flf_clip(unittest.mock.Mock(transformer=later))
+        _videopipelines._require_wan_flf_clip(unittest.mock.Mock(transformer=None))
+
     def test_classify_wan_seed(self):
         self.assertEqual(
             _videopipelines.classify_video_seed(_pipelinewrapper.ModelType.WAN, None),
