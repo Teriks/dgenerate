@@ -423,6 +423,11 @@ def _set_wan_vae_dtype(pipe, dtype=None):
     :data:`_WAN_DEFAULT_VAE_DTYPE` (float32) is used. Pass an explicit dtype
     only when ``--vae`` did not already load the VAE at the desired precision.
     Quantized VAEs are left alone; ``.to(dtype=...)`` would undo quantization.
+
+    Call this before group offload so the pinned CPU copy is already float32.
+    Streamed group offload copies that snapshot back on every forward. A cast
+    made after the hooks are installed is written into the snapshot on the
+    next onload.
     """
     vae = getattr(pipe, 'vae', None)
     if vae is None:
@@ -794,13 +799,12 @@ def place_wan_animate_2(pipe, device, model_cpu_offload, sequential_cpu_offload,
     if offload and transformer is not None:
         if _pipelines.module_skips_group_offload(transformer):
             # No block streaming: packed BnB/SDNQ/GGUF weights are not ordinary
-            # parameters. Still place the module on the run device (8-bit BnB
-            # .to is a no-op after _disable_to) so CPU-quantized SDNQ is not
-            # left stranded without pipeline-level offload hooks.
+            # parameters. Still place the module on the run device so
+            # CPU-quantized SDNQ and GGUF are not left off the execution device.
+            # 8-bit bitsandbytes is left where device_map loaded it.
             _messages.debug_log(
                 'Not group offloading Wan-Animate-2 transformer (quantized).')
-            if hasattr(transformer, 'to'):
-                transformer.to(device)
+            _pipelines.place_quantized_module(transformer, device)
         else:
             from diffusers.hooks import apply_group_offloading
             onload = torch.device(device)

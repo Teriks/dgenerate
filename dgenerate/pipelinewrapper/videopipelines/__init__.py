@@ -974,6 +974,12 @@ def _create_cached_video_pipeline(model_path,
             pipe = pipeline_class.from_pretrained(model_path, **load_kwargs)
     _apply_video_loras(
         pipe, model_type, all_lora_uris, lora_fuse_scale, auth_token, local_files_only)
+    # Wan VAE defaults to float32. Cast before offload so streamed group
+    # offload snapshots float32 weights. Skip when --vae already chose a dtype
+    # (including the float32 fallback above), or when the VAE is quantized.
+    if _enums.model_type_is_wan_family(model_type) and not vae_uri:
+        from . import wan
+        wan._set_wan_vae_dtype(pipe)
     if str(family).startswith('wan-animate-2'):
         from . import wan
         wan.place_wan_animate_2(
@@ -982,11 +988,6 @@ def _create_cached_video_pipeline(model_path,
         _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
     _pin_video_8bit_modules(pipe)
     _enable_vae_tiling(pipe)
-    # Wan VAE defaults to float32. Skip when --vae already chose a dtype
-    # (including the float32 fallback above), or when the VAE is quantized.
-    if _enums.model_type_is_wan_family(model_type) and not vae_uri:
-        from . import wan
-        wan._set_wan_vae_dtype(pipe)
     held = _VideoPipeline(pipe, family, moe=moe)
     if ltx_ic_lora_uri:
         held.reference_downscale_factor = _ic_lora_downscale_factor(
