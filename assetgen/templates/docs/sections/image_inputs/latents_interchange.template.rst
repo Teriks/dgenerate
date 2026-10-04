@@ -16,7 +16,10 @@ Supported Model Types:
 
 - Stable Diffusion 1.5/2.x models (use ``latents: ...`` or ``latents= ...`` syntax)
 - Stable Diffusion 3 models (use ``latents: ...`` or ``latents= ...`` syntax)
-- Flux models (use ``latents: ...`` or ``latents= ...`` syntax)
+- Flux.1 models (use ``latents: ...`` or ``latents= ...`` syntax)
+- Flux.2 models (use ``latents: ...`` or ``latents= ...`` syntax)
+- Qwen-Image models (use ``latents: ...`` or ``latents= ...`` syntax; not Layered)
+- Z-Image models (use ``latents: ...`` or ``latents= ...`` syntax)
 - SDXL / Kolors models (use direct img2img latents input, no special syntax)
 
 Latents Input Syntax
@@ -38,7 +41,8 @@ Note for SDXL: SDXL models do not use the ``latents: ...`` syntax (or ``latents=
 cooperative denoising. Instead, SDXL takes latent tensors directly through the standard img2img slot
 without special syntax.
 
-Both SD3 and Flux models use the ``latents:`` syntax similar to SD 1.5/2.x models.
+SD3, Flux.1, Flux.2, Qwen-Image, and Z-Image use the ``latents:`` syntax
+similar to SD 1.5/2.x models.
 
 Combined Image and Latents Input:
 
@@ -91,7 +95,8 @@ Cooperative denoising is a technique where the diffusion process is split betwee
 with each model handling a specific portion of the denoising steps. This is accomplished using
 the ``--denoising-start`` and ``--denoising-end`` arguments in combination with latents interchange.
 
-This is supported for SD1.5/2.x (with certain schedulers), SDXL, Kolors, SD3, and Flux models.
+This is supported for SD1.5/2.x (with certain schedulers), SDXL, Kolors, SD3,
+Flux.1, Flux.2, Qwen-Image (not Layered), and Z-Image models.
 
 The process works as follows:
 
@@ -125,9 +130,21 @@ Stable Diffusion 3 Cooperative Denoising:
 
 @EXAMPLE[@PROJECT_DIR/examples/latents_interchange/sd3/cooperative-denoising-config.dgen]
 
-Flux Cooperative Denoising:
+Flux.1 Cooperative Denoising:
 
 @EXAMPLE[@PROJECT_DIR/examples/latents_interchange/flux/cooperative-denoising-config.dgen]
+
+Flux.2 Cooperative Denoising:
+
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/flux2/cooperative-denoising-config.dgen]
+
+Qwen-Image Cooperative Denoising:
+
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/qwen-image/cooperative-denoising-config.dgen]
+
+Z-Image Cooperative Denoising:
+
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/z-image/cooperative-denoising-config.dgen]
 
 SDXL and Kolors models handle latents interchange differently than other model families.
 For SDXL or Kolors cooperative denoising, latents are passed directly as img2img input without
@@ -139,7 +156,8 @@ when ``--denoising-start`` has been specified with an SDXL or Kolors model:
 Advanced Usage with Image Input:
 
 You can also combine cooperative denoising with img2img input by using the combined syntax,
-this works for SD1.5/2.x, SD3, and Flux models using the ``latents= ...`` syntax:
+this works for SD1.5/2.x, SD3, Flux.1, Flux.2, Qwen-Image, and Z-Image
+models using the ``latents= ...`` syntax:
 
 .. code-block:: bash
 

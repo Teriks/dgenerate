@@ -43,6 +43,16 @@ def _is_flux_pipeline(pipeline):
     return pipeline.__class__.__name__.startswith('Flux')
 
 
+def _is_qwen_image_pipeline(pipeline):
+    """Check if a pipeline is a Qwen-Image family pipeline."""
+    return pipeline.__class__.__name__.startswith('QwenImage')
+
+
+def _is_z_image_pipeline(pipeline):
+    """Check if a pipeline is a Z-Image family pipeline."""
+    return pipeline.__class__.__name__.startswith('ZImage')
+
+
 def _is_flow_matching_scheduler(scheduler):
     """Check if a scheduler uses flow matching."""
     return isinstance(scheduler, diffusers.schedulers.FlowMatchEulerDiscreteScheduler)
@@ -125,8 +135,12 @@ def _is_problematic_scheduler(scheduler):
 
 def _supports_denoise_range_flow_matching(pipeline):
     """Check if a pipeline supports our denoise range flow matching modifications."""
-    # Currently SD3 and Flux pipelines are known to work with our modifications
-    return _is_sd3_pipeline(pipeline) or _is_flux_pipeline(pipeline)
+    return (
+        _is_sd3_pipeline(pipeline)
+        or _is_flux_pipeline(pipeline)
+        or _is_qwen_image_pipeline(pipeline)
+        or _is_z_image_pipeline(pipeline)
+    )
 
 
 def _create_progress_bar_modifier(original_scheduler, original_progress_bar, inference_steps_ref):
@@ -232,14 +246,13 @@ def _apply_flow_matching_denoise_range(pipeline, start, end, inference_steps_ref
         original_scheduler.sigmas = selected_sigmas
         original_scheduler._step_index = None  # Reset step index
 
-        # For Flux pipelines, ensure the number of inference steps matches the selected range
-        # This helps maintain proper quality by ensuring the scheduler knows the actual step count
-        if _is_flux_pipeline(pipeline):
+        # Keep scheduler step count aligned with the sliced schedule for flow-matching
+        # image pipelines (Flux / Flux.2 / Qwen / Z-Image).
+        if _supports_denoise_range_flow_matching(pipeline):
             original_scheduler.num_inference_steps = len(selected_timesteps)
 
     modified_progress_bar = _create_progress_bar_modifier(original_scheduler, original_progress_bar, inference_steps_ref)
 
-    # Store original num_inference_steps for Flux pipelines
     original_num_inference_steps = getattr(original_scheduler, 'num_inference_steps', None)
 
     try:
@@ -253,8 +266,8 @@ def _apply_flow_matching_denoise_range(pipeline, start, end, inference_steps_ref
     finally:
         original_scheduler.set_timesteps = original_set_timesteps
 
-        # Restore original num_inference_steps for Flux pipelines
-        if _is_flux_pipeline(pipeline) and original_num_inference_steps is not None:
+        if (_supports_denoise_range_flow_matching(pipeline)
+                and original_num_inference_steps is not None):
             original_scheduler.num_inference_steps = original_num_inference_steps
 
         # Restore original progress_bar if it was modified
@@ -585,7 +598,7 @@ def denoise_range(pipeline, start: float | None = 0.0, end: float | None = 1.0):
     * ``DDPMScheduler``
     * ``PNDMScheduler``
 
-    SD3/Flux Supported schedulers:
+    SD3 / Flux.1 / Flux.2 / Qwen-Image / Z-Image supported schedulers:
 
     * ``FlowMatchEulerDiscreteScheduler`` (flow matching with dedicated support)
 

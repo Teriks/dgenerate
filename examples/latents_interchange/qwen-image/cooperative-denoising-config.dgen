@@ -1,0 +1,50 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+{% if "--output-metadata" in injected_args %}
+    \set _ {{ injected_args.remove("--output-metadata") }}
+{% endif %}
+
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+# how much denoising to apply in the first stage
+\set high_noise_fraction 0.80
+
+
+Qwen/Qwen-Image
+--model-type qwen-image {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 50
+--guidance-scales 4
+--gen-seeds 1
+--output-path cooperative
+--image-format pt
+--denoising-end {{ high_noise_fraction }}
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+
+
+Qwen/Qwen-Image
+--model-type qwen-image {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 50
+--guidance-scales 4
+--gen-seeds 1
+--output-path cooperative
+--image-seeds "latents: {{ quote(last_images) }}"
+--denoising-start {{ high_noise_fraction }}
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"
