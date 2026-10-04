@@ -560,6 +560,11 @@ class DgenerateConsole(tk.Tk):
         env['PYTHONIOENCODING'] = 'utf-8'
         env['PYTHONUNBUFFERED'] = '1'
         env['COLUMNS'] = '100'
+        # huggingface_hub hides tqdm when stderr is not a TTY (piped Console).
+        # Do not use TQDM_POSITION=-1: tqdm treats that as nested bar position
+        # and leaves ghost 0% lines. DGENERATE_FORCE_TQDM is handled in
+        # tqdm_huggingface_hub_patch.
+        env['DGENERATE_FORCE_TQDM'] = '1'
 
         self._shell_procmon.popen([DGENERATE_EXE, '--shell'], env=env)
 

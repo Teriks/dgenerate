@@ -21,6 +21,8 @@
 
 
 import contextlib
+import importlib
+import os
 import sys
 import threading
 import time
@@ -28,7 +30,29 @@ import typing
 
 import huggingface_hub
 import tqdm
-from huggingface_hub.utils.tqdm import are_progress_bars_disabled, is_tqdm_disabled
+from huggingface_hub.utils.tqdm import are_progress_bars_disabled
+
+_tqdm_utils = importlib.import_module('huggingface_hub.utils.tqdm')
+_original_is_tqdm_disabled = _tqdm_utils.is_tqdm_disabled
+
+
+def _is_tqdm_disabled(log_level: int):
+    """Honor Hub disable rules, but allow Console pipes to force bars on.
+
+    Hugging Face documents ``TQDM_POSITION=-1`` as the way to show bars when
+    stderr is not a TTY. tqdm itself also reads that env var as the bar
+    ``position``, which enables nested cursor-up output and leaves ghost 0%
+    lines in the Console UI. ``DGENERATE_FORCE_TQDM=1`` forces bars without
+    that conflict.
+    """
+    result = _original_is_tqdm_disabled(log_level)
+    if result is None and os.environ.get('DGENERATE_FORCE_TQDM') == '1':
+        return False
+    return result
+
+
+_tqdm_utils.is_tqdm_disabled = _is_tqdm_disabled
+is_tqdm_disabled = _is_tqdm_disabled
 
 _original_thread_init = threading.Thread.__init__
 

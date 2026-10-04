@@ -1,4 +1,6 @@
+import io
 import logging
+import os
 import threading
 import unittest
 
@@ -6,6 +8,7 @@ import dgenerate  # noqa: F401  applies the patch
 import dgenerate._patches.tqdm_huggingface_hub_patch as _patch
 import huggingface_hub.file_download as _file_download
 import huggingface_hub.utils as _hf_utils
+from huggingface_hub.utils.tqdm import _create_progress_bar, tqdm as hf_tqdm
 
 
 def _bar(log_level=logging.INFO):
@@ -43,6 +46,40 @@ class TestTqdmHuggingfaceHubPatch(unittest.TestCase):
 
         self.assertTrue(scope['make']()._dgenerate_no_tqdm_thread)
         self.assertFalse(threading.Thread(target=lambda: None)._dgenerate_no_tqdm_thread)
+
+    def test_force_tqdm_enables_without_nested_position(self):
+        previous_force = os.environ.get('DGENERATE_FORCE_TQDM')
+        previous_position = os.environ.get('TQDM_POSITION')
+        os.environ['DGENERATE_FORCE_TQDM'] = '1'
+        os.environ.pop('TQDM_POSITION', None)
+        try:
+            self.assertIs(_patch.is_tqdm_disabled(logging.INFO), False)
+
+            buf = io.StringIO()
+            bar = _create_progress_bar(
+                cls=hf_tqdm,
+                log_level=logging.WARNING,
+                name='huggingface_hub.http_get',
+                desc='model.safetensors.index.json',
+                total=19900,
+                unit='B',
+                unit_scale=True,
+                file=buf,
+            )
+            self.assertFalse(bar.disable)
+            self.assertEqual(bar.pos, 0)
+            bar.update(19900)
+            bar.close()
+            self.assertNotIn('\x1b[A', buf.getvalue())
+        finally:
+            if previous_force is None:
+                os.environ.pop('DGENERATE_FORCE_TQDM', None)
+            else:
+                os.environ['DGENERATE_FORCE_TQDM'] = previous_force
+            if previous_position is None:
+                os.environ.pop('TQDM_POSITION', None)
+            else:
+                os.environ['TQDM_POSITION'] = previous_position
 
 
 if __name__ == '__main__':
