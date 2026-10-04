@@ -6,17 +6,17 @@
 # --output-size / ControlNet Tile upscales.
 
 # Original helper: WIDTHxHEIGHT string (or a tuple with format_size=False)
-\print {{ image_size("../media/dog.jpg") }}
-\setp dims image_size("../media/dog.jpg", False)
+\print {{ image_size("../media/beach.jpg") }}
+\setp dims image_size("../media/beach.jpg", False)
 \print {{ dims }}
 
 # Integer width / height for arithmetic in \setp
-\setp w image_width("../media/dog.jpg") * 2
-\setp h image_height("../media/dog.jpg") * 2
+\setp w image_width("../media/beach.jpg") * 2
+\setp h image_height("../media/beach.jpg") * 2
 \print {{ w }}x{{ h }}
 
 # Or scale a file / size string in one call
-\setp out_size scale_size("../media/dog.jpg", 2)
+\setp out_size scale_size("../media/beach.jpg", 2)
 \print {{ out_size }}
 
 \setp half_size scale_size("1024x768", 0.5)
