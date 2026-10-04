@@ -1,5 +1,5 @@
 title: Qwen-Image GGUF
-order: 25
+order: 34
 
 # Guidance here is true CFG. An empty negative prompt still applies it
 # when guidance is above 1.

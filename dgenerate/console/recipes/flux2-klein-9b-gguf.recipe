@@ -1,5 +1,5 @@
 title: Flux.2 Klein 9B (GGUF)
-order: 24
+order: 33
 
 # The repo is gated. Add an inpaint mask on the image seed to inpaint.
 

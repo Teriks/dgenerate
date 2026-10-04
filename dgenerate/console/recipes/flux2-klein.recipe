@@ -1,5 +1,5 @@
 title: Flux.2 Klein
-order: 24
+order: 33
 
 # Klein text-to-image has no image seed. Add an inpaint mask on --image-seeds to inpaint.
 # The repo is gated. A distilled Klein checkpoint ignores guidance above 1.
