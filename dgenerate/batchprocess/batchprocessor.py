@@ -986,17 +986,14 @@ class BatchProcessor:
         :param stream: A filestream in text read mode
         """
 
-        try:
-            parsed, _ = _arguments.parse_known_args(
-                self.injected_args,
-                log_error=False
-            )
-        except _arguments.DgenerateUsageError as e:
-            raise BatchProcessError(f'Error parsing injected arguments: {str(e).strip()}') from e
+        # Only -v/--verbose affects script execution here. The full parser's
+        # --version action prints and exits, which breaks init.dgen when the
+        # CLI itself was invoked as `dgenerate --version`.
+        verbose, _ = _arguments.parse_verbose(self.injected_args)
 
         directive_error_traces = self._directive_error_traces
 
-        if parsed.verbose:
+        if verbose:
             _messages.push_level(_messages.DEBUG)
             self._directive_error_traces = True
 
@@ -1009,7 +1006,7 @@ class BatchProcessor:
                 f'Error on line {self.current_line}:'
                 f'\n{" " * 4}{str(e).strip()}') from e
         finally:
-            if parsed.verbose:
+            if verbose:
                 _messages.pop_level()
             self._directive_error_traces = directive_error_traces
 
