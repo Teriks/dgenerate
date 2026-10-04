@@ -15,7 +15,7 @@ dgenerate
 
 |Documentation| |Latest Release| |Support Dgenerate|
 
-``dgenerate`` is a scriptable command-line tool (and library) for generating and editing images, generating whole video clips with LTX,
+``dgenerate`` is a scriptable command-line tool (and library) for generating and editing images, generating whole video clips with LTX and Wan,
 and processing animated inputs with AI.
 
 Whether you're generating or editing single images, batch processing hundreds of variations, generating a short mp4 from a prompt,
@@ -38,8 +38,8 @@ Image Generation
 * Text to image, image to image, and inpainting
 * Diffusion-based image upscaling
 
-Video generation (LTX)
-----------------------
+Video Generation
+----------------
 
 * Generate a whole clip in one pipeline call with ``--model-type ltx`` (`Lightricks LTX-2.5 <https://huggingface.co/Lightricks/LTX-2.5-Diffusers>`_ and the earlier `LTX-Video <https://huggingface.co/Lightricks/LTX-Video>`_ checkpoints)
 * Text-to-video, or condition with ``--image-seeds``: a still or clip as the opening frames, ``last-frame=`` as the closing frame, or both together
@@ -65,7 +65,7 @@ Image Processing
 Animation & video processing (per frame)
 ----------------------------------------
 
-* Run image diffusion once per frame to transform videos into artistic, non-temporally consistent animations (distinct from LTX whole-clip generation above)
+* Run image diffusion once per frame to transform videos into artistic, non-temporally consistent animations (distinct from whole-clip generation above)
 * Process GIF, WebP, APNG, MP4, and any other video format supported by `av <https://github.com/PyAV-Org/PyAV>`_ (ffmpeg)
 * Memory-efficient, streamed processing of video content from disk
 * Apply image processors to any animated input, for example upscaling / classification / mask generation
