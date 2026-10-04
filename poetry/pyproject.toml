@@ -24,6 +24,7 @@ patchmatch-cython = "^0.2.1"
 dynamicprompts = "0.31.0"
 spacy = "3.8.16"
 ultralytics-opencv-headless = {version = "8.4.160", platform = "not_darwin"}
+pi-heif = "1.4.0"
 langcodes = "^3.5.1"
 pytorch-lightning = "^2.6.6"
 lightning-utilities = "^0.15.3"
