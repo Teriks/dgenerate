@@ -1,8 +1,8 @@
 # Copyright (c) 2023, Teriks
 # BSD 3-Clause License
 
-import pathlib
 import os
+import pathlib
 
 import diffusers.loaders.single_file as _df_single_file
 import diffusers.utils.hub_utils as _hub_utils
@@ -11,7 +11,14 @@ from huggingface_hub import snapshot_download as _hf_snapshot_download
 
 _HUB_CONFIGS_DIR = pathlib.Path(__file__).parent.parent / "pipelinewrapper" / "hub_configs"
 
-# Store original functions for fallback
+# Diffusers single-file loading still maps SD2 checkpoints to these Stability
+# slugs, which no longer host public weights. Prefer vendored configs under the
+# old names, and remap network fetches to the community mirrors.
+_MOVED_REPOSITORIES = {
+    'stabilityai/stable-diffusion-2-1': 'sd2-community/stable-diffusion-2-1',
+    'stabilityai/stable-diffusion-2-inpainting': 'sd2-community/stable-diffusion-2-inpainting',
+}
+
 _original_hf_hub_download = huggingface_hub.hf_hub_download
 
 
@@ -21,6 +28,10 @@ def _is_offline(kwargs: dict) -> bool:
     if _hub_utils.HF_HUB_OFFLINE or _hub_utils.HF_HUB_DISABLE_TELEMETRY:
         return True
     return False
+
+
+def _resolve_repo_id(repo_id: str) -> str:
+    return _MOVED_REPOSITORIES.get(repo_id, repo_id)
 
 
 def _has_vendored_configs(repo_id: str) -> bool:
@@ -46,6 +57,43 @@ def _get_vendored_config_path(repo_id: str) -> str:
         raise FileNotFoundError(f"No vendored configs found for {repo_id}")
 
     return str(vendored_repo_path)
+
+
+def _is_config_like_file(filename: str) -> bool:
+    """Check if a filename looks like a config file we might have vendored."""
+    config_files = {
+        'model_index.json',
+        'config.json',
+        'scheduler_config.json',
+        'tokenizer_config.json',
+        'special_tokens_map.json',
+        'vocab.json',
+        'tokenizer.json',
+        'merges.txt',
+        'preprocessor_config.json',
+        'text_config.json',
+        'processor_config.json',
+        'spiece.model'
+    }
+    return filename in config_files
+
+
+def _try_vendored_config_file(repo_id: str, filename: str, subfolder: str | None = None) -> str | None:
+    if not (_has_vendored_configs(repo_id) and _is_config_like_file(filename)):
+        return None
+
+    try:
+        vendored_path = _get_vendored_config_path(repo_id)
+        if subfolder:
+            config_file_path = os.path.join(vendored_path, subfolder, filename)
+        else:
+            config_file_path = os.path.join(vendored_path, filename)
+        if os.path.exists(config_file_path):
+            return config_file_path
+    except Exception:
+        return None
+
+    return None
 
 
 def _snapshot_download_for_single_file(repo_id: str, *args, **kwargs) -> str:
@@ -75,7 +123,7 @@ def _snapshot_download_for_single_file(repo_id: str, *args, **kwargs) -> str:
     # Fallback to original HH snapshot_download
     if _hf_snapshot_download is None:
         raise RuntimeError("huggingface_hub.snapshot_download unavailable")
-    return _hf_snapshot_download(repo_id, *args, **kwargs)
+    return _hf_snapshot_download(_resolve_repo_id(repo_id), *args, **kwargs)
 
 
 _df_single_file.snapshot_download = _snapshot_download_for_single_file
@@ -83,49 +131,19 @@ _df_single_file.snapshot_download = _snapshot_download_for_single_file
 
 def _patched_hf_hub_download(repo_id: str, filename: str, *args, **kwargs) -> str:
     """
-    Patched hf_hub_download that uses vendored configs when available in offline mode.
-    This handles config file downloads for single-file checkpoints.
+    Patched hf_hub_download that uses vendored single-file configs when available.
+
+    Diffusers still points SD2 single-file loads at deleted Stability repos.
+    Serve vendored configs for those (and other) slugs online or offline, and
+    remap network fetches to community mirrors when needed.
     """
-    # Only intercept config-like files when offline and vendored configs exist
-    if (_is_offline(kwargs) and 
-        _has_vendored_configs(repo_id) and 
-        _is_config_like_file(filename)):
-        
-        try:
-            vendored_path = _get_vendored_config_path(repo_id)
-            subfolder = kwargs.get('subfolder', '')
-            
-            if subfolder:
-                config_file_path = os.path.join(vendored_path, subfolder, filename)
-            else:
-                config_file_path = os.path.join(vendored_path, filename)
-            
-            if os.path.exists(config_file_path):
-                return config_file_path
-        except Exception:
-            pass  # Fall back to original behavior
-    
-    # Fallback to original function
-    return _original_hf_hub_download(repo_id, filename, *args, **kwargs)
+    vendored = _try_vendored_config_file(
+        repo_id, filename, subfolder=kwargs.get('subfolder') or None)
+    if vendored is not None:
+        return vendored
 
-
-def _is_config_like_file(filename: str) -> bool:
-    """Check if a filename looks like a config file we might have vendored."""
-    config_files = {
-        'model_index.json',
-        'config.json', 
-        'scheduler_config.json',
-        'tokenizer_config.json',
-        'special_tokens_map.json',
-        'vocab.json',
-        'tokenizer.json',
-        'merges.txt',
-        'preprocessor_config.json',
-        'text_config.json',
-        'processor_config.json',
-        'spiece.model'
-    }
-    return filename in config_files
+    return _original_hf_hub_download(
+        _resolve_repo_id(repo_id), filename, *args, **kwargs)
 
 
 # Apply the patch
