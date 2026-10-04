@@ -29,8 +29,10 @@
 \setp tall scale_size("512x768", "1x2")
 \print {{ tall }}
 
-# Typical loop pattern: double each source image's size
+# Typical loop pattern: double each source image's size.
+# sized needs delayed expansion because the {% for %} continuation
+# is rendered before \setp runs.
 {% for i in unquote("../media/*.jpg", expand=True) %}
     \setp sized scale_size("{{ i }}", 2)
-    \print {{ i }} -> {{ sized }}
+    \print {{ i }} -> {{ '{{ sized }}' }}
 {% endfor %}
