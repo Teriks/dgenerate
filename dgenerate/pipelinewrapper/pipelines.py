@@ -205,24 +205,98 @@ def controlnet_is_owned_by_pipeline(model_type: _enums.ModelType,
         or _enums.model_type_is_z_image(model_type))
 
 
+# Leaf classes and parameter types whose storage is not a plain floating tensor.
+# Group offload assigns ``parameter.data`` from a CPU snapshot, which drops
+# GGUFParameter, bitsandbytes Params4bit/Int8Params, and SDNQ packed weights.
+_PACKED_MODULE_NAMES = frozenset({
+    'Linear4bit', 'Linear8bitLt',
+    'GGUFLinear',
+    'SDNQLinear', 'SDNQEmbedding',
+    'SDNQConv1d', 'SDNQConv2d', 'SDNQConv3d',
+    'SDNQConvTranspose1d', 'SDNQConvTranspose2d', 'SDNQConvTranspose3d',
+})
+_PACKED_TENSOR_NAMES = frozenset({
+    'Params4bit', 'Int8Params', 'GGUFParameter', 'SDNQTensor',
+})
+
+
+def _direct_param_is_packed(module) -> bool:
+    try:
+        params = module.parameters(recurse=False)
+    except (TypeError, ValueError, RuntimeError):
+        return False
+    for param in params:
+        if type(param).__name__ in _PACKED_TENSOR_NAMES:
+            return True
+        # GGUFParameter.quant_type and bitsandbytes quant_state survive even
+        # when the parameter was rebuilt under another class name.
+        if getattr(param, 'quant_type', None) is not None:
+            return True
+        if getattr(param, 'quant_state', None) is not None:
+            return True
+    return False
+
+
 def _module_is_quantized(module) -> bool:
     quantized, _, _ = _util.check_bnb_status(module)
     if quantized or _sdnqload.module_is_sdnq(module):
         return True
-    return _sdnqload.quantization_config_of(module) is not None
+    if _sdnqload.quantization_config_of(module) is not None:
+        return True
+    if type(module).__name__ in _PACKED_MODULE_NAMES:
+        return True
+    if getattr(module, 'sdnq_dequantizer', None) is not None:
+        return True
+    return _direct_param_is_packed(module)
 
 
 def module_skips_group_offload(module) -> bool:
     """
-    Quantized modules stay where they were loaded.
+    True when group offload must not hook this module.
 
     Group offload moves ordinary parameters. BitsAndBytes, SDNQ, GGUF, and
     other quantized weights are not those, including a quantized child of an
-    otherwise ordinary module.
+    otherwise ordinary module. Sequential offload and model CPU offload do
+    not use this predicate; they already move these modules on their own.
     """
     if module is None or not isinstance(module, torch.nn.Module):
         return True
     return any(_module_is_quantized(part) for part in module.modules())
+
+
+def _module_is_8bit_bnb(module) -> bool:
+    return any(_util.is_loaded_in_8bit_bnb(part) for part in module.modules())
+
+
+def place_quantized_module(module, device) -> None:
+    """
+    Move a quantized module onto ``device`` without group-offload hooks.
+
+    8-bit bitsandbytes is left where ``device_map`` loaded it. ``.to()`` on
+    those modules is either disabled or rejected. 4-bit bitsandbytes, SDNQ,
+    and GGUF can move, and group offload will not stream them.
+    """
+    if module is None or not hasattr(module, 'to'):
+        return
+    if _module_is_8bit_bnb(module):
+        _messages.debug_log(
+            f'Not moving {type(module).__name__}: '
+            f'8-bit bitsandbytes stays on its load device.')
+        return
+    target = torch.device(device)
+    try:
+        current = get_torch_device(module)
+    except (ValueError, StopIteration, RuntimeError):
+        try:
+            current = next(module.parameters()).device
+        except StopIteration:
+            current = None
+    if current is not None and _torchutil.devices_equal(current, target):
+        return
+    _messages.debug_log(
+        f'Placing quantized {type(module).__name__} on {target} '
+        f'without group offload.')
+    module.to(target)
 
 
 def estimate_pipeline_cache_footprint(
@@ -680,9 +754,15 @@ def enable_group_offload(pipeline: diffusers.DiffusionPipeline,
     Enable leaf-level group offload on a torch pipeline.
 
     This is the middle setting between model CPU offload and sequential offload.
-    CUDA and XPU prefetch the next leaf on a side stream. BitsAndBytes and SDNQ
-    modules are left where they were loaded. Weights stay in CPU RAM, so the
-    pipeline cache size still counts them. Disk offload is not used.
+    CUDA and XPU prefetch the next leaf on a side stream. BitsAndBytes, SDNQ,
+    and GGUF modules are not hooked: packed weights cannot be snapshotted.
+    Those modules are placed on ``device`` instead, except 8-bit bitsandbytes,
+    which stays where it was loaded. Full-precision weights stay in CPU RAM,
+    so the pipeline cache size still counts them. Disk offload is not used.
+
+    A later ``module.to(dtype=...)`` is kept. Streamed group offload otherwise
+    restores the dtype captured when the hooks were installed, so the module
+    reports the new dtype while the next forward still runs the old one.
 
     :param pipeline: the pipeline
     :param device: the device layers move to for a forward pass
@@ -728,6 +808,7 @@ def enable_group_offload(pipeline: diffusers.DiffusionPipeline,
             _messages.debug_log(
                 f'Not group offloading pipeline module: {name}, '
                 f'because it is quantized.')
+            place_quantized_module(model, torch_device)
             continue
         if name in excluded:
             model.to(torch_device)
@@ -788,11 +869,20 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
 
     # Group-offload weights stay in CPU memory for the life of the pipeline.
     # Moving the shell to the accelerator would drop them from the cache size
-    # without freeing that memory.
+    # without freeing that memory. Quantized modules were not hooked, so they
+    # still have to follow ``device``; sequential offload and model CPU offload
+    # do that in their own paths below.
     if is_group_offload_enabled(pipeline):
         _messages.debug_log(
-            f'pipeline_to() Not moving pipeline "{pipeline.__class__.__name__}" to "{device}" '
-            f'as group offload keeps its weights in CPU memory.')
+            f'pipeline_to() Not moving group-offloaded weights of '
+            f'"{pipeline.__class__.__name__}" to "{device}". '
+            f'Placing quantized modules that were left unhooked.')
+        for name, model in get_pipeline_modules(pipeline).items():
+            if is_group_offload_enabled(model) or not module_skips_group_offload(model):
+                continue
+            _messages.debug_log(
+                f'pipeline_to() Placing quantized module "{name}" on "{device}".')
+            place_quantized_module(model, device)
         return
 
     pipeline_device = get_torch_device(pipeline)

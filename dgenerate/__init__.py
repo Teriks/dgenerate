@@ -114,6 +114,7 @@ try:
     import dgenerate._patches.diffusers_single_file_config_patch
     import dgenerate._patches.diffusers_wuerstchen_pipeline_patch
     import dgenerate._patches.diffusers_safety_checker_post_init_patch
+    import dgenerate._patches.diffusers_group_offload_dtype_patch
 
 
     from dgenerate.hfhub import (
