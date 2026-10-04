@@ -20,9 +20,11 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --model-type sd3 {{ optimization }}
 --variant fp16
 --dtype float16
---pag
+--pag-scales 0.7
+--pag-adaptive-scales 0.0
 --inference-steps 30
 --guidance-scales 5.00
+--pag-applied-layers blocks.13
 --clip-skips 0
 --gen-seeds 2
 --output-path output
