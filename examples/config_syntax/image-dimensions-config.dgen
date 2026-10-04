@@ -1,9 +1,14 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Template helpers for reading and scaling image dimensions (#69).
+# Template helpers for reading and scaling image dimensions.
 # Useful when looping over source images of mixed sizes before
 # --output-size / ControlNet Tile upscales.
+
+# Original helper: WIDTHxHEIGHT string (or a tuple with format_size=False)
+\print {{ image_size("../media/dog.jpg") }}
+\setp dims image_size("../media/dog.jpg", False)
+\print {{ dims }}
 
 # Integer width / height for arithmetic in \setp
 \setp w image_width("../media/dog.jpg") * 2
