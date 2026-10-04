@@ -404,6 +404,75 @@ def image_size(file: str, format_size: bool = True) -> str | tuple[int, int]:
         return _textprocessing.format_size((img.width, img.height))
 
 
+def image_width(file: str) -> int:
+    """
+    Return the width of an image file on disk as an integer.
+
+    Useful for arithmetic in ``\\setp``, for example:
+    ``\\setp w image_width("input.png") * 2``
+    """
+    with PIL.Image.open(file) as img:
+        return img.width
+
+
+def image_height(file: str) -> int:
+    """
+    Return the height of an image file on disk as an integer.
+
+    Useful for arithmetic in ``\\setp``, for example:
+    ``\\setp h image_height("input.png") * 2``
+    """
+    with PIL.Image.open(file) as img:
+        return img.height
+
+
+def scale_size(size: str | tuple, scale: float | int, format_size: bool = True) -> str | tuple:
+    """
+    Scale a dimension or an image file's dimensions by a factor.
+
+    "size" may be a WIDTHxHEIGHT string such as "512x768", a tuple such as
+    (512, 768), or a path to an image file on disk. If a string cannot be
+    parsed as a dimension, it is treated as an image file path.
+
+    "scale" is applied to each dimension. Results are rounded to the nearest
+    integer and clamped to a minimum of 1.
+
+    Returns a WIDTHxHEIGHT string unless "format_size" is False, in which
+    case a tuple of integers is returned.
+
+    Examples: scale_size("512x512", 2) -> "1024x1024",
+    scale_size((512, 768), 1.5) -> "768x1152",
+    scale_size("photo.png", 2) -> scaled dimensions of photo.png,
+    ``\\setp out_size scale_size("input.png", 2)``
+    """
+    if isinstance(scale, bool) or not isinstance(scale, (int, float)):
+        raise _batchprocessor.BatchProcessError(
+            'Argument "scale" of scale_size must be a number.')
+
+    if isinstance(size, tuple):
+        dims = size
+    elif isinstance(size, str):
+        try:
+            dims = _textprocessing.parse_image_size(size)
+        except ValueError:
+            with PIL.Image.open(size) as img:
+                dims = (img.width, img.height)
+    else:
+        raise _batchprocessor.BatchProcessError(
+            'Unsupported type passed to scale_size.')
+
+    try:
+        scaled = tuple(max(1, int(round(int(d) * float(scale)))) for d in dims)
+    except (TypeError, ValueError) as e:
+        raise _batchprocessor.BatchProcessError(
+            f'Invalid dimensions passed to scale_size: {e}') from e
+
+    if not format_size:
+        return scaled
+
+    return _textprocessing.format_size(scaled)
+
+
 def size_is_aligned(size: str | tuple, align: int) -> bool:
     """
     Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700)
