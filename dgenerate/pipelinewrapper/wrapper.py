@@ -1321,64 +1321,58 @@ class DiffusionPipelineWrapper:
                 'Stable Cascade does not support accepting latents as input.'
             )
 
-        # Get expected channels based on model type
-        if _enums.model_type_is_flux(self.model_type):
-            # Flux uses unpacked format [B, C, H, W] or [C, H, W] for external interface
-            # where C is 16 (64/4 from the internal packed format)
-            expected_channels = 16  # Flux models expect 16 channels in unpacked format
-            for i, tensor in enumerate(tensors):
-                if len(tensor.shape) not in (3, 4):
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        f'Invalid shape for Flux latents tensor at index {i}. '
-                        f'Expected 3D [C, H, W] or 4D [B, C, H, W] tensor in unpacked format, '
-                        f'but got shape {tensor.shape}'
-                    )
-                channels = tensor.shape[1 - (4 - len(tensor.shape))]  # Channel is at index 1 for 4D, 0 for 3D
-                if channels != expected_channels:
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        f'Invalid number of channels in Flux latents tensor at index {i}. '
-                        f'Expected {expected_channels} channels in unpacked format, '
-                        f'but got {channels} channels instead. Shape: {tensor.shape}'
-                    )
-        elif _enums.model_type_is_sd3(self.model_type):
-            # SD3 uses 16 channels in latent space
-            expected_channels = self._pipeline.transformer.config.in_channels
+        if _enums.model_type_is_qwen_image_layered(self.model_type):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Qwen-Image-Layered does not support latents interchange / '
+                'cooperative denoising (multi-layer packing is not interchangeable).'
+            )
 
-            for i, tensor in enumerate(tensors):
-                if len(tensor.shape) not in (3, 4):  # Must be [C, H, W] or [B, C, H, W]
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        f'Invalid shape for SD3 latents tensor at index {i}. '
-                        f'Expected 3D [C, H, W] or 4D tensor [B, C, H, W], but got shape {tensor.shape}'
-                    )
-                channels = tensor.shape[1 - (4 - len(tensor.shape))]
-                if channels != expected_channels:
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        f'Invalid number of channels in SD3 latents tensor at index {i}. '
-                        f'Expected {expected_channels} channels for model type "{self.model_type_string}", '
-                        f'but got {channels} channels instead. Shape: {tensor.shape}'
-                    )
-        else:
-            # Standard SD models use channels from VAE config
-            expected_channels = 4  # Default if not specified in config
+        # External latents are always spatial [B, C, H, W] / [C, H, W].
+        if _enums.model_type_is_flux(self.model_type):
+            expected_channels = 16
+            family = 'Flux'
+        elif _enums.model_type_is_flux2_family(self.model_type):
+            expected_channels = getattr(
+                getattr(self._pipeline.vae, 'config', None), 'latent_channels', 32)
+            family = 'Flux.2'
+        elif _enums.model_type_is_qwen_image_family(self.model_type):
+            expected_channels = getattr(
+                getattr(self._pipeline.vae, 'config', None), 'z_dim', 16)
+            family = 'Qwen-Image'
+        elif _enums.model_type_is_z_image_family(self.model_type):
+            expected_channels = 16
             if hasattr(self._pipeline.vae, 'config'):
                 if hasattr(self._pipeline.vae.config, 'latent_channels'):
                     expected_channels = self._pipeline.vae.config.latent_channels
-                # Some models use in_channels instead
+                elif hasattr(self._pipeline.vae.config, 'z_dim'):
+                    expected_channels = self._pipeline.vae.config.z_dim
+            family = 'Z-Image'
+        elif _enums.model_type_is_sd3(self.model_type):
+            expected_channels = self._pipeline.transformer.config.in_channels
+            family = 'SD3'
+        else:
+            expected_channels = 4
+            if hasattr(self._pipeline.vae, 'config'):
+                if hasattr(self._pipeline.vae.config, 'latent_channels'):
+                    expected_channels = self._pipeline.vae.config.latent_channels
                 elif hasattr(self._pipeline.vae.config, 'in_channels'):
                     expected_channels = self._pipeline.vae.config.in_channels
+            family = self.model_type_string
 
-            for i, tensor in enumerate(tensors):
-                if len(tensor.shape) not in (3, 4):  # Must be [C, H, W] or [B, C, H, W]
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        f'Invalid shape for latents tensor at index {i}. '
-                        f'Expected 3D [C, H, W] or 4D tensor [B, C, H, W], but got shape {tensor.shape}'
-                    )
-                channels = tensor.shape[1 - (4 - len(tensor.shape))]
-                if channels != expected_channels:
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        f'Invalid number of channels in latents tensor at index {i}. '
-                        f'Expected {expected_channels} channels for model type "{self.model_type_string}", '
-                        f'but got {channels} channels instead. Shape: {tensor.shape}')
+        for i, tensor in enumerate(tensors):
+            if len(tensor.shape) not in (3, 4):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Invalid shape for {family} latents tensor at index {i}. '
+                    f'Expected 3D [C, H, W] or 4D [B, C, H, W] tensor, '
+                    f'but got shape {tensor.shape}'
+                )
+            channels = tensor.shape[-3]
+            if channels != expected_channels:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Invalid number of channels in {family} latents tensor at index {i}. '
+                    f'Expected {expected_channels} channels, '
+                    f'but got {channels} channels instead. Shape: {tensor.shape}'
+                )
 
     @staticmethod
     def _validate_images_all_same_size(title, images):
@@ -1813,8 +1807,9 @@ class DiffusionPipelineWrapper:
                     and user_args.denoising_start is not None
                     and user_args.denoising_start > 0.0
             ):
-                if _enums.model_type_is_flux(self._model_type):
-                    img2img_latents = self._repack_flux_latents(self._stack_latents(img2img_latents))
+                # External latents are stored unpacked/spatial for all supported
+                # families; decode_latents expects that layout.
+                img2img_latents = self._stack_latents(img2img_latents)
 
                 images = self.decode_latents(img2img_latents)
                 # Process decoded images if processors are configured (handles pre-resize, resize, post-resize)
@@ -2236,10 +2231,8 @@ class DiffusionPipelineWrapper:
                     'Use images instead.'
                 )
 
-            # Handle Flux-specific repacking if needed
-            latents = user_args.images
-            if _enums.model_type_is_flux(self._model_type):
-                latents = self._repack_flux_latents(self._stack_latents(latents))
+            # External latents are stored unpacked/spatial; decode expects that.
+            latents = self._stack_latents(user_args.images)
 
             # Decode the latents to PIL Images
             user_args.images = self.decode_latents(latents)
@@ -2403,9 +2396,7 @@ class DiffusionPipelineWrapper:
         else:
             latents = latents.to(self._device)
 
-        if _enums.model_type_is_flux(self._model_type):
-            latents = self._repack_flux_latents(latents)
-        return latents
+        return self._repack_input_latents(latents)
 
     @staticmethod
     def _stack_latents(latents):
@@ -2676,36 +2667,41 @@ class DiffusionPipelineWrapper:
         pipeline_args.pop('negative_original_size', None)
         pipeline_args.pop('negative_crops_coords_top_left', None)
 
+    def _latents_use_flux_style_packing(self) -> bool:
+        """Flux.1 and Qwen-Image pack 2x2 patches into the channel dimension."""
+        return (
+                _enums.model_type_is_flux(self._model_type)
+                or (_enums.model_type_is_qwen_image_family(self._model_type)
+                    and not _enums.model_type_is_qwen_image_layered(self._model_type))
+        )
+
+    def _latents_use_flux2_packing(self) -> bool:
+        """Flux.2 patchifies then packs tokens as a dense sequence."""
+        return _enums.model_type_is_flux2_family(self._model_type)
+
+    def _packed_flow_pixel_size(
+            self,
+            height: int | None = None,
+            width: int | None = None) -> tuple[int, int]:
+        height = height or self._pipeline.default_sample_size * self._pipeline.vae_scale_factor
+        width = width or self._pipeline.default_sample_size * self._pipeline.vae_scale_factor
+        # VAE 8x compression plus 2x2 packing alignment.
+        height = 2 * (int(height) // (self._pipeline.vae_scale_factor * 2))
+        width = 2 * (int(width) // (self._pipeline.vae_scale_factor * 2))
+        return height, width
+
     def _unpack_flux_latents(self,
                              latents: torch.Tensor,
                              height: int | None = None,
                              width: int | None = None) -> torch.Tensor:
         """
-        Unpack Flux latents from internal packed format [B, L, C] to external unpacked format [B, C, H, W].
-        
-        This method converts from the packed sequence format that Flux pipelines use internally
-        to the standard spatial format used as the external interface.
-        
-        :param latents: Input latents in packed shape [B, L, C] or [L, C]
-        :param height: Optional target height, will use default if not specified
-        :param width: Optional target width, will use default if not specified
-        :return: Unpacked latents in shape [B, C, H, W]
+        Unpack Flux.1 / Qwen packed latents [B, L, C] to spatial [B, C, H, W].
         """
-
-        # Add batch dimension if needed
-        if len(latents.shape) == 2:  # If [L, C] add batch dimension
+        if len(latents.shape) == 2:
             latents = latents.unsqueeze(0)
 
-        # Calculate dimensions
-        height = height or self._pipeline.default_sample_size * self._pipeline.vae_scale_factor
-        width = width or self._pipeline.default_sample_size * self._pipeline.vae_scale_factor
+        height, width = self._packed_flow_pixel_size(height, width)
 
-        # VAE applies 8x compression on images, but we must also account for packing which requires
-        # latent height and width to be divisible by 2
-        height = 2 * (int(height) // (self._pipeline.vae_scale_factor * 2))
-        width = 2 * (int(width) // (self._pipeline.vae_scale_factor * 2))
-
-        # Unpack from [B, L, C] to [B, C, H, W]
         batch_size, num_patches, channels = latents.shape
         latents = latents.view(batch_size, height // 2, width // 2, channels // 4, 2, 2)
         latents = latents.permute(0, 3, 1, 4, 2, 5)
@@ -2716,23 +2712,121 @@ class DiffusionPipelineWrapper:
     @staticmethod
     def _repack_flux_latents(latents: torch.Tensor) -> torch.Tensor:
         """
-        Repack Flux latents from external unpacked format [B, C, H, W] to internal packed format [B, L, C].
-        
-        This method converts from the standard spatial format used as the external interface
-        to the packed sequence format that Flux pipelines expect internally.
-        This is the inverse operation of _unpack_flux_latents.
-        
-        :param latents: Input latents in unpacked shape [B, C, H, W]
-        :return: Repacked latents in shape [B, L, C]
+        Repack Flux.1 / Qwen spatial latents [B, C, H, W] to packed [B, L, C].
         """
         batch_size, channels, height, width = latents.shape
 
-        # Repack from [B, C, H, W] to [B, L, C]
-        # This reverses the operations in _unpack_flux_latents
         latents = latents.reshape(batch_size, channels, height // 2, 2, width // 2, 2)
         latents = latents.permute(0, 2, 4, 1, 3, 5)
         latents = latents.reshape(batch_size, (height // 2) * (width // 2), channels * 4)
 
+        return latents
+
+    @staticmethod
+    def _patchify_flux2_latents(latents: torch.Tensor) -> torch.Tensor:
+        """VAE spatial [B, C, H, W] -> patchified [B, C*4, H/2, W/2]."""
+        batch_size, num_channels, height, width = latents.shape
+        latents = latents.view(batch_size, num_channels, height // 2, 2, width // 2, 2)
+        latents = latents.permute(0, 1, 3, 5, 2, 4)
+        return latents.reshape(batch_size, num_channels * 4, height // 2, width // 2)
+
+    @staticmethod
+    def _unpatchify_flux2_latents(latents: torch.Tensor) -> torch.Tensor:
+        """Patchified [B, C*4, H/2, W/2] -> VAE spatial [B, C, H, W]."""
+        batch_size, num_channels, height, width = latents.shape
+        latents = latents.reshape(batch_size, num_channels // 4, 2, 2, height, width)
+        latents = latents.permute(0, 1, 4, 2, 5, 3)
+        return latents.reshape(batch_size, num_channels // 4, height * 2, width * 2)
+
+    def _flux2_bn_stats(self, latents: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Batch-norm mean/std used by Flux.2 VAE latent denormalization."""
+        vae = self._pipeline.vae
+        latents_bn_mean = vae.bn.running_mean.view(1, -1, 1, 1).to(
+            latents.device, latents.dtype)
+        latents_bn_std = torch.sqrt(
+            vae.bn.running_var.view(1, -1, 1, 1) + vae.config.batch_norm_eps
+        ).to(latents.device, latents.dtype)
+        return latents_bn_mean, latents_bn_std
+
+    def _flux2_vae_space_to_denoise_space(self, latents: torch.Tensor) -> torch.Tensor:
+        """
+        Reverse Flux.2 Klein-style latent decode prep.
+
+        Klein pipelines return unpatchified latents after BN denorm. External
+        storage / ``latents=`` interchange uses denoise-space unpatchified
+        latents (pre-BN), matching full Flux.2 after unpack+unpatchify.
+        """
+        latents = self._patchify_flux2_latents(latents)
+        latents_bn_mean, latents_bn_std = self._flux2_bn_stats(latents)
+        latents = (latents - latents_bn_mean) / latents_bn_std
+        return self._unpatchify_flux2_latents(latents)
+
+    def _unpack_flux2_latents(self,
+                              latents: torch.Tensor,
+                              height: int | None = None,
+                              width: int | None = None) -> torch.Tensor:
+        """
+        Convert Flux.2 family latent pipeline output to external denoise-space.
+
+        Full ``Flux2Pipeline`` returns packed tokens ``[B, H*W, C*4]``.
+        Klein / Klein-KV return unpatchified BN-denormalized ``[B, C, H, W]``.
+        External storage is always unpatchified denoise-space ``[B, C, H, W]``.
+        """
+        # After batch iteration in _create_pipeline_result: packed is [L, C],
+        # Klein spatial is [C, H, W].
+        if latents.ndim == 2:
+            latents = latents.unsqueeze(0)
+            height, width = self._packed_flow_pixel_size(height, width)
+            batch_size, num_patches, channels = latents.shape
+            patch_h = height // 2
+            patch_w = width // 2
+            # Dense inverse of Flux2Pipeline._pack_latents.
+            latents = latents.permute(0, 2, 1).reshape(
+                batch_size, channels, patch_h, patch_w)
+            return self._unpatchify_flux2_latents(latents)
+
+        if latents.ndim == 3:
+            latents = latents.unsqueeze(0)
+        elif latents.ndim == 4 and latents.shape[1] != getattr(
+                getattr(self._pipeline.vae, 'config', None), 'latent_channels', 32):
+            # Batched packed [B, L, C*4] (no per-sample iteration).
+            height, width = self._packed_flow_pixel_size(height, width)
+            batch_size, num_patches, channels = latents.shape
+            patch_h = height // 2
+            patch_w = width // 2
+            latents = latents.permute(0, 2, 1).reshape(
+                batch_size, channels, patch_h, patch_w)
+            return self._unpatchify_flux2_latents(latents)
+
+        # Klein-style: already unpatchified, but BN-denormalized to VAE space.
+        return self._flux2_vae_space_to_denoise_space(latents)
+
+    def _repack_flux2_latents(self, latents: torch.Tensor) -> torch.Tensor:
+        """
+        Convert external denoise-space Flux.2 latents to patchified 4D.
+
+        ``prepare_latents`` always packs the 4D tensor itself, so callers must
+        pass patchified ``[B, C*4, H/2, W/2]`` rather than a packed sequence.
+        """
+        return self._patchify_flux2_latents(latents)
+
+    def _unpack_output_latents(self,
+                               latents: torch.Tensor,
+                               height: int | None = None,
+                               width: int | None = None) -> torch.Tensor:
+        """Convert pipeline latent output to the external spatial storage layout."""
+        if self._latents_use_flux2_packing():
+            return self._unpack_flux2_latents(latents, height, width)
+        if self._latents_use_flux_style_packing():
+            return self._unpack_flux_latents(latents, height, width)
+        return latents
+
+    def _repack_input_latents(self, latents: torch.Tensor) -> torch.Tensor:
+        """Convert external spatial latents to the layout expected by ``latents=``."""
+        if self._latents_use_flux2_packing():
+            return self._repack_flux2_latents(latents)
+        if self._latents_use_flux_style_packing():
+            return self._repack_flux_latents(latents)
         return latents
 
     def _call_torch_flux(self, pipeline_args, user_args: DiffusionArguments):
@@ -4366,8 +4460,9 @@ class DiffusionPipelineWrapper:
 
         # Process latents if we have them
         if final_latents is not None:
-            # For Flux models, unpack latents to external unpacked format
-            if _enums.model_type_is_flux(self._model_type):
+            # Unpack packed-flow / Flux.2 latents to external spatial format
+            if (self._latents_use_flux_style_packing()
+                    or self._latents_use_flux2_packing()):
                 # Get dimensions with priority: pipeline_kwargs > user_args > None
                 height = None
                 width = None
@@ -4381,8 +4476,8 @@ class DiffusionPipelineWrapper:
 
                 unpacked_latents = []
                 for latent in final_latents:
-                    unpacked_latent = self._unpack_flux_latents(latent, height, width)
-                    unpacked_latents.append(unpacked_latent)
+                    unpacked_latents.append(
+                        self._unpack_output_latents(latent, height, width))
                 final_latents = unpacked_latents
 
             # Apply post-processors if configured
@@ -4861,7 +4956,8 @@ class DiffusionPipelineWrapper:
         :param latents: Latents to decode, can be a sequence of tensors (batched), or a single tensor.
             A single tensor with a batch dimension [B, C, H, W] will be assumed to be a batch of latents
             and batched if the batch dimension is > 1, [C, H, W] will be assumed to be a single latent tensor.
-            For Flux models, latents should be in unpacked format [B, C, H, W] where C=16.
+            For Flux.1 / Qwen / Z-Image / Flux.2, latents should be spatial
+            ``[B, C, H, W]`` in the external unpacked storage layout.
 
         :raise dgenerate.pipelinewrapper.UnsupportedPipelineConfigError: If the decoding the latents is not supported.
         """
@@ -4874,6 +4970,11 @@ class DiffusionPipelineWrapper:
         if not hasattr(self._pipeline, 'vae') or self._pipeline.vae is None:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'Cannot decode latents as the initialized pipeline does not have a VAE.'
+            )
+
+        if _enums.model_type_is_qwen_image_layered(self.model_type):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Qwen-Image-Layered does not support decoding latents via decode_latents().'
             )
 
         if isinstance(latents, torch.Tensor):
@@ -4928,23 +5029,48 @@ class DiffusionPipelineWrapper:
                     latents = latents * latents_std / vae.config.scaling_factor + latents_mean
                 else:
                     latents = latents / vae.config.scaling_factor
+                decoded_images = vae.decode(latents).sample
             elif _enums.model_type_is_sd15(self.model_type) or _enums.model_type_is_sd2(self.model_type):
                 # SD15 and SD2
                 latents = latents / vae.config.scaling_factor
+                decoded_images = vae.decode(latents).sample
             elif _enums.model_type_is_sd3(self.model_type):
                 # SD3
                 latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
-            elif _enums.model_type_is_flux(self.model_type) or _enums.model_type_is_z_image(self.model_type):
-                # Flux and Z-Image latents are spatial [B, C, H, W].
-                # Apply VAE scaling and shift. Flux.2 and Qwen-Image decode
-                # through their own batch-norm or latent-std path inside the pipeline.
+                decoded_images = vae.decode(latents).sample
+            elif _enums.model_type_is_flux(self.model_type) or _enums.model_type_is_z_image_family(self.model_type):
+                # Flux.1 and Z-Image: spatial latents with scale/shift.
                 latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
+                decoded_images = vae.decode(latents).sample
+            elif _enums.model_type_is_flux2_family(self.model_type):
+                # Stored unpatchified denoise-space latents. Match pipeline decode:
+                # patchify -> BN denorm -> unpatchify -> VAE decode.
+                latents = self._patchify_flux2_latents(latents)
+                latents_bn_mean, latents_bn_std = self._flux2_bn_stats(latents)
+                latents = latents * latents_bn_std + latents_bn_mean
+                latents = self._unpatchify_flux2_latents(latents)
+                decoded_images = vae.decode(latents, return_dict=False)[0]
+            elif _enums.model_type_is_qwen_image_family(self.model_type):
+                # Qwen VAE expects a frame dim. Match pipeline denorm:
+                # latents_std is inverted so latents / (1/std) == latents * std.
+                latents = latents.unsqueeze(2)  # [B, C, 1, H, W]
+                z_dim = getattr(vae.config, 'z_dim', latents.shape[1])
+                latents_mean = (
+                    torch.tensor(vae.config.latents_mean)
+                    .view(1, z_dim, 1, 1, 1)
+                    .to(latents.device, latents.dtype)
+                )
+                latents_std = (
+                    1.0 / torch.tensor(vae.config.latents_std)
+                    .view(1, z_dim, 1, 1, 1)
+                    .to(latents.device, latents.dtype)
+                )
+                latents = latents / latents_std + latents_mean
+                decoded_images = vae.decode(latents, return_dict=False)[0][:, :, 0]
             else:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     f'Unable to decode latents for unsupported model type: {_enums.get_model_type_string(self.model_type)}'
                 )
-
-            decoded_images = vae.decode(latents).sample
 
         finally:
             if needs_upcasting:

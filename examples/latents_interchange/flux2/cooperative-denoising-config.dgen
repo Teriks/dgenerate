@@ -1,0 +1,61 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Full Flux.2 cooperative denoising via latents: interchange.
+# Klein checkpoints also work; their latent output is normalized to the
+# same external denoise-space layout automatically.
+
+{% if "--output-metadata" in injected_args %}
+    \set _ {{ injected_args.remove("--output-metadata") }}
+{% endif %}
+
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+# how much denoising to apply in the first stage
+\set high_noise_fraction 0.80
+
+
+black-forest-labs/FLUX.2-dev
+--model-type flux2 {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 50
+--guidance-scales 4
+--gen-seeds 1
+--output-path cooperative
+--image-format pt
+--denoising-end {{ high_noise_fraction }}
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+
+
+black-forest-labs/FLUX.2-dev
+--model-type flux2 {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 50
+--guidance-scales 4
+--gen-seeds 1
+--output-path cooperative
+--image-seeds "latents: {{ quote(last_images) }}"
+--denoising-start {{ high_noise_fraction }}
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

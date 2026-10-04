@@ -1,0 +1,50 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+{% if "--output-metadata" in injected_args %}
+    \set _ {{ injected_args.remove("--output-metadata") }}
+{% endif %}
+
+
+# Z-Image-Turbo is short-schedule; use the base model for a longer
+# cooperative split, or keep Turbo with a lower high_noise_fraction.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if not have_cuda() or gpu_memory_gib <= 16 %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+# how much denoising to apply in the first stage
+\set high_noise_fraction 0.70
+\set steps 9
+
+
+Tongyi-MAI/Z-Image-Turbo
+--model-type z-image {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps {{ steps }}
+--guidance-scales 0
+--gen-seeds 1
+--output-path cooperative
+--image-format pt
+--denoising-end {{ high_noise_fraction }}
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+
+
+Tongyi-MAI/Z-Image-Turbo
+--model-type z-image {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps {{ steps }}
+--guidance-scales 0
+--gen-seeds 1
+--output-path cooperative
+--image-seeds "latents: {{ quote(last_images) }}"
+--denoising-start {{ high_noise_fraction }}
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"
