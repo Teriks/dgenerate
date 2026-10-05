@@ -25,6 +25,24 @@ class TestImageSeedParser(unittest.TestCase):
             _mi.parse_image_seed_uri('examples/media/earth.jpg;floyd=not_found')
         self.assertIn('not_found', str(e.exception))
 
+    def test_vace_mask_without_seed_image(self):
+        parsed = _mi.parse_image_seed_uri(
+            'control=examples/media/rickroll-roll.gif;'
+            'mask=examples/media/dog-on-bench-mask.png;'
+            'reference=examples/media/earth.jpg')
+        self.assertIsNone(parsed.images)
+        self.assertEqual(parsed.control_images, ['examples/media/rickroll-roll.gif'])
+        self.assertEqual(parsed.mask_images, ['examples/media/dog-on-bench-mask.png'])
+        self.assertEqual(parsed.reference_images, ['examples/media/earth.jpg'])
+
+        with self.assertRaises(_mi.ImageSeedParseError) as raised:
+            _mi.parse_image_seed_uri('mask=examples/media/dog-on-bench-mask.png')
+        self.assertIn('control=', str(raised.exception))
+
+        with self.assertRaises(_mi.ImageSeedParseError):
+            _mi.parse_image_seed_uri(
+                'adapter: examples/media/earth.jpg;mask=examples/media/dog-on-bench-mask.png')
+
     def test_adapter_quoting(self):
         seed = _mi.parse_image_seed_uri(
             'images: "examples/media/earth.jpg", "examples/media/beach.jpg"; '

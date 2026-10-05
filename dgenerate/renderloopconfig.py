@@ -3800,6 +3800,12 @@ class RenderLoopConfig(_types.SetFromMixin):
                                                       uri: str,
                                                       a_namer: typing.Callable[[str], str]):
         """Check model-specific requirements for image seeds."""
+        if (parsed.images is None and parsed.mask_images
+                and not _pipelinewrapper.model_type_is_wan_family(self.model_type)):
+            raise RenderLoopConfigError(
+                'Cannot use "mask" without an image seed. '
+                'mask= with only a control= clip is a Wan VACE input.')
+
         if parsed.end_image is not None and not _pipelinewrapper.model_type_is_video(self.model_type):
             raise RenderLoopConfigError(
                 'The image seed argument "last-frame" is only supported for video model types.')
