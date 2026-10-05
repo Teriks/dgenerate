@@ -403,8 +403,12 @@ class SetupAnalyzer:
             return True
         
         elif extra_name == 'triton_windows':
-            # Triton Windows requires NVIDIA GPU
-            return gpu_info.has_nvidia
+            # NVIDIA, or AMD ROCm on Windows with RDNA 3+ (gfx110x / gfx115x / gfx120x).
+            try:
+                from network_installer.platform_detection import triton_windows_compatible
+            except ImportError:
+                from platform_detection import triton_windows_compatible
+            return triton_windows_compatible(gpu_info)
 
         elif extra_name == 'gpt4all_cuda':
             # Older releases: CUDA GPT4All requires an NVIDIA GPU
@@ -450,9 +454,13 @@ class SetupAnalyzer:
                 recommended.append(extra)
                 self._log(f"Recommending xformers - NVIDIA CUDA {gpu_info.cuda_version} detected")
             elif extra == 'triton_windows':
-                # Always recommend if available (compatibility already checked)
                 recommended.append(extra)
-                self._log(f"Recommending triton_windows - NVIDIA GPU detected")
+                if gpu_info.has_nvidia:
+                    self._log("Recommending triton_windows - NVIDIA GPU detected")
+                else:
+                    self._log(
+                        "Recommending triton_windows - AMD RDNA 3+ GPU detected"
+                    )
             elif extra == 'bitsandbytes':
                 recommended.append(extra)
                 if getattr(gpu_info, 'has_intel', False) and gpu_info.xpu_version:
@@ -484,7 +492,7 @@ class SetupAnalyzer:
             'gpt4all_cuda': 'CUDA-accelerated GPT4All for NVIDIA GPUs (Linux/Windows)',
             'console_ui_opengl': 'OpenGL Console UI preview. Plays video and audio. Used when the Vulkan preview is not installed or DGENERATE_CONSOLE_UI_VULKAN=0.',
             'console_ui_vulkan': 'Default Console UI preview on Windows, Linux, and macOS. Plays video and audio. Set DGENERATE_CONSOLE_UI_VULKAN=0 to use OpenGL instead.',
-            'triton_windows': 'Triton support for Windows (NVIDIA)'
+            'triton_windows': 'Triton support for Windows (NVIDIA, and AMD RDNA 3+ with ROCm)',
         }
 
     def get_python_requirement(self):

@@ -127,6 +127,36 @@ class TestInstallerTorchIndex(unittest.TestCase):
         self.assertIn('console_ui_vulkan', recommended)
         self.assertIn('console_ui_opengl', recommended)
 
+    def test_triton_windows_accepts_nvidia_and_rdna3(self):
+        from network_installer.platform_detection import (
+            amd_rdna_major_from_gfx,
+            amd_rdna_major_from_name,
+            triton_windows_compatible,
+        )
+
+        self.assertEqual(amd_rdna_major_from_gfx('gfx1100'), 3)
+        self.assertEqual(amd_rdna_major_from_gfx('gfx1151'), 3)
+        self.assertEqual(amd_rdna_major_from_gfx('gfx1201'), 4)
+        self.assertEqual(amd_rdna_major_from_gfx('gfx1030'), 2)
+        self.assertEqual(amd_rdna_major_from_name('AMD Radeon RX 7900 XTX'), 3)
+        self.assertEqual(amd_rdna_major_from_name('AMD Radeon RX 9070 XT'), 4)
+        self.assertEqual(amd_rdna_major_from_name('AMD Radeon RX 6800 XT'), 2)
+
+        analyzer = SetupAnalyzer.__new__(SetupAnalyzer)
+        analyzer.log_callback = lambda message: None
+        self.assertTrue(analyzer._is_extra_compatible(
+            'triton_windows', GPUInfo(has_nvidia=True)))
+        self.assertTrue(analyzer._is_extra_compatible(
+            'triton_windows',
+            GPUInfo(has_amd=True, amd_gfx='gfx1100', amd_rdna_major=3)))
+        self.assertTrue(triton_windows_compatible(
+            GPUInfo(has_amd=True, gpu_name='AMD Radeon RX 7800 XT')))
+        self.assertFalse(analyzer._is_extra_compatible(
+            'triton_windows',
+            GPUInfo(has_amd=True, amd_gfx='gfx1030', amd_rdna_major=2)))
+        self.assertFalse(analyzer._is_extra_compatible(
+            'triton_windows', GPUInfo()))
+
 
 if __name__ == '__main__':
     unittest.main()

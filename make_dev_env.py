@@ -64,10 +64,24 @@ def get_install_extras():
         "console_ui_opengl",
     ]
 
-    if gpu_url == CUDA_INDEX and platform.system() == "Windows":
+    if platform.system() == "Windows" and _triton_windows_wanted():
         base_extras.append("triton_windows")
 
     return base_extras, gpu_url
+
+
+def _triton_windows_wanted() -> bool:
+    """NVIDIA, or AMD RDNA 3+ (same rule as the network installer)."""
+    installer_dir = Path(__file__).parent / 'installer'
+    if str(installer_dir) not in sys.path:
+        sys.path.insert(0, str(installer_dir))
+    try:
+        from network_installer.platform_detection import detect_gpu as detect_gpu_info
+        from network_installer.platform_detection import triton_windows_compatible
+    except ImportError:
+        from platform_detection import detect_gpu as detect_gpu_info
+        from platform_detection import triton_windows_compatible
+    return triton_windows_compatible(detect_gpu_info())
 
 
 def venv_paths(venv_path: Path):
