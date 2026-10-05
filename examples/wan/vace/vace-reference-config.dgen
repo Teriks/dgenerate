@@ -1,0 +1,23 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# VACE reference-to-video. reference= is the only input. A still in the
+# seed slot would be ignored, so the astronaut is not written there.
+
+\setp reference "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg"
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+
+Wan-AI/Wan2.1-VACE-1.3B-diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 5
+--animation-format mp4
+--output-path wan-vace-reference
+--image-seeds "reference={{ reference }}"
+--prompts "An astronaut in a white spacesuit walks slowly across the lunar surface. The suit matches the reference photo. Dust lifts around the boots, Earth hangs in the black sky, cinematic.;{{ neg }}"

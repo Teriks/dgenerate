@@ -4931,16 +4931,25 @@ VACE
 ``control=``, ``mask=``, and ``reference=`` are VACE inputs. They require a VACE
 checkpoint such as ``Wan-AI/Wan2.1-VACE-1.3B-diffusers``. ``control=`` is the
 control clip. ``reference=`` is an appearance still. White ``mask=`` pixels are
-generated and black pixels keep the control clip. ``--control-image-processors``
-can turn the control clip into an edge or depth map before it is read. Leave
-the clip alone when a mask should preserve it. ``--wan-conditioning-scales`` is
-the VACE scale: one float, or a comma-separated list with one scale per VACE
-layer. Several values are tried in turn.
+generated and black pixels keep the source clip. A video in the seed path is
+that source clip when ``control=`` is omitted. A still in the seed path is not
+used. ``reference=`` alone is reference-to-video. ``--control-image-processors``
+runs on ``control=``. The same kind of processor on a plain video seed is
+``--seed-image-processors``. Leave the clip unprocessed when a mask should
+preserve it. ``--wan-conditioning-scales`` is the VACE scale: one float, or a
+comma-separated list with one scale per VACE layer. Several values are tried
+in turn.
 
 .. code-block:: bash
 
     --image-seeds "control=hiker.mp4"
     --control-image-processors canny
+
+    --image-seeds "hiker.mp4"
+
+    --image-seeds "hiker.mp4;mask=person.gif;reference=astronaut.jpg"
+
+    --image-seeds "reference=astronaut.jpg"
 
 See `examples/wan/vace <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan/vace>`_.
 

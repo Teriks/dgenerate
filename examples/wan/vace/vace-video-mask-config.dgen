@@ -1,0 +1,32 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# VACE swap with the hike in the normal seed slot. control= is not
+# required: a video seed is the source clip, mask= is the person, and
+# reference= is the astronaut. White mask pixels are generated. Black
+# pixels keep the trail. The source clip is 8 fps.
+
+\setp video "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/hiker.mp4"
+\setp reference "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg"
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+
+\image_process {{ video }}
+-o vace-video-person-mask.gif
+--processors "yolo;model=https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n-seg.pt;model-masks=True;masks=True;class-filter=person"
+--align 1
+--no-frames
+
+Wan-AI/Wan2.1-VACE-1.3B-diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--video-fps 8
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 6
+--animation-format mp4
+--output-path wan-vace-video-mask
+--image-seeds "{{ video }};mask=vace-video-person-mask.gif;reference={{ reference }}"
+--prompts "An astronaut in a white spacesuit walks a rocky cliff trail above the sea at sunset. The suit matches the reference photo. Warm light, the camera follows from behind.;{{ neg }}"
