@@ -1262,6 +1262,70 @@ class TestVideoModels(unittest.TestCase):
         self.assertIsNone(fps)
         frames[0].close()
 
+    def test_generic_download_mimetype_uses_extension(self):
+        url = ('https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/'
+               'examples/wan_animate/animate/video.mp4')
+        mime = _mediainput.normalize_downloaded_mimetype(
+            url, 'application/octet-stream')
+        self.assertEqual(mime, 'video/mp4')
+        self.assertTrue(_mediainput.mimetype_is_video(mime))
+        self.assertFalse(_mediainput.mimetype_is_static_image(mime))
+
+        mime = _mediainput.normalize_downloaded_mimetype(
+            'https://example.test/download?id=1',
+            'Application/Octet-Stream; charset=binary',
+            cached_path=os.path.join('cache', 'clip.mp4'))
+        self.assertTrue(_mediainput.mimetype_is_video(mime))
+
+        mime = _mediainput.normalize_downloaded_mimetype(
+            'https://example.test/photo.jpg', 'application/octet-stream')
+        self.assertEqual(mime, 'image/jpeg')
+        self.assertTrue(_mediainput.mimetype_is_static_image(mime))
+
+        mime = _mediainput.normalize_downloaded_mimetype(
+            'https://example.test/data.pfm', 'application/octet-stream')
+        self.assertEqual(mime, 'application/octet-stream')
+        self.assertTrue(_mediainput.mimetype_is_static_image(mime))
+
+        mime = _mediainput.normalize_downloaded_mimetype(
+            'https://example.test/weights.safetensors', 'application/octet-stream')
+        self.assertEqual(mime, 'application/octet-stream')
+
+        mime = _mediainput.normalize_downloaded_mimetype(
+            'https://example.test/a.png', 'image/png; charset=binary')
+        self.assertEqual(mime, 'image/png')
+
+        with unittest.mock.patch(
+                'dgenerate.mediainput._webcache.request_mimetype',
+                return_value='application/octet-stream') as request:
+            self.assertEqual(_mediainput.request_mimetype(url), 'video/mp4')
+            request.assert_called_once_with(url, local_files_only=False)
+
+    def test_load_rgb_frames_reads_octet_stream_video_url(self):
+        url = ('https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/'
+               'examples/wan_animate/animate/video.mp4')
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, 'clip.mp4')
+            with _mediaoutput.VideoWriter(path, 12) as writer:
+                for index in range(4):
+                    writer.write(PIL.Image.new('RGB', (64, 64), (index * 40, 0, 0)))
+
+            def fake_cache(uri, local_files_only=False, **kwargs):
+                self.assertEqual(uri, url)
+                return 'application/octet-stream', path
+
+            frames = []
+            try:
+                with unittest.mock.patch(
+                        'dgenerate.mediainput.create_web_cache_file', fake_cache):
+                    frames, fps = _videopipelines.load_rgb_frames(url, max_frames=3)
+                self.assertEqual(len(frames), 3)
+                self.assertAlmostEqual(fps, 12.0)
+                self.assertTrue(all(frame.mode == 'RGB' for frame in frames))
+            finally:
+                for frame in frames:
+                    frame.close()
+
     def test_ltx_conditions_place_clips(self):
         class Pipe:
             vae_temporal_compression_ratio = 8

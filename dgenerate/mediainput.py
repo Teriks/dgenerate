@@ -713,7 +713,7 @@ def get_supported_static_image_mimetypes() -> list[str]:
         "image/palm",  # palm
         "application/photoshop",  # psd alternative
         "application/psd",  # psd alternative
-        "application/octet-stream",  # bufr, pfm (generic binary stream)
+        "application/octet-stream",  # bufr, pfm; known extensions are reclassified on download
         "application/x-hdf",  # h5, hdf
         "image/vnd.ms-dds",  # dds
         "application/jpg",  # jpg alternative
@@ -2087,6 +2087,9 @@ def request_mimetype(url, local_files_only: bool = False) -> str:
     is returned without connecting to the internet. Otherwise, connect to the internet
     to retrieve the mimetype, this action does not update the cache.
 
+    A generic type such as ``application/octet-stream`` is replaced with a
+    type guessed from the URL when that type is supported.
+
     :param url: The url
     :param local_files_only: If ``True``, do not make a request, only check the cache.
 
@@ -2096,7 +2099,8 @@ def request_mimetype(url, local_files_only: bool = False) -> str:
     :return: mimetype string
     """
 
-    return _webcache.request_mimetype(url, local_files_only=local_files_only)
+    return normalize_downloaded_mimetype(
+        url, _webcache.request_mimetype(url, local_files_only=local_files_only))
 
 
 _MIME_TYPES_GUESS_EXTRA = {
@@ -2125,11 +2129,94 @@ def guess_mimetype(filename) -> str | None:
         # Check for accepted formats that the mimetypes
         # stdlib does not know about by default
 
-        _, ext = os.path.splitext(filename)
-        if ext is not None:
-            mime_type = _MIME_TYPES_GUESS_EXTRA.get(ext)
+        _, ext = url_aware_splitext(filename)
+        if ext:
+            mime_type = _MIME_TYPES_GUESS_EXTRA.get(ext.lower())
 
     return mime_type
+
+
+_GENERIC_DOWNLOADED_MIMETYPES = frozenset({
+    'application/octet-stream',
+    'binary/octet-stream',
+    'application/binary',
+    'application/x-binary',
+    'application/unknown',
+    'unknown',
+})
+
+# A generic Content-Type must not hide a video container.
+_GENERIC_DOWNLOAD_VIDEO_EXTENSIONS = frozenset({
+    '.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.m4v',
+    '.ts', '.mpg', '.mpeg', '.3gp', '.ogv', '.rm', '.asf', '.f4v',
+    '.h264', '.hevc', '.mjpeg', '.vp8', '.vp9', '.vob', '.divx', '.xvid',
+    '.dv', '.amv', '.mxf', '.m2ts', '.mpv',
+})
+
+
+def _mimetype_essence(mimetype: str | None) -> str | None:
+    if not mimetype:
+        return None
+    essence = mimetype.split(';', 1)[0].strip().lower()
+    return essence or None
+
+
+def _mimetype_for_generic_download(name: str) -> str | None:
+    """
+    Guess a supported mimetype from a URL or filename.
+
+    :param name: URL or filename
+    :return: mimetype, or ``None`` when the name does not imply a supported type
+    """
+    if not name:
+        return None
+
+    _, ext = url_aware_splitext(name)
+    ext = ext.lower()
+    guessed = _mimetype_essence(guess_mimetype(name))
+
+    if ext in _GENERIC_DOWNLOAD_VIDEO_EXTENSIONS:
+        if guessed and guessed.startswith('video'):
+            return guessed
+        return 'video/' + ext.lstrip('.')
+
+    if (guessed
+            and guessed not in _GENERIC_DOWNLOADED_MIMETYPES
+            and mimetype_is_supported(guessed)):
+        return guessed
+    return None
+
+
+def normalize_downloaded_mimetype(uri: str,
+                                  mimetype: str,
+                                  cached_path: str | None = None) -> str:
+    """
+    Classify a download when the server type is generic.
+
+    ``application/octet-stream`` is accepted for a few scientific still-image
+    formats, and hosts such as GitHub raw use that same type for every binary
+    file. A video URL would otherwise be opened with Pillow. Parameter
+    suffixes such as ``charset`` are removed. When the type is generic, a
+    supported type guessed from the URL or cached filename is used instead.
+
+    :param uri: source URL or path
+    :param mimetype: Content-Type or cached mimetype
+    :param cached_path: local cache path, used when the URL has no extension
+    :return: mimetype string
+    """
+    essence = _mimetype_essence(mimetype)
+    if essence is None:
+        return mimetype
+    if essence not in _GENERIC_DOWNLOADED_MIMETYPES:
+        return essence
+
+    for name in (uri, cached_path):
+        if not name:
+            continue
+        classified = _mimetype_for_generic_download(name)
+        if classified is not None:
+            return classified
+    return essence
 
 
 MediaPathOpenerFunc = typing.Callable[[str], tuple[str, typing.BinaryIO]]
@@ -2142,6 +2229,9 @@ def fetch_media_data_stream(uri: str, local_files_only: bool = False) -> tuple[s
 
     Caching for downloaded files is multiprocess safe, multiple processes using this
     module can share the cache simultaneously, the last process alive clears the cache when it exits.
+
+    A generic downloaded type such as ``application/octet-stream`` is replaced
+    with a type guessed from the URL or cached filename when that type is supported.
 
     :param uri: Local file path or URL
     :param local_files_only: If ``True`` no downloads will be allowed, 
@@ -2156,7 +2246,7 @@ def fetch_media_data_stream(uri: str, local_files_only: bool = False) -> tuple[s
         mime_type, filename = create_web_cache_file(
             uri, local_files_only=local_files_only
         )
-        return mime_type, open(filename, mode='rb')
+        return normalize_downloaded_mimetype(uri, mime_type, filename), open(filename, mode='rb')
     else:
         # Check if it's a tensor file first
         if is_tensor_file(uri):
