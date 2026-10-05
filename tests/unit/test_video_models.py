@@ -1819,6 +1819,39 @@ class TestWanModels(unittest.TestCase):
         _videopipelines._require_wan_flf_clip(unittest.mock.Mock(transformer=later))
         _videopipelines._require_wan_flf_clip(unittest.mock.Mock(transformer=None))
 
+    def test_control_mask_without_image_is_wan_vace_only(self):
+        seed = (
+            'control=examples/media/rickroll-roll.gif;'
+            'mask=examples/media/dog-on-bench-mask.png')
+        wan = _config(
+            model_path='org/wan',
+            model_type=_pipelinewrapper.ModelType.WAN,
+            prompts=['a hiker'],
+            image_seeds=[seed])
+        wan.check()
+
+        other = _config(
+            model_path='org/sd',
+            model_type=_pipelinewrapper.ModelType.SD,
+            prompts=['a hiker'],
+            image_seeds=[seed])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            other.check()
+        self.assertIn('Wan VACE', str(raised.exception))
+
+        animate = _config(
+            model_path='org/wan-animate',
+            model_type=_pipelinewrapper.ModelType.WAN_ANIMATE,
+            prompts=['a hiker'],
+            wan_animate_preprocess=True,
+            image_seeds=[
+                'control=examples/media/rickroll-roll.gif;'
+                'mask=examples/media/dog-on-bench-mask.png;'
+                'wan-driving=examples/media/rickroll-roll.gif'])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            animate.check()
+        self.assertIn('character image', str(raised.exception))
+
     def test_classify_wan_seed(self):
         self.assertEqual(
             _videopipelines.classify_video_seed(_pipelinewrapper.ModelType.WAN, None),

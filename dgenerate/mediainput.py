@@ -1823,11 +1823,12 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
 
         result.mask_images = mask_images if isinstance(mask_images, list) else [mask_images]
 
-    if result.images is None and mask_images is not None:
+    if result.images is None and mask_images is not None and not parse_result.args.get('control'):
         raise ImageSeedParseError(
-            'Cannot use "mask" image seed argument when the only input is IP adapter images.')
+            'Cannot use "mask" without an image seed or a control= clip.')
 
-    if result.mask_images is not None and len(result.mask_images) > len(result.images):
+    if (result.mask_images is not None and result.images is not None
+            and len(result.mask_images) > len(result.images)):
         raise ImageSeedParseError(
             'There cannot be more "mask" images than image seed image inputs.')
 
