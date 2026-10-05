@@ -193,6 +193,8 @@ def _call_ltx(wrapper, user_args):
     width, height = _vp._size(user_args)
     if width is not None:
         _vp._require_multiple_of_32(width, height, 'LTX')
+    if mode != 'ltx-txt':
+        width, height = _fit_ltx_inputs(pipe, held, mode, user_args, width, height)
 
     fps = float(user_args.video_fps or _LTX_DEFAULT_FPS)
     kwargs = {
@@ -843,25 +845,30 @@ def _ltx_reference_kwargs(wrapper, pipe, held, user_args, num_frames: int,
 
     The reference is the image seed control clip. Its downscale factor comes from
     the ``--ltx-ic-lora`` URI, or else from the IC-LoRA file metadata.
+
+    Frames are fit to the output canvas with the still-image ``--output-size``
+    rule first. The pipeline then center-crops to the LoRA reference size, and a
+    matching aspect means that crop only scales.
     """
     from diffusers.pipelines.ltx2.pipeline_ltx2_ic_lora import LTX2ReferenceCondition
 
     factor = held.reference_downscale_factor or 1
     ic_lora = _vp._parsed_ic_lora(wrapper)
     attention = ic_lora.attention if ic_lora is not None else 1.0
-
-    if factor > 1:
-        spatial = int(getattr(pipe, 'vae_spatial_compression_ratio', 32) or 32)
-        check_width = width if width is not None else 768
-        check_height = height if height is not None else 512
-        if (check_width // factor) % spatial or (check_height // factor) % spatial:
+    spatial = int(getattr(pipe, 'vae_spatial_compression_ratio', 32) or 32)
+    if factor > 1 and width is not None and height is not None:
+        width_bad = (int(width) // factor) % spatial
+        height_bad = (int(height) // factor) % spatial
+        if width_bad or (height_bad and not user_args.aspect_correct):
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'The IC-LoRA reads the control clip at 1/{factor} of the output size, '
                 f'so the output width and height must be divisible by {spatial * factor}. '
-                f'Got {check_width}x{check_height}.')
+                f'Got {int(width)}x{int(height)}.')
 
     clip = _trim_ltx_clip(
         user_args.reference_video_frames, num_frames, _ltx_temporal_compression(pipe))
+    clip = _resize_ltx_control_clip(
+        clip, width, height, user_args.aspect_correct, spatial * max(1, int(factor)))
     _messages.debug_log(
         f'LTX IC-LoRA reference clip: {len(clip)} frames, downscale factor {factor}, '
         f'attention {attention}.')
@@ -870,6 +877,71 @@ def _ltx_reference_kwargs(wrapper, pipe, held, user_args, num_frames: int,
         'reference_downscale_factor': factor,
         'conditioning_attention_strength': attention,
     }
+
+
+def _ltx_canvas_align(pipe, held, mode: str) -> int:
+    spatial = int(getattr(pipe, 'vae_spatial_compression_ratio', 32) or 32)
+    if mode != 'ltx-control':
+        return spatial
+    factor = int(getattr(held, 'reference_downscale_factor', None) or 1)
+    return spatial * max(1, factor)
+
+
+def _fit_ltx_inputs(pipe, held, mode, user_args, width, height):
+    """
+    Fit every LTX conditioning image and clip to one canvas.
+
+    The first available control clip, opening media, or end media chooses
+    the canvas. The other slots are resized onto it.
+    """
+    primary = None
+    for attr in ('reference_video_frames', 'video_frames', 'images',
+                 'end_video_frames', 'end_images'):
+        frames = getattr(user_args, attr, None)
+        if frames:
+            primary = frames[0].size
+            break
+    if primary is None:
+        return width, height
+    align = _ltx_canvas_align(pipe, held, mode)
+    target_w, target_h = _vp.conditioning_canvas(
+        primary, width, height, user_args.aspect_correct, align)
+    target = (target_w, target_h)
+    if primary != target:
+        _messages.log(
+            f'Resizing LTX conditioning media from {primary[0]}x{primary[1]} '
+            f'to {target_w}x{target_h}.')
+    for attr in ('reference_video_frames', 'video_frames', 'images',
+                 'end_video_frames', 'end_images'):
+        frames = getattr(user_args, attr, None)
+        if frames:
+            setattr(user_args, attr, _vp.resize_media(frames, target))
+    extras = []
+    for frames, index, strength in user_args.ltx_extra_conditions or []:
+        if isinstance(frames, list):
+            frames = _vp.resize_media(frames, target)
+        else:
+            frames = _vp.resize_media([frames], target)[0]
+        extras.append((frames, index, strength))
+    if extras:
+        user_args.ltx_extra_conditions = extras
+    user_args.width = target_w
+    user_args.height = target_h
+    return target_w, target_h
+
+
+def _resize_ltx_control_clip(frames, width, height, aspect_correct, align: int):
+    """Fit an IC-LoRA control clip with the still-image ``--output-size`` rule."""
+    source = frames[0].size
+    target_w, target_h = _vp.conditioning_canvas(
+        source, width, height, aspect_correct, align)
+    target = (target_w, target_h)
+    if source == target:
+        return frames
+    _messages.log(
+        f'Resizing LTX IC-LoRA control clip from {source[0]}x{source[1]} '
+        f'to {target[0]}x{target[1]}.')
+    return _vp.resize_media(frames, target)
 
 
 def _ic_lora_downscale_factor(lora_uri: str, override: int | None,

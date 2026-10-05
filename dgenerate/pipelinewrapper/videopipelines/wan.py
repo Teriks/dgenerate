@@ -482,6 +482,19 @@ def _call_wan(wrapper, user_args):
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
     _require_wan_size(width, height, pipe, 'Wan')
+    align = _spatial_multiple(pipe)
+    if mode == 'wan-image':
+        width, height = _fit_output_media(
+            user_args, 'images', [], width, height, align, 'Wan image')
+    elif mode == 'wan-flf':
+        width, height = _fit_output_media(
+            user_args, 'images', [('end_images', False)], width, height, align,
+            'Wan first frame')
+    elif mode == 'wan-video':
+        width, height = _fit_output_media(
+            user_args, 'video_frames', [], width, height, align, 'Wan video')
+    elif mode == 'wan-vace':
+        width, height = _fit_vace_canvas(user_args, width, height, align)
 
     fps = float(user_args.video_fps or _WAN_DEFAULT_FPS)
     temporal = _temporal_factor(pipe)
@@ -547,6 +560,66 @@ def _call_wan(wrapper, user_args):
     return frames, None, None, fps
 
 
+def _fit_output_media(user_args, primary: str, companions, width, height,
+                      align: int, label: str):
+    """
+    Fit ``primary`` with the still-image ``--output-size`` rule and resize
+    ``companions`` onto that same canvas.
+
+    ``companions`` is a list of ``(attribute, nearest)``.
+    """
+    from dgenerate.pipelinewrapper import videopipelines as _pipelines_pkg
+
+    frames = getattr(user_args, primary)
+    if not frames:
+        return width, height
+    source = frames[0].size
+    target_w, target_h = _pipelines_pkg.conditioning_canvas(
+        source, width, height, user_args.aspect_correct, align)
+    target = (target_w, target_h)
+    if source != target:
+        _messages.log(
+            f'Resizing {label} from {source[0]}x{source[1]} to {target_w}x{target_h}.')
+    setattr(user_args, primary, _pipelines_pkg.resize_media(frames, target))
+    for attr, nearest in companions:
+        extra = getattr(user_args, attr, None)
+        if extra:
+            setattr(user_args, attr, _pipelines_pkg.resize_media(
+                extra, target, nearest=nearest))
+    user_args.width = target_w
+    user_args.height = target_h
+    return target_w, target_h
+
+
+def _fit_vace_canvas(user_args, width, height, align: int):
+    """
+    Resize the VACE control clip and mask onto one canvas.
+
+    The clip chooses the canvas with the still-image ``--output-size`` rule.
+    The mask is resized to that same canvas so it stays registered.
+    """
+    from dgenerate.pipelinewrapper import videopipelines as _pipelines_pkg
+
+    video_attr = 'vace_video_frames' if user_args.vace_video_frames else 'video_frames'
+    video = getattr(user_args, video_attr)
+    if not video:
+        return width, height
+    source = video[0].size
+    width, height = _fit_output_media(
+        user_args, video_attr, [], width, height, align, 'Wan VACE control clip')
+    mask = user_args.vace_mask_frames
+    target = (width, height)
+    if mask and mask[0].size != target:
+        if mask[0].size != source:
+            _messages.warning(
+                f'Wan VACE mask is {mask[0].size[0]}x{mask[0].size[1]} while the '
+                f'control clip is {source[0]}x{source[1]}. The mask is resized '
+                f'to the control clip canvas.')
+        user_args.vace_mask_frames = _pipelines_pkg.resize_media(
+            mask, target, nearest=True)
+    return width, height
+
+
 def _fill_vace_kwargs(kwargs, user_args, temporal: int):
     video = user_args.vace_video_frames or user_args.video_frames
     if video:
@@ -593,6 +666,7 @@ def _call_wan_animate(wrapper, user_args):
             'Wan-Animate needs wan-pose= and wan-face= clips, or wan-driving= with '
             '--wan-animate-preprocess or --wan-pose-image-processors and '
             '--wan-face-image-processors.')
+    user_args.wan_pose_video_frames = pose
 
     pipe, held = _vp._video_pipeline(wrapper, 'wan-animate', user_args.scheduler_uri)
     _require_image_encoder(pipe, 'wan-animate')
@@ -600,6 +674,11 @@ def _call_wan_animate(wrapper, user_args):
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
     _require_wan_size(width, height, pipe, 'Wan-Animate')
+    width, height = _fit_output_media(
+        user_args, 'wan_pose_video_frames',
+        [('wan_background_video_frames', False), ('mask_video_frames', True)],
+        width, height, _spatial_multiple(pipe), 'Wan-Animate pose clip')
+    pose = user_args.wan_pose_video_frames
 
     fps = float(user_args.video_fps or _WAN_ANIMATE_DEFAULT_FPS)
     mode = user_args.wan_animate_mode or 'animate'
@@ -681,6 +760,9 @@ def _call_wan_animate_2(wrapper, user_args):
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
     _require_wan_size(width, height, pipe, 'Wan-Animate-2')
+    width, height = _fit_output_media(
+        user_args, 'wan_driving_video_frames', [],
+        width, height, _spatial_multiple(pipe), 'Wan-Animate-2 driving clip')
 
     distilled = held.family == 'wan-animate-2-distilled'
     steps = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))

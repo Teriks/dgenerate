@@ -380,6 +380,21 @@ class TestVideoModels(unittest.TestCase):
         self.assertEqual(kwargs['reference_downscale_factor'], 2)
         self.assertEqual(kwargs['conditioning_attention_strength'], 0.5)
         self.assertEqual(len(kwargs['reference_conditions'][0].frames), 25)
+        self.assertEqual(kwargs['reference_conditions'][0].frames[0].size, (512, 512))
+
+        wide = _pipelinewrapper.DiffusionArguments()
+        wide.aspect_correct = False
+        wide.reference_video_frames = [PIL.Image.new('RGB', (720, 480)) for _ in range(17)]
+        wide_kwargs = _videopipelines._ltx_reference_kwargs(
+            Wrapper(), Pipe(), Held(), wide, 17, 512, 512)
+        self.assertEqual(wide_kwargs['reference_conditions'][0].frames[0].size, (512, 512))
+
+        fitted = _pipelinewrapper.DiffusionArguments()
+        fitted.aspect_correct = True
+        fitted.reference_video_frames = [PIL.Image.new('RGB', (720, 480)) for _ in range(17)]
+        fitted_kwargs = _videopipelines._ltx_reference_kwargs(
+            Wrapper(), Pipe(), Held(), fitted, 17, 512, 512)
+        self.assertEqual(fitted_kwargs['reference_conditions'][0].frames[0].size, (512, 320))
 
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
             _videopipelines._ltx_reference_kwargs(Wrapper(), Pipe(), Held(), args, 49, 544, 512)
@@ -436,6 +451,8 @@ class TestVideoModels(unittest.TestCase):
         args = _pipelinewrapper.DiffusionArguments()
         args.prompt = _prompt.Prompt('fox')
         args.video_fps = 24
+        args.width = 512
+        args.height = 512
         args.reference_video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(20)]
         args.images = [PIL.Image.new('RGB', (8, 8))]
 
@@ -2193,6 +2210,120 @@ class TestWanModels(unittest.TestCase):
         self.assertEqual(fps, 16)
         self.assertEqual(len(frames), 1)
         self.assertIsNone(audio)
+
+    def test_wan_vace_fits_control_clip_to_output_size(self):
+        class Scheduler:
+            def __init__(self):
+                self.config = {}
+
+        class Transformer:
+            def __init__(self):
+                self.config = unittest.mock.Mock(patch_size=(1, 2, 2))
+
+        class Pipe:
+            def __init__(self):
+                self.scheduler = Scheduler()
+                self.transformer = Transformer()
+                self.vae_scale_factor_temporal = 4
+                self.vae_scale_factor_spatial = 8
+                self.config = {}
+
+            def register_to_config(self, **kwargs):
+                self.config.update(kwargs)
+
+        pipe = Pipe()
+        captured = {}
+
+        def invoke(wrapper, pipeline, kwargs):
+            captured['kwargs'] = kwargs
+
+            class Output:
+                frames = [PIL.Image.new('RGB', (4, 4))]
+
+            return Output()
+
+        clip = PIL.Image.new('RGB', (720, 480), (20, 40, 60))
+        mask = PIL.Image.new('L', (720, 480), 255)
+        args = _pipelinewrapper.DiffusionArguments()
+        args.prompt = _prompt.Prompt('a traveler walks the trail')
+        args.inference_steps = 4
+        args.guidance_scale = 5
+        args.video_fps = 8
+        args.video_length = 6
+        args.width = 832
+        args.height = 480
+        reference = PIL.Image.new('RGB', (400, 600))
+        args.aspect_correct = True
+        args.vace_video_frames = [clip]
+        args.vace_mask_frames = [mask]
+        args.vace_reference_images = [reference]
+
+        class Held:
+            pipeline = pipe
+            family = 'wan-vace'
+
+        class Wrapper:
+            device = 'cpu'
+            model_type = _pipelinewrapper.ModelType.WAN
+            model_cpu_offload = False
+            model_sequential_offload = False
+            model_path = 'org/wan-vace'
+            _revision = None
+            _variant = None
+            _subfolder = None
+            _dtype = None
+            _local_files_only = False
+            _auth_token = None
+            quantizer_uri = None
+            quantizer_map = None
+            transformer_uri = None
+            lora_uris = None
+            lora_fuse_scale = None
+
+        with unittest.mock.patch.object(
+                _videopipelines, '_create_cached_video_pipeline',
+                return_value=Held()), \
+                unittest.mock.patch.object(
+                    _videopipelines, 'pipeline_for_mode',
+                    side_effect=lambda pipeline, mode, family: captured.__setitem__('mode', mode) or pipeline), \
+                unittest.mock.patch.object(
+                    _videopipelines._schedulers, 'load_scheduler'), \
+                unittest.mock.patch.object(
+                    _videopipelines, '_invoke', side_effect=invoke):
+            _videopipelines._call_wan(Wrapper(), args)
+
+        self.assertEqual(captured['mode'], 'wan-vace')
+        self.assertEqual(captured['kwargs']['width'], 832)
+        self.assertEqual(captured['kwargs']['height'], 544)
+        self.assertEqual(captured['kwargs']['video'][0].size, (832, 544))
+        self.assertEqual(captured['kwargs']['mask'][0].size, (832, 544))
+        self.assertEqual(captured['kwargs']['reference_images'][0].size, (400, 600))
+        self.assertEqual(args.width, 832)
+        self.assertEqual(args.height, 544)
+
+        stretched = _pipelinewrapper.DiffusionArguments()
+        stretched.aspect_correct = False
+        stretched.vace_video_frames = [PIL.Image.new('RGB', (720, 480))]
+        stretched.vace_mask_frames = [PIL.Image.new('L', (720, 480), 0)]
+        fitted = _videopipelines.wan._fit_vace_canvas(stretched, 832, 480, 16)
+        self.assertEqual(fitted, (832, 480))
+        self.assertEqual(stretched.vace_video_frames[0].size, (832, 480))
+        self.assertEqual(stretched.vace_mask_frames[0].size, (832, 480))
+
+        pose = _pipelinewrapper.DiffusionArguments()
+        pose.aspect_correct = True
+        pose.wan_pose_video_frames = [PIL.Image.new('RGB', (720, 480))]
+        pose.images = [PIL.Image.new('RGB', (400, 600))]
+        pose.wan_face_video_frames = [PIL.Image.new('RGB', (128, 128))]
+        pose.mask_video_frames = [PIL.Image.new('L', (720, 480), 255)]
+        canvas = _videopipelines.wan._fit_output_media(
+            pose, 'wan_pose_video_frames', [('mask_video_frames', True)],
+            832, 480, 16, 'Wan-Animate pose clip')
+        self.assertEqual(canvas, (832, 544))
+        self.assertEqual(pose.wan_pose_video_frames[0].size, (832, 544))
+        self.assertEqual(pose.mask_video_frames[0].size, (832, 544))
+        self.assertEqual(pose.images[0].size, (400, 600))
+        self.assertEqual(pose.wan_face_video_frames[0].size, (128, 128))
 
     def test_length_product_uses_shared_video_fields(self):
         config = _config(

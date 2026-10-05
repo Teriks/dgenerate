@@ -1601,6 +1601,8 @@ class RenderLoop:
                                    owned_images: list):
         if parsed is None:
             return
+        if parsed.aspect_correct is not None:
+            diffusion_arguments.aspect_correct = bool(parsed.aspect_correct)
         model_type = self._c_config.model_type
         wan = _pipelinewrapper.model_type_is_wan_family(model_type)
         max_frames = None
