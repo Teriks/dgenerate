@@ -433,7 +433,7 @@ Its refine LoRA is ``--ltx-stage-loras``, not a second config.
 ``--ltx-ic-lora`` is the IC-LoRA. The last frame is ``last-frame=``, not ``end=``.
 ``ltx-index`` is the latent frame and ``strength`` is from 0 to 1.
 ``--image-seed-strengths`` fills LTX groups that omit ``strength``.
-Extra conditions in one clip are separated by `` ++ ``.
+Extra conditions in one clip are separated by a space, ``++``, and a space.
 Use ``Lightricks/LTX-Video`` only when the user names that
 older video-only model.
 Wan 2.1 / 2.2 is ``--model-type wan`` with a public ``Wan-AI`` repo, no
