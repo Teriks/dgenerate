@@ -455,6 +455,59 @@ def _size(user_args) -> tuple[int | None, int | None]:
     return int(user_args.width), int(user_args.height)
 
 
+def conditioning_canvas(source_size,
+                        width,
+                        height,
+                        aspect_correct: bool,
+                        align: int) -> tuple[int, int]:
+    """
+    Generation canvas for one conditioning image or clip.
+
+    This matches still-image ``--output-size`` handling. The requested width
+    is kept. Unless aspect correction is off, the height follows the source
+    and is aligned down. With no requested size, the source itself is aligned.
+    """
+    import dgenerate.image as _image
+
+    source_size = (int(source_size[0]), int(source_size[1]))
+    align = max(1, int(align))
+    if width is None and height is None:
+        requested = source_size
+        aspect = False
+    else:
+        requested = (
+            int(width) if width is not None else source_size[0],
+            int(height) if height is not None else source_size[1])
+        aspect = bool(aspect_correct)
+    target = _image.resize_image_calc(
+        old_size=source_size,
+        new_size=requested,
+        aspect_correct=aspect,
+        align=align)
+    if target[0] < align or target[1] < align:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'Conditioning media {source_size[0]}x{source_size[1]} cannot be fit to '
+            f'{requested[0]}x{requested[1]} at the required alignment of {align}.')
+    return int(target[0]), int(target[1])
+
+
+def resize_media(frames, target, nearest: bool = False):
+    """Resize every frame to ``target``. ``nearest`` keeps mask edges hard."""
+    import PIL.Image
+
+    import dgenerate.image as _image
+
+    if not frames:
+        return frames
+    target = (int(target[0]), int(target[1]))
+    if all(frame.size == target for frame in frames):
+        return frames
+    algo = PIL.Image.Resampling.NEAREST if nearest else None
+    return [
+        _image.resize_image(frame, target, aspect_correct=False, algo=algo)
+        for frame in frames]
+
+
 def _require_multiple_of_32(width: int, height: int, model_name: str):
     if width % 32 or height % 32:
         raise _pipelines.UnsupportedPipelineConfigError(
