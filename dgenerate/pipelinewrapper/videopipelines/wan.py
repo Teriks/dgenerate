@@ -584,7 +584,8 @@ def _call_wan_animate(wrapper, user_args):
             user_args.wan_driving_video_frames,
             user_args.wan_driving_video_path,
             user_args.wan_animate_cache_dir,
-            motion_encoder_size=_animate_motion_size(wrapper))
+            motion_encoder_size=_animate_motion_size(wrapper),
+            device=wrapper.device)
         pose = pose or derived_pose
         face = face or derived_face
     if not pose or not face:
@@ -830,15 +831,17 @@ def _animate_motion_size(wrapper) -> int:
 def preprocess_wan_animate_driving(frames: list[PIL.Image.Image],
                                    source_path: str | None,
                                    cache_dir: str | None,
-                                   motion_encoder_size: int = 512
+                                   motion_encoder_size: int = 512,
+                                   device: str = 'cpu'
                                    ) -> tuple[list[PIL.Image.Image], list[PIL.Image.Image]]:
     """
     Derive pose and face clips from a driving video.
 
     Pose is ``openpose``. Face is a square crop around the first
-    ``yolo`` face box. Cached files are written next to the driving
-    clip when ``source_path`` is a local file, otherwise under
-    ``cache_dir``.
+    ``yolo`` face box. Both processors run on ``device`` for the clip
+    and return to CPU when the clip is finished. Cached files are
+    written next to the driving clip when ``source_path`` is a local
+    file, otherwise under ``cache_dir``.
     """
     pose_path, face_path = _animate_cache_paths(source_path, cache_dir)
     if _cache_fresh(source_path, pose_path, face_path):
@@ -848,7 +851,7 @@ def preprocess_wan_animate_driving(frames: list[PIL.Image.Image],
         _messages.log(f'Reusing cached Wan-Animate pose and face clips.')
         return pose, face
 
-    pose_processor, face_processor = _animate_processors(motion_encoder_size)
+    pose_processor, face_processor = _animate_processors(motion_encoder_size, device)
     try:
         pose = [pose_processor.process(frame.copy()) for frame in frames]
         face = [face_processor.process(frame.copy()) for frame in frames]
@@ -892,11 +895,13 @@ def _write_clip_cache(frames: list[PIL.Image.Image], path: str):
         _messages.debug_log(f'Could not cache Wan-Animate clip "{path}": {error}')
 
 
-def _animate_processors(motion_encoder_size: int = 512):
+def _animate_processors(motion_encoder_size: int = 512, device: str = 'cpu'):
     import dgenerate.imageprocessors as _imgp
-    pose = _imgp.create_image_processor('openpose;include-hand=true')
+    pose = _imgp.create_image_processor(
+        'openpose;include-hand=true', device=device)
     face = _imgp.create_image_processor(
         'yolo;model=Bingsu/adetailer;weight-name=face_yolov8n.pt;'
         f'crops=True;crop-square=True;crop-scale=1.4;'
-        f'crop-size={int(motion_encoder_size)}')
+        f'crop-size={int(motion_encoder_size)}',
+        device=device)
     return pose, face
