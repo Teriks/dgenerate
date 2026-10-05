@@ -132,9 +132,25 @@ class TestFormatImageSeedURI(unittest.TestCase):
         with self.assertRaises(ValueError):
             format_image_seed_uri(seed_images="seed.png", resize="800x600x400")
 
-    def test_missing_seed_image_with_inpaint_and_control(self):
+    def test_vace_mask_and_reference_without_seed(self):
+        result = format_image_seed_uri(
+            mask_images="inpaint.png", control_images="control.mp4")
+        self.assertEqual(result, "mask=inpaint.png;control=control.mp4")
+
+        result = format_image_seed_uri(
+            control_images="control.mp4",
+            mask_images="inpaint.png",
+            reference_images="style.jpg")
+        self.assertEqual(
+            result, "mask=inpaint.png;control=control.mp4;reference=style.jpg")
+
+        result = format_image_seed_uri(
+            control_images="control.mp4", reference_images="style.jpg")
+        self.assertEqual(result, "control=control.mp4;reference=style.jpg")
+
         with self.assertRaises(ValueError):
-            format_image_seed_uri(seed_images=None, mask_images="inpaint.png", control_images="control.png")
+            format_image_seed_uri(
+                mask_images=["a.png", "b.png"], control_images="control.mp4")
 
     def test_frame_start_without_frame_end(self):
         result = format_image_seed_uri(seed_images="seed.png", frame_start=10)

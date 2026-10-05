@@ -1838,7 +1838,7 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     """
     Formats a ``--image-seeds`` URI to its shortest possible string form.
 
-    :raise ValueError: if ``inpaint_image`` is specified without ``seed_image``.
+    :raise ValueError: if ``mask_images`` is specified without ``seed_images`` or ``control_images``.
                        if keyword arguments are present without ``seed_image`` or ``control_images``.
                        if ``frame_start`` or ``frame_end`` are negative values.
                        if ``frame_start`` is greater than ``frame_end``.
@@ -1856,7 +1856,7 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                        if LTX condition arguments are used with ``floyd_image``.
                        if too many mask images are provided.
                        if too few mask images are provided.
-                       if ``reference_images`` are specified without ``seed_images``.
+                       if ``reference_images`` are specified without ``seed_images`` or ``control_images``.
                        if no arguments are provided.
 
     :param seed_images: Seed image path(s)
@@ -1902,6 +1902,10 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                 raise ValueError('too few mask images provided.')
 
         seed_images = 'images:' + ', '.join(_quote_ltx_path(path) for path in seed_images)
+    elif mask_images is not None and not isinstance(mask_images, str) and not floyd_image:
+        mask_images = list(mask_images)
+        if len(mask_images) > 1:
+            raise ValueError('too many mask images provided.')
 
     if isinstance(seed_images, str):
         seed_images = _quote_ltx_path(seed_images)
@@ -1946,12 +1950,15 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
             else:
                 components.append(str(component))
 
-    # Validate inputs
-    if mask_images and not seed_images and not floyd_image:
-        raise ValueError('inpaint_image cannot be specified without seed_image.')
+    # Validate inputs. A control clip can carry mask= and reference= with no seed
+    # image; that is a Wan VACE input. A mask or reference alone still needs a seed.
+    if mask_images and not seed_images and not floyd_image and not control_images:
+        raise ValueError(
+            'mask_images cannot be specified without seed_images or control_images.')
 
-    if reference_images and not seed_images:
-        raise ValueError('reference_images cannot be specified without seed_image.')
+    if reference_images and not seed_images and not control_images:
+        raise ValueError(
+            'reference_images cannot be specified without seed_images or control_images.')
 
     if adapter_images and floyd_image:
         raise ValueError('adapter_images cannot be specified with floyd_image.')
@@ -2028,8 +2035,10 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     if end_image:
         # Control images stay in control= so they are not read as the opening clip
         pass
-    elif control_images and not seed_images and not mask_images and not latents:
-        # Control image alone becomes the seed
+    elif (control_images and not seed_images and not mask_images
+            and not latents and not reference_images):
+        # Control image alone becomes the seed. A mask or reference keeps control=
+        # so a Wan VACE clip is not written as the opening image.
         seed_images = control_images
         control_images = None
     elif latents and not seed_images and not mask_images and not control_images:

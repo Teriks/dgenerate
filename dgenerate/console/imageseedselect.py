@@ -151,12 +151,17 @@ class _ImageSeedSelect(tk.Toplevel):
         return header
 
     def _build_form(self):
-        self._section('Pictures', 'Add a row for each file. One mask covers every seed, or use one mask per seed.')
+        self._section(
+            'Pictures',
+            'Add a row for each file. One mask covers every seed, or use one mask per seed. '
+            'Wan VACE can use one mask with a control clip and no seed image.')
         self._seeds = _FileRows(self, self._open_image, 'Seed image', start=1)
         self._masks = _FileRows(self, self._open_image, 'Inpaint mask')
         self._controls = _FileRows(self, self._open_image, 'Control image')
 
-        self._section('Reference', 'Extra images beside the seed. Written as reference=.')
+        self._section(
+            'Reference',
+            'Extra images beside the seed, or beside a Wan VACE control clip. Written as reference=.')
         self._references = _FileRows(self, self._open_image, 'Reference image')
 
         self._section('Latents', 'Tensor files (.pt, .pth, .safetensors), one per seed when seeds are set.')
@@ -185,19 +190,19 @@ class _ImageSeedSelect(tk.Toplevel):
         self._end_entry.grid(row=0, column=1, sticky=tk.EW)
         tk.Button(end_row, text='File', command=lambda: self._open_image(self._end_entry)).grid(
             row=0, column=2, padx=(4, 0))
+        self._ltx_index = self._labeled_spin('Latent frame index', -100000, 100000)
+        self._ltx_strength = self._labeled_float('Strength')
+        self._extras = _ExtraRows(self)
 
         self._section(
             'Wan',
+            'The control clip and mask above are Wan VACE, and reference= can go with them when there is no seed image. '
             'wan-pose= and wan-face= are Wan-Animate. wan-driving= is the source clip for --wan-animate-preprocess. '
-            'wan-background= is replace mode. reference= above is VACE.')
+            'wan-background= is replace mode.')
         self._pose_entry = self._wan_file('Pose clip')
         self._face_entry = self._wan_file('Face clip')
         self._driving_entry = self._wan_file('Driving clip')
         self._background_entry = self._wan_file('Background clip')
-
-        self._ltx_index = self._labeled_spin('Latent frame index', -100000, 100000)
-        self._ltx_strength = self._labeled_float('Strength')
-        self._extras = _ExtraRows(self)
 
     def _labeled_entry(self, label):
         row = tk.Frame(self._inner)
@@ -296,11 +301,16 @@ class _ImageSeedSelect(tk.Toplevel):
         latents = self._latents.paths()
         end_image = _entry.shell_quote_if(self._end_entry.get().strip(), strict=True) or None
 
-        if masks and not seeds:
+        if masks and not seeds and not controls:
             self._seeds.mark()
+            self._controls.mark()
             return
-        if references and not seeds:
+        if len(masks) > 1 and not seeds:
+            self._masks.mark()
+            return
+        if references and not seeds and not controls:
             self._seeds.mark()
+            self._controls.mark()
             return
         if len(masks) > 1 and len(masks) != len(seeds):
             self._masks.mark()
