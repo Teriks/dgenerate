@@ -131,16 +131,23 @@ class TestInstallerTorchIndex(unittest.TestCase):
         from network_installer.platform_detection import (
             amd_rdna_major_from_gfx,
             amd_rdna_major_from_name,
+            amd_rdna3_or_newer,
             triton_windows_compatible,
         )
 
         self.assertEqual(amd_rdna_major_from_gfx('gfx1100'), 3)
         self.assertEqual(amd_rdna_major_from_gfx('gfx1151'), 3)
         self.assertEqual(amd_rdna_major_from_gfx('gfx1201'), 4)
+        self.assertEqual(amd_rdna_major_from_gfx('gfx1300'), 5)
         self.assertEqual(amd_rdna_major_from_gfx('gfx1030'), 2)
         self.assertEqual(amd_rdna_major_from_name('AMD Radeon RX 7900 XTX'), 3)
         self.assertEqual(amd_rdna_major_from_name('AMD Radeon RX 9070 XT'), 4)
+        self.assertEqual(amd_rdna_major_from_name('AMD Radeon RX 10500 XT'), 5)
         self.assertEqual(amd_rdna_major_from_name('AMD Radeon RX 6800 XT'), 2)
+        self.assertTrue(amd_rdna3_or_newer(
+            GPUInfo(has_amd=True, amd_gfx='gfx1300')))
+        self.assertTrue(amd_rdna3_or_newer(
+            GPUInfo(has_amd=True, gpu_name='AMD Radeon RX 11000 XT')))
 
         analyzer = SetupAnalyzer.__new__(SetupAnalyzer)
         analyzer.log_callback = lambda message: None
