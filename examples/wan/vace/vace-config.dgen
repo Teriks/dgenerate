@@ -1,12 +1,11 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# VACE control. control= is the control clip, reference= is a still for
-# appearance. Assets match Diffusers docs (hiker.mp4 + astronaut.jpg);
-# prompt matches the Diffusers blue-bird VACE example.
+# VACE control. Canny edges of the hiker clip are the motion. The prompt
+# restyles that walk. There is no reference image: a still of a different
+# subject would fight the prompt. The source clip is 8 fps.
 
 \setp control "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/hiker.mp4"
-\setp reference "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg"
 \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
 
 Wan-AI/Wan2.1-VACE-1.3B-diffusers
@@ -15,12 +14,12 @@ Wan-AI/Wan2.1-VACE-1.3B-diffusers
 --model-sequential-offload
 --inference-steps 30
 --guidance-scales 5
---video-fps 16
+--video-fps 8
 --gen-seeds 1
 --output-size 832x480
---video-lengths 3
+--video-lengths 6
 --animation-format mp4
 --output-path wan-vace
 --control-image-processors canny
---image-seeds "control={{ control }};reference={{ reference }}"
---prompts "CG animation style, a small blue bird takes off from the ground, flapping its wings. The bird's feathers are delicate, with a unique pattern on its chest. The background shows a blue sky with white clouds under bright sunshine. The camera follows the bird upward, capturing its flight and the vastness of the sky from a close-up, low-angle perspective.;{{ neg }}"
+--image-seeds "control={{ control }}"
+--prompts "A traveler in a bright red coat walks a rocky cliff trail above the sea at sunset. Wind pulls the coat, warm light on the rocks, cinematic, the camera follows from behind.;{{ neg }}"

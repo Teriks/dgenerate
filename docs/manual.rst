@@ -4930,15 +4930,16 @@ VACE
 
 ``control=``, ``mask=``, and ``reference=`` are VACE inputs. They require a VACE
 checkpoint such as ``Wan-AI/Wan2.1-VACE-1.3B-diffusers``. ``control=`` is the
-control clip. ``reference=`` is an appearance still. ``mask=`` limits where the
-control is applied. ``--control-image-processors`` can turn the control clip
-into an edge or depth map before it is read. ``--wan-conditioning-scales`` is
+control clip. ``reference=`` is an appearance still. White ``mask=`` pixels are
+generated and black pixels keep the control clip. ``--control-image-processors``
+can turn the control clip into an edge or depth map before it is read. Leave
+the clip alone when a mask should preserve it. ``--wan-conditioning-scales`` is
 the VACE scale: one float, or a comma-separated list with one scale per VACE
 layer. Several values are tried in turn.
 
 .. code-block:: bash
 
-    --image-seeds "control=hiker.mp4;reference=astronaut.jpg"
+    --image-seeds "control=hiker.mp4"
     --control-image-processors canny
 
 See `examples/wan/vace <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan/vace>`_.
