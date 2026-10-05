@@ -80,6 +80,10 @@ class GPUInfo:
     xpu_version: str | None = None
     nvidia_compute_cap: float | None = None
     nvidia_is_mpv_legacy: bool = False
+    # AMD ISA family from hipinfo / rocminfo (e.g. "gfx1100"), when known.
+    amd_gfx: str | None = None
+    # Approximate RDNA generation (3 for gfx110x/gfx115x, 4 for gfx120x).
+    amd_rdna_major: int | None = None
 
 
 def get_platform_info() -> PlatformInfo:
@@ -191,12 +195,16 @@ def detect_gpu() -> GPUInfo:
         # Check for AMD GPU on Windows. rocm-smi is not installed by the
         # Windows HIP SDK or AMD's torch wheels, so prefer the display adapter
         # list and hipinfo, then fall back to rocm-smi if it happens to exist.
-        amd_name, amd_rocm = _detect_windows_amd()
+        amd_name, amd_rocm, amd_gfx = _detect_windows_amd()
         if amd_name:
             gpu_info.has_amd = True
             if not gpu_info.gpu_name:
                 gpu_info.gpu_name = amd_name
             gpu_info.rocm_version = amd_rocm
+            gpu_info.amd_gfx = amd_gfx
+            gpu_info.amd_rdna_major = (
+                amd_rdna_major_from_gfx(amd_gfx) or amd_rdna_major_from_name(amd_name)
+            )
 
     elif system == 'linux':
         try:
@@ -234,6 +242,28 @@ def detect_gpu() -> GPUInfo:
                         gpu_info.rocm_version = rocm_match.group(1)
             except (subprocess.TimeoutExpired, FileNotFoundError):
                 pass
+
+            if gpu_info.has_amd:
+                for cmd in (
+                    ['rocminfo'],
+                    ['rocm-smi', '--showproductname'],
+                ):
+                    try:
+                        info_result = run_silent(cmd, capture_output=True, text=True, timeout=15)
+                    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+                        continue
+                    if info_result.returncode != 0:
+                        continue
+                    combined = info_result.stdout + '\n' + info_result.stderr
+                    gfx = _parse_amd_gfx_text(combined)
+                    if gfx:
+                        gpu_info.amd_gfx = gfx
+                        gpu_info.amd_rdna_major = amd_rdna_major_from_gfx(gfx)
+                        break
+                    if gpu_info.amd_rdna_major is None:
+                        gpu_info.amd_rdna_major = amd_rdna_major_from_name(combined)
+                        if gpu_info.amd_rdna_major is not None:
+                            break
 
             # Check for Intel XPU
             try:
@@ -472,16 +502,83 @@ def _windows_display_adapter_names() -> list[str]:
     return names
 
 
+def amd_rdna_major_from_gfx(gfx: str | None) -> int | None:
+    """Map an AMD ``gfx`` target to an approximate RDNA generation."""
+    if not gfx:
+        return None
+    match = re.search(r'gfx(\d+)', gfx, re.IGNORECASE)
+    if not match:
+        return None
+    number = int(match.group(1))
+    family = number // 100
+    if family >= 12:
+        return 4
+    if family == 11:
+        # gfx110x = RDNA3, gfx115x = RDNA3.5 — both count as >= 3.
+        return 3
+    if family == 10:
+        return 2 if number >= 1030 else 1
+    return None
+
+
+def amd_rdna_major_from_name(name: str | None) -> int | None:
+    """Best-effort RDNA generation from a marketing / adapter name."""
+    if not name:
+        return None
+    lowered = name.lower()
+    if re.search(r'\brx\s*9\d{3}\b', lowered) or re.search(r'\br9700\b', lowered):
+        return 4
+    if (
+        re.search(r'\brx\s*7\d{3}\b', lowered)
+        or re.search(r'\bw7[789]00\b', lowered)
+        or 'strix' in lowered
+        or re.search(r'ryzen\s+ai\s+max', lowered)
+        or re.search(r'ryzen\s+ai\s*9', lowered)
+    ):
+        return 3
+    if re.search(r'\brx\s*6\d{3}\b', lowered) or re.search(r'\bw6[68]00\b', lowered):
+        return 2
+    return None
+
+
+def triton_windows_compatible(gpu_info: GPUInfo | None) -> bool:
+    """True when ``triton-windows`` can use this machine's GPU.
+
+    NVIDIA is supported broadly. AMD needs ROCm on Windows with RDNA 3+
+    (gfx110x / gfx115x / gfx120x), matching triton-windows' AMD matrix.
+    """
+    if gpu_info is None:
+        return False
+    if gpu_info.has_nvidia:
+        return True
+    if not gpu_info.has_amd:
+        return False
+    major = gpu_info.amd_rdna_major
+    if major is None:
+        major = amd_rdna_major_from_gfx(gpu_info.amd_gfx)
+    if major is None:
+        major = amd_rdna_major_from_name(gpu_info.gpu_name)
+    return major is not None and major >= 3
+
+
+def _parse_amd_gfx_text(text: str) -> str | None:
+    match = re.search(r'gcnArchName:\s*(gfx\d+)', text, re.IGNORECASE)
+    if match:
+        return match.group(1).lower()
+    match = re.search(r'\b(gfx\d+)\b', text, re.IGNORECASE)
+    return match.group(1).lower() if match else None
+
+
 def _parse_rocm_version_text(text: str) -> str | None:
     match = re.search(r'(?:ROCm|HIP(?:\s+version)?)\s*[:=]?\s*(\d+\.\d+(?:\.\d+)?)', text, re.IGNORECASE)
     return match.group(1) if match else None
 
 
-def _detect_windows_amd() -> tuple[str | None, str | None]:
+def _detect_windows_amd() -> tuple[str | None, str | None, str | None]:
     """
     Detect an AMD GPU on Windows without relying on rocm-smi.
 
-    :return: (adapter_name, rocm_or_hip_version) — either may be None.
+    :return: (adapter_name, rocm_or_hip_version, gfx) — any may be None.
     """
     name = None
     for adapter in _windows_display_adapter_names():
@@ -498,13 +595,17 @@ def _detect_windows_amd() -> tuple[str | None, str | None]:
             break
 
     version = None
+    gfx = None
     for cmd in (['hipinfo'], ['hipInfo'], ['rocm-smi', '--version']):
         try:
             result = run_silent(cmd, capture_output=True, text=True, timeout=10)
         except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             continue
         if result.returncode == 0:
-            parsed = _parse_rocm_version_text(result.stdout + '\n' + result.stderr)
+            combined = result.stdout + '\n' + result.stderr
+            if gfx is None:
+                gfx = _parse_amd_gfx_text(combined)
+            parsed = _parse_rocm_version_text(combined)
             if parsed:
                 version = parsed
                 break
@@ -514,7 +615,7 @@ def _detect_windows_amd() -> tuple[str | None, str | None]:
                     name = name or 'AMD GPU'
                 break
 
-    return name, version
+    return name, version, gfx
 
 
 def _lookup_version_table(table: dict[tuple, list], major: int, minor: int, patch: int | None = None):
