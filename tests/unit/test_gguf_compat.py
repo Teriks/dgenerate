@@ -277,6 +277,41 @@ class TestGGUFCompat(unittest.TestCase):
         self.assertTrue(rebuilt._dgenerate_comfy_transpose)
         self.assertEqual(rebuilt.device.type, 'meta')
 
+    def test_dequantized_gguf_weight_is_stored_as_parameter(self):
+        import gguf
+        from diffusers import GGUFQuantizationConfig
+        from diffusers.quantizers.gguf.gguf_quantizer import GGUFQuantizer
+        from diffusers.quantizers.gguf.utils import GGML_QUANT_SIZES, GGUFParameter
+
+        _ggufcompat.install_gguf_patches()
+        quant_type = gguf.GGMLQuantizationType.Q8_0
+        _block_size, type_size = GGML_QUANT_SIZES[quant_type]
+        packed = torch.zeros(4, type_size, dtype=torch.uint8)
+        fp32 = GGUFParameter(packed.clone(), quant_type=quant_type)
+        packed_weight = GGUFParameter(packed.clone(), quant_type=quant_type)
+
+        parent = torch.nn.Module()
+        parent.norm1 = torch.nn.Linear(32, 4, bias=False)
+        parent.attn = torch.nn.Linear(32, 4, bias=False)
+
+        config = GGUFQuantizationConfig(compute_dtype=torch.float32)
+        quantizer = GGUFQuantizer(config)
+        quantizer.modules_to_not_convert = ['norm1']
+        quantizer.keep_in_fp32_modules = ['norm1']
+        quantizer.compute_dtype = torch.float32
+
+        quantizer.create_quantized_param(
+            parent, fp32, 'norm1.weight', torch.device('cpu'))
+        quantizer.create_quantized_param(
+            parent, packed_weight, 'attn.weight', torch.device('cpu'))
+
+        stored = parent.norm1._parameters['weight']
+        self.assertIsInstance(stored, torch.nn.Parameter)
+        self.assertEqual(type(stored).__name__, 'Parameter')
+        self.assertFalse(hasattr(stored, 'quant_type') and stored.quant_type)
+        self.assertEqual(type(parent.attn.weight).__name__, 'GGUFParameter')
+        self.assertEqual(parent.attn.weight.quant_type, quant_type)
+
 
 if __name__ == '__main__':
     unittest.main()

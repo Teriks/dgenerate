@@ -579,6 +579,26 @@ def _bind_pipeline_offload_method(pipeline, name, function):
     setattr(pipeline, name, entry)
 
 
+def _promote_bare_parameter_tensors(module: torch.nn.Module) -> None:
+    """
+    Wrap plain tensors sitting in ``_parameters`` as ``nn.Parameter``.
+
+    GGUF loading dequantizes Wan ``_keep_in_fp32_modules`` and assigns the
+    float result directly. Accelerate rebuilds ``type(param)(value,
+    requires_grad=...)`` during CPU offload, and ``torch.Tensor`` rejects
+    that keyword.
+    """
+    for submodule in module.modules():
+        bare = [
+            name for name, value in submodule._parameters.items()
+            if type(value) is torch.Tensor
+        ]
+        for name in bare:
+            value = submodule._parameters[name]
+            submodule._parameters[name] = torch.nn.Parameter(
+                value, requires_grad=bool(value.requires_grad))
+
+
 def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
                                   device: torch.device | str = _torchutil.default_device()):
     """
@@ -621,6 +641,7 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
         # Reinstall the hook when it is missing so that reload still uses this path.
         elif not is_sequential_cpu_offload_enabled(model) or not hasattr(model, '_hf_hook'):
             _set_sequential_cpu_offload_flag(model, True)
+            _promote_bare_parameter_tensors(model)
             accelerate.cpu_offload(model, torch_device, offload_buffers=len(model._parameters) > 0)
             _disable_to(
                 model,
@@ -696,6 +717,7 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
                 f'Not cpu offloading pipeline module: {model_str}, due to bitsandbytes 8 bit quantization.')
             continue
 
+        _promote_bare_parameter_tensors(model)
         _, hook = accelerate.cpu_offload_with_hook(model, device, prev_module_hook=hook)
         _set_cpu_offload_flag(model, True)
         pipeline._all_hooks.append(hook)
@@ -707,6 +729,7 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
         if name in pipeline._exclude_from_cpu_offload:
             model.to(device)
         else:
+            _promote_bare_parameter_tensors(model)
             _, hook = accelerate.cpu_offload_with_hook(model, device)
             _set_cpu_offload_flag(model, True)
             pipeline._all_hooks.append(hook)
