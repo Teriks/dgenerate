@@ -503,55 +503,63 @@ def _windows_display_adapter_names() -> list[str]:
 
 
 def amd_rdna_major_from_gfx(gfx: str | None) -> int | None:
-    """Map an AMD ``gfx`` target to an approximate RDNA generation."""
+    """Map an AMD ``gfx`` target to an approximate RDNA generation.
+
+    Consumer RDNA 3+ uses ``gfx11xx`` and up. Later families keep the same
+    hundreds-digit scheme (``gfx12xx`` = RDNA4, ``gfx13xx`` = next, …), so
+    anything at or above ``gfx1100`` is treated as RDNA 3 or newer.
+    """
     if not gfx:
         return None
     match = re.search(r'gfx(\d+)', gfx, re.IGNORECASE)
     if not match:
         return None
     number = int(match.group(1))
-    family = number // 100
-    if family >= 12:
-        return 4
-    if family == 11:
-        # gfx110x = RDNA3, gfx115x = RDNA3.5 — both count as >= 3.
-        return 3
-    if family == 10:
-        return 2 if number >= 1030 else 1
+    if number >= 1100:
+        # gfx11xx → 3, gfx12xx → 4, gfx13xx → 5, …
+        return (number // 100) - 8
+    if number >= 1030:
+        return 2
+    if number >= 1010:
+        return 1
     return None
 
 
 def amd_rdna_major_from_name(name: str | None) -> int | None:
-    """Best-effort RDNA generation from a marketing / adapter name."""
+    """Best-effort RDNA generation from a marketing / adapter name.
+
+    RX/W product numbers at 7000+ are RDNA 3 or newer (7000 = RDNA3,
+    9000 = RDNA4, and later series keep climbing). Prefer ``gfx`` from
+    hipinfo/rocminfo when available; this is only a fallback.
+    """
     if not name:
         return None
     lowered = name.lower()
-    if re.search(r'\brx\s*9\d{3}\b', lowered) or re.search(r'\br9700\b', lowered):
-        return 4
+    match = re.search(r'\b(?:rx|radeon\s+pro\s+w|w)\s*(\d{3,5})\b', lowered)
+    if match:
+        model = int(match.group(1))
+        if model >= 10000:
+            return max(5, model // 1000 - 5)
+        if model >= 9000:
+            return 4
+        if model >= 7000:
+            return 3
+        if model >= 6000:
+            return 2
+        return None
     if (
-        re.search(r'\brx\s*7\d{3}\b', lowered)
-        or re.search(r'\bw7[789]00\b', lowered)
-        or 'strix' in lowered
+        'strix' in lowered
         or re.search(r'ryzen\s+ai\s+max', lowered)
         or re.search(r'ryzen\s+ai\s*9', lowered)
+        or re.search(r'\br9700\b', lowered)
     ):
         return 3
-    if re.search(r'\brx\s*6\d{3}\b', lowered) or re.search(r'\bw6[68]00\b', lowered):
-        return 2
     return None
 
 
-def triton_windows_compatible(gpu_info: GPUInfo | None) -> bool:
-    """True when ``triton-windows`` can use this machine's GPU.
-
-    NVIDIA is supported broadly. AMD needs ROCm on Windows with RDNA 3+
-    (gfx110x / gfx115x / gfx120x), matching triton-windows' AMD matrix.
-    """
-    if gpu_info is None:
-        return False
-    if gpu_info.has_nvidia:
-        return True
-    if not gpu_info.has_amd:
+def amd_rdna3_or_newer(gpu_info: GPUInfo | None) -> bool:
+    """True when this AMD GPU is RDNA 3+ (triton-windows AMD matrix floor)."""
+    if gpu_info is None or not gpu_info.has_amd:
         return False
     major = gpu_info.amd_rdna_major
     if major is None:
@@ -559,6 +567,19 @@ def triton_windows_compatible(gpu_info: GPUInfo | None) -> bool:
     if major is None:
         major = amd_rdna_major_from_name(gpu_info.gpu_name)
     return major is not None and major >= 3
+
+
+def triton_windows_compatible(gpu_info: GPUInfo | None) -> bool:
+    """True when ``triton-windows`` can use this machine's GPU.
+
+    NVIDIA is supported broadly. AMD needs RDNA 3 or newer
+    (``gfx1100+`` / RX·W 7000+), matching triton-windows' AMD matrix.
+    """
+    if gpu_info is None:
+        return False
+    if gpu_info.has_nvidia:
+        return True
+    return amd_rdna3_or_newer(gpu_info)
 
 
 def _parse_amd_gfx_text(text: str) -> str | None:
