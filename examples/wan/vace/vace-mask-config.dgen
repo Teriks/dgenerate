@@ -1,10 +1,9 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# VACE with control=, mask=, and reference=. The mask is a person
-# segmentation of the control clip, built on the fly. Black mask pixels
-# keep the control clip, so this example leaves the hiker footage as-is
-# outside the person. Hosted control and reference match Diffusers docs assets.
+# VACE swap. The control clip is the original hike, not an edge map.
+# White mask pixels are generated; black pixels keep the trail.
+# reference= supplies the astronaut. The source clip is 8 fps.
 
 \setp control "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/hiker.mp4"
 \setp reference "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg"
@@ -22,11 +21,11 @@ Wan-AI/Wan2.1-VACE-1.3B-diffusers
 --model-sequential-offload
 --inference-steps 30
 --guidance-scales 5
---video-fps 16
+--video-fps 8
 --gen-seeds 1
 --output-size 832x480
---video-lengths 3
+--video-lengths 6
 --animation-format mp4
 --output-path wan-vace-mask
 --image-seeds "control={{ control }};mask=vace-person-mask.gif;reference={{ reference }}"
---prompts "An astronaut hiking on a mountain trail at sunset. High quality, ultrarealistic detail.;{{ neg }}"
+--prompts "An astronaut in a white spacesuit walks a rocky cliff trail above the sea at sunset. The suit matches the reference photo. Warm light, the camera follows from behind.;{{ neg }}"
