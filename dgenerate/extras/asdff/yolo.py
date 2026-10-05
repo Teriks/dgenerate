@@ -72,6 +72,23 @@ def create_mask_from_bbox(
     return masks
 
 
+def _mask_to_image(mask: torch.Tensor, shape: tuple[int, int]) -> Image.Image:
+    """Scale a 0/1 model mask to an 8-bit image.
+
+    Ultralytics returns segmentation masks as ``uint8`` 0/1. ``to_pil_image``
+    only stretches floating tensors, so an integer 1 stays pixel value 1 and
+    inpaint treats the mask as empty.
+    """
+    data = mask.detach()
+    if not data.is_floating_point():
+        data = data.to(dtype=torch.float32)
+    peak = float(data.max()) if data.numel() else 0.0
+    if peak <= 1.0:
+        data = data * 255.0
+    image = to_pil_image(data.clamp(0, 255).to(dtype=torch.uint8).cpu(), mode="L")
+    return image.resize(shape)
+
+
 def mask_to_pil(
         masks: torch.Tensor,
         shape: tuple[int, int],
@@ -79,8 +96,8 @@ def mask_to_pil(
     """
     Parameters
     ----------
-    masks: torch.Tensor, dtype=torch.float32, shape=(N, H, W).
-        The device can be CUDA, but `to_pil_image` takes care of that.
+    masks: torch.Tensor, shape=(N, H, W).
+        0/1 floats or 0/1 integers. The device can be CUDA.
 
     shape: tuple[int, int]
         (width, height) of the original image
@@ -95,9 +112,8 @@ def mask_to_pil(
     n = masks.shape[0]
 
     if index_filter is not None:
-        return [to_pil_image(masks[i], mode="L").resize(shape) for i in range(n) if i in index_filter]
-    else:
-        return [to_pil_image(masks[i], mode="L").resize(shape) for i in range(n)]
+        return [_mask_to_image(masks[i], shape) for i in range(n) if i in index_filter]
+    return [_mask_to_image(masks[i], shape) for i in range(n)]
 
 
 @torch.no_grad()

@@ -1,6 +1,9 @@
 import unittest
 
+import torch
+
 import dgenerate.imageprocessors.util as _util
+import dgenerate.imageprocessors.yolo as _yolo
 
 
 class TestYoloFiltersParse(unittest.TestCase):
@@ -224,6 +227,36 @@ class TestYoloFiltersParse(unittest.TestCase):
         class_filter, index_filter = _util.yolo_filters_parse('person,dog,0', None, argument_error)
         self.assertEqual(class_filter, {'person', 'dog', 0})  # 0 converted to int by filter_t
         self.assertIsNone(index_filter)
+
+
+class TestYoloMaskImage(unittest.TestCase):
+    def test_integer_mask_scales_to_white(self):
+        mask = torch.zeros(4, 4, dtype=torch.uint8)
+        mask[1:3, 1:3] = 1
+        image = _yolo._segmentation_mask_image(mask)
+        self.assertEqual(image.getpixel((0, 0)), 0)
+        self.assertEqual(image.getpixel((1, 1)), 255)
+
+    def test_float_mask_scales_to_white(self):
+        mask = torch.zeros(4, 4)
+        mask[0, 0] = 1.0
+        image = _yolo._segmentation_mask_image(mask)
+        self.assertEqual(image.getpixel((0, 0)), 255)
+
+    def test_full_range_mask_is_not_scaled_again(self):
+        mask = torch.zeros(4, 4)
+        mask[0, 0] = 255.0
+        image = _yolo._segmentation_mask_image(mask)
+        self.assertEqual(image.getpixel((0, 0)), 255)
+        self.assertEqual(image.getpixel((1, 1)), 0)
+
+    def test_adetailer_model_mask_scales_integer_values(self):
+        from dgenerate.extras.asdff.yolo import mask_to_pil
+        mask = torch.zeros(1, 4, 4, dtype=torch.uint8)
+        mask[0, 1:3, 1:3] = 1
+        image = mask_to_pil(mask, (4, 4))[0]
+        self.assertEqual(image.getpixel((0, 0)), 0)
+        self.assertEqual(image.getextrema()[1], 255)
 
 
 if __name__ == '__main__':

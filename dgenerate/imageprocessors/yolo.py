@@ -45,6 +45,22 @@ import dgenerate.webcache as _webcache
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
+def _segmentation_mask_image(mask):
+    """Turn a model mask into an 8-bit image.
+
+    Ultralytics segmentation masks are 0/1 floats or 0/1 integers. ``to_pil_image``
+    only scales floating tensors, so an integer 0/1 mask stays at pixel value 1.
+    VACE and inpaint then threshold that as empty and keep the whole frame.
+    """
+    data = mask.detach()
+    if not data.is_floating_point():
+        data = data.to(dtype=torch.float32)
+    peak = float(data.max()) if data.numel() else 0.0
+    if peak <= 1.0:
+        data = data * 255.0
+    return _to_pil_image(data.clamp(0, 255).to(dtype=torch.uint8).cpu(), mode="L")
+
+
 class YOLOProcessor(_imageprocessor.ImageProcessor):
     """
     Process the input image with Ultralytics YOLO object detection.
@@ -826,7 +842,7 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
             if use_masks:
                 # Convert masks to PIL images, applying the same filtering
                 mask_data = results[0].masks.data[sorted_indices]  # Apply filtering to mask data
-                masks = [_to_pil_image(mask_data[i], mode="L").resize(image.size)
+                masks = [_segmentation_mask_image(mask_data[i]).resize(image.size)
                          for i in range(len(mask_data))]
 
             # First pass: Draw all bounding boxes and mask outlines
@@ -967,7 +983,7 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
                     # Use model-generated masks (ignore sizing options as per adetailer behavior)
                     mask_data = results[0].masks.data[sorted_indices]
                     for i in range(len(mask_data)):
-                        mask_img = _to_pil_image(mask_data[i], mode="L").resize(image.size)
+                        mask_img = _segmentation_mask_image(mask_data[i]).resize(image.size)
                         mask_images.append(mask_img)
                 else:
                     # Create masks from bounding boxes using our sizing options
