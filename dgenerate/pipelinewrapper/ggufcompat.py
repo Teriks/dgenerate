@@ -508,6 +508,7 @@ def install_gguf_patches() -> None:
 
     original_should_convert = single_file_model._should_convert_state_dict_to_diffusers
     original_check = gguf_quantizer.GGUFQuantizer.check_quantized_param_shape
+    original_create = gguf_quantizer.GGUFQuantizer.create_quantized_param
     original_forward = gguf_utils.GGUFLinear.forward_native
     original_new = gguf_utils.GGUFParameter.__new__
     original_torch_function = gguf_utils.GGUFParameter.__torch_function__
@@ -526,6 +527,21 @@ def install_gguf_patches() -> None:
             if tuple(inferred) == tuple(reversed(expected)):
                 return True
         return original_check(self, param_name, current_param, loaded_param)
+
+    def create_quantized_param(self, model, param_value, param_name, target_device,
+                               *args, **kwargs):
+        # keep_in_fp32_modules (Wan norm*, time_embedder, motion_synthesis_weight)
+        # are dequantized and written straight into _parameters as a Tensor.
+        # Sequential offload rebuilds type(param)(value, requires_grad=...),
+        # and torch.Tensor rejects requires_grad.
+        original_create(
+            self, model, param_value, param_name, target_device, *args, **kwargs)
+        from diffusers.utils import get_module_from_name
+        module, tensor_name = get_module_from_name(model, param_name)
+        value = module._parameters.get(tensor_name)
+        if type(value) is torch.Tensor:
+            module._parameters[tensor_name] = torch.nn.Parameter(
+                value, requires_grad=bool(value.requires_grad))
 
     def forward_native(self, inputs):
         if not getattr(self.weight, '_dgenerate_comfy_transpose', False):
@@ -573,6 +589,7 @@ def install_gguf_patches() -> None:
 
     single_file_model._should_convert_state_dict_to_diffusers = should_convert
     gguf_quantizer.GGUFQuantizer.check_quantized_param_shape = check_shape
+    gguf_quantizer.GGUFQuantizer.create_quantized_param = create_quantized_param
     gguf_utils.GGUFLinear.forward_native = forward_native
     gguf_utils.GGUFParameter.__new__ = parameter_new
     gguf_utils.GGUFParameter.__torch_function__ = classmethod(torch_function)

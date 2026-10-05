@@ -266,6 +266,26 @@ class TestOtherOffloadStillMovesQuant(unittest.TestCase):
         self.assertTrue(hasattr(gguf, '_hf_hook'))
         self.assertFalse(hasattr(bit8, '_hf_hook'))
 
+    def test_sequential_offload_promotes_bare_parameter_tensors(self):
+        layer = torch.nn.Linear(4, 4)
+        layer._parameters['weight'] = torch.zeros(4, 4)
+
+        class Pipe:
+            def __init__(self):
+                self.components = {'transformer': layer}
+                self._exclude_from_cpu_offload = []
+
+            def remove_all_hooks(self):
+                for module in self.components.values():
+                    if hasattr(module, '_hf_hook'):
+                        remove_hook_from_module(module, recurse=True)
+
+        _pipelines.enable_sequential_cpu_offload(Pipe(), 'cpu')
+        self.assertIsInstance(layer.weight, torch.nn.Parameter)
+        self.assertEqual(type(layer.weight).__name__, 'Parameter')
+        self.assertEqual(layer.weight.device.type, 'meta')
+        self.assertTrue(hasattr(layer, '_hf_hook'))
+
     def test_model_cpu_offload_still_hooks_gguf_marker(self):
         gguf = torch.nn.Linear(2, 2)
         gguf.quantization_config = {'quant_method': 'sdnq'}
