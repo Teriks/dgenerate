@@ -488,7 +488,7 @@ Several conditions
 ^^^^^^^^^^^^^^^^^^
 
 One ``--image-seeds`` value can carry several conditions. Separate them with
-`` ++ `` (a space, two plus signs, and a space). The first group is the primary
+a space, ``++``, and a space. The first group is the primary
 path and may omit ``ltx-index``. Each later group is one file and must include
 ``ltx-index``. ``strength`` is optional on every group. ``last-frame=``, ``control=``,
 masks, and latents belong on the primary group only.
