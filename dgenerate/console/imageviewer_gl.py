@@ -794,9 +794,29 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             self._base_display_width = content_height * image_aspect
             self._base_display_height = content_height
 
+    def _make_gl_current(self) -> bool:
+        """Bind this viewer's GL context before texture uploads.
+
+        A torn-off preview window is a second OpenGLFrame. Leaving that
+        context current makes glTexSubImage2D see the wrong texture object
+        and raise GL_INVALID_VALUE (1281) for an otherwise valid frame.
+        """
+        if not self._gl_initialized:
+            return False
+        if not self.winfo_ismapped():
+            return False
+        try:
+            self.tkMakeCurrent()
+        except Exception:
+            return False
+        return True
+
     def _create_texture_from_array(self, img_array):
         """Create OpenGL texture from numpy array"""
         try:
+            if not self._make_gl_current():
+                return
+
             # Query maximum texture size supported by GPU
             max_texture_size = gl.glGetIntegerv(gl.GL_MAX_TEXTURE_SIZE)
 
@@ -1650,6 +1670,10 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             self._original_image_array = frame
             self._uploaded_frame = frame
             return
+        if not self._make_gl_current():
+            self._original_image_array = frame
+            self._uploaded_frame = frame
+            return
         height, width = frame.shape[:2]
         current_height, current_width = self._original_image_array.shape[:2]
         if (width, height) != (current_width, current_height) or frame.shape[2] != self._original_image_array.shape[2]:
@@ -1658,13 +1682,17 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             self._create_texture_from_array(frame)
         else:
             packed = np.ascontiguousarray(frame)
-            gl.glBindTexture(gl.GL_TEXTURE_2D, self._gl_texture_id)
-            gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
-            gl.glPixelStorei(gl.GL_UNPACK_ROW_LENGTH, 0)
-            pixel_format = gl.GL_RGBA if packed.shape[2] == 4 else gl.GL_RGB
-            gl.glTexSubImage2D(
-                gl.GL_TEXTURE_2D, 0, 0, 0, width, height,
-                pixel_format, gl.GL_UNSIGNED_BYTE, packed)
+            try:
+                gl.glBindTexture(gl.GL_TEXTURE_2D, self._gl_texture_id)
+                gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
+                gl.glPixelStorei(gl.GL_UNPACK_ROW_LENGTH, 0)
+                pixel_format = gl.GL_RGBA if packed.shape[2] == 4 else gl.GL_RGB
+                gl.glTexSubImage2D(
+                    gl.GL_TEXTURE_2D, 0, 0, 0, width, height,
+                    pixel_format, gl.GL_UNSIGNED_BYTE, packed)
+            except gl.GLError:
+                # Context/texture mismatch or a stale id: rebuild once.
+                self._create_texture_from_array(frame)
             self._original_image_array = frame
         self._uploaded_frame = frame
 
