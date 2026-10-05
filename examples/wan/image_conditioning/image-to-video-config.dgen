@@ -1,9 +1,9 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Matches Diffusers WanImageToVideoPipeline docstring: astronaut.jpg
-# and the hatching-on-the-moon prompt. One --image-seeds path is the
-# first frame.
+# The still is the Diffusers astronaut photo. One --image-seeds path
+# is the first frame. The prompt continues from that photo: the suited
+# figure is already standing, then starts to walk.
 
 \setp image "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg"
 \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
@@ -21,4 +21,4 @@ Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
 --animation-format mp4
 --output-path wan-image
 --image-seeds {{ image }}
---prompts "An astronaut hatching from an egg, on the surface of the moon, the darkness and depth of space realised in the background. High quality, ultrarealistic detail and breath-taking movie-like camera shot.;{{ neg }}"
+--prompts "An astronaut in a white spacesuit stands on the lunar surface, then walks forward. Dust lifts around the boots. Earth hangs in the black sky. The suit matches the first frame. High quality, ultrarealistic detail.;{{ neg }}"
