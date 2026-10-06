@@ -216,97 +216,120 @@ class MacOSPlatformHandler(BasePlatformHandler):
             self.log_callback(f"Error creating fallback macOS desktop shortcut: {e}")
             return False
 
+    def _copy_icon_png(self, dest: Path) -> bool:
+        """Copy packaged ``icon.png`` to ``dest`` (build converts ``dgenerate/icon.ico``)."""
+        # importlib.resources may extract to a temp path that vanishes when the
+        # context exits, so copy inside the with-block.
+        try:
+            import importlib.resources as resources
+            with resources.path('network_installer.resources', 'icon.png') as resource_path:
+                if resource_path.exists():
+                    shutil.copy2(resource_path, dest)
+                    return True
+        except (ImportError, FileNotFoundError, TypeError, OSError):
+            pass
+
+        candidates = []
+        if hasattr(sys, '_MEIPASS'):
+            candidates.append(
+                Path(sys._MEIPASS) / 'network_installer' / 'resources' / 'icon.png')
+        candidates.append(self.install_base / 'icon.png')
+        candidates.append(Path(__file__).parent.parent / 'resources' / 'icon.png')
+        for candidate in candidates:
+            if candidate.exists():
+                shutil.copy2(candidate, dest)
+                return True
+        return False
+
+    def _png_to_icns(self, png_path: Path, icns_path: Path) -> bool:
+        """Build an ``.icns`` from a PNG with stock ``sips`` + ``iconutil``."""
+        iconset = Path(tempfile.mkdtemp(suffix='.iconset'))
+        try:
+            # Names required by iconutil.
+            variants = (
+                (16, 'icon_16x16.png'),
+                (32, 'diana.k@example.org'),
+                (32, 'icon_32x32.png'),
+                (64, 'ivan.p@example.net'),
+                (128, 'icon_128x128.png'),
+                (256, 'wendy.h@example.net'),
+                (256, 'icon_256x256.png'),
+                (512, 'wendy.h@example.net'),
+                (512, 'icon_512x512.png'),
+                (1024, 'walt.e@example.net'),
+            )
+            for size, name in variants:
+                out = iconset / name
+                result = subprocess.run(
+                    ['sips', '-z', str(size), str(size), str(png_path), '--out', str(out)],
+                    capture_output=True, text=True)
+                if result.returncode != 0 or not out.exists():
+                    self.log_callback(
+                        f"Warning: sips failed for {name}: {result.stderr or result.stdout}")
+                    return False
+            result = subprocess.run(
+                ['iconutil', '-c', 'icns', str(iconset), '-o', str(icns_path)],
+                capture_output=True, text=True)
+            if result.returncode != 0 or not icns_path.exists():
+                self.log_callback(
+                    f"Warning: iconutil failed: {result.stderr or result.stdout}")
+                return False
+            return True
+        finally:
+            shutil.rmtree(iconset, ignore_errors=True)
+
     def _add_icon_to_app_bundle(self, app_path: Path) -> bool:
         """
         Add icon to the AppleScript app bundle.
-        
-        :param app_path: Path to the app bundle
-        :return: True if successful, False otherwise
+
+        Finder needs a real ``.icns`` in ``Contents/Resources``; a PNG
+        ``CFBundleIconFile`` alone leaves a blank desktop icon.
         """
         try:
-            # Find the icon file in resources
-            icon_source = None
+            resources_dir = app_path / 'Contents' / 'Resources'
+            resources_dir.mkdir(parents=True, exist_ok=True)
+            png_dest = resources_dir / 'icon.png'
+            icns_dest = resources_dir / 'app.icns'
 
-            # Method 1: Look in the installer package resources
-            try:
-                import importlib.resources as resources
-                with resources.path('network_installer.resources', 'icon.png') as resource_path:
-                    if resource_path.exists():
-                        icon_source = resource_path
-            except (ImportError, FileNotFoundError):
-                pass
-
-            # Method 2: Look in PyInstaller bundle
-            if not icon_source:
-                try:
-                    if hasattr(sys, '_MEIPASS'):
-                        # PyInstaller bundle
-                        bundle_path = Path(sys._MEIPASS) / 'network_installer' / 'resources' / 'icon.png'
-                        if bundle_path.exists():
-                            icon_source = bundle_path
-                except Exception:
-                    pass
-
-            # Method 3: Look in development resources directory
-            if not icon_source:
-                try:
-                    dev_icon_path = Path(__file__).parent.parent.parent / 'resources' / 'icon.png'
-                    if dev_icon_path.exists():
-                        icon_source = dev_icon_path
-                except Exception:
-                    pass
-
-            if not icon_source:
+            if not self._copy_icon_png(png_dest):
                 self.log_callback("Warning: Could not find icon.png for app bundle")
                 return False
 
-            # Copy icon to app bundle resources
-            resources_dir = app_path / 'Contents' / 'Resources'
-            icon_dest = resources_dir / 'icon.png'
-
-            import shutil
-            shutil.copy2(icon_source, icon_dest)
-
-            # Try multiple methods to set the icon
             icon_set = False
 
-            # Method 1: Try fileicon command (if available)
-            try:
-                import subprocess
-                result = subprocess.run([
-                    'fileicon', 'set', str(app_path), str(icon_dest)
-                ], capture_output=True, text=True)
-
-                if result.returncode == 0:
-                    self.log_callback("✓ Added icon to app bundle using fileicon")
-                    icon_set = True
-            except FileNotFoundError:
-                pass
-
-            # Method 2: Set icon directly in Info.plist with PNG reference
-            if not icon_set:
+            # Preferred: stock macOS tools → .icns + Info.plist.
+            if self._png_to_icns(png_dest, icns_dest):
                 try:
                     info_plist_path = app_path / 'Contents' / 'Info.plist'
                     if info_plist_path.exists():
                         with open(info_plist_path, 'rb') as f:
                             plist_data = plistlib.load(f)
-
-                        # Add icon reference
-                        plist_data['CFBundleIconFile'] = 'icon.png'
-
-                        # Write back
+                        # Name without extension is the usual CFBundleIconFile form.
+                        plist_data['CFBundleIconFile'] = 'app'
                         with open(info_plist_path, 'wb') as f:
                             plistlib.dump(plist_data, f)
-
-                        self.log_callback("✓ Added icon reference to app bundle")
+                        self.log_callback("✓ Added app.icns to desktop shortcut")
                         icon_set = True
                 except Exception as e:
                     self.log_callback(f"Warning: Could not update Info.plist: {e}")
 
+            # Optional: fileicon if present (Homebrew).
             if not icon_set:
-                self.log_callback("Warning: Icon copied to resources but could not be set as app icon")
-                self.log_callback("  You may need to manually set the icon or install fileicon")
+                try:
+                    result = subprocess.run(
+                        ['fileicon', 'set', str(app_path), str(png_dest)],
+                        capture_output=True, text=True)
+                    if result.returncode == 0:
+                        self.log_callback("✓ Added icon to app bundle using fileicon")
+                        icon_set = True
+                except FileNotFoundError:
+                    pass
 
+            if not icon_set:
+                self.log_callback(
+                    "Warning: Could not set the desktop shortcut icon "
+                    "(sips/iconutil or fileicon failed)")
+                return False
             return True
 
         except Exception as e:

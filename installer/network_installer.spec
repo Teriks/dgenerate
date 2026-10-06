@@ -66,27 +66,29 @@ datas = []
 if resources_dir.exists():
     datas.append((str(resources_dir), 'network_installer/resources'))
 
-# Platform-specific icon handling with conversion
+# Platform-specific icon handling with conversion.
+# build.py writes icon.ico on Windows and icon.png on macOS/Linux.
 def get_icon_path():
     """Get the appropriate icon path for the current platform."""
-    base_icon_path = resources_dir / 'icon.ico'
-    
-    if not base_icon_path.exists():
-        print(f"Warning: Icon file not found at {base_icon_path}")
-        return None
-    
     if is_windows:
-        # Windows: use .ico directly
-        return str(base_icon_path)
-    else:
-        # macOS/Linux: use .png (converted by build process)
-        png_path = resources_dir / 'icon.png'
-        if png_path.exists():
-            return str(png_path)
-        
-        # Fallback to .ico if PNG not available
+        ico_path = resources_dir / 'icon.ico'
+        if ico_path.exists():
+            return str(ico_path)
+        print(f"Warning: Icon file not found at {ico_path}")
+        return None
+
+    # macOS/Linux: prefer the PNG produced by copy_resources_to_installer.
+    png_path = resources_dir / 'icon.png'
+    if png_path.exists():
+        return str(png_path)
+
+    ico_path = resources_dir / 'icon.ico'
+    if ico_path.exists():
         print("Warning: PNG icon not found, falling back to ICO")
-        return str(base_icon_path)
+        return str(ico_path)
+
+    print(f"Warning: Icon file not found at {png_path}")
+    return None
 
 # Get the icon path
 icon_path = get_icon_path()
