@@ -15762,7 +15762,7 @@ for instance different learning rates, etc. if you just want to run a series of 
 
     {% for rank in ranks %}
         {% for rate in learn_rates.items() %}
-            \exec dpython train_dreambooth_lora_sdxl.py
+            \exec python train_dreambooth_lora_sdxl.py
             --pretrained_model_name_or_path "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0"
             --dataset_name "dataset/instance_images"
             --instance_prompt "My fancy character"
