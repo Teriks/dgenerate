@@ -44,20 +44,6 @@ WAN_ANIMATE_2_SCHEDULER_NAMES = frozenset({
     'DPMSolverMultistepScheduler',
 })
 
-_WAN_DEFAULT_FPS = 16.0
-_WAN_ANIMATE_DEFAULT_FPS = 30.0
-_WAN_ANIMATE_2_DEFAULT_FPS = 24.0
-_WAN_DEFAULT_VAE_DTYPE = _enums.DataType.FLOAT32
-_WAN_ANIMATE_DEFAULT_STEPS = 20
-_WAN_ANIMATE_DEFAULT_GUIDANCE = 1.0
-_WAN_ANIMATE_DEFAULT_SEGMENT = 77
-_WAN_ANIMATE_DEFAULT_PREV_SEGMENT = 1
-_WAN_ANIMATE_2_DEFAULT_STEPS = 40
-_WAN_ANIMATE_2_DISTILLED_STEPS = 10
-_WAN_ANIMATE_2_DEFAULT_SEGMENT = 81
-_WAN_ANIMATE_2_DEFAULT_PREV = 1
-
-
 def wan_family_from_index(index: dict | None) -> str:
     """
     Choose the Wan pipeline family from ``model_index.json``.
@@ -490,7 +476,8 @@ def _set_wan_vae_dtype(pipe, dtype=None):
     Cast the Wan VAE dtype.
 
     AutoencoderKLWan is fragile in bfloat16. When ``dtype`` is ``None``,
-    :data:`_WAN_DEFAULT_VAE_DTYPE` (float32) is used. Pass an explicit dtype
+    :data:`dgenerate.pipelinewrapper.constants.DEFAULT_WAN_VAE_DTYPE` (float32)
+    is used. Pass an explicit dtype
     only when ``--vae`` did not already load the VAE at the desired precision.
     Quantized VAEs are left alone; ``.to(dtype=...)`` would undo quantization.
 
@@ -506,7 +493,7 @@ def _set_wan_vae_dtype(pipe, dtype=None):
         _messages.debug_log('Wan VAE dtype left unchanged (quantized).')
         return
     if dtype is None:
-        dtype = _WAN_DEFAULT_VAE_DTYPE
+        dtype = _constants.DEFAULT_WAN_VAE_DTYPE
     torch_dtype = _enums.get_torch_dtype(dtype)
     if torch_dtype is None:
         torch_dtype = torch.float32
@@ -566,7 +553,7 @@ def _call_wan(wrapper, user_args):
     elif mode == 'wan-vace':
         width, height = _fit_vace_canvas(user_args, width, height, align)
 
-    fps = float(user_args.video_fps or _WAN_DEFAULT_FPS)
+    fps = float(user_args.video_fps or _constants.DEFAULT_WAN_FPS)
     temporal = _temporal_factor(pipe)
     kwargs = {
         'prompt': positive,
@@ -750,7 +737,7 @@ def _call_wan_animate(wrapper, user_args):
         width, height, _spatial_multiple(pipe), 'Wan-Animate pose clip')
     pose = user_args.wan_pose_video_frames
 
-    fps = float(user_args.video_fps or _WAN_ANIMATE_DEFAULT_FPS)
+    fps = float(user_args.video_fps or _constants.DEFAULT_WAN_ANIMATE_FPS)
     mode = user_args.wan_animate_mode or 'animate'
     if mode not in ('animate', 'replace'):
         raise _pipelines.UnsupportedPipelineConfigError(
@@ -764,12 +751,12 @@ def _call_wan_animate(wrapper, user_args):
         _types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
     steps = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
     if guidance == _constants.DEFAULT_GUIDANCE_SCALE:
-        guidance = _WAN_ANIMATE_DEFAULT_GUIDANCE
+        guidance = _constants.DEFAULT_WAN_ANIMATE_GUIDANCE_SCALE
         user_args.guidance_scale = guidance
         _messages.debug_log(
             'Wan-Animate runs unguided. Default guidance scale 5 was replaced with 1.')
     if steps == _constants.DEFAULT_INFERENCE_STEPS:
-        steps = _WAN_ANIMATE_DEFAULT_STEPS
+        steps = _constants.DEFAULT_WAN_ANIMATE_INFERENCE_STEPS
         user_args.inference_steps = steps
         _messages.debug_log(
             'Wan-Animate default inference steps 30 was replaced with 20.')
@@ -788,9 +775,9 @@ def _call_wan_animate(wrapper, user_args):
         'guidance_scale': guidance,
         'num_inference_steps': steps,
         'segment_frame_length': int(
-            _types.default(user_args.wan_segment_frame_length, _WAN_ANIMATE_DEFAULT_SEGMENT)),
+            _types.default(user_args.wan_segment_frame_length, _constants.DEFAULT_WAN_ANIMATE_SEGMENT_FRAME_LENGTH)),
         'prev_segment_conditioning_frames': int(
-            _types.default(user_args.wan_prev_segment_frames, _WAN_ANIMATE_DEFAULT_PREV_SEGMENT)),
+            _types.default(user_args.wan_prev_segment_frames, _constants.DEFAULT_WAN_ANIMATE_PREV_SEGMENT_FRAMES)),
     }
     if negative:
         kwargs['negative_prompt'] = negative
@@ -837,17 +824,17 @@ def _call_wan_animate_2(wrapper, user_args):
     distilled = held.family == 'wan-animate-2-distilled'
     steps = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
     if steps == _constants.DEFAULT_INFERENCE_STEPS:
-        steps = _WAN_ANIMATE_2_DISTILLED_STEPS if distilled else _WAN_ANIMATE_2_DEFAULT_STEPS
+        steps = _constants.DEFAULT_WAN_ANIMATE_2_DISTILLED_INFERENCE_STEPS if distilled else _constants.DEFAULT_WAN_ANIMATE_2_INFERENCE_STEPS
         user_args.inference_steps = steps
         _messages.debug_log(
             f'Wan-Animate-2 default inference steps '
             f'{_constants.DEFAULT_INFERENCE_STEPS} was replaced with {steps}.')
 
-    fps = float(user_args.video_fps or _WAN_ANIMATE_2_DEFAULT_FPS)
+    fps = float(user_args.video_fps or _constants.DEFAULT_WAN_ANIMATE_2_FPS)
     segment = int(_types.default(
-        user_args.wan_segment_frame_length, _WAN_ANIMATE_2_DEFAULT_SEGMENT))
+        user_args.wan_segment_frame_length, _constants.DEFAULT_WAN_ANIMATE_2_SEGMENT_FRAME_LENGTH))
     prev = int(_types.default(
-        user_args.wan_prev_segment_frames, _WAN_ANIMATE_2_DEFAULT_PREV))
+        user_args.wan_prev_segment_frames, _constants.DEFAULT_WAN_ANIMATE_2_PREV_SEGMENT_FRAMES))
     source_fps = (
         float(user_args.wan_driving_video_fps)
         if user_args.wan_driving_video_fps else None)

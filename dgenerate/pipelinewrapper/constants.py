@@ -463,6 +463,71 @@ Maximum interval between optimizations in the SADA algorithm.
 """
 
 
+DEFAULT_WAN_FPS: float = 16.0
+"""
+Default frames per second for Wan text-to-video and image-to-video.
+"""
+
+DEFAULT_WAN_ANIMATE_FPS: float = 30.0
+"""
+Default frames per second for Wan-Animate.
+"""
+
+DEFAULT_WAN_ANIMATE_2_FPS: float = 24.0
+"""
+Default frames per second for Wan-Animate-2.
+"""
+
+DEFAULT_WAN_VAE_DTYPE: str = 'float32'
+"""
+Default Wan VAE dtype. AutoencoderKLWan is fragile in bfloat16.
+"""
+
+DEFAULT_WAN_ANIMATE_INFERENCE_STEPS: int = 20
+"""
+Default inference steps for Wan-Animate when the user left the global default.
+"""
+
+DEFAULT_WAN_ANIMATE_GUIDANCE_SCALE: float = 1.0
+"""
+Default guidance scale for Wan-Animate when the user left the global default.
+"""
+
+DEFAULT_WAN_ANIMATE_SEGMENT_FRAME_LENGTH: int = 77
+"""
+Default Wan-Animate segment length in frames.
+"""
+
+DEFAULT_WAN_ANIMATE_PREV_SEGMENT_FRAMES: int = 1
+"""
+Default number of frames Wan-Animate carries over from the previous segment.
+"""
+
+DEFAULT_WAN_ANIMATE_2_INFERENCE_STEPS: int = 40
+"""
+Default inference steps for Wan-Animate-2 when the user left the global default.
+"""
+
+DEFAULT_WAN_ANIMATE_2_DISTILLED_INFERENCE_STEPS: int = 10
+"""
+Default inference steps for distilled Wan-Animate-2 when the user left the global default.
+"""
+
+DEFAULT_WAN_ANIMATE_2_SEGMENT_FRAME_LENGTH: int = 81
+"""
+Default Wan-Animate-2 segment length in frames.
+"""
+
+DEFAULT_WAN_ANIMATE_2_PREV_SEGMENT_FRAMES: int = 1
+"""
+Default number of frames Wan-Animate-2 carries over from the previous segment.
+"""
+
+DEFAULT_LTX_FPS: float = 24.0
+"""
+Default frames per second for LTX video.
+"""
+
 PIPELINE_CACHE_MEMORY_CONSTRAINTS: list[str] = ['pipeline_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear the CPU side 

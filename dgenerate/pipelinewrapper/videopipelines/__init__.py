@@ -995,14 +995,13 @@ def _create_cached_video_pipeline(model_path,
             family=family)
         load_kwargs['transformer_2'] = injected['transformer_2']
     if vae_uri:
-        from . import wan as _wan_mod
         parsed_vae = _uris.VAEUri.parse(vae_uri)
         # Wan VAE defaults to float32 even when replaced via --vae, unless the
         # URI sets dtype= explicitly.
         vae_dtype_fallback = dtype
         if (_enums.model_type_is_wan_family(model_type)
                 and parsed_vae.dtype is None):
-            vae_dtype_fallback = _wan_mod._WAN_DEFAULT_VAE_DTYPE
+            vae_dtype_fallback = _constants.DEFAULT_WAN_VAE_DTYPE
         injected['vae'] = parsed_vae.load(
             dtype_fallback=vae_dtype_fallback,
             use_auth_token=auth_token,
@@ -1100,7 +1099,6 @@ from .wan import (
 )
 from .ltx import (
     LTX_SCHEDULER_NAMES,
-    _LTX_DEFAULT_FPS,
     audio_sample_rate_from_pipeline,
     ltx_family_from_index,
     ltx_num_frames,
