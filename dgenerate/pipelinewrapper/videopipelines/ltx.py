@@ -51,8 +51,6 @@ class _Shared:
 
 _vp = _Shared()
 
-_LTX_DEFAULT_FPS = 24.0
-
 LTX_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
 
 
@@ -196,7 +194,7 @@ def _call_ltx(wrapper, user_args):
     if mode != 'ltx-txt':
         width, height = _fit_ltx_inputs(pipe, held, mode, user_args, width, height)
 
-    fps = float(user_args.video_fps or _LTX_DEFAULT_FPS)
+    fps = float(user_args.video_fps or _constants.DEFAULT_LTX_FPS)
     kwargs = {
         'prompt': positive,
         'frame_rate': fps,
