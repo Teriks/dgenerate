@@ -55,6 +55,7 @@ _WAN_ANIMATE_DEFAULT_PREV_SEGMENT = 1
 _WAN_ANIMATE_2_DEFAULT_STEPS = 40
 _WAN_ANIMATE_2_DISTILLED_STEPS = 10
 _WAN_ANIMATE_2_DEFAULT_SEGMENT = 81
+_WAN_ANIMATE_2_DEFAULT_PREV = 1
 
 
 def wan_family_from_index(index: dict | None) -> str:
@@ -381,6 +382,75 @@ def _require_wan_size(width: int | None, height: int | None, pipe, model_name: s
         raise _pipelines.UnsupportedPipelineConfigError(
             f'{model_name} requires --output-size dimensions divisible by {align}. '
             f'Got {width}x{height}.')
+
+
+def _animate2_resampled_count(num_frames: int,
+                              source_fps: float | None,
+                              target_fps: float) -> int:
+    """
+    Frame count Wan-Animate-2 will denoise after resampling to ``target_fps``.
+
+    Matches ``get_frame_indices``: the list length is
+    ``int(num_frames / source_fps * target_fps)``. Equal rates, and a missing
+    source rate, keep every frame.
+    """
+    if num_frames <= 0:
+        return 0
+    if source_fps is None or float(source_fps) == float(target_fps):
+        return int(num_frames)
+    return int(int(num_frames) / float(source_fps) * float(target_fps))
+
+
+def _animate2_pad_fills(frame_count: int, segment: int, prev: int) -> bool:
+    """
+    True when the pipeline's zigzag pad makes every segment exactly ``segment`` frames.
+
+    The pad copies a tail slice and flips it. A slice shorter than the requested
+    pad leaves the segment short, and the transformer then rejects the token count.
+    """
+    if frame_count <= 0 or segment <= prev:
+        return False
+    effective = segment - prev
+    if frame_count > prev:
+        leftover = (frame_count - prev) % effective
+    else:
+        leftover = 0
+    num_padding = effective - leftover if leftover > 0 else 0
+    if num_padding > frame_count:
+        return False
+    padded = frame_count + num_padding
+    if padded < segment:
+        return False
+    num_segments = (padded - prev + effective - 1) // effective
+    if num_segments < 1:
+        return False
+    last = (num_segments - 1) * effective
+    return last + segment <= padded
+
+
+def _fit_wan_animate_2_segment(frame_count: int,
+                               segment: int,
+                               prev: int,
+                               temporal: int = 4) -> int:
+    """
+    Largest ``temporal * k + 1`` segment, at most ``segment``, that this clip can fill.
+
+    Returns ``segment`` unchanged when it already fits, and also when no shorter
+    candidate fits.
+    """
+    temporal = max(1, int(temporal))
+    segment = int(segment)
+    prev = int(prev)
+    if _animate2_pad_fills(frame_count, segment, prev):
+        return segment
+    k = (segment - 1) // temporal
+    while k >= 0:
+        candidate = temporal * k + 1
+        if candidate < segment and candidate > prev \
+                and _animate2_pad_fills(frame_count, candidate, prev):
+            return candidate
+        k -= 1
+    return segment
 
 
 def _trim_wan_clip(frames: list, limit: int | None, temporal: int) -> list:
@@ -774,6 +844,33 @@ def _call_wan_animate_2(wrapper, user_args):
             f'{_constants.DEFAULT_INFERENCE_STEPS} was replaced with {steps}.')
 
     fps = float(user_args.video_fps or _WAN_ANIMATE_2_DEFAULT_FPS)
+    segment = int(_types.default(
+        user_args.wan_segment_frame_length, _WAN_ANIMATE_2_DEFAULT_SEGMENT))
+    prev = int(_types.default(
+        user_args.wan_prev_segment_frames, _WAN_ANIMATE_2_DEFAULT_PREV))
+    source_fps = (
+        float(user_args.wan_driving_video_fps)
+        if user_args.wan_driving_video_fps else None)
+    seen = _animate2_resampled_count(
+        len(user_args.wan_driving_video_frames), source_fps, fps)
+    fitted = _fit_wan_animate_2_segment(
+        seen, segment, prev, _temporal_factor(pipe))
+    if fitted != segment:
+        if source_fps is not None and float(source_fps) != float(fps):
+            clip = (
+                f'{len(user_args.wan_driving_video_frames)} driving frames at '
+                f'{source_fps:g} fps resample to {seen} frames at {fps:g} fps'
+            )
+        else:
+            clip = f'the driving clip is {seen} frames at {fps:g} fps'
+        _messages.warning(
+            f'Wan-Animate-2: {clip}, which cannot fill a {segment}-frame segment. '
+            f'--wan-segment-frame-lengths was reduced to {fitted}.')
+        segment = fitted
+    elif not _animate2_pad_fills(seen, segment, prev):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'Wan-Animate-2 driving clip is {seen} frames at {fps:g} fps, '
+            f'too short to fill a segment longer than {prev} frames.')
     kwargs = {
         'image': user_args.images[0],
         'driving_video': list(user_args.wan_driving_video_frames),
@@ -783,6 +880,8 @@ def _call_wan_animate_2(wrapper, user_args):
         'output_type': 'pil',
         'fps': int(round(fps)),
         'num_inference_steps': steps,
+        'segment_frame_length': segment,
+        'prev_segment_conditioning_frames': prev,
     }
     if negative:
         kwargs['negative_prompt'] = negative
@@ -791,10 +890,6 @@ def _call_wan_animate_2(wrapper, user_args):
     if width is not None:
         kwargs['width'] = int(width)
         kwargs['height'] = int(height)
-    if user_args.wan_segment_frame_length is not None:
-        kwargs['segment_frame_length'] = int(user_args.wan_segment_frame_length)
-    if user_args.wan_prev_segment_frames is not None:
-        kwargs['prev_segment_conditioning_frames'] = int(user_args.wan_prev_segment_frames)
     if user_args.max_sequence_length is not None:
         kwargs['max_sequence_length'] = int(user_args.max_sequence_length)
 
@@ -863,22 +958,129 @@ def load_wan_animate_2_pipeline(pipeline_class, model_path, load_kwargs, injecte
     return pipe
 
 
+def _torch_version_at_least(major: int, minor: int) -> bool:
+    raw = torch.__version__.split('+')[0]
+    parts = raw.split('.')
+    try:
+        got = (int(parts[0]), int(parts[1]))
+    except (ValueError, IndexError):
+        return False
+    return got >= (major, minor)
+
+
+def _flex_attention_can_compile(device) -> bool:
+    """
+    True when compiling the transformer produces a block-sparse flex kernel.
+
+    CUDA and XPU lower that kernel with Triton. macOS lowers it to Metal
+    through ``torch.compile``; that path shipped in PyTorch 2.13 and is in
+    the 2.14 pin used here.
+    """
+    import importlib.util
+
+    kind = torch.device(device).type
+    if kind == 'mps':
+        return _torch_version_at_least(2, 13)
+    if kind in ('cuda', 'xpu'):
+        return importlib.util.find_spec('triton') is not None
+    return False
+
+
+def _compile_wan_animate_2_transformer(transformer, device) -> None:
+    """
+    Compile each repeated block's ``forward``.
+
+    The generation pass uses flex attention with a block mask. Uncompiled,
+    that path materializes the full score matrix, which is tens of gigabytes
+    at video resolution. Compiling the block is what keeps the attention
+    block-sparse.
+
+    ``compile_repeated_blocks`` compiles ``_call_impl``, and the group-offload
+    prefetch hook lives on that path. The hook closes over each block name, so
+    Dynamo rebuilds the whole block until its recompile limit and the card
+    fills up. Compiling ``forward`` leaves the hook outside the graph.
+    """
+    if transformer is None or getattr(transformer, '_dgenerate_animate2_compiled', False):
+        return
+    repeated = getattr(transformer, '_repeated_blocks', None)
+    if not repeated or _pipelines.module_skips_group_offload(transformer):
+        return
+    if not _flex_attention_can_compile(device):
+        if torch.device(device).type in ('cuda', 'xpu'):
+            detail = 'Triton is not installed, so the blocks stay uncompiled.'
+        else:
+            detail = 'This device has no compiled flex-attention kernel.'
+        _messages.warning(
+            'Wan-Animate-2 keeps generation attention block-sparse by compiling '
+            f'its transformer blocks. {detail} The generation pass allocates '
+            'the full score matrix and can run out of memory at video resolution.')
+        return
+    _messages.log(
+        'Compiling Wan-Animate-2 transformer blocks. The first denoising step '
+        'waits on this so attention stays block-sparse instead of allocating '
+        'the full score matrix.')
+    compiled_any = False
+    for submod in transformer.modules():
+        if submod.__class__.__name__ not in repeated:
+            continue
+        if getattr(submod, '_dgenerate_animate2_forward_compiled', False):
+            continue
+        submod.forward = torch.compile(submod.forward)
+        submod._dgenerate_animate2_forward_compiled = True
+        compiled_any = True
+    if compiled_any:
+        transformer._dgenerate_animate2_compiled = True
+
+
 def place_wan_animate_2(pipe, device, model_cpu_offload, sequential_cpu_offload,
                         model_group_offload):
     """
     Place Wan-Animate-2 components.
 
     The modular pipeline has no pipeline-level CPU offload. Offload flags stream
-    the transformer in block groups and keep the encoders and VAE on ``device``.
-    Quantized / GGUF transformers stay where they were loaded; group offload
-    would move packed weights the same way it must not for still pipelines.
+    the transformer in block groups. The text encoder is UMT5-XXL, about 11 GB
+    in bf16, and the image encoder is only used before denoising, so both are
+    hooked to visit ``device`` for their forward pass and then return to CPU.
+    Leaving them resident next to the transformer activations fills a 16 GB
+    GPU. The VAE stays on ``device``. Quantized / GGUF transformers stay where
+    they were loaded; group offload would move packed weights the same way it
+    must not for still pipelines.
     """
     names = (
         'text_encoder', 'image_encoder', 'vae', 'transformer',
         'video_processor', 'image_processor', 'guider',
     )
+    # Used once, ahead of the denoising loop. UMT5-XXL alone is ~11 GB.
+    encoder_offload = ('text_encoder', 'image_encoder')
     offload = bool(model_cpu_offload or sequential_cpu_offload or model_group_offload)
+    if offload:
+        # The modular pipeline cannot take the three standard offload paths.
+        # Every flag uses the placement below.
+        if model_cpu_offload:
+            chosen = '--model-cpu-offload'
+        elif sequential_cpu_offload:
+            chosen = '--model-sequential-offload'
+        else:
+            chosen = '--model-group-offload'
+        onload_kind = torch.device(device).type
+        # Diffusers rejects streamed offload unless each group is a single
+        # block, and that stream prefetches the next block.
+        if onload_kind == 'cuda':
+            movement = (
+                'moves the transformer one block at a time and prefetches '
+                'the next block')
+        else:
+            movement = 'moves the transformer in groups of 4 blocks'
+        _messages.warning(
+            'Wan-Animate-2 uses one placement for --model-cpu-offload, '
+            '--model-sequential-offload, and --model-group-offload. '
+            f'{chosen} {movement}, moves the text encoder and image encoder '
+            'to the GPU only for their forward pass, and leaves the VAE on '
+            'the GPU.')
     transformer = getattr(pipe, 'transformer', None)
+    # Compile before the offload hooks wrap ``forward``. The compiled function
+    # is what those hooks call.
+    _compile_wan_animate_2_transformer(transformer, device)
     if offload and transformer is not None:
         if _pipelines.module_skips_group_offload(transformer):
             # No block streaming: packed BnB/SDNQ/GGUF weights are not ordinary
@@ -896,10 +1098,23 @@ def place_wan_animate_2(pipe, device, model_cpu_offload, sequential_cpu_offload,
                 onload_device=onload,
                 offload_device=torch.device('cpu'),
                 offload_type='block_level',
-                num_blocks_per_group=4,
+                num_blocks_per_group=1 if onload.type == 'cuda' else 4,
                 use_stream=onload.type == 'cuda',
             )
         names = tuple(name for name in names if name != 'transformer')
+    if offload:
+        import accelerate
+        for name in encoder_offload:
+            module = getattr(pipe, name, None)
+            if module is None or not hasattr(module, 'to'):
+                continue
+            if _pipelines.module_skips_group_offload(module):
+                _pipelines.place_quantized_module(module, device)
+                continue
+            accelerate.cpu_offload(
+                module, device,
+                offload_buffers=len(module._parameters) > 0)
+        names = tuple(name for name in names if name not in encoder_offload)
     for name in names:
         module = getattr(pipe, name, None)
         if module is not None and hasattr(module, 'to'):

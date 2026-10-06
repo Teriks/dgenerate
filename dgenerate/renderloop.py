@@ -1678,9 +1678,12 @@ class RenderLoop:
                 None, output_fps)
         if parsed.wan_driving_video:
             driving_fps = []
+            # Wan-Animate-2 resamples the driving clip to --video-fps inside
+            # the pipeline. The other video paths play the loaded frames as-is.
+            resample_driving = model_type == _pipelinewrapper.ModelType.WAN_ANIMATE_2
             driving_frames = self._load_video_media(
                 parsed.wan_driving_video, parsed, processors.get('wan_driving'), owned_images,
-                None, output_fps, fps_out=driving_fps)
+                None, output_fps, fps_out=driving_fps, resample_fps=resample_driving)
             diffusion_arguments.wan_driving_video_path = parsed.wan_driving_video
             diffusion_arguments.wan_driving_video_frames = driving_frames
             if driving_fps and driving_fps[0] is not None:
@@ -1711,7 +1714,8 @@ class RenderLoop:
 
     def _load_video_media(self, path, parsed, processor, owned_images: list,
                           max_frames: int | None, output_fps: float | None,
-                          fps_out: list | None = None) -> list[PIL.Image.Image]:
+                          fps_out: list | None = None,
+                          resample_fps: bool = False) -> list[PIL.Image.Image]:
         resize, aspect, align = self._video_resize(parsed)
         frame_start = _types.default(parsed.frame_start, self._c_config.frame_start)
         frame_end = _types.default(parsed.frame_end, self._c_config.frame_end)
@@ -1738,11 +1742,16 @@ class RenderLoop:
             _messages.log(
                 f'Conditioning on {len(frames)} frames of "{path}" ({source_fps:g} fps).')
             if abs(source_fps - output_fps) > 0.5:
-                _messages.warning(
-                    f'"{path}" plays at {source_fps:g} fps but the output is {output_fps:g} fps. '
-                    f'Frames are used as-is, so motion speed will change. '
-                    f'Set --video-fps '
-                    f'{source_fps:g} to match.')
+                if resample_fps:
+                    _messages.log(
+                        f'"{path}" plays at {source_fps:g} fps and will be '
+                        f'resampled to {output_fps:g} fps.')
+                else:
+                    _messages.warning(
+                        f'"{path}" plays at {source_fps:g} fps but the output is {output_fps:g} fps. '
+                        f'Frames are used as-is, so motion speed will change. '
+                        f'Set --video-fps '
+                        f'{source_fps:g} to match.')
         return frames
 
     def _process_copied_frames(self, frames, processor, owned_images: list) -> list[PIL.Image.Image]:
