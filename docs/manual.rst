@@ -2963,7 +2963,7 @@ Install dgenerate:
     # * bitsandbytes
     # * triton_windows
     # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
-    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    # * console_ui_vulkan (default Console UI preview on Windows and Linux (opt-in on macOS with DGENERATE_CONSOLE_UI_VULKAN=1);
     #   plays video and audio. The network installer selects this extra.
     #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
@@ -3062,7 +3062,7 @@ a cloned repository like this:
     # * bitsandbytes
     # * triton_windows
     # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
-    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    # * console_ui_vulkan (default Console UI preview on Windows and Linux (opt-in on macOS with DGENERATE_CONSOLE_UI_VULKAN=1);
     #   plays video and audio. The network installer selects this extra.
     #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
@@ -3192,7 +3192,7 @@ Install dgenerate
     # * xllamacpp (used for the llama prompt upscaler plugin)
     # * bitsandbytes
     # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
-    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    # * console_ui_vulkan (default Console UI preview on Windows and Linux (opt-in on macOS with DGENERATE_CONSOLE_UI_VULKAN=1);
     #   plays video and audio. The network installer selects this extra.
     #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
@@ -3539,16 +3539,15 @@ global python site packages.
 
     # * ncnn
     # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
-    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
-    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
-    #   plays video and audio. The network installer selects this extra.
-    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
+    # * console_ui_opengl (default Console UI preview on macOS; plays video and audio)
+    # * console_ui_vulkan (optional on macOS; set DGENERATE_CONSOLE_UI_VULKAN=1
+    #   to use it. Needs MoltenVK / a Vulkan loader)
 
     pipx install dgenerate==6.0.0
 
     # or with extras
 
-    pipx install dgenerate[ncnn,xllamacpp,console_ui_vulkan]==6.0.0
+    pipx install dgenerate[ncnn,xllamacpp,console_ui_opengl,console_ui_vulkan]==6.0.0
 
     # open a new terminal or logout & login
 
@@ -3602,16 +3601,15 @@ of your own creation.
 
     # * ncnn
     # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
-    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
-    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
-    #   plays video and audio. The network installer selects this extra.
-    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
+    # * console_ui_opengl (default Console UI preview on macOS; plays video and audio)
+    # * console_ui_vulkan (optional on macOS; set DGENERATE_CONSOLE_UI_VULKAN=1
+    #   to use it. Needs MoltenVK / a Vulkan loader)
 
     pip3 install dgenerate==6.0.0
 
     # or with extras
 
-    pip3 install dgenerate[ncnn,xllamacpp,console_ui_vulkan]==6.0.0
+    pip3 install dgenerate[ncnn,xllamacpp,console_ui_opengl,console_ui_vulkan]==6.0.0
 
     # launch the Console UI to test the install.
     # tkinter will be available when you install
@@ -15535,14 +15533,16 @@ interactive use, as well as loading arbitrary images, and a few other helpful th
 ability to show the current image file in the systems file explorer,
 all via the right click context menu.
 
-Vulkan is the default preview on Windows, Linux, and macOS. The network
-installer selects the ``console_ui_vulkan`` extra. When that extra is
-installed, the preview pane uses Vulkan. ``DGENERATE_CONSOLE_UI_VULKAN=0``
-selects the OpenGL viewer when ``console_ui_opengl`` is installed, or the
-plain Tk canvas when it is not. ``DGENERATE_CONSOLE_UI_OPENGL=0`` disables
-the OpenGL viewer on its own. The plain Tk canvas does not play video.
-Linux presents through X11, including a Wayland desktop that is running the
-window under XWayland. macOS presents through MoltenVK.
+Vulkan is the default preview on Windows and Linux when the
+``console_ui_vulkan`` extra is installed. On macOS the OpenGL viewer is
+the default (MoltenVK is not part of a stock Mac); set
+``DGENERATE_CONSOLE_UI_VULKAN=1`` to use Vulkan there after installing
+that extra. ``DGENERATE_CONSOLE_UI_VULKAN=0`` selects OpenGL when
+``console_ui_opengl`` is installed, or the plain Tk canvas when it is
+not. ``DGENERATE_CONSOLE_UI_OPENGL=0`` disables the OpenGL viewer on its
+own. The plain Tk canvas does not play video. Linux presents through
+X11, including a Wayland desktop that is running the window under
+XWayland. macOS Vulkan presents through MoltenVK.
 
 The Vulkan and OpenGL previews play finished animations (GIF, WebP, APNG, and
 MP4, including audio). Move the pointer over the picture to show the timeline

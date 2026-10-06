@@ -313,7 +313,8 @@ extras: dict[str, list[str]] = {
         # WASAPI / CoreAudio / Pulse playback for the OpenGL preview timeline.
         'miniaudio',
     ],
-    # Default console preview on Windows, Linux, and macOS.
+    # Default console preview on Windows and Linux; opt-in on macOS
+    # with DGENERATE_CONSOLE_UI_VULKAN=1 (needs MoltenVK).
     'console_ui_vulkan': [
         'vulkan',
         'miniaudio',

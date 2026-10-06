@@ -79,7 +79,7 @@ Install dgenerate
     # * xllamacpp (used for the llama prompt upscaler plugin)
     # * bitsandbytes
     # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
-    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    # * console_ui_vulkan (default Console UI preview on Windows and Linux (opt-in on macOS with DGENERATE_CONSOLE_UI_VULKAN=1);
     #   plays video and audio. The network installer selects this extra.
     #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 

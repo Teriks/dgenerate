@@ -50,8 +50,9 @@ def detect_gpu():
 def get_install_extras():
     gpu_url = detect_gpu()
 
-    # Match the network installer: Vulkan preview by default, OpenGL kept for
-    # DGENERATE_CONSOLE_UI_VULKAN=0. bitsandbytes 0.50 covers CUDA, ROCm, XPU,
+    # Match the network installer: install both preview extras. Vulkan is the
+    # default on Windows/Linux; macOS uses OpenGL unless
+    # DGENERATE_CONSOLE_UI_VULKAN=1. bitsandbytes 0.50 covers CUDA, ROCm, XPU,
     # and Apple MPS (Metal kernels come from the hard ``kernels`` dependency).
     # xllamacpp's PyPI wheel is replaced after install when a CUDA / ROCm /
     # Vulkan build applies.

@@ -40,7 +40,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
     Still images, and finished animations (GIF, WebP, APNG, and MP4, including
     audio) with a timeline kept below the picture. The speaker draws sound
     waves, or a red X when muted, beside the volume slider. Used when
-    ``DGENERATE_CONSOLE_UI_VULKAN=0`` or the Vulkan extra is not installed.
+    ``DGENERATE_CONSOLE_UI_VULKAN=0``, on macOS by default, or when the
+    Vulkan extra is not installed.
     """
 
     def __init__(self, parent, **kwargs):
