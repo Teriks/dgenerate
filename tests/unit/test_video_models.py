@@ -930,6 +930,98 @@ class TestVideoModels(unittest.TestCase):
                 'diffusers.hooks.apply_group_offloading') as apply_offload:
             _wan.place_wan_animate_2(pipe, 'cpu', True, False, False)
         apply_offload.assert_called_once()
+        self.assertTrue(hasattr(pipe.text_encoder, '_hf_hook'))
+        self.assertFalse(hasattr(pipe.vae, '_hf_hook'))
+
+    def test_wan_animate_2_warns_that_offload_flags_share_placement(self):
+        from dgenerate.pipelinewrapper.videopipelines import wan as _wan
+
+        class _Plain(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+        def pipe():
+            value = unittest.mock.Mock()
+            value.transformer = _Plain()
+            value.text_encoder = _Plain()
+            value.image_encoder = None
+            value.vae = _Plain()
+            value.video_processor = None
+            value.image_processor = None
+            value.guider = None
+            return value
+
+        warnings = []
+        with unittest.mock.patch(
+                'diffusers.hooks.apply_group_offloading'), \
+                unittest.mock.patch.object(
+                    _wan._messages, 'warning', side_effect=warnings.append):
+            _wan.place_wan_animate_2(pipe(), 'cpu', False, False, False)
+            self.assertEqual(warnings, [])
+            _wan.place_wan_animate_2(pipe(), 'cpu', False, False, True)
+        self.assertEqual(len(warnings), 1)
+        self.assertIn('--model-group-offload', warnings[0])
+        self.assertIn('one placement', warnings[0])
+
+    def test_wan_animate_2_compiles_transformer_blocks(self):
+        from dgenerate.pipelinewrapper.videopipelines import wan as _wan
+
+        class _Block(torch.nn.Module):
+            def forward(self, x):
+                return x
+
+        class _Model(torch.nn.Module):
+            _repeated_blocks = ['_Block']
+
+            def __init__(self):
+                super().__init__()
+                self.block = _Block()
+
+        class _Plain(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+        def pipe(transformer):
+            value = unittest.mock.Mock()
+            value.transformer = transformer
+            value.text_encoder = None
+            value.image_encoder = None
+            value.vae = None
+            value.video_processor = None
+            value.image_processor = None
+            value.guider = None
+            return value
+
+        model = _Model()
+        plain = _Plain()
+        original_forward = model.block.forward.__func__
+        with unittest.mock.patch(
+                'importlib.util.find_spec', return_value=None):
+            self.assertTrue(_wan._flex_attention_can_compile('mps'))
+            self.assertFalse(_wan._flex_attention_can_compile('cuda'))
+        self.assertFalse(_wan._flex_attention_can_compile('cpu'))
+        warnings = []
+        with unittest.mock.patch.object(
+                _wan._messages, 'warning', side_effect=warnings.append):
+            _wan.place_wan_animate_2(pipe(plain), 'cpu', False, False, False)
+            _wan.place_wan_animate_2(pipe(model), 'cpu', False, False, False)
+        self.assertIs(model.block.forward.__func__, original_forward)
+        self.assertTrue(any('full score matrix' in message for message in warnings))
+
+        with unittest.mock.patch(
+                'importlib.util.find_spec', return_value=object()), \
+                unittest.mock.patch(
+                    'diffusers.hooks.apply_group_offloading') as apply_offload:
+            _wan.place_wan_animate_2(pipe(model), 'cuda', True, False, False)
+            compiled_forward = model.block.forward
+            self.assertTrue(model.block._dgenerate_animate2_forward_compiled)
+            _wan.place_wan_animate_2(pipe(model), 'cuda', True, False, False)
+        self.assertIs(model.block.forward, compiled_forward)
+        apply_offload.assert_called()
+        self.assertEqual(apply_offload.call_args.kwargs['num_blocks_per_group'], 1)
+        self.assertTrue(apply_offload.call_args.kwargs['use_stream'])
 
     def test_load_quantized_module_applies_architecture_skips(self):
         import diffusers
@@ -2105,7 +2197,7 @@ class TestWanModels(unittest.TestCase):
         args.width = 640
         args.height = 800
         args.images = [PIL.Image.new('RGB', (8, 8))]
-        args.wan_driving_video_frames = [PIL.Image.new('RGB', (8, 8))]
+        args.wan_driving_video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(81)]
         args.wan_driving_video_fps = 16
 
         class Wrapper:
@@ -2126,11 +2218,74 @@ class TestWanModels(unittest.TestCase):
         self.assertEqual(captured['output'], 'videos')
         self.assertEqual(captured['output_type'], 'pil')
         self.assertEqual(captured['driving_video_fps'], 16)
+        self.assertEqual(captured['segment_frame_length'], 81)
         self.assertEqual(captured['width'], 640)
         self.assertEqual(fps, 24)
         self.assertEqual(len(frames), 1)
+        self.assertEqual(len(captured['driving_video']), 81)
         self.assertIsNone(audio)
         self.assertIsNone(rate)
+
+    def test_wan_animate_2_segment_fits_resampled_clip(self):
+        fit = _videopipelines.wan._fit_wan_animate_2_segment
+        # 49 frames at 30 fps resampled to 8 fps is 13 frames. An 81-frame
+        # segment cannot be padded from that; 25 can.
+        seen = _videopipelines.wan._animate2_resampled_count(49, 30, 8)
+        self.assertEqual(seen, 13)
+        self.assertEqual(fit(seen, 81, 1), 25)
+        self.assertEqual(fit(49, 81, 1), 81)
+        self.assertEqual(fit(13, 25, 1), 25)
+
+    def test_call_wan_animate_2_shortens_segment(self):
+        captured = {}
+        warnings = []
+
+        class Pipe:
+            image_encoder = object()
+
+            def __call__(self, **kwargs):
+                captured.update(kwargs)
+                return [PIL.Image.new('RGB', (4, 4))]
+
+        class Held:
+            pipeline = Pipe()
+            family = 'wan-animate-2'
+
+        args = _pipelinewrapper.DiffusionArguments()
+        args.prompt = _prompt.Prompt('a kitten')
+        args.inference_steps = 10
+        args.video_fps = 8
+        args.width = 640
+        args.height = 800
+        args.images = [PIL.Image.new('RGB', (8, 8))]
+        args.wan_driving_video_frames = [
+            PIL.Image.new('RGB', (8, 8)) for _ in range(49)]
+        args.wan_driving_video_fps = 30
+        args.wan_segment_frame_length = 81
+        args.wan_prev_segment_frames = 1
+
+        class Wrapper:
+            device = 'cpu'
+            model_type = _pipelinewrapper.ModelType.WAN_ANIMATE_2
+            model_cpu_offload = False
+            model_sequential_offload = False
+            model_group_offload = False
+
+        pipe = Pipe()
+        with unittest.mock.patch.object(
+                _videopipelines, '_video_pipeline',
+                return_value=(pipe, Held())), \
+                unittest.mock.patch.object(
+                    _videopipelines.wan._messages, 'warning',
+                    side_effect=warnings.append):
+            _videopipelines.wan._call_wan_animate_2(Wrapper(), args)
+
+        self.assertEqual(captured['fps'], 8)
+        self.assertEqual(captured['segment_frame_length'], 25)
+        self.assertEqual(len(captured['driving_video']), 49)
+        self.assertEqual(captured['driving_video_fps'], 30)
+        self.assertTrue(warnings)
+        self.assertIn('reduced to 25', warnings[0])
 
     def test_call_wan_kwargs(self):
         class Scheduler:
