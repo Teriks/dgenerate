@@ -21,11 +21,12 @@
 
 """Vulkan preview pane.
 
-Installed with the ``console_ui_vulkan`` extra. The console uses it on
-Windows, Linux, and macOS whenever that package is present.
-``DGENERATE_CONSOLE_UI_VULKAN=0`` selects OpenGL, or the Tk canvas when
-OpenGL is not installed. Linux presents through X11 (including XWayland).
-macOS presents through MoltenVK.
+Installed with the ``console_ui_vulkan`` extra. The console uses it by
+default on Windows and Linux when that package is present. On macOS it
+is opt-in via ``DGENERATE_CONSOLE_UI_VULKAN=1`` (MoltenVK / a Vulkan
+loader are not part of a stock Mac). ``DGENERATE_CONSOLE_UI_VULKAN=0``
+selects OpenGL, or the Tk canvas when OpenGL is not installed. Linux
+presents through X11 (including XWayland). macOS presents through MoltenVK.
 """
 import ctypes
 import ctypes.util
@@ -212,10 +213,11 @@ def _surface_extension_names(windowing: str, available: set[str]) -> tuple[list[
     if windowing == 'win32':
         surface = vk.VK_KHR_WIN32_SURFACE_EXTENSION_NAME
     elif windowing == 'aqua':
-        if vk.VK_MVK_MACOS_SURFACE_EXTENSION_NAME in available:
-            surface = vk.VK_MVK_MACOS_SURFACE_EXTENSION_NAME
-        elif vk.VK_EXT_METAL_SURFACE_EXTENSION_NAME in available:
+        # Prefer the Metal surface; the older MVK macOS surface is deprecated.
+        if vk.VK_EXT_METAL_SURFACE_EXTENSION_NAME in available:
             surface = vk.VK_EXT_METAL_SURFACE_EXTENSION_NAME
+        elif vk.VK_MVK_MACOS_SURFACE_EXTENSION_NAME in available:
+            surface = vk.VK_MVK_MACOS_SURFACE_EXTENSION_NAME
         else:
             raise RuntimeError(
                 'MoltenVK is not available. The Vulkan preview on macOS needs it.')
@@ -258,6 +260,38 @@ def _composite_alpha(caps):
     return vk.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
 
 
+class _MacDrawable(ctypes.Structure):
+    """Leading fields of Tk's ``MacDrawable`` / ``TkWindowPrivate``.
+
+    On Aqua, ``winfo_id()`` is this pointer, not an ``NSView *``. The view
+    sits immediately after ``winPtr``; see ``macosx/tkMacOSXInt.h``.
+    """
+    _fields_ = [
+        ('winPtr', ctypes.c_void_p),
+        ('view', ctypes.c_void_p),
+    ]
+
+
+class _CGSize(ctypes.Structure):
+    _fields_ = [
+        ('width', ctypes.c_double),
+        ('height', ctypes.c_double),
+    ]
+
+
+def _tk_aqua_nsview(drawable_id: int) -> int:
+    """Return the ``NSView *`` stored in a Tk Aqua ``winfo_id()`` value."""
+    address = int(drawable_id or 0)
+    if address == 0:
+        raise RuntimeError('The preview window is not on screen yet.')
+    drawable = _MacDrawable.from_address(address)
+    view = int(drawable.view or 0)
+    if view == 0:
+        raise RuntimeError(
+            'Tk has no NSView for this pane yet. The Vulkan preview needs a mapped widget.')
+    return view
+
+
 def _objc():
     libobjc = ctypes.cdll.LoadLibrary('/usr/lib/libobjc.A.dylib')
     libobjc.sel_registerName.restype = ctypes.c_void_p
@@ -277,24 +311,60 @@ def _objc_msg(obj, selector, *args, restype=ctypes.c_void_p, argtypes=()):
 
 def _cocoa_set_wants_layer(view: int):
     try:
-        _objc_msg(view, b'setWantsLayer:', 1, argtypes=(ctypes.c_int8,))
+        _objc_msg(view, b'setWantsLayer:', 1, argtypes=(ctypes.c_bool,))
     except Exception:
         return
 
 
-def _cocoa_metal_layer(view: int):
+def _cocoa_metal_layer(view: int, width: int = 1, height: int = 1, scale: float = 1.0):
+    """Attach a ``CAMetalLayer`` to ``view`` for ``VK_EXT_metal_surface``."""
     ctypes.cdll.LoadLibrary('/System/Library/Frameworks/QuartzCore.framework/QuartzCore')
     _cocoa_set_wants_layer(view)
     objc = _objc()
     layer_class = objc.objc_getClass(b'CAMetalLayer')
     if not layer_class:
         raise RuntimeError('CAMetalLayer is not available.')
-    layer = _objc_msg(layer_class, b'alloc')
-    layer = _objc_msg(layer, b'init')
+    # Prefer +layer over alloc/init; it matches AppKit's usual path.
+    layer = _objc_msg(layer_class, b'layer')
+    if not layer:
+        layer = _objc_msg(layer_class, b'alloc')
+        layer = _objc_msg(layer, b'init')
     if not layer:
         raise RuntimeError('CAMetalLayer could not be created.')
     _objc_msg(view, b'setLayer:', layer, argtypes=(ctypes.c_void_p,))
+    # MoltenVK timing is wrong when the layer has no view delegate.
+    try:
+        _objc_msg(layer, b'setDelegate:', view, argtypes=(ctypes.c_void_p,))
+    except Exception:
+        pass
+    try:
+        _objc_msg(layer, b'setOpaque:', 1, argtypes=(ctypes.c_bool,))
+    except Exception:
+        pass
+    _cocoa_sync_metal_layer(layer, width, height, scale)
     return layer
+
+
+def _cocoa_sync_metal_layer(layer: int, width: int, height: int, scale: float = 1.0):
+    """Keep ``drawableSize`` / ``contentsScale`` in sync with the Tk pane."""
+    if not layer:
+        return
+    scale = max(1.0, float(scale or 1.0))
+    width = max(1, int(width))
+    height = max(1, int(height))
+    try:
+        _objc_msg(
+            layer, b'setContentsScale:', scale,
+            restype=None, argtypes=(ctypes.c_double,))
+    except Exception:
+        pass
+    try:
+        size = _CGSize(float(width) * scale, float(height) * scale)
+        _objc_msg(
+            layer, b'setDrawableSize:', size,
+            restype=None, argtypes=(_CGSize,))
+    except Exception:
+        return
 
 
 class _AppleSurfaceInfo(ctypes.Structure):
@@ -309,13 +379,17 @@ class _AppleSurfaceInfo(ctypes.Structure):
 
 class _VulkanDevice:
     'Swapchain and the two pipelines the preview draws with.'
-    def __init__(self, hwnd=None, hinstance=None, windowing='win32'):
+    def __init__(self, hwnd=None, hinstance=None, windowing='win32',
+                 width=1, height=1, scale=1.0):
         self._alive = []
         self.hwnd = hwnd
         self.hinstance = hinstance
         self.windowing = windowing
         self._native_closer = None
         self._extension_names = []
+        self._metal_layer = None
+        self._ns_view = None
+        self._backing_scale = max(1.0, float(scale or 1.0))
         self.instance = None
         self.surface = None
         self.physical = None
@@ -339,9 +413,9 @@ class _VulkanDevice:
         self._texture_size = None
         self._create_instance()
         if (hwnd is not None):
-            self._create_surface()
+            self._create_surface(width=width, height=height)
             self._create_device()
-            self._create_swapchain(1, 1)
+            self._create_swapchain(width, height)
             self._create_pipelines()
             return
         return
@@ -351,6 +425,12 @@ class _VulkanDevice:
         device._alive = []
         device.hwnd = None
         device.hinstance = None
+        device.windowing = 'win32'
+        device._native_closer = None
+        device._extension_names = []
+        device._metal_layer = None
+        device._ns_view = None
+        device._backing_scale = 1.0
         device.instance = None
         device.surface = None
         device.physical = None
@@ -415,35 +495,37 @@ class _VulkanDevice:
             raise RuntimeError(f'{function_name} failed ({result})')
         self.surface = surface[0]
         return
-    def _create_surface(self):
+    def _create_surface(self, width=1, height=1):
         windowing = getattr(self, 'windowing', 'win32')
         if windowing == 'win32':
             info = vk.VkWin32SurfaceCreateInfoKHR(flags=0, hinstance=self.hinstance, hwnd=self.hwnd)
             self._present_surface(info, 'vkCreateWin32SurfaceKHR')
             return
         if windowing == 'aqua':
-            self._create_apple_surface()
+            self._create_apple_surface(width=width, height=height)
             return
         if windowing == 'x11':
             self._create_x11_surface()
             return
         raise RuntimeError(
             f'The Vulkan preview does not support the {windowing} window system.')
-    def _create_apple_surface(self):
-        view = int(self.hwnd or 0)
-        if view == 0:
-            raise RuntimeError('The preview window is not on screen yet.')
+    def _create_apple_surface(self, width=1, height=1):
+        # winfo_id() is a MacDrawable*; MoltenVK needs the NSView inside it.
+        ns_view = _tk_aqua_nsview(int(self.hwnd or 0))
+        self._ns_view = ns_view
         info = _AppleSurfaceInfo()
         extensions = set(self._extension_names)
-        if vk.VK_MVK_MACOS_SURFACE_EXTENSION_NAME in extensions:
-            _cocoa_set_wants_layer(view)
-            info.sType = vk.VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK
-            info.handle = view
-            function = 'vkCreateMacOSSurfaceMVK'
-        else:
+        if vk.VK_EXT_METAL_SURFACE_EXTENSION_NAME in extensions:
             info.sType = vk.VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT
-            info.handle = _cocoa_metal_layer(view)
+            self._metal_layer = _cocoa_metal_layer(
+                ns_view, width=width, height=height, scale=self._backing_scale)
+            info.handle = self._metal_layer
             function = 'vkCreateMetalSurfaceEXT'
+        else:
+            _cocoa_set_wants_layer(ns_view)
+            info.sType = vk.VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK
+            info.handle = ns_view
+            function = 'vkCreateMacOSSurfaceMVK'
         self._present_surface(info, function, address=ctypes.addressof(info))
         return
     def _create_x11_surface(self):
@@ -689,6 +771,10 @@ class _VulkanDevice:
     def _create_swapchain(self, width, height):
         width = max(1, int(width))
         height = max(1, int(height))
+        # MoltenVK reads currentExtent from the layer drawable size.
+        if self._metal_layer is not None:
+            _cocoa_sync_metal_layer(
+                self._metal_layer, width, height, self._backing_scale)
         # Leave the current swapchain installed until the new one exists.
         # Destroying it first, on the UI thread, is the black flash while a
         # sash is dragged.
@@ -1336,8 +1422,17 @@ class ImageViewerVulkan(tk.Frame):
             hinstance = None
             if windowing == 'win32':
                 hinstance = ctypes.windll.kernel32.GetModuleHandleW(None)
+            scale = 1.0
+            if windowing == 'aqua':
+                try:
+                    scale = max(1.0, float(self.winfo_fpixels('1i')) / 72.0)
+                except (tk.TclError, TypeError, ValueError):
+                    scale = 1.0
             self._gpu = _VulkanDevice(
-                hwnd=self.winfo_id(), hinstance=hinstance, windowing=windowing)
+                hwnd=self.winfo_id(), hinstance=hinstance, windowing=windowing,
+                width=max(1, self.winfo_width()),
+                height=max(1, self.winfo_height()),
+                scale=scale)
             return True
         except Exception as error:
             self._gpu_error = str(error)

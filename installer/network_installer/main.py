@@ -139,8 +139,9 @@ def run_silent_install(version=None, branch=None, extras=None):
 def _default_extras(source_dir: str) -> list[str]:
     """Extras selected when a silent install does not pass ``--extras``.
 
-    Vulkan is the preview on Windows, Linux, and macOS, so it is included
-    whenever the downloaded source still defines that extra.
+    Vulkan is included whenever the downloaded source still defines that
+    extra. It is the default preview on Windows and Linux; on macOS the
+    OpenGL viewer is used unless ``DGENERATE_CONSOLE_UI_VULKAN=1``.
     """
     setup_py = os.path.join(source_dir, 'setup.py')
     try:

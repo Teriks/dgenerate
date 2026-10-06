@@ -471,10 +471,14 @@ class SetupAnalyzer:
                     self._log("Recommending bitsandbytes")
             elif extra == 'console_ui_vulkan':
                 recommended.append(extra)
-                self._log("Recommending console_ui_vulkan - default preview on Windows, Linux, and macOS")
+                self._log(
+                    "Recommending console_ui_vulkan - default preview on Windows/Linux; "
+                    "opt-in on macOS with DGENERATE_CONSOLE_UI_VULKAN=1")
             elif extra == 'console_ui_opengl':
                 recommended.append(extra)
-                self._log("Recommending console_ui_opengl - used when DGENERATE_CONSOLE_UI_VULKAN=0")
+                self._log(
+                    "Recommending console_ui_opengl - default preview on macOS; "
+                    "also used when DGENERATE_CONSOLE_UI_VULKAN=0")
             else:
                 # For all other extras, recommend them
                 recommended.append(extra)
@@ -490,8 +494,8 @@ class SetupAnalyzer:
             'xllamacpp': 'Local GGUF models. The installer replaces the PyPI wheel with CUDA, ROCm, or Vulkan when this machine can use one',
             'gpt4all': 'Local large language model support (CPU-only)',
             'gpt4all_cuda': 'CUDA-accelerated GPT4All for NVIDIA GPUs (Linux/Windows)',
-            'console_ui_opengl': 'OpenGL Console UI preview. Plays video and audio. Used when the Vulkan preview is not installed or DGENERATE_CONSOLE_UI_VULKAN=0.',
-            'console_ui_vulkan': 'Default Console UI preview on Windows, Linux, and macOS. Plays video and audio. Set DGENERATE_CONSOLE_UI_VULKAN=0 to use OpenGL instead.',
+            'console_ui_opengl': 'OpenGL Console UI preview. Plays video and audio. Default on macOS; also used when Vulkan is not installed or DGENERATE_CONSOLE_UI_VULKAN=0.',
+            'console_ui_vulkan': 'Default Console UI preview on Windows and Linux. On macOS set DGENERATE_CONSOLE_UI_VULKAN=1 to use it (needs MoltenVK). Plays video and audio.',
             'triton_windows': 'Triton support for Windows (NVIDIA, and AMD RDNA 3+ with ROCm)',
         }
 

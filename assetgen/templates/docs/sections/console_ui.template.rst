@@ -30,14 +30,16 @@ interactive use, as well as loading arbitrary images, and a few other helpful th
 ability to show the current image file in the systems file explorer,
 all via the right click context menu.
 
-Vulkan is the default preview on Windows, Linux, and macOS. The network
-installer selects the ``console_ui_vulkan`` extra. When that extra is
-installed, the preview pane uses Vulkan. ``DGENERATE_CONSOLE_UI_VULKAN=0``
-selects the OpenGL viewer when ``console_ui_opengl`` is installed, or the
-plain Tk canvas when it is not. ``DGENERATE_CONSOLE_UI_OPENGL=0`` disables
-the OpenGL viewer on its own. The plain Tk canvas does not play video.
-Linux presents through X11, including a Wayland desktop that is running the
-window under XWayland. macOS presents through MoltenVK.
+Vulkan is the default preview on Windows and Linux when the
+``console_ui_vulkan`` extra is installed. On macOS the OpenGL viewer is
+the default (MoltenVK is not part of a stock Mac); set
+``DGENERATE_CONSOLE_UI_VULKAN=1`` to use Vulkan there after installing
+that extra. ``DGENERATE_CONSOLE_UI_VULKAN=0`` selects OpenGL when
+``console_ui_opengl`` is installed, or the plain Tk canvas when it is
+not. ``DGENERATE_CONSOLE_UI_OPENGL=0`` disables the OpenGL viewer on its
+own. The plain Tk canvas does not play video. Linux presents through
+X11, including a Wayland desktop that is running the window under
+XWayland. macOS Vulkan presents through MoltenVK.
 
 The Vulkan and OpenGL previews play finished animations (GIF, WebP, APNG, and
 MP4, including audio). Move the pointer over the picture to show the timeline

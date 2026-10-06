@@ -20,25 +20,34 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
+import platform
 
-# Try to import OpenGL dependencies
+# Try to import OpenGL dependencies. pyopengltk only defines OpenGLFrame on
+# Windows and Linux today; require that symbol so macOS falls through cleanly.
 HAS_OPENGL = False
 try:
     import pyopengltk
     import OpenGL.GL
     import OpenGL.arrays.vbo
-    HAS_OPENGL = os.environ.get('DGENERATE_CONSOLE_UI_OPENGL', '1') == '1'
+    HAS_OPENGL = (
+        hasattr(pyopengltk, 'OpenGLFrame')
+        and os.environ.get('DGENERATE_CONSOLE_UI_OPENGL', '1') == '1'
+    )
 except ImportError:
     pass
 
 def _use_vulkan() -> bool:
     """Use the Vulkan preview when that extra is installed.
 
-    This is the default on Windows, Linux, and macOS.
-    ``DGENERATE_CONSOLE_UI_VULKAN=0`` keeps the OpenGL viewer, or the Tk canvas
-    when OpenGL is not installed.
+    Default on Windows and Linux. macOS stays on OpenGL (or the Tk canvas)
+    unless ``DGENERATE_CONSOLE_UI_VULKAN=1``, because MoltenVK / the Vulkan
+    loader are not present on a stock Mac. ``DGENERATE_CONSOLE_UI_VULKAN=0``
+    forces OpenGL or the canvas on every platform.
     """
     if os.environ.get('DGENERATE_CONSOLE_UI_VULKAN') == '0':
+        return False
+    if (platform.system() == 'Darwin'
+            and os.environ.get('DGENERATE_CONSOLE_UI_VULKAN') != '1'):
         return False
     try:
         import vulkan  # noqa: F401
@@ -47,7 +56,8 @@ def _use_vulkan() -> bool:
     return True
 
 
-# Vulkan when that extra is installed, otherwise OpenGL, otherwise the Tk canvas.
+# Vulkan when that extra is installed (and allowed), otherwise OpenGL,
+# otherwise the Tk canvas.
 if _use_vulkan():
     from dgenerate.console.imageviewer_vk import ImageViewerVulkan as ImageViewer
     HAS_VULKAN = True
