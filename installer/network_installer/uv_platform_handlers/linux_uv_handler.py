@@ -250,33 +250,70 @@ class LinuxPlatformHandler(BasePlatformHandler):
             self.log_callback(f"Error showing Tcl/Tk dialog: {e}")
             return True  # Continue on error
 
+    @staticmethod
+    def _tcl_tk_version_from_name(name: str) -> tuple[int, int] | None:
+        """Parse ``(major, minor)`` from names like ``libtcl9.0.so.1`` / ``libtk8.6.so``."""
+        match = re.search(r'libt(?:cl|k)(\d+)\.(\d+)', name)
+        if not match:
+            return None
+        return int(match.group(1)), int(match.group(2))
+
+    def _restore_uv_tcl_tk_backups(self, uv_lib_dir: Path) -> None:
+        """Put UV's original Tcl/Tk shared libs back after a bad system symlink."""
+        for backup in uv_lib_dir.rglob('libt*.so*.uv_backup'):
+            original = Path(str(backup)[:-len('.uv_backup')])
+            try:
+                if original.exists() or original.is_symlink():
+                    original.unlink()
+                shutil.move(str(backup), str(original))
+                self.log_callback(f"✓ Restored UV library from backup: {original.name}")
+            except OSError as e:
+                self.log_callback(f"Warning: Could not restore {backup.name}: {e}")
+
+    def _tkinter_imports_cleanly(self) -> bool:
+        """True when the install venv can load ``_tkinter`` without missing symbols."""
+        python = self.get_venv_python()
+        if not python.exists():
+            return False
+        try:
+            result = subprocess.run(
+                [str(python), '-c', 'import tkinter'],
+                capture_output=True, text=True, timeout=60)
+        except (subprocess.TimeoutExpired, OSError) as e:
+            self.log_callback(f"Warning: Could not test tkinter import: {e}")
+            return False
+        if result.returncode == 0:
+            return True
+        detail = (result.stderr or result.stdout or '').strip()
+        if detail:
+            self.log_callback(f"tkinter import failed after Tcl/Tk symlink: {detail}")
+        return False
+
     def _symlink_system_tcl_tk_libraries(self) -> bool:
         """
-        Symlink system Tcl/Tk libraries to replace UV's isolated libraries.
-        This provides better font support by using system-integrated Tcl/Tk.
-        
-        :return: True if successful, False otherwise
+        Symlink system Tcl/Tk libraries over UV's copies when they are new enough.
+
+        UV Python 3.14+ ships Tcl/Tk that export symbols such as ``Tcl_GetBool``
+        (Tcl 8.7+/9). Replacing those with distro Tcl 8.6 breaks ``_tkinter``.
+        Only symlink when the system libs are the same version or newer, then
+        verify ``import tkinter`` and roll back on failure.
         """
         try:
-            # UV installs Python in ~/.local/share/uv/python/cpython-VERSION-linux-ARCH-gnu/lib/
-            # We need to find the actual UV Python installation directory
-            uv_python_base = Path.home() / '.local' / 'share' / 'uv' / 'python'
+            cpython_dir = self._get_python_install_dir_from_venv()
+            if cpython_dir is None:
+                uv_python_base = Path.home() / '.local' / 'share' / 'uv' / 'python'
+                if not uv_python_base.exists():
+                    self.log_callback(
+                        "UV Python base directory not found, skipping Tcl/Tk symlinking")
+                    return True
+                cpython_dirs = list(uv_python_base.rglob('cpython-*-linux-*-gnu'))
+                if not cpython_dirs:
+                    self.log_callback(
+                        "No UV Python installations found, skipping Tcl/Tk symlinking")
+                    return True
+                cpython_dir = max(cpython_dirs, key=lambda p: p.stat().st_mtime)
 
-            if not uv_python_base.exists():
-                self.log_callback("UV Python base directory not found, skipping Tcl/Tk symlinking")
-                return True
-
-            # Find the cpython directory (e.g., cpython-3.13.7-linux-x86_64-gnu)
-            cpython_dirs = list(uv_python_base.rglob('cpython-*-linux-*-gnu'))
-
-            if not cpython_dirs:
-                self.log_callback("No UV Python installations found, skipping Tcl/Tk symlinking")
-                return True
-
-            # Use the most recent cpython installation
-            cpython_dir = max(cpython_dirs, key=lambda p: p.stat().st_mtime)
             uv_lib_dir = cpython_dir / 'lib'
-
             self.log_callback(f"Found UV Python installation: {cpython_dir}")
             self.log_callback(f"UV library directory: {uv_lib_dir}")
 
@@ -284,53 +321,44 @@ class LinuxPlatformHandler(BasePlatformHandler):
                 self.log_callback("UV Python lib directory not found")
                 return True
 
-            # Common system library locations to check
             system_lib_paths = [
-                Path('/usr/lib/x86_64-linux-gnu'),  # Debian/Ubuntu x86_64
-                Path('/usr/lib/aarch64-linux-gnu'),  # Debian/Ubuntu ARM64
-                Path('/usr/lib64'),  # RedHat/CentOS/Fedora
-                Path('/usr/lib'),  # Generic fallback
+                Path('/usr/lib/x86_64-linux-gnu'),
+                Path('/usr/lib/aarch64-linux-gnu'),
+                Path('/usr/lib64'),
+                Path('/usr/lib'),
             ]
 
-            symlinks_created = False
-
-            # Find all Tcl/Tk libraries using pattern matching
             self.log_callback("Searching for Tcl/Tk libraries to symlink...")
-
-            # Find all UV Tcl/Tk libraries using recursive glob patterns
-            uv_tcl_libs = list(uv_lib_dir.rglob('libtcl*.so*'))
-            uv_tk_libs = list(uv_lib_dir.rglob('libtk*.so*'))
-            uv_libs = uv_tcl_libs + uv_tk_libs
-
+            uv_libs = [
+                path for path in (
+                    list(uv_lib_dir.rglob('libtcl*.so*'))
+                    + list(uv_lib_dir.rglob('libtk*.so*'))
+                )
+                if '.uv_backup' not in path.name
+            ]
             if not uv_libs:
                 self.log_callback("No Tcl/Tk libraries found in UV Python installation")
                 return True
 
-            self.log_callback(f"Found {len(uv_libs)} UV Tcl/Tk libraries to potentially replace")
+            self.log_callback(
+                f"Found {len(uv_libs)} UV Tcl/Tk libraries to potentially replace")
+            replaced = []
 
             for uv_lib_file in uv_libs:
                 lib_name = uv_lib_file.name
-
-                # Skip backup files from previous runs
-                if '.uv_backup' in lib_name:
-                    continue
-
+                uv_version = self._tcl_tk_version_from_name(lib_name)
                 self.log_callback(f"Processing UV library: {lib_name}")
 
-                # Find corresponding system library
                 system_lib_found = None
                 for system_lib_path in system_lib_paths:
                     if not system_lib_path.exists():
                         continue
 
-                    # Try exact name match first
-                    system_lib_file = system_lib_path / lib_name
-                    if system_lib_file.exists():
-                        system_lib_found = system_lib_file
+                    exact = system_lib_path / lib_name
+                    if exact.exists():
+                        system_lib_found = exact
                         break
 
-                    # Try pattern matching for different versions
-                    # Extract base name (e.g., libtcl8.6.so -> libtcl, libtk8.7.so.1 -> libtk)
                     if lib_name.startswith('libtcl'):
                         pattern = 'libtcl*.so*'
                     elif lib_name.startswith('libtk'):
@@ -338,41 +366,66 @@ class LinuxPlatformHandler(BasePlatformHandler):
                     else:
                         continue
 
-                    # Find any matching system library recursively
-                    matching_system_libs = list(system_lib_path.rglob(pattern))
-                    if matching_system_libs:
-                        # Use the first match (they should be compatible)
-                        system_lib_found = matching_system_libs[0]
-                        self.log_callback(f"  Found compatible system library: {system_lib_found}")
+                    matching = list(system_lib_path.rglob(pattern))
+                    if matching:
+                        # Prefer the newest system soname when several exist.
+                        matching.sort(
+                            key=lambda p: self._tcl_tk_version_from_name(p.name) or (0, 0),
+                            reverse=True)
+                        system_lib_found = matching[0]
+                        self.log_callback(
+                            f"  Found system library candidate: {system_lib_found}")
                         break
 
-                if system_lib_found:
-                    try:
-                        # Backup the original UV library
-                        backup_path = uv_lib_file.with_suffix(uv_lib_file.suffix + '.uv_backup')
-                        if not backup_path.exists():
-                            shutil.move(str(uv_lib_file), str(backup_path))
-                            self.log_callback(f"✓ Backed up UV library: {lib_name}")
+                if system_lib_found is None:
+                    self.log_callback(
+                        f"  No compatible system library found for {lib_name}")
+                    continue
 
-                        # Create symlink to system library
-                        if uv_lib_file.exists() or uv_lib_file.is_symlink():
-                            # Remove existing file/symlink first
-                            uv_lib_file.unlink()
+                system_version = self._tcl_tk_version_from_name(system_lib_found.name)
+                if uv_version and system_version and system_version < uv_version:
+                    self.log_callback(
+                        f"  Skipping {lib_name}: system "
+                        f"{system_version[0]}.{system_version[1]} is older than UV "
+                        f"{uv_version[0]}.{uv_version[1]} "
+                        f"(would break _tkinter, e.g. missing Tcl_GetBool)")
+                    continue
 
-                        uv_lib_file.symlink_to(system_lib_found)
-                        self.log_callback(f"✓ Symlinked {lib_name} -> {system_lib_found}")
-                        symlinks_created = True
+                try:
+                    backup_path = Path(str(uv_lib_file) + '.uv_backup')
+                    if not backup_path.exists():
+                        shutil.move(str(uv_lib_file), str(backup_path))
+                        self.log_callback(f"✓ Backed up UV library: {lib_name}")
 
-                    except OSError as e:
-                        self.log_callback(f"Warning: Could not symlink {lib_name}: {e}")
+                    if uv_lib_file.exists() or uv_lib_file.is_symlink():
+                        uv_lib_file.unlink()
+
+                    uv_lib_file.symlink_to(system_lib_found)
+                    self.log_callback(f"✓ Symlinked {lib_name} -> {system_lib_found}")
+                    replaced.append(uv_lib_file)
+                except OSError as e:
+                    self.log_callback(f"Warning: Could not symlink {lib_name}: {e}")
+
+            if not replaced:
+                self.log_callback(
+                    "Note: Kept UV bundled Tcl/Tk "
+                    "(no newer-or-equal system libraries to symlink)")
+                return True
+
+            if not self._tkinter_imports_cleanly():
+                self.log_callback(
+                    "System Tcl/Tk symlinks broke tkinter; restoring UV libraries")
+                self._restore_uv_tcl_tk_backups(uv_lib_dir)
+                if self._tkinter_imports_cleanly():
+                    self.log_callback("✓ Restored working UV Tcl/Tk libraries")
                 else:
-                    self.log_callback(f"  No compatible system library found for {lib_name}")
+                    self.log_callback(
+                        "Warning: tkinter still fails after restore; "
+                        "reinstall the UV Python or install matching system Tcl/Tk")
+                return True
 
-            if symlinks_created:
-                self.log_callback("✓ System Tcl/Tk libraries symlinked for better font support")
-            else:
-                self.log_callback("Note: No Tcl/Tk library pairs found for symlinking")
-
+            self.log_callback(
+                "✓ System Tcl/Tk libraries symlinked for better font support")
             return True
 
         except Exception as e:
