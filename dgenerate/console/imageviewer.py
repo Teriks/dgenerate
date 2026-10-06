@@ -22,6 +22,12 @@
 import os
 import platform
 
+# pyopengltk is GLX-only. On Wayland, PyOpenGL may select EGL first; then
+# ``from OpenGL import GLX`` dies with EGLPlatform has no attribute GLX.
+# Force GLX (works via XWayland) unless the user already chose a platform.
+if platform.system() == 'Linux' and 'PYOPENGL_PLATFORM' not in os.environ:
+    os.environ['PYOPENGL_PLATFORM'] = 'glx'
+
 # Try to import OpenGL dependencies. pyopengltk only defines OpenGLFrame on
 # Windows and Linux today; require that symbol so macOS falls through cleanly.
 HAS_OPENGL = False
@@ -33,7 +39,7 @@ try:
         hasattr(pyopengltk, 'OpenGLFrame')
         and os.environ.get('DGENERATE_CONSOLE_UI_OPENGL', '1') == '1'
     )
-except ImportError:
+except (ImportError, AttributeError):
     pass
 
 def _use_vulkan() -> bool:
