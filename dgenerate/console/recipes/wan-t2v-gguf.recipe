@@ -14,6 +14,7 @@ order: 26
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
+@switch[{"id": "sp", "label":"Use Spectrum", "arg":"--spectrum"}]
 @quantizer[{"divider-after":true}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]

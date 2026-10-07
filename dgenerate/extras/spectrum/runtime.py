@@ -42,7 +42,12 @@ _ACTIVE: contextvars.ContextVar[SpectrumSettings | None] = contextvars.ContextVa
 )
 
 _BLOCK_LISTS = ('transformer_blocks', 'single_transformer_blocks', 'blocks', 'layers')
-_DENOISER_ATTRS = ('transformer', 'transformer_2')
+_DENOISER_ATTRS = ('transformer', 'transformer_2', 'unet')
+_RESIDUAL_ARGS = (
+    'down_block_additional_residuals',
+    'mid_block_additional_residual',
+    'down_intrablock_additional_residuals',
+)
 
 
 def active_settings() -> SpectrumSettings | None:
@@ -94,6 +99,7 @@ class _StepState:
         self._forecasters: dict[int, _forecaster.SpectrumPredictor] = {}
         self._shapes: dict[int, torch.Size] = {}
         self.patches: list[_BlockPatch] = []
+        self.force_blocks = False
 
     def _time(self) -> float:
         return self.cnt / max(self.num_steps - 1, 1)
@@ -334,6 +340,105 @@ class _DenoiserPatch:
             block.restore()
 
 
+def _bound_argument(original, args, kwargs, name):
+    try:
+        signature = inspect.signature(original)
+        bound = signature.bind_partial(*args, **kwargs)
+    except (TypeError, ValueError):
+        return kwargs.get(name)
+    return bound.arguments.get(name)
+
+
+def _down_residual_count(block: nn.Module) -> int:
+    count = len(getattr(block, 'resnets', ()) or ())
+    downsamplers = getattr(block, 'downsamplers', None)
+    if downsamplers:
+        count += len(downsamplers)
+    return max(count, 1)
+
+
+class _UNetBlockPatch:
+    """Skip an SDXL UNet block, or cache the last up block."""
+
+    def __init__(self, module: nn.Module, state: _StepState, kind: str, is_cache_point: bool):
+        self.module = module
+        self.original = module.forward
+        self.kind = kind
+
+        def wrapper(*args, **kwargs):
+            hidden, _encoder = _hidden_and_encoder(self.original, args, kwargs)
+            if state.actual_forward or state.force_blocks or hidden is None:
+                out = self.original(*args, **kwargs)
+                if is_cache_point and state.actual_forward and hidden is not None:
+                    feature = _feature_from_output(out, hidden)
+                    if feature is not None:
+                        state.cache(feature)
+                return out
+            if is_cache_point:
+                predicted = state.predict()
+                if predicted is not None and predicted.shape == hidden.shape:
+                    return predicted.to(device=hidden.device, dtype=hidden.dtype)
+                return self.original(*args, **kwargs)
+            if kind == 'down':
+                return hidden, (hidden,) * _down_residual_count(module)
+            return hidden
+
+        module.forward = wrapper
+
+    def restore(self) -> None:
+        self.module.forward = self.original
+
+
+class _UNetPatch:
+    """Forecast the tensor after the up blocks. ``conv_out`` still runs."""
+
+    def __init__(self, unet: nn.Module, state: _StepState):
+        self.denoiser = unet
+        self.state = state
+        self.original = unet.forward
+        down_blocks = list(getattr(unet, 'down_blocks', ()) or ())
+        up_blocks = list(getattr(unet, 'up_blocks', ()) or ())
+        if not down_blocks or not up_blocks:
+            raise SpectrumUnsupported(
+                f'{unet.__class__.__name__} has no UNet blocks Spectrum can forecast.')
+        self.blocks = [
+            _UNetBlockPatch(module, state, 'down', is_cache_point=False)
+            for module in down_blocks
+        ]
+        mid = getattr(unet, 'mid_block', None)
+        if isinstance(mid, nn.Module):
+            self.blocks.append(_UNetBlockPatch(mid, state, 'mid', is_cache_point=False))
+        for index, module in enumerate(up_blocks):
+            self.blocks.append(_UNetBlockPatch(
+                module, state, 'up', is_cache_point=(index == len(up_blocks) - 1)))
+
+        def wrapper(*args, **kwargs):
+            state.begin(_bind_timestep(self.original, args, kwargs))
+            state.force_blocks = any(
+                _bound_argument(self.original, args, kwargs, name) is not None
+                for name in _RESIDUAL_ARGS
+            )
+            try:
+                return self.original(*args, **kwargs)
+            finally:
+                state.force_blocks = False
+
+        unet.forward = wrapper
+
+    def restore(self) -> None:
+        self.denoiser.forward = self.original
+        for block in self.blocks:
+            block.restore()
+
+
+def _patch_denoiser(denoiser: nn.Module, state: _StepState):
+    down_blocks = getattr(denoiser, 'down_blocks', None)
+    up_blocks = getattr(denoiser, 'up_blocks', None)
+    if down_blocks and up_blocks:
+        return _UNetPatch(denoiser, state)
+    return _DenoiserPatch(denoiser, state)
+
+
 def _denoisers(pipeline) -> list[nn.Module]:
     found = []
     for name in _DENOISER_ATTRS:
@@ -349,12 +454,12 @@ def apply(pipeline, num_inference_steps: int, settings: SpectrumSettings):
     denoisers = _denoisers(pipeline)
     if not denoisers:
         raise SpectrumUnsupported(
-            f'{pipeline.__class__.__name__} has no transformer for Spectrum to patch.')
+            f'{pipeline.__class__.__name__} has no denoiser for Spectrum to patch.')
     patches = []
     try:
         for denoiser in denoisers:
             state = _StepState(settings, num_inference_steps)
-            patches.append(_DenoiserPatch(denoiser, state))
+            patches.append(_patch_denoiser(denoiser, state))
         yield
     finally:
         for patch in patches:

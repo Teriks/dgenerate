@@ -562,7 +562,7 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ❌
-     - ❌
+     - ✅
 
    * - ``kolors``
      - ✅
@@ -607,7 +607,7 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ❌
-     - ❌
+     - ✅
 
    * - ``upscaler-x2``
      - ❌
@@ -933,4 +933,4 @@ Microsoft Region-Adaptive Sampling (RAS) has numerous configurable options that 
 
 The TeaCache threshold can be specified with the ``--tea-cache-rel-l1-thresholds`` parameter. Information about this parameter can be reviewed `here <https://github.com/ali-vilab/TeaCache/blob/main/TeaCache4FLUX/README.md>`__.
 
-Spectrum (``--spectrum``) forecasts transformer block outputs with Chebyshev polynomials and skips those blocks on later steps. It is supported on SD3, Flux, Flux.2, Z-Image, Qwen-Image, and Wan. The moderate schedule is the default (window ``2``, flex ``0.75``). ``--spectrum-flex-windows 3`` is the paper's aggressive schedule. Details are at `Spectrum <https://github.com/hanjq17/Spectrum>`__.
+Spectrum (``--spectrum``) forecasts denoiser block outputs and skips those blocks on later steps. Transformers skip their blocks. SDXL skips the UNet down, mid, and up blocks and still runs the output convolution. It is supported on SD3, SDXL, Flux, Flux.2, Z-Image, Qwen-Image, and Wan. The moderate schedule is the default (window ``2``, flex ``0.75``). ``--spectrum-flex-windows 3`` is the paper's aggressive schedule. Details are at `Spectrum <https://github.com/hanjq17/Spectrum>`__.

@@ -23,6 +23,7 @@ order: 30
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["UniPCMultistepScheduler"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
+@switch[{"id": "sp", "label":"Use Spectrum", "arg":"--spectrum"}]
 @quantizer[{"divider-after":true}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/QuantStack/Wan2.2-Animate-14B-GGUF/blob/main/Wan2.2-Animate-14B-Q4_K_S.gguf", "divider-after":true}]
 @dropdown[{"label":"Animate Mode", "arg":"--wan-animate-mode", "options":["animate", "replace"], "default":"animate"}]

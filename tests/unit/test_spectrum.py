@@ -107,6 +107,46 @@ class TestSpectrum(unittest.TestCase):
             self.assertEqual(pipe.transformer.cache_block.calls, 2)
             self.assertTrue(torch.equal(pipe.transformer.last_early, hidden))
 
+    def test_sdxl_unet_skip_keeps_output_convolution(self):
+        from diffusers.models.unets.unet_2d_condition import UNet2DConditionModel
+
+        unet = UNet2DConditionModel(
+            sample_size=16,
+            in_channels=4,
+            out_channels=4,
+            layers_per_block=1,
+            block_out_channels=(32, 64),
+            down_block_types=('DownBlock2D', 'CrossAttnDownBlock2D'),
+            up_block_types=('CrossAttnUpBlock2D', 'UpBlock2D'),
+            cross_attention_dim=32,
+            attention_head_dim=4,
+            norm_num_groups=4,
+        )
+        calls = {'resnet': 0, 'conv_out': 0}
+
+        def _count_resnet(_module, _inputs, _output):
+            calls['resnet'] += 1
+
+        def _count_conv(_module, _inputs, _output):
+            calls['conv_out'] += 1
+
+        unet.down_blocks[0].resnets[0].register_forward_hook(_count_resnet)
+        unet.conv_out.register_forward_hook(_count_conv)
+        pipe = torch.nn.Module()
+        pipe.unet = unet
+        sample = torch.zeros(1, 4, 16, 16)
+        encoder = torch.zeros(1, 4, 32)
+        full_steps = []
+        with _spectrum.apply(pipe, 8, _settings()):
+            for timestep in torch.linspace(1, 0, 8):
+                before = calls['resnet']
+                pipe.unet(sample, timestep, encoder)
+                full_steps.append(calls['resnet'] > before)
+        self.assertEqual(
+            full_steps,
+            [True, True, False, True, False, True, False, False])
+        self.assertEqual(calls['conv_out'], 8)
+
     def test_missing_blocks(self):
         class _Empty(torch.nn.Module):
             def __init__(self):
@@ -134,6 +174,8 @@ class TestSpectrum(unittest.TestCase):
 
         self.assertTrue(_pipelinewrapper.model_type_supports_spectrum('flux'))
         self.assertTrue(_pipelinewrapper.model_type_supports_spectrum('wan'))
+        self.assertTrue(_pipelinewrapper.model_type_supports_spectrum('sdxl'))
+        self.assertTrue(_pipelinewrapper.model_type_supports_spectrum('sdxl-pix2pix'))
         self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('sd'))
         self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('ltx'))
         self.assertIsInstance(_pipelinewrapper.SPECTRUM_MODEL_TYPES, tuple)

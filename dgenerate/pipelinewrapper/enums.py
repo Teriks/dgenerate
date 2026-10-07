@@ -813,6 +813,8 @@ def model_type_supports_pag(model_type: ModelType | str) -> bool:
 SPECTRUM_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.SD3,
     ModelType.SD3_PIX2PIX,
+    ModelType.SDXL,
+    ModelType.SDXL_PIX2PIX,
     ModelType.FLUX,
     ModelType.FLUX_FILL,
     ModelType.FLUX_KONTEXT,
@@ -832,9 +834,10 @@ SPECTRUM_MODEL_TYPES: tuple[str, ...] = _model_type_names(
 
 def model_type_supports_spectrum(model_type: ModelType | str) -> bool:
     """
-    Spectrum can forecast this denoiser's transformer blocks.
+    Spectrum can forecast this denoiser's transformer blocks, or an SDXL UNet's
+    up-block output.
 
-    Stable Diffusion and SDXL stay on DeepCache. LTX is not covered.
+    Stable Diffusion stays on DeepCache. LTX is not covered.
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool

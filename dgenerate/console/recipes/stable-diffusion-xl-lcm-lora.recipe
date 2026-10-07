@@ -9,7 +9,8 @@ order: 8
 --scheduler LCMScheduler
 @checkboxwithtwointargs[{"id": "dc", "label":"Use DeepCache", "int1-label": "DeepCache Interval", "int1-arg":"--deep-cache-intervals", "int1":5, "int1-min":1, "int2-label":"DeepCache Branch ID", "int2":1, "int2-arg": "--deep-cache-branch-ids", "int2-min":0}]
 @conditionalcheckboxes[{"id": "hd", "labels":["Use HiDiffusion", "HiDiffusion No Window Attention", "HiDiffusion No RAUNet"], "args":["--hi-diffusion", "--hi-diffusion-no-win-attn", "--hi-diffusion-no-raunet"]}]
-@switch[{"label":"Use SADA", "arg":"--sada", "exclude": ["hd", "dc"]}]
+@switch[{"id": "sada", "label":"Use SADA", "arg":"--sada", "exclude": ["hd", "dc"]}]
+@switch[{"id": "sp", "label":"Use Spectrum", "arg":"--spectrum", "exclude": ["hd", "dc", "sada"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":0}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @quantizer[{"divider-after":true}]
