@@ -1433,7 +1433,9 @@ class BasePlatformHandler(ABC):
                 self.log_callback("No nvidia- packages found in poetry.lock")
                 return True
             
-            nvidia_packages = nvidia_matches
+            # One name can have several [[package]] blocks (two versions of the
+            # same library). re.sub removes every block for that name at once.
+            nvidia_packages = list(dict.fromkeys(nvidia_matches))
             self.log_callback(f"Found nvidia- packages to remove: {', '.join(nvidia_packages)}")
             
             # Create a backup of the original file
@@ -1445,22 +1447,24 @@ class BasePlatformHandler(ABC):
             # Remove nvidia- package entries from the content
             patched_content = content
             
-            # For each nvidia- package, remove the entire [[package]] entry
+            # For each nvidia- package, remove every [[package]] entry with that name.
+            removed_blocks = 0
             for nvidia_pkg in nvidia_packages:
-                # Pattern to match the entire package entry for this nvidia- package
-                # This matches from [[package]] to the next [[package]] that contains our nvidia package name
-                # Uses negative lookahead to avoid matching nested brackets in files = [...] sections
+                # This matches from [[package]] to the next [[package]] that contains our nvidia package name.
+                # Uses negative lookahead to avoid matching nested brackets in files = [...] sections.
                 package_pattern = rf'\[\[package\]\]\s*\n(?:(?!\[\[package\]\]).)*?name\s*=\s*"{re.escape(nvidia_pkg)}"(?:(?!\[\[package\]\]).)*?(?=\[\[package\]\]|\Z)'
-                
-                # Remove this package entry
-                old_len = len(patched_content)
-                patched_content = re.sub(package_pattern, '', patched_content, flags=re.MULTILINE | re.DOTALL)
-                new_len = len(patched_content)
-                
-                if old_len != new_len:
-                    self.log_callback(f"✓ Removed package entry for: {nvidia_pkg} ({old_len - new_len} characters)")
-                else:
+                flags = re.MULTILINE | re.DOTALL
+                blocks = re.findall(package_pattern, patched_content, flags=flags)
+                if not blocks:
                     self.log_callback(f"✗ Failed to remove package entry for: {nvidia_pkg}")
+                    continue
+
+                old_len = len(patched_content)
+                patched_content = re.sub(package_pattern, '', patched_content, flags=flags)
+                removed_blocks += len(blocks)
+                detail = f"{len(blocks)} package entries" if len(blocks) > 1 else "package entry"
+                self.log_callback(
+                    f"✓ Removed {detail} for: {nvidia_pkg} ({old_len - len(patched_content)} characters)")
             
             # Clean up any extra blank lines that might have been left
             patched_content = re.sub(r'\n\n\n+', '\n\n', patched_content)
@@ -1469,7 +1473,7 @@ class BasePlatformHandler(ABC):
             with open(lock_path, 'w', encoding='utf-8') as f:
                 f.write(patched_content)
             
-            self.log_callback(f"✓ Successfully removed {len(nvidia_packages)} nvidia- packages from poetry.lock")
+            self.log_callback(f"✓ Successfully removed {removed_blocks} nvidia- package entries from poetry.lock")
             return True
             
         except Exception as e:
