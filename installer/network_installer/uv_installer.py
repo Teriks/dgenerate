@@ -602,6 +602,8 @@ class UvInstaller:
             
             if result.returncode == 0:
                 self.log_callback("✓ OpenCV cleanup and reinstallation successful")
+                if self.system == 'darwin':
+                    self._rename_opencv_avfoundation_classes()
                 return True
             else:
                 self.log_callback(f"CRITICAL ERROR: Failed to reinstall OpenCV")
@@ -616,6 +618,51 @@ class UvInstaller:
         except Exception as e:
             self.log_callback(f"Error during OpenCV cleanup: {e}")
             return False
+
+    def _rename_opencv_avfoundation_classes(self) -> None:
+        """
+        Give OpenCV's bundled ``libavdevice`` its own AVFoundation class names.
+
+        PyAV ships another ``libavdevice``. Both register ``AVFFrameReceiver``
+        and ``AVFAudioReceiver``, and the Objective-C runtime warns when a
+        process loads both. dgenerate decodes video with PyAV, so OpenCV's
+        copy can keep those classes under different names.
+        """
+        from network_installer.subprocess_utils import run_silent
+
+        replacements = (
+            (b'AVFFrameReceiver', b'CV2FrameReceiver'),
+            (b'AVFAudioReceiver', b'CV2AudioReceiver'),
+        )
+        dylibs = list(self.venv_dir.glob(
+            'lib/python*/site-packages/cv2/.dylibs/libavdevice*.dylib'))
+        if not dylibs:
+            return
+        for dylib in dylibs:
+            try:
+                data = dylib.read_bytes()
+            except OSError as e:
+                self.log_callback(f"Warning: Could not read {dylib.name}: {e}")
+                continue
+            updated = data
+            for old, new in replacements:
+                updated = updated.replace(old, new)
+            if updated == data:
+                continue
+            try:
+                dylib.write_bytes(updated)
+            except OSError as e:
+                self.log_callback(f"Warning: Could not update {dylib.name}: {e}")
+                continue
+            signed = run_silent(
+                ['codesign', '--force', '--sign', '-', str(dylib)],
+                capture_output=True, text=True)
+            if signed.returncode != 0:
+                self.log_callback(
+                    f"Warning: Could not re-sign {dylib.name}: {signed.stderr or signed.stdout}")
+                continue
+            self.log_callback(
+                f"✓ Renamed OpenCV AVFoundation classes in {dylib.name} so they do not clash with PyAV")
 
     def compile_bytecode(self, uv_exe: Path) -> bool:
         """
