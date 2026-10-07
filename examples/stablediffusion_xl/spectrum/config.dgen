@@ -1,0 +1,17 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Spectrum on SDXL. The UNet down, mid, and up blocks are skipped on
+# later steps. The output convolution still runs. DeepCache cannot be
+# combined with --spectrum.
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--variant fp16
+--dtype float16
+--inference-steps 40
+--gen-seeds 2
+--output-size 1024
+--output-path sdxl-spectrum
+--spectrum
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
