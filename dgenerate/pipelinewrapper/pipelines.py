@@ -303,6 +303,13 @@ def place_quantized_module(module, device) -> None:
 
 _DENOISER_NAMES = ('unet', 'transformer', 'transformer_2', 'controlnet')
 _VAE_NAME = 'vae'
+_COMPILE_PART_LABELS = {
+    'unet': 'UNet',
+    'transformer': 'transformer',
+    'transformer_2': 'transformer_2',
+    'controlnet': 'ControlNet',
+    'vae': 'VAE',
+}
 
 # Used when a module inherits ModelMixin's empty ``_repeated_blocks``.
 # SD3's joint blocks, ControlNet's transformer blocks, and Stable Cascade's
@@ -476,12 +483,55 @@ def _modules_named(pipe, name: str):
         yield module
 
 
+def _uncompiled_block_counts(module, block_names: tuple[str, ...]) -> dict[str, int]:
+    """How many of each block class ``compile_repeated_forwards`` will compile."""
+    allowed = set(block_names)
+    counts: dict[str, int] = {}
+    for submod in module.modules():
+        name = submod.__class__.__name__
+        if name not in allowed or getattr(submod, '_dgenerate_forward_compiled', False):
+            continue
+        counts[name] = counts.get(name, 0) + 1
+    return counts
+
+
+def _torch_compile_message(parts: list[tuple[str, dict[str, int]]]) -> str:
+    """
+    Name the pipeline parts and block classes that were compiled.
+
+    ``parts`` is ``(attribute name, {class name: count})`` in compile order.
+    Several modules on one attribute, such as a ControlNet list, are summed.
+    """
+    grouped: dict[str, dict[str, int]] = {}
+    order: list[str] = []
+    for name, counts in parts:
+        if name not in grouped:
+            grouped[name] = {}
+            order.append(name)
+        bucket = grouped[name]
+        for cls, count in counts.items():
+            bucket[cls] = bucket.get(cls, 0) + count
+    clauses = []
+    for name in order:
+        label = _COMPILE_PART_LABELS.get(name, name)
+        counts = grouped[name]
+        total = sum(counts.values())
+        kind = 'block' if total == 1 else 'blocks'
+        listed = ', '.join(f'{count} {cls}' for cls, count in counts.items())
+        clauses.append(f'{label} {kind} ({listed})')
+    return (
+        f'Compiling {_textprocessing.oxford_comma(clauses, "and")} (--torch-compile). The first use '
+        'of each waits while the graph builds. A later change of resolution '
+        'or frame count compiles once more, then reuses that graph.')
+
+
 def apply_torch_compile(pipe, device) -> None:
     """
     Compile repeated denoiser, ControlNet, and VAE blocks for ``--torch-compile``.
 
-    Warns when the device cannot compile, the weights are quantized, or
-    nothing repeated was found. Wan-Animate-2 compiles its transformer on
+    The log names only the pipeline parts and block classes compiled on this
+    pipeline. Warns when the device cannot compile, the weights are quantized,
+    or nothing repeated was found. Wan-Animate-2 compiles its transformer on
     every load and does not use this path for that module.
     """
     if torch_compile_disabled():
@@ -499,31 +549,24 @@ def apply_torch_compile(pipe, device) -> None:
     compiled = 0
     saw_repeated = False
     saw_quantized = False
-    for name in _DENOISER_NAMES:
+    compiled_parts: list[tuple[str, dict[str, int]]] = []
+    for name in (*_DENOISER_NAMES, _VAE_NAME):
+        block_names_for = repeated_block_names if name != _VAE_NAME else vae_block_names
         for module in _modules_named(pipe, name):
-            block_names = repeated_block_names(module)
+            block_names = block_names_for(module)
             if not block_names:
                 continue
             saw_repeated = True
             if module_skips_group_offload(module):
                 saw_quantized = True
                 continue
-            compiled += compile_repeated_forwards(module, block_names)
-    for module in _modules_named(pipe, _VAE_NAME):
-        block_names = vae_block_names(module)
-        if not block_names:
-            continue
-        saw_repeated = True
-        if module_skips_group_offload(module):
-            saw_quantized = True
-            continue
-        compiled += compile_repeated_forwards(module, block_names)
+            counts = _uncompiled_block_counts(module, block_names)
+            compiled_now = compile_repeated_forwards(module, block_names)
+            compiled += compiled_now
+            if compiled_now and counts:
+                compiled_parts.append((name, counts))
     if compiled:
-        _messages.log(
-            'Compiling repeated denoiser, ControlNet, and VAE blocks '
-            '(--torch-compile). The first use of each waits while the graph '
-            'builds. A later change of resolution or frame count compiles '
-            'once more, then reuses that graph.')
+        _messages.log(_torch_compile_message(compiled_parts))
     if saw_quantized:
         _messages.warning(
             '--torch-compile was set. Quantized weights stay eager.')

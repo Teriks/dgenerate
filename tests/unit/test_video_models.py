@@ -1077,10 +1077,17 @@ class TestVideoModels(unittest.TestCase):
         self.assertFalse(getattr(denoiser.block, '_dgenerate_forward_compiled', False))
         self.assertTrue(any('Triton' in message for message in warnings))
 
+        logs = []
         with unittest.mock.patch(
-                'importlib.util.find_spec', return_value=object()):
+                'importlib.util.find_spec', return_value=object()), \
+                unittest.mock.patch.object(
+                    _pipe_mod._messages, 'log', side_effect=logs.append):
             _pipe_mod.apply_torch_compile(pipe, 'cuda')
         self.assertTrue(denoiser.block._dgenerate_forward_compiled)
+        self.assertEqual(len(logs), 1)
+        self.assertIn('transformer block (1 _Block)', logs[0])
+        self.assertNotIn('ControlNet', logs[0])
+        self.assertNotIn('VAE', logs[0])
         self.assertFalse(torch._dynamo.config.force_parameter_static_shapes)
         import logging
         import dgenerate.messages as _messages
@@ -1121,11 +1128,17 @@ class TestVideoModels(unittest.TestCase):
 
         sd3 = _SD3()
         pipe.transformer = sd3
+        logs.clear()
         with unittest.mock.patch(
-                'importlib.util.find_spec', return_value=object()):
+                'importlib.util.find_spec', return_value=object()), \
+                unittest.mock.patch.object(
+                    _pipe_mod._messages, 'log', side_effect=logs.append):
             _pipe_mod.apply_torch_compile(pipe, 'cuda')
         self.assertTrue(sd3.transformer_blocks[0]._dgenerate_forward_compiled)
         self.assertTrue(sd3.transformer_blocks[1]._dgenerate_forward_compiled)
+        self.assertEqual(len(logs), 1)
+        self.assertIn('transformer blocks (2 JointTransformerBlock)', logs[0])
+        self.assertNotIn('ControlNet', logs[0])
 
         class BasicTransformerBlock(torch.nn.Module):
             def forward(self, x):
@@ -1164,14 +1177,24 @@ class TestVideoModels(unittest.TestCase):
         extra.controlnet = _Control()
         extra.vae = _VAE(2)
         extra.audio_vae = _VAE(2)
+        logs.clear()
         with unittest.mock.patch(
-                'importlib.util.find_spec', return_value=object()):
+                'importlib.util.find_spec', return_value=object()), \
+                unittest.mock.patch.object(
+                    _pipe_mod._messages, 'log', side_effect=logs.append):
             _pipe_mod.apply_torch_compile(extra, 'cuda')
         self.assertTrue(extra.unet.blocks[0]._dgenerate_forward_compiled)
         self.assertTrue(extra.controlnet.down[0]._dgenerate_forward_compiled)
         self.assertTrue(extra.vae.decoder[0]._dgenerate_forward_compiled)
         self.assertFalse(getattr(
             extra.audio_vae.decoder[0], '_dgenerate_forward_compiled', False))
+        self.assertEqual(len(logs), 1)
+        self.assertIn(
+            'UNet blocks (2 SDCascadeResBlock), '
+            'ControlNet blocks (2 BasicTransformerBlock), and '
+            'VAE blocks (2 ResnetBlock2D)',
+            logs[0])
+        self.assertNotIn('audio', logs[0])
 
         lone = unittest.mock.Mock()
         lone.unet = None
