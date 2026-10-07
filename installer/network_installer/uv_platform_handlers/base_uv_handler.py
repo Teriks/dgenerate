@@ -208,8 +208,9 @@ class BasePlatformHandler(ABC):
             if self.venv_dir.exists():
                 shutil.rmtree(self.venv_dir)
 
-            # Create new venv
-            cmd = [str(uv_exe), 'venv', str(self.venv_dir)]
+            # Homebrew and python.org framework builds omit _tkinter unless a
+            # separate Tk package is installed. uv's managed CPython includes it.
+            cmd = [str(uv_exe), 'venv', str(self.venv_dir), '--python-preference', 'only-managed']
             if python_version:
                 cmd.extend(['--python', python_version])
 
@@ -218,6 +219,10 @@ class BasePlatformHandler(ABC):
             result = run_silent(cmd, capture_output=True, text=True, timeout=300)
 
             if result.returncode == 0:
+                if self.system == 'darwin' and not self._venv_has_tkinter():
+                    self.log_callback(
+                        "Managed Python was created, but _tkinter is missing, so the console cannot start")
+                    return False
                 self.log_callback("✓ Virtual environment created successfully")
                 return True
             else:
@@ -235,6 +240,10 @@ class BasePlatformHandler(ABC):
                         result = run_silent(cmd, capture_output=True, text=True, timeout=300)
 
                         if result.returncode == 0:
+                            if self.system == 'darwin' and not self._venv_has_tkinter():
+                                self.log_callback(
+                                    "Managed Python was created, but _tkinter is missing, so the console cannot start")
+                                return False
                             self.log_callback(
                                 "✓ Virtual environment created successfully after clearing corrupted installations")
                             return True
@@ -251,6 +260,21 @@ class BasePlatformHandler(ABC):
         except Exception as e:
             self.log_callback(f"Error creating virtual environment: {e}")
             return False
+
+    def _venv_has_tkinter(self) -> bool:
+        """True when this venv's interpreter can load the ``_tkinter`` extension."""
+        python = self.get_venv_python()
+        if not python.exists():
+            return False
+        try:
+            result = run_silent(
+                [str(python), '-c',
+                 'import importlib.util, sys; sys.exit(0 if importlib.util.find_spec("_tkinter") else 1)'],
+                capture_output=True, text=True, timeout=60)
+        except Exception as e:
+            self.log_callback(f"Warning: Could not test _tkinter: {e}")
+            return False
+        return result.returncode == 0
 
     def _clear_uv_python_installations(self, uv_exe: Path) -> bool:
         """
