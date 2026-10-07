@@ -305,8 +305,8 @@ _DENOISER_NAMES = ('unet', 'transformer', 'transformer_2', 'controlnet')
 _VAE_NAME = 'vae'
 _COMPILE_PART_LABELS = {
     'unet': 'UNet',
-    'transformer': 'transformer',
-    'transformer_2': 'transformer_2',
+    'transformer': 'Transformer',
+    'transformer_2': 'Second Transformer',
     'controlnet': 'ControlNet',
     'vae': 'VAE',
 }

@@ -1085,7 +1085,7 @@ class TestVideoModels(unittest.TestCase):
             _pipe_mod.apply_torch_compile(pipe, 'cuda')
         self.assertTrue(denoiser.block._dgenerate_forward_compiled)
         self.assertEqual(len(logs), 1)
-        self.assertIn('transformer block (1 _Block)', logs[0])
+        self.assertIn('Transformer block (1 _Block)', logs[0])
         self.assertNotIn('ControlNet', logs[0])
         self.assertNotIn('VAE', logs[0])
         self.assertFalse(torch._dynamo.config.force_parameter_static_shapes)
@@ -1137,7 +1137,7 @@ class TestVideoModels(unittest.TestCase):
         self.assertTrue(sd3.transformer_blocks[0]._dgenerate_forward_compiled)
         self.assertTrue(sd3.transformer_blocks[1]._dgenerate_forward_compiled)
         self.assertEqual(len(logs), 1)
-        self.assertIn('transformer blocks (2 JointTransformerBlock)', logs[0])
+        self.assertIn('Transformer blocks (2 JointTransformerBlock)', logs[0])
         self.assertNotIn('ControlNet', logs[0])
 
         class BasicTransformerBlock(torch.nn.Module):
