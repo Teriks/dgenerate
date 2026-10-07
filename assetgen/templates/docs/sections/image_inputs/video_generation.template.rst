@@ -513,7 +513,7 @@ What LTX rejects
 ControlNets, T2I adapters, IP adapters, textual inversions, a replacement UNet,
 an image encoder, the SDXL refiner, Stable Cascade, Adetailer, PAG and PAG scales,
 any scheduler other than ``FlowMatchEulerDiscreteScheduler``, prompt weighters, second or third prompts,
-clip skip, inpaint crop, HiDiffusion, TeaCache, DeepCache, SADA, RAS,
+clip skip, inpaint crop, HiDiffusion, TeaCache, DeepCache, SADA, RAS, Spectrum,
 mask processors, raw latents and latents processors, ``--denoising-start`` /
 ``--denoising-end``, ``--batch-size`` greater than 1, ``--batch-grid-size``, latent output
 formats, the safety checker, ``--vae-tiling``, and ``--original-config``.

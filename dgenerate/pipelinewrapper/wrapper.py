@@ -37,6 +37,7 @@ import dgenerate.eval as _eval
 import dgenerate.extras.asdff.base as _asdff_base
 import dgenerate.extras.hidiffusion as _hidiffusion
 import dgenerate.extras.sada.patch as _sada
+import dgenerate.extras.spectrum as _spectrum
 import dgenerate.extras.teacache.teacache_flux as _teacache_flux
 import dgenerate.hfhub as _hfhub
 import dgenerate.image as _image
@@ -4044,10 +4045,7 @@ class DiffusionPipelineWrapper:
                 return False
 
         if pag:
-            if not (self.model_type == _enums.ModelType.SD or
-                    self.model_type == _enums.ModelType.SDXL or
-                    self.model_type == _enums.ModelType.SD3 or
-                    self.model_type == _enums.ModelType.KOLORS):
+            if not _enums.model_type_supports_pag(self.model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Perturbed attention guidance (pag arguments) are only supported with '
                     '--model-type sd, sdxl, kolors (txt2img), and sd3.')
@@ -4782,9 +4780,14 @@ class DiffusionPipelineWrapper:
                     break
 
         if args.ras:
-            if not _enums.model_type_is_sd3(self.model_type):
+            if args.spectrum:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'RAS is only supported for SD3.')
+                    'RAS cannot be used simultaneously with Spectrum.'
+                )
+            if not _enums.model_type_supports_ras(self.model_type):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'RAS is only supported for '
+                    f'--model-type {_textprocessing.oxford_comma(_enums.RAS_MODEL_TYPES, "and")}.')
 
             if args.ras_index_fusion and self._pipeline.transformer.config.qk_norm == 'rms_norm':
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -4834,16 +4837,14 @@ class DiffusionPipelineWrapper:
                     break
 
         if args.deep_cache:
-            if not (
-                    self.model_type == _enums.ModelType.SDXL or
-                    self.model_type == _enums.ModelType.SDXL_PIX2PIX or
-                    self.model_type == _enums.ModelType.KOLORS or
-                    self.model_type == _enums.ModelType.SD or
-                    self.model_type == _enums.ModelType.PIX2PIX or
-                    self.model_type == _enums.ModelType.UPSCALER_X4):
+            if args.spectrum:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    f'DeepCache is only supported with Stable Diffusion, Stable Diffusion XL, '
-                    f'Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.'
+                    'DeepCache cannot be used simultaneously with Spectrum.'
+                )
+            if not _enums.model_type_supports_deep_cache(self.model_type):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'DeepCache is only supported for '
+                    f'--model-type {_textprocessing.oxford_comma(_enums.DEEP_CACHE_MODEL_TYPES, "and")}.'
                 )
 
         for prop in args.__dict__.keys():
@@ -4855,13 +4856,14 @@ class DiffusionPipelineWrapper:
 
     def _auto_hi_diffusion_check(self, args: DiffusionArguments):
         if args.hi_diffusion:
-            if not (
-                    self.model_type == _enums.ModelType.SDXL or
-                    self.model_type == _enums.ModelType.KOLORS or
-                    self.model_type == _enums.ModelType.SD):
+            if args.spectrum:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'HiDiffusion cannot be used simultaneously with Spectrum.'
+                )
+            if not _enums.model_type_supports_hi_diffusion(self.model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'HiDiffusion is only supported for '
-                    '--model-type sd, sdxl, and kolors'
+                    f'--model-type {_textprocessing.oxford_comma(_enums.HI_DIFFUSION_MODEL_TYPES, "and")}.'
                 )
 
             if self.t2i_adapter_uris:
@@ -4887,15 +4889,10 @@ class DiffusionPipelineWrapper:
                     break
 
         if args.sada:
-            # SADA supports SD, SDXL/Kolors, and Flux
-            if not (
-                    self.model_type == _enums.ModelType.SD or
-                    self.model_type == _enums.ModelType.SDXL or
-                    self.model_type == _enums.ModelType.KOLORS or
-                    _enums.model_type_is_flux(self.model_type)):
+            if not _enums.model_type_supports_sada(self.model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'SADA is only supported for '
-                    '--model-type sd, sdxl, kolors, and flux*'
+                    f'--model-type {_textprocessing.oxford_comma(_enums.SADA_MODEL_TYPES, "and")}.'
                 )
 
             # Check for conflicts with other acceleration methods
@@ -4903,6 +4900,11 @@ class DiffusionPipelineWrapper:
             if args.tea_cache:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'SADA cannot be used simultaneously with TeaCache'
+                )
+
+            if args.spectrum:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'SADA cannot be used simultaneously with Spectrum'
                 )
 
             if args.deep_cache:
@@ -4938,9 +4940,14 @@ class DiffusionPipelineWrapper:
                     break
 
         if args.tea_cache:
-            if not _enums.model_type_is_flux(self.model_type):
+            if args.spectrum:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'TeaCache is only supported for Flux.'
+                    'TeaCache cannot be used simultaneously with Spectrum.'
+                )
+            if not _enums.model_type_supports_tea_cache(self.model_type):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'TeaCache is only supported for '
+                    f'--model-type {_textprocessing.oxford_comma(_enums.TEA_CACHE_MODEL_TYPES, "and")}.'
                 )
 
             if self.model_cpu_offload:
@@ -4953,19 +4960,87 @@ class DiffusionPipelineWrapper:
                     'TeaCache does not support group offloading.'
                 )
 
-    def _auto_freeu_check(self, args: DiffusionArguments):
-        freeu_model_types = {
-            _enums.ModelType.SD,
-            _enums.ModelType.SDXL,
-            _enums.ModelType.KOLORS,
-            _enums.ModelType.PIX2PIX,
-            _enums.ModelType.SDXL_PIX2PIX,
-            _enums.ModelType.UPSCALER_X2,
-            _enums.ModelType.UPSCALER_X4
-        }
+    def _spectrum_settings(self, args: DiffusionArguments) -> _spectrum.SpectrumSettings | None:
+        if not args.spectrum:
+            return None
+        return _spectrum.SpectrumSettings(
+            weight=float(_types.default(args.spectrum_weight, _constants.DEFAULT_SPECTRUM_WEIGHT)),
+            order=int(_types.default(args.spectrum_order, _constants.DEFAULT_SPECTRUM_ORDER)),
+            lam=float(_types.default(args.spectrum_lambda, _constants.DEFAULT_SPECTRUM_LAMBDA)),
+            warmup_steps=int(_types.default(
+                args.spectrum_warmup_steps, _constants.DEFAULT_SPECTRUM_WARMUP_STEPS)),
+            window_size=float(_types.default(
+                args.spectrum_window_size, _constants.DEFAULT_SPECTRUM_WINDOW_SIZE)),
+            flex_window=float(_types.default(
+                args.spectrum_flex_window, _constants.DEFAULT_SPECTRUM_FLEX_WINDOW)),
+            fallback_steps=int(_types.default(
+                args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS)),
+        )
 
+    def _auto_spectrum_check(self, args: DiffusionArguments):
+        for prop in args.__dict__.keys():
+            if prop.startswith('spectrum_'):
+                value = getattr(args, prop)
+                if value is not None or (isinstance(value, bool) and value is True):
+                    args.spectrum = True
+                    break
+
+        if not args.spectrum:
+            return
+
+        if not _enums.model_type_supports_spectrum(self.model_type):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum is only supported for '
+                f'--model-type {_textprocessing.oxford_comma(_enums.SPECTRUM_MODEL_TYPES, "and")}.'
+            )
+        if args.tea_cache:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum cannot be used simultaneously with TeaCache.'
+            )
+        if args.deep_cache:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum cannot be used simultaneously with DeepCache.'
+            )
+        if args.sada:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum cannot be used simultaneously with SADA.'
+            )
+        if args.hi_diffusion:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum cannot be used simultaneously with HiDiffusion.'
+            )
+        if args.ras:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum cannot be used simultaneously with RAS.'
+            )
+        if args.spectrum_weight is not None and not 0.0 <= args.spectrum_weight <= 1.0:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum blend weight must be from 0 to 1.'
+            )
+        if args.spectrum_order is not None and args.spectrum_order < 1:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum Chebyshev order must be at least 1.'
+            )
+        if args.spectrum_lambda is not None and args.spectrum_lambda < 0:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum ridge penalty must be at least 0.'
+            )
+        if args.spectrum_warmup_steps is not None and args.spectrum_warmup_steps < 0:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum warmup steps must be at least 0.'
+            )
+        if args.spectrum_window_size is not None and args.spectrum_window_size < 1:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum window size must be at least 1.'
+            )
+        if args.spectrum_flex_window is not None and args.spectrum_flex_window < 0:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum flex window must be at least 0.'
+            )
+
+    def _auto_freeu_check(self, args: DiffusionArguments):
         if args.freeu_params is not None:
-            if self._model_type not in freeu_model_types:
+            if not _enums.model_type_supports_freeu(self._model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Current primary model does not utilize a UNet, and therefore does not support FreeU parameters.'
                 )
@@ -5177,85 +5252,90 @@ class DiffusionPipelineWrapper:
 
         copy_args.set_from(kwargs, missing_value_throws=False)
 
-        if _enums.model_type_is_video(self._model_type):
+        self._auto_spectrum_check(copy_args)
+        spectrum_token = _spectrum.push(self._spectrum_settings(copy_args))
+        try:
+            if _enums.model_type_is_video(self._model_type):
+                help_text = self._argument_help_check(copy_args)
+                if help_text:
+                    raise DiffusionArgumentsHelpException(help_text)
+
+                import dgenerate.pipelinewrapper.videopipelines as _videopipelines
+
+                frames, audio, sample_rate, fps = _videopipelines.generate(self, copy_args)
+                if args is not None:
+                    _videopipelines.apply_video_arg_rewrites(copy_args, args)
+                return PipelineWrapperResult(
+                    images=frames,
+                    audio=audio,
+                    audio_sample_rate=sample_rate,
+                    fps=fps)
+
+            self._auto_freeu_check(copy_args)
+            self._auto_tea_cache_check(copy_args)
+            self._auto_deep_cache_check(copy_args)
+            self._auto_hi_diffusion_check(copy_args)
+            self._auto_sada_check(copy_args)
+            self._auto_latents_check(copy_args)
+            self._auto_denoise_range_check(copy_args)
+
             help_text = self._argument_help_check(copy_args)
             if help_text:
                 raise DiffusionArgumentsHelpException(help_text)
 
-            import dgenerate.pipelinewrapper.videopipelines as _videopipelines
+            _messages.debug_log(f'Calling Pipeline Wrapper: "{self}"')
+            _messages.debug_log(f'Pipeline Wrapper Args: ',
+                                lambda: _textprocessing.debug_format_args(
+                                    copy_args.get_pipeline_wrapper_kwargs()))
 
-            frames, audio, sample_rate, fps = _videopipelines.generate(self, copy_args)
-            if args is not None:
-                _videopipelines.apply_video_arg_rewrites(copy_args, args)
-            return PipelineWrapperResult(
-                images=frames,
-                audio=audio,
-                audio_sample_rate=sample_rate,
-                fps=fps)
-
-        self._auto_freeu_check(copy_args)
-        self._auto_tea_cache_check(copy_args)
-        self._auto_deep_cache_check(copy_args)
-        self._auto_hi_diffusion_check(copy_args)
-        self._auto_sada_check(copy_args)
-        self._auto_latents_check(copy_args)
-        self._auto_denoise_range_check(copy_args)
-
-        help_text = self._argument_help_check(copy_args)
-        if help_text:
-            raise DiffusionArgumentsHelpException(help_text)
-
-        _messages.debug_log(f'Calling Pipeline Wrapper: "{self}"')
-        _messages.debug_log(f'Pipeline Wrapper Args: ',
-                            lambda: _textprocessing.debug_format_args(
-                                copy_args.get_pipeline_wrapper_kwargs()))
-
-        self._lazy_init_pipeline(copy_args)
-        self._apply_pag_applied_layers(self._pipeline, copy_args.pag_applied_layers)
-        self._apply_pag_applied_layers(
-            self._sdxl_refiner_pipeline,
-            copy_args.sdxl_refiner_pag_applied_layers,
-            option='--sdxl-refiner-pag-applied-layers')
-
-        # this needs to happen even if a cached pipeline
-        # was loaded, since the settings for scheduler
-        # and vae tiling / slicing may be different
-        self._set_scheduler_and_vae_settings(copy_args)
-
-        pipeline_args = \
-            self._get_pipeline_defaults(user_args=copy_args)
-
-        # needs the pipeline initialized
-        self._auto_ras_check(copy_args)
-
-        try:
-            try:
-                if self.model_type == _enums.ModelType.S_CASCADE:
-                    result = self._call_torch_s_cascade(
-                        pipeline_args=pipeline_args,
-                        user_args=copy_args)
-                elif _enums.model_type_is_flux(self.model_type):
-                    result = self._call_torch_flux(pipeline_args=pipeline_args,
-                                                   user_args=copy_args)
-                elif _enums.model_type_is_flow_image(self.model_type):
-                    result = self._call_torch_flow_image(pipeline_args=pipeline_args,
-                                                         user_args=copy_args)
-                else:
-                    result = self._call_torch(pipeline_args=pipeline_args,
-                                              user_args=copy_args)
-            except _DenoiseRangeError as e:
-                raise _pipelines.UnsupportedPipelineConfigError(e) from e
-        finally:
-            self._apply_pag_applied_layers(self._pipeline, None)
+            self._lazy_init_pipeline(copy_args)
+            self._apply_pag_applied_layers(self._pipeline, copy_args.pag_applied_layers)
             self._apply_pag_applied_layers(
                 self._sdxl_refiner_pipeline,
-                None,
+                copy_args.sdxl_refiner_pag_applied_layers,
                 option='--sdxl-refiner-pag-applied-layers')
 
-        DiffusionPipelineWrapper.__LAST_RECALL_PIPELINE = self._recall_main_pipeline
-        DiffusionPipelineWrapper.__LAST_RECALL_SECONDARY_PIPELINE = self._recall_secondary_pipeline
+            # this needs to happen even if a cached pipeline
+            # was loaded, since the settings for scheduler
+            # and vae tiling / slicing may be different
+            self._set_scheduler_and_vae_settings(copy_args)
 
-        return result
+            pipeline_args = \
+                self._get_pipeline_defaults(user_args=copy_args)
+
+            # needs the pipeline initialized
+            self._auto_ras_check(copy_args)
+
+            try:
+                try:
+                    if self.model_type == _enums.ModelType.S_CASCADE:
+                        result = self._call_torch_s_cascade(
+                            pipeline_args=pipeline_args,
+                            user_args=copy_args)
+                    elif _enums.model_type_is_flux(self.model_type):
+                        result = self._call_torch_flux(pipeline_args=pipeline_args,
+                                                       user_args=copy_args)
+                    elif _enums.model_type_is_flow_image(self.model_type):
+                        result = self._call_torch_flow_image(pipeline_args=pipeline_args,
+                                                             user_args=copy_args)
+                    else:
+                        result = self._call_torch(pipeline_args=pipeline_args,
+                                                  user_args=copy_args)
+                except _DenoiseRangeError as e:
+                    raise _pipelines.UnsupportedPipelineConfigError(e) from e
+            finally:
+                self._apply_pag_applied_layers(self._pipeline, None)
+                self._apply_pag_applied_layers(
+                    self._sdxl_refiner_pipeline,
+                    None,
+                    option='--sdxl-refiner-pag-applied-layers')
+
+            DiffusionPipelineWrapper.__LAST_RECALL_PIPELINE = self._recall_main_pipeline
+            DiffusionPipelineWrapper.__LAST_RECALL_SECONDARY_PIPELINE = self._recall_secondary_pipeline
+
+            return result
+        finally:
+            _spectrum.pop(spectrum_token)
 
     def __str__(self):
         return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'

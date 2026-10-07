@@ -880,6 +880,77 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type flux*``.
     """
 
+    spectrum: bool = False
+    """
+    Activate Spectrum for the primary model?
+
+    Spectrum forecasts denoiser block outputs with Chebyshev polynomials and
+    skips those blocks on later steps. Embeddings and the final projection
+    still run.
+
+    See: https://github.com/hanjq17/Spectrum
+
+    This is supported for the model types listed by
+    :py:data:`dgenerate.pipelinewrapper.enums.SPECTRUM_MODEL_TYPES`.
+    """
+
+    spectrum_weight: _types.OptionalFloat = None
+    """
+    Spectrum Chebyshev blend weight.
+
+    ``1`` uses only the Chebyshev forecast. ``0`` uses only the last-step
+    Taylor step. Defaults to 0.5.
+
+    Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
+    """
+
+    spectrum_order: _types.OptionalInteger = None
+    """
+    Spectrum Chebyshev polynomial count ``M``, not counting ``T_0``.
+
+    Defaults to 4.
+
+    Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
+    """
+
+    spectrum_lambda: _types.OptionalFloat = None
+    """
+    Spectrum ridge penalty.
+
+    Defaults to 0.1.
+
+    Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
+    """
+
+    spectrum_warmup_steps: _types.OptionalInteger = None
+    """
+    Leading full denoiser passes before Spectrum may predict a step.
+
+    Defaults to 2. The paper uses 5 with 50 inference steps.
+
+    Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
+    """
+
+    spectrum_window_size: _types.OptionalFloat = None
+    """
+    Initial Spectrum skip interval.
+
+    ``2`` predicts every other eligible step. Values below 2 do not skip.
+    Defaults to 2.
+
+    Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
+    """
+
+    spectrum_flex_window: _types.OptionalFloat = None
+    """
+    Amount added to the Spectrum skip interval after each full pass.
+
+    ``0`` keeps the interval fixed. ``0.75`` is the moderate schedule and ``3``
+    is the aggressive one. Defaults to 0.75.
+
+    Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
+    """
+
     ras: bool = False
     """
     Activate RAS (Region-Adaptive Sampling) for the primary model? 
@@ -1786,6 +1857,12 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.guidance_scale, "Guidance Scale:"),
             (self.sigmas, "Sigmas:"),
             (self.tea_cache_rel_l1_threshold, "TeaCache Relative L1 Threshold:"),
+            (self.spectrum_weight, "Spectrum Blend Weight:"),
+            (self.spectrum_order, "Spectrum Chebyshev Order:"),
+            (self.spectrum_lambda, "Spectrum Ridge Penalty:"),
+            (self.spectrum_warmup_steps, "Spectrum Warmup Steps:"),
+            (self.spectrum_window_size, "Spectrum Window Size:"),
+            (self.spectrum_flex_window, "Spectrum Flex Window:"),
             (self.image_guidance_scale, "Image Guidance Scale:"),
             (self.guidance_rescale, "Guidance Rescale:"),
             (self.inference_steps, "Inference Steps:"),

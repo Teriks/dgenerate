@@ -525,7 +525,7 @@ Diffusion Model Feature Support Tables
      - ❌
 
 .. list-table:: Generation Features by ``--model-type``
-   :widths: 40 30 20 40 30 40 30
+   :widths: 36 22 18 28 24 28 24 24
    :header-rows: 1
 
    * - Model Type
@@ -535,12 +535,14 @@ Diffusion Model Feature Support Tables
      - DeepCache
      - Microsoft RAS
      - TeaCache
+     - Spectrum
 
    * - ``sd``
      - ✅
      - ✅
      - ✅
      - ✅
+     - ❌
      - ❌
      - ❌
 
@@ -551,12 +553,14 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ❌
+     - ❌
 
    * - ``sdxl``
      - ✅
      - ✅
      - ✅
      - ✅
+     - ❌
      - ❌
      - ❌
 
@@ -567,8 +571,10 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ❌
+     - ❌
 
    * - ``if``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -583,8 +589,10 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``ifs-img2img``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -599,8 +607,10 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ❌
+     - ❌
 
    * - ``upscaler-x2``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -615,8 +625,10 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ❌
+     - ❌
 
    * - ``s-cascade``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -631,6 +643,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ✅
      - ❌
+     - ✅
 
    * - ``sd3-pix2pix``
      - ❌
@@ -639,6 +652,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ✅
      - ❌
+     - ✅
 
    * - ``flux``
      - ✅
@@ -646,6 +660,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
      - ✅
 
    * - ``flux-fill``
@@ -655,6 +670,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ✅
 
    * - ``flux-kontext``
      - ❌
@@ -662,6 +678,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
      - ✅
 
    * - ``flux2``
@@ -671,6 +688,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
 
    * - ``flux2-klein-kv``
      - ❌
@@ -679,6 +697,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
 
    * - ``z-image``
      - ❌
@@ -687,6 +706,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
 
    * - ``z-image-omni``
      - ❌
@@ -695,6 +715,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
 
    * - ``qwen-image``
      - ❌
@@ -703,6 +724,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
 
    * - ``qwen-image-edit``
      - ❌
@@ -711,6 +733,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
 
    * - ``qwen-image-layered``
      - ❌
@@ -719,7 +742,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
-
+     - ✅
 Video Model Feature Support
 ---------------------------
 
@@ -854,6 +877,11 @@ shared ``--video-lengths`` and ``--video-fps`` options.
      - ✅
      - ✅
 
+   * - Spectrum
+     - ✅
+     - ✅
+     - ✅
+
 Flow Image Model Notes
 ----------------------
 
@@ -870,9 +898,8 @@ no inpaint pipeline.
 ControlNet on ``z-image`` and ``qwen-image`` is text-to-image and inpaint.
 ``z-image`` accepts one union model. ``qwen-image`` can take more than one.
 
-These model types support LoRA. They do not support textual inversions, IP
-adapters, T2I adapters, prompt weighters, PAG, or the acceleration features
-in the generation features table.
+These model types support LoRA and Spectrum. They do not support textual inversions, IP
+adapters, T2I adapters, prompt weighters, PAG, DeepCache, TeaCache, SADA, RAS, or HiDiffusion.
 
 PAG Support Caveats
 -------------------
@@ -898,10 +925,12 @@ FreeU parameters differ by model type and can be specified using the ``--freeu-p
 
 ``--torch-compile`` compiles repeated denoiser, ControlNet, and VAE decoder blocks. The first use of each waits while the graph builds. A later change of resolution or frame count compiles once more, then reuses that graph. CUDA and XPU need Triton. On macOS, PyTorch 2.13 and newer compile these blocks to a Metal kernel. CPU and quantized weights stay eager, and dgenerate warns. Text encoders, image encoders, and the LTX diffusion decoder stay eager. Wan-Animate-2 compiles its transformer and VAE blocks on every load. ``DGENERATE_TORCH_COMPILE=0`` leaves every model eager, including Wan-Animate-2.
 
-Faster generation speeds can be achieved by using DeepCache, Microsoft RAS, or TeaCache, but may lead to reduced image quality. The default values for each of these features are conservative, providing some speed increases without major impacts on quality.
+Faster generation speeds can be achieved by using DeepCache, Microsoft RAS, TeaCache, or Spectrum, but may lead to reduced image quality. The default values for each of these features are conservative, providing some speed increases without major impacts on quality.
 
 The DeepCache branch ID and interval can be specified with the ``--deep-cache-branch-ids`` and ``--deep-cache-intervals`` options. Benchmarks for different parameters can be reviewed `here <https://huggingface.co/docs/diffusers/main/en/optimization/deepcache#benchmark>`__.
 
 Microsoft Region-Adaptive Sampling (RAS) has numerous configurable options that can be reviewed `here <https://github.com/microsoft/ras?tab=readme-ov-file#customize-hyperparameters>`__. Note that the ``--ras-index-fusion`` parameter is not compatible with SD3.5.
 
 The TeaCache threshold can be specified with the ``--tea-cache-rel-l1-thresholds`` parameter. Information about this parameter can be reviewed `here <https://github.com/ali-vilab/TeaCache/blob/main/TeaCache4FLUX/README.md>`__.
+
+Spectrum (``--spectrum``) forecasts transformer block outputs with Chebyshev polynomials and skips those blocks on later steps. It is supported on SD3, Flux, Flux.2, Z-Image, Qwen-Image, and Wan. The moderate schedule is the default (window ``2``, flex ``0.75``). ``--spectrum-flex-windows 3`` is the paper's aggressive schedule. Details are at `Spectrum <https://github.com/hanjq17/Spectrum>`__.

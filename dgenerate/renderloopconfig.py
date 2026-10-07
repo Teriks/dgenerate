@@ -1271,6 +1271,78 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for: ``--model-type flux*``.
     """
 
+    spectrum: bool = False
+    """
+    Activate Spectrum for the primary model?
+
+    Spectrum forecasts denoiser block outputs with Chebyshev polynomials and
+    skips those blocks on later steps. Embeddings and the final projection
+    still run. This speeds up sampling and can soften fine detail.
+
+    See: https://github.com/hanjq17/Spectrum
+
+    This is supported for: ``--model-type`` values listed by
+    :py:data:`dgenerate.pipelinewrapper.enums.SPECTRUM_MODEL_TYPES`.
+    """
+
+    spectrum_weights: _types.OptionalFloats = None
+    """
+    Spectrum Chebyshev blend weights to try when :py:attr:`RenderLoopConfig.spectrum` is enabled.
+
+    ``1`` uses only the Chebyshev forecast. ``0`` uses only the last-step Taylor
+    step. Each value is tried in turn. Defaults to 0.5.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
+    """
+
+    spectrum_orders: _types.OptionalIntegers = None
+    """
+    Spectrum Chebyshev polynomial counts to try.
+
+    This is ``M`` in the paper. Each value is tried in turn. Defaults to 4.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
+    """
+
+    spectrum_lambdas: _types.OptionalFloats = None
+    """
+    Spectrum ridge penalties to try.
+
+    Each value is tried in turn. Defaults to 0.1.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
+    """
+
+    spectrum_warmup_steps: _types.OptionalIntegers = None
+    """
+    Leading full denoiser passes before Spectrum may predict a step.
+
+    Each value is tried in turn. Defaults to 2. The paper uses 5 with 50
+    inference steps.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
+    """
+
+    spectrum_window_sizes: _types.OptionalFloats = None
+    """
+    Initial Spectrum skip intervals to try.
+
+    ``2`` predicts every other eligible step. Values below 2 do not skip.
+    Each value is tried in turn. Defaults to 2.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
+    """
+
+    spectrum_flex_windows: _types.OptionalFloats = None
+    """
+    Amounts added to the Spectrum skip interval after each full pass.
+
+    ``0`` keeps the interval fixed. ``0.75`` is the moderate schedule and ``3``
+    is the aggressive one. Each value is tried in turn. Defaults to 0.75.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
+    """
+
     deep_cache: bool = False
     """
     Activate DeepCache for the main model?
@@ -2249,10 +2321,11 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         # Check TeaCache compatibility
         tea_cache_enabled = (self.tea_cache or any(self._non_null_attr_that_start_with('tea_cache_')))
-        if tea_cache_enabled and not _pipelinewrapper.model_type_is_flux(self.model_type):
+        if tea_cache_enabled and not _pipelinewrapper.model_type_supports_tea_cache(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("tea_cache")} and related arguments are only '
-                f'compatible with {a_namer("model_type")} flux*'
+                f'compatible with {a_namer("model_type")} '
+                f'{_textprocessing.oxford_comma(_pipelinewrapper.TEA_CACHE_MODEL_TYPES, "and")}.'
             )
         if tea_cache_enabled and self.model_cpu_offload:
             raise RenderLoopConfigError(
@@ -2265,12 +2338,24 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'with {a_namer("tea_cache")} and related arguments.'
             )
 
+        spectrum_enabled = (self.spectrum or any(self._non_null_attr_that_start_with('spectrum_')))
+        if spectrum_enabled and not _pipelinewrapper.model_type_supports_spectrum(self.model_type):
+            raise RenderLoopConfigError(
+                f'{a_namer("spectrum")} is only supported for '
+                f'--model-type {_textprocessing.oxford_comma(_pipelinewrapper.SPECTRUM_MODEL_TYPES, "and")}.'
+            )
+        if spectrum_enabled and tea_cache_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("spectrum")} cannot be used with {a_namer("tea_cache")}.'
+            )
+
         # Check RAS compatibility
         ras_enabled = (self.ras or any(self._non_null_attr_that_start_with('ras_')))
-        if ras_enabled and not _pipelinewrapper.model_type_is_sd3(self.model_type):
+        if ras_enabled and not _pipelinewrapper.model_type_supports_ras(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("ras")} and related arguments are only '
-                f'compatible with {a_namer("model_type")} sd3'
+                f'compatible with {a_namer("model_type")} '
+                f'{_textprocessing.oxford_comma(_pipelinewrapper.RAS_MODEL_TYPES, "and")}.'
             )
         if ras_enabled and self.model_cpu_offload:
             raise RenderLoopConfigError(
@@ -2301,13 +2386,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'quantize the text encoders individually using {a_namer("text_encoder_uris")}')
 
         if self.hi_diffusion:
-            if not (
-                    self.model_type == _pipelinewrapper.ModelType.SDXL or
-                    self.model_type == _pipelinewrapper.ModelType.KOLORS or
-                    self.model_type == _pipelinewrapper.ModelType.SD):
+            if not _pipelinewrapper.model_type_supports_hi_diffusion(self.model_type):
                 raise RenderLoopConfigError(
                     f'{a_namer("hi_diffusion")} is only supported for '
-                    f'Stable Diffusion, Stable Diffusion XL, and Kolors'
+                    f'{a_namer("model_type")} '
+                    f'{_textprocessing.oxford_comma(_pipelinewrapper.HI_DIFFUSION_MODEL_TYPES, "and")}.'
                 )
 
             if self.t2i_adapter_uris:
@@ -2326,22 +2409,35 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         # Check DeepCache compatibility first (needed for SADA validation)
         deep_cache_enabled = (self.deep_cache or any(self._non_null_attr_that_start_with('deep_cache_')))
+        if spectrum_enabled and deep_cache_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("spectrum")} cannot be used with {a_namer("deep_cache")}.'
+            )
+        if spectrum_enabled and ras_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("spectrum")} cannot be used with {a_namer("ras")}.'
+            )
+        if spectrum_enabled and self.hi_diffusion:
+            raise RenderLoopConfigError(
+                f'{a_namer("spectrum")} cannot be used with {a_namer("hi_diffusion")}.'
+            )
 
         # Check SADA compatibility
         sada_enabled = (self.sada or any(self._non_null_attr_that_start_with('sada_')))
-        if sada_enabled and not (
-                self.model_type == _pipelinewrapper.ModelType.SD or
-                self.model_type == _pipelinewrapper.ModelType.SDXL or
-                self.model_type == _pipelinewrapper.ModelType.KOLORS or
-                _pipelinewrapper.model_type_is_flux(self.model_type)):
+        if sada_enabled and not _pipelinewrapper.model_type_supports_sada(self.model_type):
             raise RenderLoopConfigError(
                 f'SADA arguments are only supported for '
-                f'--model-type sd, sdxl, kolors, and flux*'
+                f'--model-type {_textprocessing.oxford_comma(_pipelinewrapper.SADA_MODEL_TYPES, "and")}.'
             )
 
         if sada_enabled and tea_cache_enabled:
             raise RenderLoopConfigError(
                 f'SADA cannot be used simultaneously with {a_namer("tea_cache")} and related arguments.'
+            )
+
+        if sada_enabled and spectrum_enabled:
+            raise RenderLoopConfigError(
+                f'SADA cannot be used simultaneously with {a_namer("spectrum")}.'
             )
 
         if sada_enabled and deep_cache_enabled:
@@ -2395,32 +2491,16 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.sada_max_intervals is None:
                 self.sada_max_intervals = [sada_defaults['max_interval']]
 
-        if deep_cache_enabled and not (
-                self.model_type == _pipelinewrapper.ModelType.SDXL or
-                self.model_type == _pipelinewrapper.ModelType.SDXL_PIX2PIX or
-                self.model_type == _pipelinewrapper.ModelType.KOLORS or
-                self.model_type == _pipelinewrapper.ModelType.SD or
-                self.model_type == _pipelinewrapper.ModelType.PIX2PIX or
-                self.model_type == _pipelinewrapper.ModelType.UPSCALER_X4):
+        if deep_cache_enabled and not _pipelinewrapper.model_type_supports_deep_cache(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("deep_cache")} and related arguments are only '
-                f'supported with Stable Diffusion, Stable Diffusion XL, '
-                f'Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.'
+                f'supported for {a_namer("model_type")} '
+                f'{_textprocessing.oxford_comma(_pipelinewrapper.DEEP_CACHE_MODEL_TYPES, "and")}.'
             )
 
         # Check FreeU compatibility
         if self.freeu_params is not None:
-            freeu_model_types = {
-                _pipelinewrapper.ModelType.SD,
-                _pipelinewrapper.ModelType.SDXL,
-                _pipelinewrapper.ModelType.KOLORS,
-                _pipelinewrapper.ModelType.PIX2PIX,
-                _pipelinewrapper.ModelType.SDXL_PIX2PIX,
-                _pipelinewrapper.ModelType.UPSCALER_X2,
-                _pipelinewrapper.ModelType.UPSCALER_X4
-            }
-
-            if self.model_type not in freeu_model_types:
+            if not _pipelinewrapper.model_type_supports_freeu(self.model_type):
                 raise RenderLoopConfigError(
                     f'{a_namer("freeu_params")} not supported with '
                     f'{a_namer("model_type")} {_pipelinewrapper.get_model_type_string(self.model_type)}.'
@@ -4244,6 +4324,12 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.adetailer_mask_dilations,
             self.adetailer_sizes,
             self.tea_cache_rel_l1_thresholds,
+            self.spectrum_weights,
+            self.spectrum_orders,
+            self.spectrum_lambdas,
+            self.spectrum_warmup_steps,
+            self.spectrum_window_sizes,
+            self.spectrum_flex_windows,
             self.ras_error_reset_steps,
             self.ras_high_ratios,
             self.ras_sample_ratios,
@@ -4506,6 +4592,13 @@ class RenderLoopConfig(_types.SetFromMixin):
                 sada_max_interval=ov('sada_max_interval', self.sada_max_intervals),
                 tea_cache=ov('tea_cache', [self.tea_cache]),
                 tea_cache_rel_l1_threshold=ov('tea_cache_rel_l1_threshold', self.tea_cache_rel_l1_thresholds),
+                spectrum=ov('spectrum', [self.spectrum]),
+                spectrum_weight=ov('spectrum_weight', self.spectrum_weights),
+                spectrum_order=ov('spectrum_order', self.spectrum_orders),
+                spectrum_lambda=ov('spectrum_lambda', self.spectrum_lambdas),
+                spectrum_warmup_steps=ov('spectrum_warmup_steps', self.spectrum_warmup_steps),
+                spectrum_window_size=ov('spectrum_window_size', self.spectrum_window_sizes),
+                spectrum_flex_window=ov('spectrum_flex_window', self.spectrum_flex_windows),
                 ras=ov('ras', [self.ras]),
                 ras_index_fusion=ov('ras_index_fusion', [self.ras_index_fusion]),
                 ras_sample_ratio=ov('ras_sample_ratio', self.ras_sample_ratios),

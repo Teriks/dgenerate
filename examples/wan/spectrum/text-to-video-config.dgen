@@ -1,0 +1,23 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan2.1 text to video with Spectrum. The default schedule is window 2
+# and flex 0.75. Raise --spectrum-warmup-steps on short step counts if
+# the clip loses detail.
+
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+
+Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 5
+--animation-format mp4
+--output-path wan-spectrum
+--spectrum
+--prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"
