@@ -465,6 +465,13 @@ Wan-Animate-2 is ``--model-type wan-animate-2`` with a character still plus
 ``wan-driving=`` only. The base repo samples in 40 steps and the distilled
 repo in 10. ``--video-fps`` defaults to 24. ``--video-lengths`` is rejected.
 No ``wan-pose=``, ``wan-face=``, or ``wan-background=``.
+Wan-Animate-2 compiles its transformer and VAE blocks on every load. Do not add
+``--torch-compile`` for that model. Add ``--torch-compile`` for other models
+only when the user asks for it, including Stable Diffusion 3 and Stable Cascade.
+The flag also compiles ControlNet and VAE decoder blocks. Do not add it for
+GGUF, SDNQ, or bitsandbytes. Those stay eager and dgenerate warns.
+``DGENERATE_TORCH_COMPILE=0`` disables every compile, including Wan-Animate-2.
+TorchDynamo, Inductor, and Triton stay quiet unless the user passed ``-v``.
 Do not put ``last_animations`` on ``--image-seeds`` for Kontext, Fill,
 or image-to-video.
 

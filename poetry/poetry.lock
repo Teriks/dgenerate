@@ -6187,21 +6187,21 @@ files = [
 
 [[package]]
 name = "triton-windows"
-version = "3.8.0.post28"
+version = "3.8.0.post29"
 description = "A language and compiler for custom Deep Learning operations"
 optional = false
 python-versions = "<3.15,>=3.10"
 groups = ["main"]
 files = [
-    {file = "triton_windows-3.8.0.post28-cp310-cp310-win_amd64.whl", hash = "sha256:8cd1652b2b467275b86bae393f508fa688e4b08cde00cb78d51c0479e7f952fb"},
-    {file = "triton_windows-3.8.0.post28-cp311-cp311-win_amd64.whl", hash = "sha256:1cc45bce84d49ea17646bcd5a19f3ba1db2567a94458c1ab3b2a9a2698b20b08"},
-    {file = "triton_windows-3.8.0.post28-cp311-cp311-win_arm64.whl", hash = "sha256:5b4a05d84d50b24dd429d3ae9562824c525aacc83bb31a078a1ae5cd8c8ff3b3"},
-    {file = "triton_windows-3.8.0.post28-cp312-cp312-win_amd64.whl", hash = "sha256:06435b922ebabbfcb3fb0f4b4b2257a2676dd39cc263a562be356bd58c15c9b8"},
-    {file = "triton_windows-3.8.0.post28-cp312-cp312-win_arm64.whl", hash = "sha256:3512109cdc21734e51ca3a0f33f273d2970d95a25922d3306e10a8f7813e8e4d"},
-    {file = "triton_windows-3.8.0.post28-cp313-cp313-win_amd64.whl", hash = "sha256:2588f5f6f160d7823fc700bb77be395031f652d53bd579b0f8bf3c507c3c6ce5"},
-    {file = "triton_windows-3.8.0.post28-cp313-cp313-win_arm64.whl", hash = "sha256:265e4dc330cb25109ff15a1bf972e38c5ff3a274dd1c75d598bfd45066cc1c33"},
-    {file = "triton_windows-3.8.0.post28-cp314-cp314-win_amd64.whl", hash = "sha256:087a7d3d98d481cb2eceb0fc9cbfb363ed96189abd188cd7c043efafd40549bc"},
-    {file = "triton_windows-3.8.0.post28-cp314-cp314-win_arm64.whl", hash = "sha256:e766cc72355fbd391bd5869f8f4f2c416557a0af0853a25f616736037ac415f2"},
+    {file = "triton_windows-3.8.0.post29-cp310-cp310-win_amd64.whl", hash = "sha256:8bcfbdc5e9b2cd301ddfed84b1ab3166c9bec403a4ee2c47f6177f540d9fb1e7"},
+    {file = "triton_windows-3.8.0.post29-cp311-cp311-win_amd64.whl", hash = "sha256:0e12f038862c8ff6823466573c2ae3b8e58a4570470dd129ac0720832f464b22"},
+    {file = "triton_windows-3.8.0.post29-cp311-cp311-win_arm64.whl", hash = "sha256:d50e511f41bb9308a278e37d7d9fe2d1eb834c6dbf2807bd3fc287c473d24793"},
+    {file = "triton_windows-3.8.0.post29-cp312-cp312-win_amd64.whl", hash = "sha256:937ba2ee53b6e664709898537de3eb9eab427a498c04da58f2bd42e1af93e298"},
+    {file = "triton_windows-3.8.0.post29-cp312-cp312-win_arm64.whl", hash = "sha256:525bc89392c08d6d8531407e0c4f5b1dff35d9a484647b6e5af616a004dd9d5e"},
+    {file = "triton_windows-3.8.0.post29-cp313-cp313-win_amd64.whl", hash = "sha256:afb9bdbfae16fd9ac1450d2250f25c2ef0511384bf5354eb32e23e706978bf1e"},
+    {file = "triton_windows-3.8.0.post29-cp313-cp313-win_arm64.whl", hash = "sha256:52dba08290cec7be6bdbf4915f1e2797c1e56a1c433416a8308e1f262e175eb8"},
+    {file = "triton_windows-3.8.0.post29-cp314-cp314-win_amd64.whl", hash = "sha256:1d0fd6a6cf36ba5cced997177068e328d015e42cd4300f6995fff5a6f8707aff"},
+    {file = "triton_windows-3.8.0.post29-cp314-cp314-win_arm64.whl", hash = "sha256:4e39f736c46fe23330d80b0f81fd983e3d23756a477ade40b2c65e2510195434"},
 ]
 
 [[package]]
@@ -6863,4 +6863,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,!=3.14.1,<3.15"
-content-hash = "5a396972064af1cc663134b9e0de12305db9d0a1c79b72f06f98bf70d9f974d3"
+content-hash = "ed2cd2ca08ad8023b91edcf28cd84137085f0ef73d233bb1148b9047be2bcf60"

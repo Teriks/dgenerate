@@ -4,6 +4,7 @@ order: 31
 # Wan-Animate-2. The seed is the character still. wan-driving= is the
 # motion clip. The distilled checkpoint samples in 10 steps; the base
 # checkpoint samples in 40. --video-lengths is rejected.
+# Transformer blocks are compiled on every load. --torch-compile is not required.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

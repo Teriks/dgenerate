@@ -355,6 +355,9 @@ def reconstruct_dgenerate_opts(
     if wrapper.model_group_offload:
         opts.append(('--model-group-offload',))
 
+    if wrapper.torch_compile:
+        opts.append(('--torch-compile',))
+
     if wrapper.second_model_cpu_offload:
         opts.append(('--second-model-cpu-offload',))
 

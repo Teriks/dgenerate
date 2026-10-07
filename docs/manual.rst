@@ -59,7 +59,7 @@ Help Output
                      [-rst INTEGER [INTEGER ...]] [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]]
                      [-rsl INTEGER [INTEGER ...]] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]]
                      [-pagl LAYERS [LAYERS ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
-                     [-rpagl LAYERS [LAYERS ...]] [-mqo | -mco | -mgo] [-mqo2 | -mco2 | -mgo2]
+                     [-rpagl LAYERS [LAYERS ...]] [-mqo | -mco | -mgo] [--torch-compile] [-mqo2 | -mco2 | -mgo2]
                      [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
                      [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-sizes SIZE [SIZE ...]]
@@ -1736,6 +1736,15 @@ Help Output
             the next layer copy with the current one. BitsAndBytes, SDNQ, and other quantized modules are left
             where they were loaded. Mutually exclusive with --model-cpu-offload and --model-sequential-offload
             --------------------------------------------------------------------------------------------------
+      --torch-compile
+            Compile repeated denoiser, ControlNet, and VAE blocks. The first use of each waits while the graph
+            builds. A later change of resolution or frame count compiles once more, then reuses that graph. CUDA
+            and XPU need Triton. Quantized modules and models with no repeated blocks stay eager, and dgenerate
+            warns when the flag is set and nothing was compiled. Wan-Animate-2 compiles its transformer and VAE
+            blocks on every load, with or without this flag. DGENERATE_TORCH_COMPILE=0 leaves every model eager,
+            including Wan-Animate-2. TorchDynamo, Inductor, and Triton stay quiet unless -v/--verbose is set.
+            Compile errors still print.
+            ---------------------------
       -mqo2, --second-model-sequential-offload
             Force sequential model offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, this may
             drastically reduce memory consumption and allow large models to run when they would otherwise not
@@ -4351,7 +4360,9 @@ Width and height must be divisible by 32. ``--video-fps`` defaults to 24.
 conditioning clip.
 
 ``--model-sequential-offload``, ``--model-cpu-offload``, and ``--model-group-offload``
-work the same way they do for image models. A GGUF, SDNQ, or bitsandbytes
+work the same way they do for image models. ``--torch-compile`` compiles the
+repeated transformer blocks. The first denoising step waits while the graph
+builds. A GGUF, SDNQ, or bitsandbytes
 transformer follows the placement described under `Precision, GGUF, and offload`_. The examples under `examples/ltx2 <examples/ltx2_>`_
 use the published
 repository as-is. ``--ltx-latent-upscale`` runs the two-stage sampler in that
@@ -5021,6 +5032,8 @@ The driving clip is the motion source. There is no pose or face clip.
 samples in 10. The published demo uses ``--wan-segment-frame-lengths 81``,
 ``--wan-prev-segment-frames 1``, and ``--max-sequence-length 512``.
 ``--wan-driving-image-processors`` can preprocess the driving clip.
+The transformer blocks are compiled on every load, with or without
+``--torch-compile``. That compile keeps flex attention block-sparse.
 
 .. code-block:: bash
 
@@ -5046,7 +5059,9 @@ checkpoint default, or ``null`` to skip a slot. ``--loras`` loads a Diffusers
 LoRA onto the transformer.
 
 ``--model-sequential-offload``, ``--model-cpu-offload``, and
-``--model-group-offload`` are available. Sequential offload and model CPU
+``--model-group-offload`` are available. ``--torch-compile`` compiles repeated
+transformer blocks on Wan and Wan-Animate. Wan-Animate-2 compiles those blocks
+on every load. Quantized weights stay eager and dgenerate warns. Sequential offload and model CPU
 offload move a GGUF or SDNQ transformer. Bitsandbytes 8-bit stays on the GPU
 where it was loaded, and bitsandbytes 4-bit stays on the GPU under sequential
 offload. Group offload streams the full-precision modules, such as the VAE and text
@@ -7364,6 +7379,8 @@ Flux.2 Klein, Z-Image, and Qwen-Image each have both.
 ``--model-group-offload`` are mutually exclusive. Group offload keeps weights
 in CPU memory, so the pipeline cache still counts them. BitsAndBytes, SDNQ,
 and other quantized modules stay where they were loaded.
+``--torch-compile`` compiles the repeated transformer blocks. Quantized
+weights stay eager, and dgenerate warns.
 
 Flux.2
 ------
@@ -12263,7 +12280,8 @@ of these checkpoints. See `Flux.2, Z-Image, and Qwen-Image <flow-image-models_>`
 SDNQ, GGUF, and any module that carries a quantization config stay on the
 device where they were loaded. The other modules are still group-offloaded,
 and the pipeline cache counts the whole pipeline because those weights remain
-in CPU memory.
+in CPU memory. ``--torch-compile`` leaves those quantized weights eager and
+warns.
 
 There are a few ways to utilize quantization with dgenerate, the easiest
 way being the ``--quantizer`` and ``--quantizer-map`` arguments.
@@ -13333,7 +13351,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [5962252982457]
+            Value: [18624607889825]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -13364,6 +13382,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_third_prompts"
             Type: collections.abc.Sequence[dgenerate.prompt.Prompt] | None
             Value: []
+        Name: "last_torch_compile"
+            Type: <class 'bool'>
+            Value: False
         Name: "last_transformer_uri"
             Type: str | None
             Value: None
@@ -15873,12 +15894,34 @@ They are not removed automatically, and will remain on disk until you manually d
 similar to the huggingface cache. If you use quantization with many different LoRAs or LoRA
 scale values, this directory can grow large over time.
 
-Enable / Disable Torch Compile
-==============================
+Torch Compile
+=============
 
-Torch compile is enabled by default in dgenerate to improve performance in certain scenarios.
+``--torch-compile`` compiles repeated denoiser blocks, ControlNet blocks, and
+VAE decoder blocks. The first use of each waits while the graph builds. A
+later change of resolution or frame count compiles once more, then reuses
+that graph. A compiled pipeline and an eager pipeline are separate cache
+entries. TorchDynamo, Inductor, and Triton stay quiet unless ``-v`` is
+set. Compile errors still print.
 
-If it is causing issues you can disable it by setting the environment variable ``DGENERATE_TORCH_COMPILE=0``
+CUDA and XPU need Triton. On macOS, PyTorch 2.13 and newer compile these
+blocks to a Metal kernel. CPU stays eager. BitsAndBytes, SDNQ, GGUF, and
+other quantized weights stay eager. Stable Diffusion 3 compiles its joint
+transformer blocks. Stable Cascade compiles its res, timestep, and attention
+blocks. Text encoders, image encoders, and the LTX diffusion decoder stay
+eager. Console recipes for the models that can compile include a Torch Compile
+checkbox, left off.
+
+Wan-Animate-2 compiles its transformer blocks and VAE blocks on every load,
+with or without the flag. The transformer compile keeps flex attention
+block-sparse. The pipeline cache stores one compiled Wan-Animate-2 entry
+either way.
+
+``DGENERATE_TORCH_COMPILE`` defaults to ``1``. ``\env DGENERATE_TORCH_COMPILE=0``
+leaves every model eager, including Wan-Animate-2. dgenerate warns when a
+compile was skipped. Wan-Animate-2 then builds the full attention score
+matrix, which can run out of memory at video resolution. Set it in the
+environment or in ``init.dgen``.
 
 Startup Configuration
 =====================
@@ -15905,7 +15948,7 @@ Example ``~/.dgenerate/init.dgen`` for setting environment variables:
     \env CIVIT_AI_TOKEN=your_civitai_token_here
     
     # Performance and behavior
-    \env DGENERATE_TORCH_COMPILE=0
+    \env DGENERATE_TORCH_COMPILE=1
     \env DGENERATE_OFFLINE_MODE=1
     
     # Cache expiry control

@@ -37,7 +37,9 @@ Width and height must be divisible by 32. ``--video-fps`` defaults to 24.
 conditioning clip.
 
 ``--model-sequential-offload``, ``--model-cpu-offload``, and ``--model-group-offload``
-work the same way they do for image models. A GGUF, SDNQ, or bitsandbytes
+work the same way they do for image models. ``--torch-compile`` compiles the
+repeated transformer blocks. The first denoising step waits while the graph
+builds. A GGUF, SDNQ, or bitsandbytes
 transformer follows the placement described under `Precision, GGUF, and offload`_. The examples under `examples/ltx2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2>`_
 use the published
 repository as-is. ``--ltx-latent-upscale`` runs the two-stage sampler in that
@@ -707,6 +709,8 @@ The driving clip is the motion source. There is no pose or face clip.
 samples in 10. The published demo uses ``--wan-segment-frame-lengths 81``,
 ``--wan-prev-segment-frames 1``, and ``--max-sequence-length 512``.
 ``--wan-driving-image-processors`` can preprocess the driving clip.
+The transformer blocks are compiled on every load, with or without
+``--torch-compile``. That compile keeps flex attention block-sparse.
 
 .. code-block:: bash
 
@@ -732,7 +736,9 @@ checkpoint default, or ``null`` to skip a slot. ``--loras`` loads a Diffusers
 LoRA onto the transformer.
 
 ``--model-sequential-offload``, ``--model-cpu-offload``, and
-``--model-group-offload`` are available. Sequential offload and model CPU
+``--model-group-offload`` are available. ``--torch-compile`` compiles repeated
+transformer blocks on Wan and Wan-Animate. Wan-Animate-2 compiles those blocks
+on every load. Quantized weights stay eager and dgenerate warns. Sequential offload and model CPU
 offload move a GGUF or SDNQ transformer. Bitsandbytes 8-bit stays on the GPU
 where it was loaded, and bitsandbytes 4-bit stays on the GPU under sequential
 offload. Group offload streams the full-precision modules, such as the VAE and text

@@ -1822,6 +1822,16 @@ class RenderLoopConfig(_types.SetFromMixin):
     :py:attr:`RenderLoopConfig.model_sequential_offload`
     """
 
+    torch_compile: bool = False
+    """
+    Compile repeated denoiser, ControlNet, and VAE blocks. The first use of each waits
+    while the graph builds. Wan-Animate-2 compiles its transformer and VAE blocks on
+    every load, with or without this flag. ``DGENERATE_TORCH_COMPILE=0`` leaves every
+    model eager, including Wan-Animate-2. Quantized modules and models with no
+    repeated blocks stay eager. TorchDynamo, Inductor, and Triton stay quiet
+    unless ``-v/--verbose`` is set. Compile errors still print.
+    """
+
     second_model_cpu_offload: _types.OptionalBoolean = None
     """
     Force model cpu offloading for the SDXL refiner or Stable Cascade decoder pipeline, 

@@ -28,7 +28,8 @@ of these checkpoints. See `Flux.2, Z-Image, and Qwen-Image <flow-image-models_>`
 SDNQ, GGUF, and any module that carries a quantization config stay on the
 device where they were loaded. The other modules are still group-offloaded,
 and the pipeline cache counts the whole pipeline because those weights remain
-in CPU memory.
+in CPU memory. ``--torch-compile`` leaves those quantized weights eager and
+warns.
 
 There are a few ways to utilize quantization with dgenerate, the easiest
 way being the ``--quantizer`` and ``--quantizer-map`` arguments.

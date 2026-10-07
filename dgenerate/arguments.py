@@ -3340,6 +3340,20 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         )
     )
 
+    actions.append(
+        parser.add_argument(
+            '--torch-compile', action='store_true', default=False,
+            help="""Compile repeated denoiser, ControlNet, and VAE blocks. The first use of each
+                    waits while the graph builds. A later change of resolution or frame count compiles
+                    once more, then reuses that graph. CUDA and XPU need Triton. Quantized modules
+                    and models with no repeated blocks stay eager, and dgenerate warns when the
+                    flag is set and nothing was compiled. Wan-Animate-2 compiles its transformer
+                    and VAE blocks on every load, with or without this flag. DGENERATE_TORCH_COMPILE=0
+                    leaves every model eager, including Wan-Animate-2. TorchDynamo, Inductor, and
+                    Triton stay quiet unless -v/--verbose is set. Compile errors still print."""
+        )
+    )
+
     _model_offload_group2 = parser.add_mutually_exclusive_group()
 
     actions.append(

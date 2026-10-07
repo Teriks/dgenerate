@@ -453,6 +453,7 @@ class DiffusionPipelineWrapper:
                  model_cpu_offload: bool = False,
                  model_sequential_offload: bool = False,
                  model_group_offload: bool = False,
+                 torch_compile: bool = False,
                  second_model_cpu_offload: bool = False,
                  second_model_sequential_offload: bool = False,
                  second_model_group_offload: bool = False,
@@ -507,13 +508,15 @@ class DiffusionPipelineWrapper:
         :param s_cascade_decoder_uri: Stable Cascade decoder URI string
         :param quantizer_uri: Global --quantizer URI value
         :param quantizer_map: Collection of pipeline submodule names to which quantization should be applied when
-            ``quantizer_uri`` is provided. Valid values include: ``unet``, ``transformer``, ``text_encoder``,
-            ``text_encoder_2``, ``text_encoder_3``. If ``None``, all supported modules will be quantized.
+            ``quantizer_uri`` is provided. Valid values are ``unet``, ``transformer``, ``transformer_2``,
+            ``text_encoder``, ``text_encoder_2``, ``text_encoder_3``, ``image_encoder``, ``vae``,
+            ``controlnet``, and ``connectors``. If ``None``, the UNet or transformer and every text encoder
+            are quantized. Video models also quantize ``transformer_2``, ``image_encoder``, and ``connectors``.
+            ControlNet and the VAE stay full precision unless named here.
         :param second_model_quantizer_uri: Global --second-model-quantizer URI value
         :param second_model_quantizer_map: Collection of pipeline submodule names to which quantization should be
-            applied when ``second_model_quantizer_uri`` is provided. Valid values include: ``unet``,
-            ``transformer``, ``text_encoder``, ``text_encoder_2``, ``text_encoder_3``.
-            If ``None``, all supported modules will be quantized.
+            applied when ``second_model_quantizer_uri`` is provided. Accepts the same names as ``quantizer_map``.
+            If ``None``, the secondary pipeline uses the same default as ``quantizer_map``.
         :param device: Rendering device string, example: ``cuda:0`` or ``cuda``
         :param safety_checker: Use safety checker model if available? (antiquated, for SD 1/2, Deep Floyd etc.)
         :param original_config: Optional original LDM config .yaml file path when loading a single file checkpoint.
@@ -526,6 +529,11 @@ class DiffusionPipelineWrapper:
         :param model_cpu_offload: Use model CPU offloading for the main pipeline via the accelerate module?
         :param model_sequential_offload: Use sequential CPU offloading for the main pipeline via the accelerate module?
         :param model_group_offload: Offload the main pipeline one layer group at a time. Weights stay in CPU memory.
+        :param torch_compile: Compile repeated denoiser, ControlNet, and VAE blocks. The first use of
+            each waits while the graph builds. Wan-Animate-2 compiles its transformer and VAE blocks on
+            every load, with or without this flag. ``DGENERATE_TORCH_COMPILE=0`` leaves every model eager,
+            including Wan-Animate-2. Quantized modules and models with no repeated blocks stay eager.
+            TorchDynamo, Inductor, and Triton stay quiet unless ``-v`` is set.
         :param second_model_cpu_offload: Use CPU offloading for the SDXL Refiner or Stable Cascade Decoder  via the accelerate module?
         :param second_model_sequential_offload: Use sequential CPU offloading for the SDXL Refiner or Stable Cascade Decoder via the accelerate module?
         :param second_model_group_offload: Offload the SDXL Refiner or Stable Cascade Decoder one layer group at a time.
@@ -762,6 +770,7 @@ class DiffusionPipelineWrapper:
         self._second_model_extra_modules = second_model_extra_modules
         self._model_cpu_offload = model_cpu_offload
         self._model_group_offload = model_group_offload
+        self._torch_compile = torch_compile
         self._model_sequential_offload = model_sequential_offload
 
         self._parsed_sdxl_refiner_uri = None
@@ -1086,6 +1095,16 @@ class DiffusionPipelineWrapper:
         Current ``--model-group-offload`` value.
         """
         return self._model_group_offload
+
+    @property
+    def torch_compile(self) -> bool:
+        """
+        Current ``--torch-compile`` value.
+
+        Wan-Animate-2 compiles its transformer and VAE blocks whether or not this
+        is set, unless ``DGENERATE_TORCH_COMPILE=0``.
+        """
+        return self._torch_compile
 
     @property
     def second_model_sequential_offload(self) -> bool:
@@ -4089,6 +4108,7 @@ class DiffusionPipelineWrapper:
                 sequential_cpu_offload=self._model_sequential_offload,
                 model_cpu_offload=self._model_cpu_offload,
                 model_group_offload=self._model_group_offload,
+                torch_compile=self._torch_compile,
                 local_files_only=self._local_files_only,
                 extra_modules=self._model_extra_modules
             )
@@ -4120,7 +4140,8 @@ class DiffusionPipelineWrapper:
                 local_files_only=self._local_files_only,
                 model_cpu_offload=self._second_model_cpu_offload,
                 sequential_cpu_offload=self._second_model_sequential_offload,
-                model_group_offload=self._second_model_group_offload)
+                model_group_offload=self._second_model_group_offload,
+                torch_compile=self._torch_compile)
 
             creation_result = self._recall_secondary_pipeline()
             self._s_cascade_decoder_pipeline = creation_result.pipeline
@@ -4156,7 +4177,8 @@ class DiffusionPipelineWrapper:
                 extra_modules=self._model_extra_modules,
                 model_cpu_offload=self._model_cpu_offload,
                 sequential_cpu_offload=self._model_sequential_offload,
-                model_group_offload=self._model_group_offload)
+                model_group_offload=self._model_group_offload,
+                torch_compile=self._torch_compile)
 
             creation_result = self._recall_main_pipeline()
             self._pipeline = creation_result.pipeline
@@ -4208,7 +4230,8 @@ class DiffusionPipelineWrapper:
                 local_files_only=self._local_files_only,
                 model_cpu_offload=self._second_model_cpu_offload,
                 sequential_cpu_offload=self._second_model_sequential_offload,
-                model_group_offload=self._second_model_group_offload
+                model_group_offload=self._second_model_group_offload,
+                torch_compile=self._torch_compile
             )
             self._sdxl_refiner_pipeline = self._recall_secondary_pipeline().pipeline
         else:
@@ -4241,6 +4264,7 @@ class DiffusionPipelineWrapper:
                 sequential_cpu_offload=self._model_sequential_offload,
                 model_cpu_offload=self._model_cpu_offload,
                 model_group_offload=self._model_group_offload,
+                torch_compile=self._torch_compile,
                 local_files_only=self._local_files_only,
                 extra_modules=self._model_extra_modules,
             )

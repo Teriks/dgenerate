@@ -71,7 +71,7 @@ xllamacpp = "2026.9.11063"
 pyopengltk = "0.0.4"
 pyopengl = "3.1.10"
 pyopengl-accelerate = "3.1.10"
-triton-windows = "3.8.0.post28"
+triton-windows = "3.8.0.post29"
 openvino = "2026.4.1"
 propcache = "^0.4.1"
 

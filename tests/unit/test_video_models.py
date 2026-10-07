@@ -1016,12 +1016,211 @@ class TestVideoModels(unittest.TestCase):
                     'diffusers.hooks.apply_group_offloading') as apply_offload:
             _wan.place_wan_animate_2(pipe(model), 'cuda', True, False, False)
             compiled_forward = model.block.forward
-            self.assertTrue(model.block._dgenerate_animate2_forward_compiled)
+            self.assertTrue(model.block._dgenerate_forward_compiled)
             _wan.place_wan_animate_2(pipe(model), 'cuda', True, False, False)
         self.assertIs(model.block.forward, compiled_forward)
         apply_offload.assert_called()
         self.assertEqual(apply_offload.call_args.kwargs['num_blocks_per_group'], 1)
         self.assertTrue(apply_offload.call_args.kwargs['use_stream'])
+
+        skipped = _Model()
+        warnings = []
+        with unittest.mock.patch.dict(
+                'os.environ', {'DGENERATE_TORCH_COMPILE': '0'}), \
+                unittest.mock.patch(
+                    'importlib.util.find_spec', return_value=object()), \
+                unittest.mock.patch.object(
+                    _wan._messages, 'warning', side_effect=warnings.append), \
+                unittest.mock.patch('diffusers.hooks.apply_group_offloading'):
+            _wan.place_wan_animate_2(pipe(skipped), 'cuda', False, False, False)
+        self.assertFalse(getattr(skipped.block, '_dgenerate_forward_compiled', False))
+        self.assertTrue(any('DGENERATE_TORCH_COMPILE=0' in message for message in warnings))
+        self.assertTrue(any('full score matrix' in message for message in warnings))
+
+    def test_torch_compile_flag_compiles_repeated_blocks(self):
+        from dgenerate.pipelinewrapper import pipelines as _pipe_mod
+
+        class _Block(torch.nn.Module):
+            def forward(self, x):
+                return x
+
+        class _Denoiser(torch.nn.Module):
+            _repeated_blocks = ['_Block']
+
+            def __init__(self):
+                super().__init__()
+                self.block = _Block()
+
+        class _Plain(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+        pipe = unittest.mock.Mock()
+        pipe.unet = None
+        pipe.transformer = _Plain()
+        pipe.transformer_2 = None
+        warnings = []
+        with unittest.mock.patch.object(
+                _pipe_mod._messages, 'warning', side_effect=warnings.append):
+            _pipe_mod.apply_torch_compile(pipe, 'cpu')
+        self.assertTrue(any('cannot compile' in message for message in warnings))
+
+        warnings.clear()
+        denoiser = _Denoiser()
+        pipe.transformer = denoiser
+        with unittest.mock.patch.object(
+                _pipe_mod._messages, 'warning', side_effect=warnings.append), \
+                unittest.mock.patch(
+                    'importlib.util.find_spec', return_value=None):
+            _pipe_mod.apply_torch_compile(pipe, 'cuda')
+        self.assertFalse(getattr(denoiser.block, '_dgenerate_forward_compiled', False))
+        self.assertTrue(any('Triton' in message for message in warnings))
+
+        with unittest.mock.patch(
+                'importlib.util.find_spec', return_value=object()):
+            _pipe_mod.apply_torch_compile(pipe, 'cuda')
+        self.assertTrue(denoiser.block._dgenerate_forward_compiled)
+        self.assertFalse(torch._dynamo.config.force_parameter_static_shapes)
+        import logging
+        import dgenerate.messages as _messages
+        inductor_log = logging.getLogger('torch._inductor.utils')
+        self.assertGreaterEqual(inductor_log.getEffectiveLevel(), logging.ERROR)
+        self.assertFalse(inductor_log.isEnabledFor(logging.WARNING))
+        with _messages.with_level(_messages.DEBUG):
+            _pipe_mod._configure_torch_compile_logging()
+            self.assertTrue(inductor_log.isEnabledFor(logging.WARNING))
+        _pipe_mod._COMPILE_LOG_QUIET = None
+        _pipe_mod._configure_torch_compile_logging()
+        self.assertFalse(inductor_log.isEnabledFor(logging.WARNING))
+        compiled = denoiser.block.forward
+        _pipe_mod.apply_torch_compile(pipe, 'cuda')
+        self.assertIs(denoiser.block.forward, compiled)
+
+        plain_pipe = unittest.mock.Mock()
+        plain_pipe.unet = _Plain()
+        plain_pipe.transformer = None
+        plain_pipe.transformer_2 = None
+        warnings.clear()
+        with unittest.mock.patch.object(
+                _pipe_mod._messages, 'warning', side_effect=warnings.append), \
+                unittest.mock.patch(
+                    'importlib.util.find_spec', return_value=object()):
+            _pipe_mod.apply_torch_compile(plain_pipe, 'cuda')
+        self.assertTrue(any('no repeated blocks' in message for message in warnings))
+
+        class JointTransformerBlock(torch.nn.Module):
+            def forward(self, x):
+                return x
+
+        class _SD3(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.transformer_blocks = torch.nn.ModuleList(
+                    [JointTransformerBlock(), JointTransformerBlock()])
+
+        sd3 = _SD3()
+        pipe.transformer = sd3
+        with unittest.mock.patch(
+                'importlib.util.find_spec', return_value=object()):
+            _pipe_mod.apply_torch_compile(pipe, 'cuda')
+        self.assertTrue(sd3.transformer_blocks[0]._dgenerate_forward_compiled)
+        self.assertTrue(sd3.transformer_blocks[1]._dgenerate_forward_compiled)
+
+        class BasicTransformerBlock(torch.nn.Module):
+            def forward(self, x):
+                return x
+
+        class ResnetBlock2D(torch.nn.Module):
+            def forward(self, x):
+                return x
+
+        class SDCascadeResBlock(torch.nn.Module):
+            def forward(self, x):
+                return x
+
+        class _Control(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.down = torch.nn.ModuleList(
+                    [BasicTransformerBlock(), BasicTransformerBlock()])
+
+        class _VAE(torch.nn.Module):
+            def __init__(self, count):
+                super().__init__()
+                self.decoder = torch.nn.ModuleList(
+                    [ResnetBlock2D() for _ in range(count)])
+
+        class _Cascade(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.blocks = torch.nn.ModuleList(
+                    [SDCascadeResBlock(), SDCascadeResBlock()])
+
+        extra = unittest.mock.Mock()
+        extra.unet = _Cascade()
+        extra.transformer = None
+        extra.transformer_2 = None
+        extra.controlnet = _Control()
+        extra.vae = _VAE(2)
+        extra.audio_vae = _VAE(2)
+        with unittest.mock.patch(
+                'importlib.util.find_spec', return_value=object()):
+            _pipe_mod.apply_torch_compile(extra, 'cuda')
+        self.assertTrue(extra.unet.blocks[0]._dgenerate_forward_compiled)
+        self.assertTrue(extra.controlnet.down[0]._dgenerate_forward_compiled)
+        self.assertTrue(extra.vae.decoder[0]._dgenerate_forward_compiled)
+        self.assertFalse(getattr(
+            extra.audio_vae.decoder[0], '_dgenerate_forward_compiled', False))
+
+        lone = unittest.mock.Mock()
+        lone.unet = None
+        lone.transformer = None
+        lone.transformer_2 = None
+        lone.controlnet = None
+        lone.vae = _VAE(1)
+        with unittest.mock.patch(
+                'importlib.util.find_spec', return_value=object()):
+            _pipe_mod.apply_torch_compile(lone, 'cuda')
+        self.assertFalse(getattr(
+            lone.vae.decoder[0], '_dgenerate_forward_compiled', False))
+
+        held = _Denoiser()
+        pipe.transformer = held
+        warnings.clear()
+        with unittest.mock.patch.dict(
+                'os.environ', {'DGENERATE_TORCH_COMPILE': '0'}), \
+                unittest.mock.patch.object(
+                    _pipe_mod._messages, 'warning', side_effect=warnings.append), \
+                unittest.mock.patch(
+                    'importlib.util.find_spec', return_value=object()):
+            _pipe_mod.apply_torch_compile(pipe, 'cuda')
+        self.assertFalse(getattr(held.block, '_dgenerate_forward_compiled', False))
+        self.assertTrue(any('DGENERATE_TORCH_COMPILE=0' in message for message in warnings))
+
+        quantized = _Denoiser()
+        pipe.transformer = quantized
+        warnings.clear()
+        with unittest.mock.patch.object(
+                _pipe_mod._messages, 'warning', side_effect=warnings.append), \
+                unittest.mock.patch.object(
+                    _pipe_mod, 'module_skips_group_offload', return_value=True), \
+                unittest.mock.patch(
+                    'importlib.util.find_spec', return_value=object()):
+            _pipe_mod.apply_torch_compile(pipe, 'cuda')
+        self.assertFalse(getattr(quantized.block, '_dgenerate_forward_compiled', False))
+        self.assertTrue(any('Quantized' in message for message in warnings))
+
+        omitted = _arguments.parse_args([
+            '--model-type', 'sd', 'runwayml/stable-diffusion-v1-5',
+            '--prompts', 'a cat',
+        ], throw=True, log_error=False)
+        self.assertFalse(omitted.torch_compile)
+        requested = _arguments.parse_args([
+            '--model-type', 'sd', 'runwayml/stable-diffusion-v1-5',
+            '--torch-compile', '--prompts', 'a cat',
+        ], throw=True, log_error=False)
+        self.assertTrue(requested.torch_compile)
 
     def test_load_quantized_module_applies_architecture_skips(self):
         import diffusers
@@ -1212,6 +1411,14 @@ class TestVideoModels(unittest.TestCase):
         keys = _videopipelines._cache_kwargs(Wrapper())
         self.assertNotIn('mode', keys)
         self.assertNotIn('scheduler_uri', keys)
+        self.assertFalse(keys['torch_compile'])
+        animate = Wrapper()
+        animate.model_type = _pipelinewrapper.ModelType.WAN_ANIMATE_2
+        self.assertTrue(_videopipelines._cache_kwargs(animate)['torch_compile'])
+        animate.torch_compile = False
+        self.assertTrue(_videopipelines._cache_kwargs(animate)['torch_compile'])
+        with unittest.mock.patch.dict('os.environ', {'DGENERATE_TORCH_COMPILE': '0'}):
+            self.assertFalse(_videopipelines._cache_kwargs(animate)['torch_compile'])
         self.assertNotIn(
             'scheduler_uri',
             inspect.signature(_videopipelines._create_cached_video_pipeline).parameters)

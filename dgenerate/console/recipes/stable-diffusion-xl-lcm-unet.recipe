@@ -11,6 +11,7 @@ order: 6
 @conditionalcheckboxes[{"id": "hd", "labels":["Use HiDiffusion", "HiDiffusion No Window Attention", "HiDiffusion No RAUNet"], "args":["--hi-diffusion", "--hi-diffusion-no-win-attn", "--hi-diffusion-no-raunet"]}]
 @switch[{"label":"Use SADA", "arg":"--sada", "exclude": ["hd", "dc"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":0}]
+@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @quantizer[{"divider-after":true}]
 @submodelbuilder[{"label":"Refiner", "arg":"--sdxl-refiner", "model": "SDXL Refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0"}]
 @karrasscheduler[{"label":"Refiner Scheduler", "arg":"--second-model-scheduler", "default":"UniPCMultistepScheduler"}]

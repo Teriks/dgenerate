@@ -361,7 +361,7 @@ _DEFAULT_INIT_DGEN_CONTENT = inspect.cleandoc("""
     # \\env CIVIT_AI_TOKEN=your_civitai_token_here
 
     # Performance and behavior
-    # \\env DGENERATE_TORCH_COMPILE=0
+    # \\env DGENERATE_TORCH_COMPILE=1
     # \\env DGENERATE_OFFLINE_MODE=1
 
     # Cache expiry (e.g. "days=7;hours=12" or "forever")

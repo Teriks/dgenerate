@@ -1084,6 +1084,7 @@ class RenderLoop:
             model_cpu_offload=self._c_config.model_cpu_offload,
             model_sequential_offload=self._c_config.model_sequential_offload,
             model_group_offload=self._c_config.model_group_offload,
+            torch_compile=self._c_config.torch_compile,
             prompt_weighter_loader=self.prompt_weighter_loader,
             adetailer_detector_uris=self._c_config.adetailer_detector_uris,
             adetailer_crop_control_image=bool(self._c_config.adetailer_crop_control_image),
