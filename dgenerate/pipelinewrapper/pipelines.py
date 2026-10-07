@@ -43,6 +43,7 @@ import transformers
 import dgenerate.devicecache as _devicecache
 import dgenerate.exceptions as _d_exceptions
 import dgenerate.extras.kolors as _kolors
+import dgenerate.extras.spectrum as _spectrum
 import dgenerate.extras.ultraedit
 import dgenerate.filecache as _filecache
 import dgenerate.hfhub as _hfhub
@@ -1590,17 +1591,33 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
 
     def _call_pipeline_raw():
         nonlocal prompt_warning_issued
+
+        def _invoke(call_kwargs):
+            settings = _spectrum.active_settings()
+            if settings is None:
+                return pipeline(**call_kwargs)
+            steps = call_kwargs.get('num_inference_steps', settings.fallback_steps)
+            try:
+                steps = int(steps)
+            except (TypeError, ValueError):
+                steps = settings.fallback_steps
+            try:
+                with _spectrum.apply(pipeline, steps, settings):
+                    return pipeline(**call_kwargs)
+            except _spectrum.SpectrumUnsupported as error:
+                raise UnsupportedPipelineConfigError(str(error)) from error
+
         try:
             if prompt_weighter is None:
                 if not prompt_warning_issued:
                     _warn_prompt_lengths(pipeline, **kwargs)
                     prompt_warning_issued = True
                 pipeline_to(pipeline, device)
-                pipe_result = pipeline(**kwargs)
+                pipe_result = _invoke(kwargs)
             else:
                 args = _call_prompt_weighter()
                 pipeline_to(pipeline, device)
-                pipe_result = pipeline(**args)
+                pipe_result = _invoke(args)
                 prompt_weighter.cleanup()
             return pipe_result
         except TypeError as e:
@@ -2505,10 +2522,7 @@ def get_pipeline_class(
 
     # PAG check
     if pag:
-        if not (model_type == _enums.ModelType.SD or
-                model_type == _enums.ModelType.SDXL or
-                model_type == _enums.ModelType.SD3 or
-                model_type == _enums.ModelType.KOLORS):
+        if not _enums.model_type_supports_pag(model_type):
             raise UnsupportedPipelineConfigError(
                 'Perturbed attention guidance (--pag*) is only supported with '
                 '--model-type sd, sdxl, kolors (txt2img), and sd3.')

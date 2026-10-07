@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Spectrum on Wan-Animate-2. Source template is trimmed with frame-end=.
+
+\setp image "https://raw.githubusercontent.com/Wan-Video/Wan-Animate-2/main/examples/demo1/reference.png"
+\setp driving "https://raw.githubusercontent.com/Wan-Video/Wan-Animate-2/main/examples/demo1/template.mp4"
+\setp prompt "Character appearance: a silver-gray tabby kitten with a round face, upright ears, and large circular eyes. It wears a dark blue uniform with a gold-buttoned blazer and a pleated skirt, a white shirt underneath, and a red bow at the collar with white cuffs at the sleeves. Background: plain white, even bright lighting, no other props or decorations."
+
+Wan-AI/Wan2.2-Animate-2-14B-Diffusers
+--model-type wan-animate-2
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 40
+--wan-segment-frame-lengths 81
+--wan-prev-segment-frames 1
+--max-sequence-length 512
+--video-fps 24
+--gen-seeds 1
+--output-size 640x800
+--animation-format mp4
+--output-path wan-animate-2-spectrum
+--spectrum
+--image-seeds "{{ image }};wan-driving={{ driving }};frame-end=48"
+--prompts "{{ prompt }}"

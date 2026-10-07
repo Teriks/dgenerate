@@ -666,6 +666,182 @@ def model_type_is_wan_family(model_type: ModelType | str) -> bool:
     return model_type in {ModelType.WAN, ModelType.WAN_ANIMATE, ModelType.WAN_ANIMATE_2}
 
 
+def _model_type_names(*model_types: ModelType) -> tuple[str, ...]:
+    return tuple(get_model_type_string(item) for item in model_types)
+
+
+def _model_type_supported(model_type: ModelType | str, supported: tuple[str, ...]) -> bool:
+    return get_model_type_string(model_type) in supported
+
+
+TEA_CACHE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.FLUX,
+    ModelType.FLUX_FILL,
+    ModelType.FLUX_KONTEXT,
+)
+"""``--model-type`` values that accept TeaCache."""
+
+
+def model_type_supports_tea_cache(model_type: ModelType | str) -> bool:
+    """
+    TeaCache can replace this Flux.1 transformer's forward.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return _model_type_supported(model_type, TEA_CACHE_MODEL_TYPES)
+
+
+DEEP_CACHE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.SD,
+    ModelType.PIX2PIX,
+    ModelType.SDXL,
+    ModelType.SDXL_PIX2PIX,
+    ModelType.KOLORS,
+    ModelType.UPSCALER_X4,
+)
+"""``--model-type`` values that accept DeepCache."""
+
+
+def model_type_supports_deep_cache(model_type: ModelType | str) -> bool:
+    """
+    DeepCache can cache this UNet's middle blocks.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return _model_type_supported(model_type, DEEP_CACHE_MODEL_TYPES)
+
+
+HI_DIFFUSION_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.SD,
+    ModelType.SDXL,
+    ModelType.KOLORS,
+)
+"""``--model-type`` values that accept HiDiffusion."""
+
+
+def model_type_supports_hi_diffusion(model_type: ModelType | str) -> bool:
+    """
+    HiDiffusion can patch this UNet.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return _model_type_supported(model_type, HI_DIFFUSION_MODEL_TYPES)
+
+
+SADA_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.SD,
+    ModelType.SDXL,
+    ModelType.KOLORS,
+    ModelType.FLUX,
+    ModelType.FLUX_FILL,
+    ModelType.FLUX_KONTEXT,
+)
+"""``--model-type`` values that accept SADA."""
+
+
+def model_type_supports_sada(model_type: ModelType | str) -> bool:
+    """
+    SADA can accelerate this denoiser.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return _model_type_supported(model_type, SADA_MODEL_TYPES)
+
+
+RAS_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.SD3,
+    ModelType.SD3_PIX2PIX,
+)
+"""``--model-type`` values that accept RAS."""
+
+
+def model_type_supports_ras(model_type: ModelType | str) -> bool:
+    """
+    RAS can sample this SD3 transformer.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return _model_type_supported(model_type, RAS_MODEL_TYPES)
+
+
+FREEU_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.SD,
+    ModelType.PIX2PIX,
+    ModelType.SDXL,
+    ModelType.SDXL_PIX2PIX,
+    ModelType.KOLORS,
+    ModelType.UPSCALER_X2,
+    ModelType.UPSCALER_X4,
+)
+"""``--model-type`` values that accept FreeU."""
+
+
+def model_type_supports_freeu(model_type: ModelType | str) -> bool:
+    """
+    FreeU can scale this UNet's skip and backbone features.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return _model_type_supported(model_type, FREEU_MODEL_TYPES)
+
+
+PAG_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.SD,
+    ModelType.SDXL,
+    ModelType.KOLORS,
+    ModelType.SD3,
+)
+"""``--model-type`` values that accept perturbed attention guidance."""
+
+
+def model_type_supports_pag(model_type: ModelType | str) -> bool:
+    """
+    Perturbed attention guidance can be applied to this denoiser.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return _model_type_supported(model_type, PAG_MODEL_TYPES)
+
+
+SPECTRUM_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.SD3,
+    ModelType.SD3_PIX2PIX,
+    ModelType.FLUX,
+    ModelType.FLUX_FILL,
+    ModelType.FLUX_KONTEXT,
+    ModelType.FLUX2,
+    ModelType.FLUX2_KLEIN_KV,
+    ModelType.Z_IMAGE,
+    ModelType.Z_IMAGE_OMNI,
+    ModelType.QWEN_IMAGE,
+    ModelType.QWEN_IMAGE_EDIT,
+    ModelType.QWEN_IMAGE_LAYERED,
+    ModelType.WAN,
+    ModelType.WAN_ANIMATE,
+    ModelType.WAN_ANIMATE_2,
+)
+"""``--model-type`` values that accept Spectrum."""
+
+
+def model_type_supports_spectrum(model_type: ModelType | str) -> bool:
+    """
+    Spectrum can forecast this denoiser's transformer blocks.
+
+    Stable Diffusion and SDXL stay on DeepCache. LTX is not covered.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return _model_type_supported(model_type, SPECTRUM_MODEL_TYPES)
+
+
 def model_type_is_s_cascade(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent a Stable Cascade related model?

@@ -1,0 +1,10 @@
+See: https://github.com/hanjq17/Spectrum
+
+The Chebyshev forecaster is adapted from that repository (MIT). The dgenerate
+integration keeps the forecaster state on the pipeline for one call and restores
+the original block forwards when the call ends.
+
+Spectrum forecasts the denoiser's block outputs with a Chebyshev fit blended
+with a one-step Taylor step, then skips those blocks on later diffusion steps.
+Embeddings and the final projection still run, so the forecast is placed in the
+current timestep's output head.

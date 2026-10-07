@@ -235,6 +235,43 @@ DEFAULT_TEA_CACHE_REL_L1_THRESHOLD: float = 0.6
 Default relative L1 threshold for TeaCache (Timestep Embedding Aware Cache) for Flux.
 """
 
+DEFAULT_SPECTRUM_WEIGHT: float = 0.5
+"""
+Default Spectrum blend weight. ``1`` is the Chebyshev forecast and ``0`` is a
+one-step Taylor step. ``0.5`` is the robust setting from the project README.
+"""
+
+DEFAULT_SPECTRUM_ORDER: int = 4
+"""
+Default number of Chebyshev polynomials used by Spectrum, not counting ``T_0``.
+"""
+
+DEFAULT_SPECTRUM_LAMBDA: float = 0.1
+"""
+Default ridge penalty for the Spectrum Chebyshev fit.
+"""
+
+DEFAULT_SPECTRUM_WARMUP_STEPS: int = 2
+"""
+Default number of leading denoiser passes Spectrum always runs.
+
+The paper's 50-step setup uses 5. Two passes is enough to start a forecast on
+the shorter schedules used here. Raise it when a 50-step sample drifts.
+"""
+
+DEFAULT_SPECTRUM_WINDOW_SIZE: float = 2.0
+"""
+Default initial Spectrum skip interval. ``2`` predicts every other step after warmup.
+"""
+
+DEFAULT_SPECTRUM_FLEX_WINDOW: float = 0.75
+"""
+Default amount added to the Spectrum skip interval after each full pass.
+
+``0.75`` is the paper's moderate schedule. ``0`` holds the interval fixed.
+``3`` is the paper's aggressive schedule.
+"""
+
 DEFAULT_RAS_SAMPLE_RATIO: float = 0.5
 """
 Default sample ratio for RAS (Reinforcement Attention System) for Stable Diffusion 3.

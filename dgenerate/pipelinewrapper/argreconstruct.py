@@ -429,6 +429,33 @@ def reconstruct_dgenerate_opts(
             args.tea_cache_rel_l1_threshold != _constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD:
         opts.append(('--tea-cache-rel-l1-thresholds', args.tea_cache_rel_l1_threshold))
 
+    if args.spectrum:
+        opts.append(('--spectrum',))
+
+    if args.spectrum_weight is not None and \
+            args.spectrum_weight != _constants.DEFAULT_SPECTRUM_WEIGHT:
+        opts.append(('--spectrum-weights', args.spectrum_weight))
+
+    if args.spectrum_order is not None and \
+            args.spectrum_order != _constants.DEFAULT_SPECTRUM_ORDER:
+        opts.append(('--spectrum-orders', args.spectrum_order))
+
+    if args.spectrum_lambda is not None and \
+            args.spectrum_lambda != _constants.DEFAULT_SPECTRUM_LAMBDA:
+        opts.append(('--spectrum-lambdas', args.spectrum_lambda))
+
+    if args.spectrum_warmup_steps is not None and \
+            args.spectrum_warmup_steps != _constants.DEFAULT_SPECTRUM_WARMUP_STEPS:
+        opts.append(('--spectrum-warmup-steps', args.spectrum_warmup_steps))
+
+    if args.spectrum_window_size is not None and \
+            args.spectrum_window_size != _constants.DEFAULT_SPECTRUM_WINDOW_SIZE:
+        opts.append(('--spectrum-window-sizes', args.spectrum_window_size))
+
+    if args.spectrum_flex_window is not None and \
+            args.spectrum_flex_window != _constants.DEFAULT_SPECTRUM_FLEX_WINDOW:
+        opts.append(('--spectrum-flex-windows', args.spectrum_flex_window))
+
     if args.ras:
         opts.append(('--ras',))
 

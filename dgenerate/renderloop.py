@@ -536,6 +536,12 @@ class RenderLoop:
         if diffusion_args.tea_cache_rel_l1_threshold is not None:
             args += ['tct', diffusion_args.tea_cache_rel_l1_threshold]
 
+        if diffusion_args.spectrum_window_size is not None:
+            args += ['spw', diffusion_args.spectrum_window_size]
+
+        if diffusion_args.spectrum_flex_window is not None:
+            args += ['spf', diffusion_args.spectrum_flex_window]
+
         if diffusion_args.ras_high_ratio is not None:
             args += ['rshr', diffusion_args.ras_high_ratio]
 

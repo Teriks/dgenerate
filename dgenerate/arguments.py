@@ -449,6 +449,51 @@ def _type_tea_cache_rel_l1_thresh(val):
     return val
 
 
+def _type_unit_float(val):
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
+
+    if val < 0 or val > 1:
+        raise argparse.ArgumentTypeError(
+            'Must be greater than or equal to zero, and less than or equal to one')
+    return val
+
+
+def _type_spectrum_order(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    if val < 1:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 1')
+    return val
+
+
+def _type_non_negative_integer(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
+def _type_spectrum_window(val):
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
+
+    if val < 1:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 1')
+    return val
+
+
 def _type_upscaler_noise_levels(val):
     try:
         val = int(val)
@@ -2977,6 +3022,128 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      This is supported for: --model-type flux*.
                      
                      (default: 0.6)
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--spectrum',
+            action='store_true', default=False, dest='spectrum',
+            help=f"""Activate Spectrum for the primary model?
+
+                     Spectrum forecasts denoiser block outputs with Chebyshev
+                     polynomials and skips those blocks on later steps. Embeddings
+                     and the final projection still run. This speeds up sampling
+                     and can soften fine detail.
+
+                     NOWRAP!
+                     See: https://github.com/hanjq17/Spectrum
+
+                     The defaults ({_pipelinewrapper.constants.DEFAULT_SPECTRUM_WINDOW_SIZE:g} step
+                     window, flex {_pipelinewrapper.constants.DEFAULT_SPECTRUM_FLEX_WINDOW:g}, blend
+                     {_pipelinewrapper.constants.DEFAULT_SPECTRUM_WEIGHT:g}) are the paper's moderate
+                     schedule. ``--spectrum-flex-windows 3`` is the aggressive schedule.
+                     Qwen-Image edit drifts more than text-to-image; raise
+                     ``--spectrum-warmup-steps`` or lower the flex window there.
+
+                     This is supported for: --model-type {_textprocessing.oxford_comma(_pipelinewrapper.SPECTRUM_MODEL_TYPES, "and")}.
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--spectrum-weights', metavar='FLOAT',
+            nargs='*', type=_type_unit_float, default=None, dest='spectrum_weights',
+            help=f"""Spectrum Chebyshev blend weights to try when --spectrum is enabled.
+
+                     1 uses only the Chebyshev forecast. 0 uses only the last-step
+                     Taylor step. Each value is tried in turn.
+
+                     Supplying any values implies --spectrum.
+
+                     (default: {_pipelinewrapper.constants.DEFAULT_SPECTRUM_WEIGHT:g})
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--spectrum-orders', metavar='INT',
+            nargs='*', type=_type_spectrum_order, default=None, dest='spectrum_orders',
+            help=f"""Spectrum Chebyshev polynomial counts to try when --spectrum is enabled.
+
+                     This is M in the paper, the highest polynomial after T_0.
+                     Each value is tried in turn.
+
+                     Supplying any values implies --spectrum.
+
+                     (default: {_pipelinewrapper.constants.DEFAULT_SPECTRUM_ORDER})
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--spectrum-lambdas', metavar='FLOAT',
+            nargs='*', type=_type_non_negative_float, default=None, dest='spectrum_lambdas',
+            help=f"""Spectrum ridge penalties to try when --spectrum is enabled.
+
+                     Each value is tried in turn.
+
+                     Supplying any values implies --spectrum.
+
+                     (default: {_pipelinewrapper.constants.DEFAULT_SPECTRUM_LAMBDA:g})
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--spectrum-warmup-steps', metavar='INT',
+            nargs='*', type=_type_non_negative_integer, default=None, dest='spectrum_warmup_steps',
+            help=f"""Leading full denoiser passes before Spectrum may predict a step.
+
+                     Each value is tried in turn. The paper uses 5 with 50 inference
+                     steps. Shorter schedules can use 2.
+
+                     Supplying any values implies --spectrum.
+
+                     (default: {_pipelinewrapper.constants.DEFAULT_SPECTRUM_WARMUP_STEPS})
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--spectrum-window-sizes', metavar='FLOAT',
+            nargs='*', type=_type_spectrum_window, default=None, dest='spectrum_window_sizes',
+            help=f"""Initial Spectrum skip intervals to try when --spectrum is enabled.
+
+                     2 predicts every other eligible step. Values below 2 do not skip.
+                     The interval grows by --spectrum-flex-windows after each full pass.
+                     Each value is tried in turn.
+
+                     Supplying any values implies --spectrum.
+
+                     (default: {_pipelinewrapper.constants.DEFAULT_SPECTRUM_WINDOW_SIZE:g})
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--spectrum-flex-windows', metavar='FLOAT',
+            nargs='*', type=_type_non_negative_float, default=None, dest='spectrum_flex_windows',
+            help=f"""Amounts added to the Spectrum skip interval after each full pass.
+
+                     0 keeps the interval fixed. 0.75 is the paper's moderate schedule
+                     and 3 is the aggressive one. Each value is tried in turn.
+
+                     Supplying any values implies --spectrum.
+
+                     (default: {_pipelinewrapper.constants.DEFAULT_SPECTRUM_FLEX_WINDOW:g})
                      """
         )
     )

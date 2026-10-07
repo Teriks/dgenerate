@@ -53,7 +53,10 @@ Help Output
                      [--sada-max-fixes INTEGER [INTEGER ...]] [--sada-max-intervals INTEGER [INTEGER ...]]
                      [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-dc] [-dci INTEGER [INTEGER ...]]
                      [-dcb INTEGER [INTEGER ...]] [-rdc] [-rdci INTEGER [INTEGER ...]]
-                     [-rdcb INTEGER [INTEGER ...]] [-tc] [-tcr [FLOAT ...]] [-ra] [-rif]
+                     [-rdcb INTEGER [INTEGER ...]] [-tc] [-tcr [FLOAT ...]] [--spectrum]
+                     [--spectrum-weights [FLOAT ...]] [--spectrum-orders [INT ...]]
+                     [--spectrum-lambdas [FLOAT ...]] [--spectrum-warmup-steps [INT ...]]
+                     [--spectrum-window-sizes [FLOAT ...]] [--spectrum-flex-windows [FLOAT ...]] [-ra] [-rif]
                      [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
                      [-rer CSV_INT [CSV_INT ...]] [-rme RAS_METRIC [RAS_METRIC ...]]
                      [-rst INTEGER [INTEGER ...]] [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]]
@@ -1511,6 +1514,80 @@ Help Output
             
             (default: 0.6)
             --------------
+      --spectrum
+            Activate Spectrum for the primary model?
+            
+            Spectrum forecasts denoiser block outputs with Chebyshev polynomials and skips those blocks on later
+            steps. Embeddings and the final projection still run. This speeds up sampling and can soften fine
+            detail.
+            
+            See: https://github.com/hanjq17/Spectrum
+            
+            The defaults (2 step window, flex 0.75, blend 0.5) are the paper's moderate schedule.
+            ``--spectrum-flex-windows 3`` is the aggressive schedule. Qwen-Image edit drifts more than
+            text-to-image; raise ``--spectrum-warmup-steps`` or lower the flex window there.
+            
+            This is supported for: --model-type sd3, sd3-pix2pix, flux, flux-fill, flux-kontext, flux2,
+            flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, wan,
+            wan-animate, and wan-animate-2.
+            -------------------------------
+      --spectrum-weights [FLOAT ...]
+            Spectrum Chebyshev blend weights to try when --spectrum is enabled.
+            
+            1 uses only the Chebyshev forecast. 0 uses only the last-step Taylor step. Each value is tried in
+            turn.
+            
+            Supplying any values implies --spectrum.
+            
+            (default: 0.5)
+            --------------
+      --spectrum-orders [INT ...]
+            Spectrum Chebyshev polynomial counts to try when --spectrum is enabled.
+            
+            This is M in the paper, the highest polynomial after T_0. Each value is tried in turn.
+            
+            Supplying any values implies --spectrum.
+            
+            (default: 4)
+            ------------
+      --spectrum-lambdas [FLOAT ...]
+            Spectrum ridge penalties to try when --spectrum is enabled.
+            
+            Each value is tried in turn.
+            
+            Supplying any values implies --spectrum.
+            
+            (default: 0.1)
+            --------------
+      --spectrum-warmup-steps [INT ...]
+            Leading full denoiser passes before Spectrum may predict a step.
+            
+            Each value is tried in turn. The paper uses 5 with 50 inference steps. Shorter schedules can use 2.
+            
+            Supplying any values implies --spectrum.
+            
+            (default: 2)
+            ------------
+      --spectrum-window-sizes [FLOAT ...]
+            Initial Spectrum skip intervals to try when --spectrum is enabled.
+            
+            2 predicts every other eligible step. Values below 2 do not skip. The interval grows by
+            --spectrum-flex-windows after each full pass. Each value is tried in turn.
+            
+            Supplying any values implies --spectrum.
+            
+            (default: 2)
+            ------------
+      --spectrum-flex-windows [FLOAT ...]
+            Amounts added to the Spectrum skip interval after each full pass.
+            
+            0 keeps the interval fixed. 0.75 is the paper's moderate schedule and 3 is the aggressive one. Each
+            value is tried in turn.
+            
+            Supplying any values implies --spectrum.
+            
+            (default: 0.75)
+            ---------------
       -ra, --ras
             Activate RAS (Region-Adaptive Sampling) for the primary model?
             
@@ -4836,7 +4913,7 @@ What LTX rejects
 ControlNets, T2I adapters, IP adapters, textual inversions, a replacement UNet,
 an image encoder, the SDXL refiner, Stable Cascade, Adetailer, PAG and PAG scales,
 any scheduler other than ``FlowMatchEulerDiscreteScheduler``, prompt weighters, second or third prompts,
-clip skip, inpaint crop, HiDiffusion, TeaCache, DeepCache, SADA, RAS,
+clip skip, inpaint crop, HiDiffusion, TeaCache, DeepCache, SADA, RAS, Spectrum,
 mask processors, raw latents and latents processors, ``--denoising-start`` /
 ``--denoising-end``, ``--batch-size`` greater than 1, ``--batch-grid-size``, latent output
 formats, the safety checker, ``--vae-tiling``, and ``--original-config``.
@@ -9522,6 +9599,12 @@ these are the arguments that are available for use:
     sada-max-fix: int
     sada-max-interval: int
     tea-cache-rel-l1-threshold: float
+    spectrum-weight: float
+    spectrum-order: int
+    spectrum-lambda: float
+    spectrum-warmup-steps: int
+    spectrum-window-size: float
+    spectrum-flex-window: float
     ras-index-fusion: bool
     ras-sample-ratio: float
     ras-high-ratio: float
@@ -13351,12 +13434,33 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [18624607889825]
+            Value: [90177460068921]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
         Name: "last_sigmas"
             Type: collections.abc.Sequence[collections.abc.Sequence[float] | str] | None
+            Value: []
+        Name: "last_spectrum"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_spectrum_flex_windows"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_spectrum_lambdas"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_spectrum_orders"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_spectrum_warmup_steps"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_spectrum_weights"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_spectrum_window_sizes"
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_subfolder"
             Type: str | None
