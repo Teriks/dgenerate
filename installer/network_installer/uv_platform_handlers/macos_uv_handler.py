@@ -164,11 +164,9 @@ class MacOSPlatformHandler(BasePlatformHandler):
                 ], capture_output=True, text=True)
 
                 if result.returncode == 0:
-                    # Add icon to the app bundle
+                    # Icon, dock hiding, and re-sign happen together. A second
+                    # plist write after signing puts the generic script icon back.
                     self._add_icon_to_app_bundle(app_path)
-
-                    # Modify Info.plist to hide the launcher app from dock
-                    self._hide_app_from_dock(app_path)
 
                     self.log_callback(f"✓ Created macOS desktop shortcut: {app_path}")
                     return True
@@ -209,6 +207,13 @@ class MacOSPlatformHandler(BasePlatformHandler):
             # Make it executable
             shortcut_path.chmod(0o755)
 
+            icns_path = shortcut_path.with_suffix('.icns')
+            try:
+                if self._write_icns(icns_path) and self._set_finder_icon(shortcut_path, icns_path):
+                    self.log_callback("✓ Set the dgenerate icon on the .command shortcut")
+            finally:
+                icns_path.unlink(missing_ok=True)
+
             self.log_callback(f"✓ Created fallback macOS desktop shortcut: {shortcut_path}")
             return True
 
@@ -241,6 +246,18 @@ class MacOSPlatformHandler(BasePlatformHandler):
                 return True
         return False
 
+    def _write_icns(self, icns_path: Path) -> bool:
+        """Build ``icns_path`` from the packaged PNG."""
+        scratch = Path(tempfile.mkdtemp())
+        try:
+            png_path = scratch / 'icon.png'
+            if not self._copy_icon_png(png_path):
+                self.log_callback("Warning: Could not find icon.png for the desktop shortcut")
+                return False
+            return self._png_to_icns(png_path, icns_path)
+        finally:
+            shutil.rmtree(scratch, ignore_errors=True)
+
     def _png_to_icns(self, png_path: Path, icns_path: Path) -> bool:
         """Build an ``.icns`` from a PNG with stock ``sips`` + ``iconutil``."""
         iconset = Path(tempfile.mkdtemp(suffix='.iconset'))
@@ -258,6 +275,7 @@ class MacOSPlatformHandler(BasePlatformHandler):
                 (512, 'icon_512x512.png'),
                 (1024, 'walt.e@example.net'),
             )
+            iconset_ok = True
             for size, name in variants:
                 out = iconset / name
                 result = subprocess.run(
@@ -266,108 +284,132 @@ class MacOSPlatformHandler(BasePlatformHandler):
                 if result.returncode != 0 or not out.exists():
                     self.log_callback(
                         f"Warning: sips failed for {name}: {result.stderr or result.stdout}")
-                    return False
-            result = subprocess.run(
-                ['iconutil', '-c', 'icns', str(iconset), '-o', str(icns_path)],
-                capture_output=True, text=True)
-            if result.returncode != 0 or not icns_path.exists():
+                    iconset_ok = False
+                    break
+            if iconset_ok:
+                result = subprocess.run(
+                    ['iconutil', '-c', 'icns', str(iconset), '-o', str(icns_path)],
+                    capture_output=True, text=True)
+                if result.returncode == 0 and icns_path.exists():
+                    return True
                 self.log_callback(
                     f"Warning: iconutil failed: {result.stderr or result.stdout}")
-                return False
-            return True
+            result = subprocess.run(
+                ['sips', '-s', 'format', 'icns', str(png_path), '--out', str(icns_path)],
+                capture_output=True, text=True)
+            if result.returncode == 0 and icns_path.exists():
+                return True
+            self.log_callback(
+                f"Warning: sips icns conversion failed: {result.stderr or result.stdout}")
+            return False
         finally:
             shutil.rmtree(iconset, ignore_errors=True)
 
     def _add_icon_to_app_bundle(self, app_path: Path) -> bool:
         """
-        Add icon to the AppleScript app bundle.
+        Give the AppleScript launcher the dgenerate icon.
 
-        Finder needs a real ``.icns`` in ``Contents/Resources``; a PNG
-        ``CFBundleIconFile`` alone leaves a blank desktop icon.
+        ``osacompile`` ships ``applet.icns`` and points ``CFBundleIconFile``
+        at it. Replacing that file, then signing the bundle again, is what
+        makes Finder drop the generic white script icon. ``LSUIElement`` is
+        written in the same plist edit so a later rewrite does not unsign it.
         """
         try:
             resources_dir = app_path / 'Contents' / 'Resources'
             resources_dir.mkdir(parents=True, exist_ok=True)
-            png_dest = resources_dir / 'icon.png'
-            icns_dest = resources_dir / 'app.icns'
-
-            if not self._copy_icon_png(png_dest):
-                self.log_callback("Warning: Could not find icon.png for app bundle")
+            icns_dest = resources_dir / 'applet.icns'
+            if not self._write_icns(icns_dest):
                 return False
 
-            icon_set = False
-
-            # Preferred: stock macOS tools → .icns + Info.plist.
-            if self._png_to_icns(png_dest, icns_dest):
-                try:
-                    info_plist_path = app_path / 'Contents' / 'Info.plist'
-                    if info_plist_path.exists():
-                        with open(info_plist_path, 'rb') as f:
-                            plist_data = plistlib.load(f)
-                        # Name without extension is the usual CFBundleIconFile form.
-                        plist_data['CFBundleIconFile'] = 'app'
-                        with open(info_plist_path, 'wb') as f:
-                            plistlib.dump(plist_data, f)
-                        self.log_callback("✓ Added app.icns to desktop shortcut")
-                        icon_set = True
-                except Exception as e:
-                    self.log_callback(f"Warning: Could not update Info.plist: {e}")
-
-            # Optional: fileicon if present (Homebrew).
-            if not icon_set:
-                try:
-                    result = subprocess.run(
-                        ['fileicon', 'set', str(app_path), str(png_dest)],
-                        capture_output=True, text=True)
-                    if result.returncode == 0:
-                        self.log_callback("✓ Added icon to app bundle using fileicon")
-                        icon_set = True
-                except FileNotFoundError:
-                    pass
-
-            if not icon_set:
-                self.log_callback(
-                    "Warning: Could not set the desktop shortcut icon "
-                    "(sips/iconutil or fileicon failed)")
+            info_plist_path = app_path / 'Contents' / 'Info.plist'
+            if not info_plist_path.exists():
+                self.log_callback("Warning: Info.plist not found, cannot set the shortcut icon")
                 return False
+            with open(info_plist_path, 'rb') as f:
+                plist_data = plistlib.load(f)
+            # Name without extension. This is the file osacompile already registered.
+            plist_data['CFBundleIconFile'] = 'applet'
+            plist_data['LSUIElement'] = True
+            with open(info_plist_path, 'wb') as f:
+                plistlib.dump(plist_data, f)
+
+            # Sign the edited bundle. Finder keeps the generic script icon
+            # when the applet's signature no longer matches its resources.
+            subprocess.run(
+                ['xattr', '-cr', str(app_path)],
+                capture_output=True, text=True)
+            if not self._codesign_adhoc(app_path):
+                self.log_callback("Warning: Could not re-sign the desktop shortcut")
+            # Finder's desktop icon is a custom-icon resource, separate from
+            # CFBundleIconFile. Apply it after signing.
+            self._set_finder_icon(app_path, icns_dest)
+            self._register_app(app_path)
+            self.log_callback("✓ Set the dgenerate icon on the desktop shortcut")
             return True
-
         except Exception as e:
             self.log_callback(f"Error adding icon to app bundle: {e}")
             return False
 
-    def _hide_app_from_dock(self, app_path: Path) -> bool:
-        """
-        Modify the app bundle's Info.plist to hide it from the dock.
-        This prevents the AppleScript launcher from showing as a separate dock icon.
-        
-        :param app_path: Path to the app bundle
-        :return: True if successful, False otherwise
-        """
+    def _set_finder_icon(self, target: Path, image_path: Path) -> bool:
+        """Ask AppKit to attach ``image_path`` as the Finder icon for ``target``."""
+        script = inspect.cleandoc('''
+            use framework "AppKit"
+            on run argv
+                set imagePath to item 1 of argv
+                set targetPath to item 2 of argv
+                set theImage to current application's NSImage's alloc()'s initWithContentsOfFile:imagePath
+                if theImage is missing value then error "Could not load icon"
+                set applied to current application's NSWorkspace's sharedWorkspace()'s setIcon:theImage forFile:targetPath options:0
+                if applied is false then error "setIcon returned false"
+                return "ok"
+            end run
+        ''')
+        script_path = None
         try:
-            info_plist_path = app_path / 'Contents' / 'Info.plist'
-            if not info_plist_path.exists():
-                self.log_callback("Warning: Info.plist not found, cannot hide app from dock")
+            with tempfile.NamedTemporaryFile(
+                    mode='w', suffix='.applescript', delete=False) as handle:
+                handle.write(script)
+                script_path = handle.name
+            result = subprocess.run(
+                ['osascript', script_path, str(image_path), str(target)],
+                capture_output=True, text=True)
+            if result.returncode != 0:
+                self.log_callback(
+                    f"Warning: Could not set Finder icon: {result.stderr or result.stdout}")
                 return False
-
-            # Read the current plist
-            with open(info_plist_path, 'rb') as f:
-                plist_data = plistlib.load(f)
-
-            # Add LSUIElement to hide from dock
-            # LSUIElement = true means the app runs as a background agent without dock icon
-            plist_data['LSUIElement'] = True
-
-            # Write back the modified plist
-            with open(info_plist_path, 'wb') as f:
-                plistlib.dump(plist_data, f)
-
-            self.log_callback("✓ Configured app to run without dock icon")
             return True
-
         except Exception as e:
-            self.log_callback(f"Warning: Could not hide app from dock: {e}")
+            self.log_callback(f"Warning: Could not set Finder icon: {e}")
             return False
+        finally:
+            if script_path:
+                try:
+                    os.unlink(script_path)
+                except OSError:
+                    pass
+
+    def _codesign_adhoc(self, app_path: Path) -> bool:
+        """Re-sign after editing the bundle so Finder accepts the new icon."""
+        result = subprocess.run(
+            ['codesign', '--force', '--sign', '-', str(app_path)],
+            capture_output=True, text=True)
+        if result.returncode != 0:
+            self.log_callback(
+                f"Warning: codesign failed: {result.stderr or result.stdout}")
+            return False
+        return True
+
+    def _register_app(self, app_path: Path) -> None:
+        """Tell Launch Services the bundle changed so the Desktop icon updates."""
+        app_path.touch()
+        lsregister = Path(
+            '/System/Library/Frameworks/CoreServices.framework/'
+            'Frameworks/LaunchServices.framework/Support/lsregister')
+        if not lsregister.exists():
+            return
+        subprocess.run(
+            [str(lsregister), '-f', str(app_path)],
+            capture_output=True, text=True)
 
     def create_file_associations(self) -> bool:
         """
