@@ -945,49 +945,26 @@ def load_wan_animate_2_pipeline(pipeline_class, model_path, load_kwargs, injecte
     return pipe
 
 
-def _torch_version_at_least(major: int, minor: int) -> bool:
-    raw = torch.__version__.split('+')[0]
-    parts = raw.split('.')
-    try:
-        got = (int(parts[0]), int(parts[1]))
-    except (ValueError, IndexError):
-        return False
-    return got >= (major, minor)
-
-
 def _flex_attention_can_compile(device) -> bool:
-    """
-    True when compiling the transformer produces a block-sparse flex kernel.
-
-    CUDA and XPU lower that kernel with Triton. macOS lowers it to Metal
-    through ``torch.compile``; that path shipped in PyTorch 2.13 and is in
-    the 2.14 pin used here.
-    """
-    import importlib.util
-
-    kind = torch.device(device).type
-    if kind == 'mps':
-        return _torch_version_at_least(2, 13)
-    if kind in ('cuda', 'xpu'):
-        return importlib.util.find_spec('triton') is not None
-    return False
+    """Wan-Animate-2 uses the same Inductor check as ``--torch-compile``."""
+    return _pipelines.inductor_can_compile(device)
 
 
 def _compile_wan_animate_2_transformer(transformer, device) -> None:
     """
     Compile each repeated block's ``forward``.
 
-    The generation pass uses flex attention with a block mask. Uncompiled,
-    that path materializes the full score matrix, which is tens of gigabytes
-    at video resolution. Compiling the block is what keeps the attention
-    block-sparse.
-
-    ``compile_repeated_blocks`` compiles ``_call_impl``, and the group-offload
-    prefetch hook lives on that path. The hook closes over each block name, so
-    Dynamo rebuilds the whole block until its recompile limit and the card
-    fills up. Compiling ``forward`` leaves the hook outside the graph.
+    This runs on every Wan-Animate-2 load. The generation pass uses flex
+    attention with a block mask, and the uncompiled call materializes the
+    full score matrix. ``--torch-compile`` does not control this path.
     """
-    if transformer is None or getattr(transformer, '_dgenerate_animate2_compiled', False):
+    if transformer is None or getattr(transformer, '_dgenerate_compiled', False):
+        return
+    if _pipelines.torch_compile_disabled():
+        _messages.warning(
+            'DGENERATE_TORCH_COMPILE=0, so Wan-Animate-2 leaves its transformer '
+            'blocks eager. The generation pass allocates the full score matrix '
+            'and can run out of memory at video resolution.')
         return
     repeated = getattr(transformer, '_repeated_blocks', None)
     if not repeated or _pipelines.module_skips_group_offload(transformer):
@@ -1006,17 +983,7 @@ def _compile_wan_animate_2_transformer(transformer, device) -> None:
         'Compiling Wan-Animate-2 transformer blocks. The first denoising step '
         'waits on this so attention stays block-sparse instead of allocating '
         'the full score matrix.')
-    compiled_any = False
-    for submod in transformer.modules():
-        if submod.__class__.__name__ not in repeated:
-            continue
-        if getattr(submod, '_dgenerate_animate2_forward_compiled', False):
-            continue
-        submod.forward = torch.compile(submod.forward)
-        submod._dgenerate_animate2_forward_compiled = True
-        compiled_any = True
-    if compiled_any:
-        transformer._dgenerate_animate2_compiled = True
+    _pipelines.compile_repeated_forwards(transformer)
 
 
 def place_wan_animate_2(pipe, device, model_cpu_offload, sequential_cpu_offload,
@@ -1066,8 +1033,16 @@ def place_wan_animate_2(pipe, device, model_cpu_offload, sequential_cpu_offload,
             'the GPU.')
     transformer = getattr(pipe, 'transformer', None)
     # Compile before the offload hooks wrap ``forward``. The compiled function
-    # is what those hooks call.
+    # is what those hooks call. The VAE stays resident, and its decoder blocks
+    # compile on the same load so the one cached pipeline is always compiled.
     _compile_wan_animate_2_transformer(transformer, device)
+    if _pipelines.inductor_can_compile(device):
+        vae_compiled = _pipelines.compile_repeated_forwards(
+            getattr(pipe, 'vae', None),
+            _pipelines.vae_block_names(getattr(pipe, 'vae', None)))
+        if vae_compiled:
+            _messages.log(
+                'Compiling Wan-Animate-2 VAE blocks. The first decode waits on this.')
     if offload and transformer is not None:
         if _pipelines.module_skips_group_offload(transformer):
             # No block streaming: packed BnB/SDNQ/GGUF weights are not ordinary

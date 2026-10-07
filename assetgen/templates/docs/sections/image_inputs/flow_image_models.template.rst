@@ -34,6 +34,8 @@ Flux.2 Klein, Z-Image, and Qwen-Image each have both.
 ``--model-group-offload`` are mutually exclusive. Group offload keeps weights
 in CPU memory, so the pipeline cache still counts them. BitsAndBytes, SDNQ,
 and other quantized modules stay where they were loaded.
+``--torch-compile`` compiles the repeated transformer blocks. Quantized
+weights stay eager, and dgenerate warns.
 
 Flux.2
 ------

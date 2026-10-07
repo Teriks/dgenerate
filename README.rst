@@ -52,6 +52,7 @@ Video Generation
 * Generate Wan 2.1 / 2.2 clips with ``--model-type wan`` (`Wan-AI <https://huggingface.co/Wan-AI>`_): text-to-video, image-to-video, first-last-frame, video-to-video, and VACE
 * Animate a character still with ``--model-type wan-animate`` using ``wan-pose=`` and ``wan-face=``, or ``wan-driving=`` with ``--wan-animate-preprocess`` (the existing ``openpose`` and ``yolo`` processors) or ``--wan-pose-image-processors`` / ``--wan-face-image-processors``
 * Animate a character still with ``--model-type wan-animate-2`` using ``wan-driving=`` as the motion clip
+* Compile denoiser, ControlNet, and VAE blocks with ``--torch-compile``
 * Example configs under ``examples/ltx2``, ``examples/ltx_video``, ``examples/wan``, ``examples/wan_animate``, and ``examples/wan_animate_2``; see the `video generation manual <https://dgenerate.readthedocs.io/en/version_6.0.0/manual.html#video-generation>`_
 
 Image Processing
@@ -146,7 +147,7 @@ Features a syntax-highlighting console / editor:
 * REPL / code editor for the built in shell language to assist with building complex workflows
 * Generate Code writes a config script from a plain language request with a local Qwen model
 * Preview plays finished GIF, WebP, APNG, and MP4 clips, including audio. The timeline under the picture has play, scrub, a speaker button (sound waves, or a red X when muted), and a volume slider
-* Vulkan is the default preview on Windows and Linux (OpenGL is the default on macOS; set DGENERATE_CONSOLE_UI_VULKAN=1 for Vulkan) with the ``console_ui_vulkan`` extra. The network installer selects that extra. ``DGENERATE_CONSOLE_UI_VULKAN=0`` keeps the OpenGL viewer from ``console_ui_opengl``
+* Vulkan is the default preview on Windows and Linux with the ``console_ui_vulkan`` extra. On macOS OpenGL is the default; set ``DGENERATE_CONSOLE_UI_VULKAN=1`` to use Vulkan. ``DGENERATE_CONSOLE_UI_VULKAN=0`` keeps the OpenGL viewer from ``console_ui_opengl``
 * Smooth zoom / pan, and a bounding box / coordinate picker
 * Various templating utilities (recipes, and URI builders) for quickly creating scripts and working interactively
 * In editor documentation for all arguments, and built in image processors / plugins

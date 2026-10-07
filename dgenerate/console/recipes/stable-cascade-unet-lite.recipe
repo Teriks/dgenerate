@@ -7,6 +7,7 @@ order: 14
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16", "bf16"], "default":"bf16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["DDPMWuerstchenScheduler"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":0}]
+@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @quantizer[{"divider-after":true}]
 @submodelbuilder[{"label":"Decoder", "model":"Stable Cascade Decoder", "arg":"--s-cascade-decoder", "default":"stabilityai/stable-cascade;dtype=float16"}]
 @karrasscheduler[{"label": "Decoder Scheduler", "arg": "--second-model-scheduler", "filter": ["DDPMWuerstchenScheduler"]}]

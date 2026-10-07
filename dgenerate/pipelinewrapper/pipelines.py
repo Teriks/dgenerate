@@ -23,6 +23,8 @@ import functools
 import gc
 import hashlib
 import inspect
+import logging
+import os
 import os.path
 import pathlib
 import random
@@ -297,6 +299,241 @@ def place_quantized_module(module, device) -> None:
         f'Placing quantized {type(module).__name__} on {target} '
         f'without group offload.')
     module.to(target)
+
+
+_DENOISER_NAMES = ('unet', 'transformer', 'transformer_2', 'controlnet')
+_VAE_NAME = 'vae'
+
+# Used when a module inherits ModelMixin's empty ``_repeated_blocks``.
+# SD3's joint blocks, ControlNet's transformer blocks, and Stable Cascade's
+# three block classes. A declared list still wins, so a UNet keeps compiling
+# only ``BasicTransformerBlock``.
+_DENOISER_FALLBACK_BLOCKS = frozenset({
+    'JointTransformerBlock',
+    'BasicTransformerBlock',
+    'SDCascadeResBlock',
+    'SDCascadeTimestepBlock',
+    'SDCascadeAttnBlock',
+})
+
+# Decoder and encoder blocks that repeat inside the VAEs dgenerate loads.
+# The LTX diffusion decoder's neighborhood attention blocks are absent; that
+# path stays on NATTEN.
+_VAE_BLOCKS = frozenset({
+    'ResnetBlock2D',
+    'ResnetBlockCondNorm2D',
+    'WanResidualBlock',
+    'WanAttentionBlock',
+    'LTXVideoResnetBlock3d',
+    'LTX2VideoResnetBlock3d',
+    'QwenImageResidualBlock',
+    'QwenImageAttentionBlock',
+})
+
+
+def _blocks_present(module, allow: frozenset[str], minimum: int = 2) -> tuple[str, ...]:
+    counts: dict[str, int] = {}
+    for submod in module.modules():
+        name = submod.__class__.__name__
+        if name in allow:
+            counts[name] = counts.get(name, 0) + 1
+    return tuple(name for name, count in counts.items() if count >= minimum)
+
+
+def repeated_block_names(module) -> tuple[str, ...]:
+    """
+    Class names of the denoiser or ControlNet blocks ``--torch-compile`` should compile.
+
+    A declared ``_repeated_blocks`` list wins. Stable Diffusion 3, ControlNet,
+    and Stable Cascade leave that list empty, so their repeated blocks are
+    recognized by class name. A class has to appear at least twice.
+    """
+    declared = getattr(module, '_repeated_blocks', None)
+    if declared:
+        return tuple(declared)
+    return _blocks_present(module, _DENOISER_FALLBACK_BLOCKS)
+
+
+def vae_block_names(module) -> tuple[str, ...]:
+    """Repeated VAE blocks ``--torch-compile`` should compile."""
+    if module is None:
+        return ()
+    return _blocks_present(module, _VAE_BLOCKS)
+
+
+def _torch_version_at_least(major: int, minor: int) -> bool:
+    raw = torch.__version__.split('+')[0]
+    parts = raw.split('.')
+    try:
+        got = (int(parts[0]), int(parts[1]))
+    except (ValueError, IndexError):
+        return False
+    return got >= (major, minor)
+
+
+def torch_compile_disabled() -> bool:
+    """
+    True when ``DGENERATE_TORCH_COMPILE=0``.
+
+    This leaves every model eager, including Wan-Animate-2, which otherwise
+    compiles on every load.
+    """
+    return os.environ.get('DGENERATE_TORCH_COMPILE', '1').strip() == '0'
+
+
+def inductor_can_compile(device) -> bool:
+    """
+    True when ``torch.compile`` can build an Inductor kernel on ``device``.
+
+    CUDA and XPU use Triton. macOS uses the Metal Inductor path from
+    PyTorch 2.13. CPU is left eager.
+    """
+    import importlib.util
+
+    kind = torch.device(device).type
+    if kind == 'mps':
+        return _torch_version_at_least(2, 13)
+    if kind in ('cuda', 'xpu'):
+        return importlib.util.find_spec('triton') is not None
+    return False
+
+
+_COMPILE_LOG_QUIET: bool | None = None
+_COMPILE_LOGS_ENV_OWNED = False
+
+
+def _configure_torch_compile_logging() -> None:
+    """
+    Keep TorchDynamo, Inductor, and Triton quiet unless ``-v/--verbose`` is on.
+
+    ``TORCH_LOGS``, when the user set it, is left alone. Errors still print.
+    The env value is also set so Inductor's compile worker inherits it.
+    """
+    global _COMPILE_LOG_QUIET, _COMPILE_LOGS_ENV_OWNED
+
+    if 'TORCH_LOGS' in os.environ and not _COMPILE_LOGS_ENV_OWNED:
+        return
+    quiet = not bool(_messages.LEVEL & _messages.DEBUG)
+    if _COMPILE_LOG_QUIET is quiet:
+        return
+    if _COMPILE_LOGS_ENV_OWNED:
+        os.environ.pop('TORCH_LOGS', None)
+        _COMPILE_LOGS_ENV_OWNED = False
+    import torch._logging
+    level = logging.ERROR if quiet else logging.WARNING
+    torch._logging.set_logs(dynamo=level, inductor=level, aot=level)
+    logging.getLogger('triton').setLevel(level)
+    if quiet:
+        os.environ['TORCH_LOGS'] = '-dynamo,-inductor,-aot'
+        _COMPILE_LOGS_ENV_OWNED = True
+    _COMPILE_LOG_QUIET = quiet
+
+
+def compile_repeated_forwards(module, block_names: tuple[str, ...] | None = None) -> int:
+    """
+    Compile ``forward`` on submodules named by :func:`repeated_block_names`.
+
+    ``block_names`` overrides that list, which is how the VAE selects its
+    own blocks. Compiling ``forward`` leaves group-offload hooks, which wrap
+    ``_call_impl``, outside the graph. Returns how many blocks were
+    compiled. A quantized module and an already compiled module compile
+    nothing.
+    """
+    if module is None or getattr(module, '_dgenerate_compiled', False):
+        return 0
+    if torch_compile_disabled():
+        return 0
+    repeated = repeated_block_names(module) if block_names is None else block_names
+    if not repeated or module_skips_group_offload(module):
+        return 0
+    # Repeated blocks share one compiled frame but their convolutions have
+    # different widths. Leaving parameter shapes static recompiles that frame
+    # until Dynamo's limit, then leaves the rest eager.
+    torch._dynamo.config.force_parameter_static_shapes = False
+    _configure_torch_compile_logging()
+    compiled = 0
+    for submod in module.modules():
+        if submod.__class__.__name__ not in repeated:
+            continue
+        if getattr(submod, '_dgenerate_forward_compiled', False):
+            continue
+        submod.forward = torch.compile(submod.forward)
+        submod._dgenerate_forward_compiled = True
+        compiled += 1
+    if compiled:
+        module._dgenerate_compiled = True
+    return compiled
+
+
+def _modules_named(pipe, name: str):
+    module = getattr(pipe, name, None)
+    if isinstance(module, (list, tuple)):
+        for item in module:
+            if isinstance(item, torch.nn.Module):
+                yield item
+        return
+    if isinstance(module, torch.nn.Module):
+        yield module
+
+
+def apply_torch_compile(pipe, device) -> None:
+    """
+    Compile repeated denoiser, ControlNet, and VAE blocks for ``--torch-compile``.
+
+    Warns when the device cannot compile, the weights are quantized, or
+    nothing repeated was found. Wan-Animate-2 compiles its transformer on
+    every load and does not use this path for that module.
+    """
+    if torch_compile_disabled():
+        _messages.warning(
+            '--torch-compile was set, but DGENERATE_TORCH_COMPILE=0, '
+            'so the blocks stay eager.')
+        return
+    if not inductor_can_compile(device):
+        if torch.device(device).type in ('cuda', 'xpu'):
+            detail = 'Triton is not installed, so the blocks stay eager.'
+        else:
+            detail = 'This device cannot compile the blocks, so they stay eager.'
+        _messages.warning(f'--torch-compile was set. {detail}')
+        return
+    compiled = 0
+    saw_repeated = False
+    saw_quantized = False
+    for name in _DENOISER_NAMES:
+        for module in _modules_named(pipe, name):
+            block_names = repeated_block_names(module)
+            if not block_names:
+                continue
+            saw_repeated = True
+            if module_skips_group_offload(module):
+                saw_quantized = True
+                continue
+            compiled += compile_repeated_forwards(module, block_names)
+    for module in _modules_named(pipe, _VAE_NAME):
+        block_names = vae_block_names(module)
+        if not block_names:
+            continue
+        saw_repeated = True
+        if module_skips_group_offload(module):
+            saw_quantized = True
+            continue
+        compiled += compile_repeated_forwards(module, block_names)
+    if compiled:
+        _messages.log(
+            'Compiling repeated denoiser, ControlNet, and VAE blocks '
+            '(--torch-compile). The first use of each waits while the graph '
+            'builds. A later change of resolution or frame count compiles '
+            'once more, then reuses that graph.')
+    if saw_quantized:
+        _messages.warning(
+            '--torch-compile was set. Quantized weights stay eager.')
+        return
+    if compiled:
+        return
+    if not saw_repeated:
+        _messages.warning(
+            '--torch-compile was set. This model has no repeated blocks '
+            'to compile, so it stays eager.')
 
 
 def estimate_pipeline_cache_footprint(
@@ -1648,6 +1885,7 @@ def create_diffusion_pipeline(
         model_cpu_offload: bool = False,
         sequential_cpu_offload: bool = False,
         model_group_offload: bool = False,
+        torch_compile: bool = False,
         local_files_only: bool = False,
         missing_submodules_ok: bool = False
 ) -> PipelineCreationResult:
@@ -1679,9 +1917,9 @@ def create_diffusion_pipeline(
     :param t2i_adapter_uris: Optional ``--t2i-adapters`` URI strings for specifying T2IAdapter models
     :param quantizer_uri: Optional ``--quantizer`` URI value
     :param quantizer_map: Collection of pipeline submodule names to which quantization should be applied when
-        ``quantizer_uri`` is provided. Valid values include: ``unet``, ``transformer``, ``text_encoder``,
-        ``text_encoder_2``, ``text_encoder_3``, and ``controlnet``. If ``None``, all supported modules will be quantized,
-        except for ``controlnet``.
+        ``quantizer_uri`` is provided. Valid values are ``unet``, ``transformer``, ``text_encoder``,
+        ``text_encoder_2``, ``text_encoder_3``, ``controlnet``, and ``connectors``. If ``None``, the UNet
+        or transformer and every text encoder are quantized. ControlNet stays full precision unless named here.
     :param pag: Use perturbed attention guidance?
     :param safety_checker: Safety checker enabled? default is ``False``
     :param original_config: Optional original training config .yaml file path when loading a single file checkpoint.
@@ -1692,6 +1930,9 @@ def create_diffusion_pipeline(
     :param model_cpu_offload: This pipeline has model_cpu_offloading enabled?
     :param sequential_cpu_offload: This pipeline has sequential_cpu_offloading enabled?
     :param model_group_offload: This pipeline has group offload enabled?
+    :param torch_compile: Compile repeated denoiser, ControlNet, and VAE blocks when the device
+        can compile them. Quantized modules stay eager. ``DGENERATE_TORCH_COMPILE=0`` leaves
+        the blocks eager. TorchDynamo, Inductor, and Triton stay quiet unless ``-v`` is set.
     :param local_files_only: Only look in the huggingface cache and do not connect to download models?
     :param missing_submodules_ok: It is okay if Text Encoders or VAE is missing from the checkpoint?
 
@@ -1752,6 +1993,7 @@ class PipelineFactory:
                  model_cpu_offload: bool = False,
                  sequential_cpu_offload: bool = False,
                  model_group_offload: bool = False,
+                 torch_compile: bool = False,
                  local_files_only: bool = False):
         self._args = {k: v for k, v in
                       _types.partial_deep_copy_container(locals()).items()
@@ -2803,6 +3045,7 @@ def _create_diffusion_pipeline(
         model_cpu_offload: bool = False,
         sequential_cpu_offload: bool = False,
         model_group_offload: bool = False,
+        torch_compile: bool = False,
         local_files_only: bool = False,
         missing_submodules_ok: bool = False
 ) -> PipelineCreationResult:
@@ -3891,6 +4134,10 @@ def _create_diffusion_pipeline(
             _set_floyd_safety_checker(pipeline, safety_checker)
         else:
             _set_sd_safety_checker(pipeline, safety_checker)
+
+    # Compile before offload hooks wrap forward.
+    if torch_compile:
+        apply_torch_compile(pipeline, device)
 
     # Model Offloading
 

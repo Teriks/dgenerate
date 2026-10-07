@@ -7,7 +7,8 @@ order: 32
 --model-type z-image
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
-@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1, "divider-after":true}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@switch[{"label":"Torch Compile", "arg":"--torch-compile", "divider-after":true}]
 @submodelbuilder[{"label":"Control Net", "arg":"--control-nets", "model": "Control Net", "default": "https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union/resolve/main/Z-Image-Turbo-Fun-Controlnet-Union.safetensors;scale=0.75"}]
 @imageseed[{"label":"Control Image", "arg":"--image-seeds", "file-types":["images-in"], "default":"", "float":""}]
 @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor", "divider-after":true}]

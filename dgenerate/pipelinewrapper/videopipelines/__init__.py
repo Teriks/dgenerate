@@ -800,6 +800,29 @@ def _ltx_extra_weight_directories(model_path, revision, subfolder, auth_token, l
     return extra_weight_directories_from_index(index)
 
 
+def _torch_compile_for_cache(wrapper) -> bool:
+    """
+    Cache identity for block compilation.
+
+    Wan-Animate-2 compiles on every load, so its cache entry is compiled
+    whether or not ``--torch-compile`` was passed. ``DGENERATE_TORCH_COMPILE=0``
+    leaves that entry eager. Other models compile only when the flag is set.
+    """
+    if _pipelines.torch_compile_disabled():
+        return False
+    model_type = getattr(wrapper, 'model_type', None)
+    if model_type == _enums.ModelType.WAN_ANIMATE_2:
+        return True
+    if isinstance(model_type, str):
+        try:
+            model_type = _enums.get_model_type_enum(model_type)
+        except ValueError:
+            model_type = None
+    if model_type == _enums.ModelType.WAN_ANIMATE_2:
+        return True
+    return bool(getattr(wrapper, 'torch_compile', False))
+
+
 def _cache_kwargs(wrapper) -> dict:
     quantizer_map = wrapper.quantizer_map
     return {
@@ -813,6 +836,7 @@ def _cache_kwargs(wrapper) -> dict:
         'model_cpu_offload': bool(wrapper.model_cpu_offload),
         'sequential_cpu_offload': bool(wrapper.model_sequential_offload),
         'model_group_offload': bool(getattr(wrapper, 'model_group_offload', False)),
+        'torch_compile': _torch_compile_for_cache(wrapper),
         'local_files_only': bool(wrapper._local_files_only),
         'auth_token': wrapper._auth_token,
         'quantizer_uri': wrapper.quantizer_uri,
@@ -916,6 +940,7 @@ def _create_cached_video_pipeline(model_path,
                                   model_cpu_offload,
                                   sequential_cpu_offload,
                                   model_group_offload,
+                                  torch_compile,
                                   local_files_only,
                                   auth_token,
                                   transformer_uri=None,
@@ -1034,9 +1059,12 @@ def _create_cached_video_pipeline(model_path,
         wan._set_wan_vae_dtype(pipe)
     if str(family).startswith('wan-animate-2'):
         from . import wan
+        # Compiles on every load, before the offload hooks wrap forward.
         wan.place_wan_animate_2(
             pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
     else:
+        if torch_compile:
+            _pipelines.apply_torch_compile(pipe, device)
         _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
     _pin_video_8bit_modules(pipe)
     _enable_vae_tiling(pipe)
