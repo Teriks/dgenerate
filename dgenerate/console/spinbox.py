@@ -23,7 +23,7 @@ import sys
 import tkinter as tk
 import dgenerate.console.textentry as _t_entry
 
-from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
+from dgenerate.console.mousewheelbind import bind_mousewheel, scroll_direction, un_bind_mousewheel
 
 
 class IntSpinbox(_t_entry.TextEntry):
@@ -91,8 +91,9 @@ class IntSpinbox(_t_entry.TextEntry):
         return "break"
 
     def _on_mouse_wheel(self, e):
-        delta = -1 if e.delta < 0 else 1
-        self.do_increment(delta)
+        direction = scroll_direction(e)
+        if direction:
+            self.do_increment(1 if direction > 0 else -1)
         return "break"
 
     def _setup_validation(self):
@@ -232,8 +233,9 @@ class FloatSpinbox(_t_entry.TextEntry):
         return "break"
 
     def _on_mouse_wheel(self, e):
-        delta = -1 if e.delta < 0 else 1
-        self.do_increment(delta)
+        direction = scroll_direction(e)
+        if direction:
+            self.do_increment(1 if direction > 0 else -1)
         return "break"
 
     def _setup_validation(self):

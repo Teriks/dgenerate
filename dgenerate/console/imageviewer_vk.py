@@ -1934,7 +1934,10 @@ class ImageViewerVulkan(tk.Frame):
     def _on_mouse_wheel(self, event):
         if (not self.has_image()):
             return
-        zoom_in = getattr(event, 'delta', 0) > 0 or getattr(event, 'num', 0) == 4
+        direction = _mousewheelbind.scroll_direction(event)
+        if direction == 0:
+            return
+        zoom_in = direction > 0
         factor = (self._zoom_step if zoom_in else (1 / self._zoom_step))
         self._zoom_by_factor(factor)
         return

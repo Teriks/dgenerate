@@ -25,6 +25,7 @@ import typing
 
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.formentries.entry as _entry
+import dgenerate.console.mousewheelbind as _mousewheelbind
 import dgenerate.console.resources as _resources
 import dgenerate.console.spinbox as _spinbox
 import dgenerate.console.textentry as _t_entry
@@ -77,6 +78,7 @@ class _ImageSeedSelect(tk.Toplevel):
         self._insert_button.pack()
 
         self._build_form()
+        _mousewheelbind.bind_mousewheel(self._canvas.bind, self._on_wheel)
         self._hook_wheel(self._inner)
         self.minsize(680, 420)
         _util.position_toplevel(master, self, position=position)
@@ -90,22 +92,12 @@ class _ImageSeedSelect(tk.Toplevel):
     def _hook_wheel(self, widget):
         if isinstance(widget, (_spinbox.IntSpinbox, _spinbox.FloatSpinbox)):
             return
-        widget.bind('<MouseWheel>', self._on_wheel)
-        widget.bind('<Button-4>', self._on_wheel_up)
-        widget.bind('<Button-5>', self._on_wheel_down)
+        _mousewheelbind.bind_mousewheel(widget.bind, self._on_wheel)
         for child in widget.winfo_children():
             self._hook_wheel(child)
 
     def _on_wheel(self, event):
-        self._canvas.yview_scroll(-1 if event.delta > 0 else 1, 'units')
-        return 'break'
-
-    def _on_wheel_up(self, _event):
-        self._canvas.yview_scroll(-1, 'units')
-        return 'break'
-
-    def _on_wheel_down(self, _event):
-        self._canvas.yview_scroll(1, 'units')
+        _mousewheelbind.handle_canvas_scroll(self._canvas, event)
         return 'break'
 
     def _show_if_hidden(self, widget):
