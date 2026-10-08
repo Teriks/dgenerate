@@ -515,6 +515,16 @@ class FindDialog(tk.Toplevel):
         # Options and buttons frame
         button_frame = tk.Frame(self)
         button_frame.grid(row=2, column=0, sticky='ew', padx=2, pady=2)
+
+        if _appearance.is_aqua(self):
+            options_frame = tk.Frame(button_frame)
+            options_frame.grid(row=0, column=0, sticky='ew')
+            action_frame = tk.Frame(button_frame)
+            action_frame.grid(row=1, column=0, sticky='ew')
+            button_frame.grid_columnconfigure(0, weight=1)
+        else:
+            options_frame = button_frame
+            action_frame = button_frame
         
         # Options
         self.case_var = tk.BooleanVar(value=self.state.case_sensitive)
@@ -524,34 +534,34 @@ class FindDialog(tk.Toplevel):
         self.case_var.trace_add('write', lambda *args: self._on_options_changed())
         self.regex_var.trace_add('write', lambda *args: self._on_options_changed())
         
-        ttk.Checkbutton(button_frame, text="Case Sensitive",
+        ttk.Checkbutton(options_frame, text="Case Sensitive",
                       variable=self.case_var).pack(side='left', padx=2)
-        ttk.Checkbutton(button_frame, text="Regex Search",
+        ttk.Checkbutton(options_frame, text="Regex Search",
                       variable=self.regex_var).pack(side='left', padx=2)
         
         # Navigation buttons
-        ttk.Button(button_frame, text='Previous',
+        ttk.Button(action_frame, text='Previous',
                  command=self._find_previous).pack(side='left', padx=2)
-        ttk.Button(button_frame, text='Next',
+        ttk.Button(action_frame, text='Next',
                  command=self._find_next).pack(side='left', padx=2)
         
         # Replace buttons (if needed)
         if self.replace_mode:
-            ttk.Button(button_frame, text='Replace',
+            ttk.Button(action_frame, text='Replace',
                      command=self._replace_current).pack(side='left', padx=2)
         
         # Find All button
-        ttk.Button(button_frame, text='Find All',
+        ttk.Button(action_frame, text='Find All',
                  command=self._find_all).pack(side='left', padx=2)
         
         # Replace All button (if needed)
         if self.replace_mode:
-            ttk.Button(button_frame, text='Replace All',
+            ttk.Button(action_frame, text='Replace All',
                      command=self._replace_all).pack(side='left', padx=2)
         
         # Help button (only in replace mode when regex is enabled)
         if self.replace_mode:
-            self.help_button = ttk.Button(button_frame, text='Help',
+            self.help_button = ttk.Button(action_frame, text='Help',
                                        command=self._show_help)
             self.help_button.pack(side='right', padx=2)
             # Initially hide if regex mode is not enabled
