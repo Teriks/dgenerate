@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.formentries.entry as _entry
@@ -44,7 +45,7 @@ class _DirectoryEntry(_entry._Entry):
             if r is not None:
                 self.text_var.set(r)
 
-        self.button = tk.Button(self.master,
+        self.button = ttk.Button(self.master,
                                 text="Directory", command=select_command)
 
         self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')

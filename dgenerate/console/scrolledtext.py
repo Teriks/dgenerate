@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tkinter as tk
+import tkinter.ttk as ttk
 import tkinter.font as tkfont
 import dgenerate.console.themetext as _themetext
 import dgenerate.console.fonts as _fonts
@@ -50,10 +51,10 @@ class ScrolledText(tk.Frame):
             tabs=tkfont.Font(font=kwargs["font"]).measure(" " * 4),
         )
 
-        self.y_scrollbar = tk.Scrollbar(self, orient='vertical', command=self.text.yview)
+        self.y_scrollbar = ttk.Scrollbar(self, orient='vertical', command=self.text.yview)
         self.y_scrollbar.pack(side='right', fill='y')
 
-        self.x_scrollbar = tk.Scrollbar(self, orient='horizontal', command=self.text.xview)
+        self.x_scrollbar = ttk.Scrollbar(self, orient='horizontal', command=self.text.xview)
         self.x_scrollbar.pack(side='bottom', fill='x')
 
         self.text['yscrollcommand'] = self.y_scrollbar.set

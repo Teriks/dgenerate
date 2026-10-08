@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.imageseedselect as _imageseedselect
 import dgenerate.console.formentries.uriwithfloatargentry as _uriwithfloatargentry
@@ -31,7 +32,7 @@ class _ImageSeedEntry(_uriwithfloatargentry._UriWithFloatArgEntry):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.build_uri_button = tk.Button(
+        self.build_uri_button = ttk.Button(
             self.button_frame,
             text='Build URI',
             command=self._build_uri)

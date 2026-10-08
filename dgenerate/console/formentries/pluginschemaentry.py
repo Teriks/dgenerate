@@ -23,7 +23,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import typing
 
-
+import dgenerate.console.appearance as _appearance
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.formentries.entry as _entry
 import dgenerate.console.helpdialog as _helpdialog
@@ -161,11 +161,10 @@ class _PluginSchemaEntry(_entry._Entry):
             lambda e: self._on_plugin_change(self.plugin_name_var.get()))
 
         if len(self.plugin_dropdown['values']) < 2:
-            self.plugin_dropdown.config(background='darkgray')
             self.plugin_dropdown.configure(state=tk.DISABLED)
 
         if self._has_help_button:
-            self.plugin_help_button = tk.Button(self._dropdown_parent, text='Help', command=self._show_help)
+            self.plugin_help_button = ttk.Button(self._dropdown_parent, text='Help', command=self._show_help)
 
         self.dropdown_label.grid(row=self._dropdown_row, column=0, padx=_entry.ROW_XPAD, sticky="e")
         self.plugin_dropdown.grid(row=self._dropdown_row, column=1, padx=_entry.ROW_XPAD, sticky="ew")
@@ -264,13 +263,16 @@ class _PluginSchemaEntry(_entry._Entry):
                            pady=_entry.DIVIDER_YPAD)
             self.dynamic_widgets.append(separator)
 
+        for widget in self.dynamic_widgets:
+            _appearance.apply(widget)
+
         if self.on_updated_callback is not None:
             self.on_updated_callback()
 
     def _add_field_button(self, row, *args, **kwargs):
         if row in self._button_frame_map:
             button_frame = self._button_frame_map[row]
-            button = tk.Button(button_frame, *args, **kwargs)
+            button = ttk.Button(button_frame, *args, **kwargs)
             button.pack(side='left')
             self.dynamic_widgets.append(button_frame)
             return button
@@ -278,7 +280,7 @@ class _PluginSchemaEntry(_entry._Entry):
             button_frame = tk.Frame(self.master)
             button_frame.grid(row=row, column=2, padx=_entry.ROW_XPAD, sticky='w')
             self._button_frame_map[row] = button_frame
-            button = tk.Button(button_frame, *args, **kwargs)
+            button = ttk.Button(button_frame, *args, **kwargs)
             button.pack(side='left')
             self.dynamic_widgets.append(button_frame)
             return button
@@ -368,7 +370,7 @@ class _PluginSchemaEntry(_entry._Entry):
                 return True, _PluginArgEntry(raw=False, widgets=[entry], variable=variable)
             else:
                 variable = tk.BooleanVar(value=default_value)
-                entry = tk.Checkbutton(self.master, variable=variable)
+                entry = ttk.Checkbutton(self.master, variable=variable)
                 entry.grid(row=row, column=1, sticky='w')
                 return True, _PluginArgEntry(raw=False, widgets=[entry], variable=variable)
 

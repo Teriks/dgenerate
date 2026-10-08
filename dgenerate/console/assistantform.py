@@ -28,6 +28,9 @@ import subprocess
 import tempfile
 import threading
 import tkinter as tk
+import tkinter.ttk as ttk
+
+import dgenerate.console.appearance as _appearance
 import typing
 
 import psutil
@@ -134,6 +137,7 @@ class _AssistantForm(tk.Toplevel):
         _themetext.listen(self._theme_text_boxes)
 
         self.minsize(560, 420)
+        _appearance.install(self)
         _util.position_toplevel(master, self, size=size if size else (720, 520), position=position)
 
         self._request_text.text.focus_set()
@@ -197,7 +201,7 @@ class _AssistantForm(tk.Toplevel):
         reason = tk.Frame(options)
         reason.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
         self._think_var = tk.BooleanVar(value=_saved_bool(_SETTINGS_THINK))
-        self._think_check = tk.Checkbutton(
+        self._think_check = ttk.Checkbutton(
             reason, text='Reason before answering (slower)', variable=self._think_var)
         self._think_check.grid(row=0, column=0, sticky=tk.W)
         self._think_var.trace_add('write', self._remember_think)
@@ -215,9 +219,8 @@ class _AssistantForm(tk.Toplevel):
         self._set_effort_enabled()
 
         self._edit_var = tk.BooleanVar(value=_saved_bool(_SETTINGS_EDIT))
-        self._edit_check = tk.Checkbutton(
-            options, text='Editor in context (edit mode)', variable=self._edit_var,
-            anchor=tk.W, justify=tk.LEFT)
+        self._edit_check = ttk.Checkbutton(
+            options, text='Editor in context (edit mode)', variable=self._edit_var)
         self._edit_check.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
         self._edit_var.trace_add('write', self._sync_edit_mode)
 
@@ -230,9 +233,9 @@ class _AssistantForm(tk.Toplevel):
 
         buttons = tk.Frame(self)
         buttons.grid(row=5, column=0)
-        self._generate_button = tk.Button(buttons, text='Generate', command=self._generate)
+        self._generate_button = ttk.Button(buttons, text='Generate', command=self._generate)
         self._generate_button.pack(side=tk.LEFT, padx=5)
-        self._cancel_button = tk.Button(buttons, text='Cancel', command=self._cancel, state=tk.DISABLED)
+        self._cancel_button = ttk.Button(buttons, text='Cancel', command=self._cancel, state=tk.DISABLED)
         self._cancel_button.pack(side=tk.LEFT, padx=5)
         self._sync_edit_mode()
 

@@ -21,6 +21,7 @@
 
 import sys
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.formentries.entry as _entry
 from dgenerate.console.spinbox import IntSpinbox
@@ -44,7 +45,7 @@ class _CheckboxWithTwoIntArgsEntry(_entry._Entry):
                                          self.arg if self.arg else 'Switch Option'), anchor='e')
 
         # create checkbox widget with boolean variable
-        self.checkbox = tk.Checkbutton(self.master, variable=self.bool_var)
+        self.checkbox = ttk.Checkbutton(self.master, variable=self.bool_var)
 
         # place the widgets in a grid layout
         self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')

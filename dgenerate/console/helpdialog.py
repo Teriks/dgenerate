@@ -20,7 +20,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import tkinter as tk
+import tkinter.ttk as ttk
 
+import dgenerate.console.appearance as _appearance
 import dgenerate.console.finddialog as _finddialog
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 import dgenerate.console.themetext as _themetext
@@ -68,10 +70,10 @@ class HelpDialog:
         frame = tk.Frame(self.top)
         frame.pack(expand=True, fill='both')
 
-        v_scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL)
+        v_scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL)
         v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        h_scrollbar = tk.Scrollbar(frame, orient=tk.HORIZONTAL)
+        h_scrollbar = ttk.Scrollbar(frame, orient=tk.HORIZONTAL)
         h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
         self.text_widget = _themetext.ThemeText(
@@ -187,6 +189,7 @@ class HelpDialog:
             og_destroy()
 
         self.top.destroy = new_destroy
+        _appearance.install(self.top)
 
     @staticmethod
     def _on_help_mouse_wheel(event):

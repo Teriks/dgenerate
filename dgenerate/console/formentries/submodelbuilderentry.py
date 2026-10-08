@@ -21,6 +21,7 @@
 
 
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.formentries.entry as _entry
 import dgenerate.console.resources
@@ -81,19 +82,19 @@ class _SubModelBuilderEntry(_entry._Entry):
                 self.uri_var.set(r)
 
         if is_file:
-            self.open_file_button = tk.Button(
+            self.open_file_button = ttk.Button(
                 self.button_frame,
                 text='File',
                 command=select_file_command)
             self.open_file_button.pack(side='left')
         if is_dir:
-            self.open_dir_button = tk.Button(
+            self.open_dir_button = ttk.Button(
                 self.button_frame,
                 text='Directory',
                 command=select_dir_command)
             self.open_dir_button.pack(side='left')
 
-        self.build_uri_button = tk.Button(
+        self.build_uri_button = ttk.Button(
             self.button_frame,
             text='Build URI',
             command=self._build_uri)

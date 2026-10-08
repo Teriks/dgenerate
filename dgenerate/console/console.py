@@ -31,6 +31,8 @@ import subprocess
 import sys
 import tkinter as tk
 
+import dgenerate.console.appearance as _appearance
+
 import charset_normalizer
 
 import dgenerate.console.argumentselect as _argumentselect
@@ -576,6 +578,7 @@ class DgenerateConsole(tk.Tk):
         process_monitor_events()
 
         self._update_cwd_title(os.getcwd())
+        _appearance.install(self)
 
     def _update_shell_options_state(self):
         self._shell_procmon.popen_args = \
