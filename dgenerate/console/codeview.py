@@ -19,7 +19,10 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tkinter as tk
+import tkinter.ttk as ttk
 import tkinter.font as tkfont
+
+import dgenerate.console.appearance as _appearance
 
 import tklinenums
 
@@ -61,8 +64,8 @@ class DgenerateCodeView(tk.Frame):
             borderwidth=0,
         )
 
-        self.y_scrollbar = tk.Scrollbar(self, orient='vertical', command=self.text.yview)
-        self.x_scrollbar = tk.Scrollbar(self, orient='horizontal', command=self.text.xview)
+        self.y_scrollbar = ttk.Scrollbar(self, orient='vertical', command=self.text.yview)
+        self.x_scrollbar = ttk.Scrollbar(self, orient='horizontal', command=self.text.xview)
 
         self.y_scrollbar.grid(row=0, column=2, sticky="ns")
         self.x_scrollbar.grid(row=1, column=1, sticky="we")
@@ -644,7 +647,12 @@ class DgenerateCodeView(tk.Frame):
         if color_theme is None or color_theme.lower() == 'none':
             self._highlighting = False
             self._syntax_highlighter.remove_tags()
-            self.text.configure(fg='black', bg='white')
+            if _appearance.is_aqua(self.text):
+                self.text.configure(
+                    foreground=_appearance.text_foreground(),
+                    background=_appearance.field_background())
+            else:
+                self.text.configure(fg='black', bg='white')
         else:
             self._highlighting = True
             if isinstance(color_theme, str):

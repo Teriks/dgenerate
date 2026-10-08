@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import sys
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.formentries.entry as _entry
 from dgenerate.console.spinbox import IntSpinbox
@@ -45,7 +46,7 @@ class _SeedsEntry(_entry._Entry):
 
         self.is_count_var = tk.BooleanVar(value=True)
 
-        self.is_count_check = tk.Checkbutton(entry_frame, variable=self.is_count_var, command=self._is_count_changed)
+        self.is_count_check = ttk.Checkbutton(entry_frame, variable=self.is_count_var, command=self._is_count_changed)
         self.is_count_check.grid(column=1, row=0)
 
         self.entry = IntSpinbox(entry_frame,

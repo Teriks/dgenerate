@@ -51,14 +51,18 @@ def shell_quote_if(text, strict: bool = False):
     return text
 
 
+def _highlight_border(widget):
+    return not isinstance(widget, (ttk.Widget, tkinter.Checkbutton))
+
+
 def valid_colors(widget):
-    if not isinstance(widget, ttk.Combobox) and not isinstance(widget, tkinter.Checkbutton):
+    if _highlight_border(widget):
         widget.config(
             highlightthickness=0)
 
 
 def invalid_colors(widget):
-    if not isinstance(widget, ttk.Combobox) and not isinstance(widget, tkinter.Checkbutton):
+    if _highlight_border(widget):
         widget.config(
             highlightbackground="red",
             highlightcolor="red",

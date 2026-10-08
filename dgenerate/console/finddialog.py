@@ -21,8 +21,11 @@
 import inspect
 import re
 import tkinter as tk
+import tkinter.ttk as ttk
 import typing
 import dataclasses
+
+import dgenerate.console.appearance as _appearance
 
 import dgenerate.console.util as _util
 import dgenerate.console.helpdialog as _helpdialog
@@ -405,15 +408,10 @@ class HighlightManager:
             widget.tag_remove('invalid', '1.0', tk.END)
             if invalid:
                 widget.tag_add('invalid', '1.0', tk.END)
-            else:
-                # Reset to normal appearance by ensuring no invalid tag
-                try:
-                    # Get the normal background color from the widget
-                    normal_bg = widget.cget('bg')
-                    if normal_bg in ('#ffcccc', 'red'):  # If it's still showing error color
-                        widget.config(bg='white')
-                except tk.TclError:
-                    pass
+        elif _appearance.is_aqua(widget):
+            widget.configure(
+                foreground=(_appearance.error_foreground()
+                            if invalid else _appearance.text_foreground()))
         else:  # Entry widget
             if invalid:
                 widget.config(bg='#ffcccc')
@@ -459,6 +457,7 @@ class FindDialog(tk.Toplevel):
         self._setup_events()
         self._restore_state()
         self._position_dialog()
+        _appearance.install(self)
     
     def _setup_ui(self, name: str):
         """Setup the user interface"""
@@ -475,10 +474,17 @@ class FindDialog(tk.Toplevel):
         
         self.find_entry = tk.Text(self.find_frame, height=1, width=40, wrap='none')
         self.find_entry.grid(row=0, column=0, sticky='ew')
-        self.find_entry.tag_config('invalid', background='#ffcccc', foreground='#800000')
+        if _appearance.is_aqua(self.find_entry):
+            self.find_entry.configure(
+                background=_appearance.field_background(),
+                foreground=_appearance.text_foreground())
+            self.find_entry.tag_config(
+                'invalid', foreground=_appearance.error_foreground())
+        else:
+            self.find_entry.tag_config('invalid', background='#ffcccc', foreground='#800000')
         
         # Create scrollbar but keep it hidden initially
-        self.find_scrollbar = tk.Scrollbar(self.find_frame, orient='vertical', command=self.find_entry.yview)
+        self.find_scrollbar = ttk.Scrollbar(self.find_frame, orient='vertical', command=self.find_entry.yview)
         self.find_entry.configure(yscrollcommand=self.find_scrollbar.set)
         
         # Replace entry (if needed) with frame for potential scrollbar
@@ -492,10 +498,18 @@ class FindDialog(tk.Toplevel):
             
             self.replace_entry = tk.Text(self.replace_frame, height=1, width=40, wrap='none')
             self.replace_entry.grid(row=0, column=0, sticky='ew')
-            self.replace_entry.tag_config('invalid', background='#ffcccc', foreground='#800000')
+            if _appearance.is_aqua(self.replace_entry):
+                self.replace_entry.configure(
+                    background=_appearance.field_background(),
+                    foreground=_appearance.text_foreground())
+                self.replace_entry.tag_config(
+                    'invalid', foreground=_appearance.error_foreground())
+            else:
+                self.replace_entry.tag_config(
+                    'invalid', background='#ffcccc', foreground='#800000')
             
             # Create scrollbar but keep it hidden initially
-            self.replace_scrollbar = tk.Scrollbar(self.replace_frame, orient='vertical', command=self.replace_entry.yview)
+            self.replace_scrollbar = ttk.Scrollbar(self.replace_frame, orient='vertical', command=self.replace_entry.yview)
             self.replace_entry.configure(yscrollcommand=self.replace_scrollbar.set)
         
         # Options and buttons frame
@@ -510,34 +524,34 @@ class FindDialog(tk.Toplevel):
         self.case_var.trace_add('write', lambda *args: self._on_options_changed())
         self.regex_var.trace_add('write', lambda *args: self._on_options_changed())
         
-        tk.Checkbutton(button_frame, text="Case Sensitive", 
+        ttk.Checkbutton(button_frame, text="Case Sensitive",
                       variable=self.case_var).pack(side='left', padx=2)
-        tk.Checkbutton(button_frame, text="Regex Search", 
+        ttk.Checkbutton(button_frame, text="Regex Search",
                       variable=self.regex_var).pack(side='left', padx=2)
         
         # Navigation buttons
-        tk.Button(button_frame, text='Previous', 
+        ttk.Button(button_frame, text='Previous',
                  command=self._find_previous).pack(side='left', padx=2)
-        tk.Button(button_frame, text='Next', 
+        ttk.Button(button_frame, text='Next',
                  command=self._find_next).pack(side='left', padx=2)
         
         # Replace buttons (if needed)
         if self.replace_mode:
-            tk.Button(button_frame, text='Replace', 
+            ttk.Button(button_frame, text='Replace',
                      command=self._replace_current).pack(side='left', padx=2)
         
         # Find All button
-        tk.Button(button_frame, text='Find All', 
+        ttk.Button(button_frame, text='Find All',
                  command=self._find_all).pack(side='left', padx=2)
         
         # Replace All button (if needed)
         if self.replace_mode:
-            tk.Button(button_frame, text='Replace All', 
+            ttk.Button(button_frame, text='Replace All',
                      command=self._replace_all).pack(side='left', padx=2)
         
         # Help button (only in replace mode when regex is enabled)
         if self.replace_mode:
-            self.help_button = tk.Button(button_frame, text='Help', 
+            self.help_button = ttk.Button(button_frame, text='Help',
                                        command=self._show_help)
             self.help_button.pack(side='right', padx=2)
             # Initially hide if regex mode is not enabled

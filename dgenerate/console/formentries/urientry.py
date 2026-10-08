@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.formentries.entry as _entry
@@ -68,12 +69,12 @@ class _UriEntry(_entry._Entry):
 
             self.button_frame = tk.Frame(self.master)
 
-            file_button = tk.Button(self.button_frame,
+            file_button = ttk.Button(self.button_frame,
                                     text="File",
                                     command=select_file_command)
             file_button.pack(side=tk.LEFT)
 
-            directory_button = tk.Button(self.button_frame,
+            directory_button = ttk.Button(self.button_frame,
                                          text="Directory",
                                          command=select_dir_command)
             directory_button.pack(side=tk.LEFT)
@@ -94,7 +95,7 @@ class _UriEntry(_entry._Entry):
 
             self.button_frame = tk.Frame(self.master)
 
-            button = tk.Button(self.button_frame,
+            button = ttk.Button(self.button_frame,
                                text="File" if file_types else "Directory",
                                command=select_command)
             button.pack(side=tk.LEFT)

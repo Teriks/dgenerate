@@ -21,6 +21,7 @@
 
 
 import tkinter as tk
+import dgenerate.console.appearance as _appearance
 
 
 class TextEntry(tk.Entry):
@@ -29,6 +30,9 @@ class TextEntry(tk.Entry):
     """
     
     def __init__(self, parent, **kwargs):
+        if _appearance.is_aqua(parent) and not any(
+                key in kwargs for key in ('bg', 'background')):
+            kwargs['background'] = _appearance.field_background()
         super().__init__(parent, **kwargs)
 
         self.context_menu = tk.Menu(self, tearoff=0)

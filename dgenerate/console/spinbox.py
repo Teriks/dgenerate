@@ -21,9 +21,24 @@
 import re
 import sys
 import tkinter as tk
+import tkinter.ttk as ttk
 import dgenerate.console.textentry as _t_entry
 
 from dgenerate.console.mousewheelbind import bind_mousewheel, scroll_direction, un_bind_mousewheel
+
+
+def _create_spin_buttons(master, increment, decrement) -> tk.Frame:
+    button_frame = tk.Frame(master)
+    style = ttk.Style(master)
+    style.configure('DgenerateSpin.TButton', padding=0)
+
+    inc = ttk.Button(
+        button_frame, text='+', width=1, style='DgenerateSpin.TButton', command=increment)
+    inc.pack(side=tk.LEFT)
+    dec = ttk.Button(
+        button_frame, text='-', width=1, style='DgenerateSpin.TButton', command=decrement)
+    dec.pack(side=tk.LEFT)
+    return button_frame
 
 
 class IntSpinbox(_t_entry.TextEntry):
@@ -64,12 +79,10 @@ class IntSpinbox(_t_entry.TextEntry):
         self.bind('<Down>', self._on_down_arrow)
 
     def create_spin_buttons(self, master) -> tk.Frame:
-        button_frame = tk.Frame(master)
-        inc = tk.Button(button_frame, text='+', command=lambda: self.do_increment(1))
-        inc.pack(side=tk.LEFT)
-        dec = tk.Button(button_frame, text='-', command=lambda: self.do_increment(-1))
-        dec.pack(side=tk.RIGHT)
-        return button_frame
+        return _create_spin_buttons(
+            master,
+            increment=lambda: self.do_increment(1),
+            decrement=lambda: self.do_increment(-1))
 
     def do_increment(self, delta):
         if self.cget('state') == tk.DISABLED:
@@ -202,12 +215,10 @@ class FloatSpinbox(_t_entry.TextEntry):
         self.bind('<Down>', self._on_down_arrow)
 
     def create_spin_buttons(self, master) -> tk.Frame:
-        button_frame = tk.Frame(master)
-        inc = tk.Button(button_frame, text='+', command=lambda: self.do_increment(1))
-        inc.pack(side=tk.LEFT)
-        dec = tk.Button(button_frame, text='-', command=lambda: self.do_increment(-1))
-        dec.pack(side=tk.RIGHT)
-        return button_frame
+        return _create_spin_buttons(
+            master,
+            increment=lambda: self.do_increment(1),
+            decrement=lambda: self.do_increment(-1))
 
     def do_increment(self, delta):
         if self.cget('state') == tk.DISABLED:

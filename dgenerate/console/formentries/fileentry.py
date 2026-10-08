@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.formentries.entry as _entry
@@ -53,10 +54,10 @@ class _FileEntry(_entry._Entry):
                 self.text_var.set(r)
 
         if 'output' in self.select_mode:
-            self.button = tk.Button(self.master, text="Save File",
+            self.button = ttk.Button(self.master, text="Save File",
                                     command=select_command)
         else:
-            self.button = tk.Button(self.master, text="File",
+            self.button = ttk.Button(self.master, text="File",
                                     command=select_command)
 
         self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')

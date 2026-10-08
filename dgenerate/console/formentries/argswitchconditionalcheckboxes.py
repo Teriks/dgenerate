@@ -21,6 +21,7 @@
 
 
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.formentries.entry as _entry
 
@@ -63,7 +64,7 @@ class _ArgSwitchConditionalCheckboxes(_entry._Entry):
                          anchor='e'))
 
             # create checkbox widget with boolean variable
-            checkbox = tk.Checkbutton(self.master, variable=self.bool_vars[-1])
+            checkbox = ttk.Checkbutton(self.master, variable=self.bool_vars[-1])
             self.check_boxes.append(checkbox)
 
             # place the widgets in a grid layout

@@ -21,6 +21,7 @@
 
 
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.formentries.entry as _entry
 
@@ -70,7 +71,7 @@ class _ArgSwitchRadio(_entry._Entry):
 
             # create checkbox widget with boolean variable
             self.check_boxes.append(
-                tk.Checkbutton(self.master,
+                ttk.Checkbutton(self.master,
                                variable=self.bool_vars[-1],
                                command=var_changed))
 

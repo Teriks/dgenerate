@@ -26,6 +26,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import typing
 
+import dgenerate.console.appearance as _appearance
 import dgenerate.console.formentries as _formentries
 import dgenerate.console.resources as _resources
 import dgenerate.console.textentry as _t_entry
@@ -274,7 +275,7 @@ class _RecipesForm(tk.Toplevel):
         outer_frame.grid(row=2, column=0, sticky='nsew', padx=5, pady=5)
 
         self.canvas = tk.Canvas(outer_frame, highlightthickness=0)
-        self.scrollbar = tk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollbar = ttk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = tk.Frame(self.canvas, padx=10, pady=10, highlightthickness=0)
 
         self.scrollable_frame.bind(
@@ -303,6 +304,7 @@ class _RecipesForm(tk.Toplevel):
 
         self._update_form(self._current_template.get())
         self._update_filter_toggle_label()
+        _appearance.install(self)
 
     def bind_mousewheel(self):
         bind_mousewheel(self.canvas.bind_all, self._on_mouse_wheel)
@@ -381,8 +383,9 @@ class _RecipesForm(tk.Toplevel):
 
             self._entries.append(entry)
 
-        apply_button = tk.Button(self, text='Insert', command=self._apply_templates)
+        apply_button = ttk.Button(self, text='Insert', command=self._apply_templates)
         apply_button.grid(row=3, column=0, padx=5, pady=5, columnspan=2)
+        _appearance.apply(self)
 
     def destroy(self) -> None:
         self.unbind_mousewheel()

@@ -23,6 +23,8 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import typing
 
+import dgenerate.console.appearance as _appearance
+
 import dgenerate.console.util as _util
 import dgenerate.console.helpdialog as _helpdialog
 
@@ -70,15 +72,16 @@ class _DropdownSelectWithHelp(tk.Toplevel):
         _adjust_combobox_width(self._value_dropdown, self._values)
 
         # Create buttons
-        self._insert_button = tk.Button(self._frame, text="Insert", command=self._insert_action)
-        self._help_button = tk.Button(self._frame, text='Help', command=self._show_help)
+        self._insert_button = ttk.Button(self._frame, text="Insert", command=self._insert_action)
+        self._help_button = ttk.Button(self._frame, text='Help', command=self._show_help)
         self._insert_button.config(state=tk.DISABLED)
+        _appearance.install(self)
         self._help_button.config(state=tk.DISABLED)
 
         self._current_value.trace_add('write',
                                   lambda *a:
-                                  (self._help_button.config(state=tk.ACTIVE),
-                                   self._insert_button.config(state=tk.ACTIVE))
+                                  (self._help_button.config(state=tk.NORMAL),
+                                   self._insert_button.config(state=tk.NORMAL))
                                   if self._current_value.get() else
                                   (self._help_button.config(state=tk.DISABLED),
                                    self._insert_button.config(state=tk.DISABLED)))

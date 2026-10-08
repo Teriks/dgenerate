@@ -21,8 +21,10 @@
 import collections.abc
 import platform
 import tkinter as tk
+import tkinter.ttk as ttk
 import typing
 
+import dgenerate.console.appearance as _appearance
 import dgenerate.console.formentries.pluginschemaentry as _pluginschemaentry
 import dgenerate.console.util as _util
 from dgenerate.console.mousewheelbind import bind_mousewheel, handle_canvas_scroll, un_bind_mousewheel
@@ -55,7 +57,7 @@ class _PluginUriSelect(tk.Toplevel):
         outer_frame.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
 
         self.canvas = tk.Canvas(outer_frame, highlightthickness=0)
-        self.scrollbar = tk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollbar = ttk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = tk.Frame(self.canvas, padx=10, pady=10, highlightthickness=0)
 
         self.scrollable_frame.bind(
@@ -102,7 +104,7 @@ class _PluginUriSelect(tk.Toplevel):
         self.button_frame = tk.Frame(self)
         self.button_frame.grid(row=2, column=0, pady=(0, 5))
 
-        self.button = tk.Button(self.button_frame, text='Insert', command=self._insert_action)
+        self.button = ttk.Button(self.button_frame, text='Insert', command=self._insert_action)
         self.button.pack()
 
         self.plugin_frame.grid_columnconfigure(1, weight=1)
@@ -125,6 +127,7 @@ class _PluginUriSelect(tk.Toplevel):
         )
 
         self.plugin_entry.on_updated_callback = self._on_plugin_change
+        _appearance.install(self)
 
     def bind_mousewheel(self):
         bind_mousewheel(self.canvas.bind_all, self._on_mouse_wheel)
@@ -135,6 +138,7 @@ class _PluginUriSelect(tk.Toplevel):
     def _on_plugin_change(self, *args):
         self.canvas.yview_moveto(0)
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        _appearance.apply(self)
 
     def _on_resize(self, event):
         canvas_width = self.winfo_width() - self.scrollbar.winfo_width() - 30

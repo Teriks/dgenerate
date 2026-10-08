@@ -20,9 +20,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import tkinter as tk
+import tkinter.ttk as ttk
 import tkinter.font as tkfont
 import typing
 
+import dgenerate.console.appearance as _appearance
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.formentries.entry as _entry
 import dgenerate.console.mousewheelbind as _mousewheelbind
@@ -37,6 +39,24 @@ _dialog_state = _util.DialogState(save_position=True, save_size=False)
 _CARD = '#f7f7f7'
 _LINE = '#d0d0d0'
 _HINT = '#666666'
+
+
+def _card(widget):
+    if _appearance.is_aqua(widget):
+        return 'systemTextBackgroundColor'
+    return _CARD
+
+
+def _line(widget):
+    if _appearance.is_aqua(widget):
+        return 'systemSeparatorColor'
+    return _LINE
+
+
+def _hint(widget):
+    if _appearance.is_aqua(widget):
+        return 'systemSecondaryLabelColor'
+    return _HINT
 
 
 class _ImageSeedSelect(tk.Toplevel):
@@ -58,7 +78,7 @@ class _ImageSeedSelect(tk.Toplevel):
         self._row = 0
 
         self._canvas = tk.Canvas(self, width=740, height=560, highlightthickness=0, borderwidth=0)
-        self._scroll = tk.Scrollbar(self, command=self._canvas.yview)
+        self._scroll = ttk.Scrollbar(self, command=self._canvas.yview)
         self._canvas.configure(yscrollcommand=self._scroll.set)
         self._inner = tk.Frame(self._canvas, padx=12, pady=10)
         self._inner.grid_columnconfigure(0, weight=1)
@@ -73,14 +93,15 @@ class _ImageSeedSelect(tk.Toplevel):
 
         bar = tk.Frame(self)
         bar.grid(row=1, column=0, columnspan=2, sticky=tk.EW, pady=(8, 0))
-        tk.Frame(bar, height=1, bg=_LINE).pack(fill=tk.X, pady=(0, 8))
-        self._insert_button = tk.Button(bar, text='Insert', width=16, command=self._insert_click)
+        tk.Frame(bar, height=1, bg=_line(self)).pack(fill=tk.X, pady=(0, 8))
+        self._insert_button = ttk.Button(bar, text='Insert', width=16, command=self._insert_click)
         self._insert_button.pack()
 
         self._build_form()
         _mousewheelbind.bind_mousewheel(self._canvas.bind, self._on_wheel)
         self._hook_wheel(self._inner)
         self.minsize(680, 420)
+        _appearance.install(self)
         _util.position_toplevel(master, self, position=position)
 
     def _fit_scroll(self, _event):
@@ -134,10 +155,10 @@ class _ImageSeedSelect(tk.Toplevel):
         header.grid(row=self._row, column=0, sticky=tk.EW, pady=(12, 2))
         self._row += 1
         tk.Label(header, text=title, font=self._title_font).pack(side=tk.LEFT)
-        tk.Frame(header, height=1, bg=_LINE).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
+        tk.Frame(header, height=1, bg=_line(self)).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
         if hint:
             tk.Label(
-                self._inner, text=hint, font=self._hint_font, fg=_HINT, anchor=tk.W
+                self._inner, text=hint, font=self._hint_font, fg=_hint(self), anchor=tk.W
             ).grid(row=self._row, column=0, sticky=tk.W)
             self._row += 1
         return header
@@ -168,7 +189,7 @@ class _ImageSeedSelect(tk.Toplevel):
         aspect_row.grid(row=self._row, column=0, sticky=tk.W, pady=2)
         self._row += 1
         self._aspect_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(aspect_row, text='Keep aspect ratio', variable=self._aspect_var).pack(side=tk.LEFT)
+        ttk.Checkbutton(aspect_row, text='Keep aspect ratio', variable=self._aspect_var).pack(side=tk.LEFT)
         self._frame_start = self._labeled_spin('Frame start', 0, None)
         self._frame_end = self._labeled_spin('Frame end', 0, None)
 
@@ -180,7 +201,7 @@ class _ImageSeedSelect(tk.Toplevel):
         tk.Label(end_row, text='Last frame').grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         self._end_entry = self._track(_t_entry.TextEntry(end_row))
         self._end_entry.grid(row=0, column=1, sticky=tk.EW)
-        tk.Button(end_row, text='File', command=lambda: self._open_image(self._end_entry)).grid(
+        ttk.Button(end_row, text='File', command=lambda: self._open_image(self._end_entry)).grid(
             row=0, column=2, padx=(4, 0))
         self._ltx_index = self._labeled_spin('Latent frame index', -100000, 100000)
         self._ltx_strength = self._labeled_float('Strength')
@@ -239,7 +260,7 @@ class _ImageSeedSelect(tk.Toplevel):
         tk.Label(row, text=label).grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         entry = self._track(_t_entry.TextEntry(row))
         entry.grid(row=0, column=1, sticky=tk.EW)
-        tk.Button(row, text='File', command=lambda e=entry: self._open_image(e)).grid(
+        ttk.Button(row, text='File', command=lambda e=entry: self._open_image(e)).grid(
             row=0, column=2, padx=(4, 0))
         return entry
 
@@ -411,7 +432,7 @@ class _FileRows:
         header = tk.Frame(shell)
         header.grid(row=0, column=0, sticky=tk.EW)
         tk.Label(header, text=title).pack(side=tk.LEFT)
-        tk.Button(header, text='Add', command=self.add).pack(side=tk.RIGHT)
+        ttk.Button(header, text='Add', command=self.add).pack(side=tk.RIGHT)
         self.body = tk.Frame(shell)
         self.body.grid(row=1, column=0, sticky=tk.EW)
         self.body.grid_columnconfigure(0, weight=1)
@@ -424,11 +445,12 @@ class _FileRows:
         row.grid_columnconfigure(0, weight=1)
         entry = self.dialog._track(_t_entry.TextEntry(row))
         entry.grid(row=0, column=0, sticky=tk.EW)
-        tk.Button(row, text='File', command=lambda e=entry: self.opener(e)).grid(row=0, column=1, padx=(4, 0))
-        tk.Button(row, text='Remove', command=lambda r=row, e=entry: self.remove(r, e)).grid(
+        ttk.Button(row, text='File', command=lambda e=entry: self.opener(e)).grid(row=0, column=1, padx=(4, 0))
+        ttk.Button(row, text='Remove', command=lambda r=row, e=entry: self.remove(r, e)).grid(
             row=0, column=2, padx=(4, 0))
         self._frames.append(row)
         self.entries.append(entry)
+        _appearance.apply(row)
         self.dialog._hook_wheel(row)
         self.dialog._show_if_hidden(row)
 
@@ -470,35 +492,36 @@ class _AdapterRows:
         header = tk.Frame(shell)
         header.grid(row=0, column=0, sticky=tk.EW)
         tk.Label(header, text='Adapter images').pack(side=tk.LEFT)
-        tk.Button(header, text='Add', command=self.add).pack(side=tk.RIGHT)
+        ttk.Button(header, text='Add', command=self.add).pack(side=tk.RIGHT)
         self.body = tk.Frame(shell)
         self.body.grid(row=1, column=0, sticky=tk.EW)
         self.body.grid_columnconfigure(0, weight=1)
 
     def add(self):
-        card = tk.Frame(self.body, bg=_CARD, highlightbackground=_LINE, highlightthickness=1, padx=6, pady=4)
+        card = tk.Frame(self.body, bg=_card(self.dialog), highlightbackground=_line(self.dialog), highlightthickness=1, padx=6, pady=4)
         card.grid(row=len(self.rows), column=0, sticky=tk.EW, pady=3)
         card.grid_columnconfigure(1, weight=1)
-        tk.Label(card, text='Image', bg=_CARD).grid(row=0, column=0, sticky=tk.W)
+        tk.Label(card, text='Image', bg=_card(self.dialog)).grid(row=0, column=0, sticky=tk.W)
         path = self.dialog._track(_t_entry.TextEntry(card))
         path.grid(row=0, column=1, sticky=tk.EW, padx=4)
-        tk.Button(card, text='File', command=lambda e=path: self.dialog._open_image(e)).grid(row=0, column=2)
-        tk.Button(card, text='Remove', command=lambda c=card: self.remove(c)).grid(row=0, column=3, padx=(4, 0))
+        ttk.Button(card, text='File', command=lambda e=path: self.dialog._open_image(e)).grid(row=0, column=2)
+        ttk.Button(card, text='Remove', command=lambda c=card: self.remove(c)).grid(row=0, column=3, padx=(4, 0))
 
-        tk.Label(card, text='Resize', bg=_CARD).grid(row=1, column=0, sticky=tk.W, pady=(4, 0))
-        options = tk.Frame(card, bg=_CARD)
+        tk.Label(card, text='Resize', bg=_card(self.dialog)).grid(row=1, column=0, sticky=tk.W, pady=(4, 0))
+        options = tk.Frame(card, bg=_card(self.dialog))
         options.grid(row=1, column=1, columnspan=3, sticky=tk.EW, pady=(4, 0))
         resize = self.dialog._track(_t_entry.TextEntry(options, width=12))
         resize.pack(side=tk.LEFT)
-        tk.Label(options, text='Align', bg=_CARD).pack(side=tk.LEFT, padx=(8, 4))
+        tk.Label(options, text='Align', bg=_card(self.dialog)).pack(side=tk.LEFT, padx=(8, 4))
         align = _spinbox.IntSpinbox(options, from_=1, to=256, width=6, textvariable=tk.StringVar(value=''))
         align.pack(side=tk.LEFT)
         align.create_spin_buttons(options).pack(side=tk.LEFT, padx=(2, 0))
         self.dialog._track(align)
         aspect = tk.BooleanVar(value=True)
-        tk.Checkbutton(options, text='Aspect', variable=aspect, bg=_CARD).pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Checkbutton(options, text='Aspect', variable=aspect).pack(side=tk.LEFT, padx=(8, 0))
 
         self.rows.append({'card': card, 'path': path, 'resize': resize, 'align': align, 'aspect': aspect})
+        _appearance.apply(card)
         self.dialog._hook_wheel(card)
         self.dialog._show_if_hidden(card)
 
@@ -557,31 +580,31 @@ class _ExtraRows:
         header = tk.Frame(shell)
         header.grid(row=0, column=0, sticky=tk.EW, pady=(6, 0))
         tk.Label(header, text='Extra conditions').pack(side=tk.LEFT)
-        tk.Button(header, text='Add', command=self.add).pack(side=tk.RIGHT)
+        ttk.Button(header, text='Add', command=self.add).pack(side=tk.RIGHT)
         self.body = tk.Frame(shell)
         self.body.grid(row=1, column=0, sticky=tk.EW)
         self.body.grid_columnconfigure(0, weight=1)
 
     def add(self):
-        card = tk.Frame(self.body, bg=_CARD, highlightbackground=_LINE, highlightthickness=1, padx=6, pady=4)
+        card = tk.Frame(self.body, bg=_card(self.dialog), highlightbackground=_line(self.dialog), highlightthickness=1, padx=6, pady=4)
         card.grid(row=len(self.rows), column=0, sticky=tk.EW, pady=3)
         card.grid_columnconfigure(1, weight=1)
-        tk.Label(card, text='Image', bg=_CARD).grid(row=0, column=0, sticky=tk.W)
+        tk.Label(card, text='Image', bg=_card(self.dialog)).grid(row=0, column=0, sticky=tk.W)
         path = self.dialog._track(_t_entry.TextEntry(card))
         path.grid(row=0, column=1, sticky=tk.EW, padx=4)
-        tk.Button(card, text='File', command=lambda e=path: self.dialog._open_image(e)).grid(row=0, column=2)
-        tk.Button(card, text='Remove', command=lambda c=card: self.remove(c)).grid(row=0, column=3, padx=(4, 0))
+        ttk.Button(card, text='File', command=lambda e=path: self.dialog._open_image(e)).grid(row=0, column=2)
+        ttk.Button(card, text='Remove', command=lambda c=card: self.remove(c)).grid(row=0, column=3, padx=(4, 0))
 
-        tk.Label(card, text='Index', bg=_CARD).grid(row=1, column=0, sticky=tk.W, pady=(4, 0))
+        tk.Label(card, text='Index', bg=_card(self.dialog)).grid(row=1, column=0, sticky=tk.W, pady=(4, 0))
         index = _spinbox.IntSpinbox(card, from_=-100000, to=100000, textvariable=tk.StringVar(value=''))
         index.grid(row=1, column=1, sticky=tk.EW, padx=4, pady=(4, 0))
         index.create_spin_buttons(card).grid(row=1, column=2, pady=(4, 0))
         self.dialog._track(index)
 
-        strength_row = tk.Frame(card, bg=_CARD)
+        strength_row = tk.Frame(card, bg=_card(self.dialog))
         strength_row.grid(row=2, column=0, columnspan=4, sticky=tk.EW, pady=(4, 0))
         strength_row.grid_columnconfigure(1, weight=1)
-        tk.Label(strength_row, text='Strength', bg=_CARD).grid(row=0, column=0, sticky=tk.W)
+        tk.Label(strength_row, text='Strength', bg=_card(self.dialog)).grid(row=0, column=0, sticky=tk.W)
         strength = _spinbox.FloatSpinbox(
             strength_row, from_=0, to=1, increment=0.1, textvariable=tk.StringVar(value=''))
         strength.grid(row=0, column=1, sticky=tk.EW, padx=4)
@@ -589,6 +612,7 @@ class _ExtraRows:
         self.dialog._track(strength)
 
         self.rows.append({'card': card, 'path': path, 'index': index, 'strength': strength})
+        _appearance.apply(card)
         self.dialog._hook_wheel(card)
         self.dialog._show_if_hidden(card)
 
