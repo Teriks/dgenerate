@@ -79,6 +79,23 @@ def install(widget) -> None:
     apply(widget.winfo_toplevel())
 
 
+def install_checkbutton_fit(widget):
+    """Remove the ttk.Checkbutton focus ring on every platform.
+
+    Classic Tk checkboxes do not draw a focus ring, but every ttk theme except
+    classic adds a ``Checkbutton.focus`` element (vista on Windows,
+    ``xpnative``/``clam`` on macOS, ``clam``/``default`` on Linux), so the
+    same checkbox renders with an extra ring. Stripping that element from the
+    ``TCheckbutton`` layout leaves no focus element, so the checkbox matches
+    classic Tk on all platforms. This is global (applied by the console before
+    any widgets are created) so it also covers every dialog and ``Toplevel``.
+    """
+    if widget is None:
+        return
+    style = ttk.Style(widget)
+    style.layout('TCheckbutton', _remove_checkbutton_focus(style.layout('TCheckbutton')))
+
+
 def _remove_checkbutton_focus(layout):
     result = []
     for element, options in layout:
@@ -152,3 +169,41 @@ def _configure(widget, **options) -> None:
         widget.configure(**options)
     except tk.TclError:
         pass
+
+
+def install_button_fitting(widget):
+    """Fit every ``ttk.Button`` on this window to its text, on all platforms.
+
+    A classic ``tk.Button`` sizes itself to its label, but ``ttk.Button``
+    instead uses a theme-defined ``width`` (about ten columns), so the same
+    label renders far wider. This rewrites the ``TButton`` layout without a
+    ``Button.padding`` element and clears the theme ``width``, so the button
+    shrinks to fit its text on Windows, Linux, and macOS alike. A per-instance
+    ``width`` or ``style`` (e.g. the spin-box buttons) still overrides this, so
+    explicitly-sized buttons are unchanged.
+    """
+    if widget is None:
+        return
+    style = ttk.Style(widget)
+    style.layout('TButton', _without_button_padding(style.layout('TButton')))
+    style.configure('TButton', width=0, anchor='center', justify='center')
+
+
+def _without_button_padding(layout):
+    """Return a copy of a ttk layout with every ``Button.padding`` removed.
+
+    ``Button.padding`` can pin a minimum width in some themes, which would
+    defeat the fit-to-text behavior, so it is stripped out while preserving
+    its children in place.
+    """
+    result = []
+    for element, options in layout:
+        if element == 'Button.padding':
+            for child_element, child_options in options.get('children') or ():
+                result.append((child_element, dict(child_options)))
+            continue
+        options = dict(options)
+        if options.get('children') is not None:
+            options['children'] = _without_button_padding(options['children'])
+        result.append((element, options))
+    return result

@@ -456,8 +456,10 @@ class FindDialog(tk.Toplevel):
         self._setup_ui(name)
         self._setup_events()
         self._restore_state()
-        self._position_dialog()
+        # Apply the aqua styling pass before sizing so the ttk checkbuttons'
+        # realized layout is final when the window height is measured below.
         _appearance.install(self)
+        self._position_dialog()
     
     def _setup_ui(self, name: str):
         """Setup the user interface"""
@@ -841,6 +843,17 @@ class FindDialog(tk.Toplevel):
             position=self.state.last_position
         )
         
+        # macOS/aqua lays out ttk widgets (the checkboxes and buttons) on the
+        # window map event that fires in position_toplevel's deiconify, so the
+        # requested height measured above undercounts that row. Re-measure now
+        # that the window is mapped and correct the height. This is a no-op on
+        # Windows and Linux, where the first measurement is already correct.
+        self.update_idletasks()
+        mapped_height = self.winfo_reqheight()
+        if mapped_height != requested_height:
+            self.geometry(
+                f"{width}x{mapped_height}+{self.winfo_x()}+{self.winfo_y()}")
+
         self.find_entry.focus_set()
     
     def _save_state(self):
