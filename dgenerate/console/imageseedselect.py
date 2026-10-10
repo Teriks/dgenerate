@@ -94,7 +94,7 @@ class _ImageSeedSelect(tk.Toplevel):
         bar = tk.Frame(self)
         bar.grid(row=1, column=0, columnspan=2, sticky=tk.EW, pady=(8, 0))
         tk.Frame(bar, height=1, bg=_line(self)).pack(fill=tk.X, pady=(0, 8))
-        self._insert_button = ttk.Button(bar, text='Insert', width=16, command=self._insert_click)
+        self._insert_button = ttk.Button(bar, text='Insert', command=self._insert_click)
         self._insert_button.pack()
 
         self._build_form()

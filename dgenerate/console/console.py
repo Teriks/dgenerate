@@ -103,6 +103,12 @@ class DgenerateConsole(tk.Tk):
         # Set up proper font defaults to prevent bitmap font fallbacks
         _fonts.set_tkinter_font_defaults()
 
+        # Fit ttk buttons to their text (classic Button behavior) on all platforms.
+        _appearance.install_button_fitting(self)
+
+        # Drop the ttk checkbutton focus ring so it matches classic Tk, on all platforms.
+        _appearance.install_checkbutton_fit(self)
+
         self.title('Dgenerate Console')
 
         width = 1000
