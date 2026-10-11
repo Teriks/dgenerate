@@ -515,20 +515,20 @@ class FindDialog(tk.Toplevel):
             self.replace_entry.configure(yscrollcommand=self.replace_scrollbar.set)
         
         # Options and buttons frame
-        button_frame = tk.Frame(self)
-        button_frame.grid(row=2, column=0, sticky='ew', padx=2, pady=2)
+        self._button_frame = tk.Frame(self)
+        self._button_frame.grid(row=2, column=0, sticky='ew', padx=2, pady=2)
 
         # Aqua ttk controls are wider than classic Tk; put options and actions
         # on separate rows so the dialog does not clip horizontally.
         if _appearance.is_aqua(self):
-            options_frame = tk.Frame(button_frame)
+            options_frame = tk.Frame(self._button_frame)
             options_frame.grid(row=0, column=0, sticky='ew')
-            action_frame = tk.Frame(button_frame)
+            action_frame = tk.Frame(self._button_frame)
             action_frame.grid(row=1, column=0, sticky='ew')
-            button_frame.grid_columnconfigure(0, weight=1)
+            self._button_frame.grid_columnconfigure(0, weight=1)
         else:
-            options_frame = button_frame
-            action_frame = button_frame
+            options_frame = self._button_frame
+            action_frame = self._button_frame
 
         # Options
         self.case_var = tk.BooleanVar(value=self.state.case_sensitive)
@@ -841,50 +841,88 @@ class FindDialog(tk.Toplevel):
         return (self.state.last_replace_width if self.replace_mode
                 else self.state.last_find_width)
 
+    def _content_req_size(self) -> tuple[int, int]:
+        """Return width/height needed by the dialog's content rows."""
+        self.update_idletasks()
+        rows = [self.find_frame]
+        if self.replace_frame is not None:
+            rows.append(self.replace_frame)
+        rows.append(self._button_frame)
+
+        req_width = max(row.winfo_reqwidth() for row in rows)
+        # Grid stacks these rows; pad for the 2px pady on each.
+        req_height = sum(row.winfo_reqheight() for row in rows) + (4 * len(rows))
+        # Also honor the toplevel's own request when it is larger.
+        req_width = max(req_width, self.winfo_reqwidth())
+        req_height = max(req_height, self.winfo_reqheight())
+
+        if _appearance.is_aqua(self):
+            # Aqua push-button rows are ~32pt. If ttk still reports a near-zero
+            # height before native metrics land, keep a floor so the dialog
+            # cannot open as a title bar with a one-pixel sliver of content.
+            entry_floor = 28 + (28 if self.replace_mode else 0)
+            # Two packed rows on aqua (options + actions).
+            req_height = max(req_height, entry_floor + 72 + 16)
+            req_width = max(req_width, 420)
+
+        return req_width, req_height
+
     def _fit_to_requested_size(self, saved_width: typing.Optional[int] = None):
         """Size the dialog to the current requested layout.
 
-        On Aqua, ttk control metrics are often still provisional until the
-        toplevel has been mapped (and sometimes until the next idle cycle), so
-        callers remasure after deiconify and again from ``after_idle``.
+        On Aqua, an explicit ``WxH`` geometry applied before ttk finishes
+        laying out permanently locks a too-small height: later
+        ``winfo_reqheight()`` then reports that locked size instead of the
+        natural content size. Clear the size (position only), remasure from
+        the content rows, then apply the real geometry.
         """
         if not self.winfo_exists():
             return
 
-        self.update_idletasks()
-        req_width = self.winfo_reqwidth()
-        req_height = self.winfo_reqheight()
+        x, y = self.winfo_x(), self.winfo_y()
+        if _appearance.is_aqua(self):
+            # Drop the forced size so content can report its natural request.
+            self.geometry(f'+{x}+{y}')
+            self.update_idletasks()
+
+        req_width, req_height = self._content_req_size()
         width = max(req_width, saved_width or 0)
         self.minsize(req_width, req_height)
-        self.geometry(
-            f"{width}x{req_height}+{self.winfo_x()}+{self.winfo_y()}")
+        self.geometry(f"{width}x{req_height}+{x}+{y}")
 
     def _position_dialog(self):
         """Position and size the dialog"""
         self.withdraw()
         self.update_idletasks()
-
-        requested_width = self.winfo_reqwidth()
-        requested_height = self.winfo_reqheight()
         saved_width = self._saved_width()
-        width = max(requested_width, saved_width or 0)
-        self.minsize(requested_width, requested_height)
-        
-        _util.position_toplevel(
-            master=self.master,
-            toplevel=self,
-            size=(width, requested_height),
-            position=self.state.last_position
-        )
-        
-        # macOS/aqua lays out ttk widgets on the map event from deiconify, so
-        # the withdrawn measurement above undercounts width and height. Re-fit
-        # now that the window is mapped. No-op on Windows/Linux when sizes match.
-        self._fit_to_requested_size(saved_width)
+
         if _appearance.is_aqua(self):
-            # Native ttk sizes can settle one idle cycle after map.
+            # Do not lock W×H from withdrawn metrics — Aqua ttk undercounts
+            # until the window is mapped. Place first, size after layout.
+            _util.position_toplevel(
+                master=self.master,
+                toplevel=self,
+                size=None,
+                position=self.state.last_position
+            )
+            self._fit_to_requested_size(saved_width)
+            # Native control metrics often settle across a few event cycles.
             self.after_idle(
                 lambda: self._fit_to_requested_size(saved_width))
+            self.after(1, lambda: self._fit_to_requested_size(saved_width))
+            self.after(50, lambda: self._fit_to_requested_size(saved_width))
+        else:
+            requested_width = self.winfo_reqwidth()
+            requested_height = self.winfo_reqheight()
+            width = max(requested_width, saved_width or 0)
+            self.minsize(requested_width, requested_height)
+
+            _util.position_toplevel(
+                master=self.master,
+                toplevel=self,
+                size=(width, requested_height),
+                position=self.state.last_position
+            )
 
         self.find_entry.focus_set()
     
