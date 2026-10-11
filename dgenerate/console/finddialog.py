@@ -439,10 +439,6 @@ class FindDialog(tk.Toplevel):
     def __init__(self, master, name: str, text_widget: tk.Text,
                  replace_mode: bool = False, state: typing.Optional[DialogState] = None):
         super().__init__(master)
-        # Withdraw before any idle layout. On Aqua the first map freezes the
-        # Cocoa content height, and a map that happens while ttk widgets still
-        # report a 1px height stays that short.
-        self.withdraw()
         
         self.master = master
         self.text_widget = text_widget
@@ -475,8 +471,8 @@ class FindDialog(tk.Toplevel):
         if not _appearance.is_aqua(self):
             self.resizable(True, False)
         
-        # Keep dialog visible on top while remaining modeless
-        self.attributes('-topmost', True)
+        # topmost is applied after the window is on screen. Setting it while
+        # the Aqua window does not exist yet can keep the dialog from appearing.
         
         # Find entry with frame for potential scrollbar
         self.find_frame = tk.Frame(self)
@@ -903,10 +899,16 @@ class FindDialog(tk.Toplevel):
         else:
             self.minsize(min_width, height)
         self.geometry(f"{width}x{height}+{x}+{y}")
-        if _appearance.is_aqua(self):
-            self.update_idletasks()
-            if self.winfo_height() >= height - 4:
-                self.maxsize(screen_width, height)
+
+    def _show_dialog(self):
+        """Map the dialog and keep it above the console without stealing the event loop."""
+        self.deiconify()
+        self.lift()
+        try:
+            self.attributes('-topmost', True)
+        except tk.TclError:
+            pass
+        self.find_entry.focus_set()
 
     def _fit_to_requested_size(self, saved_width: typing.Optional[int] = None):
         """Size the dialog to the current requested layout."""
@@ -929,23 +931,21 @@ class FindDialog(tk.Toplevel):
         if _appearance.is_aqua(self):
             req_width, req_height = self._content_req_size()
             width = max(req_width, saved_width or 0)
-            # The size has to be in the geometry before the first deiconify.
-            # Mapping first and resizing after leaves the Cocoa content height
-            # stuck at the unmapped 1px default.
+            # Geometry is set before deiconify so the first map is not 1px
+            # tall. Do not call update() here: this runs from a key binding,
+            # and a nested event loop keeps the dialog from appearing.
             self.resizable(True, True)
-            self.minsize(req_width, req_height)
-            self.maxsize(max(width, self.winfo_screenwidth()),
-                         max(req_height, self.winfo_screenheight()))
             _util.position_toplevel(
                 master=self.master,
                 toplevel=self,
                 size=(width, req_height),
                 position=self.state.last_position
             )
-            self.update()
-            if self.winfo_height() + 4 < req_height:
-                self._apply_window_size(width, req_height, min_width=req_width)
-                self.update()
+            try:
+                self.minsize(req_width, req_height)
+            except tk.TclError:
+                pass
+            self._show_dialog()
         else:
             requested_width = self.winfo_reqwidth()
             requested_height = self.winfo_reqheight()
@@ -959,6 +959,11 @@ class FindDialog(tk.Toplevel):
                 position=self.state.last_position
             )
 
+        if not _appearance.is_aqua(self):
+            try:
+                self.attributes('-topmost', True)
+            except tk.TclError:
+                pass
         self.find_entry.focus_set()
     
     def _save_state(self):
