@@ -433,8 +433,15 @@ class DialogState:
         self.current_match = SearchResult(found=False)
 
 
+# Fixed sizes, the same way the other console dialogs are opened. The height
+# is not measured from ttk widgets: on Aqua those report about 1px until the
+# window is mapped, and locking that height freezes the dialog as a title bar.
+_FIND_DIALOG_SIZE = (560, 74)
+_REPLACE_DIALOG_SIZE = (560, 99)
+
+
 class FindDialog(tk.Toplevel):
-    """Modern, clean find/replace dialog implementation"""
+    """Find/replace dialog. Sized explicitly so it does not depend on ttk metrics."""
     
     def __init__(self, master, name: str, text_widget: tk.Text,
                  replace_mode: bool = False, state: typing.Optional[DialogState] = None):
@@ -464,23 +471,25 @@ class FindDialog(tk.Toplevel):
     def _setup_ui(self, name: str):
         """Setup the user interface"""
         self.title(name)
-        # On Aqua, height-not-resizable locks the Cocoa content size to
-        # configHeight, which is still 1 when this runs, and later geometry
-        # cannot grow the window past that. Constrain height with min/max
-        # after the real size is known instead.
-        if not _appearance.is_aqua(self):
-            self.resizable(True, False)
-        
-        # topmost is applied after the window is on screen. Setting it while
-        # the Aqua window does not exist yet can keep the dialog from appearing.
-        
-        # Find entry with frame for potential scrollbar
-        self.find_frame = tk.Frame(self)
-        self.find_frame.grid(row=0, column=0, sticky='ew', padx=2, pady=2)
+        # Both axes stay resizable. Locking only the height is what collapses
+        # this dialog on Aqua, and a fixed size already keeps it from opening short.
+        self.resizable(True, True)
+
+        body = tk.Frame(self, padx=8, pady=8)
+        body.grid(row=0, column=0, sticky='nsew')
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        body.grid_columnconfigure(1, weight=1)
+
+        tk.Label(body, text='Find').grid(row=0, column=0, sticky='nw', padx=(0, 8), pady=2)
+        self.find_frame = tk.Frame(body)
+        self.find_frame.grid(row=0, column=1, sticky='nsew', pady=2)
         self.find_frame.grid_columnconfigure(0, weight=1)
-        
+        self.find_frame.grid_rowconfigure(0, weight=1)
+        body.grid_rowconfigure(0, weight=1)
+
         self.find_entry = tk.Text(self.find_frame, height=1, width=40, wrap='none')
-        self.find_entry.grid(row=0, column=0, sticky='ew')
+        self.find_entry.grid(row=0, column=0, sticky='nsew')
         if _appearance.is_aqua(self.find_entry):
             self.find_entry.configure(
                 background=_appearance.field_background(),
@@ -489,22 +498,24 @@ class FindDialog(tk.Toplevel):
                 'invalid', foreground=_appearance.error_foreground())
         else:
             self.find_entry.tag_config('invalid', background='#ffcccc', foreground='#800000')
-        
-        # Create scrollbar but keep it hidden initially
+
         self.find_scrollbar = ttk.Scrollbar(self.find_frame, orient='vertical', command=self.find_entry.yview)
         self.find_entry.configure(yscrollcommand=self.find_scrollbar.set)
-        
-        # Replace entry (if needed) with frame for potential scrollbar
+
         self.replace_entry = None
         self.replace_frame = None
         self.replace_scrollbar = None
+        control_row = 1
         if self.replace_mode:
-            self.replace_frame = tk.Frame(self)
-            self.replace_frame.grid(row=1, column=0, sticky='ew', padx=2, pady=2)
+            tk.Label(body, text='Replace').grid(row=1, column=0, sticky='nw', padx=(0, 8), pady=2)
+            self.replace_frame = tk.Frame(body)
+            self.replace_frame.grid(row=1, column=1, sticky='nsew', pady=2)
             self.replace_frame.grid_columnconfigure(0, weight=1)
-            
+            self.replace_frame.grid_rowconfigure(0, weight=1)
+            body.grid_rowconfigure(1, weight=1)
+
             self.replace_entry = tk.Text(self.replace_frame, height=1, width=40, wrap='none')
-            self.replace_entry.grid(row=0, column=0, sticky='ew')
+            self.replace_entry.grid(row=0, column=0, sticky='nsew')
             if _appearance.is_aqua(self.replace_entry):
                 self.replace_entry.configure(
                     background=_appearance.field_background(),
@@ -514,77 +525,46 @@ class FindDialog(tk.Toplevel):
             else:
                 self.replace_entry.tag_config(
                     'invalid', background='#ffcccc', foreground='#800000')
-            
-            # Create scrollbar but keep it hidden initially
-            self.replace_scrollbar = ttk.Scrollbar(self.replace_frame, orient='vertical', command=self.replace_entry.yview)
+
+            self.replace_scrollbar = ttk.Scrollbar(
+                self.replace_frame, orient='vertical', command=self.replace_entry.yview)
             self.replace_entry.configure(yscrollcommand=self.replace_scrollbar.set)
-        
-        # Options and buttons frame
-        self._button_frame = tk.Frame(self)
-        self._button_frame.grid(row=2, column=0, sticky='ew', padx=2, pady=2)
+            control_row = 2
 
-        # Aqua ttk controls are wider than classic Tk; put options and actions
-        # on separate rows so the dialog does not clip horizontally.
-        if _appearance.is_aqua(self):
-            options_frame = tk.Frame(self._button_frame)
-            options_frame.grid(row=0, column=0, sticky='ew')
-            action_frame = tk.Frame(self._button_frame)
-            action_frame.grid(row=1, column=0, sticky='ew')
-            self._button_frame.grid_columnconfigure(0, weight=1)
-        else:
-            options_frame = self._button_frame
-            action_frame = self._button_frame
+        controls = tk.Frame(body)
+        controls.grid(row=control_row, column=0, columnspan=2, sticky='ew', pady=(8, 0))
 
-        # Options
         self.case_var = tk.BooleanVar(value=self.state.case_sensitive)
         self.regex_var = tk.BooleanVar(value=self.state.regex_mode)
-        
-        # Add callbacks to re-validate when options change
+
         self.case_var.trace_add('write', lambda *args: self._on_options_changed())
         self.regex_var.trace_add('write', lambda *args: self._on_options_changed())
-        
-        ttk.Checkbutton(options_frame, text="Case Sensitive",
-                      variable=self.case_var).pack(side='left', padx=2)
-        ttk.Checkbutton(options_frame, text="Regex Search",
-                      variable=self.regex_var).pack(side='left', padx=2)
-        
-        # Navigation buttons
-        ttk.Button(action_frame, text='Previous',
-                 command=self._find_previous).pack(side='left', padx=2)
-        ttk.Button(action_frame, text='Next',
-                 command=self._find_next).pack(side='left', padx=2)
-        
-        # Replace buttons (if needed)
+
+        ttk.Checkbutton(controls, text="Case Sensitive",
+                      variable=self.case_var).pack(side='left', padx=(0, 8))
+        ttk.Checkbutton(controls, text="Regex Search",
+                      variable=self.regex_var).pack(side='left', padx=(0, 12))
+
+        ttk.Button(controls, text='Previous',
+                 command=self._find_previous).pack(side='left', padx=(0, 4))
+        ttk.Button(controls, text='Next',
+                 command=self._find_next).pack(side='left', padx=(0, 4))
+
         if self.replace_mode:
-            ttk.Button(action_frame, text='Replace',
-                     command=self._replace_current).pack(side='left', padx=2)
-        
-        # Find All button
-        ttk.Button(action_frame, text='Find All',
-                 command=self._find_all).pack(side='left', padx=2)
-        
-        # Replace All button (if needed)
+            ttk.Button(controls, text='Replace',
+                     command=self._replace_current).pack(side='left', padx=(0, 4))
+
+        ttk.Button(controls, text='Find All',
+                 command=self._find_all).pack(side='left', padx=(0, 4))
+
         if self.replace_mode:
-            ttk.Button(action_frame, text='Replace All',
-                     command=self._replace_all).pack(side='left', padx=2)
-        
-        # Help button (only in replace mode when regex is enabled)
-        if self.replace_mode:
-            self.help_button = ttk.Button(action_frame, text='Help',
+            ttk.Button(controls, text='Replace All',
+                     command=self._replace_all).pack(side='left', padx=(0, 4))
+            self.help_button = ttk.Button(controls, text='Help',
                                        command=self._show_help)
-            self.help_button.pack(side='right', padx=2)
-            # Initially hide if regex mode is not enabled
+            self.help_button.pack(side='right')
             if not self.regex_var.get():
                 self.help_button.pack_forget()
-        
-        self.grid_columnconfigure(0, weight=1)
-        if _appearance.is_aqua(self):
-            # Row minsizes count toward the toplevel request even when native
-            # ttk metrics are still the unmapped default of 1px.
-            self.grid_rowconfigure(0, minsize=36)
-            if self.replace_mode:
-                self.grid_rowconfigure(1, minsize=36)
-            self.grid_rowconfigure(2, minsize=88)
     
     def _setup_events(self):
         """Setup event handlers"""
@@ -752,44 +732,18 @@ class FindDialog(tk.Toplevel):
         self.state.current_match = SearchResult(found=False)
     
     def _check_entry_expansion(self, entry_widget, frame_widget, entry_type):
-        """Check if entry widget needs to expand and add scrollbar"""
-        # Get the actual line count
+        """Show a scrollbar when the field has more lines than it can display.
+
+        The dialog keeps a fixed size, so the field itself does not grow the window.
+        """
         line_count = int(entry_widget.index('end-1c').split('.')[0])
-        
-        # Get scrollbar reference
-        scrollbar_attr = f'{entry_type}_scrollbar'
-        scrollbar = getattr(self, scrollbar_attr)
-        
-        # Track if size changed
-        size_changed = False
-        
-        # If more than 1 line and not already expanded
-        if line_count > 1 and entry_widget['height'] == 1:
-            # Expand to 3 lines
-            entry_widget.configure(height=3)
-            size_changed = True
-            
-            # Show scrollbar
-            if scrollbar:
-                scrollbar.grid(row=0, column=1, sticky='nsew')
-                
-        # If back to 1 line and expanded
-        elif line_count <= 1 and entry_widget['height'] > 1:
-            # Shrink back to 1 line
-            entry_widget.configure(height=1)
-            size_changed = True
-            
-            # Hide scrollbar (but don't destroy it)
-            if scrollbar:
-                scrollbar.grid_forget()
-        
-        # If size changed, update the window geometry
-        if size_changed:
-            self.update_idletasks()
-            req_width, req_height = self._content_req_size()
-            # Keep the user's current width when only the entry height changes.
-            width = max(req_width, self.winfo_width())
-            self._apply_window_size(width, req_height, min_width=req_width)
+        scrollbar = getattr(self, f'{entry_type}_scrollbar')
+        if scrollbar is None:
+            return
+        if line_count > 1:
+            scrollbar.grid(row=0, column=1, sticky='nsew')
+        else:
+            scrollbar.grid_forget()
     
     def _show_help(self):
         """Show help dialog for substitution syntax"""
@@ -845,125 +799,25 @@ class FindDialog(tk.Toplevel):
         if self.replace_entry:
             self._on_replace_text_changed()
     
-    def _saved_width(self) -> typing.Optional[int]:
-        """Return the persisted dialog width for the current mode."""
-        return (self.state.last_replace_width if self.replace_mode
-                else self.state.last_find_width)
-
-    def _content_req_size(self) -> tuple[int, int]:
-        """Return width/height needed by the dialog's content rows."""
-        self.update_idletasks()
-        rows = [self.find_frame]
-        if self.replace_frame is not None:
-            rows.append(self.replace_frame)
-        rows.append(self._button_frame)
-
-        req_width = max(row.winfo_reqwidth() for row in rows)
-        # Grid stacks these rows; pad for the 2px pady on each.
-        req_height = sum(row.winfo_reqheight() for row in rows) + (4 * len(rows))
-        # Also honor the toplevel's own request when it is larger.
-        req_width = max(req_width, self.winfo_reqwidth())
-        req_height = max(req_height, self.winfo_reqheight())
-
-        if _appearance.is_aqua(self):
-            # Aqua push-button rows are ~32pt. If ttk still reports a near-zero
-            # height before native metrics land, keep a floor so the dialog
-            # cannot open as a title bar with a one-pixel sliver of content.
-            entry_floor = 28 + (28 if self.replace_mode else 0)
-            # Two packed rows on aqua (options + actions).
-            req_height = max(req_height, entry_floor + 72 + 16)
-            req_width = max(req_width, 420)
-
-        return req_width, req_height
-
-    def _apply_window_size(self, width: int, height: int, min_width: int | None = None):
-        """Apply a window size without letting Aqua clamp the height to 1.
-
-        ``wm resizable 1 0`` makes Tk set the Cocoa content min and max height
-        to ``configHeight``. That value is whatever height the window had on
-        its first map (often 1), and the clamp sticks. On Aqua, keep vertical
-        resize enabled, clear any existing max-size clamp, then apply geometry.
-        """
-        if not self.winfo_exists():
-            return
-        min_width = width if min_width is None else min_width
-        x, y = self.winfo_x(), self.winfo_y()
-        if _appearance.is_aqua(self):
-            self.resizable(True, True)
-            screen_width = max(width, self.winfo_screenwidth())
-            screen_height = max(height, self.winfo_screenheight())
-            # Raise the cap before the geometry change. Pinning max height to
-            # the target is only safe once the window has actually reached it.
-            self.maxsize(screen_width, screen_height)
-            self.minsize(min_width, height)
-        else:
-            self.minsize(min_width, height)
-        self.geometry(f"{width}x{height}+{x}+{y}")
-
-    def _show_dialog(self):
-        """Map the dialog and keep it above the console without stealing the event loop."""
-        self.deiconify()
+    def _position_dialog(self):
+        """Position and size the dialog"""
+        base_width, height = (_REPLACE_DIALOG_SIZE if self.replace_mode
+                              else _FIND_DIALOG_SIZE)
+        saved_width = (self.state.last_replace_width if self.replace_mode
+                       else self.state.last_find_width)
+        width = max(base_width, saved_width or 0)
+        self.minsize(base_width, height)
+        _util.position_toplevel(
+            master=self.master,
+            toplevel=self,
+            size=(width, height),
+            position=self.state.last_position
+        )
         self.lift()
         try:
             self.attributes('-topmost', True)
         except tk.TclError:
             pass
-        self.find_entry.focus_set()
-
-    def _fit_to_requested_size(self, saved_width: typing.Optional[int] = None):
-        """Size the dialog to the current requested layout."""
-        if not self.winfo_exists():
-            return
-        req_width, req_height = self._content_req_size()
-        # Ignore a not-yet-mapped width of 1. Keep a real user width.
-        current_width = self.winfo_width()
-        if current_width <= 1:
-            current_width = 0
-        width = max(req_width, saved_width or 0, current_width)
-        self._apply_window_size(width, req_height, min_width=req_width)
-
-    def _position_dialog(self):
-        """Position and size the dialog"""
-        self.withdraw()
-        self.update_idletasks()
-        saved_width = self._saved_width()
-
-        if _appearance.is_aqua(self):
-            req_width, req_height = self._content_req_size()
-            width = max(req_width, saved_width or 0)
-            # Geometry is set before deiconify so the first map is not 1px
-            # tall. Do not call update() here: this runs from a key binding,
-            # and a nested event loop keeps the dialog from appearing.
-            self.resizable(True, True)
-            _util.position_toplevel(
-                master=self.master,
-                toplevel=self,
-                size=(width, req_height),
-                position=self.state.last_position
-            )
-            try:
-                self.minsize(req_width, req_height)
-            except tk.TclError:
-                pass
-            self._show_dialog()
-        else:
-            requested_width = self.winfo_reqwidth()
-            requested_height = self.winfo_reqheight()
-            width = max(requested_width, saved_width or 0)
-            self.minsize(requested_width, requested_height)
-
-            _util.position_toplevel(
-                master=self.master,
-                toplevel=self,
-                size=(width, requested_height),
-                position=self.state.last_position
-            )
-
-        if not _appearance.is_aqua(self):
-            try:
-                self.attributes('-topmost', True)
-            except tk.TclError:
-                pass
         self.find_entry.focus_set()
     
     def _save_state(self):
