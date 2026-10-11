@@ -446,13 +446,15 @@ class FindDialog(tk.Toplevel):
     """Find/replace dialog. Sized explicitly so it does not depend on ttk metrics."""
     
     def __init__(self, master, name: str, text_widget: tk.Text,
-                 replace_mode: bool = False, state: typing.Optional[DialogState] = None):
+                 replace_mode: bool = False, state: typing.Optional[DialogState] = None,
+                 prefer_saved_find: bool = False):
         super().__init__(master)
         
         self.master = master
         self.text_widget = text_widget
         self.replace_mode = replace_mode
         self.state = state or DialogState()
+        self._prefer_saved_find = prefer_saved_find
         
         # Initialize engines
         self.search_engine = SearchEngine(text_widget)
@@ -783,13 +785,17 @@ class FindDialog(tk.Toplevel):
     
     def _restore_state(self):
         """Restore dialog state"""
-        # Try to get selected text first
-        try:
-            selected = self.text_widget.get(tk.SEL_FIRST, tk.SEL_LAST)
-            self.find_entry.insert('1.0', selected)
-        except tk.TclError:
-            if self.state.find_text:
-                self.find_entry.insert('1.0', self.state.find_text)
+        # A switch between Find and Replace keeps the text already typed.
+        # A fresh open still starts from the current selection.
+        if self._prefer_saved_find and self.state.find_text:
+            self.find_entry.insert('1.0', self.state.find_text)
+        else:
+            try:
+                selected = self.text_widget.get(tk.SEL_FIRST, tk.SEL_LAST)
+                self.find_entry.insert('1.0', selected)
+            except tk.TclError:
+                if self.state.find_text:
+                    self.find_entry.insert('1.0', self.state.find_text)
         
         if self.replace_entry and self.state.replace_text:
             self.replace_entry.insert('1.0', self.state.replace_text)
@@ -911,38 +917,46 @@ class FindReplaceDialogManager:
     
     def open_find_dialog(self, master, name: str, text_widget: tk.Text):
         """Open find dialog"""
-        self._close_existing_dialog()
-        
+        if self._focus_existing(replace_mode=False):
+            return
+
         self.current_dialog = FindDialog(
-            master, name, text_widget, 
-            replace_mode=False, state=self.state
+            master, name, text_widget,
+            replace_mode=False, state=self.state,
+            prefer_saved_find=self._close_existing_dialog()
         )
-    
+
     def open_find_replace_dialog(self, master, name: str, text_widget: tk.Text):
         """Open find/replace dialog"""
-        self._close_existing_dialog()
-        
+        if self._focus_existing(replace_mode=True):
+            return
+
         self.current_dialog = FindDialog(
-            master, name, text_widget, 
-            replace_mode=True, state=self.state
+            master, name, text_widget,
+            replace_mode=True, state=self.state,
+            prefer_saved_find=self._close_existing_dialog()
         )
-    
-    def _close_existing_dialog(self):
-        """Close existing dialog if open"""
-        if (self.current_dialog and 
-            hasattr(self.current_dialog, 'winfo_exists') and 
-            self.current_dialog.winfo_exists()):
-            
-            # Check if we can reuse the dialog
-            try:
-                self.current_dialog.find_entry.focus_set()
-                return
-            except tk.TclError:
-                pass
-            
-            self.current_dialog.destroy()
-        
+
+    def _focus_existing(self, replace_mode: bool) -> bool:
+        """Bring the open dialog forward when it is already the requested mode."""
+        dialog = self.current_dialog
+        if dialog is None or not dialog.winfo_exists():
+            return False
+        if dialog.replace_mode != replace_mode:
+            return False
+        dialog.lift()
+        dialog.find_entry.focus_set()
+        return True
+
+    def _close_existing_dialog(self) -> bool:
+        """Close the open dialog, keeping its search text. True if one was closed."""
+        dialog = self.current_dialog
         self.current_dialog = None
+        if dialog is None or not dialog.winfo_exists():
+            return False
+        dialog._save_state()
+        dialog.destroy()
+        return True
 
 
 # Global dialog manager instance
