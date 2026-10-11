@@ -172,38 +172,18 @@ def _configure(widget, **options) -> None:
 
 
 def install_button_fitting(widget):
-    """Fit every ``ttk.Button`` on this window to its text, on all platforms.
+    """Fit every ``ttk.Button`` to its text, on all platforms.
 
-    A classic ``tk.Button`` sizes itself to its label, but ``ttk.Button``
-    instead uses a theme-defined ``width`` (about ten columns), so the same
-    label renders far wider. This rewrites the ``TButton`` layout without a
-    ``Button.padding`` element and clears the theme ``width``, so the button
-    shrinks to fit its text on Windows, Linux, and macOS alike. A per-instance
-    ``width`` or ``style`` (e.g. the spin-box buttons) still overrides this, so
-    explicitly-sized buttons are unchanged.
+    A classic ``tk.Button`` sizes itself to its label. ``ttk.Button`` themes
+    instead set a default ``width`` (vista uses ``-11``, a minimum of eleven
+    character columns; clam/default use a fixed positive width), so the same
+    label renders far wider. Setting ``width`` to ``0`` uses the natural text
+    width, which is the documented fit-to-text value and matches classic Tk
+    without changing the theme layout. ``Button.padding`` is left in place so
+    theme padding and styles that set ``padding`` (e.g. the spin-box buttons)
+    still apply. A per-instance ``width`` still overrides this.
     """
     if widget is None:
         return
     style = ttk.Style(widget)
-    style.layout('TButton', _without_button_padding(style.layout('TButton')))
-    style.configure('TButton', width=0, anchor='center', justify='center')
-
-
-def _without_button_padding(layout):
-    """Return a copy of a ttk layout with every ``Button.padding`` removed.
-
-    ``Button.padding`` can pin a minimum width in some themes, which would
-    defeat the fit-to-text behavior, so it is stripped out while preserving
-    its children in place.
-    """
-    result = []
-    for element, options in layout:
-        if element == 'Button.padding':
-            for child_element, child_options in options.get('children') or ():
-                result.append((child_element, dict(child_options)))
-            continue
-        options = dict(options)
-        if options.get('children') is not None:
-            options['children'] = _without_button_padding(options['children'])
-        result.append((element, options))
-    return result
+    style.configure('TButton', width=0, anchor='center')

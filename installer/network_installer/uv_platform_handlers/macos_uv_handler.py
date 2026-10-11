@@ -42,9 +42,12 @@ class MacOSPlatformHandler(BasePlatformHandler):
 
     def add_scripts_to_path(self) -> bool:
         """
-        Add only the bin directory (with stub scripts) to the system PATH.
-        This avoids exposing the entire venv and potential Python conflicts.
-        
+        Add only the bin directory to the user shell PATH.
+
+        Writes an ``export PATH=...`` line into the shell profile(s) that
+        Terminal will actually source. On modern macOS that is ``~/.zshrc``;
+        a leftover ``~/.bash_profile`` must not win over a missing zshrc.
+
         :return: True if successful, False otherwise
         """
         try:
@@ -56,28 +59,32 @@ class MacOSPlatformHandler(BasePlatformHandler):
             bin_dir_str = str(self.bin_dir)
             self.log_callback(f"Adding {bin_dir_str} to system PATH...")
 
-            # Get the shell profile file
-            shell_profile = self._get_shell_profile()
-            if not shell_profile:
+            profiles = self._shell_profiles_to_update()
+            if not profiles:
                 self.log_callback("Could not determine shell profile file")
                 return False
 
-            # Check if already in PATH
-            current_path = os.environ.get('PATH', '')
-            if bin_dir_str in current_path:
-                self.log_callback(f"✓ Directory {bin_dir_str} already in PATH")
-                return True
-
-            # Add to shell profile with comment for easy identification
             comment_line = '# Added by dgenerate network installer'
             export_line = f'export PATH="{bin_dir_str}:$PATH"'
+            updated = []
 
-            with open(shell_profile, 'a', encoding='utf-8') as f:
-                f.write(f'\n{comment_line}\n{export_line}\n')
+            for shell_profile in profiles:
+                if self._profile_has_export(shell_profile, export_line):
+                    self.log_callback(
+                        f"✓ Directory {bin_dir_str} already configured in {shell_profile}")
+                    continue
 
-            self.log_callback(f"✓ Added {bin_dir_str} to {shell_profile}")
-            self.log_callback("  Please restart your terminal or run 'source ~/.bashrc' to use dgenerate")
+                shell_profile.parent.mkdir(parents=True, exist_ok=True)
+                with open(shell_profile, 'a', encoding='utf-8') as f:
+                    f.write(f'\n{comment_line}\n{export_line}\n')
+                updated.append(shell_profile)
+                self.log_callback(f"✓ Added {bin_dir_str} to {shell_profile}")
 
+            if updated:
+                # Prefer telling the user about the profile their login shell uses.
+                primary = profiles[0]
+                self.log_callback(
+                    f"  Please open a new terminal or run 'source {primary}' to use dgenerate")
             return True
 
         except Exception as e:
@@ -476,48 +483,53 @@ class MacOSPlatformHandler(BasePlatformHandler):
     def _remove_from_path(self):
         """Remove from macOS PATH by modifying shell profile."""
         try:
-            scripts_dir_str = str(self.scripts_dir)
+            # bin_dir is what add_scripts_to_path writes; also strip the older
+            # scripts_dir (venv/bin) export left by previous installer versions.
+            export_paths = {str(self.bin_dir), str(self.scripts_dir)}
+            export_lines = {f'export PATH="{path}:$PATH"' for path in export_paths}
 
-            # Common shell profile files
             profile_files = [
-                Path.home() / '.bashrc',
                 Path.home() / '.zshrc',
+                Path.home() / '.zprofile',
+                Path.home() / '.bash_profile',
+                Path.home() / '.bashrc',
                 Path.home() / '.profile',
             ]
 
             comment_line = '# Added by dgenerate network installer'
-            export_line = f'export PATH="{scripts_dir_str}:$PATH"'
 
             for profile_file in profile_files:
-                if profile_file.exists():
-                    try:
-                        # Read current content
-                        content = profile_file.read_text()
+                if not profile_file.exists():
+                    continue
+                try:
+                    content = profile_file.read_text(encoding='utf-8')
+                    lines = content.split('\n')
+                    new_lines = []
+                    skip_next = False
+                    changed = False
 
-                        # Remove our lines
-                        lines = content.split('\n')
-                        new_lines = []
+                    for line in lines:
+                        stripped = line.strip()
+                        if stripped == comment_line:
+                            skip_next = True
+                            changed = True
+                            continue
+                        if skip_next and stripped in export_lines:
+                            skip_next = False
+                            changed = True
+                            continue
+                        if stripped in export_lines:
+                            changed = True
+                            continue
+                        new_lines.append(line)
                         skip_next = False
 
-                        for line in lines:
-                            if line.strip() == comment_line:
-                                skip_next = True
-                                continue
-                            elif skip_next and line.strip() == export_line:
-                                skip_next = False
-                                continue
-                            elif line.strip() == export_line:
-                                continue
-                            else:
-                                new_lines.append(line)
-                                skip_next = False
-
-                        # Write back the content
-                        profile_file.write_text('\n'.join(new_lines))
+                    if changed:
+                        profile_file.write_text('\n'.join(new_lines), encoding='utf-8')
                         self.log_callback(f"Removed PATH export from {profile_file}")
 
-                    except Exception as e:
-                        self.log_callback(f"Warning: Could not modify {profile_file}: {e}")
+                except Exception as e:
+                    self.log_callback(f"Warning: Could not modify {profile_file}: {e}")
 
         except Exception as e:
             self.log_callback(f"Error removing from macOS PATH: {e}")
@@ -571,42 +583,76 @@ class MacOSPlatformHandler(BasePlatformHandler):
         except Exception as e:
             self.log_callback(f"Error removing macOS file associations: {e}")
 
-    def _get_shell_profile(self) -> Path | None:
-        """Get the appropriate shell profile file for macOS."""
+    def _shell_name(self) -> str:
+        """Return the user's login shell basename (e.g. ``zsh``, ``bash``)."""
+        shell = os.environ.get('SHELL') or ''
+        if shell:
+            return Path(shell).name
+        # GUI launches often omit SHELL; fall back to the directory service.
+        try:
+            result = subprocess.run(
+                ['dscl', '.', '-read', f'/Users/{Path.home().name}', 'UserShell'],
+                capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                for part in result.stdout.split():
+                    if part.startswith('/'):
+                        return Path(part).name
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        return 'zsh'
+
+    def _shell_profiles_to_update(self) -> list[Path]:
+        """Shell profiles that should receive the dgenerate PATH export.
+
+        Always include ``~/.zshrc`` on macOS (default since Catalina). Prefer
+        that over an existing leftover ``~/.bash_profile``, which zsh never
+        sources. Also update the bash profile when the login shell is bash.
+        """
         home = Path.home()
+        profiles: list[Path] = [home / '.zshrc']
+        if self._shell_name() == 'bash':
+            for candidate in (home / '.bash_profile', home / '.bashrc'):
+                if candidate.exists():
+                    profiles.append(candidate)
+                    break
+            else:
+                profiles.append(home / '.bash_profile')
+        return profiles
 
-        # Check for different shell profiles
-        profiles = [
-            home / '.zshrc',  # Default shell on modern macOS
-            home / '.bash_profile',
-            home / '.bashrc',
-            home / '.profile'
-        ]
+    def _get_shell_profile(self) -> Path | None:
+        """Get the primary shell profile file for macOS."""
+        profiles = self._shell_profiles_to_update()
+        return profiles[0] if profiles else None
 
-        for profile in profiles:
-            if profile.exists():
-                return profile
-
-        # Default to .zshrc if none exist (modern macOS default)
-        return home / '.zshrc'
+    @staticmethod
+    def _profile_has_export(profile: Path, export_line: str) -> bool:
+        """True when ``profile`` already contains the given PATH export."""
+        if not profile.exists():
+            return False
+        try:
+            return export_line in profile.read_text(encoding='utf-8')
+        except OSError:
+            return False
 
     def _verify_path_update(self):
         """Verify that the PATH was actually updated."""
         try:
-            # For macOS, check if the export line exists in the shell profile
-            shell_profile = self._get_shell_profile()
-            if shell_profile and shell_profile.exists():
-                content = shell_profile.read_text()
-                scripts_dir_str = str(self.scripts_dir)
-                export_line = f'export PATH="{scripts_dir_str}:$PATH"'
+            export_line = f'export PATH="{self.bin_dir}:$PATH"'
+            profiles = self._shell_profiles_to_update()
+            configured = [
+                profile for profile in profiles
+                if self._profile_has_export(profile, export_line)
+            ]
 
-                if export_line in content:
-                    self.log_callback("✓ PATH verification successful - dgenerate is now available globally")
-                    self.log_callback("  Note: You may need to restart your terminal or run 'source ~/.zshrc'")
-                else:
-                    self.log_callback("Warning: PATH verification failed - dgenerate may not be available globally")
+            if configured:
+                self.log_callback(
+                    "✓ PATH verification successful - dgenerate is now available globally")
+                self.log_callback(
+                    f"  Note: You may need to restart your terminal or run "
+                    f"'source {configured[0]}'")
             else:
-                self.log_callback("Warning: Could not verify PATH update")
+                self.log_callback(
+                    "Warning: PATH verification failed - dgenerate may not be available globally")
 
         except Exception as e:
             self.log_callback(f"Warning: Could not verify PATH update: {e}")

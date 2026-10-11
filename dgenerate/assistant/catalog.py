@@ -8,29 +8,37 @@ import os
 
 DEFAULT_CHAT_MODEL = 'unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf'
 
-# Qwen chat GGUFs that fit a desktop. 3.8's open dense model is the 27B.
-# 3.5 also has a 9B, and 3.5 and 3.6 have a 35B mixture-of-experts.
-# (Hugging Face path, download size in GB, who it suits), by version, smallest first.
+# Every non-BF16 quant of unsloth's Qwen 3.8 chat GGUF. 3.8's open dense model is the 27B.
+# Left out: BF16 files, 3.8 2.4T (too big), 3.8 Flash-Next (new architecture, folder-split quants).
+# (Hugging Face path, download size in GB, who it suits), smallest first.
+# GPU labels are a rough fit: file size plus room for context.
 CHAT_MODELS = [
-    ('unsloth/Qwen3.5-9B-GGUF/Qwen3.5-9B-Q4_K_M.gguf', 5.7, 'Qwen 3.5, 8 GB GPUs'),
-    ('unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-UD-IQ2_XXS.gguf', 8.6, 'Qwen 3.5, 12 GB GPUs'),
-    ('unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-IQ4_XS.gguf', 15.0, 'Qwen 3.5, 16 GB GPUs'),
-    ('unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-Q4_K_M.gguf', 16.7, 'Qwen 3.5, 24 GB GPUs'),
-    ('unsloth/Qwen3.5-35B-A3B-GGUF/Qwen3.5-35B-A3B-UD-IQ4_XS.gguf', 17.5, 'Qwen 3.5 MoE, 16 GB GPUs'),
-    ('unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-Q6_K.gguf', 22.5, 'Qwen 3.5, 24 GB GPUs'),
-    ('unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-Q8_0.gguf', 28.6, 'Qwen 3.5, 32 GB GPUs'),
-    ('unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-UD-IQ2_XXS.gguf', 9.4, 'Qwen 3.6, 12 GB GPUs'),
-    ('unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-IQ4_XS.gguf', 15.4, 'Qwen 3.6, 16 GB GPUs'),
-    ('unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf', 16.8, 'Qwen 3.6, 24 GB GPUs'),
-    ('unsloth/Qwen3.6-35B-A3B-GGUF/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf', 17.7, 'Qwen 3.6 MoE, 16 GB GPUs'),
-    ('unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q6_K.gguf', 22.5, 'Qwen 3.6, 24 GB GPUs'),
-    ('unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q8_0.gguf', 28.6, 'Qwen 3.6, 32 GB GPUs'),
-    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_XXS.gguf', 9.0, 'Qwen 3.8, 12 GB GPUs'),
-    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ4_XS.gguf', 15.7, 'Qwen 3.8, 16 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_S.gguf', 6.2, 'Qwen 3.8, 8 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_M.gguf', 6.7, 'Qwen 3.8, 8 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_XXS.gguf', 7.3, 'Qwen 3.8, 8 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_S.gguf', 8.4, 'Qwen 3.8, 12 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q2_K_XL.gguf', 9.8, 'Qwen 3.8, 12 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf', 10.9, 'Qwen 3.8, 12 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_S.gguf', 12.0, 'Qwen 3.8, 16 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q3_K_XL.gguf', 13.1, 'Qwen 3.8, 16 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ4_XS.gguf', 14.3, 'Qwen 3.8, 16 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_S.gguf', 15.4, 'Qwen 3.8, 16 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_0.gguf', 16.1, 'Qwen 3.8, 24 GB GPUs'),
     (DEFAULT_CHAT_MODEL, 16.5, 'Qwen 3.8, 24 GB GPUs, default'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_1.gguf', 17.5, 'Qwen 3.8, 24 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_XL.gguf', 17.6, 'Qwen 3.8, 24 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q5_K_S.gguf', 18.7, 'Qwen 3.8, 24 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q5_K_M.gguf', 19.8, 'Qwen 3.8, 24 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q5_K_XL.gguf', 20.9, 'Qwen 3.8, 24 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K.gguf', 22.0, 'Qwen 3.8, 24 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K_M.gguf', 23.1, 'Qwen 3.8, 24 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K_L.gguf', 24.2, 'Qwen 3.8, 32 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K_XL.gguf', 25.3, 'Qwen 3.8, 32 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q8_K_L.gguf', 28.0, 'Qwen 3.8, 32 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q8_0.gguf', 29.0, 'Qwen 3.8, 32 GB GPUs'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q8_K_XL.gguf', 31.5, 'Qwen 3.8, 32 GB GPUs'),
 ]
+
 
 DEFAULT_EMBED_MODEL = 'Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf'
 

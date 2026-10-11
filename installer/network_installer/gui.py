@@ -953,6 +953,15 @@ class DGenerateInstallerGUI:
                         self._log("\nTo get started:")
                         self._log("1. Open a terminal and run: dgenerate --help")
 
+                    if platform.system() == 'Darwin':
+                        self._log(
+                            "\nNote: Open a new Terminal window (or run 'source ~/.zshrc') "
+                            "so the updated PATH is picked up.")
+                    elif platform.system() == 'Linux':
+                        self._log(
+                            "\nNote: Open a new terminal (or source your shell profile) "
+                            "so the updated PATH is picked up.")
+
                     self._log("\nFor more information, visit: https://github.com/Teriks/dgenerate")
                     self._log("=" * 60)
 

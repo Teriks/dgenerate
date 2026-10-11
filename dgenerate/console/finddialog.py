@@ -456,8 +456,8 @@ class FindDialog(tk.Toplevel):
         self._setup_ui(name)
         self._setup_events()
         self._restore_state()
-        # Apply the aqua styling pass before sizing so the ttk checkbuttons'
-        # realized layout is final when the window height is measured below.
+        # Apply the aqua styling pass before sizing so classic widget colors are
+        # set before the first geometry measurement below.
         _appearance.install(self)
         self._position_dialog()
     
@@ -518,6 +518,18 @@ class FindDialog(tk.Toplevel):
         button_frame = tk.Frame(self)
         button_frame.grid(row=2, column=0, sticky='ew', padx=2, pady=2)
 
+        # Aqua ttk controls are wider than classic Tk; put options and actions
+        # on separate rows so the dialog does not clip horizontally.
+        if _appearance.is_aqua(self):
+            options_frame = tk.Frame(button_frame)
+            options_frame.grid(row=0, column=0, sticky='ew')
+            action_frame = tk.Frame(button_frame)
+            action_frame.grid(row=1, column=0, sticky='ew')
+            button_frame.grid_columnconfigure(0, weight=1)
+        else:
+            options_frame = button_frame
+            action_frame = button_frame
+
         # Options
         self.case_var = tk.BooleanVar(value=self.state.case_sensitive)
         self.regex_var = tk.BooleanVar(value=self.state.regex_mode)
@@ -526,34 +538,34 @@ class FindDialog(tk.Toplevel):
         self.case_var.trace_add('write', lambda *args: self._on_options_changed())
         self.regex_var.trace_add('write', lambda *args: self._on_options_changed())
         
-        ttk.Checkbutton(button_frame, text="Case Sensitive",
+        ttk.Checkbutton(options_frame, text="Case Sensitive",
                       variable=self.case_var).pack(side='left', padx=2)
-        ttk.Checkbutton(button_frame, text="Regex Search",
+        ttk.Checkbutton(options_frame, text="Regex Search",
                       variable=self.regex_var).pack(side='left', padx=2)
         
         # Navigation buttons
-        ttk.Button(button_frame, text='Previous',
+        ttk.Button(action_frame, text='Previous',
                  command=self._find_previous).pack(side='left', padx=2)
-        ttk.Button(button_frame, text='Next',
+        ttk.Button(action_frame, text='Next',
                  command=self._find_next).pack(side='left', padx=2)
         
         # Replace buttons (if needed)
         if self.replace_mode:
-            ttk.Button(button_frame, text='Replace',
+            ttk.Button(action_frame, text='Replace',
                      command=self._replace_current).pack(side='left', padx=2)
         
         # Find All button
-        ttk.Button(button_frame, text='Find All',
+        ttk.Button(action_frame, text='Find All',
                  command=self._find_all).pack(side='left', padx=2)
         
         # Replace All button (if needed)
         if self.replace_mode:
-            ttk.Button(button_frame, text='Replace All',
+            ttk.Button(action_frame, text='Replace All',
                      command=self._replace_all).pack(side='left', padx=2)
         
         # Help button (only in replace mode when regex is enabled)
         if self.replace_mode:
-            self.help_button = ttk.Button(button_frame, text='Help',
+            self.help_button = ttk.Button(action_frame, text='Help',
                                        command=self._show_help)
             self.help_button.pack(side='right', padx=2)
             # Initially hide if regex mode is not enabled
@@ -761,14 +773,14 @@ class FindDialog(tk.Toplevel):
         
         # If size changed, update the window geometry
         if size_changed:
-            # Let Tkinter process the widget size changes
             self.update_idletasks()
-            
-            # Get the new required height
+            req_width = self.winfo_reqwidth()
             req_height = self.winfo_reqheight()
-            
-            # Update window height while preserving width and position
-            self.geometry(f"{self.winfo_width()}x{req_height}+{self.winfo_x()}+{self.winfo_y()}")
+            self.minsize(req_width, req_height)
+            # Keep the user's current width when only the entry height changes.
+            width = max(req_width, self.winfo_width())
+            self.geometry(
+                f"{width}x{req_height}+{self.winfo_x()}+{self.winfo_y()}")
     
     def _show_help(self):
         """Show help dialog for substitution syntax"""
@@ -824,6 +836,29 @@ class FindDialog(tk.Toplevel):
         if self.replace_entry:
             self._on_replace_text_changed()
     
+    def _saved_width(self) -> typing.Optional[int]:
+        """Return the persisted dialog width for the current mode."""
+        return (self.state.last_replace_width if self.replace_mode
+                else self.state.last_find_width)
+
+    def _fit_to_requested_size(self, saved_width: typing.Optional[int] = None):
+        """Size the dialog to the current requested layout.
+
+        On Aqua, ttk control metrics are often still provisional until the
+        toplevel has been mapped (and sometimes until the next idle cycle), so
+        callers remasure after deiconify and again from ``after_idle``.
+        """
+        if not self.winfo_exists():
+            return
+
+        self.update_idletasks()
+        req_width = self.winfo_reqwidth()
+        req_height = self.winfo_reqheight()
+        width = max(req_width, saved_width or 0)
+        self.minsize(req_width, req_height)
+        self.geometry(
+            f"{width}x{req_height}+{self.winfo_x()}+{self.winfo_y()}")
+
     def _position_dialog(self):
         """Position and size the dialog"""
         self.withdraw()
@@ -831,8 +866,7 @@ class FindDialog(tk.Toplevel):
 
         requested_width = self.winfo_reqwidth()
         requested_height = self.winfo_reqheight()
-        saved_width = (self.state.last_replace_width if self.replace_mode
-                       else self.state.last_find_width)
+        saved_width = self._saved_width()
         width = max(requested_width, saved_width or 0)
         self.minsize(requested_width, requested_height)
         
@@ -843,16 +877,14 @@ class FindDialog(tk.Toplevel):
             position=self.state.last_position
         )
         
-        # macOS/aqua lays out ttk widgets (the checkboxes and buttons) on the
-        # window map event that fires in position_toplevel's deiconify, so the
-        # requested height measured above undercounts that row. Re-measure now
-        # that the window is mapped and correct the height. This is a no-op on
-        # Windows and Linux, where the first measurement is already correct.
-        self.update_idletasks()
-        mapped_height = self.winfo_reqheight()
-        if mapped_height != requested_height:
-            self.geometry(
-                f"{width}x{mapped_height}+{self.winfo_x()}+{self.winfo_y()}")
+        # macOS/aqua lays out ttk widgets on the map event from deiconify, so
+        # the withdrawn measurement above undercounts width and height. Re-fit
+        # now that the window is mapped. No-op on Windows/Linux when sizes match.
+        self._fit_to_requested_size(saved_width)
+        if _appearance.is_aqua(self):
+            # Native ttk sizes can settle one idle cycle after map.
+            self.after_idle(
+                lambda: self._fit_to_requested_size(saved_width))
 
         self.find_entry.focus_set()
     
