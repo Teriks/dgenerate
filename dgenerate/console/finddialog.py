@@ -439,6 +439,10 @@ class FindDialog(tk.Toplevel):
     def __init__(self, master, name: str, text_widget: tk.Text,
                  replace_mode: bool = False, state: typing.Optional[DialogState] = None):
         super().__init__(master)
+        # Withdraw before any idle layout. On Aqua the first map freezes the
+        # Cocoa content height, and a map that happens while ttk widgets still
+        # report a 1px height stays that short.
+        self.withdraw()
         
         self.master = master
         self.text_widget = text_widget
@@ -578,6 +582,13 @@ class FindDialog(tk.Toplevel):
                 self.help_button.pack_forget()
         
         self.grid_columnconfigure(0, weight=1)
+        if _appearance.is_aqua(self):
+            # Row minsizes count toward the toplevel request even when native
+            # ttk metrics are still the unmapped default of 1px.
+            self.grid_rowconfigure(0, minsize=36)
+            if self.replace_mode:
+                self.grid_rowconfigure(1, minsize=36)
+            self.grid_rowconfigure(2, minsize=88)
     
     def _setup_events(self):
         """Setup event handlers"""
@@ -873,9 +884,9 @@ class FindDialog(tk.Toplevel):
         """Apply a window size without letting Aqua clamp the height to 1.
 
         ``wm resizable 1 0`` makes Tk set the Cocoa content min and max height
-        to ``configHeight``. That value is 1 until the window has been given a
-        real size, and the clamp sticks. On Aqua, leave vertical resize enabled
-        and pin the height with ``minsize`` / ``maxsize`` instead.
+        to ``configHeight``. That value is whatever height the window had on
+        its first map (often 1), and the clamp sticks. On Aqua, keep vertical
+        resize enabled, clear any existing max-size clamp, then apply geometry.
         """
         if not self.winfo_exists():
             return
@@ -884,18 +895,29 @@ class FindDialog(tk.Toplevel):
         if _appearance.is_aqua(self):
             self.resizable(True, True)
             screen_width = max(width, self.winfo_screenwidth())
+            screen_height = max(height, self.winfo_screenheight())
+            # Raise the cap before the geometry change. Pinning max height to
+            # the target is only safe once the window has actually reached it.
+            self.maxsize(screen_width, screen_height)
             self.minsize(min_width, height)
-            self.maxsize(screen_width, height)
         else:
             self.minsize(min_width, height)
         self.geometry(f"{width}x{height}+{x}+{y}")
+        if _appearance.is_aqua(self):
+            self.update_idletasks()
+            if self.winfo_height() >= height - 4:
+                self.maxsize(screen_width, height)
 
     def _fit_to_requested_size(self, saved_width: typing.Optional[int] = None):
         """Size the dialog to the current requested layout."""
         if not self.winfo_exists():
             return
         req_width, req_height = self._content_req_size()
-        width = max(req_width, saved_width or 0, self.winfo_width())
+        # Ignore a not-yet-mapped width of 1. Keep a real user width.
+        current_width = self.winfo_width()
+        if current_width <= 1:
+            current_width = 0
+        width = max(req_width, saved_width or 0, current_width)
         self._apply_window_size(width, req_height, min_width=req_width)
 
     def _position_dialog(self):
@@ -905,17 +927,25 @@ class FindDialog(tk.Toplevel):
         saved_width = self._saved_width()
 
         if _appearance.is_aqua(self):
-            # Place without a size. An early WxH, combined with vertical
-            # resize disabled, is what collapses this window to the title bar.
+            req_width, req_height = self._content_req_size()
+            width = max(req_width, saved_width or 0)
+            # The size has to be in the geometry before the first deiconify.
+            # Mapping first and resizing after leaves the Cocoa content height
+            # stuck at the unmapped 1px default.
+            self.resizable(True, True)
+            self.minsize(req_width, req_height)
+            self.maxsize(max(width, self.winfo_screenwidth()),
+                         max(req_height, self.winfo_screenheight()))
             _util.position_toplevel(
                 master=self.master,
                 toplevel=self,
-                size=None,
+                size=(width, req_height),
                 position=self.state.last_position
             )
-            self._fit_to_requested_size(saved_width)
-            # Native ttk metrics can grow once the window is mapped.
-            self.after_idle(lambda: self._fit_to_requested_size(saved_width))
+            self.update()
+            if self.winfo_height() + 4 < req_height:
+                self._apply_window_size(width, req_height, min_width=req_width)
+                self.update()
         else:
             requested_width = self.winfo_reqwidth()
             requested_height = self.winfo_reqheight()
