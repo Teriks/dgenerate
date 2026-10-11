@@ -21,6 +21,7 @@
 import inspect
 import re
 import tkinter as tk
+import tkinter.font as tkfont
 import tkinter.ttk as ttk
 import typing
 import dataclasses
@@ -433,11 +434,12 @@ class DialogState:
         self.current_match = SearchResult(found=False)
 
 
-# Fixed sizes, the same way the other console dialogs are opened. The height
-# is not measured from ttk widgets: on Aqua those report about 1px until the
-# window is mapped, and locking that height freezes the dialog as a title bar.
-_FIND_DIALOG_SIZE = (560, 74)
-_REPLACE_DIALOG_SIZE = (560, 99)
+# Aqua push buttons and checkboxes do not report a real size until the window
+# is mapped. These are the native control chrome, in Tk points, added to the
+# label width and line height when that happens.
+_AQUA_BUTTON_CHROME = 28
+_AQUA_CHECK_CHROME = 22
+_AQUA_CONTROL_EXTRA = 12
 
 
 class FindDialog(tk.Toplevel):
@@ -533,6 +535,7 @@ class FindDialog(tk.Toplevel):
 
         controls = tk.Frame(body)
         controls.grid(row=control_row, column=0, columnspan=2, sticky='ew', pady=(8, 0))
+        self._controls = controls
 
         self.case_var = tk.BooleanVar(value=self.state.case_sensitive)
         self.regex_var = tk.BooleanVar(value=self.state.regex_mode)
@@ -799,18 +802,59 @@ class FindDialog(tk.Toplevel):
         if self.replace_entry:
             self._on_replace_text_changed()
     
+    def _content_size(self) -> tuple[int, int]:
+        """Size that fits this layout on the current platform.
+
+        Windows and Linux report ttk sizes before the window is shown. Aqua
+        does not, so the control row is measured from its labels plus the
+        native button and checkbox chrome.
+        """
+        self.update_idletasks()
+        width = self.winfo_reqwidth()
+        height = self.winfo_reqheight()
+        if not _appearance.is_aqua(self):
+            return width, height
+
+        font = tkfont.nametofont('TkDefaultFont')
+        row_height = font.metrics('linespace') + _AQUA_CONTROL_EXTRA
+        row_width = 0
+        for child in self._controls.winfo_children():
+            if not child.winfo_manager():
+                continue
+            text_width = font.measure(str(child.cget('text')))
+            chrome = (_AQUA_CHECK_CHROME if isinstance(child, ttk.Checkbutton)
+                      else _AQUA_BUTTON_CHROME)
+            row_width += text_width + chrome + self._pack_padx(child)
+
+        width += max(0, row_width - self._controls.winfo_reqwidth())
+        height += max(0, row_height - self._controls.winfo_reqheight())
+        return width, height
+
+    @staticmethod
+    def _pack_padx(widget) -> int:
+        """Horizontal padding declared on a packed widget."""
+        try:
+            raw = widget.pack_info().get('padx', 0)
+        except tk.TclError:
+            return 0
+        if isinstance(raw, (tuple, list)):
+            return sum(int(part) for part in raw)
+        parts = str(raw).split()
+        if len(parts) == 2:
+            return int(parts[0]) + int(parts[1])
+        return int(parts[0]) if parts else 0
+
     def _position_dialog(self):
         """Position and size the dialog"""
-        base_width, height = (_REPLACE_DIALOG_SIZE if self.replace_mode
-                              else _FIND_DIALOG_SIZE)
+        content_width, content_height = self._content_size()
         saved_width = (self.state.last_replace_width if self.replace_mode
                        else self.state.last_find_width)
-        width = max(base_width, saved_width or 0)
-        self.minsize(base_width, height)
+        width = max(content_width, saved_width or 0)
+        self.minsize(content_width, content_height)
         _util.position_toplevel(
             master=self.master,
             toplevel=self,
-            size=(width, height),
+            size=(width, content_height),
             position=self.state.last_position
         )
         self.lift()
