@@ -338,27 +338,35 @@ below. A path to some other file is rejected. Each embedding model has an index
 packaged with dgenerate, so an install does not need the examples directory to
 retrieve documentation.
 
-Supported ``--model`` values, smallest download first. The default is
-``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf``.
+Supported ``--model`` values are every non-BF16 quant of Unsloth's Qwen 3.8 27B
+chat GGUF, smallest download first. The default is
+``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf``. GPU labels are a rough
+fit (file size plus room for context).
 
-* ``unsloth/Qwen3.5-9B-GGUF/Qwen3.5-9B-Q4_K_M.gguf`` (5.7 GB, Qwen 3.5, 8 GB GPUs)
-* ``unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-UD-IQ2_XXS.gguf`` (8.6 GB, Qwen 3.5, 12 GB GPUs)
-* ``unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-IQ4_XS.gguf`` (15.0 GB, Qwen 3.5, 16 GB GPUs)
-* ``unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-Q4_K_M.gguf`` (16.7 GB, Qwen 3.5, 24 GB GPUs)
-* ``unsloth/Qwen3.5-35B-A3B-GGUF/Qwen3.5-35B-A3B-UD-IQ4_XS.gguf`` (17.5 GB, Qwen 3.5 MoE, 16 GB GPUs)
-* ``unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-Q6_K.gguf`` (22.5 GB, Qwen 3.5, 24 GB GPUs)
-* ``unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-Q8_0.gguf`` (28.6 GB, Qwen 3.5, 32 GB GPUs)
-* ``unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-UD-IQ2_XXS.gguf`` (9.4 GB, Qwen 3.6, 12 GB GPUs)
-* ``unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-IQ4_XS.gguf`` (15.4 GB, Qwen 3.6, 16 GB GPUs)
-* ``unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf`` (16.8 GB, Qwen 3.6, 24 GB GPUs)
-* ``unsloth/Qwen3.6-35B-A3B-GGUF/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf`` (17.7 GB, Qwen 3.6 MoE, 16 GB GPUs)
-* ``unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q6_K.gguf`` (22.5 GB, Qwen 3.6, 24 GB GPUs)
-* ``unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q8_0.gguf`` (28.6 GB, Qwen 3.6, 32 GB GPUs)
-* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_XXS.gguf`` (9.0 GB, Qwen 3.8, 12 GB GPUs)
-* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ4_XS.gguf`` (15.7 GB, Qwen 3.8, 16 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_S.gguf`` (6.2 GB, Qwen 3.8, 8 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_M.gguf`` (6.7 GB, Qwen 3.8, 8 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_XXS.gguf`` (7.3 GB, Qwen 3.8, 8 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_S.gguf`` (8.4 GB, Qwen 3.8, 12 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q2_K_XL.gguf`` (9.8 GB, Qwen 3.8, 12 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf`` (10.9 GB, Qwen 3.8, 12 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_S.gguf`` (12.0 GB, Qwen 3.8, 16 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q3_K_XL.gguf`` (13.1 GB, Qwen 3.8, 16 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ4_XS.gguf`` (14.3 GB, Qwen 3.8, 16 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_S.gguf`` (15.4 GB, Qwen 3.8, 16 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_0.gguf`` (16.1 GB, Qwen 3.8, 24 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf`` (16.5 GB, Qwen 3.8, 24 GB GPUs, default)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_1.gguf`` (17.5 GB, Qwen 3.8, 24 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_XL.gguf`` (17.6 GB, Qwen 3.8, 24 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q5_K_S.gguf`` (18.7 GB, Qwen 3.8, 24 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q5_K_M.gguf`` (19.8 GB, Qwen 3.8, 24 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q5_K_XL.gguf`` (20.9 GB, Qwen 3.8, 24 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K.gguf`` (22.0 GB, Qwen 3.8, 24 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K_M.gguf`` (23.1 GB, Qwen 3.8, 24 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K_L.gguf`` (24.2 GB, Qwen 3.8, 32 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K_XL.gguf`` (25.3 GB, Qwen 3.8, 32 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q8_K_L.gguf`` (28.0 GB, Qwen 3.8, 32 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q8_0.gguf`` (29.0 GB, Qwen 3.8, 32 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q8_K_XL.gguf`` (31.5 GB, Qwen 3.8, 32 GB GPUs)
 
 Supported ``--embed-model`` values. The default is
 ``Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf``.
