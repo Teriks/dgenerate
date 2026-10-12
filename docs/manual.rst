@@ -10936,13 +10936,44 @@ The help output of ``assistant`` is as follows:
             current directory and are rewritten relative to this file.
             ----------------------------------------------------------
       --model MODEL
-            Chat model. One of the supported Qwen GGUFs. Default:
-            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf
-            ---------------------------------------------------
+            Chat model. One of these compatible Qwen 3.8 27B GGUFs, smallest download first.
+            
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_S.gguf (6.2 GB, Qwen 3.8, 8 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_M.gguf (6.7 GB, Qwen 3.8, 8 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_XXS.gguf (7.3 GB, Qwen 3.8, 8 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_S.gguf (8.4 GB, Qwen 3.8, 12 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q2_K_XL.gguf (9.8 GB, Qwen 3.8, 12 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf (10.9 GB, Qwen 3.8, 12 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_S.gguf (12.0 GB, Qwen 3.8, 16 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q3_K_XL.gguf (13.1 GB, Qwen 3.8, 16 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ4_XS.gguf (14.3 GB, Qwen 3.8, 16 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_S.gguf (15.4 GB, Qwen 3.8, 16 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_0.gguf (16.1 GB, Qwen 3.8, 24 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf (16.5 GB, Qwen 3.8, 24 GB GPUs, default)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_1.gguf (17.5 GB, Qwen 3.8, 24 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_XL.gguf (17.6 GB, Qwen 3.8, 24 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q5_K_S.gguf (18.7 GB, Qwen 3.8, 24 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q5_K_M.gguf (19.8 GB, Qwen 3.8, 24 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q5_K_XL.gguf (20.9 GB, Qwen 3.8, 24 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K.gguf (22.0 GB, Qwen 3.8, 24 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K_M.gguf (23.1 GB, Qwen 3.8, 24 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K_L.gguf (24.2 GB, Qwen 3.8, 32 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K_XL.gguf (25.3 GB, Qwen 3.8, 32 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q8_K_L.gguf (28.0 GB, Qwen 3.8, 32 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q8_0.gguf (29.0 GB, Qwen 3.8, 32 GB GPUs)
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q8_K_XL.gguf (31.5 GB, Qwen 3.8, 32 GB GPUs)
+            
+            Default: unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf
+            ------------------------------------------------------------
       --embed-model EMBED_MODEL
-            Embedding model. One of the supported Qwen3-Embedding GGUFs. Each one has a packaged index. Default:
-            Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf
-            -------------------------------------------------------------
+            Embedding model. One of these compatible Qwen3-Embedding GGUFs. Each one has a packaged index.
+            
+            Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf (0.6 GB, default)
+            Qwen/Qwen3-Embedding-4B-GGUF/Qwen3-Embedding-4B-Q8_0.gguf (4.3 GB, stronger retrieval)
+            Qwen/Qwen3-Embedding-8B-GGUF/Qwen3-Embedding-8B-Q8_0.gguf (8.1 GB, strongest retrieval)
+            
+            Default: Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf
+            ----------------------------------------------------------------------
       --ctx CTX
             Chat context size in tokens. Default: 32768
             -------------------------------------------
@@ -13442,7 +13473,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [70999403446772]
+            Value: [27622964738134]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

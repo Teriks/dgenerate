@@ -133,6 +133,19 @@ def _supported_embed_model(value: str) -> str:
     return _supported_model(value, _catalog.embed_model_specs(), 'embedding')
 
 
+def _model_choices_help(intro: str, models) -> str:
+    """Help text that lists every compatible model, one per line."""
+    lines = [
+        intro,
+        '',
+        'NOWRAP!',
+    ]
+    lines.extend(f'{spec} ({size} GB, {note})' for spec, size, note in models)
+    lines.append('')
+    lines.append('Default: %(default)s')
+    return '\n'.join(lines)
+
+
 def create_parser(prog: str) -> _b_util.DirectiveArgumentParser:
     parser = _b_util.DirectiveArgumentParser(
         prog=prog,
@@ -144,10 +157,14 @@ def create_parser(prog: str) -> _b_util.DirectiveArgumentParser:
                                                'File paths in the request are relative to the current '
                                                'directory and are rewritten relative to this file.')
     parser.add_argument('--model', default=_models.DEFAULT_CHAT_MODEL, type=_supported_chat_model,
-                        help='Chat model. One of the supported Qwen GGUFs. Default: %(default)s')
+                        help=_model_choices_help(
+                            'Chat model. One of these compatible Qwen 3.8 27B GGUFs, smallest download first.',
+                            _catalog.CHAT_MODELS))
     parser.add_argument('--embed-model', default=_models.DEFAULT_EMBED_MODEL, type=_supported_embed_model,
-                        help='Embedding model. One of the supported Qwen3-Embedding GGUFs. '
-                             'Each one has a packaged index. Default: %(default)s')
+                        help=_model_choices_help(
+                            'Embedding model. One of these compatible Qwen3-Embedding GGUFs. '
+                            'Each one has a packaged index.',
+                            _catalog.EMBED_MODELS))
     parser.add_argument('--ctx', type=int, default=32768, help='Chat context size in tokens. Default: %(default)s')
     parser.add_argument('--gpu-layers', type=int, default=-1,
                         help='Layers to put on the GPU, -1 for automatic, 0 for CPU only. Default: %(default)s')
