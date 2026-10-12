@@ -21,8 +21,11 @@
 
 """Metal preview pane for the macOS console.
 
-pyopengltk does not provide an OpenGL view on Darwin. The Mac preview draws
-with the system Metal framework instead, into a layer on the Tk view.
+pyopengltk does not provide an OpenGL view on Darwin. Tk gives an ``NSView``
+to the toplevel window only, so a child pane cannot host ``CAMetalLayer``.
+The preview adds its own overlay view on that toplevel and draws into the
+layer there. The overlay does not accept hits, so the pane still receives
+the pointer.
 """
 
 import ctypes
@@ -102,6 +105,13 @@ class _CGPoint(ctypes.Structure):
     ]
 
 
+class _CGRect(ctypes.Structure):
+    _fields_ = [
+        ('origin', _CGPoint),
+        ('size', _CGSize),
+    ]
+
+
 class _NSRange(ctypes.Structure):
     _fields_ = [
         ('location', ctypes.c_uint64),
@@ -140,6 +150,12 @@ def _objc():
         lib.sel_registerName.argtypes = [ctypes.c_char_p]
         lib.objc_getClass.restype = ctypes.c_void_p
         lib.objc_getClass.argtypes = [ctypes.c_char_p]
+        lib.objc_allocateClassPair.restype = ctypes.c_void_p
+        lib.objc_allocateClassPair.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t]
+        lib.objc_registerClassPair.argtypes = [ctypes.c_void_p]
+        lib.class_addMethod.restype = ctypes.c_bool
+        lib.class_addMethod.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_char_p]
         _objc.lib = lib
     return lib
 
@@ -190,15 +206,44 @@ def _error_text(pointer) -> str:
     return raw.decode('utf-8', errors='replace')
 
 
-def _aqua_nsview(drawable_id: int) -> int:
-    address = int(drawable_id or 0)
+def _content_view(widget) -> int:
+    """``NSView`` of the toplevel. Child windows store a null view."""
+    address = int(widget.winfo_toplevel().winfo_id() or 0)
     if address == 0:
         raise RuntimeError('The preview window is not on screen yet.')
-    drawable = _MacDrawable.from_address(address)
-    view = int(drawable.view or 0)
+    view = int(_MacDrawable.from_address(address).view or 0)
     if view == 0:
-        raise RuntimeError('Tk has no NSView for this pane yet.')
+        raise RuntimeError('Tk has no NSView for this window yet.')
     return view
+
+
+_OVERLAY_HIT = None
+
+
+def _overlay_view_class():
+    """An ``NSView`` that ignores hits, so Tk keeps the pane's pointer events."""
+    global _OVERLAY_HIT
+    objc = _objc()
+    name = b'DGenerateMetalView'
+    found = objc.objc_getClass(name)
+    if found:
+        return found
+    pair = objc.objc_allocateClassPair(_class(b'NSView'), name, 0)
+    if not pair:
+        raise RuntimeError('Could not create the Metal overlay view.')
+
+    def _ignore_hit(_self, _cmd, _point):
+        return None
+
+    prototype = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, _CGPoint)
+    _OVERLAY_HIT = prototype(_ignore_hit)
+    added = objc.class_addMethod(
+        pair, objc.sel_registerName(b'hitTest:'),
+        ctypes.cast(_OVERLAY_HIT, ctypes.c_void_p), b'@@:{CGPoint=dd}')
+    if not added:
+        raise RuntimeError('Could not install Metal overlay hit testing.')
+    objc.objc_registerClassPair(pair)
+    return pair
 
 
 def _pool():
@@ -227,10 +272,11 @@ def _pack_vertices(picture, overlays):
 class _MetalDevice:
     """A textured quad and colored triangles on a ``CAMetalLayer``."""
 
-    def __init__(self, drawable_id: int, width: int, height: int, scale: float):
+    def __init__(self, widget, drawable_id: int, width: int, height: int, scale: float):
+        self._widget = widget
         self._drawable_id = int(drawable_id)
         self._scale = max(1.0, float(scale or 1.0))
-        self._view = 0
+        self._host = None
         self._points = (0, 0)
         self._layer = None
         self._device = None
@@ -245,19 +291,25 @@ class _MetalDevice:
         self._vbo = None
         self._vbo_cap = 0
         self._owned = []
-        _frameworks()
-        device = _frameworks().MTLCreateSystemDefaultDevice()
-        if not device:
-            raise RuntimeError('This Mac has no Metal device.')
-        self._device = _msg(device, b'retain')
-        self._queue = _msg(self._device, b'newCommandQueue')
-        if not self._queue:
-            raise RuntimeError('Metal could not create a command queue.')
-        self._library = self._library_from_source()
-        self._texture_pipeline = self._pipeline(b'fragment_texture')
-        self._color_pipeline = self._pipeline(b'fragment_color')
-        self._layer = self._make_layer()
-        self._attach(width, height)
+        self._frame_drawable = None
+        self._frame_command = None
+        try:
+            _frameworks()
+            device = _frameworks().MTLCreateSystemDefaultDevice()
+            if not device:
+                raise RuntimeError('This Mac has no Metal device.')
+            self._device = _msg(device, b'retain')
+            self._queue = _msg(self._device, b'newCommandQueue')
+            if not self._queue:
+                raise RuntimeError('Metal could not create a command queue.')
+            self._library = self._library_from_source()
+            self._texture_pipeline = self._pipeline(b'fragment_texture')
+            self._color_pipeline = self._pipeline(b'fragment_color')
+            self._layer = self._make_layer()
+            self._place_overlay(width, height)
+        except Exception:
+            self.destroy()
+            raise
 
     def _own(self, obj):
         if obj:
@@ -322,9 +374,6 @@ class _MetalDevice:
              argtypes=(ctypes.c_uint64,), restype=None)
         _msg(layer, b'setFramebufferOnly:', True, argtypes=(ctypes.c_bool,), restype=None)
         _msg(layer, b'setOpaque:', True, argtypes=(ctypes.c_bool,), restype=None)
-        # Default anchor is the center, so a sized layer sits halfway outside the view.
-        _msg(layer, b'setAnchorPoint:', _CGPoint(0.0, 0.0),
-             restype=None, argtypes=(_CGPoint,))
         # Present during the AppKit transaction. A bare present from a Tk callback
         # never composites, and the drawable is then reported as a context leak.
         _msg(layer, b'setPresentsWithTransaction:', True, argtypes=(ctypes.c_bool,), restype=None)
@@ -333,24 +382,59 @@ class _MetalDevice:
         self._noted_missing_drawable = False
         return layer
 
-    def _attach(self, width, height):
-        view = _aqua_nsview(self._drawable_id)
-        self._view = view
-        _msg(view, b'setWantsLayer:', True, argtypes=(ctypes.c_bool,), restype=None)
-        current = _msg(view, b'layer')
-        if int(current or 0) != int(self._layer):
-            _msg(view, b'setLayer:', self._layer, argtypes=(ctypes.c_void_p,), restype=None)
+    def _place_overlay(self, width, height):
+        """Keep an overlay ``NSView`` aligned with this pane.
+
+        The view's layer tracks ``setFrame:``. ``CAMetalLayer`` has no
+        ``setFrameSize:``; sending that aborts the process.
+        """
+        content = _content_view(self._widget)
+        bounds = _msg(content, b'bounds', restype=_CGRect)
+        top = self._widget.winfo_toplevel()
+        origin_x = float(self._widget.winfo_rootx() - top.winfo_rootx())
+        origin_y = float(self._widget.winfo_rooty() - top.winfo_rooty())
         points = (max(1, int(width)), max(1, int(height)))
         self._points = points
-        _msg(self._layer, b'setPosition:', _CGPoint(0.0, 0.0),
-             restype=None, argtypes=(_CGPoint,))
-        _msg(self._layer, b'setFrameSize:', _CGSize(float(points[0]), float(points[1])),
-             restype=None, argtypes=(_CGSize,))
+        rect = _CGRect(
+            _CGPoint(origin_x, bounds.size.height - origin_y - points[1]),
+            _CGSize(float(points[0]), float(points[1])))
+        window = _msg(content, b'window')
+        scale = float(_msg(window, b'backingScaleFactor', restype=ctypes.c_double) or 0.0)
+        self._scale = scale if scale >= 1.0 else self._scale
+        if not self._host:
+            self._host = _msg(
+                _msg(_overlay_view_class(), b'alloc'), b'initWithFrame:', rect,
+                argtypes=(_CGRect,))
+            if not self._host:
+                raise RuntimeError('Could not create the Metal overlay view.')
+            _msg(self._host, b'setLayer:', self._layer, argtypes=(ctypes.c_void_p,), restype=None)
+            _msg(self._host, b'setWantsLayer:', True, argtypes=(ctypes.c_bool,), restype=None)
+            _msg(content, b'addSubview:', self._host, argtypes=(ctypes.c_void_p,), restype=None)
+        else:
+            parent = int(_msg(self._host, b'superview') or 0)
+            if parent != int(content):
+                if parent:
+                    _msg(self._host, b'removeFromSuperview', restype=None)
+                _msg(content, b'addSubview:', self._host, argtypes=(ctypes.c_void_p,), restype=None)
+            _msg(self._host, b'setFrame:', rect, argtypes=(_CGRect,), restype=None)
+        _msg(self._host, b'setHidden:', False, argtypes=(ctypes.c_bool,), restype=None)
         _msg(self._layer, b'setContentsScale:', self._scale,
-             restype=None, argtypes=(ctypes.c_double,))
+             argtypes=(ctypes.c_double,), restype=None)
         _msg(self._layer, b'setDrawableSize:',
              _CGSize(points[0] * self._scale, points[1] * self._scale),
              restype=None, argtypes=(_CGSize,))
+
+    def set_visible(self, visible):
+        if self._host:
+            _msg(self._host, b'setHidden:', not visible, argtypes=(ctypes.c_bool,), restype=None)
+
+    def _release_frame(self):
+        if self._frame_command:
+            _msg(self._frame_command, b'release', restype=None)
+            self._frame_command = None
+        if self._frame_drawable:
+            _msg(self._frame_drawable, b'release', restype=None)
+            self._frame_drawable = None
 
     def _prepare_image(self, image):
         if image is None or image is self._source_image:
@@ -374,6 +458,10 @@ class _MetalDevice:
                 b'texture2DDescriptorWithPixelFormat:width:height:mipmapped:',
                 _MTL_PIXEL_RGBA8, width, height, False,
                 argtypes=(ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_bool))
+            # The default on macOS is managed storage. A CPU upload then stays
+            # invisible to the GPU unless it is explicitly synchronized.
+            _msg(descriptor, b'setStorageMode:', _MTL_STORAGE_SHARED,
+                 argtypes=(ctypes.c_uint64,), restype=None)
             self._texture = _msg(
                 self._device, b'newTextureWithDescriptor:', descriptor,
                 argtypes=(ctypes.c_void_p,))
@@ -383,9 +471,9 @@ class _MetalDevice:
         region = _MTLRegion(_MTLOrigin(0, 0, 0), _MTLSize(width, height, 1))
         _msg(
             self._texture, b'replaceRegion:mipmapLevel:withBytes:bytesPerRow:',
-            ctypes.addressof(region), 0,
+            region, 0,
             rgba.ctypes.data_as(ctypes.c_void_p), width * 4,
-            argtypes=(ctypes.c_void_p, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_uint64),
+            argtypes=(_MTLRegion, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_uint64),
             restype=None)
         self._source_image = image
 
@@ -411,8 +499,11 @@ class _MetalDevice:
     def draw(self, width, height, image, picture, overlays, drawable_id=None):
         if drawable_id:
             self._drawable_id = int(drawable_id)
-        self._attach(width, height)
+        self._place_overlay(width, height)
         pool = _pool()
+        drawable = None
+        command = None
+        committed = False
         try:
             drawable = _msg(self._layer, b'nextDrawable')
             if not drawable:
@@ -421,6 +512,10 @@ class _MetalDevice:
                     sys.stderr.write('Metal preview: the layer produced no drawable.\n')
                     sys.stderr.flush()
                 return False
+            # nextDrawable and commandBuffer are autoreleased. Keep them alive
+            # past the pool drain; releasing that drawable early is the
+            # "Context leak detected" report, and the pane stays black.
+            drawable = _msg(drawable, b'retain')
             self._prepare_image(image)
             draws, blob = _pack_vertices(picture, overlays)
             if blob:
@@ -436,6 +531,9 @@ class _MetalDevice:
             _msg(attachment, b'setStoreAction:', _MTL_STORE,
                  argtypes=(ctypes.c_uint64,), restype=None)
             command = _msg(self._queue, b'commandBuffer')
+            if not command:
+                return False
+            command = _msg(command, b'retain')
             encoder = _msg(
                 command, b'renderCommandEncoderWithDescriptor:', desc,
                 argtypes=(ctypes.c_void_p,))
@@ -467,14 +565,33 @@ class _MetalDevice:
             _msg(encoder, b'endEncoding', restype=None)
             _msg(command, b'presentDrawable:', drawable, argtypes=(ctypes.c_void_p,), restype=None)
             _msg(command, b'commit', restype=None)
+            committed = True
             _msg(command, b'waitUntilScheduled', restype=None)
             _msg(_class(b'CATransaction'), b'flush', restype=None)
             _msg(command, b'waitUntilCompleted', restype=None)
+            self._release_frame()
+            self._frame_drawable = drawable
+            self._frame_command = command
+            drawable = None
+            command = None
             return True
         finally:
             _msg(pool, b'drain', restype=None)
+            if not committed:
+                if command:
+                    _msg(command, b'release', restype=None)
+                if drawable:
+                    _msg(drawable, b'release', restype=None)
 
     def destroy(self):
+        self._release_frame()
+        if self._host:
+            try:
+                _msg(self._host, b'removeFromSuperview', restype=None)
+                _msg(self._host, b'release', restype=None)
+            except Exception:
+                pass
+            self._host = None
         for obj in (
                 self._vbo, self._texture, self._color_pipeline, self._texture_pipeline,
                 self._library, self._layer, self._queue, self._device, *reversed(self._owned)):
@@ -660,6 +777,7 @@ class ImageViewerMetal(tk.Frame):
         self.bind('<Key>', self._on_key_press)
         self.bind('<Configure>', self._on_configure)
         self.bind('<Map>', self._on_map)
+        self.bind('<Unmap>', self._on_unmap)
         self.bind('<Control-equal>', lambda e: self._zoom_by_factor(self._zoom_step))
         self.bind('<Control-minus>', lambda e: self._zoom_by_factor((1 / self._zoom_step)))
         if self._is_macos:
@@ -700,14 +818,15 @@ class ImageViewerMetal(tk.Frame):
             except (tk.TclError, TypeError, ValueError):
                 scale = 1.0
             self._gpu = _MetalDevice(
+                widget=self,
                 drawable_id=int(self.winfo_id()),
                 width=max(1, self.winfo_width()),
                 height=max(1, self.winfo_height()),
                 scale=scale)
             return True
         except Exception as error:
-            # The view can be mapped before Tk has stored its NSView. Try again
-            # on the next draw instead of sticking on the canvas with no message.
+            # The toplevel can be mapped before Tk has stored its NSView.
+            # Try again on the next draw instead of giving up with no message.
             message = str(error)
             if 'not on screen' in message or 'no NSView' in message:
                 return False
@@ -740,7 +859,11 @@ class ImageViewerMetal(tk.Frame):
         if self._resize_after is not None:
             return
         self._sync_backdrop()
-        if not self._can_present() or not self._ensure_gpu() or not self.has_image():
+        if not self._can_present() or not self.has_image():
+            if self._gpu is not None:
+                self._gpu.set_visible(False)
+            return
+        if not self._ensure_gpu():
             return
         width = max(1, self.winfo_width())
         height = max(1, self.winfo_height())
@@ -965,6 +1088,11 @@ class ImageViewerMetal(tk.Frame):
         self._presented_key = None
         if not self._finish_pending_load():
             self._show_current_picture()
+        return
+
+    def _on_unmap(self, _event):
+        if self._gpu is not None:
+            self._gpu.set_visible(False)
         return
     def _show_current_picture(self):
         if not self._can_present() or not self.has_image():
