@@ -60,8 +60,14 @@ def text_foreground() -> str:
 
 
 def error_foreground() -> str:
-    """Foreground for validation errors that remains visible in either appearance."""
-    return 'systemRedColor'
+    """Foreground for validation errors that remains visible in either appearance.
+
+    ``systemRedColor`` is an AppKit name, but the Tk that ships with current
+    python.org and uv macOS Pythons rejects it (``unknown color name``), which
+    aborts dialog setup. This is Apple's system red and stays readable on both
+    the light and dark text-field backgrounds.
+    """
+    return '#ff3b30'
 
 
 def install(widget) -> None:
