@@ -293,6 +293,8 @@ class _MetalDevice:
         self._owned = []
         self._defer_present = False
         self._placed = None
+        self._held_drawable = None
+        self._held_command = None
         try:
             _frameworks()
             device = _frameworks().MTLCreateSystemDefaultDevice()
@@ -374,12 +376,15 @@ class _MetalDevice:
              argtypes=(ctypes.c_uint64,), restype=None)
         _msg(layer, b'setFramebufferOnly:', True, argtypes=(ctypes.c_bool,), restype=None)
         _msg(layer, b'setOpaque:', True, argtypes=(ctypes.c_bool,), restype=None)
-        # Present during the AppKit transaction. A bare present from a Tk callback
-        # never composites, and the drawable is then reported as a context leak.
-        _msg(layer, b'setPresentsWithTransaction:', True, argtypes=(ctypes.c_bool,), restype=None)
+        # A transaction present has to be waited out on this thread, and that
+        # wait holds the console until Metal gives up (about a second per
+        # drawable, three of them when a new picture is shown). The overlay
+        # view is in the window, so a normal present composites on its own.
+        _msg(layer, b'setPresentsWithTransaction:', False, argtypes=(ctypes.c_bool,), restype=None)
         _msg(layer, b'setContentsScale:', self._scale,
              argtypes=(ctypes.c_double,), restype=None)
         self._noted_missing_drawable = False
+        self._drawable_pixels = None
         return layer
 
     def _place_overlay(self, width, height):
@@ -425,20 +430,31 @@ class _MetalDevice:
         self._placed = placed
         _msg(self._host, b'setHidden:', False, argtypes=(ctypes.c_bool,), restype=None)
         # A drawable acquired in the same turn the view joins the window is
-        # never shown. Resize used to be the first later present. Commit the
-        # view, then draw on the retry.
+        # never shown. Commit the view, then draw on the retry.
         if inserted:
             _msg(_class(b'CATransaction'), b'flush', restype=None)
             self._defer_present = True
-        _msg(self._layer, b'setContentsScale:', self._scale,
-             argtypes=(ctypes.c_double,), restype=None)
-        _msg(self._layer, b'setDrawableSize:',
-             _CGSize(points[0] * self._scale, points[1] * self._scale),
-             restype=None, argtypes=(_CGSize,))
+        pixel = (points[0] * self._scale, points[1] * self._scale)
+        if inserted or self._drawable_pixels != pixel:
+            self._drawable_pixels = pixel
+            _msg(self._layer, b'setContentsScale:', self._scale,
+                 argtypes=(ctypes.c_double,), restype=None)
+            _msg(self._layer, b'setDrawableSize:',
+                 _CGSize(pixel[0], pixel[1]),
+                 restype=None, argtypes=(_CGSize,))
 
     def set_visible(self, visible):
         if self._host:
             _msg(self._host, b'setHidden:', not visible, argtypes=(ctypes.c_bool,), restype=None)
+
+    def _release_held(self):
+        """Drop the previous drawable now that the run loop has committed it."""
+        if self._held_command:
+            _msg(self._held_command, b'release', restype=None)
+            self._held_command = None
+        if self._held_drawable:
+            _msg(self._held_drawable, b'release', restype=None)
+            self._held_drawable = None
 
     def _prepare_image(self, image):
         if image is None or image is self._source_image:
@@ -507,7 +523,12 @@ class _MetalDevice:
         if self._defer_present:
             self._defer_present = False
             return False
+        # The previous frame's transaction has committed by the time another
+        # draw runs. Releasing it first keeps a drawable free for this frame.
+        self._release_held()
         pool = _pool()
+        drawable = None
+        command = None
         try:
             drawable = _msg(self._layer, b'nextDrawable')
             if not drawable:
@@ -516,6 +537,7 @@ class _MetalDevice:
                     sys.stderr.write('Metal preview: the layer produced no drawable.\n')
                     sys.stderr.flush()
                 return False
+            drawable = _msg(drawable, b'retain')
             self._prepare_image(image)
             draws, blob = _pack_vertices(picture, overlays)
             if blob:
@@ -533,6 +555,7 @@ class _MetalDevice:
             command = _msg(self._queue, b'commandBuffer')
             if not command:
                 return False
+            command = _msg(command, b'retain')
             encoder = _msg(
                 command, b'renderCommandEncoderWithDescriptor:', desc,
                 argtypes=(ctypes.c_void_p,))
@@ -564,16 +587,20 @@ class _MetalDevice:
             _msg(encoder, b'endEncoding', restype=None)
             _msg(command, b'presentDrawable:', drawable, argtypes=(ctypes.c_void_p,), restype=None)
             _msg(command, b'commit', restype=None)
-            # Schedule into the transaction, then commit it, before the pool
-            # releases the drawable. Waiting for the GPU here blocks the console
-            # for a second once every drawable is still held.
-            _msg(command, b'waitUntilScheduled', restype=None)
-            _msg(_class(b'CATransaction'), b'flush', restype=None)
+            self._held_drawable = drawable
+            self._held_command = command
+            drawable = None
+            command = None
             return True
         finally:
             _msg(pool, b'drain', restype=None)
+            if command:
+                _msg(command, b'release', restype=None)
+            if drawable:
+                _msg(drawable, b'release', restype=None)
 
     def destroy(self):
+        self._release_held()
         if self._host:
             try:
                 _msg(self._host, b'removeFromSuperview', restype=None)
