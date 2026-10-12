@@ -53,15 +53,15 @@ global python site packages.
 
     # * ncnn
     # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
-    # * console_ui_opengl (default Console UI preview on macOS; plays video and audio)
-    # * console_ui_vulkan (optional on macOS; set DGENERATE_CONSOLE_UI_VULKAN=1
-    #   to use it. Needs MoltenVK / a Vulkan loader)
+    # * console_ui_vulkan (optional. Metal is the macOS preview and does not
+    #   need an extra. Set DGENERATE_CONSOLE_UI_METAL=0 and
+    #   DGENERATE_CONSOLE_UI_VULKAN=1 to use Vulkan. Needs MoltenVK / a Vulkan loader)
 
     pipx install dgenerate==@VERSION
 
     # or with extras
 
-    pipx install dgenerate[ncnn,xllamacpp,console_ui_opengl,console_ui_vulkan]==@VERSION
+    pipx install dgenerate[ncnn,xllamacpp,console_ui_vulkan]==@VERSION
 
     # open a new terminal or logout & login
 
@@ -115,15 +115,15 @@ of your own creation.
 
     # * ncnn
     # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
-    # * console_ui_opengl (default Console UI preview on macOS; plays video and audio)
-    # * console_ui_vulkan (optional on macOS; set DGENERATE_CONSOLE_UI_VULKAN=1
-    #   to use it. Needs MoltenVK / a Vulkan loader)
+    # * console_ui_vulkan (optional. Metal is the macOS preview and does not
+    #   need an extra. Set DGENERATE_CONSOLE_UI_METAL=0 and
+    #   DGENERATE_CONSOLE_UI_VULKAN=1 to use Vulkan. Needs MoltenVK / a Vulkan loader)
 
     pip3 install dgenerate==@VERSION
 
     # or with extras
 
-    pip3 install dgenerate[ncnn,xllamacpp,console_ui_opengl,console_ui_vulkan]==@VERSION
+    pip3 install dgenerate[ncnn,xllamacpp,console_ui_vulkan]==@VERSION
 
     # launch the Console UI to test the install.
     # tkinter will be available when you install

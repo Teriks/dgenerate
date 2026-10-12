@@ -1,6 +1,7 @@
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 _INSTALLER_DIR = Path(__file__).resolve().parents[2] / 'installer'
 if str(_INSTALLER_DIR) not in sys.path:
@@ -123,9 +124,16 @@ class TestInstallerTorchIndex(unittest.TestCase):
         }
         analyzer.log_callback = lambda message: None
         analyzer._log = lambda message: None
-        recommended = analyzer.get_recommended_extras(GPUInfo())
+        with patch('network_installer.setup_analyzer.platform.system', return_value='Windows'):
+            recommended = analyzer.get_recommended_extras(GPUInfo())
         self.assertIn('console_ui_vulkan', recommended)
         self.assertIn('console_ui_opengl', recommended)
+        with patch('network_installer.setup_analyzer.platform.system', return_value='Darwin'):
+            recommended = analyzer.get_recommended_extras(GPUInfo())
+            available = analyzer.get_available_extras(GPUInfo())
+        self.assertIn('console_ui_vulkan', recommended)
+        self.assertNotIn('console_ui_opengl', recommended)
+        self.assertNotIn('console_ui_opengl', available)
 
     def test_triton_windows_accepts_nvidia_and_rdna3(self):
         from network_installer.platform_detection import (

@@ -22,11 +22,12 @@
 """Vulkan preview pane.
 
 Installed with the ``console_ui_vulkan`` extra. The console uses it by
-default on Windows and Linux when that package is present. On macOS it
-is opt-in via ``DGENERATE_CONSOLE_UI_VULKAN=1`` (MoltenVK / a Vulkan
-loader are not part of a stock Mac). ``DGENERATE_CONSOLE_UI_VULKAN=0``
-selects OpenGL, or the Tk canvas when OpenGL is not installed. Linux
-presents through X11 (including XWayland). macOS presents through MoltenVK.
+default on Windows and Linux when that package is present. On macOS the
+preview is Metal; Vulkan is used there only when
+``DGENERATE_CONSOLE_UI_METAL=0`` and ``DGENERATE_CONSOLE_UI_VULKAN=1``.
+``DGENERATE_CONSOLE_UI_VULKAN=0`` selects OpenGL on Windows and Linux,
+or the Tk canvas when OpenGL is not installed. Linux presents through
+X11 (including XWayland). macOS Vulkan presents through MoltenVK.
 """
 import ctypes
 import ctypes.util
@@ -42,6 +43,7 @@ from vulkan._vulkan import ffi, lib
 import dgenerate.console.animationplayback as _animationplayback
 import dgenerate.console.helpdialog as _helpdialog
 import dgenerate.console.mousewheelbind as _mousewheelbind
+
 _CAPABILITY = 17
 _EXT_IMPORT = 11
 _MEMORY_MODEL = 14
@@ -69,26 +71,33 @@ _COMPOSITE = 80
 _SAMPLE = 87
 _LABEL = 248
 _RETURN = 253
+
+
 class _Spirv:
     def __init__(self):
         self._ops = []
         self._next = 1
         return
+
     def _id(self):
         value = self._next
         self._next = (self._next + 1)
         return value
+
     def raw(self, code, *operands):
         self._ops.append((code, operands))
         return
+
     def result(self, code, *operands):
         ident = self._id()
         self._ops.append((code, (ident, *operands)))
         return ident
+
     def typed(self, code, type_id, *operands):
         ident = self._id()
         self._ops.append((code, (type_id, ident, *operands)))
         return ident
+
     def bytecode(self):
         body = []
         for code, operands in self._ops:
@@ -104,6 +113,8 @@ class _Spirv:
             body.extend(encoded)
         header = [119734787, 65536, 0, self._next, 0]
         return struct.pack(('<' + ('I' * (len(header) + len(body)))), *header, *body)
+
+
 def _vertex_shader():
     spirv = _Spirv()
     spirv.raw(_CAPABILITY, 1)
@@ -125,6 +136,8 @@ def _vertex_shader():
     one = spirv.typed(_CONSTANT, f32, 1065353216)
     spirv.raw(_ENTRY, 0, 0, 'main', pos, uv, out_uv, gl_pos)
     return _vertex_shader_ids()
+
+
 def _vertex_shader_ids():
     'NDC position in location 0, UV in location 1, UV passed to location 0.'
     s = _Spirv()
@@ -154,6 +167,8 @@ def _vertex_shader_ids():
     del pos
     del uv_in
     return _assemble_vertex()
+
+
 def _words_from_ops(ops, bound):
     body = []
     for code, operands in ops:
@@ -169,15 +184,44 @@ def _words_from_ops(ops, bound):
         body.extend(encoded)
     header = [119734787, 65536, 0, bound, 0]
     return struct.pack(('<' + ('I' * (len(header) + len(body)))), *header, *body)
+
+
 def _assemble_vertex():
-    ops = [(_CAPABILITY, (1,)), (_EXT_IMPORT, (1, 'GLSL.std.450')), (_MEMORY_MODEL, (0, 1)), (_ENTRY, (0, 16, 'main', 8, 9, 11, 13)), (_DECORATE, (8, 30, 0)), (_DECORATE, (9, 30, 1)), (_DECORATE, (11, 30, 0)), (_DECORATE, (13, 11, 0)), (_TYPE_VOID, (2,)), (_TYPE_FUNCTION, (3, 2)), (_TYPE_FLOAT, (4, 32)), (_TYPE_VECTOR, (5, 4, 2)), (_TYPE_VECTOR, (6, 4, 4)), (_TYPE_POINTER, (7, 1, 5)), (_TYPE_POINTER, (10, 3, 5)), (_TYPE_POINTER, (12, 3, 6)), (_VARIABLE, (7, 8, 1)), (_VARIABLE, (7, 9, 1)), (_VARIABLE, (10, 11, 3)), (_VARIABLE, (12, 13, 3)), (_CONSTANT, (4, 14, 0)), (_CONSTANT, (4, 15, 1065353216)), (_FUNCTION, (2, 16, 0, 3)), (_LABEL, (17,)), (_LOAD, (5, 18, 8)), (_LOAD, (5, 19, 9)), (_STORE, (11, 19)), (_COMPOSITE, (6, 20, 18, 14, 15)), (_STORE, (13, 20)), (_RETURN, ()), (_FUNCTION_END, ())]
+    ops = [(_CAPABILITY, (1,)), (_EXT_IMPORT, (1, 'GLSL.std.450')), (_MEMORY_MODEL, (0, 1)),
+           (_ENTRY, (0, 16, 'main', 8, 9, 11, 13)), (_DECORATE, (8, 30, 0)), (_DECORATE, (9, 30, 1)),
+           (_DECORATE, (11, 30, 0)), (_DECORATE, (13, 11, 0)), (_TYPE_VOID, (2,)), (_TYPE_FUNCTION, (3, 2)),
+           (_TYPE_FLOAT, (4, 32)), (_TYPE_VECTOR, (5, 4, 2)), (_TYPE_VECTOR, (6, 4, 4)), (_TYPE_POINTER, (7, 1, 5)),
+           (_TYPE_POINTER, (10, 3, 5)), (_TYPE_POINTER, (12, 3, 6)), (_VARIABLE, (7, 8, 1)), (_VARIABLE, (7, 9, 1)),
+           (_VARIABLE, (10, 11, 3)), (_VARIABLE, (12, 13, 3)), (_CONSTANT, (4, 14, 0)),
+           (_CONSTANT, (4, 15, 1065353216)), (_FUNCTION, (2, 16, 0, 3)), (_LABEL, (17,)), (_LOAD, (5, 18, 8)),
+           (_LOAD, (5, 19, 9)), (_STORE, (11, 19)), (_COMPOSITE, (6, 20, 18, 14, 15)), (_STORE, (13, 20)),
+           (_RETURN, ()), (_FUNCTION_END, ())]
     return _words_from_ops(ops, 21)
+
+
 def _assemble_texture_fragment():
-    ops = [(_CAPABILITY, (1,)), (_EXT_IMPORT, (1, 'GLSL.std.450')), (_MEMORY_MODEL, (0, 1)), (_ENTRY, (4, 18, 'main', 8, 10)), (_EXEC_MODE, (18, 7)), (_DECORATE, (8, 30, 0)), (_DECORATE, (10, 30, 0)), (_DECORATE, (16, 34, 0)), (_DECORATE, (16, 33, 0)), (_TYPE_VOID, (2,)), (_TYPE_FUNCTION, (3, 2)), (_TYPE_FLOAT, (4, 32)), (_TYPE_VECTOR, (5, 4, 2)), (_TYPE_VECTOR, (6, 4, 4)), (_TYPE_POINTER, (7, 1, 5)), (_VARIABLE, (7, 8, 1)), (_TYPE_POINTER, (9, 3, 6)), (_VARIABLE, (9, 10, 3)), (_TYPE_IMAGE, (11, 4, 1, 0, 0, 0, 1, 0)), (_TYPE_SAMPLED, (12, 11)), (_TYPE_POINTER, (13, 0, 12)), (_VARIABLE, (13, 16, 0)), (_FUNCTION, (2, 18, 0, 3)), (_LABEL, (19,)), (_LOAD, (5, 20, 8)), (_LOAD, (12, 21, 16)), (_SAMPLE, (6, 22, 21, 20)), (_STORE, (10, 22)), (_RETURN, ()), (_FUNCTION_END, ())]
+    ops = [(_CAPABILITY, (1,)), (_EXT_IMPORT, (1, 'GLSL.std.450')), (_MEMORY_MODEL, (0, 1)),
+           (_ENTRY, (4, 18, 'main', 8, 10)), (_EXEC_MODE, (18, 7)), (_DECORATE, (8, 30, 0)), (_DECORATE, (10, 30, 0)),
+           (_DECORATE, (16, 34, 0)), (_DECORATE, (16, 33, 0)), (_TYPE_VOID, (2,)), (_TYPE_FUNCTION, (3, 2)),
+           (_TYPE_FLOAT, (4, 32)), (_TYPE_VECTOR, (5, 4, 2)), (_TYPE_VECTOR, (6, 4, 4)), (_TYPE_POINTER, (7, 1, 5)),
+           (_VARIABLE, (7, 8, 1)), (_TYPE_POINTER, (9, 3, 6)), (_VARIABLE, (9, 10, 3)),
+           (_TYPE_IMAGE, (11, 4, 1, 0, 0, 0, 1, 0)), (_TYPE_SAMPLED, (12, 11)), (_TYPE_POINTER, (13, 0, 12)),
+           (_VARIABLE, (13, 16, 0)), (_FUNCTION, (2, 18, 0, 3)), (_LABEL, (19,)), (_LOAD, (5, 20, 8)),
+           (_LOAD, (12, 21, 16)), (_SAMPLE, (6, 22, 21, 20)), (_STORE, (10, 22)), (_RETURN, ()), (_FUNCTION_END, ())]
     return _words_from_ops(ops, 23)
+
+
 def _assemble_color_fragment():
-    ops = [(_CAPABILITY, (1,)), (_EXT_IMPORT, (1, 'GLSL.std.450')), (_MEMORY_MODEL, (0, 1)), (_ENTRY, (4, 16, 'main', 12)), (_EXEC_MODE, (16, 7)), (_DECORATE, (12, 30, 0)), (_DECORATE, (8, 2)), (_MEMBER_DECORATE, (8, 0, 35, 0)), (_TYPE_VOID, (2,)), (_TYPE_FUNCTION, (3, 2)), (_TYPE_FLOAT, (4, 32)), (_TYPE_VECTOR, (5, 4, 4)), (_TYPE_STRUCT, (8, 5)), (_TYPE_POINTER, (9, 9, 8)), (_VARIABLE, (9, 10, 9)), (_TYPE_INT, (6, 32, 1)), (_CONSTANT, (6, 7, 0)), (_TYPE_POINTER, (11, 9, 5)), (_TYPE_POINTER, (13, 3, 5)), (_VARIABLE, (13, 12, 3)), (_FUNCTION, (2, 16, 0, 3)), (_LABEL, (17,)), (_ACCESS, (11, 18, 10, 7)), (_LOAD, (5, 19, 18)), (_STORE, (12, 19)), (_RETURN, ()), (_FUNCTION_END, ())]
+    ops = [(_CAPABILITY, (1,)), (_EXT_IMPORT, (1, 'GLSL.std.450')), (_MEMORY_MODEL, (0, 1)),
+           (_ENTRY, (4, 16, 'main', 12)), (_EXEC_MODE, (16, 7)), (_DECORATE, (12, 30, 0)), (_DECORATE, (8, 2)),
+           (_MEMBER_DECORATE, (8, 0, 35, 0)), (_TYPE_VOID, (2,)), (_TYPE_FUNCTION, (3, 2)), (_TYPE_FLOAT, (4, 32)),
+           (_TYPE_VECTOR, (5, 4, 4)), (_TYPE_STRUCT, (8, 5)), (_TYPE_POINTER, (9, 9, 8)), (_VARIABLE, (9, 10, 9)),
+           (_TYPE_INT, (6, 32, 1)), (_CONSTANT, (6, 7, 0)), (_TYPE_POINTER, (11, 9, 5)), (_TYPE_POINTER, (13, 3, 5)),
+           (_VARIABLE, (13, 12, 3)), (_FUNCTION, (2, 16, 0, 3)), (_LABEL, (17,)), (_ACCESS, (11, 18, 10, 7)),
+           (_LOAD, (5, 19, 18)), (_STORE, (12, 19)), (_RETURN, ()), (_FUNCTION_END, ())]
     return _words_from_ops(ops, 20)
+
+
 def shader_modules_are_valid():
     """Create the preview shaders on a real device, then tear the device down."""
     try:
@@ -193,6 +237,8 @@ def shader_modules_are_valid():
         return False
     finally:
         device.destroy()
+
+
 def _instance_extension_names() -> set[str]:
     names = set()
     for prop in vk.vkEnumerateInstanceExtensionProperties(None):
@@ -250,10 +296,10 @@ def _composite_alpha(caps):
     """
     supported = int(caps.supportedCompositeAlpha)
     for bit in (
-        vk.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        vk.VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
-        vk.VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
-        vk.VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
+            vk.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            vk.VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
+            vk.VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+            vk.VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
     ):
         if supported & int(bit):
             return bit
@@ -379,6 +425,7 @@ class _AppleSurfaceInfo(ctypes.Structure):
 
 class _VulkanDevice:
     'Swapchain and the two pipelines the preview draws with.'
+
     def __init__(self, hwnd=None, hinstance=None, windowing='win32',
                  width=1, height=1, scale=1.0):
         self._alive = []
@@ -419,6 +466,7 @@ class _VulkanDevice:
             self._create_pipelines()
             return
         return
+
     @classmethod
     def headless(cls):
         device = cls.__new__(cls)
@@ -452,11 +500,15 @@ class _VulkanDevice:
         device._create_instance(surface=False)
         device._create_device(present=False)
         return device
+
     def _keep(self, value):
         self._alive.append(value)
         return value
+
     def _create_instance(self, surface=True):
-        app = vk.VkApplicationInfo(pApplicationName='dgenerate', applicationVersion=vk.VK_MAKE_VERSION(1, 0, 0), pEngineName='dgenerate', engineVersion=vk.VK_MAKE_VERSION(1, 0, 0), apiVersion=vk.VK_API_VERSION_1_0)
+        app = vk.VkApplicationInfo(pApplicationName='dgenerate', applicationVersion=vk.VK_MAKE_VERSION(1, 0, 0),
+                                   pEngineName='dgenerate', engineVersion=vk.VK_MAKE_VERSION(1, 0, 0),
+                                   apiVersion=vk.VK_API_VERSION_1_0)
         flags = 0
         if surface:
             windowing = getattr(self, 'windowing', None) or {
@@ -473,6 +525,7 @@ class _VulkanDevice:
             enabledExtensionCount=len(names), ppEnabledExtensionNames=listed)
         self.instance = vk.vkCreateInstance(info, None)
         return
+
     def _present_surface(self, info, function_name, address=None):
         encoded = self._keep(ffi.new('char[]', function_name.encode()))
         addr = lib.vkGetInstanceProcAddr(self.instance, encoded)
@@ -495,6 +548,7 @@ class _VulkanDevice:
             raise RuntimeError(f'{function_name} failed ({result})')
         self.surface = surface[0]
         return
+
     def _create_surface(self, width=1, height=1):
         windowing = getattr(self, 'windowing', 'win32')
         if windowing == 'win32':
@@ -509,6 +563,7 @@ class _VulkanDevice:
             return
         raise RuntimeError(
             f'The Vulkan preview does not support the {windowing} window system.')
+
     def _create_apple_surface(self, width=1, height=1):
         # winfo_id() is a MacDrawable*; MoltenVK needs the NSView inside it.
         ns_view = _tk_aqua_nsview(int(self.hwnd or 0))
@@ -528,6 +583,7 @@ class _VulkanDevice:
             function = 'vkCreateMacOSSurfaceMVK'
         self._present_surface(info, function, address=ctypes.addressof(info))
         return
+
     def _create_x11_surface(self):
         library = ctypes.util.find_library('X11')
         if not library:
@@ -558,10 +614,12 @@ class _VulkanDevice:
         if not connection:
             raise RuntimeError('xcb_connect failed.')
         previous = self._native_closer
+
         def _close_both(previous=previous, connection=connection):
             if previous is not None:
                 previous()
             xcb.xcb_disconnect(connection)
+
         self._native_closer = _close_both
         info = vk.VkXcbSurfaceCreateInfoKHR(
             sType=vk.VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR,
@@ -569,6 +627,7 @@ class _VulkanDevice:
             window=window & 0xFFFFFFFF)
         self._present_surface(info, 'vkCreateXcbSurfaceKHR')
         return
+
     def _device_extension_names(self, present: bool) -> list[str]:
         names = []
         if present:
@@ -586,6 +645,7 @@ class _VulkanDevice:
         if portability in available:
             names.append(portability)
         return names
+
     def _create_device(self, present=True):
         devices = vk.vkEnumeratePhysicalDevices(self.instance)
         if (not devices):
@@ -611,13 +671,17 @@ class _VulkanDevice:
         device_extensions = self._device_extension_names(present)
         encoded = [self._keep(ffi.new('char[]', name.encode())) for name in device_extensions]
         listed = self._keep(ffi.new('char*[]', encoded)) if encoded else ffi.NULL
-        info = vk.VkDeviceCreateInfo(queueCreateInfoCount=1, pQueueCreateInfos=self._keep(ffi.new('VkDeviceQueueCreateInfo[]', [queue_info])), enabledExtensionCount=len(device_extensions), ppEnabledExtensionNames=listed)
+        info = vk.VkDeviceCreateInfo(queueCreateInfoCount=1,
+                                     pQueueCreateInfos=self._keep(ffi.new('VkDeviceQueueCreateInfo[]', [queue_info])),
+                                     enabledExtensionCount=len(device_extensions), ppEnabledExtensionNames=listed)
         self.device = vk.vkCreateDevice(self.physical, info, None)
         self.queue = vk.vkGetDeviceQueue(self.device, chosen, 0)
-        pool = vk.VkCommandPoolCreateInfo(flags=vk.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, queueFamilyIndex=chosen)
+        pool = vk.VkCommandPoolCreateInfo(flags=vk.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+                                          queueFamilyIndex=chosen)
         self.command_pool = vk.vkCreateCommandPool(self.device, pool, None)
         flight_count = (2 if present else 1)
-        alloc = vk.VkCommandBufferAllocateInfo(commandPool=self.command_pool, level=vk.VK_COMMAND_BUFFER_LEVEL_PRIMARY, commandBufferCount=flight_count)
+        alloc = vk.VkCommandBufferAllocateInfo(commandPool=self.command_pool, level=vk.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                               commandBufferCount=flight_count)
         buffers = vk.vkAllocateCommandBuffers(self.device, alloc)
         self.command = buffers[0]
         self._flight = []
@@ -632,7 +696,11 @@ class _VulkanDevice:
             semaphore_info = vk.VkSemaphoreCreateInfo()
             for command in buffers:
                 fence = vk.vkCreateFence(self.device, vk.VkFenceCreateInfo(flags=0), None)
-                self._flight.append({'command': command, 'fence': fence, 'fence_list': ffi.new('VkFence[]', [fence]), 'acquire': vk.vkCreateSemaphore(self.device, semaphore_info, None), 'render': vk.vkCreateSemaphore(self.device, semaphore_info, None), 'submitted': False, 'vbo': None, 'vbo_cap': 0, 'vbo_map': None, 'staging': None, 'staging_cap': 0, 'staging_map': None})
+                self._flight.append({'command': command, 'fence': fence, 'fence_list': ffi.new('VkFence[]', [fence]),
+                                     'acquire': vk.vkCreateSemaphore(self.device, semaphore_info, None),
+                                     'render': vk.vkCreateSemaphore(self.device, semaphore_info, None),
+                                     'submitted': False, 'vbo': None, 'vbo_cap': 0, 'vbo_map': None, 'staging': None,
+                                     'staging_cap': 0, 'staging_map': None})
         self._vbo = None
         self._vbo_cap = 0
         self._vbo_map = None
@@ -644,9 +712,11 @@ class _VulkanDevice:
         self._pending_rgba = None
         self._image_layout = vk.VK_IMAGE_LAYOUT_UNDEFINED
         return
+
     def create_shader(self, code):
         info = vk.VkShaderModuleCreateInfo(codeSize=len(code), pCode=code)
         return vk.vkCreateShaderModule(self.device, info, None)
+
     def destroy(self):
         if self.device:
             vk.vkDeviceWaitIdle(self.device)
@@ -699,6 +769,7 @@ class _VulkanDevice:
         self.device = None
         self.instance = None
         return
+
     def _destroy_swapchain(self):
         self._destroy_retired_handles()
         for frame in self.frames:
@@ -712,6 +783,7 @@ class _VulkanDevice:
                 return
             return
         return
+
     def _destroy_texture(self):
         if (not self.device):
             return
@@ -724,6 +796,7 @@ class _VulkanDevice:
             self.texture = None
         self._texture_size = None
         return
+
     def _choose_present_mode(self):
         'Mailbox keeps each presented picture for the compositor.\n\nImmediate mode shows it mid-refresh, which reads as stutter. FIFO\nwaits inside the driver on this window and the picture stalls.\n'
         count = ffi.new('uint32_t*', 0)
@@ -737,6 +810,7 @@ class _VulkanDevice:
             if mode in available:
                 return mode
         return vk.VK_PRESENT_MODE_FIFO_KHR
+
     def _retire(self, swapchain, frames):
         """Keep the swapchain that is still on screen until a new frame is presented."""
         if self._retired is not None:
@@ -810,7 +884,15 @@ class _VulkanDevice:
         image_count = max(int(caps.minImageCount), 3)
         if caps.maxImageCount:
             image_count = min(image_count, int(caps.maxImageCount))
-        info = vk.VkSwapchainCreateInfoKHR(surface=self.surface, minImageCount=image_count, imageFormat=chosen.format, imageColorSpace=chosen.colorSpace, imageExtent=vk.VkExtent2D(width=self.extent[0], height=self.extent[1]), imageArrayLayers=1, imageUsage=(vk.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | vk.VK_IMAGE_USAGE_TRANSFER_SRC_BIT), imageSharingMode=vk.VK_SHARING_MODE_EXCLUSIVE, preTransform=caps.currentTransform, compositeAlpha=_composite_alpha(caps), presentMode=self._present_mode, clipped=1, oldSwapchain=retired if retired else 0)
+        info = vk.VkSwapchainCreateInfoKHR(surface=self.surface, minImageCount=image_count, imageFormat=chosen.format,
+                                           imageColorSpace=chosen.colorSpace,
+                                           imageExtent=vk.VkExtent2D(width=self.extent[0], height=self.extent[1]),
+                                           imageArrayLayers=1, imageUsage=(
+                        vk.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | vk.VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+                                           imageSharingMode=vk.VK_SHARING_MODE_EXCLUSIVE,
+                                           preTransform=caps.currentTransform, compositeAlpha=_composite_alpha(caps),
+                                           presentMode=self._present_mode, clipped=1,
+                                           oldSwapchain=retired if retired else 0)
         swapchain = ffi.new('VkSwapchainKHR*')
         result = lib.vkCreateSwapchainKHR(self.device, ffi.addressof(info), ffi.NULL, swapchain)
         if result != vk.VK_SUCCESS:
@@ -826,10 +908,20 @@ class _VulkanDevice:
         lib.vkGetSwapchainImagesKHR(self.device, swapchain[0], image_count, images)
         built = []
         for index in range(image_count[0]):
-            view_info = vk.VkImageViewCreateInfo(image=images[index], viewType=vk.VK_IMAGE_VIEW_TYPE_2D, format=self.format, components=vk.VkComponentMapping(r=vk.VK_COMPONENT_SWIZZLE_IDENTITY, g=vk.VK_COMPONENT_SWIZZLE_IDENTITY, b=vk.VK_COMPONENT_SWIZZLE_IDENTITY, a=vk.VK_COMPONENT_SWIZZLE_IDENTITY), subresourceRange=vk.VkImageSubresourceRange(aspectMask=vk.VK_IMAGE_ASPECT_COLOR_BIT, levelCount=1, layerCount=1))
+            view_info = vk.VkImageViewCreateInfo(image=images[index], viewType=vk.VK_IMAGE_VIEW_TYPE_2D,
+                                                 format=self.format,
+                                                 components=vk.VkComponentMapping(r=vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                  g=vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                  b=vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                  a=vk.VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                 subresourceRange=vk.VkImageSubresourceRange(
+                                                     aspectMask=vk.VK_IMAGE_ASPECT_COLOR_BIT, levelCount=1,
+                                                     layerCount=1))
             view = vk.vkCreateImageView(self.device, view_info, None)
             attachments = self._keep(ffi.new('VkImageView[]', [view]))
-            fb_info = vk.VkFramebufferCreateInfo(renderPass=self.render_pass, attachmentCount=1, pAttachments=attachments, width=self.extent[0], height=self.extent[1], layers=1)
+            fb_info = vk.VkFramebufferCreateInfo(renderPass=self.render_pass, attachmentCount=1,
+                                                 pAttachments=attachments, width=self.extent[0], height=self.extent[1],
+                                                 layers=1)
             framebuffer = vk.vkCreateFramebuffer(self.device, fb_info, None)
             built.append({'image': images[index], 'view': view, 'framebuffer': framebuffer})
         self.swapchain = swapchain[0]
@@ -838,13 +930,25 @@ class _VulkanDevice:
         if retired:
             self._retire(retired, retired_frames)
         return True
+
     def _create_render_pass(self):
-        attachment = vk.VkAttachmentDescription(format=self.format, samples=vk.VK_SAMPLE_COUNT_1_BIT, loadOp=vk.VK_ATTACHMENT_LOAD_OP_CLEAR, storeOp=vk.VK_ATTACHMENT_STORE_OP_STORE, stencilLoadOp=vk.VK_ATTACHMENT_LOAD_OP_DONT_CARE, stencilStoreOp=vk.VK_ATTACHMENT_STORE_OP_DONT_CARE, initialLayout=vk.VK_IMAGE_LAYOUT_UNDEFINED, finalLayout=vk.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+        attachment = vk.VkAttachmentDescription(format=self.format, samples=vk.VK_SAMPLE_COUNT_1_BIT,
+                                                loadOp=vk.VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                storeOp=vk.VK_ATTACHMENT_STORE_OP_STORE,
+                                                stencilLoadOp=vk.VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                stencilStoreOp=vk.VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                initialLayout=vk.VK_IMAGE_LAYOUT_UNDEFINED,
+                                                finalLayout=vk.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
         ref = vk.VkAttachmentReference(attachment=0, layout=vk.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-        subpass = vk.VkSubpassDescription(pipelineBindPoint=vk.VK_PIPELINE_BIND_POINT_GRAPHICS, colorAttachmentCount=1, pColorAttachments=self._keep(ffi.new('VkAttachmentReference[]', [ref])))
-        info = vk.VkRenderPassCreateInfo(attachmentCount=1, pAttachments=self._keep(ffi.new('VkAttachmentDescription[]', [attachment])), subpassCount=1, pSubpasses=self._keep(ffi.new('VkSubpassDescription[]', [subpass])))
+        subpass = vk.VkSubpassDescription(pipelineBindPoint=vk.VK_PIPELINE_BIND_POINT_GRAPHICS, colorAttachmentCount=1,
+                                          pColorAttachments=self._keep(ffi.new('VkAttachmentReference[]', [ref])))
+        info = vk.VkRenderPassCreateInfo(attachmentCount=1,
+                                         pAttachments=self._keep(ffi.new('VkAttachmentDescription[]', [attachment])),
+                                         subpassCount=1,
+                                         pSubpasses=self._keep(ffi.new('VkSubpassDescription[]', [subpass])))
         self.render_pass = vk.vkCreateRenderPass(self.device, info, None)
         return
+
     def _create_pipelines(self):
         vertex = self.create_shader(_assemble_vertex())
         texture = self.create_shader(_assemble_texture_fragment())
@@ -856,41 +960,84 @@ class _VulkanDevice:
         vk.vkDestroyShaderModule(self.device, color, None)
         self._create_sampler()
         return
+
     def _make_pipeline(self, vertex, fragment, textured):
         name = self._keep(ffi.new('char[]', b'main'))
-        stages = self._keep(ffi.new('VkPipelineShaderStageCreateInfo[2]', [vk.VkPipelineShaderStageCreateInfo(stage=vk.VK_SHADER_STAGE_VERTEX_BIT, module=vertex, pName=name), vk.VkPipelineShaderStageCreateInfo(stage=vk.VK_SHADER_STAGE_FRAGMENT_BIT, module=fragment, pName=name)]))
+        stages = self._keep(ffi.new('VkPipelineShaderStageCreateInfo[2]',
+                                    [vk.VkPipelineShaderStageCreateInfo(stage=vk.VK_SHADER_STAGE_VERTEX_BIT,
+                                                                        module=vertex, pName=name),
+                                     vk.VkPipelineShaderStageCreateInfo(stage=vk.VK_SHADER_STAGE_FRAGMENT_BIT,
+                                                                        module=fragment, pName=name)]))
         binding = vk.VkVertexInputBindingDescription(binding=0, stride=16, inputRate=vk.VK_VERTEX_INPUT_RATE_VERTEX)
-        attributes = [vk.VkVertexInputAttributeDescription(location=0, binding=0, format=vk.VK_FORMAT_R32G32_SFLOAT, offset=0), vk.VkVertexInputAttributeDescription(location=1, binding=0, format=vk.VK_FORMAT_R32G32_SFLOAT, offset=8)]
-        vertex_input = vk.VkPipelineVertexInputStateCreateInfo(vertexBindingDescriptionCount=1, pVertexBindingDescriptions=self._keep(ffi.new('VkVertexInputBindingDescription[]', [binding])), vertexAttributeDescriptionCount=len(attributes), pVertexAttributeDescriptions=self._keep(ffi.new('VkVertexInputAttributeDescription[]', attributes)))
+        attributes = [
+            vk.VkVertexInputAttributeDescription(location=0, binding=0, format=vk.VK_FORMAT_R32G32_SFLOAT, offset=0),
+            vk.VkVertexInputAttributeDescription(location=1, binding=0, format=vk.VK_FORMAT_R32G32_SFLOAT, offset=8)]
+        vertex_input = vk.VkPipelineVertexInputStateCreateInfo(vertexBindingDescriptionCount=1,
+                                                               pVertexBindingDescriptions=self._keep(
+                                                                   ffi.new('VkVertexInputBindingDescription[]',
+                                                                           [binding])),
+                                                               vertexAttributeDescriptionCount=len(attributes),
+                                                               pVertexAttributeDescriptions=self._keep(
+                                                                   ffi.new('VkVertexInputAttributeDescription[]',
+                                                                           attributes)))
         assembly = vk.VkPipelineInputAssemblyStateCreateInfo(topology=vk.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
         viewport = vk.VkPipelineViewportStateCreateInfo(viewportCount=1, scissorCount=1)
-        raster = vk.VkPipelineRasterizationStateCreateInfo(polygonMode=vk.VK_POLYGON_MODE_FILL, cullMode=vk.VK_CULL_MODE_NONE, frontFace=vk.VK_FRONT_FACE_COUNTER_CLOCKWISE, lineWidth=1.0)
+        raster = vk.VkPipelineRasterizationStateCreateInfo(polygonMode=vk.VK_POLYGON_MODE_FILL,
+                                                           cullMode=vk.VK_CULL_MODE_NONE,
+                                                           frontFace=vk.VK_FRONT_FACE_COUNTER_CLOCKWISE, lineWidth=1.0)
         multisample = vk.VkPipelineMultisampleStateCreateInfo(rasterizationSamples=vk.VK_SAMPLE_COUNT_1_BIT)
-        blend = vk.VkPipelineColorBlendAttachmentState(blendEnable=1, srcColorBlendFactor=vk.VK_BLEND_FACTOR_SRC_ALPHA, dstColorBlendFactor=vk.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, colorBlendOp=vk.VK_BLEND_OP_ADD, srcAlphaBlendFactor=vk.VK_BLEND_FACTOR_ONE, dstAlphaBlendFactor=vk.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, alphaBlendOp=vk.VK_BLEND_OP_ADD, colorWriteMask=15)
-        blending = vk.VkPipelineColorBlendStateCreateInfo(attachmentCount=1, pAttachments=self._keep(ffi.new('VkPipelineColorBlendAttachmentState[]', [blend])))
-        dynamic = vk.VkPipelineDynamicStateCreateInfo(dynamicStateCount=2, pDynamicStates=self._keep(ffi.new('VkDynamicState[]', [vk.VK_DYNAMIC_STATE_VIEWPORT, vk.VK_DYNAMIC_STATE_SCISSOR])))
+        blend = vk.VkPipelineColorBlendAttachmentState(blendEnable=1, srcColorBlendFactor=vk.VK_BLEND_FACTOR_SRC_ALPHA,
+                                                       dstColorBlendFactor=vk.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                       colorBlendOp=vk.VK_BLEND_OP_ADD,
+                                                       srcAlphaBlendFactor=vk.VK_BLEND_FACTOR_ONE,
+                                                       dstAlphaBlendFactor=vk.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                       alphaBlendOp=vk.VK_BLEND_OP_ADD, colorWriteMask=15)
+        blending = vk.VkPipelineColorBlendStateCreateInfo(attachmentCount=1, pAttachments=self._keep(
+            ffi.new('VkPipelineColorBlendAttachmentState[]', [blend])))
+        dynamic = vk.VkPipelineDynamicStateCreateInfo(dynamicStateCount=2, pDynamicStates=self._keep(
+            ffi.new('VkDynamicState[]', [vk.VK_DYNAMIC_STATE_VIEWPORT, vk.VK_DYNAMIC_STATE_SCISSOR])))
         if textured:
-            binding_info = vk.VkDescriptorSetLayoutBinding(binding=0, descriptorType=vk.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, descriptorCount=1, stageFlags=vk.VK_SHADER_STAGE_FRAGMENT_BIT)
-            layout_info = vk.VkDescriptorSetLayoutCreateInfo(bindingCount=1, pBindings=self._keep(ffi.new('VkDescriptorSetLayoutBinding[]', [binding_info])))
+            binding_info = vk.VkDescriptorSetLayoutBinding(binding=0,
+                                                           descriptorType=vk.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                           descriptorCount=1,
+                                                           stageFlags=vk.VK_SHADER_STAGE_FRAGMENT_BIT)
+            layout_info = vk.VkDescriptorSetLayoutCreateInfo(bindingCount=1, pBindings=self._keep(
+                ffi.new('VkDescriptorSetLayoutBinding[]', [binding_info])))
             set_layout = vk.vkCreateDescriptorSetLayout(self.device, layout_info, None)
             self.descriptor_layout = set_layout
             layouts = self._keep(ffi.new('VkDescriptorSetLayout[]', [set_layout]))
             pipe_layout_info = vk.VkPipelineLayoutCreateInfo(setLayoutCount=1, pSetLayouts=layouts)
         else:
             push = vk.VkPushConstantRange(stageFlags=vk.VK_SHADER_STAGE_FRAGMENT_BIT, offset=0, size=16)
-            pipe_layout_info = vk.VkPipelineLayoutCreateInfo(pushConstantRangeCount=1, pPushConstantRanges=self._keep(ffi.new('VkPushConstantRange[]', [push])))
+            pipe_layout_info = vk.VkPipelineLayoutCreateInfo(pushConstantRangeCount=1, pPushConstantRanges=self._keep(
+                ffi.new('VkPushConstantRange[]', [push])))
         pipe_layout = vk.vkCreatePipelineLayout(self.device, pipe_layout_info, None)
-        created = vk.VkGraphicsPipelineCreateInfo(stageCount=2, pStages=stages, pVertexInputState=vertex_input, pInputAssemblyState=assembly, pViewportState=viewport, pRasterizationState=raster, pMultisampleState=multisample, pColorBlendState=blending, pDynamicState=dynamic, layout=pipe_layout, renderPass=self.render_pass)
-        pipeline = vk.vkCreateGraphicsPipelines(self.device, ffi.NULL, 1, self._keep(ffi.new('VkGraphicsPipelineCreateInfo[]', [created])), None)[0]
+        created = vk.VkGraphicsPipelineCreateInfo(stageCount=2, pStages=stages, pVertexInputState=vertex_input,
+                                                  pInputAssemblyState=assembly, pViewportState=viewport,
+                                                  pRasterizationState=raster, pMultisampleState=multisample,
+                                                  pColorBlendState=blending, pDynamicState=dynamic, layout=pipe_layout,
+                                                  renderPass=self.render_pass)
+        pipeline = vk.vkCreateGraphicsPipelines(self.device, ffi.NULL, 1,
+                                                self._keep(ffi.new('VkGraphicsPipelineCreateInfo[]', [created])), None)[
+            0]
         return (pipeline, pipe_layout)
+
     def _create_sampler(self):
-        info = vk.VkSamplerCreateInfo(magFilter=vk.VK_FILTER_LINEAR, minFilter=vk.VK_FILTER_LINEAR, addressModeU=vk.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, addressModeV=vk.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, addressModeW=vk.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
+        info = vk.VkSamplerCreateInfo(magFilter=vk.VK_FILTER_LINEAR, minFilter=vk.VK_FILTER_LINEAR,
+                                      addressModeU=vk.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                      addressModeV=vk.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                      addressModeW=vk.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
         self.sampler = vk.vkCreateSampler(self.device, info, None)
-        pool = vk.VkDescriptorPoolCreateInfo(maxSets=1, poolSizeCount=1, pPoolSizes=self._keep(ffi.new('VkDescriptorPoolSize[]', [vk.VkDescriptorPoolSize(type=vk.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, descriptorCount=1)])))
+        pool = vk.VkDescriptorPoolCreateInfo(maxSets=1, poolSizeCount=1, pPoolSizes=self._keep(
+            ffi.new('VkDescriptorPoolSize[]',
+                    [vk.VkDescriptorPoolSize(type=vk.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, descriptorCount=1)])))
         self.descriptor_pool = vk.vkCreateDescriptorPool(self.device, pool, None)
-        alloc = vk.VkDescriptorSetAllocateInfo(descriptorPool=self.descriptor_pool, descriptorSetCount=1, pSetLayouts=self._keep(ffi.new('VkDescriptorSetLayout[]', [self.descriptor_layout])))
+        alloc = vk.VkDescriptorSetAllocateInfo(descriptorPool=self.descriptor_pool, descriptorSetCount=1,
+                                               pSetLayouts=self._keep(
+                                                   ffi.new('VkDescriptorSetLayout[]', [self.descriptor_layout])))
         self.descriptor = vk.vkAllocateDescriptorSets(self.device, alloc)[0]
         return
+
     def _memory_type(self, bits, flags, prefer=0):
         props = vk.vkGetPhysicalDeviceMemoryProperties(self.physical)
         fallback = None
@@ -907,6 +1054,7 @@ class _VulkanDevice:
         if (fallback is None):
             raise RuntimeError('No matching Vulkan memory type.')
         return fallback
+
     def _destroy_dynamic_buffers(self):
         if (not self.device):
             return
@@ -946,6 +1094,7 @@ class _VulkanDevice:
             self._staging_cap = 0
             return
         return
+
     def _wait_slot(self, slot, block=True):
         if (not slot['submitted']):
             return True
@@ -957,6 +1106,7 @@ class _VulkanDevice:
         vk.vkResetFences(self.device, 1, slot['fence_list'])
         slot['submitted'] = False
         return True
+
     def _wait_gpu(self, block=True):
         'Wait until every submitted frame has finished.\n\nUsed when a texture or other shared resource has to be rebuilt. Playback\nitself waits only on the older in-flight frame, which is already done.\n'
         ready = True
@@ -966,6 +1116,7 @@ class _VulkanDevice:
                 if not block:
                     return False
         return ready
+
     def _mapped_buffer(self, kind, size):
         'A host-visible buffer kept mapped across frames.'
         attr = ('_vbo' if (kind == 'vertex') else '_staging')
@@ -987,6 +1138,7 @@ class _VulkanDevice:
         setattr(self, (attr + '_cap'), cap)
         setattr(self, (attr + '_map'), mapped)
         return (created, mapped)
+
     def _prepare_image(self, image):
         """Upload only when the viewer hands over a new frame."""
         if image is None or image is self._source_image:
@@ -1010,37 +1162,76 @@ class _VulkanDevice:
         self._pending_rgba = rgba
         self._pending_source = image
         return True
+
     def _allocate_texture(self, width, height):
-        info = vk.VkImageCreateInfo(imageType=vk.VK_IMAGE_TYPE_2D, format=vk.VK_FORMAT_R8G8B8A8_UNORM, extent=vk.VkExtent3D(width=width, height=height, depth=1), mipLevels=1, arrayLayers=1, samples=vk.VK_SAMPLE_COUNT_1_BIT, tiling=vk.VK_IMAGE_TILING_OPTIMAL, usage=(vk.VK_IMAGE_USAGE_TRANSFER_DST_BIT | vk.VK_IMAGE_USAGE_SAMPLED_BIT), sharingMode=vk.VK_SHARING_MODE_EXCLUSIVE, initialLayout=vk.VK_IMAGE_LAYOUT_UNDEFINED)
+        info = vk.VkImageCreateInfo(imageType=vk.VK_IMAGE_TYPE_2D, format=vk.VK_FORMAT_R8G8B8A8_UNORM,
+                                    extent=vk.VkExtent3D(width=width, height=height, depth=1), mipLevels=1,
+                                    arrayLayers=1, samples=vk.VK_SAMPLE_COUNT_1_BIT, tiling=vk.VK_IMAGE_TILING_OPTIMAL,
+                                    usage=(vk.VK_IMAGE_USAGE_TRANSFER_DST_BIT | vk.VK_IMAGE_USAGE_SAMPLED_BIT),
+                                    sharingMode=vk.VK_SHARING_MODE_EXCLUSIVE,
+                                    initialLayout=vk.VK_IMAGE_LAYOUT_UNDEFINED)
         image = vk.vkCreateImage(self.device, info, None)
         requirements = vk.vkGetImageMemoryRequirements(self.device, image)
-        memory = vk.vkAllocateMemory(self.device, vk.VkMemoryAllocateInfo(allocationSize=requirements.size, memoryTypeIndex=self._memory_type(requirements.memoryTypeBits, vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)), None)
+        memory = vk.vkAllocateMemory(self.device, vk.VkMemoryAllocateInfo(allocationSize=requirements.size,
+                                                                          memoryTypeIndex=self._memory_type(
+                                                                              requirements.memoryTypeBits,
+                                                                              vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)),
+                                     None)
         vk.vkBindImageMemory(self.device, image, memory, 0)
-        view = vk.vkCreateImageView(self.device, vk.VkImageViewCreateInfo(image=image, viewType=vk.VK_IMAGE_VIEW_TYPE_2D, format=vk.VK_FORMAT_R8G8B8A8_UNORM, components=vk.VkComponentMapping(r=vk.VK_COMPONENT_SWIZZLE_IDENTITY, g=vk.VK_COMPONENT_SWIZZLE_IDENTITY, b=vk.VK_COMPONENT_SWIZZLE_IDENTITY, a=vk.VK_COMPONENT_SWIZZLE_IDENTITY), subresourceRange=vk.VkImageSubresourceRange(aspectMask=vk.VK_IMAGE_ASPECT_COLOR_BIT, levelCount=1, layerCount=1)), None)
+        view = vk.vkCreateImageView(self.device,
+                                    vk.VkImageViewCreateInfo(image=image, viewType=vk.VK_IMAGE_VIEW_TYPE_2D,
+                                                             format=vk.VK_FORMAT_R8G8B8A8_UNORM,
+                                                             components=vk.VkComponentMapping(
+                                                                 r=vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                 g=vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                 b=vk.VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                 a=vk.VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                             subresourceRange=vk.VkImageSubresourceRange(
+                                                                 aspectMask=vk.VK_IMAGE_ASPECT_COLOR_BIT, levelCount=1,
+                                                                 layerCount=1)), None)
         self.texture = {'image': image, 'memory': memory}
         self.texture_view = view
         self._texture_size = (width, height)
-        image_info = vk.VkDescriptorImageInfo(sampler=self.sampler, imageView=view, imageLayout=vk.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-        write = vk.VkWriteDescriptorSet(dstSet=self.descriptor, dstBinding=0, descriptorCount=1, descriptorType=vk.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, pImageInfo=self._keep(ffi.new('VkDescriptorImageInfo[]', [image_info])))
+        image_info = vk.VkDescriptorImageInfo(sampler=self.sampler, imageView=view,
+                                              imageLayout=vk.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+        write = vk.VkWriteDescriptorSet(dstSet=self.descriptor, dstBinding=0, descriptorCount=1,
+                                        descriptorType=vk.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                        pImageInfo=self._keep(ffi.new('VkDescriptorImageInfo[]', [image_info])))
         vk.vkUpdateDescriptorSets(self.device, 1, self._keep(ffi.new('VkWriteDescriptorSet[]', [write])), 0, ffi.NULL)
         return
+
     def _record_upload(self, cmd, staging_buffer):
         rgba = self._pending_rgba
         height = rgba.shape[slice(None, 2, None)][0]
         width = rgba.shape[slice(None, 2, None)][1]
         old = self._image_layout
         src_access = (vk.VK_ACCESS_SHADER_READ_BIT if (old == vk.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) else 0)
-        self._barrier(cmd, self.texture['image'], old, vk.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, src_access, vk.VK_ACCESS_TRANSFER_WRITE_BIT, vk.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, vk.VK_PIPELINE_STAGE_TRANSFER_BIT)
-        region = vk.VkBufferImageCopy(imageSubresource=vk.VkImageSubresourceLayers(aspectMask=vk.VK_IMAGE_ASPECT_COLOR_BIT, layerCount=1), imageExtent=vk.VkExtent3D(width=width, height=height, depth=1))
-        vk.vkCmdCopyBufferToImage(cmd, staging_buffer, self.texture['image'], vk.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, ffi.new('VkBufferImageCopy[]', [region]))
-        self._barrier(cmd, self.texture['image'], vk.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, vk.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, vk.VK_ACCESS_TRANSFER_WRITE_BIT, vk.VK_ACCESS_SHADER_READ_BIT, vk.VK_PIPELINE_STAGE_TRANSFER_BIT, vk.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+        self._barrier(cmd, self.texture['image'], old, vk.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, src_access,
+                      vk.VK_ACCESS_TRANSFER_WRITE_BIT, vk.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                      vk.VK_PIPELINE_STAGE_TRANSFER_BIT)
+        region = vk.VkBufferImageCopy(
+            imageSubresource=vk.VkImageSubresourceLayers(aspectMask=vk.VK_IMAGE_ASPECT_COLOR_BIT, layerCount=1),
+            imageExtent=vk.VkExtent3D(width=width, height=height, depth=1))
+        vk.vkCmdCopyBufferToImage(cmd, staging_buffer, self.texture['image'], vk.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                  1, ffi.new('VkBufferImageCopy[]', [region]))
+        self._barrier(cmd, self.texture['image'], vk.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                      vk.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, vk.VK_ACCESS_TRANSFER_WRITE_BIT,
+                      vk.VK_ACCESS_SHADER_READ_BIT, vk.VK_PIPELINE_STAGE_TRANSFER_BIT,
+                      vk.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
         self._image_layout = vk.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         self._pending_rgba = None
         return
+
     def _barrier(self, cmd, image, old, new, src_access, dst_access, src_stage, dst_stage):
-        barrier = vk.VkImageMemoryBarrier(srcAccessMask=src_access, dstAccessMask=dst_access, oldLayout=old, newLayout=new, srcQueueFamilyIndex=vk.VK_QUEUE_FAMILY_IGNORED, dstQueueFamilyIndex=vk.VK_QUEUE_FAMILY_IGNORED, image=image, subresourceRange=vk.VkImageSubresourceRange(aspectMask=vk.VK_IMAGE_ASPECT_COLOR_BIT, levelCount=1, layerCount=1))
-        vk.vkCmdPipelineBarrier(cmd, src_stage, dst_stage, 0, 0, ffi.NULL, 0, ffi.NULL, 1, ffi.new('VkImageMemoryBarrier[]', [barrier]))
+        barrier = vk.VkImageMemoryBarrier(srcAccessMask=src_access, dstAccessMask=dst_access, oldLayout=old,
+                                          newLayout=new, srcQueueFamilyIndex=vk.VK_QUEUE_FAMILY_IGNORED,
+                                          dstQueueFamilyIndex=vk.VK_QUEUE_FAMILY_IGNORED, image=image,
+                                          subresourceRange=vk.VkImageSubresourceRange(
+                                              aspectMask=vk.VK_IMAGE_ASPECT_COLOR_BIT, levelCount=1, layerCount=1))
+        vk.vkCmdPipelineBarrier(cmd, src_stage, dst_stage, 0, 0, ffi.NULL, 0, ffi.NULL, 1,
+                                ffi.new('VkImageMemoryBarrier[]', [barrier]))
         return
+
     def _buffer(self, size, usage, host=False):
         info = vk.VkBufferCreateInfo(size=size, usage=usage, sharingMode=vk.VK_SHARING_MODE_EXCLUSIVE)
         buffer = vk.vkCreateBuffer(self.device, info, None)
@@ -1051,9 +1242,13 @@ class _VulkanDevice:
         else:
             flags = vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
             prefer = 0
-        memory = vk.vkAllocateMemory(self.device, vk.VkMemoryAllocateInfo(allocationSize=requirements.size, memoryTypeIndex=self._memory_type(requirements.memoryTypeBits, flags, prefer)), None)
+        memory = vk.vkAllocateMemory(self.device, vk.VkMemoryAllocateInfo(allocationSize=requirements.size,
+                                                                          memoryTypeIndex=self._memory_type(
+                                                                              requirements.memoryTypeBits, flags,
+                                                                              prefer)), None)
         vk.vkBindBufferMemory(self.device, buffer, memory, 0)
         return {'buffer': buffer, 'memory': memory}
+
     def _once(self, record):
         begin = vk.VkCommandBufferBeginInfo(flags=vk.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
         vk.vkBeginCommandBuffer(self.command, begin)
@@ -1064,6 +1259,7 @@ class _VulkanDevice:
         vk.vkQueueSubmit(self.queue, 1, self._keep(ffi.new('VkSubmitInfo[]', [submit])), ffi.NULL)
         vk.vkQueueWaitIdle(self.queue)
         return
+
     def _slot_buffer(self, slot, kind, size):
         'Host buffer owned by one in-flight frame, kept mapped.'
         usage = (vk.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT if (kind == 'vbo') else vk.VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
@@ -1082,6 +1278,7 @@ class _VulkanDevice:
         slot[(kind + '_cap')] = cap
         slot[(kind + '_map')] = mapped
         return (created, mapped)
+
     def draw(self, width, height, image, picture, overlays):
         'Present one frame. Returns False when nothing reached the screen.'
         if (not self._flight):
@@ -1105,7 +1302,8 @@ class _VulkanDevice:
             mapped[:len(blob)] = blob
         index = ffi.new('uint32_t*')
         try:
-            result = lib.vkAcquireNextImageKHR(self.device, self.swapchain, ffi.cast('uint64_t', 2000000), slot['acquire'], ffi.NULL, index)
+            result = lib.vkAcquireNextImageKHR(self.device, self.swapchain, ffi.cast('uint64_t', 2000000),
+                                               slot['acquire'], ffi.NULL, index)
         except vk.VkTimeout:
             return False
         if (result in (vk.VK_TIMEOUT, vk.VK_NOT_READY)):
@@ -1127,12 +1325,15 @@ class _VulkanDevice:
         if upload:
             self._record_upload(self.command, staging['buffer'])
         clear = ffi.new('VkClearValue*')
-        area = vk.VkRect2D(offset=vk.VkOffset2D(x=0, y=0), extent=vk.VkExtent2D(width=self.extent[0], height=self.extent[1]))
-        rp = vk.VkRenderPassBeginInfo(renderPass=self.render_pass, framebuffer=self.frames[image_index]['framebuffer'], renderArea=area, clearValueCount=1, pClearValues=clear)
+        area = vk.VkRect2D(offset=vk.VkOffset2D(x=0, y=0),
+                           extent=vk.VkExtent2D(width=self.extent[0], height=self.extent[1]))
+        rp = vk.VkRenderPassBeginInfo(renderPass=self.render_pass, framebuffer=self.frames[image_index]['framebuffer'],
+                                      renderArea=area, clearValueCount=1, pClearValues=clear)
         vk.vkCmdBeginRenderPass(self.command, rp, vk.VK_SUBPASS_CONTENTS_INLINE)
         viewport = vk.VkViewport(width=float(self.extent[0]), height=float(self.extent[1]), maxDepth=1.0)
         vk.vkCmdSetViewport(self.command, 0, 1, ffi.new('VkViewport[]', [viewport]))
-        scissor = vk.VkRect2D(offset=vk.VkOffset2D(x=0, y=0), extent=vk.VkExtent2D(width=self.extent[0], height=self.extent[1]))
+        scissor = vk.VkRect2D(offset=vk.VkOffset2D(x=0, y=0),
+                              extent=vk.VkExtent2D(width=self.extent[0], height=self.extent[1]))
         vk.vkCmdSetScissor(self.command, 0, 1, ffi.new('VkRect2D[]', [scissor]))
         if (vbo is not None):
             offset = ffi.new('VkDeviceSize[]', [0])
@@ -1145,10 +1346,13 @@ class _VulkanDevice:
         wait_sem = ffi.new('VkSemaphore[]', [slot['acquire']])
         signal_sem = ffi.new('VkSemaphore[]', [slot['render']])
         wait_stage = ffi.new('VkPipelineStageFlags[]', [vk.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT])
-        submit = vk.VkSubmitInfo(waitSemaphoreCount=1, pWaitSemaphores=wait_sem, pWaitDstStageMask=wait_stage, commandBufferCount=1, pCommandBuffers=buffers, signalSemaphoreCount=1, pSignalSemaphores=signal_sem)
+        submit = vk.VkSubmitInfo(waitSemaphoreCount=1, pWaitSemaphores=wait_sem, pWaitDstStageMask=wait_stage,
+                                 commandBufferCount=1, pCommandBuffers=buffers, signalSemaphoreCount=1,
+                                 pSignalSemaphores=signal_sem)
         vk.vkQueueSubmit(self.queue, 1, ffi.new('VkSubmitInfo[]', [submit]), slot['fence'])
         slot['submitted'] = True
-        present = vk.VkPresentInfoKHR(waitSemaphoreCount=1, pWaitSemaphores=signal_sem, swapchainCount=1, pSwapchains=ffi.new('VkSwapchainKHR[]', [self.swapchain]), pImageIndices=index)
+        present = vk.VkPresentInfoKHR(waitSemaphoreCount=1, pWaitSemaphores=signal_sem, swapchainCount=1,
+                                      pSwapchains=ffi.new('VkSwapchainKHR[]', [self.swapchain]), pImageIndices=index)
         present_result = lib.vkQueuePresentKHR(self.queue, ffi.addressof(present))
         self._flight_index = ((self._flight_index + 1) % len(self._flight))
         if upload:
@@ -1164,6 +1368,7 @@ class _VulkanDevice:
             return False
         self._discard_retired()
         return True
+
     def _refresh_extent(self, width, height):
         desired = (max(1, int(width)), max(1, int(height)))
         if (self.swapchain and not self._swapchain_dirty
@@ -1188,6 +1393,7 @@ class _VulkanDevice:
                 return False
             self._swapchain_dirty = False
         return True
+
     def _pack_vertices(self, picture, overlays):
         chunks = []
         draws = []
@@ -1205,28 +1411,37 @@ class _VulkanDevice:
         if (not chunks):
             return ([], b'')
         return (draws, np.concatenate(chunks).tobytes())
+
     def _draw_range(self, kind, first, count, color):
         pipeline = self.pipelines[('texture' if (kind == 'texture') else 'color')][0]
         layout = self.pipelines[('texture' if (kind == 'texture') else 'color')][1]
         vk.vkCmdBindPipeline(self.command, vk.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline)
         if kind == 'texture':
-            vk.vkCmdBindDescriptorSets(self.command, vk.VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, ffi.new('VkDescriptorSet[]', [self.descriptor]), 0, ffi.NULL)
+            vk.vkCmdBindDescriptorSets(self.command, vk.VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1,
+                                       ffi.new('VkDescriptorSet[]', [self.descriptor]), 0, ffi.NULL)
         else:
-            vk.vkCmdPushConstants(self.command, layout, vk.VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16, ffi.new('float[]', list(color)))
+            vk.vkCmdPushConstants(self.command, layout, vk.VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16,
+                                  ffi.new('float[]', list(color)))
         vk.vkCmdDraw(self.command, count, 1, first, 0)
         return
+
     def _begin_frame_trash(self):
         self._trash = []
         return
+
     def _end_frame_trash(self):
         for item in getattr(self, '_trash', []):
             vk.vkDestroyBuffer(self.device, item['buffer'], None)
             vk.vkFreeMemory(self.device, item['memory'], None)
         self._trash = []
         return
+
+
 def _ndc(x, y, width, height):
     'Widget pixels to Vulkan NDC. Y grows downward in both.'
     return ((((x / width) * 2.0) - 1.0), (((y / height) * 2.0) - 1.0))
+
+
 _BBOX_LINE_WIDTH = 3
 _BBOX_DASH = (8, 4)
 
@@ -1319,13 +1534,22 @@ def _icon_overlays(icon_shapes, width, height):
 
 
 def _rect_triangles(x1, y1, x2, y2, width, height):
-    corners = [(*_ndc(x1, y1, width, height), 0.0, 0.0), (*_ndc(x2, y1, width, height), 1.0, 0.0), (*_ndc(x2, y2, width, height), 1.0, 1.0), (*_ndc(x1, y2, width, height), 0.0, 1.0)]
+    corners = [(*_ndc(x1, y1, width, height), 0.0, 0.0), (*_ndc(x2, y1, width, height), 1.0, 0.0),
+               (*_ndc(x2, y2, width, height), 1.0, 1.0), (*_ndc(x1, y2, width, height), 0.0, 1.0)]
     return [corners[index] for index in (0, 1, 2, 0, 2, 3)]
+
+
 def _picture_triangles(origin_x, origin_y, picture_w, picture_h, width, height):
-    corners = [(*_ndc(origin_x, origin_y, width, height), 0.0, 0.0), (*_ndc((origin_x + picture_w), origin_y, width, height), 1.0, 0.0), (*_ndc((origin_x + picture_w), (origin_y + picture_h), width, height), 1.0, 1.0), (*_ndc(origin_x, (origin_y + picture_h), width, height), 0.0, 1.0)]
+    corners = [(*_ndc(origin_x, origin_y, width, height), 0.0, 0.0),
+               (*_ndc((origin_x + picture_w), origin_y, width, height), 1.0, 0.0),
+               (*_ndc((origin_x + picture_w), (origin_y + picture_h), width, height), 1.0, 1.0),
+               (*_ndc(origin_x, (origin_y + picture_h), width, height), 0.0, 1.0)]
     return [corners[index] for index in (0, 1, 2, 0, 2, 3)]
+
+
 class ImageViewerVulkan(tk.Frame):
     '\nPreview pane drawn with Vulkan. This is the console preview when the\n``console_ui_vulkan`` extra is installed.\n\nStill images, and finished animations (GIF, WebP, APNG, and MP4, including\naudio) with a timeline. The speaker draws sound waves, or a red X when\nmuted, beside the volume slider. The picture stays above the\ncontrols. ``DGENERATE_CONSOLE_UI_VULKAN=0`` selects the OpenGL viewer instead.\n'
+
     def __init__(self, parent, **kwargs):
         # Black until a picture is loaded. An empty background is only used
         # once something is on screen, so a sash drag does not smear.
@@ -1391,16 +1615,21 @@ class ImageViewerVulkan(tk.Frame):
         self.bind('<Control-minus>', lambda e: self._zoom_by_factor((1 / self._zoom_step)))
         self.focus_set()
         return
+
     def bind_event(self, event, callback):
         self.bind(event, callback)
         return
+
     def unbind_event(self, event):
         self.unbind(event)
         return
+
     def get_image_path(self):
         return self._image_path
+
     def has_image(self):
         return (self._original_image_array is not None)
+
     def _sync_backdrop(self):
         """Fill an empty preview. A loaded picture keeps the last presented frame."""
         color = '' if self.has_image() else 'black'
@@ -1409,8 +1638,10 @@ class ImageViewerVulkan(tk.Frame):
                 self.configure(bg=color)
         except tk.TclError:
             return
+
     def get_coordinates_at_cursor(self, widget_x, widget_y):
         return self._widget_to_image_coordinates(widget_x, widget_y)
+
     def _ensure_gpu(self):
         if self._gpu is not None or self._gpu_error:
             return self._gpu is not None
@@ -1439,6 +1670,7 @@ class ImageViewerVulkan(tk.Frame):
             if self.on_error:
                 self.on_error(f'Vulkan preview: {error}')
             return False
+
     def _picture_key(self, width, height):
         'Identity of what is on screen. Unchanged playback ticks skip the GPU.'
         playhead = None
@@ -1448,7 +1680,9 @@ class ImageViewerVulkan(tk.Frame):
             if self._timeline_visible():
                 duration = (self._animation.duration if (self._animation.duration > 0) else 1.0)
                 playhead = int(((width * self._animation.time()) / duration))
-        return (id(self._original_image_array), width, height, self._zoom_factor, self._pan_x, self._pan_y, playhead, playing, self._preview_muted, self._preview_volume, self._bbox_widget_start, self._bbox_widget_current)
+        return (id(self._original_image_array), width, height, self._zoom_factor, self._pan_x, self._pan_y, playhead,
+                playing, self._preview_muted, self._preview_volume, self._bbox_widget_start, self._bbox_widget_current)
+
     def _can_present(self):
         """The widget is on screen and has a real size.
 
@@ -1457,6 +1691,7 @@ class ImageViewerVulkan(tk.Frame):
         and, once the pane returns at the same size, the picture is not drawn again.
         """
         return self.winfo_ismapped() and self.winfo_width() > 1 and self.winfo_height() > 1
+
     def redraw(self):
         # Configure fires for every pixel of a drag. Rebuilding the swapchain
         # on each one flashes, and a present that fails mid-drag must not be
@@ -1499,6 +1734,7 @@ class ImageViewerVulkan(tk.Frame):
         if self._can_present() and self._present_retries < 40:
             self._present_retries += 1
             self._schedule_present_retry()
+
     def _schedule_settled_present(self):
         self.after_idle(self._present_settled)
         self.after(50, self._present_settled)
@@ -1514,6 +1750,7 @@ class ImageViewerVulkan(tk.Frame):
         if self._retry_after is not None:
             return
         self._retry_after = self.after(30, self._retry_present)
+
     def _retry_present(self):
         self._retry_after = None
         if self._resize_after is not None:
@@ -1561,22 +1798,27 @@ class ImageViewerVulkan(tk.Frame):
             _animationplayback.speaker_icon(layout['mute'], self._preview_muted, self._preview_volume),
             width, height))
         return shapes
+
     def _control_reserve(self):
         if (self._animation is None):
             return 0
         return (_animationplayback.BAR_HEIGHT + _animationplayback.CONTROL_GAP)
+
     def _content_box(self):
         width = self.winfo_width()
         height = self.winfo_height()
         if width <= 0 or height <= 0:
             width, height = 800, 600
         return (0.0, 0.0, float(width), float(max(1, (height - self._control_reserve()))))
+
     def _placed_image_origin(self, display_width, display_height):
         x = self._content_box()[0]
         y = self._content_box()[1]
         content_width = self._content_box()[2]
         content_height = self._content_box()[3]
-        return (((x + ((content_width - display_width) / 2)) + self._pan_x), ((y + ((content_height - display_height) / 2)) + self._pan_y))
+        return (((x + ((content_width - display_width) / 2)) + self._pan_x),
+                ((y + ((content_height - display_height) / 2)) + self._pan_y))
+
     def _calculate_base_display_size(self):
         if (not self.has_image()):
             return
@@ -1594,6 +1836,7 @@ class ImageViewerVulkan(tk.Frame):
         self._base_display_width = (content_height * image_aspect)
         self._base_display_height = content_height
         return
+
     def _widget_to_image_coordinates(self, widget_x, widget_y):
         if not self.has_image() or not self._base_display_width:
             return None, None
@@ -1615,12 +1858,14 @@ class ImageViewerVulkan(tk.Frame):
         left, top = self._placed_image_origin(display_w, display_h)
         img_w, img_h = self._original_image_size
         return int(left + image_x / img_w * display_w), int(top + image_y / img_h * display_h)
+
     def load_image(self, image_path, fit=False, view_state=None):
         self._image_path = image_path
         self._pending_load = (image_path, fit, view_state)
         if not self._can_present():
             return
         self._finish_pending_load()
+
     def _finish_pending_load(self):
         if self._pending_load is None or not self._can_present():
             return False
@@ -1628,13 +1873,15 @@ class ImageViewerVulkan(tk.Frame):
         self._pending_load = None
         self._load_image_now(image_path, fit, view_state)
         return True
+
     def _load_image_now(self, image_path, fit=False, view_state=None):
         self._image_path = image_path
         try:
             self._stop_animation()
             self._presented_key = None
             self._present_retries = 0
-            clip = _animationplayback.open_animation(image_path) if _animationplayback.is_animation_path(image_path) else None
+            clip = _animationplayback.open_animation(image_path) if _animationplayback.is_animation_path(
+                image_path) else None
             if clip is not None:
                 frame = clip.frame()
                 if frame is None:
@@ -1685,12 +1932,14 @@ class ImageViewerVulkan(tk.Frame):
         if not self._finish_pending_load():
             self._show_current_picture()
         return
+
     def _show_current_picture(self):
         if not self._can_present() or not self.has_image():
             return
         if self._animation is not None or not self._base_display_width or self._base_display_width <= 1:
             self._calculate_base_display_size()
         self.redraw()
+
     def _on_configure(self, _event):
         if not self.has_image():
             self._sync_backdrop()
@@ -1717,6 +1966,7 @@ class ImageViewerVulkan(tk.Frame):
             return
         self._resize_drawn_at = now
         self._draw_for_resize()
+
     def _draw_for_resize(self):
         pending = self._resize_after
         self._resize_after = None
@@ -1727,6 +1977,7 @@ class ImageViewerVulkan(tk.Frame):
         finally:
             if pending is not None and self._resize_after is None:
                 self._resize_after = pending
+
     def _finish_resize(self):
         self._resize_after = None
         self._resize_drawn_at = time.monotonic()
@@ -1734,6 +1985,7 @@ class ImageViewerVulkan(tk.Frame):
         if not self._finish_pending_load():
             self._show_current_picture()
         return
+
     def _schedule_animation(self):
         if self._animation is None or self._animation_after is not None:
             return
@@ -1742,6 +1994,7 @@ class ImageViewerVulkan(tk.Frame):
             self._timeline_visible() or self._scrubbing or self._volume_dragging,
         )
         self._animation_after = self.after(delay, self._animation_tick)
+
     def _animation_tick(self):
         self._animation_after = None
         clip = self._animation
@@ -1754,6 +2007,7 @@ class ImageViewerVulkan(tk.Frame):
         self.redraw()
         if clip.playing or self._pointer_inside or self._scrubbing or self._volume_dragging:
             self._schedule_animation()
+
     def _stop_animation(self):
         if (self._animation_after is not None):
             try:
@@ -1770,6 +2024,7 @@ class ImageViewerVulkan(tk.Frame):
             clip.close()
             return
         return
+
     def _timeline_visible(self):
         if self._animation is None or self._bbox_selection_mode:
             return False
@@ -1780,11 +2035,13 @@ class ImageViewerVulkan(tk.Frame):
         if not self._animation.playing:
             return True
         return (time.perf_counter() - self._pointer_moved) < 2.5
+
     def _on_pointer_enter(self, _event):
         self._pointer_inside = True
         self._pointer_moved = time.perf_counter()
         self.redraw()
         return
+
     def _on_pointer_leave(self, _event):
         self._pointer_inside = False
         if (not self._scrubbing):
@@ -1793,6 +2050,7 @@ class ImageViewerVulkan(tk.Frame):
                 return
             return
         return
+
     def _on_pointer_motion(self, _event):
         self._pointer_inside = True
         self._pointer_moved = time.perf_counter()
@@ -1800,6 +2058,7 @@ class ImageViewerVulkan(tk.Frame):
             self.redraw()
             return
         return
+
     def _on_left_click(self, event):
         if (not self.has_image()):
             return
@@ -1850,6 +2109,7 @@ class ImageViewerVulkan(tk.Frame):
         self._bbox_widget_start = (event.x, event.y)
         self._bbox_widget_current = (event.x, event.y)
         return 'break'
+
     def _on_left_drag(self, event):
         if self._volume_dragging:
             self._set_volume_from_x(event.x)
@@ -1873,6 +2133,7 @@ class ImageViewerVulkan(tk.Frame):
                     self._bbox_widget_current = (event.x, event.y)
                     self.redraw()
         return 'break'
+
     def _on_left_release(self, event):
         if self._volume_dragging:
             self._set_volume_from_x(event.x)
@@ -1896,6 +2157,7 @@ class ImageViewerVulkan(tk.Frame):
                 return
             return
         return
+
     def _set_volume_from_x(self, widget_x):
         self._preview_volume = _animationplayback.volume_on_slider(widget_x, self.winfo_width(), self.winfo_height())
         if (self._preview_volume > 0):
@@ -1904,21 +2166,25 @@ class ImageViewerVulkan(tk.Frame):
             self._animation.set_gain((0.0 if self._preview_muted else self._preview_volume))
         self.redraw()
         return
+
     def _scrub_to(self, widget_x):
         if (self._animation is None):
             return
-        self._animation.seek(_animationplayback.time_on_track(widget_x, self.winfo_width(), self.winfo_height(), self._animation.duration))
+        self._animation.seek(_animationplayback.time_on_track(widget_x, self.winfo_width(), self.winfo_height(),
+                                                              self._animation.duration))
         frame = self._animation.frame()
         if (frame is not None):
             self._original_image_array = frame
             self._uploaded_frame = frame
         self.redraw()
         return
+
     def _on_middle_click(self, event):
         self._is_panning = True
         self._last_pan_x = event.x
         self._last_pan_y = event.y
         return
+
     def _on_middle_drag(self, event):
         if (not self._is_panning):
             return
@@ -1928,9 +2194,11 @@ class ImageViewerVulkan(tk.Frame):
         self._last_pan_y = event.y
         self.redraw()
         return
+
     def _on_middle_release(self, _event):
         self._is_panning = False
         return
+
     def _on_mouse_wheel(self, event):
         if (not self.has_image()):
             return
@@ -1941,10 +2209,12 @@ class ImageViewerVulkan(tk.Frame):
         factor = (self._zoom_step if zoom_in else (1 / self._zoom_step))
         self._zoom_by_factor(factor)
         return
+
     def _zoom_by_factor(self, factor):
         self._zoom_factor = max(self._min_zoom, min(self._max_zoom, (self._zoom_factor * factor)))
         self.redraw()
         return
+
     def _on_key_press(self, event):
         if (event.keysym == 'Escape'):
             if self._bbox_selection_mode:
@@ -1958,6 +2228,7 @@ class ImageViewerVulkan(tk.Frame):
                 return 'break'
             return
         return
+
     def start_bbox_selection(self, seperator):
         if (not self.has_image()):
             return
@@ -1966,9 +2237,11 @@ class ImageViewerVulkan(tk.Frame):
         self._bbox_start_coords = None
         self._bbox_end_coords = None
         if self.on_info:
-            self.on_info('Bounding box selection mode started. Left-click and drag to select area. Press Escape to cancel.')
+            self.on_info(
+                'Bounding box selection mode started. Left-click and drag to select area. Press Escape to cancel.')
             return
         return
+
     def _complete_bbox_selection(self):
         x1 = self._bbox_start_coords[0]
         y1 = self._bbox_start_coords[1]
@@ -1989,6 +2262,7 @@ class ImageViewerVulkan(tk.Frame):
                 self.on_error(f'Vulkan preview: {error}')
         self._cancel_bbox_selection()
         return
+
     def _cancel_bbox_selection(self):
         self._bbox_selection_mode = False
         self._bbox_start_coords = None
@@ -1997,12 +2271,14 @@ class ImageViewerVulkan(tk.Frame):
         self._bbox_widget_current = None
         self.redraw()
         return
+
     def copy_path(self):
         if (not self._image_path):
             return
         self.clipboard_clear()
         self.clipboard_append(self._image_path)
         return
+
     def reset_view(self):
         self._calculate_base_display_size()
         if self._base_display_width:
@@ -2011,6 +2287,7 @@ class ImageViewerVulkan(tk.Frame):
         self._pan_y = 0
         self.redraw()
         return
+
     def zoom_to_fit(self):
         self._calculate_base_display_size()
         self._zoom_factor = 1.0
@@ -2018,10 +2295,12 @@ class ImageViewerVulkan(tk.Frame):
         self._pan_y = 0
         self.redraw()
         return
+
     def get_view_state(self):
         if (not self.has_image()):
             return
         return {'zoom_factor': self._zoom_factor, 'pan_x': self._pan_x, 'pan_y': self._pan_y}
+
     def set_view_state(self, view_state):
         if (not view_state):
             return
@@ -2030,11 +2309,18 @@ class ImageViewerVulkan(tk.Frame):
         self._pan_y = view_state.get('pan_y', 0)
         self.redraw()
         return
+
     def request_help(self):
         if (not self.on_info):
             return
-        _helpdialog.show_help_dialog(title='Vulkan preview help', help_text='\n'.join([*('Vulkan preview controls:', '• Mouse wheel: zoom', '• Ctrl+drag or middle-drag: pan', '• Move the pointer over an animation for the timeline', '• Space: pause and resume', '• Loop arrow: replay the clip, or stop at the end when slashed', '• Speaker: mute (red X) or unmute; slider sets volume. Both are remembered')]), parent=self.master, size=(460, 280), position_widget=self.master, dock_to_right=False)
+        _helpdialog.show_help_dialog(title='Vulkan preview help', help_text='\n'.join(
+            [*('Vulkan preview controls:', '• Mouse wheel: zoom', '• Ctrl+drag or middle-drag: pan',
+               '• Move the pointer over an animation for the timeline', '• Space: pause and resume',
+               '• Loop arrow: replay the clip, or stop at the end when slashed',
+               '• Speaker: mute (red X) or unmute; slider sets volume. Both are remembered')]), parent=self.master,
+                                     size=(460, 280), position_widget=self.master, dock_to_right=False)
         return
+
     def cleanup(self):
         self._stop_animation()
         if (self._gpu is not None):

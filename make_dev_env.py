@@ -51,7 +51,8 @@ def get_install_extras():
     gpu_url = detect_gpu()
 
     # Match the network installer: install both preview extras. Vulkan is the
-    # default on Windows/Linux; macOS uses OpenGL unless
+    # default on Windows/Linux. macOS uses Metal and does not need an extra;
+    # Vulkan there is DGENERATE_CONSOLE_UI_METAL=0 plus
     # DGENERATE_CONSOLE_UI_VULKAN=1. bitsandbytes 0.50 covers CUDA, ROCm, XPU,
     # and Apple MPS (Metal kernels come from the hard ``kernels`` dependency).
     # xllamacpp's PyPI wheel is replaced after install when a CUDA / ROCm /
@@ -62,8 +63,9 @@ def get_install_extras():
         "xllamacpp",
         "bitsandbytes",
         "console_ui_vulkan",
-        "console_ui_opengl",
     ]
+    if platform.system() != "Darwin":
+        base_extras.append("console_ui_opengl")
 
     if platform.system() == "Windows" and _triton_windows_wanted():
         base_extras.append("triton_windows")
