@@ -1,0 +1,38 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Write a Stable Diffusion prompt from a picture with heretic MiniCPM-V 4.6.
+#
+# "image" tells magicprompt to load "model" as an image-text model and attach this picture
+# to every prompt. The prompt text is the instruction. Animated images use the first frame.
+#
+# With an image, "max-length" is the number of new tokens, not a cap on the whole context.
+
+{% if have_cuda() %}
+    \set llm_dtype float16
+{% else %}
+    \set llm_dtype float32
+{% endif %}
+
+\set image ../../media/dog-on-bench.png
+
+\set llm_model heretic-org/MiniCPM-V-4.6-heretic
+
+\set llm_system 'You write Stable Diffusion prompts. Reply with only the prompt.'
+
+\set llm_seed 32
+
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--clip-skips 0
+--gen-seeds 1
+--output-path minicpm-heretic-magicprompt
+--output-size 1024x1024
+--prompt-weighter sd-embed
+--prompt-upscaler "magicprompt;model={{ llm_model }};image={{ image }};dtype={{ llm_dtype }};system={{ llm_system }};seed={{ llm_seed }};max-length=160;remove-prompt=True"
+--prompts "Describe this image as a detailed photo prompt."

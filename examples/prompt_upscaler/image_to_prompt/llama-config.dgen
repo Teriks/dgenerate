@@ -1,0 +1,34 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Write a Stable Diffusion prompt from a picture with the heretic MiniCPM-V 4.6 GGUF.
+#
+# "image" is the picture. "mmproj" is the multimodal projector that matches the model.
+# The prompt text is the instruction sent along with the image.
+# Animated images use the first frame.
+#
+# Vision models need a larger context than text models. 8192 leaves room for the image and the reply.
+# "thinking" defaults to false so the reply is the prompt. Set thinking=True to let the model think first.
+
+\set image ../../media/dog-on-bench.png
+
+\set llm_model https://huggingface.co/mradermacher/MiniCPM-V-4.6-heretic-GGUF/resolve/main/MiniCPM-V-4.6-heretic.Q4_K_M.gguf
+
+\set llm_mmproj https://huggingface.co/mradermacher/MiniCPM-V-4.6-heretic-GGUF/resolve/main/MiniCPM-V-4.6-heretic.mmproj-Q8_0.gguf
+
+\set llm_system 'You write Stable Diffusion prompts. Reply with only the prompt.'
+
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--clip-skips 0
+--gen-seeds 1
+--output-path minicpm-heretic-image-prompt
+--output-size 1024x1024
+--prompt-weighter sd-embed
+--prompt-upscaler "llama;model={{ llm_model }};mmproj={{ llm_mmproj }};image={{ image }};system={{ llm_system }};context-tokens=8192;max-length=160;remove-prompt=True"
+--prompts "Describe this image as a detailed photo prompt."

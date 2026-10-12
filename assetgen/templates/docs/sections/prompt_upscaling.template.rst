@@ -201,6 +201,33 @@ conversion of the original MagicPrompt weights, prepends the prompt, and uses a
 @EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/basic_llm/xllamacpp-magicprompt-config.dgen]
 
 
+Writing prompts from an image
+-----------------------------
+
+``llama`` and ``magicprompt`` can write a prompt from a picture. The prompt text is the
+instruction sent with the image, for example a request to describe it as an image-generation prompt.
+
+For ``llama``, pass the picture as ``image`` and the matching GGUF multimodal projector as ``mmproj``.
+Vision models need a larger ``context-tokens`` value than text models, because the image occupies
+part of the context. Animated files use the first frame. ``thinking`` defaults to false so the
+reply is the prompt. Set it to true on models that support a thought before the answer.
+
+This example uses `heretic MiniCPM-V 4.6 GGUF <https://huggingface.co/mradermacher/MiniCPM-V-4.6-heretic-GGUF>`_
+with the photo in ``examples/media/dog-on-bench.png``:
+
+@EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/image_to_prompt/llama-config.dgen]
+
+``magicprompt`` loads a vision-language model through ``transformers`` instead of a GGUF projector.
+With an image, ``max-length`` is the maximum number of new tokens. This example uses
+`heretic MiniCPM-V 4.6 <https://huggingface.co/heretic-org/MiniCPM-V-4.6-heretic>`_:
+
+@EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/image_to_prompt/magicprompt-config.dgen]
+
+``variations`` asks the model for more than one prompt from the same image:
+
+@EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/image_to_prompt/llama-variations-config.dgen]
+
+
 Customizing LLM output cleanup
 ------------------------------
 

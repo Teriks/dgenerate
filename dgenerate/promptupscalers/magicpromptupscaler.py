@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import contextlib
+import copy
 import gc
 import typing
 
@@ -32,6 +33,7 @@ import dgenerate.prompt as _prompt
 import dgenerate.promptupscalers.exceptions as _exceptions
 import dgenerate.promptupscalers.llmupscalermixin as _llmupscalermixin
 import dgenerate.promptupscalers.promptupscaler as _promptupscaler
+import dgenerate.promptupscalers.util as _util
 from dgenerate.pipelinewrapper.uris import get_quantizer_uri_class as _get_quantizer_uri_class
 from dgenerate.pipelinewrapper.uris import BNBQuantizerUri as _BNBQuantizerUri
 
@@ -192,6 +194,96 @@ class _TextGenerationPipeline:
         return results
 
 
+class _ImageTextGenerationPipeline:
+    def __init__(self, model, processor, quantized: bool):
+        self.model = model
+        self.processor = processor
+        self.quantized = quantized
+
+    def to(self, device):
+        if not self.quantized:
+            self.model.to(device)
+
+    def _tokenize(self, conversations: list, processor_kwargs: dict):
+        inputs = self.processor.apply_chat_template(
+            conversations,
+            add_generation_prompt=True,
+            tokenize=True,
+            return_dict=True,
+            return_tensors='pt',
+            processor_kwargs=processor_kwargs,
+        )
+        inputs = inputs.to(self.model.device)
+        dtype = getattr(self.model, 'dtype', None)
+        if dtype is not None and dtype.is_floating_point and dtype != torch.float32:
+            for key, value in inputs.items():
+                if torch.is_tensor(value) and torch.is_floating_point(value):
+                    inputs[key] = value.to(dtype=dtype)
+        return inputs
+
+    def _without_uneven_slices(self, conversations: list, inputs, processor_kwargs: dict):
+        """
+        MiniCPM-V packs an image into slices and then requires every slice to
+        have the same number of tokens. Uneven slices crash the vision merger,
+        so those images are encoded as one slice instead.
+        """
+        sizes = inputs.get('target_sizes') if hasattr(inputs, 'get') else None
+        if not torch.is_tensor(sizes) or sizes.ndim != 2 or sizes.shape[0] < 2 or sizes.shape[-1] < 2:
+            return inputs
+        areas = sizes[:, 0] * sizes[:, 1]
+        if torch.all(areas == areas[0]):
+            return inputs
+        _messages.debug_log(
+            'magicprompt: image slices have uneven sizes, encoding the image as one slice.')
+        retried = dict(processor_kwargs)
+        images_kwargs = dict(retried.get('images_kwargs') or {})
+        images_kwargs['slice_mode'] = False
+        retried['images_kwargs'] = images_kwargs
+        return self._tokenize(copy.deepcopy(conversations), retried)
+
+    def generate(self,
+                 conversations: list,
+                 max_new_tokens: int,
+                 temperature: float,
+                 top_k: int,
+                 top_p: float) -> list[str]:
+        processor_kwargs = {'padding': True} if len(conversations) > 1 else {}
+        # The processor rewrites message content in place. Keep a copy in case
+        # the image has to be encoded again without slicing.
+        original_conversations = copy.deepcopy(conversations)
+        inputs = self._tokenize(conversations, processor_kwargs)
+        inputs = self._without_uneven_slices(original_conversations, inputs, processor_kwargs)
+
+        prompt_width = int(inputs['input_ids'].shape[-1])
+        generate_kwargs = {'max_new_tokens': max(1, int(max_new_tokens))}
+        if temperature > 0:
+            generate_kwargs.update(
+                do_sample=True,
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p,
+            )
+        else:
+            generate_kwargs['do_sample'] = False
+
+        with torch.no_grad():
+            outputs = self.model.generate(**inputs, **generate_kwargs)
+        if not torch.is_tensor(outputs):
+            outputs = outputs.sequences
+        if outputs.ndim == 1:
+            outputs = outputs.unsqueeze(0)
+
+        decode = getattr(self.processor, 'batch_decode', None)
+        if decode is None:
+            decode = self.processor.tokenizer.batch_decode
+        decoded = decode(
+            outputs[:, prompt_width:],
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=False,
+        )
+        return [text.strip() for text in decoded]
+
+
 class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupscaler.PromptUpscaler):
     """
     Upscale prompts using magicprompt or other LLMs via transformers.
@@ -202,6 +294,14 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
     The "model" specifies the model path for magicprompt, the
     default value is: "Gustavosta/MagicPrompt-Stable-Diffusion". This
     can be a folder on disk or a Hugging Face repository slug.
+
+    The "image" argument is a path or URL to an image. When it is set,
+    "model" must be a vision-language model that transformers can load,
+    such as heretic-org/MiniCPM-V-4.6-heretic. The image is attached to
+    every prompt, and the prompt text is the instruction, for example a
+    request to write an image-generation prompt for the picture. Animated
+    files use the first frame. With an image, "max-length" is the maximum
+    number of new tokens to generate.
 
     The "dtype" argument specifies the torch dtype (compute dtype) to load
     the model with, this defaults to: float32, and may be one of: float32,
@@ -286,12 +386,14 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
 
     FILE_ARGS = {
         'model': {'mode': 'dir'},
+        'image': _util.image_file_argument(),
         'cleanup-config': {'mode': 'in', 'filetypes': [('Cleanup Config', ('*.json', '*.toml', '*.yaml', '*.yml'))]}
     }
 
     def __init__(self,
                  part: str = 'both',
                  model: str = "Gustavosta/MagicPrompt-Stable-Diffusion",
+                 image: str | None = None,
                  dtype: str = 'float32',
                  seed: int | None = None,
                  variations: int = 1,
@@ -371,6 +473,17 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             raise self.argument_error(
                 'Argument "max-batch" may not be less than 1.')
 
+        if image is not None:
+            image = str(image).strip() or None
+        vision_image = None
+        if image:
+            try:
+                image_path = _util.resolve_input_image(
+                    image, local_files_only=self.local_files_only)
+                vision_image = _util.load_rgb_image(image_path)
+            except ValueError as e:
+                raise self.argument_error(str(e)) from e
+
         model_files = list(
             _pipelinewrapper_util.fetch_model_files_with_size(
                 model,
@@ -410,16 +523,20 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                         '(float32 inputs would be cast every MatMul).')
                     torch_dtype = torch.float16
 
+            if vision_image is not None:
+                return self._load_vision_pipeline(
+                    model, dtype=torch_dtype, quantization_config=quantization_config)
             return self._load_pipeline(model, dtype=torch_dtype, quantization_config=quantization_config)
 
         self.set_size_estimate(estimated_size)
 
         self._pipeline = self.load_object_cached(
-            tag=model + (quantizer if quantizer else '') + dtype,
+            tag=model + (quantizer if quantizer else '') + dtype + (':vision' if vision_image is not None else ''),
             estimated_size=estimated_size,
             method=load_method
         )
 
+        self._vision_image = vision_image
         self._system = system
         self._preamble = preamble
         self._remove_prompt = remove_prompt
@@ -500,10 +617,64 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             quantized=quantization_config is not None
         )
 
+    def _load_vision_pipeline(self,
+                              model_name: str,
+                              dtype: torch.dtype,
+                              quantization_config: typing.Optional[typing.Any] = None
+                              ) -> _ImageTextGenerationPipeline:
+        try:
+            config = transformers.AutoConfig.from_pretrained(
+                model_name,
+                trust_remote_code=True,
+                local_files_only=self.local_files_only,
+            )
+        except Exception as e:
+            raise self.argument_error(
+                f'Could not load config for "{model_name}": {e}') from e
+
+        load_kwargs: dict[str, typing.Any] = dict(
+            trust_remote_code=True,
+            dtype=dtype,
+            quantization_config=quantization_config,
+            device_map=self.device if quantization_config else None,
+            local_files_only=self.local_files_only,
+            config=config,
+        )
+        attn_implementation = _attn_implementation_for_config(config)
+        if attn_implementation is not None:
+            load_kwargs['attn_implementation'] = attn_implementation
+
+        try:
+            model = transformers.AutoModelForImageTextToText.from_pretrained(
+                model_name, **load_kwargs)
+        except Exception as e:
+            raise self.argument_error(
+                f'Could not load "{model_name}" as a vision-language model for '
+                f'argument "image". Use an image-text model such as '
+                f'heretic-org/MiniCPM-V-4.6-heretic. {e}') from e
+
+        try:
+            processor = transformers.AutoProcessor.from_pretrained(
+                model_name,
+                trust_remote_code=True,
+                local_files_only=self.local_files_only,
+            )
+        except Exception as e:
+            raise self.argument_error(
+                f'Could not load the image processor for "{model_name}": {e}') from e
+
+        return _ImageTextGenerationPipeline(
+            model, processor,
+            quantized=quantization_config is not None,
+        )
+
     def _to(self, device: str | torch.device):
         self._pipeline.to(device)
 
     def _generate_prompts(self, original_prompts: list[str]) -> list[str]:
+        if self._vision_image is not None:
+            return self._generate_vision_prompts(original_prompts)
+
         def build_query(text):
             if self._preamble:
                 return self._preamble + (' ' if not self._preamble.endswith(' ') else '') + text
@@ -542,6 +713,85 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             )
         ]
 
+        return generated_prompts
+
+    def _query_text(self, text: str) -> str:
+        if self._preamble:
+            return self._preamble + (' ' if not self._preamble.endswith(' ') else '') + text
+        return text
+
+    def _vision_conversations(self, texts: list[str]) -> list:
+        conversations = []
+        for text in texts:
+            messages = []
+            if self._system:
+                messages.append({
+                    'role': 'system',
+                    'content': [{'type': 'text', 'text': self._system}],
+                })
+            content = [{'type': 'image', 'image': self._vision_image.copy()}]
+            if text:
+                content.append({'type': 'text', 'text': text})
+            messages.append({'role': 'user', 'content': content})
+            conversations.append(messages)
+        return conversations
+
+    def _generate_vision_prompts(self, original_prompts: list[str]) -> list[str]:
+        user_texts = [self._query_text(query) for query in original_prompts]
+        conversations = self._vision_conversations(user_texts)
+
+        try:
+            generated_prompts = self._run_vision_batches(conversations)
+        except torch.cuda.OutOfMemoryError:
+            raise
+        except Exception as e:
+            raise _exceptions.PromptUpscalerProcessingError(
+                f'magicprompt prompt upscaler could not process the image prompt: {e}'
+            ) from e
+
+        return [
+            self._clean_prompt(
+                user_text,
+                generated_prompt,
+                remove_prefixes=[self._system, self._preamble],
+                remove_prompt=self._remove_prompt,
+                prepend=original_prompt if self._prepend_prompt else None,
+            )
+            for original_prompt, user_text, generated_prompt in zip(
+                original_prompts, user_texts, generated_prompts
+            )
+        ]
+
+    def _run_vision_batches(self, conversations: list) -> list[str]:
+        if not self._accepts_batch:
+            generated_prompts = []
+            for conversation in conversations:
+                generated_prompts.extend(self._pipeline.generate(
+                    [conversation],
+                    max_new_tokens=self._max_length,
+                    temperature=self._temperature,
+                    top_k=self._top_k,
+                    top_p=self._top_p,
+                ))
+        elif self._max_batch is not None:
+            generated_prompts = []
+            for batch_segment in range(0, len(conversations), self._max_batch):
+                segment = conversations[batch_segment:batch_segment + self._max_batch]
+                generated_prompts.extend(self._pipeline.generate(
+                    segment,
+                    max_new_tokens=self._max_length,
+                    temperature=self._temperature,
+                    top_k=self._top_k,
+                    top_p=self._top_p,
+                ))
+        else:
+            generated_prompts = self._pipeline.generate(
+                conversations,
+                max_new_tokens=self._max_length,
+                temperature=self._temperature,
+                top_k=self._top_k,
+                top_p=self._top_p,
+            )
         return generated_prompts
 
     def _call_pipeline(self, prompts: list[str]):
