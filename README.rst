@@ -147,7 +147,7 @@ Features a syntax-highlighting console / editor:
 * REPL / code editor for the built in shell language to assist with building complex workflows
 * Generate Code writes a config script from a plain language request with a local Qwen model
 * Preview plays finished GIF, WebP, APNG, and MP4 clips, including audio. The timeline under the picture has play, scrub, a speaker button (sound waves, or a red X when muted), and a volume slider
-* Vulkan is the default preview on Windows and Linux with the ``console_ui_vulkan`` extra. On macOS OpenGL is the default; set ``DGENERATE_CONSOLE_UI_VULKAN=1`` to use Vulkan. ``DGENERATE_CONSOLE_UI_VULKAN=0`` keeps the OpenGL viewer from ``console_ui_opengl``
+* Vulkan is the default preview on Windows and Linux with the ``console_ui_vulkan`` extra. ``console_ui_opengl`` is the Windows and Linux fallback when Vulkan is not installed. On macOS the preview is Metal and does not need an extra; set ``DGENERATE_CONSOLE_UI_METAL=0`` and ``DGENERATE_CONSOLE_UI_VULKAN=1`` to use Vulkan
 * Smooth zoom / pan, and a bounding box / coordinate picker
 * Various templating utilities (recipes, and URI builders) for quickly creating scripts and working interactively
 * In editor documentation for all arguments, and built in image processors / plugins

@@ -3625,15 +3625,15 @@ global python site packages.
 
     # * ncnn
     # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
-    # * console_ui_opengl (default Console UI preview on macOS; plays video and audio)
-    # * console_ui_vulkan (optional on macOS; set DGENERATE_CONSOLE_UI_VULKAN=1
-    #   to use it. Needs MoltenVK / a Vulkan loader)
+    # * console_ui_vulkan (optional. Metal is the macOS preview and does not
+    #   need an extra. Set DGENERATE_CONSOLE_UI_METAL=0 and
+    #   DGENERATE_CONSOLE_UI_VULKAN=1 to use Vulkan. Needs MoltenVK / a Vulkan loader)
 
     pipx install dgenerate==6.0.0
 
     # or with extras
 
-    pipx install dgenerate[ncnn,xllamacpp,console_ui_opengl,console_ui_vulkan]==6.0.0
+    pipx install dgenerate[ncnn,xllamacpp,console_ui_vulkan]==6.0.0
 
     # open a new terminal or logout & login
 
@@ -3687,15 +3687,15 @@ of your own creation.
 
     # * ncnn
     # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
-    # * console_ui_opengl (default Console UI preview on macOS; plays video and audio)
-    # * console_ui_vulkan (optional on macOS; set DGENERATE_CONSOLE_UI_VULKAN=1
-    #   to use it. Needs MoltenVK / a Vulkan loader)
+    # * console_ui_vulkan (optional. Metal is the macOS preview and does not
+    #   need an extra. Set DGENERATE_CONSOLE_UI_METAL=0 and
+    #   DGENERATE_CONSOLE_UI_VULKAN=1 to use Vulkan. Needs MoltenVK / a Vulkan loader)
 
     pip3 install dgenerate==6.0.0
 
     # or with extras
 
-    pip3 install dgenerate[ncnn,xllamacpp,console_ui_opengl,console_ui_vulkan]==6.0.0
+    pip3 install dgenerate[ncnn,xllamacpp,console_ui_vulkan]==6.0.0
 
     # launch the Console UI to test the install.
     # tkinter will be available when you install
@@ -3784,6 +3784,7 @@ Note that the name of the ``pip`` executable may be named ``pip3`` on some syste
 
     # With extras. quant is not an extra. These are:
     # ncnn, xllamacpp, bitsandbytes, console_ui_vulkan, console_ui_opengl
+    # console_ui_opengl is Windows and Linux only. macOS uses Metal.
 
     pip install "dgenerate[ncnn,console_ui_vulkan] @ git+https://github.com/Teriks/dgenerate@BRANCH_NAME" --extra-index-url https://download.pytorch.org/whl/cu132
 
@@ -13496,7 +13497,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [16600879100940]
+            Value: [52354141787954]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -15721,17 +15722,19 @@ ability to show the current image file in the systems file explorer,
 all via the right click context menu.
 
 Vulkan is the default preview on Windows and Linux when the
-``console_ui_vulkan`` extra is installed. On macOS the OpenGL viewer is
-the default (MoltenVK is not part of a stock Mac); set
-``DGENERATE_CONSOLE_UI_VULKAN=1`` to use Vulkan there after installing
-that extra. ``DGENERATE_CONSOLE_UI_VULKAN=0`` selects OpenGL when
-``console_ui_opengl`` is installed, or the plain Tk canvas when it is
-not. ``DGENERATE_CONSOLE_UI_OPENGL=0`` disables the OpenGL viewer on its
+``console_ui_vulkan`` extra is installed. On macOS the preview is Metal,
+using the system Metal framework, and it does not need an extra.
+``DGENERATE_CONSOLE_UI_METAL=0`` leaves macOS on Vulkan when
+``DGENERATE_CONSOLE_UI_VULKAN=1`` and that extra is installed, and
+otherwise on the plain Tk canvas. ``DGENERATE_CONSOLE_UI_VULKAN=0``
+selects OpenGL on Windows and Linux when ``console_ui_opengl`` is
+installed, or the plain Tk canvas when it is not.
+``DGENERATE_CONSOLE_UI_OPENGL=0`` disables the OpenGL viewer on its
 own. The plain Tk canvas does not play video. Linux presents through
 X11, including a Wayland desktop that is running the window under
-XWayland. macOS Vulkan presents through MoltenVK.
+XWayland. macOS Vulkan, when selected, presents through MoltenVK.
 
-The Vulkan and OpenGL previews play finished animations (GIF, WebP, APNG, and
+The Metal, Vulkan, and OpenGL previews play finished animations (GIF, WebP, APNG, and
 MP4, including audio). Move the pointer over the picture to show the timeline
 under it. The picture stays above that bar. The bar has a play button, a scrub
 track, elapsed time, duration, a speaker button, and a volume slider. The

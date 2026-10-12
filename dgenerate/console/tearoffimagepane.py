@@ -28,7 +28,7 @@ from typing import Optional, Callable
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.resources as _resources
 import dgenerate.console.showindirectory as _showindirectory
-from dgenerate.console.imageviewer import HAS_OPENGL, ImageViewer
+from dgenerate.console.imageviewer import PLAYS_MEDIA, ImageViewer
 
 
 class TearOffImagePane:
@@ -274,7 +274,7 @@ class TearOffImagePane:
         context_menu.add_separator()
 
         context_menu.add_command(
-            label='Load Media' if HAS_OPENGL else 'Load Image',
+            label='Load Media' if PLAYS_MEDIA else 'Load Image',
             command=self._load_image_manually)
 
         context_menu.add_command(
@@ -288,7 +288,7 @@ class TearOffImagePane:
         else:
             self._last_right_clicked_coords = None
 
-        context_menu.entryconfigure('Load Media' if HAS_OPENGL else 'Load Image', state=tk.NORMAL)
+        context_menu.entryconfigure('Load Media' if PLAYS_MEDIA else 'Load Image', state=tk.NORMAL)
 
         if self._last_right_clicked_coords is not None:
             context_menu.entryconfigure('Copy Coordinates "x"', state=tk.NORMAL)
@@ -344,7 +344,7 @@ class TearOffImagePane:
         image_viewer.copy_path()
 
     def _load_dialog_args(self) -> dict:
-        if not HAS_OPENGL:
+        if not PLAYS_MEDIA:
             return _resources.get_file_dialog_args(['images-in'])
         schema = _resources.get_schema('mediaformats')
         images = list(schema.get('images-in', []))
@@ -371,10 +371,10 @@ class TearOffImagePane:
 
         try:
             self.load_image(f)
-            noun = 'media' if HAS_OPENGL else 'image'
+            noun = 'media' if PLAYS_MEDIA else 'image'
             self._on_info(f"Manually loaded {noun}: {f}\n")
         except Exception as e:
-            noun = 'media' if HAS_OPENGL else 'image'
+            noun = 'media' if PLAYS_MEDIA else 'image'
             self._on_error(f"Failed to load {noun}: {e}\n")
 
     def load_image(self, image_path: str, fit: bool = True):

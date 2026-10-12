@@ -31,17 +31,19 @@ ability to show the current image file in the systems file explorer,
 all via the right click context menu.
 
 Vulkan is the default preview on Windows and Linux when the
-``console_ui_vulkan`` extra is installed. On macOS the OpenGL viewer is
-the default (MoltenVK is not part of a stock Mac); set
-``DGENERATE_CONSOLE_UI_VULKAN=1`` to use Vulkan there after installing
-that extra. ``DGENERATE_CONSOLE_UI_VULKAN=0`` selects OpenGL when
-``console_ui_opengl`` is installed, or the plain Tk canvas when it is
-not. ``DGENERATE_CONSOLE_UI_OPENGL=0`` disables the OpenGL viewer on its
+``console_ui_vulkan`` extra is installed. On macOS the preview is Metal,
+using the system Metal framework, and it does not need an extra.
+``DGENERATE_CONSOLE_UI_METAL=0`` leaves macOS on Vulkan when
+``DGENERATE_CONSOLE_UI_VULKAN=1`` and that extra is installed, and
+otherwise on the plain Tk canvas. ``DGENERATE_CONSOLE_UI_VULKAN=0``
+selects OpenGL on Windows and Linux when ``console_ui_opengl`` is
+installed, or the plain Tk canvas when it is not.
+``DGENERATE_CONSOLE_UI_OPENGL=0`` disables the OpenGL viewer on its
 own. The plain Tk canvas does not play video. Linux presents through
 X11, including a Wayland desktop that is running the window under
-XWayland. macOS Vulkan presents through MoltenVK.
+XWayland. macOS Vulkan, when selected, presents through MoltenVK.
 
-The Vulkan and OpenGL previews play finished animations (GIF, WebP, APNG, and
+The Metal, Vulkan, and OpenGL previews play finished animations (GIF, WebP, APNG, and
 MP4, including audio). Move the pointer over the picture to show the timeline
 under it. The picture stays above that bar. The bar has a play button, a scrub
 track, elapsed time, duration, a speaker button, and a volume slider. The

@@ -27,6 +27,7 @@ dependency information, version requirements, and extras from pyproject.toml.
 """
 
 import os
+import platform
 import sys
 import tomllib
 import traceback
@@ -352,6 +353,10 @@ class SetupAnalyzer:
         :param gpu_info: Optional GPU information
         :return: True if compatible, False otherwise
         """
+        # pyopengltk has no macOS frame. The Mac preview is Metal.
+        if extra_name == 'console_ui_opengl' and platform.system() == 'Darwin':
+            return False
+
         # If no GPU info provided, assume everything is compatible (for backward compatibility)
         if gpu_info is None:
             return True
@@ -473,12 +478,12 @@ class SetupAnalyzer:
                 recommended.append(extra)
                 self._log(
                     "Recommending console_ui_vulkan - default preview on Windows/Linux; "
-                    "opt-in on macOS with DGENERATE_CONSOLE_UI_VULKAN=1")
+                    "on macOS set DGENERATE_CONSOLE_UI_METAL=0 and DGENERATE_CONSOLE_UI_VULKAN=1")
             elif extra == 'console_ui_opengl':
                 recommended.append(extra)
                 self._log(
-                    "Recommending console_ui_opengl - default preview on macOS; "
-                    "also used when DGENERATE_CONSOLE_UI_VULKAN=0")
+                    "Recommending console_ui_opengl - Windows and Linux preview "
+                    "when Vulkan is not installed or DGENERATE_CONSOLE_UI_VULKAN=0")
             else:
                 # For all other extras, recommend them
                 recommended.append(extra)
@@ -494,8 +499,8 @@ class SetupAnalyzer:
             'xllamacpp': 'Local GGUF models. The installer replaces the PyPI wheel with CUDA, ROCm, or Vulkan when this machine can use one',
             'gpt4all': 'Local large language model support (CPU-only)',
             'gpt4all_cuda': 'CUDA-accelerated GPT4All for NVIDIA GPUs (Linux/Windows)',
-            'console_ui_opengl': 'OpenGL Console UI preview. Plays video and audio. Default on macOS; also used when Vulkan is not installed or DGENERATE_CONSOLE_UI_VULKAN=0.',
-            'console_ui_vulkan': 'Default Console UI preview on Windows and Linux. On macOS set DGENERATE_CONSOLE_UI_VULKAN=1 to use it (needs MoltenVK). Plays video and audio.',
+            'console_ui_opengl': 'OpenGL Console UI preview on Windows and Linux. Plays video and audio. Used when Vulkan is not installed or DGENERATE_CONSOLE_UI_VULKAN=0.',
+            'console_ui_vulkan': 'Default Console UI preview on Windows and Linux. On macOS, Metal is the preview; set DGENERATE_CONSOLE_UI_METAL=0 and DGENERATE_CONSOLE_UI_VULKAN=1 to use Vulkan (needs MoltenVK). Plays video and audio.',
             'triton_windows': 'Triton support for Windows (NVIDIA, and AMD RDNA 3+ with ROCm)',
         }
 

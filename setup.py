@@ -306,15 +306,8 @@ _xllamacpp_requires_spec = requires.pop('xllamacpp')
 
 extras: dict[str, list[str]] = {
     'ncnn': [_ncnn_requires],
-    'console_ui_opengl': [
-        _pyopengltk_requires,
-        _PyOpenGL_requires,
-        _PyOpenGL_accelerate_requires,
-        # WASAPI / CoreAudio / Pulse playback for the OpenGL preview timeline.
-        'miniaudio',
-    ],
     # Default console preview on Windows and Linux; opt-in on macOS
-    # with DGENERATE_CONSOLE_UI_VULKAN=1 (needs MoltenVK).
+    # with DGENERATE_CONSOLE_UI_METAL=0 and DGENERATE_CONSOLE_UI_VULKAN=1.
     'console_ui_vulkan': [
         'vulkan',
         'miniaudio',
@@ -327,6 +320,16 @@ extras: dict[str, list[str]] = {
             _poetry_requires],
     'readthedocs': _sphinx_requires
 }
+
+# pyopengltk has no macOS frame. The Mac preview is Metal.
+if dgenerate_platform != 'darwin':
+    extras['console_ui_opengl'] = [
+        _pyopengltk_requires,
+        _PyOpenGL_requires,
+        _PyOpenGL_accelerate_requires,
+        # WASAPI / Pulse playback for the OpenGL preview timeline.
+        'miniaudio',
+    ]
 
 # Get python requirement from pyproject.toml (not affected by lockfile/pyproject choice)
 python_requirement = None

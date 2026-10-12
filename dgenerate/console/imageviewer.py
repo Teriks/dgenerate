@@ -19,8 +19,10 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import ctypes
 import os
 import platform
+import sys
 
 # pyopengltk is GLX-only. On Wayland, PyOpenGL may select EGL first; then
 # ``from OpenGL import GLX`` dies with EGLPlatform has no attribute GLX.
@@ -28,31 +30,47 @@ import platform
 if platform.system() == 'Linux' and 'PYOPENGL_PLATFORM' not in os.environ:
     os.environ['PYOPENGL_PLATFORM'] = 'glx'
 
-# pyopengltk exports OpenGLFrame on Windows and Linux. Its Darwin module is a
-# stub, so on macOS the frame in openglframe_darwin is installed first.
-# macOS OpenGL 4.1 is what that frame requests.
+# pyopengltk exports OpenGLFrame on Windows and Linux only. macOS uses Metal.
 HAS_OPENGL = False
 try:
     import pyopengltk
     import OpenGL.GL
     import OpenGL.arrays.vbo
-    if not hasattr(pyopengltk, 'OpenGLFrame'):
-        from dgenerate.console.openglframe_darwin import install_frame
-        install_frame(pyopengltk)
+
     HAS_OPENGL = (
-        hasattr(pyopengltk, 'OpenGLFrame')
-        and os.environ.get('DGENERATE_CONSOLE_UI_OPENGL', '1') == '1'
+            hasattr(pyopengltk, 'OpenGLFrame')
+            and os.environ.get('DGENERATE_CONSOLE_UI_OPENGL', '1') == '1'
     )
 except (ImportError, AttributeError):
     pass
 
+
+def _use_metal() -> bool:
+    """macOS draws the preview with Metal. ``DGENERATE_CONSOLE_UI_METAL=0`` turns that off."""
+    if platform.system() != 'Darwin':
+        return False
+    if os.environ.get('DGENERATE_CONSOLE_UI_METAL') == '0':
+        return False
+    try:
+        metal = ctypes.cdll.LoadLibrary('/System/Library/Frameworks/Metal.framework/Metal')
+        metal.MTLCreateSystemDefaultDevice.restype = ctypes.c_void_p
+        metal.MTLCreateSystemDefaultDevice.argtypes = []
+        if not metal.MTLCreateSystemDefaultDevice():
+            print('Metal preview is not available: this Mac has no Metal device.', file=sys.stderr)
+            return False
+        return True
+    except Exception as error:
+        print(f'Metal preview is not available: {error}', file=sys.stderr)
+        return False
+
+
 def _use_vulkan() -> bool:
     """Use the Vulkan preview when that extra is installed.
 
-    Default on Windows and Linux. macOS stays on OpenGL (or the Tk canvas)
-    unless ``DGENERATE_CONSOLE_UI_VULKAN=1``, because MoltenVK / the Vulkan
-    loader are not present on a stock Mac. ``DGENERATE_CONSOLE_UI_VULKAN=0``
-    forces OpenGL or the canvas on every platform.
+    Default on Windows and Linux. macOS uses Metal first.
+    ``DGENERATE_CONSOLE_UI_METAL=0`` and ``DGENERATE_CONSOLE_UI_VULKAN=1``
+    select Vulkan there. ``DGENERATE_CONSOLE_UI_VULKAN=0`` forces OpenGL
+    or the canvas on Windows and Linux.
     """
     if os.environ.get('DGENERATE_CONSOLE_UI_VULKAN') == '0':
         return False
@@ -66,16 +84,24 @@ def _use_vulkan() -> bool:
     return True
 
 
-# Vulkan when that extra is installed (and allowed), otherwise OpenGL,
-# otherwise the Tk canvas.
-if _use_vulkan():
+# Metal on macOS, otherwise Vulkan when that extra is installed (and allowed),
+# otherwise OpenGL, otherwise the Tk canvas.
+HAS_METAL = False
+HAS_VULKAN = False
+if _use_metal():
+    from dgenerate.console.imageviewer_metal import ImageViewerMetal as ImageViewer
+
+    HAS_METAL = True
+elif _use_vulkan():
     from dgenerate.console.imageviewer_vk import ImageViewerVulkan as ImageViewer
+
     HAS_VULKAN = True
 elif HAS_OPENGL:
     from dgenerate.console.imageviewer_gl import ImageViewerGL as ImageViewer
-    HAS_VULKAN = False
 else:
     from dgenerate.console.imageviewer_canvas import ImageViewerCanvas as ImageViewer
-    HAS_VULKAN = False
 
-__all__ = ['ImageViewer', 'HAS_OPENGL', 'HAS_VULKAN']
+# Video and the Load Media command need one of the hardware previews.
+PLAYS_MEDIA = HAS_METAL or HAS_VULKAN or HAS_OPENGL
+
+__all__ = ['ImageViewer', 'HAS_OPENGL', 'HAS_VULKAN', 'HAS_METAL', 'PLAYS_MEDIA']

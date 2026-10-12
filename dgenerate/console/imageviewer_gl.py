@@ -28,15 +28,9 @@ import numpy as np
 import pyopengltk
 import OpenGL.GL as gl
 
-# pyopengltk leaves OpenGLFrame unset on macOS. The Darwin frame fills that in.
-if not hasattr(pyopengltk, 'OpenGLFrame'):
-    from dgenerate.console.openglframe_darwin import install_frame as _install_darwin_frame
-    _install_darwin_frame(pyopengltk)
-
 import dgenerate.console.animationplayback as _animationplayback
 import dgenerate.console.mousewheelbind as _mousewheelbind
 import dgenerate.console.helpdialog as _helpdialog
-from dgenerate.console.openglframe_darwin import glsl_source as _glsl_source
 
 
 class ImageViewerGL(pyopengltk.OpenGLFrame):
@@ -294,9 +288,9 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         vertices = np.array([
             # position (x, y), texture coords (u, v)
             -1.0, -1.0, 0.0, 1.0,  # bottom-left -> bottom of texture (flipped)
-             1.0, -1.0, 1.0, 1.0,  # bottom-right -> bottom of texture (flipped)
-             1.0,  1.0, 1.0, 0.0,  # top-right -> top of texture (flipped)
-            -1.0,  1.0, 0.0, 0.0   # top-left -> top of texture (flipped)
+            1.0, -1.0, 1.0, 1.0,  # bottom-right -> bottom of texture (flipped)
+            1.0, 1.0, 1.0, 0.0,  # top-right -> top of texture (flipped)
+            -1.0, 1.0, 0.0, 0.0  # top-left -> top of texture (flipped)
         ], dtype=np.float32)
 
         indices = np.array([0, 1, 2, 2, 3, 0], dtype=np.uint32)
@@ -383,7 +377,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         def compile_shader(source, shader_type):
             shader = gl.glCreateShader(shader_type)
-            gl.glShaderSource(shader, _glsl_source(source))
+            gl.glShaderSource(shader, source)
             gl.glCompileShader(shader)
 
             if not gl.glGetShaderiv(shader, gl.GL_COMPILE_STATUS):
@@ -454,7 +448,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         def compile_shader(source, shader_type):
             shader = gl.glCreateShader(shader_type)
-            gl.glShaderSource(shader, _glsl_source(source))
+            gl.glShaderSource(shader, source)
             gl.glCompileShader(shader)
 
             if not gl.glGetShaderiv(shader, gl.GL_COMPILE_STATUS):
@@ -523,13 +517,14 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         # Validate image data consistency before rendering
         if (self._original_image_array is not None and
-            self._original_image_size is not None and
-            len(self._original_image_array.shape) >= 2):
+                self._original_image_size is not None and
+                len(self._original_image_array.shape) >= 2):
             array_height, array_width = self._original_image_array.shape[:2]
             size_width, size_height = self._original_image_size
             if array_width != size_width or array_height != size_height:
                 if self.on_error:
-                    self.on_error(f"Image viewer: Detected image data/size mismatch during redraw: array {array_width}x{array_height} vs size {size_width}x{size_height}")
+                    self.on_error(
+                        f"Image viewer: Detected image data/size mismatch during redraw: array {array_width}x{array_height} vs size {size_width}x{size_height}")
                 return
 
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
@@ -625,7 +620,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             # Calculate line length in pixels
             dx_pixels = abs(x2 - x1) * width / 2
             dy_pixels = abs(y2 - y1) * height / 2
-            line_length = np.sqrt(dx_pixels**2 + dy_pixels**2)
+            line_length = np.sqrt(dx_pixels ** 2 + dy_pixels ** 2)
 
             if line_length == 0:
                 return
@@ -667,8 +662,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         # Validate overlay resources before use
         if (self._overlay_shader_program is None or
-            self._overlay_vao is None or
-            self._overlay_vbo is None):
+                self._overlay_vao is None or
+                self._overlay_vbo is None):
             if self.on_error:
                 self.on_error("Image viewer: Overlay shader resources not available, cannot draw bounding box")
             return
@@ -832,7 +827,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             # Check if image dimensions exceed GPU limits
             if width > max_texture_size or height > max_texture_size:
                 error_msg = (f"Image viewer: Image size ({width}x{height}) exceeds GPU maximum texture size "
-                           f"({max_texture_size}x{max_texture_size}). Cannot load texture.")
+                             f"({max_texture_size}x{max_texture_size}). Cannot load texture.")
                 if self.on_error:
                     self.on_error(error_msg)
                 return
@@ -867,7 +862,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             gl.glPixelStorei(gl.GL_UNPACK_ROW_LENGTH, 0)
 
             gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, format, width, height, 0,
-                          format, gl.GL_UNSIGNED_BYTE, texture_data)
+                            format, gl.GL_UNSIGNED_BYTE, texture_data)
 
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
@@ -908,9 +903,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             # Store the operation for when OpenGL is ready
             self._pending_load_operation = (image_path, fit, view_state)
 
-
-
-    def _load_image_immediate(self, image_path: str, fit: bool = False, view_state: typing.Optional[typing.Dict] = None):
+    def _load_image_immediate(self, image_path: str, fit: bool = False,
+                              view_state: typing.Optional[typing.Dict] = None):
         """Internal method to load an image immediately (OpenGL must be ready)"""
         try:
             self._stop_animation()
@@ -959,7 +953,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 array_height, array_width = self._original_image_array.shape[:2]
                 size_width, size_height = self._original_image_size
                 if array_width != size_width or array_height != size_height:
-                    raise RuntimeError(f"Image data/size mismatch: array {array_width}x{array_height} vs size {size_width}x{size_height}")
+                    raise RuntimeError(
+                        f"Image data/size mismatch: array {array_width}x{array_height} vs size {size_width}x{size_height}")
 
             # Calculate base display size for clipping behavior
             self._calculate_base_display_size()
@@ -1046,7 +1041,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         # Reset zoom factor since base size now fits the widget
         self._zoom_factor = 1.0
 
-    def _widget_to_image_coordinates(self, widget_x: int, widget_y: int) -> typing.Tuple[typing.Optional[int], typing.Optional[int]]:
+    def _widget_to_image_coordinates(self, widget_x: int, widget_y: int) -> typing.Tuple[
+        typing.Optional[int], typing.Optional[int]]:
         """Convert widget coordinates to image coordinates"""
         if not self.has_image():
             return None, None
@@ -1073,7 +1069,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         # Check if click is within the displayed image bounds
         if (widget_x < image_left or widget_x > image_right or
-            widget_y < image_top or widget_y > image_bottom):
+                widget_y < image_top or widget_y > image_bottom):
             return None, None
 
         # Convert to image coordinates
@@ -1089,7 +1085,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         return image_x, image_y
 
-    def _image_to_widget_coordinates(self, image_x: int, image_y: int) -> typing.Tuple[typing.Optional[int], typing.Optional[int]]:
+    def _image_to_widget_coordinates(self, image_x: int, image_y: int) -> typing.Tuple[
+        typing.Optional[int], typing.Optional[int]]:
         """Convert image coordinates to widget coordinates"""
         if not self.has_image():
             return None, None
@@ -1367,7 +1364,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         """Check if an image is currently loaded"""
         return self._original_image_array is not None
 
-    def get_coordinates_at_cursor(self, widget_x: int, widget_y: int) -> typing.Tuple[typing.Optional[int], typing.Optional[int]]:
+    def get_coordinates_at_cursor(self, widget_x: int, widget_y: int) -> typing.Tuple[
+        typing.Optional[int], typing.Optional[int]]:
         """Get image coordinates at the given widget position"""
         return self._widget_to_image_coordinates(widget_x, widget_y)
 
@@ -1382,7 +1380,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         self._bbox_end_coords = None
 
         if self.on_info:
-            self.on_info("Bounding box selection mode started. Left-click and drag to select area. Press Escape to cancel.")
+            self.on_info(
+                "Bounding box selection mode started. Left-click and drag to select area. Press Escape to cancel.")
 
     def _complete_bbox_selection(self):
         """Complete bounding box selection and copy to clipboard"""
@@ -1925,4 +1924,4 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         # End any active selection
         if self._bbox_selection_mode:
-            self._end_bbox_selection() 
+            self._end_bbox_selection()
