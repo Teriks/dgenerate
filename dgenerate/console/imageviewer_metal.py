@@ -27,6 +27,7 @@ with the system Metal framework instead, into a layer on the Tk view.
 
 import ctypes
 import platform
+import sys
 import time
 import tkinter as tk
 
@@ -94,13 +95,17 @@ class _CGSize(ctypes.Structure):
     ]
 
 
-class _NSRect(ctypes.Structure):
-    """Passed by address. A 32-byte struct argument is indirect on both Mac ABIs."""
+class _CGPoint(ctypes.Structure):
     _fields_ = [
         ('x', ctypes.c_double),
         ('y', ctypes.c_double),
-        ('width', ctypes.c_double),
-        ('height', ctypes.c_double),
+    ]
+
+
+class _NSRange(ctypes.Structure):
+    _fields_ = [
+        ('location', ctypes.c_uint64),
+        ('length', ctypes.c_uint64),
     ]
 
 
@@ -316,25 +321,36 @@ class _MetalDevice:
         _msg(layer, b'setPixelFormat:', _MTL_PIXEL_BGRA8,
              argtypes=(ctypes.c_uint64,), restype=None)
         _msg(layer, b'setFramebufferOnly:', True, argtypes=(ctypes.c_bool,), restype=None)
+        _msg(layer, b'setOpaque:', True, argtypes=(ctypes.c_bool,), restype=None)
+        # Default anchor is the center, so a sized layer sits halfway outside the view.
+        _msg(layer, b'setAnchorPoint:', _CGPoint(0.0, 0.0),
+             restype=None, argtypes=(_CGPoint,))
+        # Present during the AppKit transaction. A bare present from a Tk callback
+        # never composites, and the drawable is then reported as a context leak.
+        _msg(layer, b'setPresentsWithTransaction:', True, argtypes=(ctypes.c_bool,), restype=None)
         _msg(layer, b'setContentsScale:', self._scale,
              argtypes=(ctypes.c_double,), restype=None)
+        self._noted_missing_drawable = False
         return layer
 
     def _attach(self, width, height):
         view = _aqua_nsview(self._drawable_id)
         self._view = view
         _msg(view, b'setWantsLayer:', True, argtypes=(ctypes.c_bool,), restype=None)
-        _msg(view, b'setLayer:', self._layer, argtypes=(ctypes.c_void_p,), restype=None)
+        current = _msg(view, b'layer')
+        if int(current or 0) != int(self._layer):
+            _msg(view, b'setLayer:', self._layer, argtypes=(ctypes.c_void_p,), restype=None)
         points = (max(1, int(width)), max(1, int(height)))
-        if points == self._points:
-            return
         self._points = points
-        rect = _NSRect(0.0, 0.0, float(points[0]), float(points[1]))
-        _msg(self._layer, b'setFrame:', ctypes.addressof(rect),
-             argtypes=(ctypes.c_void_p,), restype=None)
+        _msg(self._layer, b'setPosition:', _CGPoint(0.0, 0.0),
+             restype=None, argtypes=(_CGPoint,))
+        _msg(self._layer, b'setFrameSize:', _CGSize(float(points[0]), float(points[1])),
+             restype=None, argtypes=(_CGSize,))
+        _msg(self._layer, b'setContentsScale:', self._scale,
+             restype=None, argtypes=(ctypes.c_double,))
         _msg(self._layer, b'setDrawableSize:',
              _CGSize(points[0] * self._scale, points[1] * self._scale),
-             argtypes=(_CGSize,), restype=None)
+             restype=None, argtypes=(_CGSize,))
 
     def _prepare_image(self, image):
         if image is None or image is self._source_image:
@@ -376,6 +392,8 @@ class _MetalDevice:
     def _vertex_buffer(self, blob: bytes):
         if self._vbo is not None and len(blob) <= self._vbo_cap:
             ctypes.memmove(_msg(self._vbo, b'contents'), blob, len(blob))
+            _msg(self._vbo, b'didModifyRange:', _NSRange(0, len(blob)),
+                 restype=None, argtypes=(_NSRange,))
             return
         if self._vbo is not None:
             _msg(self._vbo, b'release', restype=None)
@@ -398,6 +416,10 @@ class _MetalDevice:
         try:
             drawable = _msg(self._layer, b'nextDrawable')
             if not drawable:
+                if not self._noted_missing_drawable:
+                    self._noted_missing_drawable = True
+                    sys.stderr.write('Metal preview: the layer produced no drawable.\n')
+                    sys.stderr.flush()
                 return False
             self._prepare_image(image)
             draws, blob = _pack_vertices(picture, overlays)
@@ -445,6 +467,8 @@ class _MetalDevice:
             _msg(encoder, b'endEncoding', restype=None)
             _msg(command, b'presentDrawable:', drawable, argtypes=(ctypes.c_void_p,), restype=None)
             _msg(command, b'commit', restype=None)
+            _msg(command, b'waitUntilScheduled', restype=None)
+            _msg(_class(b'CATransaction'), b'flush', restype=None)
             _msg(command, b'waitUntilCompleted', restype=None)
             return True
         finally:
