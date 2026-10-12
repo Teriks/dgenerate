@@ -310,7 +310,6 @@ extras: dict[str, list[str]] = {
     # with DGENERATE_CONSOLE_UI_METAL=0 and DGENERATE_CONSOLE_UI_VULKAN=1.
     'console_ui_vulkan': [
         'vulkan',
-        'miniaudio',
     ],
     # PyPI wheel: CPU on Linux/Windows, Metal on macOS.
     # CUDA, ROCm, and Vulkan wheels are the same package name on other indexes.
@@ -327,8 +326,6 @@ if dgenerate_platform != 'darwin':
         _pyopengltk_requires,
         _PyOpenGL_requires,
         _PyOpenGL_accelerate_requires,
-        # WASAPI / Pulse playback for the OpenGL preview timeline.
-        'miniaudio',
     ]
 
 # Get python requirement from pyproject.toml (not affected by lockfile/pyproject choice)
