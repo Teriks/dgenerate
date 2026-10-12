@@ -19,8 +19,16 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import base64
+import io
+import os
 import typing
+
+import PIL.Image
+
+import dgenerate.mediainput as _mediainput
 import dgenerate.prompt as _prompt
+import dgenerate.webcache as _webcache
 
 
 def process_prompts_batched(
@@ -84,3 +92,67 @@ def process_prompts_batched(
         output.append(prompt_obj)
 
     return output
+
+
+def image_file_argument() -> dict:
+    """
+    ``FILE_ARGS`` descriptor for a prompt-upscaler image argument.
+    """
+    extensions = ['*.' + ext for ext in _mediainput.get_supported_image_formats()]
+    return {'mode': 'in', 'filetypes': [('Images', extensions)]}
+
+
+def _image_mimetype_ok(mime: str) -> bool:
+    mime = mime.split(';', 1)[0].strip().lower()
+    return mime.startswith('image/') or mime == 'application/octet-stream'
+
+
+def resolve_input_image(image: str, *, local_files_only: bool) -> str:
+    """
+    Return a local path for an image path or URL.
+
+    :param image: File path or downloadable URL.
+    :param local_files_only: Only use a cached download.
+    :raises ValueError: The image could not be found or downloaded.
+    """
+    if _webcache.is_downloadable_url(image):
+        try:
+            _, path = _webcache.create_web_cache_file(
+                image,
+                mime_acceptable_desc='image files',
+                mimetype_is_supported=_image_mimetype_ok,
+                local_files_only=local_files_only,
+            )
+        except Exception as e:
+            raise ValueError(
+                f'Could not download argument "image": "{image}", error: {e}') from e
+        return path
+
+    if not os.path.exists(image):
+        raise ValueError(
+            f'Argument "image" must be a file on disk or a URL. No such file: "{image}".')
+    return os.path.abspath(image)
+
+
+def load_rgb_image(path: str) -> PIL.Image.Image:
+    """
+    Open an image and return a detached RGB copy. Animated files use the first frame.
+    """
+    try:
+        with PIL.Image.open(path) as img:
+            rgb = img.convert('RGB')
+            rgb.load()
+            return rgb
+    except Exception as e:
+        raise ValueError(
+            f'Argument "image" is not a readable image file: "{path}", error: {e}') from e
+
+
+def png_data_url(image: PIL.Image.Image) -> str:
+    """
+    Encode an RGB image as a PNG data URL for an OpenAI-style image block.
+    """
+    buffer = io.BytesIO()
+    image.save(buffer, format='PNG')
+    encoded = base64.b64encode(buffer.getvalue()).decode('ascii')
+    return 'data:image/png;base64,' + encoded

@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import json
 import os
 import socket
 
@@ -34,6 +35,7 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.webcache as _webcache
 import dgenerate.promptupscalers.llmupscalermixin as _llmupscalermixin
+import dgenerate.promptupscalers.util as _util
 import dgenerate.hfhub as _hfhub
 
 _DEFAULT_MODEL = (
@@ -62,6 +64,29 @@ def _free_localhost_port() -> int:
         return sock.getsockname()[1]
 
 
+def _blank_to_none(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = str(value).strip()
+    return value or None
+
+
+def _chat_text(content) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict) and part.get('type') in (None, 'text'):
+                parts.append(str(part.get('text') or ''))
+        return ''.join(parts)
+    if content is None:
+        return ''
+    return str(content)
+
+
 class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupscaler.PromptUpscaler):
     """
     Upscale prompts with a GGUF model through llama.cpp.
@@ -72,12 +97,25 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
     The "model" argument is a path or URL to a GGUF file. The default is a
     Phi-3 Mini abliterated Q4 GGUF.
 
+    The "mmproj" argument is a path or URL to the GGUF multimodal projector
+    for "model". It is required when "image" is set.
+
+    The "image" argument is a path or URL to an image. The image is attached
+    to every prompt sent to the model, and the prompt text is the instruction,
+    for example a request to write an image-generation prompt for the picture.
+    Animated files use the first frame. Vision models usually need
+    "context-tokens" of 4096 or more so the image and the reply both fit.
+
     The "variations" argument specifies how many variations should be produced.
 
     The "max-length" argument is the max number of new tokens. It defaults to 100.
 
     The "temperature", "top-k", "top-p", and "min-p" arguments are the sampling
     settings passed to the model.
+
+    The "thinking" argument enables a thought before the reply on models whose
+    chat template supports it, such as Qwen and MiniCPM. It defaults to false
+    so the reply is the prompt. Templates that do not use this flag ignore it.
 
     The "system" argument is the chat system message.
 
@@ -122,18 +160,23 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
 
     FILE_ARGS = {
         'model': {'mode': 'in', 'filetypes': [('GGUF', ['*.gguf'])]},
+        'mmproj': {'mode': 'in', 'filetypes': [('GGUF', ['*.gguf'])]},
+        'image': _util.image_file_argument(),
         'cleanup-config': {'mode': 'in', 'filetypes': [('Cleanup Config', ('*.json', '*.toml', '*.yaml', '*.yml'))]},
     }
 
     def __init__(self,
                  part: str = 'both',
                  model: str = _DEFAULT_MODEL,
+                 mmproj: str | None = None,
+                 image: str | None = None,
                  variations: int = 1,
                  max_length: int = 100,
                  temperature: float = 0.7,
                  top_k: int = 40,
                  top_p: float = 0.4,
                  min_p: float = 0.0,
+                 thinking: bool = False,
                  system: str | None = None,
                  preamble: str | None = None,
                  remove_prompt: bool = False,
@@ -193,19 +236,36 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
                 'Argument "gpu-layers" must be "auto", "all", or an integer.'
             )
 
-        if _webcache.is_downloadable_url(model):
+        image = _blank_to_none(image)
+        mmproj = _blank_to_none(mmproj)
+        if image and not mmproj:
+            raise self.argument_error(
+                'Argument "image" requires "mmproj", the GGUF multimodal projector for "model".')
+        if mmproj and not image:
+            raise self.argument_error(
+                'Argument "mmproj" requires "image".')
+
+        image_data_url = None
+        if image:
             try:
-                model = _hfhub.webcache_or_hf_blob_download(model, local_files_only=self.local_files_only)
-            except Exception as e:
-                raise self.argument_error(
-                    f'Could not download argument "model": "{model}", error: {e}') from e
-        else:
-            if not os.path.exists(model):
-                raise self.argument_error(
-                    'Argument "model" must be a path to a GGUF file on disk if not a URL.')
-            model = os.path.abspath(model)
+                image_path = _util.resolve_input_image(
+                    image, local_files_only=self.local_files_only)
+                image_data_url = _util.png_data_url(_util.load_rgb_image(image_path))
+            except ValueError as e:
+                raise self.argument_error(str(e)) from e
+            if context_tokens < 4096:
+                _messages.warning(
+                    'llama prompt upscaler: "context-tokens" is '
+                    f'{context_tokens}. Vision models often need 4096 or more '
+                    'tokens once an image is included.')
+
+        if mmproj:
+            mmproj = self._resolve_gguf('mmproj', mmproj)
+        model = self._resolve_gguf('model', model)
 
         estimated_size = os.stat(model).st_size
+        if mmproj:
+            estimated_size += os.stat(mmproj).st_size
 
         _messages.debug_log(
             f'Estimated the size of LLM model: '
@@ -216,6 +276,9 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
                 self.memory_guard_device(self.device, estimated_size)
             params = xllamacpp.CommonParams()
             params.model.path = model
+            if mmproj:
+                params.mmproj.path = mmproj
+                params.mmproj_use_gpu = gpu_layers != 0
             params.n_ctx = context_tokens
             params.n_predict = max_length
             params.n_gpu_layers = gpu_layers
@@ -239,11 +302,12 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
         self.set_size_estimate(estimated_size)
 
         self._server = self.load_object_cached(
-            tag=model + str(context_tokens) + str(gpu_layers),
+            tag='|'.join((model, mmproj or '', str(context_tokens), str(gpu_layers))),
             estimated_size=estimated_size,
             method=load_method
         )
 
+        self._image_data_url = image_data_url
         self._preamble = preamble
         self._remove_prompt = remove_prompt
         self._max_length = max_length
@@ -251,11 +315,62 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
         self._top_k = top_k
         self._top_p = top_p
         self._min_p = min_p
+        self._thinking = thinking
         self._system = system
         self._variations = variations
         self._part = part
         self._max_attempts = max_attempts
         self._prepend_prompt = prepend_prompt
+
+    def _resolve_gguf(self, argument: str, value: str) -> str:
+        if _webcache.is_downloadable_url(value):
+            try:
+                return _hfhub.webcache_or_hf_blob_download(
+                    value, local_files_only=self.local_files_only)
+            except Exception as e:
+                raise self.argument_error(
+                    f'Could not download argument "{argument}": "{value}", error: {e}') from e
+        if not os.path.exists(value):
+            raise self.argument_error(
+                f'Argument "{argument}" must be a path to a GGUF file on disk if not a URL.')
+        return os.path.abspath(value)
+
+    def _user_content(self, text: str):
+        if not self._image_data_url:
+            return text
+        content = [{
+            'type': 'image_url',
+            'image_url': {'url': self._image_data_url},
+        }]
+        if text:
+            content.append({'type': 'text', 'text': text})
+        return content
+
+    def _complete(self, messages: list[dict]) -> str:
+        result = self._server.handle_chat_completions({
+            'max_tokens': self._max_length,
+            'temperature': self._temperature,
+            'top_k': self._top_k,
+            'top_p': self._top_p,
+            'min_p': self._min_p,
+            'messages': messages,
+            # Templates that do not use this variable ignore it.
+            'chat_template_kwargs': {'enable_thinking': self._thinking},
+        })
+        if isinstance(result, (bytes, bytearray)):
+            result = result.decode('utf-8', errors='replace')
+        if isinstance(result, str):
+            result = json.loads(result)
+        if not isinstance(result, dict) or not result.get('choices'):
+            error = result.get('error', result) if isinstance(result, dict) else result
+            if isinstance(error, dict):
+                error = error.get('message', error)
+            raise RuntimeError(str(error))
+        message = result['choices'][0]['message']
+        text = _chat_text(message.get('content')).strip()
+        if not text:
+            text = _chat_text(message.get('reasoning_content')).strip()
+        return text
 
     def _generate_prompts(self, original_prompts: list[str]) -> list[str]:
         def user_text(text):
@@ -267,17 +382,12 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
         for query in original_prompts:
             messages = []
             if self._system:
-                messages.append({'role': 'system', 'content': self._system})
-            messages.append({'role': 'user', 'content': user_text(query)})
-            result = self._server.handle_chat_completions({
-                'max_tokens': self._max_length,
-                'temperature': self._temperature,
-                'top_k': self._top_k,
-                'top_p': self._top_p,
-                'min_p': self._min_p,
-                'messages': messages,
-            })
-            generated_prompts.append(result['choices'][0]['message']['content'])
+                system_content = self._system
+                if self._image_data_url:
+                    system_content = [{'type': 'text', 'text': self._system}]
+                messages.append({'role': 'system', 'content': system_content})
+            messages.append({'role': 'user', 'content': self._user_content(user_text(query))})
+            generated_prompts.append(self._complete(messages))
 
         generated_prompts = [
             self._clean_prompt(
