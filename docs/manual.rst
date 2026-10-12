@@ -9,6 +9,7 @@
 .. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/version_6.0.0/examples/media/vermeer_canny_edged.png
 .. _examples/adetailer/post_processor: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/adetailer/post_processor
 .. _Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy: https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF
+.. _heretic_MiniCPM-V_4.6: https://huggingface.co/heretic-org/MiniCPM-V-4.6-heretic
 .. _Stable_Diffusion_Web_UI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
 .. _CivitAI: https://civitai.com/
 .. _DiffusionArguments: https://dgenerate.readthedocs.io/en/version_6.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments
@@ -8485,6 +8486,7 @@ Which is a GPT2 finetune focused specifically on prompt generation.
         arguments:
             part: str = "both"
             model: str = "Gustavosta/MagicPrompt-Stable-Diffusion"
+            image: str | None = None
             dtype: str = "float32"
             seed: int | None = None
             variations: int = 1
@@ -8512,6 +8514,12 @@ Which is a GPT2 finetune focused specifically on prompt generation.
     
         The "model" specifies the model path for magicprompt, the default value is:
         "Gustavosta/MagicPrompt-Stable-Diffusion". This can be a folder on disk or a Hugging Face repository slug.
+    
+        The "image" argument is a path or URL to an image. When it is set, "model" must be a vision-language model
+        that transformers can load, such as heretic-org/MiniCPM-V-4.6-heretic. The image is attached to every
+        prompt, and the prompt text is the instruction, for example a request to write an image-generation prompt
+        for the picture. Animated files use the first frame. With an image, "max-length" is the maximum number of
+        new tokens to generate.
     
         The "dtype" argument specifies the torch dtype (compute dtype) to load the model with, this defaults to:
         float32, and may be one of: float32, float16, or bfloat16. With bitsandbytes 8-bit quantization, float32
@@ -8634,12 +8642,15 @@ Older NVIDIA, Windows AMD, and Intel Arc:
         arguments:
             part: str = "both"
             model: str = "https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf"
+            mmproj: str | None = None
+            image: str | None = None
             variations: int = 1
             max-length: int = 100
             temperature: float = 0.7
             top-k: int = 40
             top-p: float = 0.4
             min-p: float = 0.0
+            thinking: bool = False
             system: str | None = None
             preamble: str | None = None
             remove-prompt: bool = False
@@ -8658,11 +8669,23 @@ Older NVIDIA, Windows AMD, and Intel Arc:
     
         The "model" argument is a path or URL to a GGUF file. The default is a Phi-3 Mini abliterated Q4 GGUF.
     
+        The "mmproj" argument is a path or URL to the GGUF multimodal projector for "model". It is required when
+        "image" is set.
+    
+        The "image" argument is a path or URL to an image. The image is attached to every prompt sent to the
+        model, and the prompt text is the instruction, for example a request to write an image-generation prompt
+        for the picture. Animated files use the first frame. Vision models usually need "context-tokens" of 4096
+        or more so the image and the reply both fit.
+    
         The "variations" argument specifies how many variations should be produced.
     
         The "max-length" argument is the max number of new tokens. It defaults to 100.
     
         The "temperature", "top-k", "top-p", and "min-p" arguments are the sampling settings passed to the model.
+    
+        The "thinking" argument enables a thought before the reply on models whose chat template supports it, such
+        as Qwen and MiniCPM. It defaults to false so the reply is the prompt. Templates that do not use this flag
+        ignore it.
     
         The "system" argument is the chat system message.
     
@@ -9026,6 +9049,186 @@ conversion of the original MagicPrompt weights, prepends the prompt, and uses a
     --prompt-weighter sd-embed
     --prompt-upscaler dynamicprompts llama;model={{ llm_model }};context-tokens=1024;prepend-prompt=True
     --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
+
+
+Writing prompts from an image
+-----------------------------
+
+``llama`` and ``magicprompt`` can write a prompt from a picture. The prompt text is the
+instruction sent with the image, for example a request to describe it as an image-generation prompt.
+
+For ``llama``, pass the picture as ``image`` and the matching GGUF multimodal projector as ``mmproj``.
+Vision models need a larger ``context-tokens`` value than text models, because the image occupies
+part of the context. Animated files use the first frame. ``thinking`` defaults to false so the
+reply is the prompt. Set it to true on models that support a thought before the answer.
+
+This example uses `heretic MiniCPM-V 4.6 GGUF <https://huggingface.co/mradermacher/MiniCPM-V-4.6-heretic-GGUF>`_
+with the photo in ``examples/media/dog-on-bench.png``:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Write a Stable Diffusion prompt from a picture with the heretic MiniCPM-V 4.6 GGUF.
+    #
+    # "image" is the picture. "mmproj" is the multimodal projector that matches the model.
+    # The prompt text is the instruction sent along with the image.
+    # Animated images use the first frame.
+    #
+    # Vision models need a larger context than text models. 8192 leaves room for the image and the reply.
+    # "thinking" defaults to false so the reply is the prompt. Set thinking=True to let the model think first.
+    
+    \set image ../../media/dog-on-bench.png
+    
+    \set llm_model https://huggingface.co/mradermacher/MiniCPM-V-4.6-heretic-GGUF/resolve/main/MiniCPM-V-4.6-heretic.Q4_K_M.gguf
+    
+    \set llm_mmproj https://huggingface.co/mradermacher/MiniCPM-V-4.6-heretic-GGUF/resolve/main/MiniCPM-V-4.6-heretic.mmproj-Q8_0.gguf
+    
+    \set llm_system 'You write Stable Diffusion prompts. Reply with only the prompt.'
+    
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path minicpm-heretic-image-prompt
+    --output-size 1024x1024
+    --prompt-weighter sd-embed
+    --prompt-upscaler "llama;model={{ llm_model }};mmproj={{ llm_mmproj }};image={{ image }};system={{ llm_system }};context-tokens=8192;max-length=160;remove-prompt=True"
+    --prompts "Describe this image as a detailed photo prompt."
+
+``magicprompt`` loads a vision-language model through ``transformers`` instead of a GGUF projector.
+With an image, ``max-length`` is the maximum number of new tokens. This example uses
+`heretic MiniCPM-V 4.6 <heretic_MiniCPM-V_4.6_>`_:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Write a Stable Diffusion prompt from a picture with heretic MiniCPM-V 4.6.
+    #
+    # "image" tells magicprompt to load "model" as an image-text model and attach this picture
+    # to every prompt. The prompt text is the instruction. Animated images use the first frame.
+    #
+    # With an image, "max-length" is the number of new tokens, not a cap on the whole context.
+    
+    {% if have_cuda() %}
+        \set llm_dtype float16
+    {% else %}
+        \set llm_dtype float32
+    {% endif %}
+    
+    \set image ../../media/dog-on-bench.png
+    
+    \set llm_model heretic-org/MiniCPM-V-4.6-heretic
+    
+    \set llm_system 'You write Stable Diffusion prompts. Reply with only the prompt.'
+    
+    \set llm_seed 32
+    
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path minicpm-heretic-magicprompt
+    --output-size 1024x1024
+    --prompt-weighter sd-embed
+    --prompt-upscaler "magicprompt;model={{ llm_model }};image={{ image }};dtype={{ llm_dtype }};system={{ llm_system }};seed={{ llm_seed }};max-length=160;remove-prompt=True"
+    --prompts "Describe this image as a detailed photo prompt."
+
+``variations`` asks the model for more than one prompt from the same image:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Ask heretic MiniCPM-V 4.6 for several prompts from one image.
+    #
+    # "variations" repeats the instruction. Each sample can describe the picture differently.
+    # "image" and "mmproj" are the same arguments as a single-prompt run.
+    # "thinking" defaults to false. Set thinking=True to let the model think before each prompt.
+    
+    \set image ../../media/monalisa.png
+    
+    \set llm_model https://huggingface.co/mradermacher/MiniCPM-V-4.6-heretic-GGUF/resolve/main/MiniCPM-V-4.6-heretic.Q4_K_M.gguf
+    
+    \set llm_mmproj https://huggingface.co/mradermacher/MiniCPM-V-4.6-heretic-GGUF/resolve/main/MiniCPM-V-4.6-heretic.mmproj-Q8_0.gguf
+    
+    \set llm_system 'You write Stable Diffusion prompts. Reply with only the prompt.'
+    
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path minicpm-heretic-image-prompt-variations
+    --output-size 1024x1024
+    --prompt-weighter sd-embed
+    --prompt-upscaler "llama;model={{ llm_model }};mmproj={{ llm_mmproj }};image={{ image }};system={{ llm_system }};context-tokens=8192;max-length=160;variations=2;remove-prompt=True"
+    --prompts "Describe this painting as a detailed art prompt."
+
+The description can be the positive prompt for a ControlNet Canny generation. This example
+asks `heretic MiniCPM-V 4.6 <heretic_MiniCPM-V_4.6_>`_ to
+describe ``examples/media/horse2.jpeg``, keeps the written negative prompt, and uses a Canny
+edge map of that photo as the control image:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Ask heretic MiniCPM-V 4.6 to describe a photo, then use that description
+    # as the positive prompt for SDXL with ControlNet Canny.
+    #
+    # The same photo is the control image. The canny processor extracts edges
+    # before generation. "part=positive" leaves the negative prompt unchanged.
+    #
+    # "thinking" defaults to false so the reply is the prompt.
+    
+    \set image ../../media/horse2.jpeg
+    
+    \set llm_model https://huggingface.co/mradermacher/MiniCPM-V-4.6-heretic-GGUF/resolve/main/MiniCPM-V-4.6-heretic.Q4_K_M.gguf
+    
+    \set llm_mmproj https://huggingface.co/mradermacher/MiniCPM-V-4.6-heretic-GGUF/resolve/main/MiniCPM-V-4.6-heretic.mmproj-Q8_0.gguf
+    
+    \set llm_system 'You write Stable Diffusion prompts. Reply with only the prompt.'
+    
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
+    --inference-steps 30
+    --guidance-scales 8
+    --gen-seeds 1
+    --model-cpu-offload
+    --vae-tiling
+    --vae-slicing
+    --output-path minicpm-heretic-canny
+    --output-size 1024
+    --prompt-weighter sd-embed
+    --prompt-upscaler "llama;model={{ llm_model }};mmproj={{ llm_mmproj }};image={{ image }};system={{ llm_system }};part=positive;context-tokens=8192;max-length=160;remove-prompt=True"
+    --prompts "Describe this image as a detailed photo prompt.; low quality, bad quality, sketches"
+    --control-nets diffusers/controlnet-canny-sdxl-1.0;scale=0.5
+    --image-seeds "{{ image }}"
+    --control-image-processors "canny;lower=50;upper=100;output-file=minicpm-heretic-canny/horse-canny.png"
 
 
 Customizing LLM output cleanup
@@ -13497,7 +13700,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [52354141787954]
+            Value: [2380462190087]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

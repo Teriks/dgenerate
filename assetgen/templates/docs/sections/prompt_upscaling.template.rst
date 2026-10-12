@@ -227,6 +227,13 @@ With an image, ``max-length`` is the maximum number of new tokens. This example 
 
 @EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/image_to_prompt/llama-variations-config.dgen]
 
+The description can be the positive prompt for a ControlNet Canny generation. This example
+asks `heretic MiniCPM-V 4.6 <https://huggingface.co/heretic-org/MiniCPM-V-4.6-heretic>`_ to
+describe ``examples/media/horse2.jpeg``, keeps the written negative prompt, and uses a Canny
+edge map of that photo as the control image:
+
+@EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/image_to_prompt/llama-canny-config.dgen]
+
 
 Customizing LLM output cleanup
 ------------------------------
