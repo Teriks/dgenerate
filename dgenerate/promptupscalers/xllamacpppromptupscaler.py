@@ -150,7 +150,7 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
     file of extra substitutions applied to the model output.
     """
 
-    NAMES = ['llama', 'xllamacpp']
+    NAMES = ['llama']
 
     HIDE_ARGS = ['device']
 
