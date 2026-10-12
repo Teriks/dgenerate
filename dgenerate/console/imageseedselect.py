@@ -27,6 +27,7 @@ import typing
 import dgenerate.console.appearance as _appearance
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.formentries.entry as _entry
+import dgenerate.console.helpdialog as _helpdialog
 import dgenerate.console.mousewheelbind as _mousewheelbind
 import dgenerate.console.resources as _resources
 import dgenerate.console.spinbox as _spinbox
@@ -38,7 +39,6 @@ _dialog_state = _util.DialogState(save_position=True, save_size=False)
 
 _CARD = '#f7f7f7'
 _LINE = '#d0d0d0'
-_HINT = '#666666'
 
 
 def _card(widget):
@@ -53,10 +53,298 @@ def _line(widget):
     return _LINE
 
 
-def _hint(widget):
-    if _appearance.is_aqua(widget):
-        return 'systemSecondaryLabelColor'
-    return _HINT
+def _seed(**kwargs) -> str:
+    return '    ' + _textprocessing.format_image_seed_uri(**kwargs)
+
+
+_PICTURES_HELP = f"""\
+Seed images, inpaint masks, and control images. Each file row is one
+path. Several seed rows are written as images:. A still is repeated
+for every frame of a longer clip. The shortest animation decides how
+many frames are generated.
+
+Img2img. The model changes this picture. Strength comes from
+--image-seed-strengths, or from strength= in the LTX section.
+
+{_seed(seed_images='seed.png')}
+
+A batch. Each file is one generation.
+
+{_seed(seed_images=['seed-1.png', 'seed-2.png'])}
+
+Inpaint. White in the mask is where new content is painted. A seed
+and a mask alone use the short form, with no mask= name.
+
+{_seed(seed_images='seed.png', mask_images='mask.png')}
+
+One mask covers every seed.
+
+{_seed(seed_images=['a.png', 'b.png', 'c.png'], mask_images='mask.png')}
+
+One mask per seed. The counts have to match. Two masks for three
+seeds is rejected, and more masks than seeds is rejected.
+
+{_seed(seed_images=['a.png', 'b.png'], mask_images=['mask-a.png', 'mask-b.png'])}
+
+A control image alone is written as the seed. Use it with
+--control-nets, or as the reference clip for an LTX IC-LoRA.
+
+{_seed(control_images='control.png')}
+
+One control image per ControlNet.
+
+{_seed(control_images=['canny.png', 'depth.png'])}
+
+Img2img guided by control images. The control images are named.
+
+{_seed(seed_images='seed.png', control_images='control.png')}
+
+{_seed(seed_images='seed.png', control_images=['canny.png', 'depth.png'])}
+
+Inpaint guided by a control image. mask= is named once another
+option is present.
+
+{_seed(seed_images='seed.png', mask_images='mask.png', control_images='control.png')}
+
+Wan VACE. One mask and a control clip, with no seed image. The clip
+stays control= so it is not read as the opening frame. The mask marks
+what the model may change. Several masks need seed images.
+
+{_seed(mask_images='mask.png', control_images='clip.mp4')}
+"""
+
+_REFERENCE_HELP = f"""\
+Extra images written as reference=. They need a seed image, or a
+control clip. A reference alone is rejected.
+
+A still is repeated across the animation. A video is read together
+with the seed and the mask, and the shortest animation sets the length.
+
+Beside a seed.
+
+{_seed(seed_images='seed.png', reference_images='style.png')}
+
+Several references.
+
+{_seed(seed_images='seed.png', reference_images=['earth.jpg', 'mountain.png'])}
+
+Inpaint with an extra reference. Flux.2 Klein inpaint passes these
+as image_reference. Flux.2 text-to-image references are the seed
+images themselves, not reference=.
+
+{_seed(seed_images='seed.png', mask_images='mask.png', reference_images='style.png')}
+
+The same reference for every seed in a batch.
+
+{_seed(seed_images=['a.png', 'b.png'], reference_images='style.png')}
+
+Wan VACE. A control clip and a reference, with no seed image.
+
+{_seed(control_images='clip.mp4', reference_images='style.jpg')}
+
+Wan VACE with a mask and a reference.
+
+{_seed(mask_images='mask.png', control_images='clip.mp4', reference_images='style.jpg')}
+"""
+
+_LATENTS_HELP = f"""\
+Tensor files from an earlier run (.pt, .pth, or .safetensors), saved
+with --image-format pt, pth, or safetensors. They are used as-is.
+Resize, aspect, and frame range are rejected when latents are the
+only input.
+
+Latents alone. Img2img from raw latents. The VAE decodes them back
+to pixels, except --model-type upscaler-x2, which can take denoised
+latents directly.
+
+{_seed(latents='latents.pt')}
+
+Several latent files.
+
+{_seed(latents=['one.pt', 'two.pt'])}
+
+One latent per seed. The counts have to match.
+
+{_seed(seed_images=['a.png', 'b.png'], latents=['one.pt', 'two.pt'])}
+
+{_seed(seed_images='seed.png', latents='latents.safetensors')}
+
+Not for ControlNet, IP Adapter, or Stable Cascade img2img. Those
+read pixels.
+"""
+
+_ADAPTER_HELP = f"""\
+IP Adapter images. Each row is one image, and rows are joined with +.
+An empty row is skipped. A row with options and no image is rejected.
+Tensor files are not accepted.
+
+Adapter images only, with no seed.
+
+{_seed(adapter_images=['style.png', 'face.png'])}
+
+With a seed.
+
+{_seed(seed_images='seed.png', adapter_images=['style.png', 'face.png'])}
+
+With an inpaint mask and a control image.
+
+{_seed(seed_images='seed.png', mask_images='mask.png', adapter_images='style.png', control_images='control.png')}
+
+Each row can resize that image, set a pixel alignment, or ignore its
+aspect ratio. Alignment 1 is omitted. These options use | on that
+image, separate from Resize in Size and frames.
+
+{_seed(adapter_images='style.png|resize=512x512')}
+
+{_seed(adapter_images='style.png|align=64')}
+
+{_seed(adapter_images='style.png|resize=512|aspect=false')}
+
+Two rows, each with its own options.
+
+{_seed(adapter_images='style.png|resize=512x512|align=8 + face.png|aspect=false')}
+"""
+
+_SIZE_HELP = f"""\
+Resize, aspect ratio, and the frame range for an animation.
+
+Resize is WIDTHxHEIGHT, or a width alone. With only a seed, or a
+seed and a mask, it is written in the short form.
+
+{_seed(seed_images='seed.png', resize='800x600')}
+
+{_seed(seed_images='seed.png', resize='800')}
+
+{_seed(seed_images='seed.png', mask_images='mask.png', resize='512x512')}
+
+With any other option, resize is named.
+
+{_seed(seed_images='seed.png', control_images='control.png', resize='512x512')}
+
+Keep aspect ratio is on by default and is omitted. Turning it off
+stretches the image to the size.
+
+{_seed(seed_images='seed.png', aspect=False)}
+
+{_seed(seed_images='seed.png', resize='800x600', aspect=False)}
+
+frame-start and frame-end trim a video, GIF, or animated WEBP.
+Indexes start at 0, and frame-end is included. Either one can be
+set alone. A still image is repeated. The shortest animation in
+the seed sets how many frames are generated.
+
+{_seed(seed_images='clip.mp4', frame_start=0, frame_end=10)}
+
+{_seed(seed_images='clip.mp4', frame_start=16)}
+
+{_seed(seed_images='clip.mp4', frame_end=40)}
+
+All of these together.
+
+{_seed(seed_images='seed.png', mask_images='mask.png', control_images='control.png', resize='800x600', aspect=False, frame_start=0, frame_end=10)}
+
+These options are written with a seed image, a control image, or a
+last frame. They are rejected when the only input is latents.
+"""
+
+_LTX_HELP = f"""\
+Last frame, latent-frame index, strength, and extra conditions.
+Only --model-type ltx reads ltx-index. A last frame can stand alone.
+Index, strength, and extra conditions need a seed image. The last
+frame stays at full strength. strength= does not apply to it, and
+neither does --image-seed-strengths.
+
+First and last frame.
+
+{_seed(seed_images='first.png', end_image='last.png')}
+
+Last frame only. The opening frame is left unset.
+
+{_seed(end_image='last.png')}
+
+IC-LoRA. The opening frame, a reference clip, and the last frame.
+The clip stays in control=.
+
+{_seed(seed_images='first.png', end_image='last.png', control_images='control.mp4')}
+
+With a resize and a frame range on the clips.
+
+{_seed(seed_images='clip.gif', end_image='last.png', control_images='control.gif', resize='512x512', frame_start=16, frame_end=40)}
+
+ltx-index is a latent frame, not an output frame. 0 is the first.
+-1 is the last latent frame, the same slot as last-frame=. A still
+is held across the output frames that latent frame covers. A video
+starts at that latent frame.
+
+strength= is from 0 to 1. 1 keeps the conditioning frame. A lower
+value lets the generated frames leave it. On img2img, strength=
+overrides --image-seed-strengths for that seed. On LTX, an omitted
+strength stays at 1 unless --image-seed-strengths supplies one.
+
+{_seed(seed_images='pose.png', ltx_index=4, ltx_strength=0.5)}
+
+{_seed(seed_images='last.png', ltx_index=-1, ltx_strength=1)}
+
+The first frame can be loose while the last frame stays pinned.
+
+{_seed(seed_images='first.png', end_image='last.png', ltx_index=0, ltx_strength=0)}
+
+Extra conditions. Each row needs an image and an index. Strength
+is optional. Rows are joined with " ++ ". last-frame=, control=,
+masks, and latents stay on the first group. A path that contains
+" ++ " is quoted.
+
+{_seed(seed_images='a.png', ltx_index=0, ltx_strength=0.5, ltx_extra_conditions=[('b.png', 8, 1), ('c.png', -1)])}
+"""
+
+_WAN_HELP = f"""\
+Wan VACE uses the control clip and mask from Pictures, and reference=
+from Reference. wan-pose= and wan-face= are Wan-Animate. wan-driving=
+is the source clip. wan-background= is replace mode. The Wan keywords
+need a seed image, the character still.
+
+Wan VACE. Edit a clip. The mask marks what may change. No seed image.
+
+{_seed(mask_images='mask.png', control_images='clip.mp4')}
+
+A control clip with a reference still, and no seed image.
+
+{_seed(control_images='clip.mp4', reference_images='style.jpg')}
+
+Mask, control clip, and reference.
+
+{_seed(mask_images='mask.png', control_images='clip.mp4', reference_images='style.jpg')}
+
+Wan-Animate. The seed is the character. Pose and face clips supply
+the motion, and the prompt describes how the character looks.
+--model-type wan-animate.
+
+{_seed(seed_images='char.png', wan_pose_video='pose.mp4', wan_face_video='face.mp4')}
+
+Driving clip. --wan-animate-preprocess derives pose and face from
+this clip. Wan-Animate-2 (--model-type wan-animate-2) uses this same
+form and does not take pose, face, or background.
+
+{_seed(seed_images='char.png', wan_driving_video='drive.mp4')}
+
+Replace mode. The character is painted into the background clip.
+Add a mask from Pictures to mark where.
+
+{_seed(seed_images='char.png', mask_images='mask.png', wan_background_video='bg.mp4', wan_driving_video='drive.mp4')}
+
+Video-to-video. A video path as the seed. The length follows the
+clip, so trim it with frame-end= instead of --video-lengths.
+
+{_seed(seed_images='clip.mp4', frame_end=40)}
+
+First and last frame, for FLF2V.
+
+{_seed(seed_images='first.png', end_image='last.png')}
+
+Image-to-video. A still in Seed image, with none of these clips.
+
+{_seed(seed_images='still.png')}
+"""
 
 
 class _ImageSeedSelect(tk.Toplevel):
@@ -70,8 +358,6 @@ class _ImageSeedSelect(tk.Toplevel):
         base = tkfont.nametofont('TkDefaultFont')
         self._title_font = base.copy()
         self._title_font.configure(weight='bold')
-        self._hint_font = base.copy()
-        self._hint_font.configure(size=max(base.cget('size') - 1, 8))
 
         self.entries = []
         self._insert = insert
@@ -150,40 +436,46 @@ class _ImageSeedSelect(tk.Toplevel):
         self.entries.append(widget)
         return widget
 
-    def _section(self, title, hint):
+    def _section(self, title, help_text):
         header = tk.Frame(self._inner)
         header.grid(row=self._row, column=0, sticky=tk.EW, pady=(12, 2))
         self._row += 1
         tk.Label(header, text=title, font=self._title_font).pack(side=tk.LEFT)
-        tk.Frame(header, height=1, bg=_line(self)).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
-        if hint:
-            tk.Label(
-                self._inner, text=hint, font=self._hint_font, fg=_hint(self), anchor=tk.W
-            ).grid(row=self._row, column=0, sticky=tk.W)
-            self._row += 1
+        ttk.Button(
+            header,
+            text='Help',
+            command=lambda heading=title, body=help_text: self._show_help(heading, body),
+        ).pack(side=tk.LEFT, padx=(8, 0))
+        tk.Frame(header, height=1, bg=_line(self)).pack(
+            side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
         return header
 
+    def _show_help(self, title, help_text):
+        _helpdialog.show_help_dialog(
+            parent=self,
+            title=f'Image seed: {title}',
+            help_text=help_text.strip(),
+            size=(760, 560),
+            dock_to_right=True,
+            position_widget=self,
+        )
+
     def _build_form(self):
-        self._section(
-            'Pictures',
-            'Add a row for each file. One mask covers every seed, or use one mask per seed. '
-            'Wan VACE can use one mask with a control clip and no seed image.')
+        self._section('Pictures', _PICTURES_HELP)
         self._seeds = _FileRows(self, self._open_image, 'Seed image', start=1)
         self._masks = _FileRows(self, self._open_image, 'Inpaint mask')
         self._controls = _FileRows(self, self._open_image, 'Control image')
 
-        self._section(
-            'Reference',
-            'Extra images beside the seed, or beside a Wan VACE control clip. Written as reference=.')
+        self._section('Reference', _REFERENCE_HELP)
         self._references = _FileRows(self, self._open_image, 'Reference image')
 
-        self._section('Latents', 'Tensor files (.pt, .pth, .safetensors), one per seed when seeds are set.')
+        self._section('Latents', _LATENTS_HELP)
         self._latents = _FileRows(self, self._open_latents, 'Latents')
 
-        self._section('IP Adapter', 'Each row is one image. Rows are combined with +.')
+        self._section('IP Adapter', _ADAPTER_HELP)
         self._adapters = _AdapterRows(self)
 
-        self._section('Size and frames', None)
+        self._section('Size and frames', _SIZE_HELP)
         self._resize_entry = self._labeled_entry('Resize (WxH)')
         aspect_row = tk.Frame(self._inner)
         aspect_row.grid(row=self._row, column=0, sticky=tk.W, pady=2)
@@ -193,7 +485,7 @@ class _ImageSeedSelect(tk.Toplevel):
         self._frame_start = self._labeled_spin('Frame start', 0, None)
         self._frame_end = self._labeled_spin('Frame end', 0, None)
 
-        self._section('LTX', 'The last frame stays at full strength. Index is a latent frame, strength is 0 to 1.')
+        self._section('LTX', _LTX_HELP)
         end_row = tk.Frame(self._inner)
         end_row.grid(row=self._row, column=0, sticky=tk.EW, pady=2)
         self._row += 1
@@ -207,11 +499,7 @@ class _ImageSeedSelect(tk.Toplevel):
         self._ltx_strength = self._labeled_float('Strength')
         self._extras = _ExtraRows(self)
 
-        self._section(
-            'Wan',
-            'The control clip and mask above are Wan VACE, and reference= can go with them when there is no seed image. '
-            'wan-pose= and wan-face= are Wan-Animate. wan-driving= is the source clip for --wan-animate-preprocess. '
-            'wan-background= is replace mode.')
+        self._section('Wan', _WAN_HELP)
         self._pose_entry = self._wan_file('Pose clip')
         self._face_entry = self._wan_file('Face clip')
         self._driving_entry = self._wan_file('Driving clip')
