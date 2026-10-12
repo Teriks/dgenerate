@@ -291,8 +291,8 @@ class _MetalDevice:
         self._vbo = None
         self._vbo_cap = 0
         self._owned = []
-        self._frame_drawable = None
-        self._frame_command = None
+        self._defer_present = False
+        self._placed = None
         try:
             _frameworks()
             device = _frameworks().MTLCreateSystemDefaultDevice()
@@ -401,6 +401,8 @@ class _MetalDevice:
         window = _msg(content, b'window')
         scale = float(_msg(window, b'backingScaleFactor', restype=ctypes.c_double) or 0.0)
         self._scale = scale if scale >= 1.0 else self._scale
+        placed = (round(rect.origin.x, 1), round(rect.origin.y, 1), points[0], points[1], round(self._scale, 2))
+        inserted = False
         if not self._host:
             self._host = _msg(
                 _msg(_overlay_view_class(), b'alloc'), b'initWithFrame:', rect,
@@ -410,14 +412,24 @@ class _MetalDevice:
             _msg(self._host, b'setLayer:', self._layer, argtypes=(ctypes.c_void_p,), restype=None)
             _msg(self._host, b'setWantsLayer:', True, argtypes=(ctypes.c_bool,), restype=None)
             _msg(content, b'addSubview:', self._host, argtypes=(ctypes.c_void_p,), restype=None)
+            inserted = True
         else:
             parent = int(_msg(self._host, b'superview') or 0)
             if parent != int(content):
                 if parent:
                     _msg(self._host, b'removeFromSuperview', restype=None)
                 _msg(content, b'addSubview:', self._host, argtypes=(ctypes.c_void_p,), restype=None)
-            _msg(self._host, b'setFrame:', rect, argtypes=(_CGRect,), restype=None)
+                inserted = True
+            if placed != self._placed:
+                _msg(self._host, b'setFrame:', rect, argtypes=(_CGRect,), restype=None)
+        self._placed = placed
         _msg(self._host, b'setHidden:', False, argtypes=(ctypes.c_bool,), restype=None)
+        # A drawable acquired in the same turn the view joins the window is
+        # never shown. Resize used to be the first later present. Commit the
+        # view, then draw on the retry.
+        if inserted:
+            _msg(_class(b'CATransaction'), b'flush', restype=None)
+            self._defer_present = True
         _msg(self._layer, b'setContentsScale:', self._scale,
              argtypes=(ctypes.c_double,), restype=None)
         _msg(self._layer, b'setDrawableSize:',
@@ -427,14 +439,6 @@ class _MetalDevice:
     def set_visible(self, visible):
         if self._host:
             _msg(self._host, b'setHidden:', not visible, argtypes=(ctypes.c_bool,), restype=None)
-
-    def _release_frame(self):
-        if self._frame_command:
-            _msg(self._frame_command, b'release', restype=None)
-            self._frame_command = None
-        if self._frame_drawable:
-            _msg(self._frame_drawable, b'release', restype=None)
-            self._frame_drawable = None
 
     def _prepare_image(self, image):
         if image is None or image is self._source_image:
@@ -500,10 +504,10 @@ class _MetalDevice:
         if drawable_id:
             self._drawable_id = int(drawable_id)
         self._place_overlay(width, height)
+        if self._defer_present:
+            self._defer_present = False
+            return False
         pool = _pool()
-        drawable = None
-        command = None
-        committed = False
         try:
             drawable = _msg(self._layer, b'nextDrawable')
             if not drawable:
@@ -512,10 +516,6 @@ class _MetalDevice:
                     sys.stderr.write('Metal preview: the layer produced no drawable.\n')
                     sys.stderr.flush()
                 return False
-            # nextDrawable and commandBuffer are autoreleased. Keep them alive
-            # past the pool drain; releasing that drawable early is the
-            # "Context leak detected" report, and the pane stays black.
-            drawable = _msg(drawable, b'retain')
             self._prepare_image(image)
             draws, blob = _pack_vertices(picture, overlays)
             if blob:
@@ -533,7 +533,6 @@ class _MetalDevice:
             command = _msg(self._queue, b'commandBuffer')
             if not command:
                 return False
-            command = _msg(command, b'retain')
             encoder = _msg(
                 command, b'renderCommandEncoderWithDescriptor:', desc,
                 argtypes=(ctypes.c_void_p,))
@@ -565,26 +564,16 @@ class _MetalDevice:
             _msg(encoder, b'endEncoding', restype=None)
             _msg(command, b'presentDrawable:', drawable, argtypes=(ctypes.c_void_p,), restype=None)
             _msg(command, b'commit', restype=None)
-            committed = True
+            # Schedule into the transaction, then commit it, before the pool
+            # releases the drawable. Waiting for the GPU here blocks the console
+            # for a second once every drawable is still held.
             _msg(command, b'waitUntilScheduled', restype=None)
             _msg(_class(b'CATransaction'), b'flush', restype=None)
-            _msg(command, b'waitUntilCompleted', restype=None)
-            self._release_frame()
-            self._frame_drawable = drawable
-            self._frame_command = command
-            drawable = None
-            command = None
             return True
         finally:
             _msg(pool, b'drain', restype=None)
-            if not committed:
-                if command:
-                    _msg(command, b'release', restype=None)
-                if drawable:
-                    _msg(drawable, b'release', restype=None)
 
     def destroy(self):
-        self._release_frame()
         if self._host:
             try:
                 _msg(self._host, b'removeFromSuperview', restype=None)
