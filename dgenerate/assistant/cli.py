@@ -176,7 +176,19 @@ def create_parser(prog: str) -> _b_util.DirectiveArgumentParser:
                         default=_catalog.DEFAULT_REASONING_EFFORT,
                         help='How long to think when --think is set. Qwen3.8 otherwise uses extra high. '
                              'Default: %(default)s')
-    parser.add_argument('--temperature', type=float, default=0.3, help='Default: %(default)s')
+    # None means "not passed". The value is filled from the Qwen3.8 card after --think is known.
+    parser.add_argument('--temperature', type=float, default=None,
+                        help='Sampling temperature. Default: 0.7, or 1.0 with --think.')
+    parser.add_argument('--top-p', type=float, default=None,
+                        help='Default: 0.8, or 0.95 with --think.')
+    parser.add_argument('--top-k', type=int, default=None,
+                        help='Default: 20.')
+    parser.add_argument('--min-p', type=float, default=None,
+                        help='Default: 0.0.')
+    parser.add_argument('--presence-penalty', type=float, default=None,
+                        help='Default: 1.5, or 0.0 with --think.')
+    parser.add_argument('--repeat-penalty', type=float, default=None,
+                        help='Repetition penalty. Default: 1.0.')
     parser.add_argument('--max-tokens', type=int, default=0,
                         help='Maximum reply tokens. 0 uses the rest of the context window and does not '
                              'increase memory use. Default: %(default)s')
@@ -187,6 +199,18 @@ def create_parser(prog: str) -> _b_util.DirectiveArgumentParser:
     parser.add_argument('--offline', action='store_true', help='Only use models already in the Hugging Face cache.')
     parser.add_argument('-v', '--verbose', action='store_true', help='Show llama.cpp output.')
     return parser
+
+
+def sampling_from_args(args) -> dict:
+    """Sampling for this invocation. A flag that was omitted keeps the recommended value."""
+    return _catalog.resolve_sampling(
+        args.think,
+        temperature=args.temperature,
+        top_p=args.top_p,
+        top_k=args.top_k,
+        min_p=args.min_p,
+        presence_penalty=args.presence_penalty,
+        repeat_penalty=args.repeat_penalty)
 
 
 def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = False) -> int:
@@ -277,12 +301,13 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
                 log('Ignoring check errors that were already in the editor.')
             return kept
 
+        sampling = sampling_from_args(args)
         for attempt in range(args.max_repairs + 1):
             limit = _models.reply_token_limit(args.ctx, args.max_tokens)
             log('Writing the config' if attempt == 0 else f'Fixing the config (attempt {attempt})')
             log('  up to the rest of the context window' if limit < 0 else f'  up to {limit} tokens')
             started = time.time()
-            reply = chat.complete(messages, max_tokens=limit, temperature=args.temperature)
+            reply = chat.complete(messages, max_tokens=limit, **sampling)
             log(f'  done in {time.time() - started:.1f}s')
             messages.append({'role': 'assistant', 'content': reply})
             config = _prompt.apply_request_files(_prompt.extract_config(reply, version), files)

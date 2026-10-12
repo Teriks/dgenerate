@@ -10863,7 +10863,13 @@ model file of your own.
 
 ``--ctx`` is the chat context size in tokens, 32768 by default. ``--gpu-layers``
 is how many layers go on the GPU: ``-1`` lets the loader decide, and ``0`` is CPU
-only. ``--temperature`` defaults to 0.3. ``--max-tokens`` limits the reply. ``0``,
+only. Sampling follows the Qwen 3.8 recommendations on the Unsloth model card, and
+the values that differ follow ``--think``. Without it, temperature is 0.7, top-p
+is 0.8, and the presence penalty is 1.5. With ``--think``, temperature is 1.0,
+top-p is 0.95, and the presence penalty is 0. Top-k is 20, min-p is 0, and the
+repeat penalty is 1 either way. ``--temperature``, ``--top-p``, ``--top-k``,
+``--min-p``, ``--presence-penalty``, and ``--repeat-penalty`` each override that
+one default when you pass them. ``--max-tokens`` limits the reply. ``0``,
 the default, uses whatever room is left in the context window and does not allocate
 a larger cache.
 
@@ -10915,8 +10921,10 @@ The help output of ``assistant`` is as follows:
 
     usage: assistant [-h] [-o OUTPUT] [--model MODEL] [--embed-model EMBED_MODEL] [--ctx CTX]
                      [--gpu-layers GPU_LAYERS] [--edit FILE] [--think] [--reasoning-effort {low,medium,xhigh}]
-                     [--temperature TEMPERATURE] [--max-tokens MAX_TOKENS] [--no-check]
-                     [--max-repairs MAX_REPAIRS] [--show-context] [--offline] [-v]
+                     [--temperature TEMPERATURE] [--top-p TOP_P] [--top-k TOP_K] [--min-p MIN_P]
+                     [--presence-penalty PRESENCE_PENALTY] [--repeat-penalty REPEAT_PENALTY]
+                     [--max-tokens MAX_TOKENS] [--no-check] [--max-repairs MAX_REPAIRS] [--show-context]
+                     [--offline] [-v]
                      [request ...]
     
     Write a dgenerate config from a plain language request, using a local Qwen model with retrieval over the
@@ -10990,8 +10998,23 @@ The help output of ``assistant`` is as follows:
             How long to think when --think is set. Qwen3.8 otherwise uses extra high. Default: medium
             -----------------------------------------------------------------------------------------
       --temperature TEMPERATURE
-            Default: 0.3
+            Sampling temperature. Default: 0.7, or 1.0 with --think.
+            --------------------------------------------------------
+      --top-p TOP_P
+            Default: 0.8, or 0.95 with --think.
+            -----------------------------------
+      --top-k TOP_K
+            Default: 20.
             ------------
+      --min-p MIN_P
+            Default: 0.0.
+            -------------
+      --presence-penalty PRESENCE_PENALTY
+            Default: 1.5, or 0.0 with --think.
+            ----------------------------------
+      --repeat-penalty REPEAT_PENALTY
+            Repetition penalty. Default: 1.0.
+            ---------------------------------
       --max-tokens MAX_TOKENS
             Maximum reply tokens. 0 uses the rest of the context window and does not increase memory use.
             Default: 0
@@ -13473,7 +13496,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [27622964738134]
+            Value: [16600879100940]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

@@ -142,6 +142,72 @@ class TestAssistantPrompt(unittest.TestCase):
         self.assertNotIn('### write the config from these rules', msg)
 
 
+class TestAssistantSampling(unittest.TestCase):
+    def test_omitted_flags_follow_the_model_card(self):
+        from dgenerate.assistant.cli import create_parser, sampling_from_args
+
+        parser = create_parser('assistant')
+        plain = sampling_from_args(parser.parse_args(['a cat']))
+        self.assertEqual(plain, {
+            'temperature': 0.7,
+            'top_p': 0.8,
+            'top_k': 20,
+            'min_p': 0.0,
+            'presence_penalty': 1.5,
+            'repeat_penalty': 1.0,
+        })
+        thinking = sampling_from_args(parser.parse_args(['--think', 'a cat']))
+        self.assertEqual(thinking['temperature'], 1.0)
+        self.assertEqual(thinking['top_p'], 0.95)
+        self.assertEqual(thinking['top_k'], 20)
+        self.assertEqual(thinking['min_p'], 0.0)
+        self.assertEqual(thinking['presence_penalty'], 0.0)
+        self.assertEqual(thinking['repeat_penalty'], 1.0)
+
+    def test_a_passed_flag_overrides_only_that_value(self):
+        from dgenerate.assistant.cli import create_parser, sampling_from_args
+
+        parser = create_parser('assistant')
+        sampling = sampling_from_args(parser.parse_args([
+            '--think', '--temperature', '0.2', '--top-k', '10', 'a cat']))
+        self.assertEqual(sampling['temperature'], 0.2)
+        self.assertEqual(sampling['top_k'], 10)
+        self.assertEqual(sampling['top_p'], 0.95)
+        self.assertEqual(sampling['presence_penalty'], 0.0)
+
+    def test_completion_sends_the_recommended_values(self):
+        from dgenerate.assistant.models import ChatModel
+
+        chat = ChatModel.__new__(ChatModel)
+        chat.think = False
+        chat.effort = 'medium'
+        seen = {}
+
+        class Server:
+            def handle_chat_completions(self, body, on_chunk):
+                seen['body'] = body
+
+        chat._server = Server()
+        chat.complete([{'role': 'user', 'content': 'hi'}])
+        body = seen['body']
+        self.assertEqual(body['temperature'], 0.7)
+        self.assertEqual(body['top_p'], 0.8)
+        self.assertEqual(body['top_k'], 20)
+        self.assertEqual(body['min_p'], 0.0)
+        self.assertEqual(body['presence_penalty'], 1.5)
+        self.assertEqual(body['repeat_penalty'], 1.0)
+        self.assertFalse(body['chat_template_kwargs']['enable_thinking'])
+
+        chat.think = True
+        chat.complete([{'role': 'user', 'content': 'hi'}], temperature=0.2)
+        body = seen['body']
+        self.assertEqual(body['temperature'], 0.2)
+        self.assertEqual(body['top_p'], 0.95)
+        self.assertEqual(body['presence_penalty'], 0.0)
+        self.assertTrue(body['chat_template_kwargs']['enable_thinking'])
+        self.assertEqual(body['chat_template_kwargs']['reasoning_effort'], 'medium')
+
+
 class TestAssistantWithoutXllamacpp(unittest.TestCase):
     def test_missing_xllamacpp_stops_before_loading_a_model(self):
         import io
