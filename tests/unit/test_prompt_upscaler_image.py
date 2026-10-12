@@ -45,13 +45,14 @@ class TestMagicPromptImageArgument(unittest.TestCase):
 class TestLlamaImageArgument(unittest.TestCase):
     def test_schema_accepts_image_and_mmproj(self):
         schema = PromptUpscalerLoader().get_accepted_args_schema(include_bases=True)
-        for name in ('llama', 'xllamacpp'):
-            self.assertTrue(schema[name]['image']['optional'])
-            self.assertTrue(schema[name]['mmproj']['optional'])
-            self.assertEqual(schema[name]['image']['files']['mode'], 'in')
-            self.assertEqual(schema[name]['mmproj']['files']['mode'], 'in')
-            self.assertFalse(schema[name]['thinking']['default'])
-            self.assertEqual(schema[name]['thinking']['types'], ['bool'])
+        self.assertNotIn('xllamacpp', schema)
+        image = schema['llama']
+        self.assertTrue(image['image']['optional'])
+        self.assertTrue(image['mmproj']['optional'])
+        self.assertEqual(image['image']['files']['mode'], 'in')
+        self.assertEqual(image['mmproj']['files']['mode'], 'in')
+        self.assertFalse(image['thinking']['default'])
+        self.assertEqual(image['thinking']['types'], ['bool'])
 
     def test_image_requires_mmproj(self):
         with self.assertRaises(_exceptions.PromptUpscalerArgumentError) as ctx:

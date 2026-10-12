@@ -60,7 +60,6 @@ The llama prompt upscaler
 -------------------------
 
 The ``llama`` upscaler runs GGUF models through llama.cpp.
-``xllamacpp`` is another name for the same plugin.
 
 The default model used is: `Phi-3 Mini Abliterated Q4 GGUF by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF>`_
 
