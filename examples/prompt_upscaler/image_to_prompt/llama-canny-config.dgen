@@ -1,0 +1,39 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Ask heretic MiniCPM-V 4.6 to describe a photo, then use that description
+# as the positive prompt for SDXL with ControlNet Canny.
+#
+# The same photo is the control image. The canny processor extracts edges
+# before generation. "part=positive" leaves the negative prompt unchanged.
+#
+# "thinking" defaults to false so the reply is the prompt.
+
+\set image ../../media/horse2.jpeg
+
+\set llm_model https://huggingface.co/mradermacher/MiniCPM-V-4.6-heretic-GGUF/resolve/main/MiniCPM-V-4.6-heretic.Q4_K_M.gguf
+
+\set llm_mmproj https://huggingface.co/mradermacher/MiniCPM-V-4.6-heretic-GGUF/resolve/main/MiniCPM-V-4.6-heretic.mmproj-Q8_0.gguf
+
+\set llm_system 'You write Stable Diffusion prompts. Reply with only the prompt.'
+
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--dtype float16
+--variant fp16
+--vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
+--inference-steps 30
+--guidance-scales 8
+--gen-seeds 1
+--model-cpu-offload
+--vae-tiling
+--vae-slicing
+--output-path minicpm-heretic-canny
+--output-size 1024
+--prompt-weighter sd-embed
+--prompt-upscaler "llama;model={{ llm_model }};mmproj={{ llm_mmproj }};image={{ image }};system={{ llm_system }};part=positive;context-tokens=8192;max-length=160;remove-prompt=True"
+--prompts "Describe this image as a detailed photo prompt.; low quality, bad quality, sketches"
+--control-nets diffusers/controlnet-canny-sdxl-1.0;scale=0.5
+--image-seeds "{{ image }}"
+--control-image-processors "canny;lower=50;upper=100;output-file=minicpm-heretic-canny/horse-canny.png"
