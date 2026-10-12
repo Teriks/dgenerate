@@ -28,13 +28,17 @@ import platform
 if platform.system() == 'Linux' and 'PYOPENGL_PLATFORM' not in os.environ:
     os.environ['PYOPENGL_PLATFORM'] = 'glx'
 
-# Try to import OpenGL dependencies. pyopengltk only defines OpenGLFrame on
-# Windows and Linux today; require that symbol so macOS falls through cleanly.
+# pyopengltk exports OpenGLFrame on Windows and Linux. Its Darwin module is a
+# stub, so on macOS the frame in openglframe_darwin is installed first.
+# macOS OpenGL 4.1 is what that frame requests.
 HAS_OPENGL = False
 try:
     import pyopengltk
     import OpenGL.GL
     import OpenGL.arrays.vbo
+    if not hasattr(pyopengltk, 'OpenGLFrame'):
+        from dgenerate.console.openglframe_darwin import install_frame
+        install_frame(pyopengltk)
     HAS_OPENGL = (
         hasattr(pyopengltk, 'OpenGLFrame')
         and os.environ.get('DGENERATE_CONSOLE_UI_OPENGL', '1') == '1'

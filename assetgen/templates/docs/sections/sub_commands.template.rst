@@ -380,7 +380,13 @@ model file of your own.
 
 ``--ctx`` is the chat context size in tokens, 32768 by default. ``--gpu-layers``
 is how many layers go on the GPU: ``-1`` lets the loader decide, and ``0`` is CPU
-only. ``--temperature`` defaults to 0.3. ``--max-tokens`` limits the reply. ``0``,
+only. Sampling follows the Qwen 3.8 recommendations on the Unsloth model card, and
+the values that differ follow ``--think``. Without it, temperature is 0.7, top-p
+is 0.8, and the presence penalty is 1.5. With ``--think``, temperature is 1.0,
+top-p is 0.95, and the presence penalty is 0. Top-k is 20, min-p is 0, and the
+repeat penalty is 1 either way. ``--temperature``, ``--top-p``, ``--top-k``,
+``--min-p``, ``--presence-penalty``, and ``--repeat-penalty`` each override that
+one default when you pass them. ``--max-tokens`` limits the reply. ``0``,
 the default, uses whatever room is left in the context window and does not allocate
 a larger cache.
 

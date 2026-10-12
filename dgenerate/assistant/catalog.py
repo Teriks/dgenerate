@@ -46,6 +46,46 @@ DEFAULT_EMBED_MODEL = 'Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.
 REASONING_EFFORTS = ('low', 'medium', 'xhigh')
 DEFAULT_REASONING_EFFORT = 'medium'
 
+# Qwen3.8-27B sampling from the Unsloth model card. Thinking and non-thinking differ.
+# repeat_penalty is the card's repetition_penalty. min_p is 0 on purpose: llama.cpp
+# otherwise uses 0.05, and top_k otherwise uses 40.
+# https://huggingface.co/unsloth/Qwen3.8-27B-GGUF
+_SAMPLING_THINKING = {
+    'temperature': 1.0,
+    'top_p': 0.95,
+    'top_k': 20,
+    'min_p': 0.0,
+    'presence_penalty': 0.0,
+    'repeat_penalty': 1.0,
+}
+_SAMPLING_INSTRUCT = {
+    'temperature': 0.7,
+    'top_p': 0.8,
+    'top_k': 20,
+    'min_p': 0.0,
+    'presence_penalty': 1.5,
+    'repeat_penalty': 1.0,
+}
+
+
+def sampling_defaults(think: bool) -> dict:
+    """Recommended Qwen3.8 sampling for thinking or non-thinking mode."""
+    return dict(_SAMPLING_THINKING if think else _SAMPLING_INSTRUCT)
+
+
+def resolve_sampling(think: bool, **overrides) -> dict:
+    """
+    Recommended sampling, with any value the caller set left as given.
+
+    ``None`` means the caller did not set that value.
+    """
+    values = sampling_defaults(think)
+    for name, value in overrides.items():
+        if value is not None:
+            values[name] = value
+    return values
+
+
 # Qwen3-Embedding GGUFs. They all use last-token pooling, which the assistant embedder sets.
 # Each one has an index built by assetgen and packaged in assistant/data.
 EMBED_MODELS = [

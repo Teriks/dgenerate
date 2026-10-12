@@ -6,7 +6,8 @@ import sys
 
 import numpy as np
 
-from dgenerate.assistant.catalog import CHAT_MODELS, DEFAULT_CHAT_MODEL, DEFAULT_EMBED_MODEL, is_downloaded
+from dgenerate.assistant.catalog import (
+    CHAT_MODELS, DEFAULT_CHAT_MODEL, DEFAULT_EMBED_MODEL, is_downloaded, resolve_sampling)
 
 # Qwen3-Embedding scores 1 to 5 percent lower on retrieval without a query instruction.
 _QUERY_INSTRUCTION = (
@@ -275,19 +276,29 @@ class ChatModel:
     def complete(self,
                  messages: list[dict],
                  max_tokens: int = -1,
-                 temperature: float = 0.3,
-                 top_p: float = 0.9,
-                 top_k: int = 20,
+                 temperature: float | None = None,
+                 top_p: float | None = None,
+                 top_k: int | None = None,
+                 min_p: float | None = None,
+                 presence_penalty: float | None = None,
+                 repeat_penalty: float | None = None,
                  _shrink: bool = False) -> str:
+        # None keeps the Qwen3.8 recommendation for this thinking mode.
+        sampling = resolve_sampling(
+            self.think,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            min_p=min_p,
+            presence_penalty=presence_penalty,
+            repeat_penalty=repeat_penalty)
         template_kwargs = {'enable_thinking': self.think}
         if self.think:
             template_kwargs['reasoning_effort'] = self.effort
         body = {
             'messages': messages,
             'max_tokens': max_tokens,
-            'temperature': temperature,
-            'top_p': top_p,
-            'top_k': top_k,
+            **sampling,
             'chat_template_kwargs': template_kwargs,
             'stream': True,
         }
@@ -318,13 +329,13 @@ class ChatModel:
                     return self.complete(
                         [messages[0], last_user],
                         max_tokens=max_tokens,
-                        temperature=temperature, top_p=top_p, top_k=top_k, _shrink=_shrink)
+                        _shrink=_shrink, **sampling)
                 if not _shrink and messages[-1].get('role') == 'user' and len(messages[-1].get('content') or '') > 12000:
                     user = dict(messages[-1])
                     user['content'] = user['content'][:12000] + '\n[... truncated]'
                     return self.complete(
                         [messages[0], user],
                         max_tokens=max_tokens,
-                        temperature=temperature, top_p=top_p, top_k=top_k, _shrink=True)
+                        _shrink=True, **sampling)
             raise ModelError(f'Chat completion failed: {message}')
         return display.finish()

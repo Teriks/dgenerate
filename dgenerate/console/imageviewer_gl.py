@@ -28,9 +28,15 @@ import numpy as np
 import pyopengltk
 import OpenGL.GL as gl
 
+# pyopengltk leaves OpenGLFrame unset on macOS. The Darwin frame fills that in.
+if not hasattr(pyopengltk, 'OpenGLFrame'):
+    from dgenerate.console.openglframe_darwin import install_frame as _install_darwin_frame
+    _install_darwin_frame(pyopengltk)
+
 import dgenerate.console.animationplayback as _animationplayback
 import dgenerate.console.mousewheelbind as _mousewheelbind
 import dgenerate.console.helpdialog as _helpdialog
+from dgenerate.console.openglframe_darwin import glsl_source as _glsl_source
 
 
 class ImageViewerGL(pyopengltk.OpenGLFrame):
@@ -377,7 +383,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         def compile_shader(source, shader_type):
             shader = gl.glCreateShader(shader_type)
-            gl.glShaderSource(shader, source)
+            gl.glShaderSource(shader, _glsl_source(source))
             gl.glCompileShader(shader)
 
             if not gl.glGetShaderiv(shader, gl.GL_COMPILE_STATUS):
@@ -448,7 +454,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         def compile_shader(source, shader_type):
             shader = gl.glCreateShader(shader_type)
-            gl.glShaderSource(shader, source)
+            gl.glShaderSource(shader, _glsl_source(source))
             gl.glCompileShader(shader)
 
             if not gl.glGetShaderiv(shader, gl.GL_COMPILE_STATUS):
