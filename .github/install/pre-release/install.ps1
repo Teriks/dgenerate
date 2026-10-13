@@ -3,9 +3,6 @@
 # Usage (PowerShell):
 #   irm https://github.com/Teriks/dgenerate/releases/download/pre-release/install.ps1 | iex
 #
-# Usage (curl.exe):
-#   curl.exe -fsSL https://github.com/Teriks/dgenerate/releases/download/pre-release/install.ps1 | powershell -NoProfile -ExecutionPolicy Bypass -Command -
-#
 # Downloads the latest installer from the "pre-release" GitHub release
 # and launches it. In the installer UI, choose "Development Branch" and
 # select the version_6.0.0 option to install the pre-release build.

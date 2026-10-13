@@ -3,9 +3,6 @@
 # Usage (PowerShell):
 #   irm https://github.com/Teriks/dgenerate/releases/latest/download/install.ps1 | iex
 #
-# Usage (curl.exe):
-#   curl.exe -fsSL https://github.com/Teriks/dgenerate/releases/latest/download/install.ps1 | powershell -NoProfile -ExecutionPolicy Bypass -Command -
-#
 # Downloads the installer attached to this GitHub release and launches it.
 # In the installer UI, choose "Latest Release" for the current stable build.
 #
