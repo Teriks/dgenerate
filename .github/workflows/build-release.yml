@@ -223,6 +223,65 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload bootstrap scripts
+        run: |
+          set -euo pipefail
+
+          tag="${{ github.event.release.tag_name }}"
+          case "$tag" in
+            ''|*[!A-Za-z0-9._+-]*)
+              echo "error: refusing to publish bootstrap scripts for tag '$tag'"
+              exit 1
+              ;;
+          esac
+
+          # Stamp the scripts shipped with this workflow (default branch), not
+          # whatever copy happens to be in the tagged commit.
+          default_branch="${{ github.event.repository.default_branch }}"
+          git fetch --depth=1 origin "+refs/heads/${default_branch}:refs/remotes/origin/${default_branch}"
+
+          stage="${RUNNER_TEMP}/dgenerate-bootstrap"
+          rm -rf "$stage"
+          mkdir -p "$stage"
+
+          git show "origin/${default_branch}:.github/install/release/install.sh" > "$stage/install.sh.in"
+          git show "origin/${default_branch}:.github/install/release/install.ps1" > "$stage/install.ps1.in"
+          sed -i 's/\r$//' "$stage/install.sh.in" "$stage/install.ps1.in"
+
+          awk -v tag="$tag" '
+            BEGIN { done = 0 }
+            {
+              if (!done && sub(/@DGENERATE_RELEASE_TAG@/, tag)) {
+                done = 1
+              }
+              print
+            }
+            END { if (!done) exit 1 }
+          ' "$stage/install.sh.in" > "$stage/install.sh"
+
+          awk -v tag="$tag" '
+            BEGIN { done = 0 }
+            {
+              if (!done && sub(/@DGENERATE_RELEASE_TAG@/, tag)) {
+                done = 1
+              }
+              print
+            }
+            END { if (!done) exit 1 }
+          ' "$stage/install.ps1.in" > "$stage/install.ps1"
+
+          grep -F -x "TAG=\"${tag}\"" "$stage/install.sh"
+          grep -F "\$Tag = '${tag}'" "$stage/install.ps1"
+          # The guard must still mention the placeholder, or an unpublished
+          # local copy would no longer fail closed.
+          grep -F "@DGENERATE_RELEASE_TAG@" "$stage/install.sh"
+          grep -F "@DGENERATE_RELEASE_TAG@" "$stage/install.ps1"
+
+          echo "Uploading bootstrap scripts for ${tag}:"
+          gh release upload "$tag" "$stage/install.sh" "$stage/install.ps1" --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Update release notes
         run: |
           version="${{ github.event.release.tag_name }}"
@@ -235,6 +294,26 @@ jobs:
           cat > installation_notes.md << EOF
           ## Installation
           
+          ### Quick install
+
+          **Linux / macOS (Apple Silicon)**
+
+          \`\`\`bash
+          curl -fsSL https://github.com/${{ github.repository }}/releases/download/${{ github.event.release.tag_name }}/install.sh | sh
+          \`\`\`
+
+          **Windows (PowerShell)**
+
+          \`\`\`powershell
+          irm https://github.com/${{ github.repository }}/releases/download/${{ github.event.release.tag_name }}/install.ps1 | iex
+          \`\`\`
+
+          \`\`\`powershell
+          curl.exe -fsSL https://github.com/${{ github.repository }}/releases/download/${{ github.event.release.tag_name }}/install.ps1 | powershell -NoProfile -ExecutionPolicy Bypass -Command -
+          \`\`\`
+
+          The same scripts on the latest stable release are also available at \`releases/latest/download/install.sh\` and \`releases/latest/download/install.ps1\`. The script downloads the installer and launches it. Select **Latest Release** to install the current stable version.
+
           ### PyPI
           \`\`\`bash
           pip install dgenerate==$version
