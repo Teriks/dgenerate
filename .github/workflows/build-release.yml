@@ -308,10 +308,6 @@ jobs:
           irm https://github.com/${{ github.repository }}/releases/download/${{ github.event.release.tag_name }}/install.ps1 | iex
           \`\`\`
 
-          \`\`\`powershell
-          curl.exe -fsSL https://github.com/${{ github.repository }}/releases/download/${{ github.event.release.tag_name }}/install.ps1 | powershell -NoProfile -ExecutionPolicy Bypass -Command -
-          \`\`\`
-
           The same scripts on the latest stable release are also available at \`releases/latest/download/install.sh\` and \`releases/latest/download/install.ps1\`. The script downloads the installer and launches it. Select **Latest Release** to install the current stable version.
 
           ### PyPI
