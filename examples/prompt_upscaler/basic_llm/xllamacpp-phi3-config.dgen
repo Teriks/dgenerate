@@ -25,7 +25,11 @@
 
 \set llm_model 'https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf'
 
-\set llm_preamble 'Enhance this photo description:'
+
+\set llm_system "You enhance Stable Diffusion prompts"
+
+\set llm_preamble 'Enhance this description, return a single description:'
+
 
 stabilityai/stable-diffusion-xl-base-1.0
 --model-type sdxl
@@ -38,5 +42,5 @@ stabilityai/stable-diffusion-xl-base-1.0
 --output-path xllamacpp-phi3
 --output-size 1024x1024
 --prompt-weighter sd-embed
---prompt-upscaler dynamicprompts llama;model={{ llm_model }};preamble={{ llm_preamble }}
+--prompt-upscaler dynamicprompts llama;model={{ llm_model }};system={{llm_system}};preamble={{ llm_preamble }}
 --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
