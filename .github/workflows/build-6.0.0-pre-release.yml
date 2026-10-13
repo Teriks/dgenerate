@@ -47,9 +47,10 @@ jobs:
             fi
           fi
 
-          # Fallback: extract from first asset name which embeds the short sha
+          # Fallback: extract the short sha from an installer asset name.
+          # Skip bootstrap scripts (install.sh / install.ps1); they have no commit hash.
           if [ -z "$last_built_commit" ]; then
-            asset_name=$(gh release view pre-release --json assets -q '.assets[0].name' 2>/dev/null || echo "")
+            asset_name=$(gh release view pre-release --json assets -q '.assets[].name' 2>/dev/null | grep -E '^dgenerate-installer-' | head -n 1 || true)
             if [ -n "$asset_name" ]; then
               short_from_asset=$(echo "$asset_name" | sed -E 's/.*-([a-f0-9]{7,})(\.[^.]+)?$/\1/')
               if [ -n "$short_from_asset" ]; then
@@ -269,6 +270,7 @@ jobs:
           gh release create pre-release \
             --title "Development Pre-release: $(git rev-parse --abbrev-ref HEAD) - $(date -u +%Y%m%d-%H%M%S)" \
             --notes "Automatically generated release containing the latest build artifacts for all platforms." \
+            --prerelease \
             --target version_6.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -345,6 +347,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload bootstrap scripts
+        run: |
+          if [ ! -f .github/install/pre-release/install.sh ] || [ ! -f .github/install/pre-release/install.ps1 ]; then
+            echo "error: bootstrap scripts are missing from the version_6.0.0 checkout"
+            exit 1
+          fi
+          echo "Uploading install bootstrap scripts:"
+          gh release upload pre-release \
+            .github/install/pre-release/install.sh \
+            .github/install/pre-release/install.ps1 \
+            --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Update release description
         run: |
           build_date=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
@@ -370,6 +386,10 @@ jobs:
           - **Linux**: \`dgenerate-installer-linux-$commit_sha\`
           - **macOS** (Apple Silicon): \`dgenerate-installer-macos-$commit_sha\`
           
+          ### Bootstrap scripts
+          - **Linux / macOS**: \`install.sh\`
+          - **Windows**: \`install.ps1\`
+
           ### Python Wheels
           - **Windows**: \`dgenerate-$version-$commit_sha-py3-none-win_amd64.whl\`
           - **Linux/Universal**: \`dgenerate-$version-$commit_sha-py3-none-any.whl\`
@@ -378,6 +398,26 @@ jobs:
           
           ## Installation
           
+          ### Quick install
+
+          **Linux / macOS (Apple Silicon)**
+
+          \`\`\`bash
+          curl -fsSL https://github.com/${{ github.repository }}/releases/download/pre-release/install.sh | sh
+          \`\`\`
+
+          **Windows (PowerShell)**
+
+          \`\`\`powershell
+          irm https://github.com/${{ github.repository }}/releases/download/pre-release/install.ps1 | iex
+          \`\`\`
+
+          \`\`\`powershell
+          curl.exe -fsSL https://github.com/${{ github.repository }}/releases/download/pre-release/install.ps1 | powershell -NoProfile -ExecutionPolicy Bypass -Command -
+          \`\`\`
+
+          The script downloads the installer and launches it. Select **Development Branch** and choose **version_6.0.0**.
+
           ### Windows
           1. Download \`dgenerate-installer-win-$commit_sha.exe\`
           2. Run the installer
@@ -408,7 +448,7 @@ jobs:
           *This release is automatically updated with each successful build.*
           EOF
           
-          gh release edit pre-release --notes-file release_notes.md
+          gh release edit pre-release --prerelease --notes-file release_notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
