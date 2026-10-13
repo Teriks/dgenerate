@@ -1373,9 +1373,16 @@ class DiffusionArguments(_types.SetFromMixin):
     Derive pose and face clips from ``wan-driving=``.
     """
 
-    wan_animate_cache_dir: _types.OptionalPath = None
+    wan_animate_preprocess_output: _types.OptionalBoolean = None
     """
-    Directory for cached Wan-Animate pose and face clips.
+    Write the derived pose and face clips to ``wan_animate_output_dir``.
+    """
+
+    wan_animate_output_dir: _types.OptionalPath = None
+    """
+    Directory where derived Wan-Animate pose and face clips are written.
+
+    This is the generation output directory from ``--output-path``.
     """
 
     end_images: _types.OptionalImages = None

@@ -667,7 +667,10 @@ Pass ``wan-pose=`` and ``wan-face=`` clips, or pass ``wan-driving=`` and let
 dgenerate derive them. ``--wan-animate-preprocess`` runs ``openpose`` for the
 pose and ``yolo`` in crop mode for the face
 (``Bingsu/adetailer;weight-name=face_yolov8n.pt;crops=True;crop-square=True;crop-scale=1.4``).
-When the driving file is local, the derived clips are cached beside it.
+The derived frames stay in memory.
+``--wan-animate-preprocess-output`` writes the pose and face clips to the
+directory given by ``--output-path``. A name that already exists receives a
+``_duplicate_`` suffix.
 Custom plugins can replace that pair: ``--wan-pose-image-processors`` and
 ``--wan-face-image-processors`` run on ``wan-driving=`` when the matching clip
 is omitted, and on ``wan-pose=`` or ``wan-face=`` when those clips are given.

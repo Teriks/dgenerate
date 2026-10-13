@@ -2072,6 +2072,48 @@ class TestWanModels(unittest.TestCase):
             animate_rejected.check()
         self.assertIn('UniPCMultistepScheduler', str(raised.exception))
 
+    def test_wan_animate_preprocess_writes_unique_files_in_output_directory(self):
+        from dgenerate.pipelinewrapper.videopipelines import wan as _wan
+
+        frame = PIL.Image.new('RGB', (16, 16), 'red')
+        with tempfile.TemporaryDirectory() as directory:
+            source = os.path.join(directory, 'motion.mp4')
+            output = os.path.join(directory, 'out')
+            os.makedirs(output)
+            pose_path = os.path.join(output, 'motion.wan-pose.mp4')
+            face_path = os.path.join(output, 'motion.wan-face.mp4')
+            with open(pose_path, 'wb') as handle:
+                handle.write(b'kept')
+            with open(face_path, 'wb') as handle:
+                handle.write(b'kept')
+
+            _wan._write_derived_clips([frame], [frame], source, output)
+
+            with open(pose_path, 'rb') as handle:
+                self.assertEqual(handle.read(), b'kept')
+            with open(face_path, 'rb') as handle:
+                self.assertEqual(handle.read(), b'kept')
+            written = {
+                name for name in os.listdir(output)
+                if name.endswith('.mp4') and name != 'motion.wan-pose.mp4'
+                and name != 'motion.wan-face.mp4'}
+            self.assertEqual(
+                written,
+                {'motion.wan-pose_duplicate_1.mp4', 'motion.wan-face_duplicate_1.mp4'})
+            for name in written:
+                self.assertGreater(os.path.getsize(os.path.join(output, name)), 0)
+                self.assertNotEqual(os.path.dirname(os.path.abspath(
+                    os.path.join(output, name))), os.getcwd())
+
+            remote_pose, remote_face = _wan._derived_clip_paths(
+                'https://example.com/motion.mp4?token=1', output)
+            self.assertEqual(os.path.basename(remote_pose), 'motion.wan-pose.mp4')
+            self.assertEqual(os.path.basename(remote_face), 'motion.wan-face.mp4')
+            self.assertEqual(os.path.dirname(remote_pose), output)
+
+            fallback_pose, _ = _wan._derived_clip_paths(source, None)
+            self.assertEqual(os.path.dirname(fallback_pose), 'output')
+
     def test_wan_animate_requires_pose_or_driving(self):
         missing = _config(
             model_path='org/wan-animate',
@@ -2095,6 +2137,15 @@ class TestWanModels(unittest.TestCase):
             image_seeds=['examples/media/earth.jpg;wan-driving=examples/media/rickroll-roll.gif'],
             wan_animate_preprocess=True)
         preprocess.check()
+
+        generated = next(preprocess.iterate_diffusion_args())
+        self.assertIs(generated.wan_animate_preprocess_output, False)
+        self.assertIsNone(generated.wan_animate_output_dir)
+
+        preprocess.wan_animate_preprocess_output = True
+        generated = next(preprocess.iterate_diffusion_args())
+        self.assertTrue(generated.wan_animate_preprocess_output)
+        self.assertEqual(generated.wan_animate_output_dir, preprocess.output_path)
 
         custom = _config(
             model_path='org/wan-animate',

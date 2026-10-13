@@ -5430,10 +5430,20 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Derive wan-pose= and wan-face= from a wan-driving= clip.
                     Pose uses the openpose processor. Face uses the yolo
                     processor in crop mode (Bingsu/adetailer face_yolov8n.pt,
-                    square crop-scale=1.4). Cached clips are written next to
-                    the driving file when it is local. Custom plugins can be
-                    used instead with --wan-pose-image-processors and
+                    square crop-scale=1.4). The derived frames are kept in
+                    memory. Custom plugins can be used instead with
+                    --wan-pose-image-processors and
                     --wan-face-image-processors on wan-driving=."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--wan-animate-preprocess-output', action='store_true', default=False,
+            dest='wan_animate_preprocess_output',
+            help="""Write the pose and face clips derived by --wan-animate-preprocess
+                    to the directory given by --output-path. A name that already
+                    exists receives a _duplicate_ suffix. Off by default."""
         )
     )
 
