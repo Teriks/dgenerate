@@ -131,6 +131,8 @@ def reconstruct_dgenerate_opts(
             opts.append(('--wan-motion-encode-batch-size', args.wan_motion_encode_batch_size))
         if args.wan_animate_preprocess:
             opts.append(('--wan-animate-preprocess',))
+        if args.wan_animate_preprocess_output:
+            opts.append(('--wan-animate-preprocess-output',))
         if args.ltx_audio_guidance_scale is not None:
             opts.append(('--ltx-audio-guidance-scales', args.ltx_audio_guidance_scale))
         if args.ltx_audio_guidance_rescale is not None:

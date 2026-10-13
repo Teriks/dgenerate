@@ -142,6 +142,15 @@ class _MTLRegion(ctypes.Structure):
     ]
 
 
+class _MTLClearColor(ctypes.Structure):
+    _fields_ = [
+        ('red', ctypes.c_double),
+        ('green', ctypes.c_double),
+        ('blue', ctypes.c_double),
+        ('alpha', ctypes.c_double),
+    ]
+
+
 def _objc():
     lib = getattr(_objc, 'lib', None)
     if lib is None:
@@ -376,6 +385,7 @@ class _MetalDevice:
              argtypes=(ctypes.c_uint64,), restype=None)
         _msg(layer, b'setFramebufferOnly:', True, argtypes=(ctypes.c_bool,), restype=None)
         _msg(layer, b'setOpaque:', True, argtypes=(ctypes.c_bool,), restype=None)
+        _msg(layer, b'setMasksToBounds:', True, argtypes=(ctypes.c_bool,), restype=None)
         # A transaction present has to be waited out on this thread, and that
         # wait holds the console until Metal gives up (about a second per
         # drawable, three of them when a new picture is shown). The overlay
@@ -416,6 +426,11 @@ class _MetalDevice:
                 raise RuntimeError('Could not create the Metal overlay view.')
             _msg(self._host, b'setLayer:', self._layer, argtypes=(ctypes.c_void_p,), restype=None)
             _msg(self._host, b'setWantsLayer:', True, argtypes=(ctypes.c_bool,), restype=None)
+            # AppKit's default policy snapshots whatever is under the new
+            # view. That snapshot is a strip of the console text, and it
+            # lands on the sash until something else repaints.
+            _msg(self._host, b'setLayerContentsRedrawPolicy:', 0,
+                 argtypes=(ctypes.c_long,), restype=None)
             _msg(content, b'addSubview:', self._host, argtypes=(ctypes.c_void_p,), restype=None)
             inserted = True
         else:
@@ -550,6 +565,10 @@ class _MetalDevice:
                  argtypes=(ctypes.c_void_p,), restype=None)
             _msg(attachment, b'setLoadAction:', _MTL_LOAD_CLEAR,
                  argtypes=(ctypes.c_uint64,), restype=None)
+            # The default clear is transparent. An opaque layer still blends
+            # those edge pixels with the console text sitting just outside.
+            _msg(attachment, b'setClearColor:', _MTLClearColor(0.0, 0.0, 0.0, 1.0),
+                 argtypes=(_MTLClearColor,), restype=None)
             _msg(attachment, b'setStoreAction:', _MTL_STORE,
                  argtypes=(ctypes.c_uint64,), restype=None)
             command = _msg(self._queue, b'commandBuffer')
@@ -772,6 +791,7 @@ class ImageViewerMetal(tk.Frame):
         self._present_retries = 0
         self._reported_present_failure = False
         self._retry_after = None
+        self._edge_repair_after = None
         self._resize_after = None
         self._resize_drawn_at = 0.0
         self._pointer_inside = False
@@ -921,7 +941,7 @@ class ImageViewerMetal(tk.Frame):
             self.on_error('Metal preview: the picture did not reach the screen.')
     def _schedule_settled_present(self):
         self.after_idle(self._present_settled)
-        self.after(50, self._present_settled)
+        self.after(50, self._present_settled_then_repair)
 
     def _present_settled(self):
         if not self.has_image() or self._resize_after is not None:
@@ -929,6 +949,46 @@ class ImageViewerMetal(tk.Frame):
         self._presented_key = None
         self._present_retries = 0
         self.redraw()
+
+    def _present_settled_then_repair(self):
+        self._present_settled()
+        if self._resize_after is not None or not self.has_image():
+            return
+        if self._edge_repair_after is not None:
+            try:
+                self.after_cancel(self._edge_repair_after)
+            except tk.TclError:
+                pass
+        # The present above commits on its own. Republish Tk's bitmap
+        # after that, or the sash keeps the glyph sliver until a scroll.
+        self._edge_repair_after = self.after(32, self._repair_console_edge)
+
+    def _repair_console_edge(self):
+        """Redraw the sash the way a scroll does, without another present."""
+        self._edge_repair_after = None
+        if self._resize_after is not None:
+            return
+        try:
+            if not self.winfo_exists():
+                return
+            paned = self.master.master
+            if not paned.panes():
+                return
+            # Finish the output line first. The sash paint has to come
+            # after it, or the glyphs land on top of the sash again.
+            self.update_idletasks()
+            paned.event_generate(
+                '<Expose>', x=0, y=0,
+                width=max(1, paned.winfo_width()),
+                height=max(1, paned.winfo_height()))
+            self.update_idletasks()
+        except (tk.TclError, AttributeError):
+            return
+        try:
+            content = _content_view(self)
+        except RuntimeError:
+            return
+        _msg(content, b'setNeedsDisplay:', True, argtypes=(ctypes.c_bool,), restype=None)
 
     def _schedule_present_retry(self):
         if self._retry_after is not None:
@@ -1086,9 +1146,10 @@ class ImageViewerMetal(tk.Frame):
                 self._zoom_factor = 1.0
             self.redraw()
             # The output pane inserts the "Wrote ..." line after this returns,
-            # and that paint can cover a single present. A playing clip draws
-            # again on its own. A still stays on the previous frame until
-            # something else, such as a sash drag, presents once more.
+            # and that paint can cover a single present. It also leaves the
+            # rightmost pixels of those glyphs in the sash. A playing clip
+            # draws again on its own. A still stays on the previous frame
+            # until something else, such as a sash drag, presents once more.
             self._schedule_settled_present()
             if self._animation is not None:
                 self._animation.set_gain(0.0 if self._preview_muted else self._preview_volume)
@@ -1462,6 +1523,12 @@ class ImageViewerMetal(tk.Frame):
         return
     def cleanup(self):
         self._stop_animation()
+        if self._edge_repair_after is not None:
+            try:
+                self.after_cancel(self._edge_repair_after)
+            except tk.TclError:
+                pass
+            self._edge_repair_after = None
         if (self._gpu is not None):
             self._gpu.destroy()
             self._gpu = None

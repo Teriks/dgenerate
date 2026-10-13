@@ -46,6 +46,8 @@ from diffusers.schedulers import KarrasDiffusionSchedulers
 from diffusers.utils import deprecate, is_invisible_watermark_available, logging, replace_example_docstring
 from diffusers.utils.torch_utils import is_compiled_module, randn_tensor
 
+from dgenerate.extras.kolors.controlnet_patch import patch_controlnet_text_projection
+
 
 if is_invisible_watermark_available():
     from diffusers.pipelines.stable_diffusion_xl.watermark import StableDiffusionXLWatermarker
@@ -1695,19 +1697,7 @@ class KolorsControlNetInpaintPipeline(
             cn_models_to_patch = [self.controlnet]
 
         for cn_model in cn_models_to_patch:
-            cn_og_forward = cn_model.forward
-
-            def _cn_patch_forward(*args, **kwargs):
-                encoder_hidden_states = kwargs["encoder_hidden_states"]
-                if cn_model.encoder_hid_proj is not None and cn_model.config.encoder_hid_dim_type == "text_proj":
-                    # Ensure encoder_hidden_states is on the same device as the projection layer
-                    encoder_hidden_states = encoder_hidden_states.to(cn_model.encoder_hid_proj.weight.device)
-                    encoder_hidden_states = cn_model.encoder_hid_proj(encoder_hidden_states)
-                kwargs.pop("encoder_hidden_states")
-                return cn_og_forward(*args, encoder_hidden_states=encoder_hidden_states, **kwargs)
-
-            cn_model.forward = _cn_patch_forward
-            patched_cn_models.append((cn_model, cn_og_forward))
+            patched_cn_models.append((cn_model, patch_controlnet_text_projection(cn_model)))
 
         try:
             with self.progress_bar(total=num_inference_steps) as progress_bar:

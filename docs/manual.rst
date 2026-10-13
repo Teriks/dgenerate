@@ -136,7 +136,7 @@ Help Output
                      [--wan-segment-frame-lengths INTEGER [INTEGER ...]]
                      [--wan-prev-segment-frames INTEGER [INTEGER ...]]
                      [--wan-motion-encode-batch-size INTEGER [INTEGER ...]] [--wan-animate-preprocess]
-                     [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]]
+                     [--wan-animate-preprocess-output] [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]]
                      [-sir CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-ds FLOAT] [-de FLOAT]
                      model_path
     
@@ -2878,10 +2878,14 @@ Help Output
             -------------------------------------------------------------------------------------------
       --wan-animate-preprocess
             Derive wan-pose= and wan-face= from a wan-driving= clip. Pose uses the openpose processor. Face uses
-            the yolo processor in crop mode (Bingsu/adetailer face_yolov8n.pt, square crop-scale=1.4). Cached
-            clips are written next to the driving file when it is local. Custom plugins can be used instead with
+            the yolo processor in crop mode (Bingsu/adetailer face_yolov8n.pt, square crop-scale=1.4). The
+            derived frames are kept in memory. Custom plugins can be used instead with
             --wan-pose-image-processors and --wan-face-image-processors on wan-driving=.
             ----------------------------------------------------------------------------
+      --wan-animate-preprocess-output
+            Write the pose and face clips derived by --wan-animate-preprocess to the directory given by
+            --output-path. A name that already exists receives a _duplicate_ suffix. Off by default.
+            ----------------------------------------------------------------------------------------
       -ifs2, --second-model-inference-steps INTEGER [INTEGER ...]
             One or more inference steps values for the SDXL refiner or Stable Cascade decoder when in use.
             Override the number of inference steps used by the second model, which defaults to the value taken
@@ -5069,7 +5073,10 @@ Pass ``wan-pose=`` and ``wan-face=`` clips, or pass ``wan-driving=`` and let
 dgenerate derive them. ``--wan-animate-preprocess`` runs ``openpose`` for the
 pose and ``yolo`` in crop mode for the face
 (``Bingsu/adetailer;weight-name=face_yolov8n.pt;crops=True;crop-square=True;crop-scale=1.4``).
-When the driving file is local, the derived clips are cached beside it.
+The derived frames stay in memory.
+``--wan-animate-preprocess-output`` writes the pose and face clips to the
+directory given by ``--output-path``. A name that already exists receives a
+``_duplicate_`` suffix.
 Custom plugins can replace that pair: ``--wan-pose-image-processors`` and
 ``--wan-face-image-processors`` run on ``wan-driving=`` when the matching clip
 is omitted, and on ``wan-pose=`` or ``wan-face=`` when those clips are given.
@@ -8938,7 +8945,9 @@ Quantization backend packages will be installed by dgenerate's packaging on plat
     
     \set llm_model 'failspy/Phi-3-mini-128k-instruct-abliterated-v3'
     
-    \set llm_preamble 'Enhance this photo description:'
+    \set llm_system "You enhance Stable Diffusion prompts"
+    
+    \set llm_preamble 'Enhance this description, return a single description:'
     
     \set llm_seed 32
     
@@ -8954,7 +8963,7 @@ Quantization backend packages will be installed by dgenerate's packaging on plat
     --output-path magic-phi3
     --output-size 1024x1024
     --prompt-weighter sd-embed
-    --prompt-upscaler dynamicprompts magicprompt;model={{ llm_model }};preamble={{ llm_preamble }};seed={{ llm_seed }}{{ llm_optimization }}
+    --prompt-upscaler dynamicprompts magicprompt;model={{ llm_model }};system={{llm_system}};preamble={{ llm_preamble }};seed={{ llm_seed }}{{ llm_optimization }}
     --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
 
 
@@ -8998,7 +9007,11 @@ Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_
     
     \set llm_model 'https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf'
     
-    \set llm_preamble 'Enhance this photo description:'
+    
+    \set llm_system "You enhance Stable Diffusion prompts"
+    
+    \set llm_preamble 'Enhance this description, return a single description:'
+    
     
     stabilityai/stable-diffusion-xl-base-1.0
     --model-type sdxl
@@ -9011,7 +9024,7 @@ Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_
     --output-path xllamacpp-phi3
     --output-size 1024x1024
     --prompt-weighter sd-embed
-    --prompt-upscaler dynamicprompts llama;model={{ llm_model }};preamble={{ llm_preamble }}
+    --prompt-upscaler dynamicprompts llama;model={{ llm_model }};system={{llm_system}};preamble={{ llm_preamble }}
     --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
 
 Models that are not chat models can be used the same way. This example loads a GGUF
@@ -9857,7 +9870,8 @@ these are the arguments that are available for use:
     wan-prev-segment-frames: int
     wan-motion-encode-batch-size: int
     wan-animate-preprocess: bool
-    wan-animate-cache-dir: str
+    wan-animate-preprocess-output: bool
+    wan-animate-output-dir: str
     wan-driving-video-path: str
     wan-driving-video-fps: float
     inference-steps: int
@@ -13699,7 +13713,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [51480973595057]
+            Value: [98419566096135]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -13788,6 +13802,9 @@ The ``\templates_help`` output from the above example is:
             Type: str | None
             Value: None
         Name: "last_wan_animate_preprocess"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_wan_animate_preprocess_output"
             Type: <class 'bool'>
             Value: False
         Name: "last_wan_background_image_processors"

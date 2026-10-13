@@ -80,6 +80,7 @@ _WAN_ANIMATE_1_ONLY_FIELDS = frozenset({
     'wan_animate_mode',
     'wan_motion_encode_batch_sizes',
     'wan_animate_preprocess',
+    'wan_animate_preprocess_output',
     'wan_pose_image_processors',
     'wan_face_image_processors',
     'wan_background_image_processors',
@@ -604,6 +605,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     Derive ``wan-pose=`` and ``wan-face=`` from ``wan-driving=``.
     ``--wan-animate-preprocess``.
+    """
+
+    wan_animate_preprocess_output: bool = False
+    """
+    Write the pose and face clips derived by ``--wan-animate-preprocess``
+    to ``--output-path``. ``--wan-animate-preprocess-output``.
     """
 
     clip_skips: _types.OptionalIntegers = None
@@ -4664,6 +4671,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                     'wan_motion_encode_batch_size', self.wan_motion_encode_batch_sizes),
                 wan_animate_preprocess=ov(
                     'wan_animate_preprocess', [self.wan_animate_preprocess]),
+                wan_animate_preprocess_output=ov(
+                    'wan_animate_preprocess_output', [self.wan_animate_preprocess_output]),
+                wan_animate_output_dir=ov(
+                    'wan_animate_output_dir',
+                    [self.output_path] if self.wan_animate_preprocess_output else None),
                 sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
                 second_model_inference_steps=ov('second_model_inference_steps', self.second_model_inference_steps),
                 second_model_guidance_scale=ov('second_model_guidance_scale', self.second_model_guidance_scales),

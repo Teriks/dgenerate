@@ -23,12 +23,12 @@
 
 from __future__ import annotations
 
-import hashlib
 import os
 
 import PIL.Image
 import torch
 
+import dgenerate.filelock as _filelock
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
@@ -713,9 +713,10 @@ def _call_wan_animate(wrapper, user_args):
         derived_pose, derived_face = preprocess_wan_animate_driving(
             user_args.wan_driving_video_frames,
             user_args.wan_driving_video_path,
-            user_args.wan_animate_cache_dir,
+            user_args.wan_animate_output_dir,
             motion_encoder_size=_animate_motion_size(wrapper),
-            device=wrapper.device)
+            device=wrapper.device,
+            write_clips=bool(user_args.wan_animate_preprocess_output))
         pose = pose or derived_pose
         face = face or derived_face
     if not pose or not face:
@@ -1089,27 +1090,21 @@ def _animate_motion_size(wrapper) -> int:
 
 def preprocess_wan_animate_driving(frames: list[PIL.Image.Image],
                                    source_path: str | None,
-                                   cache_dir: str | None,
+                                   output_dir: str | None,
                                    motion_encoder_size: int = 512,
-                                   device: str = 'cpu'
+                                   device: str = 'cpu',
+                                   write_clips: bool = False
                                    ) -> tuple[list[PIL.Image.Image], list[PIL.Image.Image]]:
     """
     Derive pose and face clips from a driving video.
 
     Pose is ``openpose``. Face is a square crop around the first
     ``yolo`` face box. Both processors run on ``device`` for the clip
-    and return to CPU when the clip is finished. Cached files are
-    written next to the driving clip when ``source_path`` is a local
-    file, otherwise under ``cache_dir``.
+    and return to CPU when the clip is finished. The returned frames
+    are what generation uses. ``write_clips`` also stores them under
+    ``output_dir``. A name that already exists receives a
+    ``_duplicate_`` suffix.
     """
-    pose_path, face_path = _animate_cache_paths(source_path, cache_dir)
-    if _cache_fresh(source_path, pose_path, face_path):
-        from dgenerate.pipelinewrapper import videopipelines as _vp
-        pose, _ = _vp.load_rgb_frames(pose_path)
-        face, _ = _vp.load_rgb_frames(face_path)
-        _messages.log(f'Reusing cached Wan-Animate pose and face clips.')
-        return pose, face
-
     pose_processor, face_processor = _animate_processors(motion_encoder_size, device)
     try:
         pose = [pose_processor.process(frame.copy()) for frame in frames]
@@ -1118,40 +1113,54 @@ def preprocess_wan_animate_driving(frames: list[PIL.Image.Image],
         pose_processor.to('cpu')
         if hasattr(face_processor, 'to'):
             face_processor.to('cpu')
-    _write_clip_cache(pose, pose_path)
-    _write_clip_cache(face, face_path)
+    if write_clips:
+        _write_derived_clips(pose, face, source_path, output_dir)
     return pose, face
 
 
-def _animate_cache_paths(source_path: str | None, cache_dir: str | None) -> tuple[str, str]:
-    if source_path and os.path.isfile(source_path):
-        root, _ = os.path.splitext(source_path)
-        return f'{root}.wan-pose.mp4', f'{root}.wan-face.mp4'
-    directory = cache_dir or os.getcwd()
-    digest = hashlib.sha1((source_path or 'driving').encode('utf-8')).hexdigest()[:12]
-    return (os.path.join(directory, f'wan-animate-{digest}-pose.mp4'),
-            os.path.join(directory, f'wan-animate-{digest}-face.mp4'))
+def _derived_clip_paths(source_path: str | None, output_dir: str | None) -> tuple[str, str]:
+    # ``output`` matches the ``--output-path`` default when no directory was passed.
+    directory = output_dir or 'output'
+    stem = _driving_clip_stem(source_path)
+    return (os.path.join(directory, f'{stem}.wan-pose.mp4'),
+            os.path.join(directory, f'{stem}.wan-face.mp4'))
 
 
-def _cache_fresh(source_path: str | None, pose_path: str, face_path: str) -> bool:
-    if not (os.path.isfile(pose_path) and os.path.isfile(face_path)):
-        return False
-    if not source_path or not os.path.isfile(source_path):
-        return True
-    source_mtime = os.path.getmtime(source_path)
-    return os.path.getmtime(pose_path) >= source_mtime and os.path.getmtime(face_path) >= source_mtime
+def _driving_clip_stem(source_path: str | None) -> str:
+    if not source_path:
+        return 'wan-animate'
+    path = str(source_path).split('?', 1)[0].split('#', 1)[0].rstrip('/\\')
+    stem = os.path.splitext(os.path.basename(path))[0]
+    cleaned = ''.join(
+        ch if ch.isalnum() or ch in ('-', '_', '.') else '-' for ch in stem).strip('.-')
+    return cleaned or 'wan-animate'
 
 
-def _write_clip_cache(frames: list[PIL.Image.Image], path: str):
+def _write_derived_clips(pose_frames: list[PIL.Image.Image],
+                         face_frames: list[PIL.Image.Image],
+                         source_path: str | None,
+                         output_dir: str | None):
+    pose_path, face_path = _derived_clip_paths(source_path, output_dir)
+    directory = os.path.dirname(pose_path) or '.'
     try:
-        import dgenerate.mediaoutput as _mediaoutput
-        os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
-        with _mediaoutput.VideoWriter(path, fps=16) as writer:
-            for frame in frames:
-                writer.write(frame)
-        _messages.debug_log(f'Wrote Wan-Animate cache clip "{path}".')
+        os.makedirs(directory, exist_ok=True)
+        pose_path, face_path = _filelock.touch_avoid_duplicate(
+            directory,
+            path_maker=_filelock.suffix_path_maker(
+                [pose_path, face_path], suffix='_duplicate_'))
+        _write_clip(pose_frames, pose_path)
+        _write_clip(face_frames, face_path)
     except Exception as error:
-        _messages.debug_log(f'Could not cache Wan-Animate clip "{path}": {error}')
+        _messages.debug_log(
+            f'Could not write Wan-Animate pose and face clips: {error}')
+
+
+def _write_clip(frames: list[PIL.Image.Image], path: str):
+    import dgenerate.mediaoutput as _mediaoutput
+    with _mediaoutput.VideoWriter(path, fps=16) as writer:
+        for frame in frames:
+            writer.write(frame)
+    _messages.log(f'Wrote Wan-Animate clip "{path}".')
 
 
 def _animate_processors(motion_encoder_size: int = 512, device: str = 'cpu'):
