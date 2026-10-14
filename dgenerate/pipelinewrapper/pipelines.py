@@ -1905,6 +1905,22 @@ _devicecache.register_eviction_method(_evict_last_pipeline)
 _devicecache.register_eviction_method(_evict_8bit_bnb_pipelines)
 
 
+def _reset_sada_cache(pipeline) -> None:
+    """Start SADA's step cache over for one pipeline call.
+
+    ADetailer calls the pipeline once per detected region. SADA's cache bus
+    lives on the denoiser for the whole session, so a later region would
+    otherwise skip steps using the previous region's cached output.
+    """
+    denoiser = getattr(pipeline, 'unet', None)
+    if denoiser is None:
+        denoiser = getattr(pipeline, 'transformer', None)
+    if denoiser is None or getattr(denoiser, '_cache_bus', None) is None:
+        return
+    from dgenerate.extras.sada.patch import reset_cache
+    reset_cache(pipeline)
+
+
 # noinspection PyCallingNonCallable
 @torch.inference_mode()
 def call_pipeline(pipeline: diffusers.DiffusionPipeline,
@@ -2002,6 +2018,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
         nonlocal prompt_warning_issued
 
         def _invoke(call_kwargs):
+            _reset_sada_cache(pipeline)
             settings = _spectrum.active_settings()
             if settings is None:
                 return pipeline(**call_kwargs)
