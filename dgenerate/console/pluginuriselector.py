@@ -53,10 +53,15 @@ class _PluginUriSelect(tk.Toplevel):
         self.plugin_dropdown_master.grid_columnconfigure(1, weight=1)
         self.plugin_dropdown_row = 0
 
-        outer_frame = ttk.Frame(self, borderwidth=3, relief="sunken")
-        outer_frame.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+        outer_frame = ttk.Frame(self)
+        outer_frame.grid(row=1, column=0, sticky='nsew', padx=5, pady=(5, 0))
 
-        self.canvas = tk.Canvas(outer_frame, highlightthickness=0)
+        viewport = tk.Frame(outer_frame)
+        _appearance.configure_viewport(viewport)
+        viewport.grid(row=0, column=0, sticky='nsew')
+
+        self.canvas = tk.Canvas(viewport, highlightthickness=0, borderwidth=0)
+        self.canvas.pack(fill=tk.BOTH, expand=True)
         self.scrollbar = ttk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = ttk.Frame(self.canvas, padding=(10, 10))
 
@@ -70,7 +75,6 @@ class _PluginUriSelect(tk.Toplevel):
         self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        self.canvas.grid(row=0, column=0, sticky='nsew')
         self.scrollbar.grid(row=0, column=1, sticky='ns')
 
         outer_frame.grid_rowconfigure(0, weight=1)
@@ -102,7 +106,7 @@ class _PluginUriSelect(tk.Toplevel):
         self.plugin_entry.arg = None
 
         self.button_frame = ttk.Frame(self)
-        self.button_frame.grid(row=2, column=0, pady=(0, 5))
+        self.button_frame.grid(row=2, column=0, pady=5)
 
         self.button = ttk.Button(self.button_frame, text='Insert', command=self._insert_action)
         self.button.pack()
