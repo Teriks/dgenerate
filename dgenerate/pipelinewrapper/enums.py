@@ -815,6 +815,7 @@ SPECTRUM_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.SD3_PIX2PIX,
     ModelType.SDXL,
     ModelType.SDXL_PIX2PIX,
+    ModelType.KOLORS,
     ModelType.FLUX,
     ModelType.FLUX_FILL,
     ModelType.FLUX_KONTEXT,
@@ -834,8 +835,8 @@ SPECTRUM_MODEL_TYPES: tuple[str, ...] = _model_type_names(
 
 def model_type_supports_spectrum(model_type: ModelType | str) -> bool:
     """
-    Spectrum can forecast this denoiser's transformer blocks, or an SDXL UNet's
-    up-block output.
+    Spectrum can forecast this denoiser's transformer blocks, or an SDXL or
+    Kolors UNet's up-block output.
 
     Stable Diffusion stays on DeepCache. LTX is not covered.
 
