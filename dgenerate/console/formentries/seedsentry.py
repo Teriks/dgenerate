@@ -35,13 +35,13 @@ class _SeedsEntry(_entry._Entry):
         self.text_var = tk.StringVar(
             value=self.config.get('default', '1'))
 
-        self.label_widget = tk.Label(
+        self.label_widget = ttk.Label(
             self.master,
             text=self.get_label('Int') + ' (int)', anchor='e')
 
-        entry_frame = tk.Frame(self.master)
+        entry_frame = ttk.Frame(self.master)
 
-        self.is_count_label_wiget = tk.Label(entry_frame, text='Is Count?')
+        self.is_count_label_wiget = ttk.Label(entry_frame, text='Is Count?')
         self.is_count_label_wiget.grid(column=0, row=0)
 
         self.is_count_var = tk.BooleanVar(value=True)

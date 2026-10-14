@@ -366,7 +366,7 @@ class _ImageSeedSelect(tk.Toplevel):
         self._canvas = tk.Canvas(self, width=740, height=560, highlightthickness=0, borderwidth=0)
         self._scroll = ttk.Scrollbar(self, command=self._canvas.yview)
         self._canvas.configure(yscrollcommand=self._scroll.set)
-        self._inner = tk.Frame(self._canvas, padx=12, pady=10)
+        self._inner = ttk.Frame(self._canvas, padding=(12, 10))
         self._inner.grid_columnconfigure(0, weight=1)
         self._window = self._canvas.create_window((0, 0), window=self._inner, anchor='nw')
         self._inner.bind('<Configure>', self._fit_scroll)
@@ -377,9 +377,9 @@ class _ImageSeedSelect(tk.Toplevel):
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        bar = tk.Frame(self)
+        bar = ttk.Frame(self)
         bar.grid(row=1, column=0, columnspan=2, sticky=tk.EW, pady=(8, 0))
-        tk.Frame(bar, height=1, bg=_line(self)).pack(fill=tk.X, pady=(0, 8))
+        ttk.Separator(bar, orient='horizontal').pack(fill=tk.X, pady=(0, 8))
         self._insert_button = ttk.Button(bar, text='Insert', command=self._insert_click)
         self._insert_button.pack()
 
@@ -437,16 +437,16 @@ class _ImageSeedSelect(tk.Toplevel):
         return widget
 
     def _section(self, title, help_text):
-        header = tk.Frame(self._inner)
+        header = ttk.Frame(self._inner)
         header.grid(row=self._row, column=0, sticky=tk.EW, pady=(12, 2))
         self._row += 1
-        tk.Label(header, text=title, font=self._title_font).pack(side=tk.LEFT)
+        ttk.Label(header, text=title, font=self._title_font).pack(side=tk.LEFT)
         ttk.Button(
             header,
             text='Help',
             command=lambda heading=title, body=help_text: self._show_help(heading, body),
         ).pack(side=tk.LEFT, padx=(8, 0))
-        tk.Frame(header, height=1, bg=_line(self)).pack(
+        ttk.Separator(header, orient='horizontal').pack(
             side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
         return header
 
@@ -477,7 +477,7 @@ class _ImageSeedSelect(tk.Toplevel):
 
         self._section('Size and frames', _SIZE_HELP)
         self._resize_entry = self._labeled_entry('Resize (WxH)')
-        aspect_row = tk.Frame(self._inner)
+        aspect_row = ttk.Frame(self._inner)
         aspect_row.grid(row=self._row, column=0, sticky=tk.W, pady=2)
         self._row += 1
         self._aspect_var = tk.BooleanVar(value=True)
@@ -486,11 +486,11 @@ class _ImageSeedSelect(tk.Toplevel):
         self._frame_end = self._labeled_spin('Frame end', 0, None)
 
         self._section('LTX', _LTX_HELP)
-        end_row = tk.Frame(self._inner)
+        end_row = ttk.Frame(self._inner)
         end_row.grid(row=self._row, column=0, sticky=tk.EW, pady=2)
         self._row += 1
         end_row.grid_columnconfigure(1, weight=1)
-        tk.Label(end_row, text='Last frame').grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
+        ttk.Label(end_row, text='Last frame').grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         self._end_entry = self._track(_t_entry.TextEntry(end_row))
         self._end_entry.grid(row=0, column=1, sticky=tk.EW)
         ttk.Button(end_row, text='File', command=lambda: self._open_image(self._end_entry)).grid(
@@ -506,21 +506,21 @@ class _ImageSeedSelect(tk.Toplevel):
         self._background_entry = self._wan_file('Background clip')
 
     def _labeled_entry(self, label):
-        row = tk.Frame(self._inner)
+        row = ttk.Frame(self._inner)
         row.grid(row=self._row, column=0, sticky=tk.EW, pady=2)
         self._row += 1
         row.grid_columnconfigure(1, weight=1)
-        tk.Label(row, text=label).grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
+        ttk.Label(row, text=label).grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         entry = self._track(_t_entry.TextEntry(row))
         entry.grid(row=0, column=1, sticky=tk.EW)
         return entry
 
     def _labeled_spin(self, label, low, high):
-        row = tk.Frame(self._inner)
+        row = ttk.Frame(self._inner)
         row.grid(row=self._row, column=0, sticky=tk.EW, pady=2)
         self._row += 1
         row.grid_columnconfigure(1, weight=1)
-        tk.Label(row, text=label).grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
+        ttk.Label(row, text=label).grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         spin = _spinbox.IntSpinbox(row, from_=low, to=high, textvariable=tk.StringVar(value=''))
         spin.grid(row=0, column=1, sticky=tk.EW)
         spin.create_spin_buttons(row).grid(row=0, column=2, padx=(4, 0))
@@ -528,11 +528,11 @@ class _ImageSeedSelect(tk.Toplevel):
         return spin
 
     def _labeled_float(self, label):
-        row = tk.Frame(self._inner)
+        row = ttk.Frame(self._inner)
         row.grid(row=self._row, column=0, sticky=tk.EW, pady=2)
         self._row += 1
         row.grid_columnconfigure(1, weight=1)
-        tk.Label(row, text=label).grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
+        ttk.Label(row, text=label).grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         spin = _spinbox.FloatSpinbox(
             row, from_=0, to=1, increment=0.1, textvariable=tk.StringVar(value=''))
         spin.grid(row=0, column=1, sticky=tk.EW)
@@ -541,11 +541,11 @@ class _ImageSeedSelect(tk.Toplevel):
         return spin
 
     def _wan_file(self, label):
-        row = tk.Frame(self._inner)
+        row = ttk.Frame(self._inner)
         row.grid(row=self._row, column=0, sticky=tk.EW, pady=2)
         self._row += 1
         row.grid_columnconfigure(1, weight=1)
-        tk.Label(row, text=label).grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
+        ttk.Label(row, text=label).grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         entry = self._track(_t_entry.TextEntry(row))
         entry.grid(row=0, column=1, sticky=tk.EW)
         ttk.Button(row, text='File', command=lambda e=entry: self._open_image(e)).grid(
@@ -714,21 +714,21 @@ class _FileRows:
         self.entries = []
         self._frames = []
 
-        shell = tk.Frame(dialog._inner)
+        shell = ttk.Frame(dialog._inner)
         dialog._place(shell)
         shell.grid_columnconfigure(0, weight=1)
-        header = tk.Frame(shell)
+        header = ttk.Frame(shell)
         header.grid(row=0, column=0, sticky=tk.EW)
-        tk.Label(header, text=title).pack(side=tk.LEFT)
+        ttk.Label(header, text=title).pack(side=tk.LEFT)
         ttk.Button(header, text='Add', command=self.add).pack(side=tk.RIGHT)
-        self.body = tk.Frame(shell)
+        self.body = ttk.Frame(shell)
         self.body.grid(row=1, column=0, sticky=tk.EW)
         self.body.grid_columnconfigure(0, weight=1)
         for _ in range(start):
             self.add()
 
     def add(self):
-        row = tk.Frame(self.body)
+        row = ttk.Frame(self.body)
         row.grid(row=len(self._frames), column=0, sticky=tk.EW, pady=1)
         row.grid_columnconfigure(0, weight=1)
         entry = self.dialog._track(_t_entry.TextEntry(row))
@@ -774,19 +774,20 @@ class _AdapterRows:
     def __init__(self, dialog: _ImageSeedSelect):
         self.dialog = dialog
         self.rows = []
-        shell = tk.Frame(dialog._inner)
+        shell = ttk.Frame(dialog._inner)
         dialog._place(shell)
         shell.grid_columnconfigure(0, weight=1)
-        header = tk.Frame(shell)
+        header = ttk.Frame(shell)
         header.grid(row=0, column=0, sticky=tk.EW)
-        tk.Label(header, text='Adapter images').pack(side=tk.LEFT)
+        ttk.Label(header, text='Adapter images').pack(side=tk.LEFT)
         ttk.Button(header, text='Add', command=self.add).pack(side=tk.RIGHT)
-        self.body = tk.Frame(shell)
+        self.body = ttk.Frame(shell)
         self.body.grid(row=1, column=0, sticky=tk.EW)
         self.body.grid_columnconfigure(0, weight=1)
 
     def add(self):
-        card = tk.Frame(self.body, bg=_card(self.dialog), highlightbackground=_line(self.dialog), highlightthickness=1, padx=6, pady=4)
+        card = tk.Frame(self.body, bg=_card(self.dialog), highlightbackground=_line(self.dialog), highlightthickness=1,
+                        padx=6, pady=4)
         card.grid(row=len(self.rows), column=0, sticky=tk.EW, pady=3)
         card.grid_columnconfigure(1, weight=1)
         tk.Label(card, text='Image', bg=_card(self.dialog)).grid(row=0, column=0, sticky=tk.W)
@@ -862,19 +863,20 @@ class _ExtraRows:
     def __init__(self, dialog: _ImageSeedSelect):
         self.dialog = dialog
         self.rows = []
-        shell = tk.Frame(dialog._inner)
+        shell = ttk.Frame(dialog._inner)
         dialog._place(shell)
         shell.grid_columnconfigure(0, weight=1)
-        header = tk.Frame(shell)
+        header = ttk.Frame(shell)
         header.grid(row=0, column=0, sticky=tk.EW, pady=(6, 0))
-        tk.Label(header, text='Extra conditions').pack(side=tk.LEFT)
+        ttk.Label(header, text='Extra conditions').pack(side=tk.LEFT)
         ttk.Button(header, text='Add', command=self.add).pack(side=tk.RIGHT)
-        self.body = tk.Frame(shell)
+        self.body = ttk.Frame(shell)
         self.body.grid(row=1, column=0, sticky=tk.EW)
         self.body.grid_columnconfigure(0, weight=1)
 
     def add(self):
-        card = tk.Frame(self.body, bg=_card(self.dialog), highlightbackground=_line(self.dialog), highlightthickness=1, padx=6, pady=4)
+        card = tk.Frame(self.body, bg=_card(self.dialog), highlightbackground=_line(self.dialog), highlightthickness=1,
+                        padx=6, pady=4)
         card.grid(row=len(self.rows), column=0, sticky=tk.EW, pady=3)
         card.grid_columnconfigure(1, weight=1)
         tk.Label(card, text='Image', bg=_card(self.dialog)).grid(row=0, column=0, sticky=tk.W)

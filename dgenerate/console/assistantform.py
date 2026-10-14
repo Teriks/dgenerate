@@ -147,7 +147,7 @@ class _AssistantForm(tk.Toplevel):
         self.grid_rowconfigure(1, weight=1)
         self.grid_rowconfigure(4, weight=1)
 
-        self._intro = tk.Label(
+        self._intro = ttk.Label(
             self, anchor=tk.W, justify=tk.LEFT,
             text='Describe what the config script should do.')
         self._intro.grid(row=0, column=0, sticky=tk.EW)
@@ -158,11 +158,11 @@ class _AssistantForm(tk.Toplevel):
         self._request_text.grid(row=1, column=0, sticky=tk.NSEW, pady=(4, 8))
         self._request_text.text.bind('<Control-Return>', lambda e: (self._generate(), 'break')[1])
 
-        options = tk.LabelFrame(self, text='Options', padx=8, pady=6)
+        options = ttk.LabelFrame(self, text='Options', padding=(8, 6))
         options.grid(row=2, column=0, sticky=tk.EW, pady=(0, 8))
         options.grid_columnconfigure(1, weight=1)
 
-        tk.Label(options, text='Chat model').grid(row=0, column=0, sticky=tk.E, padx=(0, 8), pady=2)
+        ttk.Label(options, text='Chat model').grid(row=0, column=0, sticky=tk.E, padx=(0, 8), pady=2)
 
         self._model_specs: list[str] = []
         self._model_labels: list[str] = []
@@ -180,7 +180,7 @@ class _AssistantForm(tk.Toplevel):
         self._model_var.set(self._model_labels[self._model_specs.index(chosen)])
         self._model_var.trace_add('write', lambda *_: _remember(_SETTINGS_CHAT, self._selected_model()))
 
-        tk.Label(options, text='Embedding model').grid(row=1, column=0, sticky=tk.E, padx=(0, 8), pady=2)
+        ttk.Label(options, text='Embedding model').grid(row=1, column=0, sticky=tk.E, padx=(0, 8), pady=2)
 
         self._embed_specs: list[str] = []
         self._embed_labels: list[str] = []
@@ -198,14 +198,14 @@ class _AssistantForm(tk.Toplevel):
         self._embed_var.set(self._embed_labels[self._embed_specs.index(embed_chosen)])
         self._embed_var.trace_add('write', lambda *_: _remember(_SETTINGS_EMBED, self._selected_embed_model()))
 
-        reason = tk.Frame(options)
+        reason = ttk.Frame(options)
         reason.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
         self._think_var = tk.BooleanVar(value=_saved_bool(_SETTINGS_THINK))
         self._think_check = ttk.Checkbutton(
             reason, text='Reason before answering (slower)', variable=self._think_var)
         self._think_check.grid(row=0, column=0, sticky=tk.W)
         self._think_var.trace_add('write', self._remember_think)
-        tk.Label(reason, text='Effort').grid(row=0, column=1, sticky=tk.E, padx=(18, 6))
+        ttk.Label(reason, text='Effort').grid(row=0, column=1, sticky=tk.E, padx=(18, 6))
         self._effort_var = tk.StringVar()
         self._effort_combo = _combobox.ComboBox(
             reason, textvariable=self._effort_var, width=12,
@@ -224,14 +224,14 @@ class _AssistantForm(tk.Toplevel):
         self._edit_check.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
         self._edit_var.trace_add('write', self._sync_edit_mode)
 
-        tk.Label(self, text='Progress', anchor=tk.W).grid(row=3, column=0, sticky=tk.EW)
+        ttk.Label(self, text='Progress', anchor=tk.W).grid(row=3, column=0, sticky=tk.EW)
         self._log_text = _scrolledtext.ScrolledText(self)
         self._log_text.disable_word_wrap()
         self._log_text.text.configure(height=8, state=tk.DISABLED)
         self._log_text.grid(row=4, column=0, sticky=tk.NSEW, pady=(2, 8))
         self._log_terminal = _terminaltext.TerminalText(self._log_text.text)
 
-        buttons = tk.Frame(self)
+        buttons = ttk.Frame(self)
         buttons.grid(row=5, column=0)
         self._generate_button = ttk.Button(buttons, text='Generate', command=self._generate)
         self._generate_button.pack(side=tk.LEFT, padx=5)

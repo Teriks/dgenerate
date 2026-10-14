@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import sys
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.formentries.entry as _entry
 from dgenerate.console.spinbox import IntSpinbox
@@ -37,7 +38,7 @@ class _IntEntry(_entry._Entry):
         self.text_var = tk.StringVar(
             value=self.config.get('default', ''))
 
-        self.label_widget = tk.Label(
+        self.label_widget = ttk.Label(
             self.master,
             text=self.get_label('Int') + ' (int)', anchor='e')
 

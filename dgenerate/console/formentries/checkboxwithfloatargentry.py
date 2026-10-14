@@ -39,9 +39,9 @@ class _CheckboxWithFloatArgEntry(_entry._Entry):
         self.bool_var = tk.BooleanVar(value=self.config.get('default', False))
 
         # create label widget
-        self.label_widget = tk.Label(self.master,
-                                     text=self.get_label(
-                                         self.arg if self.arg else 'Switch Option'), anchor='e')
+        self.label_widget = ttk.Label(self.master,
+                                      text=self.get_label(
+                                          self.arg if self.arg else 'Switch Option'), anchor='e')
 
         # create checkbox widget with boolean variable
         self.checkbox = ttk.Checkbutton(self.master, variable=self.bool_var)
@@ -56,7 +56,7 @@ class _CheckboxWithFloatArgEntry(_entry._Entry):
 
         self.float_var = tk.StringVar(value=self.default_float)
 
-        self.float_label = tk.Label(
+        self.float_label = ttk.Label(
             self.master,
             text=self.get_label(
                 'Float Value', key='float-label') + ' (float)',
@@ -139,23 +139,31 @@ class _CheckboxWithFloatArgEntry(_entry._Entry):
         from dgenerate.console.formentries.argswitchcheckbox import _ArgSwitchCheckbox
         from dgenerate.console.formentries.argswitchconditionalcheckboxes import _ArgSwitchConditionalCheckboxes
         from dgenerate.console.formentries.checkboxwithtwointargsentry import _CheckboxWithTwoIntArgsEntry
-        
+
         if isinstance(other_entry, _ArgSwitchCheckbox):
             # This checkbox excludes simple checkbox
-            self.bool_var.trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
-            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_var.get() else None)
-            
+            self.bool_var.trace_add('write',
+                                    lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
+            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(
+                False) if other_entry.bool_var.get() else None)
+
         elif isinstance(other_entry, _ArgSwitchConditionalCheckboxes):
             # This checkbox excludes the master checkbox of conditional checkboxes
-            self.bool_var.trace_add('write', lambda *args: other_entry.bool_vars[0].set(False) if self.bool_var.get() else None)
-            other_entry.bool_vars[0].trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_vars[0].get() else None)
-            
+            self.bool_var.trace_add('write',
+                                    lambda *args: other_entry.bool_vars[0].set(False) if self.bool_var.get() else None)
+            other_entry.bool_vars[0].trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_vars[
+                0].get() else None)
+
         elif isinstance(other_entry, _CheckboxWithFloatArgEntry):
             # Both are float arg checkboxes - mutual exclusion
-            self.bool_var.trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
-            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_var.get() else None)
-            
+            self.bool_var.trace_add('write',
+                                    lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
+            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(
+                False) if other_entry.bool_var.get() else None)
+
         elif isinstance(other_entry, _CheckboxWithTwoIntArgsEntry):
             # This checkbox excludes checkbox with two int args
-            self.bool_var.trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
-            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_var.get() else None)
+            self.bool_var.trace_add('write',
+                                    lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
+            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(
+                False) if other_entry.bool_var.get() else None)

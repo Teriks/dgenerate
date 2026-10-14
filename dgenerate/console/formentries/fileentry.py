@@ -36,8 +36,8 @@ class _FileEntry(_entry._Entry):
 
         self.text_var = tk.StringVar(value=self.config.get('default', ''))
 
-        self.label_widget = tk.Label(self.master,
-                                     text=self.get_label('File'), anchor='e')
+        self.label_widget = ttk.Label(self.master,
+                                      text=self.get_label('File'), anchor='e')
 
         self.entry = _t_entry.TextEntry(self.master, textvariable=self.text_var)
         self.select_mode = self.config.get('mode', 'input')
@@ -55,10 +55,10 @@ class _FileEntry(_entry._Entry):
 
         if 'output' in self.select_mode:
             self.button = ttk.Button(self.master, text="Save File",
-                                    command=select_command)
+                                     command=select_command)
         else:
             self.button = ttk.Button(self.master, text="File",
-                                    command=select_command)
+                                     command=select_command)
 
         self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')

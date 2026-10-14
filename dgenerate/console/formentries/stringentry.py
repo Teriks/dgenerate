@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.formentries.entry as _entry
 import dgenerate.console.textentry as _t_entry
@@ -34,7 +35,7 @@ class _StringEntry(_entry._Entry):
         self.text_var = tk.StringVar(
             value=self.config.get('default', ''))
 
-        self.label_widget = tk.Label(
+        self.label_widget = ttk.Label(
             self.master,
             text=self.get_label('String'), anchor='e')
 

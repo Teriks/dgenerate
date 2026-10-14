@@ -234,18 +234,18 @@ class _RecipesForm(tk.Toplevel):
 
     def _create_scrollable_form(self) -> None:
         """Create a scrollable form for the template entries."""
-        self._filter_frame = tk.Frame(self)
+        self._filter_frame = ttk.Frame(self)
         self._filter_frame.grid(row=0, column=0, columnspan=2, sticky='ew', padx=5, pady=(5, 0))
         self._filter_frame.grid_columnconfigure(1, weight=1)
 
-        tk.Label(self._filter_frame, text='Filter').grid(row=0, column=0, sticky='w')
+        ttk.Label(self._filter_frame, text='Filter').grid(row=0, column=0, sticky='w')
         self._filter_entry = _t_entry.TextEntry(self._filter_frame, textvariable=self._filter_var)
         self._filter_entry.grid(row=0, column=1, sticky='ew', padx=(5, 0))
         self._filter_var.trace_add('write', self._apply_recipe_filter)
         self._filter_entry.bind('<Escape>', self._on_filter_escape)
         self._filter_frame.grid_remove()
 
-        recipe_row = tk.Frame(self)
+        recipe_row = ttk.Frame(self)
         recipe_row.grid(row=1, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
         recipe_row.grid_columnconfigure(0, weight=1)
 
@@ -271,12 +271,12 @@ class _RecipesForm(tk.Toplevel):
         self.bind('<Control-f>', self._on_filter_shortcut)
         self.bind('<Control-F>', self._on_filter_shortcut)
 
-        outer_frame = tk.Frame(self, bd=3, relief="sunken")
+        outer_frame = ttk.Frame(self, borderwidth=3, relief="sunken")
         outer_frame.grid(row=2, column=0, sticky='nsew', padx=5, pady=5)
 
         self.canvas = tk.Canvas(outer_frame, highlightthickness=0)
         self.scrollbar = ttk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
-        self.scrollable_frame = tk.Frame(self.canvas, padx=10, pady=10, highlightthickness=0)
+        self.scrollable_frame = ttk.Frame(self.canvas, padding=(10, 10))
 
         self.scrollable_frame.bind(
             "<Configure>",

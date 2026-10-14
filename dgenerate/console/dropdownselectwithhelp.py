@@ -60,7 +60,7 @@ class _DropdownSelectWithHelp(tk.Toplevel):
         self.resizable(False, False)
         self._insert = insert
 
-        self._frame = tk.Frame(self)
+        self._frame = ttk.Frame(self)
 
         # Create dropdown
         self._value_dropdown = ttk.Combobox(
@@ -79,12 +79,12 @@ class _DropdownSelectWithHelp(tk.Toplevel):
         self._help_button.config(state=tk.DISABLED)
 
         self._current_value.trace_add('write',
-                                  lambda *a:
-                                  (self._help_button.config(state=tk.NORMAL),
-                                   self._insert_button.config(state=tk.NORMAL))
-                                  if self._current_value.get() else
-                                  (self._help_button.config(state=tk.DISABLED),
-                                   self._insert_button.config(state=tk.DISABLED)))
+                                      lambda *a:
+                                      (self._help_button.config(state=tk.NORMAL),
+                                       self._insert_button.config(state=tk.NORMAL))
+                                      if self._current_value.get() else
+                                      (self._help_button.config(state=tk.DISABLED),
+                                       self._insert_button.config(state=tk.DISABLED)))
 
         # Grid layout
         self._value_dropdown.grid(row=0, column=1, sticky="we")
@@ -98,7 +98,7 @@ class _DropdownSelectWithHelp(tk.Toplevel):
     def _filter_values(self, event):
         if event is not None and event.keysym in ('Up', 'Down', 'Return', 'Escape'):
             return
-        
+
         current_text = self._current_value.get().lower()
         if current_text:
             filtered_values = [v for v in self._values if current_text in v.lower()]

@@ -33,7 +33,7 @@ import dgenerate.pygments
 import dgenerate.textprocessing
 
 
-class DgenerateCodeView(tk.Frame):
+class DgenerateCodeView(ttk.Frame):
     THEMES = dict(_resources.get_themes())
 
     def __init__(self, master=None, undo=False, **kwargs):
@@ -49,7 +49,7 @@ class DgenerateCodeView(tk.Frame):
         self._highlighting = True
 
         self.indentation = " " * 4
-        
+
         # Column selection state
         self._column_mode = False
         self._column_anchor = None
@@ -108,12 +108,12 @@ class DgenerateCodeView(tk.Frame):
         self.text.bind('<KeyRelease>', key_release)
         self.text.bind('<Tab>', self._indent)
         self.text.bind('<Shift-Tab>', self._unindent)
-        
+
         # Column selection bindings
         self.text.bind('<Alt-ButtonPress-1>', self._start_column_select)
         self.text.bind('<Alt-B1-Motion>', self._update_column_select)
         self.text.bind('<Alt-ButtonRelease-1>', self._end_column_select)
-        
+
         # Column editing key bindings
         self.text.bind('<Alt-Left>', lambda e: self._column_move('left'))
         self.text.bind('<Alt-Right>', lambda e: self._column_move('right'))
@@ -127,10 +127,10 @@ class DgenerateCodeView(tk.Frame):
 
         # Input handling in column mode
         self.text.bind('<KeyPress>', self._column_key_press)
-        
+
         # Comment selected text with # key
         self.text.bind('<KeyPress-numbersign>', self._comment_selected_text)
-        
+
         # Keep normal bindings but exit column mode if needed
         self.text.bind('<ButtonPress-1>', self._exit_column_mode)
 
@@ -164,17 +164,17 @@ class DgenerateCodeView(tk.Frame):
                 self._syntax_highlighter.highlight_visible()
 
         self.text.delete = delete_new
-        
+
     def _start_column_select(self, event):
         """Begin column selection mode."""
         self._exit_column_mode(None)  # Clear any existing column selection
         self._column_mode = True
-        
+
         # Update column selection colors to match current selection colors
         select_bg = self.text.cget('selectbackground')
         select_fg = self.text.cget('selectforeground')
         self.text.tag_configure(self._column_select_tag, background=select_bg, foreground=select_fg)
-        
+
         # Get the index at the current mouse position
         index = self.text.index(f"@{event.x},{event.y}")
         self._column_anchor = index
@@ -183,25 +183,25 @@ class DgenerateCodeView(tk.Frame):
 
         # Set cursor at the start of the selection
         self.text.mark_set("insert", self._column_start)
-        
+
         # Explicitly set focus to ensure keypresses are captured
         self.text.focus_set()
-        
+
         # Disable native text selection
         self._disable_native_selection()
 
         # Prevent default handling
         return "break"
-        
+
     def _update_column_select(self, event):
         """Update the column selection as the mouse moves."""
         if not self._column_mode:
             return
-            
+
         # Get the new index at mouse position
         current_index = self.text.index(f"@{event.x},{event.y}")
         self._column_end = current_index
-        
+
         # Update the visual selection
         self._update_column_highlighting()
 
@@ -210,12 +210,12 @@ class DgenerateCodeView(tk.Frame):
 
         # Prevent default handling
         return "break"
-        
+
     def _end_column_select(self, event):
         """Finalize the column selection."""
         if not self._column_mode:
             return
-            
+
         # Update the selection one last time
         current_index = self.text.index(f"@{event.x},{event.y}")
         self._column_end = current_index
@@ -223,25 +223,25 @@ class DgenerateCodeView(tk.Frame):
 
         # Always keep cursor at the start of selection
         self.text.mark_set("insert", self._column_start)
-        
+
         # Explicitly set focus to the text widget to ensure keypresses are captured
         self.text.focus_set()
 
         # Prevent default handling
         return "break"
-        
+
     def _disable_native_selection(self):
         """Disable the native text selection temporarily."""
         if not self._native_selection_disabled:
             # Store the original selection background
             self._original_select_bg = self.text.cget('selectbackground')
             self._original_select_fg = self.text.cget('selectforeground')
-            
+
             # Change selection color to transparent to hide native selection
-            self.text.config(selectbackground=self.text.cget('background'), 
+            self.text.config(selectbackground=self.text.cget('background'),
                              selectforeground=self.text.cget('foreground'))
             self._native_selection_disabled = True
-            
+
     def _restore_native_selection(self):
         """Restore the native text selection."""
         if self._native_selection_disabled:
@@ -249,19 +249,19 @@ class DgenerateCodeView(tk.Frame):
             self.text.config(selectbackground=self._original_select_bg,
                              selectforeground=self._original_select_fg)
             self._native_selection_disabled = False
-            
+
     def _update_column_highlighting(self):
         """Update visual highlighting for column selection."""
         if not self._column_mode:
             return
-            
+
         # Clear existing column selection highlights
         self.text.tag_remove(self._column_select_tag, "1.0", "end")
-        
+
         # Get the column boundaries
         start_line, start_col = map(int, self._column_start.split('.'))
         end_line, end_col = map(int, self._column_end.split('.'))
-        
+
         # Ensure start is before end in both dimensions
         if start_line > end_line:
             start_line, end_line = end_line, start_line
@@ -274,20 +274,20 @@ class DgenerateCodeView(tk.Frame):
                 self._column_start = f"{start_line}.{start_col}"
             if int(self._column_end.split('.')[0]) == end_line:
                 self._column_end = f"{end_line}.{end_col}"
-            
+
         # Apply highlighting to each line in the selection
         for line in range(start_line, end_line + 1):
             line_length = int(self.text.index(f"{line}.end").split('.')[1])
-            
+
             # Skip lines that are too short for the selection
             if line_length < start_col:
                 continue
-                
+
             # Apply tag to the column range on this line
             sel_end_col = min(end_col, line_length)
-            self.text.tag_add(self._column_select_tag, 
-                            f"{line}.{start_col}", 
-                            f"{line}.{sel_end_col}")
+            self.text.tag_add(self._column_select_tag,
+                              f"{line}.{start_col}",
+                              f"{line}.{sel_end_col}")
 
         # Keep cursor at the start
         self.text.mark_set("insert", self._column_start)
@@ -300,34 +300,34 @@ class DgenerateCodeView(tk.Frame):
             self._column_anchor = None
             self._column_start = None
             self._column_end = None
-            
+
             # Restore native selection
             self._restore_native_selection()
-        
+
     def _column_move(self, direction):
         """Handle arrow key movement in column selection mode."""
         if not self._column_mode:
             # Start column mode if not already in it
             self._column_mode = True
-            
+
             # Update column selection colors to match current selection colors
             select_bg = self.text.cget('selectbackground')
             select_fg = self.text.cget('selectforeground')
             self.text.tag_configure(self._column_select_tag, background=select_bg, foreground=select_fg)
-            
+
             self._column_anchor = self.text.index("insert")
             self._column_start = self._column_anchor
             self._column_end = self._column_anchor
-            
+
             # Disable native text selection
             self._disable_native_selection()
-            
+
             # Ensure text widget has focus
             self.text.focus_set()
-        
+
         # Calculate new position based on direction
         current_line, current_col = map(int, self._column_end.split('.'))
-        
+
         if direction == 'left':
             if current_col > 0:
                 current_col -= 1
@@ -338,43 +338,43 @@ class DgenerateCodeView(tk.Frame):
                 current_line -= 1
         elif direction == 'down':
             current_line += 1
-            
+
         # Update the end position
         self._column_end = f"{current_line}.{current_col}"
-        
+
         # Update the visual selection
         self._update_column_highlighting()
 
         # Keep cursor at the start of selection
         self.text.mark_set("insert", self._column_start)
-        
+
         # Ensure the cursor is visible
         self.text.see(self._column_start)
-        
+
         # Prevent default handling
         return "break"
-        
+
     def _column_key_press(self, event):
         """Handle typing in column selection mode."""
 
         if not self._column_mode:
             return None
-            
+
         # Only handle regular character input or backspace/delete
         if event.keysym in ('Alt_L', 'Alt_R', 'Shift_L', 'Shift_R', 'Control_L', 'Control_R',
-                         'Left', 'Right', 'Up', 'Down', 'Home', 'End', 'Page_Up', 'Page_Down'):
+                            'Left', 'Right', 'Up', 'Down', 'Home', 'End', 'Page_Up', 'Page_Down'):
             return None
-            
+
         # Get the column boundaries
         start_line, start_col = map(int, self._column_start.split('.'))
         end_line, end_col = map(int, self._column_end.split('.'))
-        
+
         # Ensure start is before end
         if start_line > end_line:
             start_line, end_line = end_line, start_line
         if start_col > end_col:
             start_col, end_col = end_col, start_col
-            
+
         # Handle different key actions
         if event.keysym == "BackSpace":
             # Delete to the left in each line
@@ -382,69 +382,69 @@ class DgenerateCodeView(tk.Frame):
                 for line in range(start_line, end_line + 1):
                     line_length = int(self.text.index(f"{line}.end").split('.')[1])
                     if line_length >= start_col:  # Only if the line is long enough
-                        self.text.delete(f"{line}.{start_col-1}", f"{line}.{start_col}")
-                
+                        self.text.delete(f"{line}.{start_col - 1}", f"{line}.{start_col}")
+
                 # Update selection bounds
-                self._column_start = f"{start_line}.{start_col-1}"
-                self._column_end = f"{end_line}.{end_col-1}"
+                self._column_start = f"{start_line}.{start_col - 1}"
+                self._column_end = f"{end_line}.{end_col - 1}"
                 self._update_column_highlighting()
-                
+
             return "break"
-            
+
         elif event.keysym == "Delete":
             # Delete to the right in each line
             for line in range(start_line, end_line + 1):
                 line_length = int(self.text.index(f"{line}.end").split('.')[1])
                 if line_length >= start_col:  # Only if the line is long enough
                     if end_col < line_length:  # Only if we're not at the end
-                        self.text.delete(f"{line}.{start_col}", f"{line}.{start_col+1}")
-            
+                        self.text.delete(f"{line}.{start_col}", f"{line}.{start_col + 1}")
+
             # Selection bounds don't change for delete
             self._update_column_highlighting()
             return "break"
-            
+
         elif event.char and ord(event.char) >= 32:  # Printable character
             # Use the helper method to insert the character
             self._handle_column_character(event.char)
             return "break"
-            
+
         return None
 
     def _handle_column_character(self, char):
         """Insert a character at the column position in all selected lines."""
         if not self._column_mode:
             return
-            
+
         # Get the column boundaries
         start_line, start_col = map(int, self._column_start.split('.'))
         end_line, end_col = map(int, self._column_end.split('.'))
-        
+
         # Ensure start is before end
         if start_line > end_line:
             start_line, end_line = end_line, start_line
         if start_col > end_col:
             start_col, end_col = end_col, start_col
-            
+
         # Insert the character at the same column position in each line
         for line in range(start_line, end_line + 1):
             line_length = int(self.text.index(f"{line}.end").split('.')[1])
-            
+
             # If line is too short, pad with spaces
             if line_length < start_col:
                 padding = ' ' * (start_col - line_length)
                 self.text.insert(f"{line}.{line_length}", padding)
-                
+
             # Insert the character
             self.text.insert(f"{line}.{start_col}", char)
-            
+
         # Update selection bounds
-        self._column_start = f"{start_line}.{start_col+1}"
-        self._column_end = f"{end_line}.{end_col+1}"
+        self._column_start = f"{start_line}.{start_col + 1}"
+        self._column_end = f"{end_line}.{end_col + 1}"
         self._update_column_highlighting()
-        
+
     def _handle_undo(self, event):
         self._exit_column_mode(None)
-        
+
     def _handle_redo(self, event):
         self._exit_column_mode(None)
 
@@ -465,7 +465,7 @@ class DgenerateCodeView(tk.Frame):
         self.text.event_generate('<<Cut>>')
         if self._highlighting:
             self._syntax_highlighter.highlight_visible()
-            
+
     def _column_cut(self):
         """Cut the selected column text to clipboard."""
         column_text = self._get_column_text()
@@ -473,68 +473,68 @@ class DgenerateCodeView(tk.Frame):
             self.clipboard_clear()
             self.clipboard_append("\n".join(column_text))
             self._column_delete()
-            
+
     def _column_delete(self):
         """Delete the currently selected column text."""
         if not self._column_mode:
             return
-            
+
         # Get the column boundaries
         start_line, start_col = map(int, self._column_start.split('.'))
         end_line, end_col = map(int, self._column_end.split('.'))
-        
+
         # Ensure start is before end
         if start_line > end_line:
             start_line, end_line = end_line, start_line
         if start_col > end_col:
             start_col, end_col = end_col, start_col
-        
+
         # Delete selected text in each line
         for line in range(start_line, end_line + 1):
             line_length = int(self.text.index(f"{line}.end").split('.')[1])
-            
+
             # Skip lines that are too short
             if line_length < start_col:
                 continue
-                
+
             # Delete the column range on this line
             sel_end_col = min(end_col, line_length)
             self.text.delete(f"{line}.{start_col}", f"{line}.{sel_end_col}")
-            
+
         # Update selection after deletion
         self._column_end = f"{start_line}.{start_col}"
         self._update_column_highlighting()
-        
+
     def _get_column_text(self):
         """Get the text from the current column selection as a list of strings."""
         if not self._column_mode:
             return []
-            
+
         # Get the column boundaries
         start_line, start_col = map(int, self._column_start.split('.'))
         end_line, end_col = map(int, self._column_end.split('.'))
-        
+
         # Ensure start is before end
         if start_line > end_line:
             start_line, end_line = end_line, start_line
         if start_col > end_col:
             start_col, end_col = end_col, start_col
-            
+
         # Collect text from each line
         result = []
         for line in range(start_line, end_line + 1):
             line_length = int(self.text.index(f"{line}.end").split('.')[1])
-            
+
             # Skip lines that are too short
             if line_length < start_col:
                 result.append("")
                 continue
-                
+
             # Get text from this line's column range
             sel_end_col = min(end_col, line_length)
             text = self.text.get(f"{line}.{start_col}", f"{line}.{sel_end_col}")
             result.append(text)
-            
+
         return result
 
     def gen_paste_event(self):
@@ -577,7 +577,7 @@ class DgenerateCodeView(tk.Frame):
         # Exit column mode if active
         if self._column_mode:
             self._exit_column_mode(None)
-            
+
         # Get the current selection
         sel = self.text.tag_ranges('sel')
         if sel:
@@ -601,7 +601,7 @@ class DgenerateCodeView(tk.Frame):
         # Exit column mode if active
         if self._column_mode:
             self._exit_column_mode(None)
-            
+
         # Get the current selection
         sel = self.text.tag_ranges('sel')
         if sel:
@@ -680,25 +680,25 @@ class DgenerateCodeView(tk.Frame):
             # We need to manually insert the # character in column mode
             self._handle_column_character('#')
             return "break"
-            
+
         # Check if there is selected text
         try:
             selected_text = self.text.get(tk.SEL_FIRST, tk.SEL_LAST)
         except tk.TclError:
             # No selection, let normal typing happen
             return None
-            
+
         # Get the line ranges of the selection
         sel_start = self.text.index(tk.SEL_FIRST)
         sel_end = self.text.index(tk.SEL_LAST)
-        
+
         start_line = int(sel_start.split('.')[0])
         end_line = int(sel_end.split('.')[0])
-        
+
         # Add # to the beginning of each line
         for line_num in range(start_line, end_line + 1):
             line_start = f"{line_num}.0"
-            
+
             # If this is the first line and the selection doesn't start at the beginning
             # we need to check if we should add a comment to this line
             if line_num == start_line:
@@ -709,14 +709,14 @@ class DgenerateCodeView(tk.Frame):
                     # Check if the entire line content is selected
                     line_content = self.text.get(line_start, f"{line_num}.end")
                     line_length = len(line_content)
-                    
+
                     # If the selection doesn't cover most of the line, skip commenting this line
                     if start_col > 2 and line_length - start_col > 2:
                         continue
-            
+
             # Insert the # character at the beginning of the line
             self.text.insert(line_start, "# ")
-        
+
         # Prevent the default behavior (which would insert another #)
         return "break"
 
@@ -724,17 +724,17 @@ class DgenerateCodeView(tk.Frame):
         """Clear all text content and reset the widget state."""
         # Exit column mode if active
         self._exit_column_mode(None)
-        
+
         # Clear all text content
         self.text.delete("1.0", "end")
-        
+
         # Clear any selection
         self.text.tag_remove("sel", "1.0", "end")
 
         # Clear syntax highlighting tags if highlighting is enabled
         if self._highlighting:
             self._syntax_highlighter.remove_tags()
-        
+
         # Line numbers will automatically update due to the <<Modified>> event
         # Force a redraw to ensure they're updated immediately
         self._line_numbers.redraw()
