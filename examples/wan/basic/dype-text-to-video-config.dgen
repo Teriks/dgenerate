@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Experimental DyPE Wan spatial-axis adapter. The 1024-pixel long side exceeds
+# Wan's default 832-pixel DyPE reference; the temporal RoPE axis is unchanged.
+
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+
+Wan-AI/Wan2.2-T2V-A14B-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 4
+--wan-low-noise-guidance-scales 3
+--video-fps 16
+--gen-seeds 1
+--output-size 1024x576
+--video-lengths 2
+--animation-format mp4
+--dype
+--dype-methods yarn
+--output-path wan-dype
+--prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"

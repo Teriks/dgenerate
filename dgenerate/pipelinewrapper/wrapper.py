@@ -65,6 +65,17 @@ from dgenerate.pipelinewrapper.denoise_range import denoise_range as _denoise_ra
 from dgenerate.pipelinewrapper.denoise_range import supports_native_denoising_start as _supports_native_denoising_start
 
 
+def _diffusion_option_enabled(args, name: str) -> bool:
+    """True when a diffusion option or one of its ``name_`` parameters is set."""
+    if getattr(args, name, False):
+        return True
+    prefix = name + '_'
+    for prop, value in args.__dict__.items():
+        if prop.startswith(prefix) and (value is not None or (isinstance(value, bool) and value)):
+            return True
+    return False
+
+
 def _get_cache_dit_ray_pipeline_call_proxy(pipeline):
     # Cache-DiT's Ray pipeline owns its executable model copies in worker actors.
     # Hiding ``to`` makes the existing call_pipeline helper leave the host copy put.
@@ -3205,6 +3216,45 @@ class DiffusionPipelineWrapper:
             )
             return self._create_pipeline_result(pipeline_output, output_type, user_args, pipeline_args)
 
+    @contextlib.contextmanager
+    def _dype_context(self, pipeline, user_args: DiffusionArguments):
+        """Apply DyPE for one pipeline call, including ADetailer refinement passes."""
+        if not user_args.dype:
+            yield
+            return
+
+        if getattr(pipeline, '_cache_dit_ray_pipeline_enabled', False):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'DyPE cannot be combined with Cache-DiT Ray execution because the model patch '
+                'runs in a separate worker process.')
+
+        if _enums.model_type_is_flux(self.model_type):
+            model_family = 'flux1'
+        elif _enums.model_type_is_flux2_family(self.model_type):
+            model_family = 'flux2'
+        elif _enums.model_type_is_qwen_image_family(self.model_type):
+            model_family = 'qwen'
+        elif _enums.model_type_is_z_image_family(self.model_type):
+            model_family = 'zimage'
+        elif _enums.model_type_is_wan_family(self.model_type):
+            model_family = 'wan'
+        else:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'DyPE is not supported for --model-type '
+                f'{_enums.get_model_type_string(self.model_type)}.')
+
+        import dgenerate.extras.dype as _dype
+        try:
+            with _dype.dype_context(
+                    pipeline,
+                    model_family=model_family,
+                    base_resolution=user_args.dype_base_resolution,
+                    method=user_args.dype_method):
+                yield
+        except _dype.DypeError as e:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Could not apply DyPE to the loaded pipeline: {e}') from e
+
     def _call_pipeline_with_cache_dit(self,
                                       pipeline: diffusers.DiffusionPipeline,
                                       user_args: DiffusionArguments,
@@ -3234,7 +3284,8 @@ class DiffusionPipelineWrapper:
             call_pipeline = configured_pipeline
             if getattr(configured_pipeline, '_cache_dit_ray_pipeline_enabled', False):
                 call_pipeline = _get_cache_dit_ray_pipeline_call_proxy(configured_pipeline)
-            return _pipelines.call_pipeline(pipeline=call_pipeline, **kwargs)
+            with self._dype_context(configured_pipeline, user_args):
+                return _pipelines.call_pipeline(pipeline=call_pipeline, **kwargs)
 
     def _call_asdff(self,
                     user_args: DiffusionArguments,
@@ -3331,25 +3382,26 @@ class DiffusionPipelineWrapper:
                 # should we crop any control image the same way that it crops the mask?
                 asdff_pipe.crop_control_image = self._adetailer_crop_control_image
 
-                asdff_output = asdff_pipe(
-                    pipeline_args=pipeline_args,
-                    model_path=detector_uri.get_model_path(
-                        local_files_only=self._local_files_only, use_auth_token=self._auth_token),
-                    images=input_images,
-                    device=self._device,
-                    detector_device=_types.default(detector_uri.device, self._device),
-                    confidence=detector_uri.confidence,
-                    prompt_weighter=prompt_weighter,
-                    index_filter=index_filter,
-                    class_filter=class_filter,
-                    mask_blur=mask_blur,
-                    mask_shape=mask_shape,
-                    detector_padding=detector_padding,
-                    mask_padding=mask_padding,
-                    mask_dilation=mask_dilation,
-                    model_masks=model_masks,
-                    processing_size=processing_size
-                )
+                with self._dype_context(configured_pipeline, user_args):
+                    asdff_output = asdff_pipe(
+                        pipeline_args=pipeline_args,
+                        model_path=detector_uri.get_model_path(
+                            local_files_only=self._local_files_only, use_auth_token=self._auth_token),
+                        images=input_images,
+                        device=self._device,
+                        detector_device=_types.default(detector_uri.device, self._device),
+                        confidence=detector_uri.confidence,
+                        prompt_weighter=prompt_weighter,
+                        index_filter=index_filter,
+                        class_filter=class_filter,
+                        mask_blur=mask_blur,
+                        mask_shape=mask_shape,
+                        detector_padding=detector_padding,
+                        mask_padding=mask_padding,
+                        mask_dilation=mask_dilation,
+                        model_masks=model_masks,
+                        processing_size=processing_size
+                    )
 
         return self._create_pipeline_result(asdff_output, user_args=user_args, pipeline_kwargs=pipeline_args)
 
@@ -5028,6 +5080,39 @@ class DiffusionPipelineWrapper:
                         'SADA lagrange_step must be divisible by lagrange_int'
                     )
 
+    def _auto_dype_check(self, args: DiffusionArguments):
+        if args.dype_method is not None or args.dype_base_resolution is not None:
+            args.dype = True
+        if args.dype_method is not None and args.dype_method not in _constants.DYPE_METHODS:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'--dype-methods value must be one of: {", ".join(_constants.DYPE_METHODS)}.')
+        if args.dype_base_resolution is not None and args.dype_base_resolution < 16:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '--dype-base-resolutions values must be at least 16 pixels.')
+        if not args.dype:
+            return
+        if not _enums.model_type_supports_dype(self.model_type):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'DyPE is supported for --model-type '
+                f'{_textprocessing.oxford_comma(_enums.DYPE_MODEL_TYPES, "and")}.')
+
+        # These features reuse or skip denoiser work computed at an earlier step.
+        # DyPE changes spatial RoPE on every step, so a reused block would keep
+        # the previous step's positional frequencies.
+        conflicts = []
+        if args.cache_dit:
+            conflicts.append('Cache-DiT')
+        for name, label in (
+                ('tea_cache', 'TeaCache'),
+                ('spectrum', 'Spectrum'),
+                ('sada', 'SADA')):
+            if _diffusion_option_enabled(args, name):
+                conflicts.append(label)
+        if conflicts:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'DyPE cannot be used simultaneously with '
+                f'{_textprocessing.oxford_comma(conflicts, "or")}.')
+
     def _auto_tea_cache_check(self, args: DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('tea_cache_'):
@@ -5059,24 +5144,16 @@ class DiffusionPipelineWrapper:
 
     @staticmethod
     def _auto_cache_dit_check(args: DiffusionArguments):
+        if args.dype_method is not None or args.dype_base_resolution is not None:
+            args.dype = True
         if not args.cache_dit:
             return
 
-        tea_cache_enabled = args.tea_cache
-        sada_enabled = args.sada
-        for prop in args.__dict__:
-            value = getattr(args, prop)
-            if (prop.startswith('tea_cache_') or prop.startswith('sada_')) and \
-                    (value is not None or (isinstance(value, bool) and value)):
-                if prop.startswith('tea_cache_'):
-                    tea_cache_enabled = True
-                else:
-                    sada_enabled = True
-
         for enabled, name in (
-                (tea_cache_enabled, 'TeaCache'),
-                (args.spectrum, 'Spectrum'),
-                (sada_enabled, 'SADA')):
+                (_diffusion_option_enabled(args, 'tea_cache'), 'TeaCache'),
+                (_diffusion_option_enabled(args, 'spectrum'), 'Spectrum'),
+                (_diffusion_option_enabled(args, 'sada'), 'SADA'),
+                (args.dype, 'DyPE')):
             if enabled:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     f'Cache-DiT cannot be used simultaneously with {name}.'
@@ -5378,6 +5455,7 @@ class DiffusionPipelineWrapper:
             copy_args.cache_dit = True
 
         self._auto_spectrum_check(copy_args)
+        self._auto_dype_check(copy_args)
         self._auto_cache_dit_check(copy_args)
         spectrum_token = _spectrum.push(self._spectrum_settings(copy_args))
         try:

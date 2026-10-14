@@ -48,5 +48,6 @@ from .checkboxwithtwointargsentry import _CheckboxWithTwoIntArgsEntry
 from .imageformatentry import _ImageFormatEntry
 from .submodelentry import _SubModelEntry
 from .submodelbuilderentry import  _SubModelBuilderEntry
+from .dypeentry import _DyPEEntry
 
 from .entry import DIVIDER_YPAD, ROW_XPAD

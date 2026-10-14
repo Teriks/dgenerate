@@ -54,8 +54,9 @@ Help Output
                      [--sada-max-fixes INTEGER [INTEGER ...]] [--sada-max-intervals INTEGER [INTEGER ...]]
                      [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-dc] [-dci INTEGER [INTEGER ...]]
                      [-dcb INTEGER [INTEGER ...]] [-rdc] [-rdci INTEGER [INTEGER ...]]
-                     [-rdcb INTEGER [INTEGER ...]] [-tc] [--cache-dit] [--cache-dit-config FILE]
-                     [-tcr [FLOAT ...]] [--spectrum] [--spectrum-weights [FLOAT ...]]
+                     [-rdcb INTEGER [INTEGER ...]] [-tc] [--cache-dit] [--dype]
+                     [--dype-methods METHOD [METHOD ...]] [--dype-base-resolutions PIXELS [PIXELS ...]]
+                     [--cache-dit-config FILE] [-tcr [FLOAT ...]] [--spectrum] [--spectrum-weights [FLOAT ...]]
                      [--spectrum-orders [INT ...]] [--spectrum-lambdas [FLOAT ...]]
                      [--spectrum-warmup-steps [INT ...]] [--spectrum-window-sizes [FLOAT ...]]
                      [--spectrum-flex-windows [FLOAT ...]] [-ra] [-rif] [-rsr FLOAT [FLOAT ...]]
@@ -1503,10 +1504,40 @@ Help Output
             
             Cache-DiT supports image, video, and audio transformer pipelines, including Flux, Wan, Wan-Animate,
             Wan-Animate-2, Stable Diffusion 3, and Qwen-Image. Cache-DiT's default cache settings are used. This
-            option cannot be combined with --tea-cache, --spectrum, or --sada.
+            option cannot be combined with --tea-cache, --spectrum, --sada, or --dype.
             
             See: https://cache-dit.readthedocs.io/en/latest/
             ------------------------------------------------
+      --dype
+            Enable DyPE's positional scaling methods for supported transformer pipelines.
+            
+            Flux.1 and Qwen-Image use the upstream architectures. Flux Fill/Kontext, Qwen Edit/Layered, Flux.2,
+            Z-Image, and Wan are experimental adapters. Defaults to a model-specific reference resolution. See
+            --dype-methods to choose position encoding methods and --dype-base-resolutions to override the
+            reference resolution. This option cannot be combined with --cache-dit, --tea-cache, --spectrum, or
+            --sada, because those features reuse or skip denoiser work from an earlier step.
+            
+            See: https://github.com/guyyariv/DyPE
+            -------------------------------------
+      --dype-methods METHOD [METHOD ...]
+            Position encoding methods for DyPE, tried in turn as a combinatoric factor.
+            
+            yarn applies timestep-aware YARN interpolation (default); ntk applies timestep-aware NTK scaling;
+            base keeps the model's original RoPE frequencies. Supplying this option implies --dype.
+            
+            See: https://github.com/guyyariv/DyPE
+            -------------------------------------
+      --dype-base-resolutions PIXELS [PIXELS ...]
+            Reference long-side resolution in pixels for DyPE's positional scaling.
+            
+            Defaults to 1024 for Flux/Flux.2/Z-Image, 1328 for Qwen-Image, and 832 for Wan. Values are tried in
+            turn, must be at least 16 pixels. Supplying this option implies --dype.
+            
+            This option is supported for Flux.1, Flux Fill/Kontext, Qwen-Image, Qwen Edit/Layered, Flux.2,
+            Z-Image, and Wan pipeline families.
+            
+            See: https://github.com/guyyariv/DyPE
+            -------------------------------------
       --cache-dit-config FILE
             Cache-DiT YAML settings for cache policies, parallelism, quantization, attention, and layerwise
             offload. Supplying this option also enables Cache-DiT.
@@ -9833,6 +9864,8 @@ these are the arguments that are available for use:
     sada-lagrange-step: int
     sada-max-fix: int
     sada-max-interval: int
+    dype-method: str
+    dype-base-resolution: int
     tea-cache-rel-l1-threshold: float
     spectrum-weight: float
     spectrum-order: int
@@ -12919,6 +12952,7 @@ parallelism, attention, quantization, and offload support.
 
 ``--cache-dit`` enables Cache-DiT with its defaults. Use ``--cache-dit-config``
 to supply Cache-DiT's YAML configuration; that option also enables Cache-DiT.
+Cache-DiT cannot be combined with TeaCache, Spectrum, SADA, or DyPE.
 The native ``cache_config``, ``calibrator_config``, ``parallelism_config``,
 ``quantize_config``, and ``attention_backend`` sections pass through Cache-DiT's
 config loader. Advanced per-block cache overrides can be supplied through the
@@ -13343,6 +13377,15 @@ The ``\templates_help`` output from the above example is:
         Name: "last_dtype"
             Type: <enum 'DataType'>
             Value: <DataType.AUTO: 0>
+        Name: "last_dype"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_dype_base_resolutions"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_dype_methods"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
         Name: "last_flux2_caption_upsample_temperature"
             Type: float | None
             Value: None
@@ -13837,7 +13880,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [27651824378076]
+            Value: [88070479098809]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

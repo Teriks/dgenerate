@@ -24,6 +24,7 @@ parallelism, attention, quantization, and offload support.
 
 ``--cache-dit`` enables Cache-DiT with its defaults. Use ``--cache-dit-config``
 to supply Cache-DiT's YAML configuration; that option also enables Cache-DiT.
+Cache-DiT cannot be combined with TeaCache, Spectrum, SADA, or DyPE.
 The native ``cache_config``, ``calibrator_config``, ``parallelism_config``,
 ``quantize_config``, and ``attention_backend`` sections pass through Cache-DiT's
 config loader. Advanced per-block cache overrides can be supplied through the

@@ -933,4 +933,15 @@ Microsoft Region-Adaptive Sampling (RAS) has numerous configurable options that 
 
 The TeaCache threshold can be specified with the ``--tea-cache-rel-l1-thresholds`` parameter. Information about this parameter can be reviewed `here <https://github.com/ali-vilab/TeaCache/blob/main/TeaCache4FLUX/README.md>`__.
 
+DyPE (``--dype``) adapts spatial RoPE frequencies during denoising. Use
+``--dype-methods`` to try ``yarn`` (default), ``ntk``, or the ``base`` RoPE
+baseline as combinatoric values. The Flux.1 and Qwen-Image adapters follow the upstream architecture; Flux
+Fill/Kontext, Qwen Edit/Layered, Flux.2, Z-Image, and Wan are experimental
+adapters. Reference long-side defaults are 1024 pixels for Flux/Flux.2/Z-Image,
+1328 for Qwen-Image, and 832 for Wan. DyPE cannot be combined with Cache-DiT,
+TeaCache, Spectrum, or SADA, because those features reuse or skip denoiser work
+from an earlier step. See the `DyPE source
+<https://github.com/guyyariv/DyPE>`__ and the vendored adapter notes under
+``dgenerate/extras/dype``.
+
 Spectrum (``--spectrum``) forecasts denoiser block outputs and skips those blocks on later steps. Transformers skip their blocks. SDXL and Kolors skip the UNet down, mid, and up blocks and still run the output convolution. It is supported on SD3, SDXL, Kolors, Flux, Flux.2, Z-Image, Qwen-Image, and Wan. The moderate schedule is the default (window ``2``, flex ``0.75``). ``--spectrum-flex-windows 3`` is the paper's aggressive schedule. Details are at `Spectrum <https://github.com/hanjq17/Spectrum>`__.

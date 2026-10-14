@@ -23,6 +23,7 @@ order: 29
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @switch[{"id": "sp", "label":"Use Spectrum", "arg":"--spectrum"}]
 @switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["tc", "sada", "sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
+@dype[{"exclude":["cd", "sp"],"divider-after":true}]
 @quantizer[{"divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/QuantStack/Wan2.1_14B_VACE-GGUF/blob/main/Wan2.1_14B_VACE-Q4_K_S.gguf", "divider-after":true}]

@@ -86,6 +86,8 @@ from .enums import (
     PAG_MODEL_TYPES,
     model_type_supports_spectrum,
     SPECTRUM_MODEL_TYPES,
+    model_type_supports_dype,
+    DYPE_MODEL_TYPES,
     model_type_is_sd2,
     model_type_is_sd15
 )

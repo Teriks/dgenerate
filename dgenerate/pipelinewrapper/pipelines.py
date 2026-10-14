@@ -133,6 +133,22 @@ def _configure_cache_dit_logging() -> None:
                 handler.setLevel(configured_level)
 
 
+def _capture_cache_dit_transformer_forwards(pipeline):
+    """Capture forward entry points that temporary Cache-DiT setup may replace."""
+    captured = []
+    for name in ('transformer', 'transformer_2'):
+        transformer = getattr(pipeline, name, None)
+        if isinstance(transformer, torch.nn.Module):
+            captured.append((transformer, transformer.forward))
+    return captured
+
+
+def _restore_cache_dit_transformer_forwards(captured) -> None:
+    """Restore wrappers such as Accelerate's CPU-offload forward hook."""
+    for transformer, original_forward in captured:
+        transformer.forward = original_forward
+
+
 @contextlib.contextmanager
 def cache_dit_context(pipeline: diffusers.DiffusionPipeline,
                       enabled: bool = False,
@@ -392,6 +408,13 @@ def cache_dit_context(pipeline: diffusers.DiffusionPipeline,
     active_pipeline = state['pipeline'] if state is not None else pipeline
     cache_target = (
         state.get('cache_target', active_pipeline) if state is not None else pipeline)
+    # Cache-DiT 1.5.2 restores Accelerate-offloaded transformers to _old_forward
+    # when disabling its hooks. That skips Accelerate's pre-forward weight load,
+    # leaving offloaded parameters on meta when this cached pipeline is reused.
+    # Preserve the exact pre-Cache-DiT entry point for temporary configurations.
+    original_transformer_forwards = (
+        _capture_cache_dit_transformer_forwards(pipeline)
+        if not has_persistent_config else [])
     if state is None:
         try:
             enable_kwargs = {
@@ -421,6 +444,7 @@ def cache_dit_context(pipeline: diffusers.DiffusionPipeline,
                     'ray': ray_enabled,
                 })
         except Exception as e:
+            _restore_cache_dit_transformer_forwards(original_transformer_forwards)
             raise UnsupportedPipelineConfigError(
                 f'Cache-DiT could not be enabled for {pipeline.__class__.__name__}: {e}'
             ) from e
@@ -446,7 +470,11 @@ def cache_dit_context(pipeline: diffusers.DiffusionPipeline,
                     handle.remove()
             finally:
                 if not has_persistent_config:
-                    cache_dit.disable_cache(cache_target)
+                    try:
+                        cache_dit.disable_cache(cache_target)
+                    finally:
+                        _restore_cache_dit_transformer_forwards(
+                            original_transformer_forwards)
         except Exception as e:
             raise UnsupportedPipelineConfigError(
                 f'Cache-DiT could not be disabled for {pipeline.__class__.__name__}: {e}'

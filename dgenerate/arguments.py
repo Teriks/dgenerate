@@ -3010,10 +3010,67 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      Cache-DiT supports image, video, and audio transformer pipelines, including Flux,
                      Wan, Wan-Animate, Wan-Animate-2, Stable Diffusion 3, and Qwen-Image. Cache-DiT's
                      default cache settings are used.
-                     This option cannot be combined with --tea-cache, --spectrum, or --sada.
+                     This option cannot be combined with --tea-cache, --spectrum, --sada, or --dype.
 
                      NOWRAP!
                      See: https://cache-dit.readthedocs.io/en/latest/
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--dype',
+            action='store_true', default=False, dest='dype',
+            help="""Enable DyPE's positional scaling methods for supported transformer pipelines.
+
+                     Flux.1 and Qwen-Image use the upstream architectures. Flux Fill/Kontext,
+                     Qwen Edit/Layered, Flux.2, Z-Image, and Wan are experimental adapters.
+                     Defaults to a model-specific reference resolution. See
+                     --dype-methods to choose position encoding methods and
+                     --dype-base-resolutions to override the reference resolution.
+                     This option cannot be combined with --cache-dit, --tea-cache,
+                     --spectrum, or --sada, because those features reuse or skip
+                     denoiser work from an earlier step.
+
+                     NOWRAP!
+                     See: https://github.com/guyyariv/DyPE
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--dype-methods', metavar='METHOD', nargs='+',
+            choices=_pipelinewrapper.constants.DYPE_METHODS,
+            default=None, dest='dype_methods',
+            help="""Position encoding methods for DyPE, tried in turn as a combinatoric factor.
+
+                     yarn applies timestep-aware YARN interpolation (default); ntk applies
+                     timestep-aware NTK scaling; base keeps the model's original RoPE frequencies.
+                     Supplying this option implies --dype.
+
+                     NOWRAP!
+                     See: https://github.com/guyyariv/DyPE
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--dype-base-resolutions', metavar='PIXELS', nargs='+',
+            type=_type_positive_int, default=None, dest='dype_base_resolutions',
+            help="""Reference long-side resolution in pixels for DyPE's positional scaling.
+
+                     Defaults to 1024 for Flux/Flux.2/Z-Image, 1328 for Qwen-Image, and 832 for
+                     Wan. Values are tried in turn, must be at least 16 pixels. Supplying this
+                     option implies --dype.
+
+                     This option is supported for Flux.1, Flux Fill/Kontext, Qwen-Image,
+                     Qwen Edit/Layered, Flux.2, Z-Image, and Wan pipeline families.
+
+                     NOWRAP!
+                     See: https://github.com/guyyariv/DyPE
                      """
         )
     )
@@ -5679,6 +5736,8 @@ def _parse_args(args=None, print_usage=True, overrides: dict[str, typing.Any] | 
     args = parser.parse_args(args, namespace=DgenerateArguments())
     if overrides:
         args.set_from(overrides, missing_value_throws=False)
+    if args.dype_methods is not None or args.dype_base_resolutions is not None:
+        args.dype = True
     args.check(config_attribute_name_to_option)
     return args
 
