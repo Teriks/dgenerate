@@ -70,6 +70,33 @@ def error_foreground() -> str:
     return '#ff3b30'
 
 
+def configure_viewport(frame) -> None:
+    """Draw a fixed 1px edge around a scrolling viewport.
+
+    The edge has to live on the frame around the canvas. A canvas highlight
+    border is part of the scrolled surface, so it slides away with the fields
+    and only one side of it is visible at either end of the scroll.
+    Aqua uses an opaque label color so the edge follows light and dark mode.
+    Elsewhere this is the button-shadow gray of a native control border.
+    """
+    if is_aqua(frame):
+        colors = ('systemSecondaryLabelColor', 'systemTertiaryLabelColor', 'systemLabelColor')
+    else:
+        colors = ('SystemButtonShadow',)
+    for color in colors:
+        try:
+            frame.configure(
+                highlightthickness=1,
+                highlightbackground=color,
+                highlightcolor=color,
+                borderwidth=0,
+                takefocus=0,
+            )
+            return
+        except tk.TclError:
+            continue
+
+
 def install(widget) -> None:
     """
     Apply dynamic Aqua system colors to a window's classic widgets.

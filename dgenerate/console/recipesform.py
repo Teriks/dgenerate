@@ -271,10 +271,15 @@ class _RecipesForm(tk.Toplevel):
         self.bind('<Control-f>', self._on_filter_shortcut)
         self.bind('<Control-F>', self._on_filter_shortcut)
 
-        outer_frame = ttk.Frame(self, borderwidth=3, relief="sunken")
-        outer_frame.grid(row=2, column=0, sticky='nsew', padx=5, pady=5)
+        outer_frame = ttk.Frame(self)
+        outer_frame.grid(row=2, column=0, sticky='nsew', padx=5, pady=(5, 0))
 
-        self.canvas = tk.Canvas(outer_frame, highlightthickness=0)
+        viewport = tk.Frame(outer_frame)
+        _appearance.configure_viewport(viewport)
+        viewport.grid(row=0, column=0, sticky='nsew')
+
+        self.canvas = tk.Canvas(viewport, highlightthickness=0, borderwidth=0)
+        self.canvas.pack(fill=tk.BOTH, expand=True)
         self.scrollbar = ttk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = ttk.Frame(self.canvas, padding=(10, 10))
 
@@ -288,7 +293,6 @@ class _RecipesForm(tk.Toplevel):
         self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        self.canvas.grid(row=0, column=0, sticky='nsew')
         self.scrollbar.grid(row=0, column=1, sticky='ns')
 
         outer_frame.grid_rowconfigure(0, weight=1)
@@ -296,6 +300,9 @@ class _RecipesForm(tk.Toplevel):
 
         self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(0, weight=1)
+
+        ttk.Button(self, text='Insert', command=self._apply_templates).grid(
+            row=3, column=0, padx=5, pady=5)
 
         self.bind("<Configure>", self._on_resize)
 
@@ -383,8 +390,6 @@ class _RecipesForm(tk.Toplevel):
 
             self._entries.append(entry)
 
-        apply_button = ttk.Button(self, text='Insert', command=self._apply_templates)
-        apply_button.grid(row=3, column=0, padx=5, pady=5, columnspan=2)
         _appearance.apply(self)
 
     def destroy(self) -> None:

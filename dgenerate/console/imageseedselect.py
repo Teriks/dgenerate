@@ -363,8 +363,18 @@ class _ImageSeedSelect(tk.Toplevel):
         self._insert = insert
         self._row = 0
 
-        self._canvas = tk.Canvas(self, width=740, height=560, highlightthickness=0, borderwidth=0)
-        self._scroll = ttk.Scrollbar(self, command=self._canvas.yview)
+        outer = ttk.Frame(self)
+        outer.grid(row=0, column=0, sticky=tk.NSEW)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        viewport = tk.Frame(outer)
+        _appearance.configure_viewport(viewport)
+        viewport.grid(row=0, column=0, sticky=tk.NSEW)
+
+        self._canvas = tk.Canvas(viewport, width=740, height=560, highlightthickness=0, borderwidth=0)
+        self._canvas.pack(fill=tk.BOTH, expand=True)
+        self._scroll = ttk.Scrollbar(outer, command=self._canvas.yview)
         self._canvas.configure(yscrollcommand=self._scroll.set)
         self._inner = ttk.Frame(self._canvas, padding=(12, 10))
         self._inner.grid_columnconfigure(0, weight=1)
@@ -372,16 +382,12 @@ class _ImageSeedSelect(tk.Toplevel):
         self._inner.bind('<Configure>', self._fit_scroll)
         self._canvas.bind('<Configure>', self._fit_inner_width)
 
-        self._canvas.grid(row=0, column=0, sticky=tk.NSEW)
-        self._scroll.grid(row=0, column=1, sticky=tk.NS, padx=(6, 0))
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
+        self._scroll.grid(row=0, column=1, sticky=tk.NS)
+        outer.grid_rowconfigure(0, weight=1)
+        outer.grid_columnconfigure(0, weight=1)
 
-        bar = ttk.Frame(self)
-        bar.grid(row=1, column=0, columnspan=2, sticky=tk.EW, pady=(8, 0))
-        ttk.Separator(bar, orient='horizontal').pack(fill=tk.X, pady=(0, 8))
-        self._insert_button = ttk.Button(bar, text='Insert', command=self._insert_click)
-        self._insert_button.pack()
+        self._insert_button = ttk.Button(self, text='Insert', command=self._insert_click)
+        self._insert_button.grid(row=1, column=0, pady=(8, 0))
 
         self._build_form()
         _mousewheelbind.bind_mousewheel(self._canvas.bind, self._on_wheel)
