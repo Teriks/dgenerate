@@ -545,6 +545,8 @@ class DgenerateConsole(tk.Tk):
             "Command history is supported via the up and down arrow keys when not in multiline\n"
             "input mode. Right clicking the input or output pane will reveal further menu options.\n\n"
             "To get started quickly with image generation, see the menu option: Edit -> Insert Recipe.\n\n"
+            "To see generated media, see the menu option: View -> Image Pane or Image Window.\n"
+            "Right click the image pane or window to see more options.\n\n"
             "Enter --help or the alias \\help to print dgenerate's help text. All lines which\n"
             "are not directives (starting with \\ ) or top level templates (starting with { )\n"
             "are processed as arguments to dgenerate.\n\n"
