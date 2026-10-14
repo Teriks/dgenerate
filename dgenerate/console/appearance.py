@@ -135,7 +135,13 @@ def _paint(widget) -> None:
     if isinstance(widget, (tk.Text, tk.Entry, tk.Spinbox, tk.Listbox, tk.Menu, ttk.Widget)):
         return
     if isinstance(widget, tk.PanedWindow):
-        _configure(widget, background='systemSeparatorColor')
+        # Leave the sash color alone. The semantic choice here would be
+        # systemSeparatorColor, but that color is translucent, and Tk fills
+        # with its alpha intact over a content view AppKit never clears. Each
+        # sash paint is then a wash over the previous pixels: text from a
+        # pane that used to cover the sash shows through when the sash first
+        # appears, and a drag repaints until the sash is solid white or black.
+        # The opaque grey set by the owner reads the same in either appearance.
         return
     if not isinstance(widget, (tk.Tk, tk.Toplevel, tk.Frame, tk.Label, tk.Canvas, tk.Checkbutton, tk.Button)):
         return

@@ -1007,6 +1007,8 @@ class DgenerateConsole(tk.Tk):
             # update using shallow psutil query
             self._update_cwd_title()
 
+        self._check_text_for_latest_image(text)
+
         scroll = self._output_text.text.yview()[1] == 1.0 or \
                  self._auto_scroll_on_output_check_var.get()
 
@@ -1025,16 +1027,6 @@ class DgenerateConsole(tk.Tk):
 
         if scroll:
             self._output_text.text.see(tk.END)
-
-        # Paint this line before the preview presents. On macOS that present
-        # and a text paint in the same turn share the window bitmap, and a
-        # sliver of the text pane stays in the sash until the next scroll.
-        if _preview_path_from_output(text):
-            try:
-                self.update_idletasks()
-            except tk.TclError:
-                pass
-        self._check_text_for_latest_image(text)
 
     def _write_stdout_output(self, text: bytes | str):
         if isinstance(text, str):
