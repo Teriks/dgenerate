@@ -40,9 +40,9 @@ class _CheckboxWithTwoIntArgsEntry(_entry._Entry):
         self.bool_var = tk.BooleanVar(value=self.config.get('default', False))
 
         # create label widget
-        self.label_widget = tk.Label(self.master,
-                                     text=self.get_label(
-                                         self.arg if self.arg else 'Switch Option'), anchor='e')
+        self.label_widget = ttk.Label(self.master,
+                                      text=self.get_label(
+                                          self.arg if self.arg else 'Switch Option'), anchor='e')
 
         # create checkbox widget with boolean variable
         self.checkbox = ttk.Checkbutton(self.master, variable=self.bool_var)
@@ -58,7 +58,7 @@ class _CheckboxWithTwoIntArgsEntry(_entry._Entry):
         self.int1_min = self.config.get('int1-min', -sys.maxsize)
         self.int1_max = self.config.get('int1-max', sys.maxsize)
 
-        self.int1_label = tk.Label(
+        self.int1_label = ttk.Label(
             self.master,
             text=self.get_label(
                 'First Integer', key='int1-label') + ' (int)',
@@ -85,7 +85,7 @@ class _CheckboxWithTwoIntArgsEntry(_entry._Entry):
         self.int2_min = self.config.get('int2-min', -sys.maxsize)
         self.int2_max = self.config.get('int2-max', sys.maxsize)
 
-        self.int2_label = tk.Label(
+        self.int2_label = ttk.Label(
             self.master,
             text=self.get_label(
                 'Second Integer', key='int2-label') + ' (int)',
@@ -167,11 +167,11 @@ class _CheckboxWithTwoIntArgsEntry(_entry._Entry):
             int1_val = self.int1_var.get().strip()
             int2_val = self.int2_var.get().strip()
             new_content = self.arg if self.arg else ''
-            
+
             if int1_val:
                 arg_part1 = (self.int1_arg if self.int1_arg else '')
                 new_content += ('\n' if self.arg else '') + arg_part1 + (' ' if arg_part1 else '') + int1_val
-                
+
             if int2_val:
                 arg_part2 = (self.int2_arg if self.int2_arg else '')
                 new_content += ('\n' if new_content else '') + arg_part2 + (' ' if arg_part2 else '') + int2_val
@@ -184,23 +184,31 @@ class _CheckboxWithTwoIntArgsEntry(_entry._Entry):
         from dgenerate.console.formentries.argswitchcheckbox import _ArgSwitchCheckbox
         from dgenerate.console.formentries.argswitchconditionalcheckboxes import _ArgSwitchConditionalCheckboxes
         from dgenerate.console.formentries.checkboxwithfloatargentry import _CheckboxWithFloatArgEntry
-        
+
         if isinstance(other_entry, _ArgSwitchCheckbox):
             # This checkbox excludes simple checkbox
-            self.bool_var.trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
-            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_var.get() else None)
-            
+            self.bool_var.trace_add('write',
+                                    lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
+            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(
+                False) if other_entry.bool_var.get() else None)
+
         elif isinstance(other_entry, _ArgSwitchConditionalCheckboxes):
             # This checkbox excludes the master checkbox of conditional checkboxes
-            self.bool_var.trace_add('write', lambda *args: other_entry.bool_vars[0].set(False) if self.bool_var.get() else None)
-            other_entry.bool_vars[0].trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_vars[0].get() else None)
-            
+            self.bool_var.trace_add('write',
+                                    lambda *args: other_entry.bool_vars[0].set(False) if self.bool_var.get() else None)
+            other_entry.bool_vars[0].trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_vars[
+                0].get() else None)
+
         elif isinstance(other_entry, _CheckboxWithFloatArgEntry):
             # This checkbox excludes checkbox with float arg
-            self.bool_var.trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
-            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_var.get() else None)
-            
+            self.bool_var.trace_add('write',
+                                    lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
+            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(
+                False) if other_entry.bool_var.get() else None)
+
         elif isinstance(other_entry, _CheckboxWithTwoIntArgsEntry):
             # Both are two int args checkboxes - mutual exclusion
-            self.bool_var.trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
-            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_var.get() else None)
+            self.bool_var.trace_add('write',
+                                    lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
+            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(
+                False) if other_entry.bool_var.get() else None)

@@ -25,7 +25,7 @@ import dgenerate.console.themetext as _themetext
 import dgenerate.console.fonts as _fonts
 
 
-class ScrolledText(tk.Frame):
+class ScrolledText(ttk.Frame):
     def __init__(self, master=None, undo=False, **kwargs):
         super().__init__(master, **kwargs)
 

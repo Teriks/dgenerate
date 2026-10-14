@@ -42,7 +42,7 @@ class _ArgSwitchConditionalCheckboxes(_entry._Entry):
             raise RuntimeError('conditionalcheckbox, not as many labels as there are args.')
 
         self.defaults = self.config.get('defaults', [False] * len(labels))
-        
+
         if len(self.defaults) != len(labels):
             self.defaults = [False] * len(labels)
 
@@ -57,11 +57,11 @@ class _ArgSwitchConditionalCheckboxes(_entry._Entry):
             # create label widget
             label_text = labels[idx]
             label_text = label_text if not self.optional else f"(Optional) {label_text}"
-                
+
             self.label_widgets.append(
-                tk.Label(self.master,
-                         text=label_text,
-                         anchor='e'))
+                ttk.Label(self.master,
+                          text=label_text,
+                          anchor='e'))
 
             # create checkbox widget with boolean variable
             checkbox = ttk.Checkbutton(self.master, variable=self.bool_vars[-1])
@@ -85,7 +85,7 @@ class _ArgSwitchConditionalCheckboxes(_entry._Entry):
 
         # Bind the master checkbox change event
         self.bool_vars[0].trace_add('write', lambda *args: master_changed())
-        
+
         # Initialize the state
         master_changed()
 
@@ -108,38 +108,47 @@ class _ArgSwitchConditionalCheckboxes(_entry._Entry):
         from dgenerate.console.formentries.argswitchcheckbox import _ArgSwitchCheckbox
         from dgenerate.console.formentries.checkboxwithfloatargentry import _CheckboxWithFloatArgEntry
         from dgenerate.console.formentries.checkboxwithtwointargsentry import _CheckboxWithTwoIntArgsEntry
-        
+
         if isinstance(other_entry, _ArgSwitchCheckbox):
             # Master checkbox excludes simple checkbox
-            self.bool_vars[0].trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_vars[0].get() else None)
-            other_entry.bool_var.trace_add('write', lambda *args: self.bool_vars[0].set(False) if other_entry.bool_var.get() else None)
+            self.bool_vars[0].trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_vars[
+                0].get() else None)
+            other_entry.bool_var.trace_add('write', lambda *args: self.bool_vars[0].set(
+                False) if other_entry.bool_var.get() else None)
 
         elif isinstance(other_entry, _ArgSwitchConditionalCheckboxes):
             # Both are conditional checkboxes - master checkboxes exclude each other
-            self.bool_vars[0].trace_add('write', lambda *args: other_entry.bool_vars[0].set(False) if self.bool_vars[0].get() else None)
-            other_entry.bool_vars[0].trace_add('write', lambda *args: self.bool_vars[0].set(False) if other_entry.bool_vars[0].get() else None)
-            
+            self.bool_vars[0].trace_add('write', lambda *args: other_entry.bool_vars[0].set(False) if self.bool_vars[
+                0].get() else None)
+            other_entry.bool_vars[0].trace_add('write',
+                                               lambda *args: self.bool_vars[0].set(False) if other_entry.bool_vars[
+                                                   0].get() else None)
+
         elif isinstance(other_entry, _CheckboxWithFloatArgEntry):
             # Master checkbox excludes checkbox with float arg
-            self.bool_vars[0].trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_vars[0].get() else None)
-            other_entry.bool_var.trace_add('write', lambda *args: self.bool_vars[0].set(False) if other_entry.bool_var.get() else None)
-            
+            self.bool_vars[0].trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_vars[
+                0].get() else None)
+            other_entry.bool_var.trace_add('write', lambda *args: self.bool_vars[0].set(
+                False) if other_entry.bool_var.get() else None)
+
         elif isinstance(other_entry, _CheckboxWithTwoIntArgsEntry):
             # Master checkbox excludes checkbox with two int args
-            self.bool_vars[0].trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_vars[0].get() else None)
-            other_entry.bool_var.trace_add('write', lambda *args: self.bool_vars[0].set(False) if other_entry.bool_var.get() else None)
+            self.bool_vars[0].trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_vars[
+                0].get() else None)
+            other_entry.bool_var.trace_add('write', lambda *args: self.bool_vars[0].set(
+                False) if other_entry.bool_var.get() else None)
 
     def template(self, content):
         args = []
-        
+
         # Only include args if master checkbox is checked
         if self.bool_vars[0].get():
             args.append(self.args[0])  # Always include master arg if checked
-            
+
             # Include dependent args if they are checked
             for idx in range(1, len(self.bool_vars)):
                 if self.bool_vars[idx].get():
                     args.append(self.args[idx])
-        
+
         arg_string = '\n'.join(args)
         return _entry.replace_first(content, self.placeholder, arg_string)

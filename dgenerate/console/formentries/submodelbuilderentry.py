@@ -28,6 +28,7 @@ import dgenerate.console.resources
 import dgenerate.console.textentry as _t_entry
 import dgenerate.console.filedialog as _filedialog
 
+
 class _SubModelBuilderEntry(_entry._Entry):
     NAME = 'submodelbuilder'
 
@@ -47,7 +48,7 @@ class _SubModelBuilderEntry(_entry._Entry):
 
         uri_label_text = self.get_label('URI')
 
-        self.uri_label = tk.Label(
+        self.uri_label = ttk.Label(
             self.master,
             text=uri_label_text,
             anchor='e')
@@ -58,8 +59,7 @@ class _SubModelBuilderEntry(_entry._Entry):
         self.uri_entry = \
             _t_entry.TextEntry(self.master, textvariable=self.uri_var)
 
-
-        self.button_frame = tk.Frame(self.master)
+        self.button_frame = ttk.Frame(self.master)
 
         files_metadata = self._submodels_schema[self.model]['model'].get('files', None)
 
@@ -103,10 +103,9 @@ class _SubModelBuilderEntry(_entry._Entry):
 
         self.uri_label.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.uri_entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
-        self.button_frame.grid(row=self.row, column=2, padx=(2,5), sticky='w')
+        self.button_frame.grid(row=self.row, column=2, padx=(2, 5), sticky='w')
 
         self.uri_entry.bind('<Key>', lambda e: self.valid())
-
 
     def _insert(self, value: str):
         if value is not None and value.strip():
@@ -117,6 +116,7 @@ class _SubModelBuilderEntry(_entry._Entry):
         dialog = _submodelselect.request_uri(self.form, self._insert, filter=[self.model])
 
         og_destroy = dialog.destroy
+
         def _destroy():
             og_destroy()
             if hasattr(self.form, 'bind_mousewheel'):
@@ -130,17 +130,17 @@ class _SubModelBuilderEntry(_entry._Entry):
         if text:
             if self.model == 'VAE':
                 vae_options = self._submodels_schema['VAE']['encoder']['options']
-                parts =  text.split(';')
+                parts = text.split(';')
                 if len(parts) == 1 or not any(parts[0] == option for option in vae_options):
                     # we specified a raw file, default to AutoEncoderKL
                     prefix = f'{vae_options[0]};model='
             elif self.model == 'Text Encoder':
                 text_encoder_options = self._submodels_schema['Text Encoder']['encoder']['options']
-                parts =  text.split(';')
+                parts = text.split(';')
                 if len(parts) == 1 or not any(parts[0] == option for option in text_encoder_options):
                     # we specified a raw file, default to CLIPTextModel
                     prefix = f'{text_encoder_options[0]};model='
 
         return self._template(
             content, prefix + _entry.shell_quote_if(
-            self.uri_var.get().strip()))
+                self.uri_var.get().strip()))

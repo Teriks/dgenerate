@@ -42,7 +42,7 @@ class _UriEntry(_entry._Entry):
 
         uri_label_text = self.get_label('URI')
 
-        self.uri_label = tk.Label(
+        self.uri_label = ttk.Label(
             self.master,
             text=uri_label_text,
             anchor='e')
@@ -67,16 +67,16 @@ class _UriEntry(_entry._Entry):
                 if r is not None:
                     self.uri_var.set(r)
 
-            self.button_frame = tk.Frame(self.master)
+            self.button_frame = ttk.Frame(self.master)
 
             file_button = ttk.Button(self.button_frame,
-                                    text="File",
-                                    command=select_file_command)
+                                     text="File",
+                                     command=select_file_command)
             file_button.pack(side=tk.LEFT)
 
             directory_button = ttk.Button(self.button_frame,
-                                         text="Directory",
-                                         command=select_dir_command)
+                                          text="Directory",
+                                          command=select_dir_command)
             directory_button.pack(side=tk.LEFT)
 
             self.button_frame.grid(row=self.row, column=2, padx=(2, 5), sticky='w')
@@ -93,11 +93,11 @@ class _UriEntry(_entry._Entry):
                 if r is not None:
                     self.uri_var.set(r)
 
-            self.button_frame = tk.Frame(self.master)
+            self.button_frame = ttk.Frame(self.master)
 
             button = ttk.Button(self.button_frame,
-                               text="File" if file_types else "Directory",
-                               command=select_command)
+                                text="File" if file_types else "Directory",
+                                command=select_command)
             button.pack(side=tk.LEFT)
 
             self.button_frame.grid(row=self.row, column=2, padx=(2, 5), sticky='w')

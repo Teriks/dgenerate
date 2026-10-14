@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.formentries.entry as _entry
 import dgenerate.console.formentries.urientry as _urientry
@@ -42,7 +43,7 @@ class _UriWithFloatEntry(_urientry._UriEntry):
         self.float_var = \
             tk.StringVar(value=self.default_float)
 
-        self.float_label = tk.Label(
+        self.float_label = ttk.Label(
             self.master,
             text=self.get_label(
                 'URI Float', key='float-label') + ' (float)',

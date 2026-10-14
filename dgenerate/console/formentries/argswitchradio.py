@@ -64,16 +64,16 @@ class _ArgSwitchRadio(_entry._Entry):
 
             # create label widget
             self.label_widgets.append(
-                tk.Label(self.master,
-                         text=labels[idx] if not
-                         self.optional else f"(Optional) {labels[idx]}",
-                         anchor='e'))
+                ttk.Label(self.master,
+                          text=labels[idx] if not
+                          self.optional else f"(Optional) {labels[idx]}",
+                          anchor='e'))
 
             # create checkbox widget with boolean variable
             self.check_boxes.append(
                 ttk.Checkbutton(self.master,
-                               variable=self.bool_vars[-1],
-                               command=var_changed))
+                                variable=self.bool_vars[-1],
+                                command=var_changed))
 
             # place the widgets in a grid layout
             self.label_widgets[-1].grid(

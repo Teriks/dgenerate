@@ -48,17 +48,17 @@ class _PluginUriSelect(tk.Toplevel):
 
         self._insert = insert
 
-        self.plugin_dropdown_master = tk.Frame(self)
+        self.plugin_dropdown_master = ttk.Frame(self)
         self.plugin_dropdown_master.grid(row=0, column=0, sticky='ew', padx=5, pady=(5, 0))
         self.plugin_dropdown_master.grid_columnconfigure(1, weight=1)
         self.plugin_dropdown_row = 0
 
-        outer_frame = tk.Frame(self, bd=3, relief="sunken")
+        outer_frame = ttk.Frame(self, borderwidth=3, relief="sunken")
         outer_frame.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
 
         self.canvas = tk.Canvas(outer_frame, highlightthickness=0)
         self.scrollbar = ttk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
-        self.scrollable_frame = tk.Frame(self.canvas, padx=10, pady=10, highlightthickness=0)
+        self.scrollable_frame = ttk.Frame(self.canvas, padding=(10, 10))
 
         self.scrollable_frame.bind(
             "<Configure>",
@@ -78,7 +78,7 @@ class _PluginUriSelect(tk.Toplevel):
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        self.plugin_frame = tk.Frame(self.scrollable_frame)
+        self.plugin_frame = ttk.Frame(self.scrollable_frame)
         self.plugin_frame.grid(row=0, column=0, sticky='nsew')
 
         config: dict[str, typing.Any] = {
@@ -101,7 +101,7 @@ class _PluginUriSelect(tk.Toplevel):
 
         self.plugin_entry.arg = None
 
-        self.button_frame = tk.Frame(self)
+        self.button_frame = ttk.Frame(self)
         self.button_frame.grid(row=2, column=0, pady=(0, 5))
 
         self.button = ttk.Button(self.button_frame, text='Insert', command=self._insert_action)

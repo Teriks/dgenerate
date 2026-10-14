@@ -29,6 +29,7 @@ import re
 import shutil
 import subprocess
 import tkinter as tk
+import tkinter.ttk as ttk
 from pathlib import Path
 
 from .base_uv_handler import BasePlatformHandler
@@ -223,7 +224,7 @@ class LinuxPlatformHandler(BasePlatformHandler):
             text_widget.config(state=tk.DISABLED)
 
             # Add buttons
-            button_frame = tk.Frame(dialog)
+            button_frame = ttk.Frame(dialog)
             button_frame.pack(pady=10)
 
             result = {'continue': False}
@@ -236,10 +237,10 @@ class LinuxPlatformHandler(BasePlatformHandler):
                 result['continue'] = False
                 dialog.destroy()
 
-            tk.Button(button_frame, text="Continue Anyway",
-                      command=on_continue, width=15).pack(side=tk.LEFT, padx=5)
-            tk.Button(button_frame, text="Cancel Installation",
-                      command=on_cancel, width=15).pack(side=tk.LEFT, padx=5)
+            ttk.Button(button_frame, text="Continue Anyway",
+                       command=on_continue, width=15).pack(side=tk.LEFT, padx=5)
+            ttk.Button(button_frame, text="Cancel Installation",
+                       command=on_cancel, width=15).pack(side=tk.LEFT, padx=5)
 
             # Wait for user response
             dialog.wait_window()

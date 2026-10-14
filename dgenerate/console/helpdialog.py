@@ -27,13 +27,14 @@ import dgenerate.console.finddialog as _finddialog
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 import dgenerate.console.themetext as _themetext
 
+
 class HelpDialog:
 
     def __init__(self,
                  parent,
                  title: str,
                  help_text: str,
-                 size: tuple = (850,600),
+                 size: tuple = (850, 600),
                  dock_to_right: bool = True,
                  position_widget=None
                  ):
@@ -67,7 +68,7 @@ class HelpDialog:
         self.top.attributes('-topmost', 1)
         self.top.attributes('-topmost', 0)
 
-        frame = tk.Frame(self.top)
+        frame = ttk.Frame(self.top)
         frame.pack(expand=True, fill='both')
 
         v_scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL)
@@ -200,7 +201,7 @@ class HelpDialog:
 def show_help_dialog(parent,
                      title: str,
                      help_text: str,
-                     size: tuple = (850,600),
+                     size: tuple = (850, 600),
                      dock_to_right: bool = True,
                      position_widget=None) -> HelpDialog:
     """

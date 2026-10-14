@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.formentries.entry as _entry
 from dgenerate.console.spinbox import FloatSpinbox
@@ -36,7 +37,7 @@ class _FloatEntry(_entry._Entry):
         self.text_var = tk.StringVar(
             value=self.config.get('default', ''))
 
-        self.label_widget = tk.Label(
+        self.label_widget = ttk.Label(
             self.master,
             text=self.get_label('Float') + ' (float)', anchor='e')
 

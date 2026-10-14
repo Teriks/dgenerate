@@ -27,8 +27,8 @@ import dgenerate.console.textentry as _t_entry
 from dgenerate.console.mousewheelbind import bind_mousewheel, scroll_direction, un_bind_mousewheel
 
 
-def _create_spin_buttons(master, increment, decrement) -> tk.Frame:
-    button_frame = tk.Frame(master)
+def _create_spin_buttons(master, increment, decrement) -> ttk.Frame:
+    button_frame = ttk.Frame(master)
     style = ttk.Style(master)
     style.configure('DgenerateSpin.TButton', padding=0)
 
@@ -78,7 +78,7 @@ class IntSpinbox(_t_entry.TextEntry):
         self.bind('<Up>', self._on_up_arrow)
         self.bind('<Down>', self._on_down_arrow)
 
-    def create_spin_buttons(self, master) -> tk.Frame:
+    def create_spin_buttons(self, master) -> ttk.Frame:
         return _create_spin_buttons(
             master,
             increment=lambda: self.do_increment(1),
@@ -214,7 +214,7 @@ class FloatSpinbox(_t_entry.TextEntry):
         self.bind('<Up>', self._on_up_arrow)
         self.bind('<Down>', self._on_down_arrow)
 
-    def create_spin_buttons(self, master) -> tk.Frame:
+    def create_spin_buttons(self, master) -> ttk.Frame:
         return _create_spin_buttons(
             master,
             increment=lambda: self.do_increment(1),
@@ -307,7 +307,7 @@ class FloatSpinbox(_t_entry.TextEntry):
                 if value < self.from_ or value > self.to:
                     self.delete(0, tk.END)
                     self.insert(0, str(max(self.from_,
-                                       min(self.to, round(value, 2)))))
+                                           min(self.to, round(value, 2)))))
                     # Validation gets blown out by the edits for
                     # god knows what reason, this took ages to figure out
                     self._setup_validation()

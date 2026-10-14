@@ -143,10 +143,10 @@ class _PluginSchemaEntry(_entry._Entry):
         self._apply_config_default()
 
     def _create_dropdown(self, label: str, values: list[str]):
-        self.dropdown_label = tk.Label(self._dropdown_parent, text=label)
+        self.dropdown_label = ttk.Label(self._dropdown_parent, text=label)
 
         self.plugin_dropdown = ComboBox(self._dropdown_parent, textvariable=self.plugin_name_var)
-        
+
         if self.declared_optional:
             self.plugin_dropdown['values'] = ('',) + tuple(values)
             self.plugin_name_var.set('')
@@ -277,14 +277,13 @@ class _PluginSchemaEntry(_entry._Entry):
             self.dynamic_widgets.append(button_frame)
             return button
         else:
-            button_frame = tk.Frame(self.master)
+            button_frame = ttk.Frame(self.master)
             button_frame.grid(row=row, column=2, padx=_entry.ROW_XPAD, sticky='w')
             self._button_frame_map[row] = button_frame
             button = ttk.Button(button_frame, *args, **kwargs)
             button.pack(side='left')
             self.dynamic_widgets.append(button_frame)
             return button
-
 
     def _add_file_in_button(self, row, entry, dialog_args):
         self._add_field_button(
@@ -327,17 +326,18 @@ class _PluginSchemaEntry(_entry._Entry):
             entry.delete(0, tk.END)
             entry.insert(0, file_path)
 
-    def _create_dropdown_entry(self, values: list[str], default_value: typing.Any, optional: bool, row: int) -> _PluginArgEntry:
+    def _create_dropdown_entry(self, values: list[str], default_value: typing.Any, optional: bool,
+                               row: int) -> _PluginArgEntry:
         if default_value:
             variable = tk.StringVar(value=str(default_value))
         else:
             variable = tk.StringVar(value='' if (optional or not values) else values[0])
-            
+
         if optional:
             values = [''] + values
-            
+
         entry = ComboBox(self.master, textvariable=variable, values=values)
-        
+
         entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
         return _PluginArgEntry(raw=False, widgets=[entry], variable=variable)
 
@@ -365,7 +365,7 @@ class _PluginSchemaEntry(_entry._Entry):
                 values = ['True', 'False', 'None']
 
                 entry = ComboBox(self.master, textvariable=variable, values=values)
-                
+
                 entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
                 return True, _PluginArgEntry(raw=False, widgets=[entry], variable=variable)
             else:
@@ -409,7 +409,6 @@ class _PluginSchemaEntry(_entry._Entry):
             widget_rows=entry.widget_rows,
             widgets_delete=entry.destroy_dynamic_widgets
         )
-
 
     def _create_prompt_weighter_entry(self, row):
         # prevent circular import
@@ -513,7 +512,7 @@ class _PluginSchemaEntry(_entry._Entry):
                 if not files and arg_entry.raw else \
                 f"{optional_label}{param_name}"
 
-        label = tk.Label(self.master, text=label_text)
+        label = ttk.Label(self.master, text=label_text)
         self.dynamic_widgets.append(label)
         label.grid(row=row, column=0, padx=_entry.ROW_XPAD, sticky="e")
 
@@ -559,7 +558,8 @@ class _PluginSchemaEntry(_entry._Entry):
 
     def _show_help(self):
         title = f'{self._label} Help: {self.plugin_name_var.get()}'
-        _helpdialog.show_help_dialog(tk._default_root, title, self.current_help_text, position_widget=self.form.winfo_toplevel())
+        _helpdialog.show_help_dialog(tk._default_root, title, self.current_help_text,
+                                     position_widget=self.form.winfo_toplevel())
 
     def _show_help_button(self):
         if self.plugin_help_button is not None:
