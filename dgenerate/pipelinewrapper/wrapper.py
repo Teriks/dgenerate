@@ -3845,7 +3845,12 @@ class DiffusionPipelineWrapper:
                               generator=generator,
                               enabled=user_args.hi_diffusion,
                               no_raunet=user_args.hi_diffusion_no_raunet,
-                              no_window_attn=user_args.hi_diffusion_no_win_attn):
+                              no_window_attn=user_args.hi_diffusion_no_win_attn), \
+                _sada_context(self._pipeline,
+                              width=self._inference_width,
+                              height=self._inference_height,
+                              enabled=user_args.sada,
+                              **self._get_sada_args(user_args)):
 
             if self._parsed_adetailer_detector_uris:
                 image = generate_asdff().images
