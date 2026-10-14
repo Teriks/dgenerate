@@ -612,7 +612,7 @@ def _call_wan(wrapper, user_args):
         raise _pipelines.UnsupportedPipelineConfigError(
             '--wan-conditioning-scales is only used with a Wan VACE checkpoint.')
 
-    output = _vp._invoke(wrapper, pipe, kwargs)
+    output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
     frames = _vp.frames_from_output(getattr(output, 'frames', output))
     return frames, None, None, fps
 
@@ -794,7 +794,7 @@ def _call_wan_animate(wrapper, user_args):
         kwargs['mask_video'] = user_args.mask_video_frames[:len(pose)]
 
     _vp._set_ltx_vae_slicing(pipe, bool(user_args.vae_slicing))
-    output = _vp._invoke(wrapper, pipe, kwargs)
+    output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
     frames = _vp.frames_from_output(getattr(output, 'frames', output))
     return frames[:len(pose)], None, None, fps
 

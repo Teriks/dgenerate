@@ -20,6 +20,7 @@ order: 18
 @checkboxwithfloatarg[{"id": "tc", "label":"Use TeaCache", "default":false, "float-arg":"--tea-cache-rel-l1-thresholds", "float-label":"TeaCache L1 Threshold", "float": 0.6, "min":0.0, "max":1.0}]
 @switch[{"id": "sada", "label":"Use SADA", "arg":"--sada", "exclude": ["tc"]}]
 @switch[{"id": "sp", "label":"Use Spectrum", "arg":"--spectrum", "exclude": ["tc", "sada"]}]
+@switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["tc", "sada", "sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @quantizer[{"divider-after":true}]

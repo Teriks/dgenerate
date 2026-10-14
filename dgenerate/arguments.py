@@ -3003,6 +3003,37 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '--cache-dit',
+            action='store_true', default=False, dest='cache_dit',
+            help="""Enable Cache-DiT's default training-free cache acceleration for supported Diffusers DiT pipelines.
+
+                     Cache-DiT supports image, video, and audio transformer pipelines, including Flux,
+                     Wan, Wan-Animate, Wan-Animate-2, Stable Diffusion 3, and Qwen-Image. Cache-DiT's
+                     default cache settings are used.
+                     This option cannot be combined with --tea-cache, --spectrum, or --sada.
+
+                     NOWRAP!
+                     See: https://cache-dit.readthedocs.io/en/latest/
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--cache-dit-config', metavar='FILE', default=None, dest='cache_dit_config',
+            help="""Cache-DiT YAML settings for cache policies, parallelism, quantization, attention,
+                     and layerwise offload. Supplying this option also enables Cache-DiT.
+
+                     The file uses Cache-DiT's native YAML sections. Layerwise offload is configured
+                     as a mapping from pipeline component names to Cache-DiT layerwise_offload options.
+                     See: https://cache-dit.readthedocs.io/en/latest/user_guide/LOAD_CONFIGS/
+                     Layerwise offload: https://cache-dit.readthedocs.io/en/latest/user_guide/OFFLOAD/
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-tcr', '--tea-cache-rel-l1-thresholds', metavar='FLOAT',
             nargs='*', type=_type_tea_cache_rel_l1_thresh, default=None, dest='tea_cache_rel_l1_thresholds',
             help=f"""TeaCache relative L1 thresholds to try when --tea-cache is enabled.

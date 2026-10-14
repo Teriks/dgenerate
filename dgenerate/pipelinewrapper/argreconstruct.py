@@ -94,6 +94,11 @@ def reconstruct_dgenerate_opts(
     if wrapper.second_model_quantizer_uri:
         opts.append(('--second-model-quantizer', wrapper.second_model_quantizer_uri))
 
+    if wrapper.cache_dit_config is not None:
+        opts.append(('--cache-dit-config', str(wrapper.cache_dit_config)))
+    elif args.cache_dit:
+        opts.append(('--cache-dit',))
+
     if not omit_device:
         opts.append(('--device', wrapper.device))
 

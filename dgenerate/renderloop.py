@@ -1060,6 +1060,7 @@ class RenderLoop:
             subfolder=self._c_config.subfolder,
             original_config=self._c_config.original_config,
             second_model_original_config=self._c_config.second_model_original_config,
+            cache_dit_config=self._c_config.cache_dit_config,
             unet_uri=self._c_config.unet_uri,
             second_model_unet_uri=self._c_config.second_model_unet_uri,
             transformer_uri=self._c_config.transformer_uri,
