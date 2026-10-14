@@ -1528,7 +1528,7 @@ Help Output
             ``--spectrum-flex-windows 3`` is the aggressive schedule. Qwen-Image edit drifts more than
             text-to-image; raise ``--spectrum-warmup-steps`` or lower the flex window there.
             
-            This is supported for: --model-type sd3, sd3-pix2pix, sdxl, sdxl-pix2pix, flux, flux-fill,
+            This is supported for: --model-type sd3, sd3-pix2pix, sdxl, sdxl-pix2pix, kolors, flux, flux-fill,
             flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
             qwen-image-layered, wan, wan-animate, and wan-animate-2.
             --------------------------------------------------------
@@ -13713,7 +13713,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [98419566096135]
+            Value: [86470691374971]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

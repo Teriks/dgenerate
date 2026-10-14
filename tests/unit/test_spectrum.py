@@ -176,6 +176,7 @@ class TestSpectrum(unittest.TestCase):
         self.assertTrue(_pipelinewrapper.model_type_supports_spectrum('wan'))
         self.assertTrue(_pipelinewrapper.model_type_supports_spectrum('sdxl'))
         self.assertTrue(_pipelinewrapper.model_type_supports_spectrum('sdxl-pix2pix'))
+        self.assertTrue(_pipelinewrapper.model_type_supports_spectrum('kolors'))
         self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('sd'))
         self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('ltx'))
         self.assertIsInstance(_pipelinewrapper.SPECTRUM_MODEL_TYPES, tuple)
