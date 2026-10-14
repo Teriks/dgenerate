@@ -1,0 +1,9 @@
+DyPE adaptation
+
+The DyPE frequency interpolation in this package is adapted from
+https://github.com/guyyariv/DyPE and is distributed under the MIT License in
+the adjacent LICENSE file.
+
+The upstream project README states that the work is patent pending and asks
+users to contact the authors about commercial use or licensing. The MIT source
+license does not resolve that separate notice.

@@ -272,6 +272,16 @@ Default amount added to the Spectrum skip interval after each full pass.
 ``3`` is the paper's aggressive schedule.
 """
 
+DEFAULT_DYPE_METHOD: str = 'yarn'
+"""
+Default position encoding method used by the DyPE adapter.
+"""
+
+DYPE_METHODS: tuple[str, ...] = ('yarn', 'ntk', 'base')
+"""
+Position encoding methods exposed by the DyPE adapter.
+"""
+
 DEFAULT_RAS_SAMPLE_RATIO: float = 0.5
 """
 Default sample ratio for RAS (Reinforcement Attention System) for Stable Diffusion 3.

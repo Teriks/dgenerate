@@ -846,6 +846,34 @@ def model_type_supports_spectrum(model_type: ModelType | str) -> bool:
     return _model_type_supported(model_type, SPECTRUM_MODEL_TYPES)
 
 
+DYPE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.FLUX,
+    ModelType.FLUX_FILL,
+    ModelType.FLUX_KONTEXT,
+    ModelType.FLUX2,
+    ModelType.FLUX2_KLEIN_KV,
+    ModelType.QWEN_IMAGE,
+    ModelType.QWEN_IMAGE_EDIT,
+    ModelType.QWEN_IMAGE_LAYERED,
+    ModelType.Z_IMAGE,
+    ModelType.Z_IMAGE_OMNI,
+    ModelType.WAN,
+    ModelType.WAN_ANIMATE,
+    ModelType.WAN_ANIMATE_2,
+)
+"""``--model-type`` values that accept DyPE."""
+
+
+def model_type_supports_dype(model_type: ModelType | str) -> bool:
+    """
+    DyPE can scale this transformer's spatial RoPE.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return _model_type_supported(model_type, DYPE_MODEL_TYPES)
+
+
 def model_type_is_s_cascade(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent a Stable Cascade related model?

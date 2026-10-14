@@ -1277,9 +1277,33 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     Cache-DiT supports image, video, and audio transformer pipelines such as Flux,
     Wan, Stable Diffusion 3, and Qwen-Image. The package's default cache settings
-    are used. This cannot be combined with TeaCache, Spectrum, or SADA.
+    are used. This cannot be combined with TeaCache, Spectrum, SADA, or DyPE.
 
     See: https://cache-dit.readthedocs.io/en/latest/
+    """
+
+    dype: bool = False
+    """
+    Enable DyPE's positional scaling methods for supported transformer pipelines.
+
+    Flux.1 and Qwen-Image use the upstream architectures. Flux Fill/Kontext,
+    Qwen Edit/Layered, Flux.2, Z-Image, and Wan use experimental adapters.
+
+    DyPE cannot be combined with Cache-DiT, TeaCache, Spectrum, or SADA.
+    """
+
+    dype_methods: _types.OptionalStrings = None
+    """
+    DyPE position encoding methods to try in turn: ``yarn`` (the default),
+    ``ntk``, or ``base`` (the unmodified RoPE baseline). Requires ``dype=True``.
+    """
+
+    dype_base_resolutions: _types.OptionalIntegers = None
+    """
+    Reference long-side resolutions in pixels for DyPE. Defaults to 1024 for
+    Flux/Flux.2/Z-Image, 1328 for Qwen-Image, and 832 for Wan. Supplying values
+    requires ``dype=True`` and values must be at least 16 pixels. Each value
+    supplied will be tried in turn.
     """
 
     tea_cache_rel_l1_thresholds: _types.OptionalFloats = None
@@ -2533,6 +2557,52 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("freeu_params")} not supported with '
                     f'{a_namer("model_type")} {_pipelinewrapper.get_model_type_string(self.model_type)}.'
                 )
+
+        if self.cache_dit_config is not None:
+            self.cache_dit = True
+        if self.dype_methods is not None or self.dype_base_resolutions is not None:
+            self.dype = True
+
+        if self.dype_methods:
+            invalid_dype_methods = [
+                method for method in self.dype_methods
+                if method not in _pipelinewrapper.constants.DYPE_METHODS]
+            if invalid_dype_methods:
+                raise RenderLoopConfigError(
+                    f'{a_namer("dype_methods")} values must be one of: '
+                    f'{", ".join(_pipelinewrapper.constants.DYPE_METHODS)}.')
+        if self.dype_base_resolutions and any(
+                resolution < 16 for resolution in self.dype_base_resolutions):
+            raise RenderLoopConfigError(
+                f'{a_namer("dype_base_resolutions")} values must be at least 16 pixels.')
+
+        if self.dype and not _pipelinewrapper.model_type_supports_dype(self.model_type):
+            raise RenderLoopConfigError(
+                f'{a_namer("dype")} is supported for {a_namer("model_type")} '
+                f'{_textprocessing.oxford_comma(_pipelinewrapper.DYPE_MODEL_TYPES, "and")}.')
+
+        if self.dype and self.cache_dit:
+            raise RenderLoopConfigError(
+                f'{a_namer("dype")} cannot be used with {a_namer("cache_dit")}.')
+        if self.dype and tea_cache_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("dype")} cannot be used with {a_namer("tea_cache")}.')
+        if self.dype and spectrum_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("dype")} cannot be used with {a_namer("spectrum")}.')
+        if self.dype and sada_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("dype")} cannot be used with {a_namer("sada")}.')
+
+        if self.cache_dit and tea_cache_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("cache_dit")} cannot be used with {a_namer("tea_cache")}.')
+        if self.cache_dit and spectrum_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("cache_dit")} cannot be used with {a_namer("spectrum")}.')
+        if self.cache_dit and sada_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("cache_dit")} cannot be used with {a_namer("sada")}.')
 
     def _check_second_model_compatibility(self, a_namer: typing.Callable[[str], str]):
         """Check compatibility of second model arguments with the primary model type."""
@@ -4356,6 +4426,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.adetailer_mask_blurs,
             self.adetailer_mask_dilations,
             self.adetailer_sizes,
+            self.dype_methods,
+            self.dype_base_resolutions,
             self.tea_cache_rel_l1_thresholds,
             self.spectrum_weights,
             self.spectrum_orders,
@@ -4625,6 +4697,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 sada_max_interval=ov('sada_max_interval', self.sada_max_intervals),
                 tea_cache=ov('tea_cache', [self.tea_cache]),
                 cache_dit=ov('cache_dit', [self.cache_dit]),
+                dype=ov('dype', [self.dype]),
+                dype_method=ov('dype_method', self.dype_methods),
+                dype_base_resolution=ov('dype_base_resolution', self.dype_base_resolutions),
                 tea_cache_rel_l1_threshold=ov('tea_cache_rel_l1_threshold', self.tea_cache_rel_l1_thresholds),
                 spectrum=ov('spectrum', [self.spectrum]),
                 spectrum_weight=ov('spectrum_weight', self.spectrum_weights),

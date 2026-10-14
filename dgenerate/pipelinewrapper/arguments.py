@@ -871,9 +871,39 @@ class DiffusionArguments(_types.SetFromMixin):
     Cache-DiT supports image, video, and audio transformer pipelines such as Flux,
     Wan, Wan-Animate, Wan-Animate-2, Stable Diffusion 3, and Qwen-Image. The
     package's default cache settings are used. This cannot be combined with
-    TeaCache, Spectrum, or SADA.
+    TeaCache, Spectrum, SADA, or DyPE.
 
     See: https://cache-dit.readthedocs.io/en/latest/
+    """
+
+    dype: bool = False
+    """
+    Enable DyPE's positional scaling methods for supported transformer pipelines.
+
+    This adapts spatial positional frequencies during denoising to support
+    generation above the model's reference resolution. It is opt-in and does
+    not add a package dependency.
+
+    Flux.1 and Qwen-Image use the upstream architectures. Flux Fill/Kontext,
+    Qwen Edit/Layered, Flux.2, Z-Image, and Wan are experimental adapters.
+
+    DyPE cannot be combined with Cache-DiT, TeaCache, Spectrum, or SADA.
+    Those features reuse or skip denoiser work from an earlier step, which
+    would keep positional frequencies from the wrong timestep.
+    """
+
+    dype_method: _types.OptionalString = None
+    """
+    Position encoding method for DyPE: ``yarn`` (the default), ``ntk``, or
+    ``base`` (the unmodified RoPE baseline). Requires :py:attr:`DiffusionArguments.dype`.
+    """
+
+    dype_base_resolution: _types.OptionalInteger = None
+    """
+    Reference long-side resolution in pixels used by DyPE to determine when
+    positional scaling begins. Defaults to 1024 for Flux/Flux.2/Z-Image,
+    1328 for Qwen-Image, and 832 for Wan. This option requires
+    :py:attr:`DiffusionArguments.dype` and must be at least 16 pixels.
     """
 
     tea_cache_rel_l1_threshold: _types.OptionalFloat = None
@@ -1875,6 +1905,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (format_pag_layers(self.pag_applied_layers), "PAG Applied Layers:"),
             (self.guidance_scale, "Guidance Scale:"),
             (self.sigmas, "Sigmas:"),
+            (self.dype_method, "DyPE Position Encoding Method:"),
+            (self.dype_base_resolution, "DyPE Base Resolution:"),
             (self.tea_cache_rel_l1_threshold, "TeaCache Relative L1 Threshold:"),
             (self.spectrum_weight, "Spectrum Blend Weight:"),
             (self.spectrum_order, "Spectrum Chebyshev Order:"),

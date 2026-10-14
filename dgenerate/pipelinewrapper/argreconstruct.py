@@ -432,6 +432,18 @@ def reconstruct_dgenerate_opts(
     if args.tea_cache:
         opts.append(('--tea-cache',))
 
+    if args.dype and (
+            args.dype_method is None or
+            args.dype_method == _constants.DEFAULT_DYPE_METHOD) and \
+            args.dype_base_resolution is None:
+        opts.append(('--dype',))
+
+    if args.dype_method is not None and args.dype_method != _constants.DEFAULT_DYPE_METHOD:
+        opts.append(('--dype-methods', args.dype_method))
+
+    if args.dype_base_resolution is not None:
+        opts.append(('--dype-base-resolutions', args.dype_base_resolution))
+
     if args.tea_cache_rel_l1_threshold is not None and \
             args.tea_cache_rel_l1_threshold != _constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD:
         opts.append(('--tea-cache-rel-l1-thresholds', args.tea_cache_rel_l1_threshold))
