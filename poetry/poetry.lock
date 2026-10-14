@@ -403,6 +403,33 @@ files = [
 numpy = {version = ">=1.19.0,<3.0.0", markers = "python_version >= \"3.9\""}
 
 [[package]]
+name = "cache-dit"
+version = "1.5.2"
+description = "Cache-DiT: A PyTorch-native Inference Engine with Cache, Parallelism, Quantization and CPU Offload for DiTs."
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "cache_dit-1.5.2-py3-none-any.whl", hash = "sha256:411496be0d44ed8ed7d0449c2693deef6fa46686db8cab51682e5033a36d153f"},
+]
+
+[package.dependencies]
+diffusers = ">=0.36.0"
+packaging = "*"
+pyyaml = "*"
+torch = ">=2.7.1"
+transformers = ">=4.55.2"
+
+[package.extras]
+all = ["cache-dit[metrics]", "cache-dit[parallelism]", "cache-dit[quantization]"]
+dev = ["accelerate", "expecttest", "ftfy", "hypothesis", "opencv-python-headless", "packaging", "peft", "pre-commit", "protobuf", "pytest (>=7.0.0,<8.0.0)", "pytest-html", "scikit-image", "sentencepiece"]
+docs = ["mkdocs (==1.6.1)", "mkdocs-api-autonav", "mkdocs-awesome-nav", "mkdocs-gen-files", "mkdocs-git-revision-date-localized-plugin", "mkdocs-glightbox", "mkdocs-material (==9.7.1)", "mkdocs-minify-plugin", "mkdocstrings-python", "pydantic", "regex", "ruff"]
+metrics = ["image-reward", "lpips (==0.1.4)", "scikit-image", "scipy"]
+parallelism = ["einops (>=0.8.1)"]
+quantization = ["bitsandbytes (>=0.48.1)", "safetensors (>=0.5.3)", "torchao (>=0.17.0)"]
+ray = ["ray (>=2.0)", "safetensors (>=0.5.3)"]
+
+[[package]]
 name = "catalogue"
 version = "2.0.10"
 description = "Super lightweight function registries for your library"
@@ -6906,4 +6933,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,!=3.14.1,<3.15"
-content-hash = "2bfd3383719f9a08c44e25c0448643dd56880e75cefd5589c254aa7e9ea2807f"
+content-hash = "db0c2bf32f2eff11bca1e1beff96c34454726be850467943edab358accf03a8c"

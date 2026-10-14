@@ -65,6 +65,43 @@ from dgenerate.pipelinewrapper.denoise_range import denoise_range as _denoise_ra
 from dgenerate.pipelinewrapper.denoise_range import supports_native_denoising_start as _supports_native_denoising_start
 
 
+def _get_cache_dit_ray_pipeline_call_proxy(pipeline):
+    # Cache-DiT's Ray pipeline owns its executable model copies in worker actors.
+    # Hiding ``to`` makes the existing call_pipeline helper leave the host copy put.
+    proxy = getattr(pipeline, '_dgenerate_cache_dit_ray_call_proxy', None)
+    if proxy is not None:
+        return proxy
+
+    original_class = getattr(
+        pipeline, '_cache_dit_ray_pipeline_original_class', type(pipeline))
+
+    class _CacheDitRayPipelineCallProxy:
+        def __init__(self, target):
+            self._cache_dit_target = target
+
+        @property
+        def __class__(self):
+            return original_class
+
+        def __getattr__(self, name):
+            if name == 'to':
+                raise AttributeError(name)
+            return getattr(self._cache_dit_target, name)
+
+        def __call__(self, *args, **kwargs):
+            return self._cache_dit_target(*args, **kwargs)
+
+    proxy_call = functools.wraps(original_class.__call__)(
+        _CacheDitRayPipelineCallProxy.__call__)
+    proxy_type = type(
+        f'Dgenerate{original_class.__name__}CacheDitRayProxy',
+        (_CacheDitRayPipelineCallProxy,),
+        {'__call__': proxy_call})
+    proxy = proxy_type(pipeline)
+    pipeline._dgenerate_cache_dit_ray_call_proxy = proxy
+    return proxy
+
+
 class _InpaintCropInfo:
     """
     Contains state information for inpaint crop processing.
@@ -455,6 +492,7 @@ class DiffusionPipelineWrapper:
                  model_sequential_offload: bool = False,
                  model_group_offload: bool = False,
                  torch_compile: bool = False,
+                 cache_dit_config: _types.OptionalPath = None,
                  second_model_cpu_offload: bool = False,
                  second_model_sequential_offload: bool = False,
                  second_model_group_offload: bool = False,
@@ -535,6 +573,8 @@ class DiffusionPipelineWrapper:
             every load, with or without this flag. ``DGENERATE_TORCH_COMPILE=0`` leaves every model eager,
             including Wan-Animate-2. Quantized modules and models with no repeated blocks stay eager.
             TorchDynamo, Inductor, and Triton stay quiet unless ``-v`` is set.
+        :param cache_dit_config: Optional YAML configuration for Cache-DiT cache policies,
+            parallelism, quantization, attention, and layerwise offload.
         :param second_model_cpu_offload: Use CPU offloading for the SDXL Refiner or Stable Cascade Decoder  via the accelerate module?
         :param second_model_sequential_offload: Use sequential CPU offloading for the SDXL Refiner or Stable Cascade Decoder via the accelerate module?
         :param second_model_group_offload: Offload the SDXL Refiner or Stable Cascade Decoder one layer group at a time.
@@ -773,6 +813,7 @@ class DiffusionPipelineWrapper:
         self._model_group_offload = model_group_offload
         self._torch_compile = torch_compile
         self._model_sequential_offload = model_sequential_offload
+        self._cache_dit_config = cache_dit_config
 
         self._parsed_sdxl_refiner_uri = None
         self._sdxl_refiner_uri = sdxl_refiner_uri
@@ -1096,6 +1137,15 @@ class DiffusionPipelineWrapper:
         Current ``--model-group-offload`` value.
         """
         return self._model_group_offload
+
+    @property
+    def cache_dit_config(self) -> _types.OptionalPath:
+        """
+        Current ``--cache-dit-config`` path, or ``None`` when no config is set.
+
+        Supplying a Cache-DiT config also enables Cache-DiT.
+        """
+        return self._cache_dit_config
 
     @property
     def torch_compile(self) -> bool:
@@ -2975,8 +3025,9 @@ class DiffusionPipelineWrapper:
                     prompt_weighter=prompt_weighter
                 )
             else:
-                pipeline_output = _pipelines.call_pipeline(
+                pipeline_output = self._call_pipeline_with_cache_dit(
                     pipeline=self._pipeline,
+                    user_args=user_args,
                     prompt_weighter=prompt_weighter,
                     device=self._device,
                     output_type=output_type,
@@ -3145,28 +3196,51 @@ class DiffusionPipelineWrapper:
                     prompt_weighter=None)
 
             output_type = 'latent' if user_args.output_latents else 'pil'
-            pipeline_output = _pipelines.call_pipeline(
+            pipeline_output = self._call_pipeline_with_cache_dit(
                 pipeline=self._pipeline,
+                user_args=user_args,
                 device=self._device,
                 output_type=output_type,
                 **pipeline_args
             )
             return self._create_pipeline_result(pipeline_output, output_type, user_args, pipeline_args)
 
+    def _call_pipeline_with_cache_dit(self,
+                                      pipeline: diffusers.DiffusionPipeline,
+                                      user_args: DiffusionArguments,
+                                      **kwargs):
+        secondary_pipeline = (
+            pipeline is self._s_cascade_decoder_pipeline or
+            pipeline is self._sdxl_refiner_pipeline
+        )
+        if secondary_pipeline:
+            offload_enabled = (
+                self._second_model_cpu_offload or self._second_model_sequential_offload or
+                self._second_model_group_offload)
+            quantizer_enabled = bool(self._second_model_quantizer_uri)
+        else:
+            offload_enabled = (
+                self._model_cpu_offload or self._model_sequential_offload or
+                self._model_group_offload)
+            quantizer_enabled = bool(self._quantizer_uri)
+        with _pipelines.cache_dit_context(
+                pipeline,
+                user_args.cache_dit,
+                config_path=self._cache_dit_config,
+                device=self._device,
+                offload_enabled=offload_enabled,
+                compile_enabled=self._torch_compile,
+                quantizer_enabled=quantizer_enabled) as configured_pipeline:
+            call_pipeline = configured_pipeline
+            if getattr(configured_pipeline, '_cache_dit_ray_pipeline_enabled', False):
+                call_pipeline = _get_cache_dit_ray_pipeline_call_proxy(configured_pipeline)
+            return _pipelines.call_pipeline(pipeline=call_pipeline, **kwargs)
+
     def _call_asdff(self,
                     user_args: DiffusionArguments,
                     prompt_weighter: _promptweighters.PromptWeighter,
                     pipeline_args: dict[str, typing.Any],
                     batch_size: int):
-        asdff_pipe = _asdff_base.AdPipelineBase(self._pipeline)
-
-        # use the provided pipe as is, it must be
-        # some sort of inpainting pipe
-        asdff_pipe.auto_detect_pipe = False
-
-        # should we crop any control image the same way that we crop the mask?
-        asdff_pipe.crop_control_image = self._adetailer_crop_control_image
-
         asdff_output = None
         for detector_uri in self._parsed_adetailer_detector_uris:
             input_images = pipeline_args['image'] if asdff_output is None else asdff_output.images
@@ -3239,25 +3313,43 @@ class DiffusionPipelineWrapper:
                 _messages.log(f'Overriding global adetailer size '
                               f'value with adetailer detector URI value: {detector_uri.size}')
 
-            asdff_output = asdff_pipe(
-                pipeline_args=pipeline_args,
-                model_path=detector_uri.get_model_path(
-                    local_files_only=self._local_files_only, use_auth_token=self._auth_token),
-                images=input_images,
-                device=self._device,
-                detector_device=_types.default(detector_uri.device, self._device),
-                confidence=detector_uri.confidence,
-                prompt_weighter=prompt_weighter,
-                index_filter=index_filter,
-                class_filter=class_filter,
-                mask_blur=mask_blur,
-                mask_shape=mask_shape,
-                detector_padding=detector_padding,
-                mask_padding=mask_padding,
-                mask_dilation=mask_dilation,
-                model_masks=model_masks,
-                processing_size=processing_size
-            )
+            with _pipelines.cache_dit_context(
+                    self._pipeline,
+                    user_args.cache_dit,
+                    config_path=self._cache_dit_config,
+                    device=self._device,
+                    offload_enabled=(self._model_cpu_offload or self._model_sequential_offload or
+                                     self._model_group_offload),
+                    compile_enabled=self._torch_compile,
+                    quantizer_enabled=bool(self._quantizer_uri)
+            ) as configured_pipeline:
+                asdff_pipe = _asdff_base.AdPipelineBase(configured_pipeline)
+
+                # use the provided pipe as is, it must be some sort of inpainting pipe
+                asdff_pipe.auto_detect_pipe = False
+
+                # should we crop any control image the same way that it crops the mask?
+                asdff_pipe.crop_control_image = self._adetailer_crop_control_image
+
+                asdff_output = asdff_pipe(
+                    pipeline_args=pipeline_args,
+                    model_path=detector_uri.get_model_path(
+                        local_files_only=self._local_files_only, use_auth_token=self._auth_token),
+                    images=input_images,
+                    device=self._device,
+                    detector_device=_types.default(detector_uri.device, self._device),
+                    confidence=detector_uri.confidence,
+                    prompt_weighter=prompt_weighter,
+                    index_filter=index_filter,
+                    class_filter=class_filter,
+                    mask_blur=mask_blur,
+                    mask_shape=mask_shape,
+                    detector_padding=detector_padding,
+                    mask_padding=mask_padding,
+                    mask_dilation=mask_dilation,
+                    model_masks=model_masks,
+                    processing_size=processing_size
+                )
 
         return self._create_pipeline_result(asdff_output, user_args=user_args, pipeline_kwargs=pipeline_args)
 
@@ -3289,8 +3381,9 @@ class DiffusionPipelineWrapper:
             second_model=False
         )
 
-        prior = _pipelines.call_pipeline(
+        prior = self._call_pipeline_with_cache_dit(
             pipeline=self._pipeline,
+            user_args=user_args,
             device=self._device,
             prompt_weighter=prompt_weighter,
             **pipeline_args)
@@ -3316,9 +3409,10 @@ class DiffusionPipelineWrapper:
 
         output_type = 'latent' if user_args.output_latents else 'pil'
 
-        pipeline_output = _pipelines.call_pipeline(
-            image_embeddings=image_embeddings,
+        pipeline_output = self._call_pipeline_with_cache_dit(
             pipeline=self._s_cascade_decoder_pipeline,
+            user_args=user_args,
+            image_embeddings=image_embeddings,
             device=self._device,
             prompt_weighter=self._get_second_model_prompt_weighter(user_args),
             output_type=output_type,
@@ -3655,8 +3749,9 @@ class DiffusionPipelineWrapper:
                 else:
                     output_type = 'latent' if user_args.output_latents else 'pil'
 
-                    pipeline_output = _pipelines.call_pipeline(
+                    pipeline_output = self._call_pipeline_with_cache_dit(
                         pipeline=self._pipeline,
+                        user_args=user_args,
                         prompt_weighter=prompt_weighter,
                         device=self._device,
                         output_type=output_type,
@@ -3703,8 +3798,9 @@ class DiffusionPipelineWrapper:
             if self._parsed_adetailer_detector_uris:
                 image = generate_asdff().images
             else:
-                image = _pipelines.call_pipeline(
+                image = self._call_pipeline_with_cache_dit(
                     pipeline=self._pipeline,
+                    user_args=user_args,
                     device=self._device,
                     prompt_weighter=prompt_weighter,
                     output_type=output_type,
@@ -3899,8 +3995,9 @@ class DiffusionPipelineWrapper:
 
             output_type = 'latent' if user_args.output_latents else 'pil'
 
-            pipeline_output = _pipelines.call_pipeline(
+            pipeline_output = self._call_pipeline_with_cache_dit(
                 pipeline=self._sdxl_refiner_pipeline,
+                user_args=user_args,
                 device=self._device,
                 prompt_weighter=self._get_second_model_prompt_weighter(user_args),
                 output_type=output_type,
@@ -4960,6 +5057,31 @@ class DiffusionPipelineWrapper:
                     'TeaCache does not support group offloading.'
                 )
 
+    @staticmethod
+    def _auto_cache_dit_check(args: DiffusionArguments):
+        if not args.cache_dit:
+            return
+
+        tea_cache_enabled = args.tea_cache
+        sada_enabled = args.sada
+        for prop in args.__dict__:
+            value = getattr(args, prop)
+            if (prop.startswith('tea_cache_') or prop.startswith('sada_')) and \
+                    (value is not None or (isinstance(value, bool) and value)):
+                if prop.startswith('tea_cache_'):
+                    tea_cache_enabled = True
+                else:
+                    sada_enabled = True
+
+        for enabled, name in (
+                (tea_cache_enabled, 'TeaCache'),
+                (args.spectrum, 'Spectrum'),
+                (sada_enabled, 'SADA')):
+            if enabled:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Cache-DiT cannot be used simultaneously with {name}.'
+                )
+
     def _spectrum_settings(self, args: DiffusionArguments) -> _spectrum.SpectrumSettings | None:
         if not args.spectrum:
             return None
@@ -5252,7 +5374,11 @@ class DiffusionPipelineWrapper:
 
         copy_args.set_from(kwargs, missing_value_throws=False)
 
+        if self._cache_dit_config is not None:
+            copy_args.cache_dit = True
+
         self._auto_spectrum_check(copy_args)
+        self._auto_cache_dit_check(copy_args)
         spectrum_token = _spectrum.push(self._spectrum_settings(copy_args))
         try:
             if _enums.model_type_is_video(self._model_type):

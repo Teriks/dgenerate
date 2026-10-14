@@ -1106,8 +1106,12 @@ def _parsed_ic_lora(wrapper) -> _uris.ICLoRAUri | None:
     return _uris.ICLoRAUri.parse(uri) if uri else None
 
 
-def _invoke(wrapper, pipe, kwargs):
-    return _pipelines.call_pipeline(pipe, device=wrapper.device, **kwargs)
+def _invoke(wrapper, pipe, kwargs, user_args):
+    return wrapper._call_pipeline_with_cache_dit(
+        pipeline=pipe,
+        user_args=user_args,
+        device=wrapper.device,
+        **kwargs)
 
 
 # LTX implementation lives in ltx.py. Re-export the names tests and

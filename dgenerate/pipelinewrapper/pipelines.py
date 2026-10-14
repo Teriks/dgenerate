@@ -19,9 +19,11 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
+import contextlib
 import functools
 import gc
 import hashlib
+import importlib
 import inspect
 import logging
 import os
@@ -70,6 +72,385 @@ class UnsupportedPipelineConfigError(Exception):
     configured in a way that is unsupported by that pipeline.
     """
     pass
+
+
+def _cache_dit_custom_block_adapter(cache_dit, pipeline):
+    """Build Cache-DiT adapters for Wan-Animate transformers.
+
+    Cache-DiT's built-in Wan adapter only accepts WanTransformer3DModel and
+    WanVACETransformer3DModel. Wan-Animate uses the same WanTransformerBlock
+    collection, while Wan-Animate-2 has its own single-hidden-state blocks.
+    """
+    transformer = getattr(pipeline, 'transformer', None)
+    if transformer is None:
+        return None
+
+    transformer_type = type(transformer).__name__
+    if transformer_type == 'WanAnimateTransformer3DModel':
+        pattern = cache_dit.ForwardPattern.Pattern_2
+    elif transformer_type == 'WanAnimate2Transformer3DModel':
+        pattern = cache_dit.ForwardPattern.Pattern_3
+    else:
+        return None
+
+    blocks = getattr(transformer, 'blocks', None)
+    if not isinstance(blocks, torch.nn.ModuleList) or not blocks:
+        raise ValueError(
+            f'{transformer_type} does not expose a non-empty transformer.blocks ModuleList.')
+
+    return cache_dit.BlockAdapter(
+        pipe=pipeline,
+        transformer=transformer,
+        blocks=blocks,
+        forward_pattern=pattern,
+        has_separate_cfg=True,
+        # dgenerate compiles repeated block forwards before call time; torch.compile
+        # can hide the concrete method signature from Cache-DiT's introspection.
+        # The exact transformer classes above establish these two known contracts.
+        check_forward_pattern=False,
+    )
+
+
+def _configure_cache_dit_logging() -> None:
+    """Keep Cache-DiT's directly attached loggers quiet unless dgenerate is verbose."""
+    logger_module = importlib.import_module('cache_dit.logger')
+    if _messages.LEVEL & _messages.DEBUG:
+        configured_level = getattr(
+            logging, logger_module.ENV.CACHE_DIT_LOG_LEVEL.upper(), logging.INFO)
+    else:
+        configured_level = logging.CRITICAL
+
+    # Cache-DiT attaches handlers to its own logger tree and disables propagation,
+    # so changing the root logger does not affect its output. Also update its
+    # logger factory level in case Cache-DiT creates additional loggers later.
+    logger_module._LOG_LEVEL = configured_level
+    for name, logger in logging.root.manager.loggerDict.items():
+        if not isinstance(logger, logging.Logger):
+            continue
+        if name == 'CACHE_DIT' or name == 'cache_dit' or name.startswith('cache_dit.'):
+            logger.setLevel(configured_level)
+            for handler in logger.handlers:
+                handler.setLevel(configured_level)
+
+
+@contextlib.contextmanager
+def cache_dit_context(pipeline: diffusers.DiffusionPipeline,
+                      enabled: bool = False,
+                      config_path: _types.OptionalPath = None,
+                      device: str = 'cuda',
+                      offload_enabled: bool = False,
+                      compile_enabled: bool = False,
+                      quantizer_enabled: bool = False):
+    """Enable Cache-DiT for one call and remove its temporary hooks afterward.
+
+    Parallelism, quantization, and attention backend settings mutate the loaded
+    pipeline. When any are configured, Cache-DiT and its cache hooks stay installed
+    for later calls so those settings are not applied repeatedly.
+    """
+    if not enabled:
+        if getattr(pipeline, '_dgenerate_cache_dit_setup', None) is not None:
+            raise UnsupportedPipelineConfigError(
+                'This pipeline already has persistent Cache-DiT settings applied and cannot be '
+                'reused with Cache-DiT disabled.')
+        yield pipeline
+        return
+
+    try:
+        import cache_dit
+    except ModuleNotFoundError as e:
+        if e.name != 'cache_dit':
+            raise
+        raise UnsupportedPipelineConfigError(
+            'Cache-DiT was requested, but the cache-dit package is not installed.'
+        ) from e
+
+    _configure_cache_dit_logging()
+
+    try:
+        import yaml
+
+        raw_config = {}
+        config_signature = None
+        if config_path is not None:
+            with open(config_path, 'r', encoding='utf-8') as config_file:
+                loaded_config = yaml.safe_load(config_file)
+            if loaded_config is None:
+                raw_config = {}
+            elif isinstance(loaded_config, dict):
+                raw_config = loaded_config
+            else:
+                raise ValueError('The YAML document must contain a mapping at its root.')
+
+        raw_config = dict(raw_config)
+        layerwise_config = raw_config.pop('layerwise_offload', None)
+        raw_modifiers = raw_config.pop('params_modifiers', None)
+
+        # Cache-DiT's loader understands its native cache, calibrator, parallelism,
+        # attention, and quantization sections. Preserve its legacy flat cache format,
+        # while ensuring an empty cache_config is present for optimization-only files.
+        native_config = dict(raw_config)
+        native_sections = {
+            'cache_config', 'calibrator_config', 'parallelism_config',
+            'attention_backend', 'quantize_config'}
+        if 'cache_config' not in native_config:
+            legacy_options = {key: value for key, value in native_config.items()
+                              if key not in native_sections}
+            if not legacy_options:
+                native_config['cache_config'] = {}
+            elif any(key in native_config for key in native_sections - {'cache_config'}):
+                native_config['cache_config'] = legacy_options
+                for key in legacy_options:
+                    native_config.pop(key)
+
+        def _load_python_object(reference, key, callable_required=False):
+            if not isinstance(reference, str) or not reference.startswith('python:'):
+                raise ValueError(
+                    f'{key} must use a python:module:attribute import reference.')
+            module_name, separator, attribute_path = reference[7:].rpartition(':')
+            if not separator or not module_name or not attribute_path:
+                raise ValueError(
+                    f'{key} must use the form python:module:attribute.')
+            value = importlib.import_module(module_name)
+            for attribute in attribute_path.split('.'):
+                value = getattr(value, attribute)
+            if callable_required and not callable(value):
+                raise ValueError(f'{key} import reference must resolve to a callable.')
+            return value
+
+        parallelism_options = native_config.get('parallelism_config')
+        if isinstance(parallelism_options, dict):
+            for key in ('ray_transfer_fn', 'cp_plan'):
+                reference = parallelism_options.get(key)
+                if isinstance(reference, str) and reference.startswith('python:'):
+                    parallelism_options[key] = _load_python_object(
+                        reference, f'parallelism_config.{key}', callable_required=(key == 'ray_transfer_fn'))
+                elif key == 'ray_transfer_fn' and reference is not None and not callable(reference):
+                    raise ValueError(
+                        'parallelism_config.ray_transfer_fn must resolve to a callable.')
+        ray_enabled = bool(
+            (parallelism_options or {}).get('use_ray', False))
+        if isinstance(parallelism_options, dict) and not parallelism_options.get('use_ray', False):
+            parallel_sizes = (
+                parallelism_options.get('ulysses_size'),
+                parallelism_options.get('ring_size'),
+                parallelism_options.get('tp_size'))
+            if any(size not in (None, 1, '1') for size in parallel_sizes) and \
+                    not torch.distributed.is_initialized():
+                raise ValueError(
+                    'Native Cache-DiT parallelism requires an initialized torch.distributed '
+                    'process group. dgenerate does not initialize process groups; use '
+                    'parallelism_config.use_ray: true for the standalone CLI, or initialize '
+                    'torch.distributed in the host application.')
+
+        cache_configs = cache_dit.load_configs(native_config, return_dict=True)
+        custom_block_adapter = _cache_dit_custom_block_adapter(cache_dit, pipeline)
+        if ray_enabled and custom_block_adapter is not None:
+            raise ValueError(
+                'Cache-DiT Ray parallelism does not support custom BlockAdapter models, '
+                'including Wan-Animate and Wan-Animate-2.')
+
+        def _make_modifier(modifier_config):
+            if isinstance(modifier_config, list):
+                return [_make_modifier(item) for item in modifier_config]
+            if not isinstance(modifier_config, dict):
+                raise ValueError('Each params_modifiers entry must be a mapping.')
+
+            modifier_config = dict(modifier_config)
+            cache_options = modifier_config.pop('cache_config', None)
+            calibrator_options = modifier_config.pop('calibrator_config', None)
+            modifier_kwargs = modifier_config.pop('kwargs', {}) or {}
+            if modifier_config:
+                raise ValueError(
+                    'Unknown params_modifiers keys: ' + ', '.join(sorted(modifier_config)))
+            if ((cache_options is not None and not isinstance(cache_options, dict)) or
+                    (calibrator_options is not None and not isinstance(calibrator_options, dict))):
+                raise ValueError('params_modifiers cache_config and calibrator_config must be mappings.')
+            if not isinstance(modifier_kwargs, dict):
+                raise ValueError('params_modifiers kwargs must be a mapping.')
+
+            modifier_native_config = {}
+            if cache_options is not None:
+                modifier_native_config['cache_config'] = cache_options
+            if calibrator_options is not None:
+                modifier_native_config['calibrator_config'] = calibrator_options
+            if modifier_native_config:
+                modifier_configs = cache_dit.load_configs(
+                    modifier_native_config, return_dict=True, reset=True)
+            else:
+                modifier_configs = {'cache_config': None, 'calibrator_config': None}
+            return cache_dit.ParamsModifier(
+                cache_config=modifier_configs['cache_config'],
+                calibrator_config=modifier_configs['calibrator_config'],
+                **modifier_kwargs)
+
+        if raw_modifiers is None:
+            params_modifiers = None
+        else:
+            params_modifiers = _make_modifier(raw_modifiers)
+
+        if layerwise_config is None:
+            layerwise_components = {}
+        elif not isinstance(layerwise_config, dict):
+            raise ValueError('layerwise_offload must map pipeline component names to option mappings.')
+        else:
+            layerwise_components = layerwise_config
+            for component_name, component_options in layerwise_components.items():
+                if not isinstance(component_name, str) or not component_name:
+                    raise ValueError('layerwise_offload component names must be non-empty strings.')
+                if component_options is None:
+                    layerwise_components[component_name] = {}
+                elif not isinstance(component_options, dict):
+                    raise ValueError(
+                        f'layerwise_offload.{component_name} must be an option mapping.')
+                elif isinstance(component_options.get('module_filter'), str):
+                    component_options['module_filter'] = _load_python_object(
+                        component_options['module_filter'],
+                        f'layerwise_offload.{component_name}.module_filter',
+                        callable_required=True)
+
+        if layerwise_components and offload_enabled:
+            raise ValueError(
+                'Cache-DiT layerwise offload cannot be combined with dgenerate model offloading.')
+        if cache_configs['quantize_config'] is not None and quantizer_enabled:
+            raise ValueError(
+                'Cache-DiT quantization cannot be combined with dgenerate --quantizer settings.')
+        if ray_enabled and offload_enabled:
+            raise ValueError(
+                'Cache-DiT Ray parallelism cannot be combined with dgenerate model offloading.')
+
+        model_mutating_config = bool(
+            layerwise_components or
+            cache_configs['parallelism_config'] is not None or
+            cache_configs['attention_backend'] is not None or
+            cache_configs['quantize_config'] is not None)
+        if compile_enabled and model_mutating_config:
+            raise ValueError(
+                'Cache-DiT parallelism, attention backends, quantization, and layerwise offload '
+                'must be configured before dgenerate compilation; they cannot be combined with '
+                '--torch-compile. Cache-DiT Ray compilation can be configured with '
+                'parallelism_config.ray_use_compile.')
+
+        persistent_config = {
+            'parallelism_config': native_config.get('parallelism_config'),
+            'attention_backend': native_config.get('attention_backend'),
+            'quantize_config': native_config.get('quantize_config'),
+        }
+        config_signature = hashlib.sha256(
+            repr(persistent_config).encode('utf-8')).hexdigest()
+        full_signature = hashlib.sha256(
+            repr((native_config, raw_modifiers, layerwise_components)).encode('utf-8')).hexdigest()
+        has_persistent_config = any(value is not None for value in persistent_config.values())
+        if ray_enabled and layerwise_components:
+            raise ValueError(
+                'Cache-DiT layerwise offload cannot be combined with the Ray pipeline wrapper.')
+
+        if model_mutating_config:
+            target_names = list(layerwise_components)
+            if (cache_configs['parallelism_config'] is not None or
+                    cache_configs['attention_backend'] is not None):
+                target_names.extend(('transformer', 'transformer_2'))
+                extra_parallel_modules = (native_config.get('parallelism_config') or {}).get(
+                    'extra_parallel_modules') or ()
+                if isinstance(extra_parallel_modules, str):
+                    target_names.append(extra_parallel_modules)
+                else:
+                    target_names.extend(extra_parallel_modules)
+            if cache_configs['quantize_config'] is not None:
+                quantize_components = getattr(
+                    cache_configs['quantize_config'], 'components_to_quantize', None)
+                if isinstance(quantize_components, str):
+                    target_names.append(quantize_components)
+                else:
+                    target_names.extend(
+                        quantize_components or ('transformer', 'transformer_2'))
+            compiled_components = [
+                name for name in target_names
+                if getattr(pipeline, name, None) is not None and
+                (hasattr(getattr(pipeline, name), '_orig_mod') or
+                 getattr(getattr(pipeline, name), '_dgenerate_compiled', False))
+            ]
+            if compiled_components:
+                raise ValueError(
+                    'Cache-DiT parallelism, attention backends, quantization, and layerwise '
+                    'offload must be configured before model compilation; compiled component(s): '
+                    + ', '.join(compiled_components))
+
+    except Exception as e:
+        raise UnsupportedPipelineConfigError(
+            f'Cache-DiT configuration could not be loaded: {e}'
+        ) from e
+
+    state_attribute = '_dgenerate_cache_dit_setup'
+    state = getattr(pipeline, state_attribute, None)
+    if state is not None and (
+            state.get('signature') != config_signature or
+            state.get('full_signature') != full_signature):
+        raise UnsupportedPipelineConfigError(
+            'This pipeline already has Cache-DiT settings configured. '
+            'Its Cache-DiT config cannot be changed while reusing the loaded pipeline.')
+
+    active_pipeline = state['pipeline'] if state is not None else pipeline
+    cache_target = (
+        state.get('cache_target', active_pipeline) if state is not None else pipeline)
+    if state is None:
+        try:
+            enable_kwargs = {
+                'cache_config': cache_configs['cache_config'],
+                'calibrator_config': cache_configs['calibrator_config'],
+                'params_modifiers': params_modifiers,
+                'parallelism_config': cache_configs['parallelism_config'],
+                'attention_backend': cache_configs['attention_backend'],
+                'quantize_config': cache_configs['quantize_config'],
+            }
+            cache_input = custom_block_adapter or active_pipeline
+            enabled_target = cache_dit.enable_cache(cache_input, **enable_kwargs)
+            if custom_block_adapter is not None:
+                # Cache-DiT returns a BlockAdapter for custom models. The adapter
+                # owns hooks on the original pipeline, which must still be called.
+                active_pipeline = pipeline
+                cache_target = enabled_target
+            else:
+                active_pipeline = enabled_target
+                cache_target = enabled_target
+            if has_persistent_config:
+                setattr(pipeline, state_attribute, {
+                    'signature': config_signature,
+                    'full_signature': full_signature,
+                    'pipeline': active_pipeline,
+                    'cache_target': cache_target,
+                    'ray': ray_enabled,
+                })
+        except Exception as e:
+            raise UnsupportedPipelineConfigError(
+                f'Cache-DiT could not be enabled for {pipeline.__class__.__name__}: {e}'
+            ) from e
+
+    handles = []
+    try:
+        for component_name, component_options in layerwise_components.items():
+            component = getattr(active_pipeline, component_name, None)
+            if component is None:
+                raise UnsupportedPipelineConfigError(
+                    f'Cache-DiT layerwise offload component "{component_name}" does not exist '
+                    f'on {active_pipeline.__class__.__name__}.')
+            options = dict(component_options)
+            options.setdefault('onload_device', device)
+            options.setdefault('offload_device', 'cpu')
+            handles.append(cache_dit.layerwise_offload(component, **options))
+
+        yield active_pipeline
+    finally:
+        try:
+            try:
+                for handle in reversed(handles):
+                    handle.remove()
+            finally:
+                if not has_persistent_config:
+                    cache_dit.disable_cache(cache_target)
+        except Exception as e:
+            raise UnsupportedPipelineConfigError(
+                f'Cache-DiT could not be disabled for {pipeline.__class__.__name__}: {e}'
+            ) from e
 
 
 class InvalidModelFileError(Exception):

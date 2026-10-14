@@ -65,6 +65,12 @@ class _FileEntry(_entry._Entry):
         self.button.grid(row=self.row, column=2, padx=(2, 5), sticky='w')
         self.entry.bind('<Key>', lambda e: self.valid())
 
+    def set_enabled(self, enabled: bool):
+        state = tk.NORMAL if enabled else tk.DISABLED
+        self.entry.config(state=state)
+        self.button.config(state=state)
+        self.label_widget.state(['!disabled' if enabled else 'disabled'])
+
     def invalid(self):
         _entry.invalid_colors(self.entry)
 

@@ -864,6 +864,18 @@ class DiffusionArguments(_types.SetFromMixin):
     
     """
 
+    cache_dit: bool = False
+    """
+    Enable Cache-DiT's default cache acceleration for supported Diffusers DiT pipelines.
+
+    Cache-DiT supports image, video, and audio transformer pipelines such as Flux,
+    Wan, Wan-Animate, Wan-Animate-2, Stable Diffusion 3, and Qwen-Image. The
+    package's default cache settings are used. This cannot be combined with
+    TeaCache, Spectrum, or SADA.
+
+    See: https://cache-dit.readthedocs.io/en/latest/
+    """
+
     tea_cache_rel_l1_threshold: _types.OptionalFloat = None
     """
     TeaCache relative L1 threshold when :py:attr:`DiffusionArguments.tea_cache` is enabled.

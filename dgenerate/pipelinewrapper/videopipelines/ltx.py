@@ -449,7 +449,7 @@ def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
     if diffusion:
         kwargs = dict(kwargs)
         kwargs['output_type'] = 'latent'
-    output = _vp._invoke(wrapper, pipe, kwargs)
+    output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
     return _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, kwargs.get('generator'))
 
 
@@ -516,7 +516,7 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
     _messages.log(
         f'LTX stage 1 at {stage1["width"]}x{stage1["height"]}, '
         f'then a latent upscale to {width}x{height}.')
-    first = _vp._invoke(wrapper, pipe, stage1)
+    first = _vp._invoke(wrapper, pipe, stage1, user_args=user_args)
     video_latent = _video_latent_tensor(first.frames)
     audio_latent = getattr(first, 'audio', None)
 
@@ -561,7 +561,7 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
                 fuse=False)
             loaded_stage_lora = True
         _messages.log('LTX stage 2 refine.')
-        second = _vp._invoke(wrapper, pipe, stage2)
+        second = _vp._invoke(wrapper, pipe, stage2, user_args=user_args)
     finally:
         pipe.scheduler = original
         if loaded_stage_lora and hasattr(pipe, 'unload_lora_weights'):

@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
+import pathlib
 import random
 import typing
 
@@ -152,6 +153,15 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     This option can be used to supply an original LDM config .yaml file that was provided with a single file checkpoint 
     for the secondary model, i.e. the SDXL Refiner or Stable Cascade Decoder.
+    """
+
+    cache_dit_config: _types.OptionalPath = None
+    """
+    Optional Cache-DiT YAML configuration. Its native Cache-DiT sections configure cache policies,
+    calibrators, parallelism, attention backends, and quantization. A ``layerwise_offload`` section
+    can configure offload per pipeline component. Supplying this also enables Cache-DiT.
+
+    Corresponds to ``--cache-dit-config``.
     """
 
     sdxl_refiner_uri: _types.OptionalUri = None
@@ -1259,6 +1269,17 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     This is supported for: ``--model-type flux*``.
     
+    """
+
+    cache_dit: bool = False
+    """
+    Enable Cache-DiT's default cache acceleration for supported Diffusers DiT pipelines.
+
+    Cache-DiT supports image, video, and audio transformer pipelines such as Flux,
+    Wan, Stable Diffusion 3, and Qwen-Image. The package's default cache settings
+    are used. This cannot be combined with TeaCache, Spectrum, or SADA.
+
+    See: https://cache-dit.readthedocs.io/en/latest/
     """
 
     tea_cache_rel_l1_thresholds: _types.OptionalFloats = None
@@ -2545,6 +2566,11 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.model_path is None:
             raise RenderLoopConfigError(
                 f'{a_namer("model_path")} must be specified')
+
+        if self.cache_dit_config and not pathlib.Path(self.cache_dit_config).is_file():
+            raise RenderLoopConfigError(
+                f'{a_namer("cache_dit_config")} does not name a readable file: '
+                f'{self.cache_dit_config}')
 
         # Check original config compatibility
         if not _hfhub.is_single_file_model_load(self.model_path):
@@ -4598,6 +4624,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 sada_max_fix=ov('sada_max_fix', self.sada_max_fixes),
                 sada_max_interval=ov('sada_max_interval', self.sada_max_intervals),
                 tea_cache=ov('tea_cache', [self.tea_cache]),
+                cache_dit=ov('cache_dit', [self.cache_dit]),
                 tea_cache_rel_l1_threshold=ov('tea_cache_rel_l1_threshold', self.tea_cache_rel_l1_thresholds),
                 spectrum=ov('spectrum', [self.spectrum]),
                 spectrum_weight=ov('spectrum_weight', self.spectrum_weights),
