@@ -584,23 +584,6 @@ def model_type_image_is_condition(model_type: ModelType | str) -> bool:
     }
 
 
-_ADETAILER_INPAINT_MODEL_TYPES = frozenset({
-    ModelType.SD,
-    ModelType.SDXL,
-    ModelType.KOLORS,
-    ModelType.SD3,
-    ModelType.FLUX,
-    ModelType.FLUX_FILL,
-    ModelType.FLUX2,
-    ModelType.Z_IMAGE,
-    ModelType.QWEN_IMAGE,
-    ModelType.QWEN_IMAGE_EDIT,
-})
-
-ADETAILER_INPAINT_MODEL_TYPES = (
-    'sd, sdxl, kolors, sd3, flux, flux-fill, flux2, z-image, qwen-image, and qwen-image-edit'
-)
-
 ADETAILER_NO_INPAINT = (
     'Full Flux.2, Flux.2 Klein KV, Z-Image Omni, Qwen-Image Layered, and Qwen edit-plus '
     'have no inpaint pipeline.'
@@ -614,7 +597,7 @@ def model_type_supports_adetailer(model_type: ModelType | str) -> bool:
     ``flux2`` is included because Klein has an inpaint pipeline. A full Flux.2
     checkpoint is rejected later, once ``model_index.json`` is known.
     """
-    return get_model_type_enum(model_type) in _ADETAILER_INPAINT_MODEL_TYPES
+    return _model_type_supported(model_type, ADETAILER_INPAINT_MODEL_TYPES)
 
 
 def model_type_is_flow_image(model_type: ModelType | str) -> bool:
@@ -674,6 +657,21 @@ def _model_type_supported(model_type: ModelType | str, supported: tuple[str, ...
     return get_model_type_string(model_type) in supported
 
 
+ADETAILER_INPAINT_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.SD,
+    ModelType.SDXL,
+    ModelType.KOLORS,
+    ModelType.SD3,
+    ModelType.FLUX,
+    ModelType.FLUX_FILL,
+    ModelType.FLUX2,
+    ModelType.Z_IMAGE,
+    ModelType.QWEN_IMAGE,
+    ModelType.QWEN_IMAGE_EDIT,
+)
+"""Model types supported by adetailer inpaint."""
+
+
 TEA_CACHE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.FLUX,
     ModelType.FLUX_FILL,
@@ -701,6 +699,27 @@ DEEP_CACHE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.UPSCALER_X4,
 )
 """``--model-type`` values that accept DeepCache."""
+
+
+CACHE_DIT_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.SD3,
+    ModelType.SD3_PIX2PIX,
+    ModelType.FLUX,
+    ModelType.FLUX_FILL,
+    ModelType.FLUX_KONTEXT,
+    ModelType.FLUX2,
+    ModelType.FLUX2_KLEIN_KV,
+    ModelType.Z_IMAGE,
+    ModelType.Z_IMAGE_OMNI,
+    ModelType.QWEN_IMAGE,
+    ModelType.QWEN_IMAGE_EDIT,
+    ModelType.QWEN_IMAGE_LAYERED,
+    ModelType.LTX,
+    ModelType.WAN,
+    ModelType.WAN_ANIMATE,
+    ModelType.WAN_ANIMATE_2,
+)
+"""``--model-type`` values with Cache-DiT adapters."""
 
 
 def model_type_supports_deep_cache(model_type: ModelType | str) -> bool:

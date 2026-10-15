@@ -525,10 +525,11 @@ Diffusion Model Feature Support Tables
      - ❌
 
 .. list-table:: Generation Features by ``--model-type``
-   :widths: 36 22 18 28 24 28 24 24
+   :widths: 25 38 22 18 28 24 28 24 24
    :header-rows: 1
 
    * - Model Type
+     - Dtype
      - ADetailer
      - FreeU
      - Hi-Diffusion
@@ -538,6 +539,7 @@ Diffusion Model Feature Support Tables
      - Spectrum
 
    * - ``sd``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ✅
      - ✅
      - ✅
@@ -547,6 +549,7 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``pix2pix``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -556,6 +559,7 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``sdxl``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ✅
      - ✅
      - ✅
@@ -565,6 +569,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``kolors``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ✅
      - ✅
      - ✅
@@ -574,6 +579,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``if``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -583,6 +589,7 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``ifs``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -592,6 +599,7 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``ifs-img2img``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -601,6 +609,7 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``sdxl-pix2pix``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -610,6 +619,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``upscaler-x2``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -619,6 +629,7 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``upscaler-x4``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -628,6 +639,7 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``s-cascade``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -637,6 +649,7 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``sd3``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ✅
      - ❌
      - ❌
@@ -646,6 +659,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``sd3-pix2pix``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -655,6 +669,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``flux``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ✅
      - ❌
      - ❌
@@ -664,6 +679,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``flux-fill``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -673,6 +689,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``flux-kontext``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -682,6 +699,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``flux2``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -691,6 +709,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``flux2-klein-kv``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -700,6 +719,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``z-image``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -709,6 +729,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``z-image-omni``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -718,6 +739,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``qwen-image``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -727,6 +749,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``qwen-image-edit``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -736,6 +759,7 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``qwen-image-layered``
+     - ``auto`` / ``float16`` / ``bfloat16`` / ``float32``
      - ❌
      - ❌
      - ❌
@@ -743,6 +767,10 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+
+``--dtype`` accepts the values shown for all model types, with ``auto`` as the
+default. Whether an explicit dtype works depends on the model and execution device.
+
 Video Model Feature Support
 ---------------------------
 

@@ -74,6 +74,7 @@ from .enums import (
     TEA_CACHE_MODEL_TYPES,
     model_type_supports_deep_cache,
     DEEP_CACHE_MODEL_TYPES,
+    CACHE_DIT_MODEL_TYPES,
     model_type_supports_hi_diffusion,
     HI_DIFFUSION_MODEL_TYPES,
     model_type_supports_sada,
