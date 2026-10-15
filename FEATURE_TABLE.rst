@@ -27,6 +27,7 @@ Diffusion Model Feature Support Tables
    * ``--model-type ltx`` (LTX-2.5 and LTX-Video, see `Video Model Feature Support`_)
    * ``--model-type wan`` (Wan 2.1 / 2.2 T2V, I2V, FLF2V, V2V, VACE)
    * ``--model-type wan-animate`` (Wan-Animate)
+   * ``--model-type wan-animate-2`` (Wan-Animate-2)
 
 .. list-table:: Generation modes by ``--model-type``
    :widths: 40 10 10 10
@@ -525,26 +526,30 @@ Diffusion Model Feature Support Tables
      - ❌
 
 .. list-table:: Generation Features by ``--model-type``
-   :widths: 25 12 22 18 28 24 28 24 24
+   :widths: 25 12 16 22 18 28 24 12 24 24 24
    :header-rows: 1
 
    * - Model Type
      - DyPE
+     - Cache-DiT
      - ADetailer
      - FreeU
      - Hi-Diffusion
      - DeepCache
      - Microsoft RAS
+     - SADA
      - TeaCache
      - Spectrum
 
    * - ``sd``
      - ❌
+     - ❌
      - ✅
      - ✅
      - ✅
      - ✅
      - ❌
+     - ✅
      - ❌
      - ❌
 
@@ -552,33 +557,41 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
      - ❌
      - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
 
    * - ``sdxl``
      - ❌
+     - ❌
      - ✅
      - ✅
      - ✅
      - ✅
      - ❌
+     - ✅
      - ❌
      - ✅
 
    * - ``kolors``
      - ❌
+     - ❌
      - ✅
      - ✅
      - ✅
      - ✅
      - ❌
+     - ✅
      - ❌
      - ✅
 
    * - ``if``
+     - ❌
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -597,8 +610,12 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ❌
+     - ❌
 
    * - ``ifs-img2img``
+     - ❌
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -612,8 +629,10 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
      - ❌
      - ✅
+     - ❌
      - ❌
      - ❌
      - ✅
@@ -621,6 +640,8 @@ Diffusion Model Feature Support Tables
    * - ``upscaler-x2``
      - ❌
      - ❌
+     - ❌
+     - ✅
      - ❌
      - ❌
      - ❌
@@ -632,8 +653,10 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
      - ❌
      - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -647,58 +670,72 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ❌
+     - ❌
 
    * - ``sd3``
      - ❌
      - ✅
+     - ✅
      - ❌
      - ❌
      - ❌
      - ✅
+     - ❌
      - ❌
      - ✅
 
    * - ``sd3-pix2pix``
      - ❌
+     - ✅
      - ❌
      - ❌
      - ❌
      - ❌
      - ✅
+     - ❌
      - ❌
      - ✅
 
    * - ``flux``
      - ✅
      - ✅
+     - ✅
      - ❌
      - ❌
      - ❌
      - ❌
+     - ✅
      - ✅
      - ✅
 
    * - ``flux-fill``
      - ✅
+     - ✅
+     - ✅
      - ❌
      - ❌
      - ❌
      - ❌
-     - ❌
+     - ✅
      - ✅
      - ✅
 
    * - ``flux-kontext``
      - ✅
+     - ✅
      - ❌
      - ❌
      - ❌
      - ❌
      - ❌
+     - ✅
      - ✅
      - ✅
 
    * - ``flux2``
+     - ✅
+     - ✅
      - ✅
      - ❌
      - ❌
@@ -710,6 +747,8 @@ Diffusion Model Feature Support Tables
 
    * - ``flux2-klein-kv``
      - ✅
+     - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -719,6 +758,8 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``z-image``
+     - ✅
+     - ✅
      - ✅
      - ❌
      - ❌
@@ -730,6 +771,8 @@ Diffusion Model Feature Support Tables
 
    * - ``z-image-omni``
      - ✅
+     - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -739,6 +782,8 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``qwen-image``
+     - ✅
+     - ✅
      - ✅
      - ❌
      - ❌
@@ -750,6 +795,8 @@ Diffusion Model Feature Support Tables
 
    * - ``qwen-image-edit``
      - ✅
+     - ✅
+     - ✅
      - ❌
      - ❌
      - ❌
@@ -760,6 +807,8 @@ Diffusion Model Feature Support Tables
 
    * - ``qwen-image-layered``
      - ✅
+     - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -767,9 +816,6 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
-
-``--dtype`` accepts the values shown for all model types, with ``auto`` as the
-default. Whether an explicit dtype works depends on the model and execution device.
 
 Video Model Feature Support
 ---------------------------
@@ -833,8 +879,13 @@ Video Model Feature Support
      - ✅
      - ✅
 
-LTX does not support ControlNets, adapters, textual inversions, prompt weighters, inpainting,
-or the acceleration features in the tables above. GGUF transformers are tested with LTX-Video.
+   * - Cache-DiT
+     - ✅
+     - ✅
+
+LTX does not support ControlNets, adapters, textual inversions, prompt weighters, or inpainting.
+Cache-DiT is supported; other acceleration features in the tables above are not. GGUF transformers
+are tested with LTX-Video.
 See the video generation section in the manual for LTX-2.5 and the earlier LTX-Video checkpoint.
 
 ``--model-type wan``, ``--model-type wan-animate``, and ``--model-type wan-animate-2``
@@ -890,6 +941,11 @@ shared ``--video-lengths`` and ``--video-fps`` options.
      - ✅
      - ❌
 
+   * - Cache-DiT
+     - ✅
+     - ✅
+     - ✅
+
    * - MoE second transformer
      - ✅
      - ❌
@@ -931,8 +987,9 @@ no inpaint pipeline.
 ControlNet on ``z-image`` and ``qwen-image`` is text-to-image and inpaint.
 ``z-image`` accepts one union model. ``qwen-image`` can take more than one.
 
-These model types support LoRA and Spectrum. They do not support textual inversions, IP
-adapters, T2I adapters, prompt weighters, PAG, DeepCache, TeaCache, SADA, RAS, or HiDiffusion.
+These model types support LoRA, Cache-DiT, DyPE, and Spectrum. They do not support textual
+inversions, IP adapters, T2I adapters, prompt weighters, PAG, DeepCache, TeaCache, SADA, RAS, or
+HiDiffusion.
 
 PAG Support Caveats
 -------------------
@@ -958,13 +1015,15 @@ FreeU parameters differ by model type and can be specified using the ``--freeu-p
 
 ``--torch-compile`` compiles repeated denoiser, ControlNet, and VAE decoder blocks. The first use of each waits while the graph builds. A later change of resolution or frame count compiles once more, then reuses that graph. CUDA and XPU need Triton. On macOS, PyTorch 2.13 and newer compile these blocks to a Metal kernel. CPU and quantized weights stay eager, and dgenerate warns. Text encoders, image encoders, and the LTX diffusion decoder stay eager. Wan-Animate-2 compiles its transformer and VAE blocks on every load. ``DGENERATE_TORCH_COMPILE=0`` leaves every model eager, including Wan-Animate-2.
 
-Faster generation speeds can be achieved by using DeepCache, Microsoft RAS, TeaCache, or Spectrum, but may lead to reduced image quality. The default values for each of these features are conservative, providing some speed increases without major impacts on quality.
+Faster generation speeds can be achieved by using Cache-DiT, DyPE, DeepCache, Microsoft RAS, SADA, TeaCache, or Spectrum, but may lead to reduced image quality. The default values for each of these features are conservative, providing some speed increases without major impacts on quality.
 
 The DeepCache branch ID and interval can be specified with the ``--deep-cache-branch-ids`` and ``--deep-cache-intervals`` options. Benchmarks for different parameters can be reviewed `here <https://huggingface.co/docs/diffusers/main/en/optimization/deepcache#benchmark>`__.
 
 Microsoft Region-Adaptive Sampling (RAS) has numerous configurable options that can be reviewed `here <https://github.com/microsoft/ras?tab=readme-ov-file#customize-hyperparameters>`__. Note that the ``--ras-index-fusion`` parameter is not compatible with SD3.5.
 
 The TeaCache threshold can be specified with the ``--tea-cache-rel-l1-thresholds`` parameter. Information about this parameter can be reviewed `here <https://github.com/ali-vilab/TeaCache/blob/main/TeaCache4FLUX/README.md>`__.
+
+SADA cannot be combined with Hi-Diffusion, DeepCache, or TeaCache.
 
 DyPE (``--dype``) adapts spatial RoPE frequencies during denoising. Use
 ``--dype-methods`` to try ``yarn`` (default), ``ntk``, or the ``base`` RoPE
