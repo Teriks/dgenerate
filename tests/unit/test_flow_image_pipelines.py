@@ -914,6 +914,10 @@ class TestFlowImagePipelines(unittest.TestCase):
 
         from dgenerate.extras.asdff.base import AdPipelineBase, adetailer_flow_inpaint_spec
 
+        self.assertEqual(
+            _pipelinewrapper.ADETAILER_INPAINT_MODEL_TYPES,
+            ('sd', 'sdxl', 'kolors', 'sd3', 'flux', 'flux-fill', 'flux2',
+             'z-image', 'qwen-image', 'qwen-image-edit'))
         klein = adetailer_flow_inpaint_spec('Flux2KleinPipeline')
         self.assertIs(klein.pipeline_class, diffusers.Flux2KleinInpaintPipeline)
         self.assertFalse(klein.negative_prompt)

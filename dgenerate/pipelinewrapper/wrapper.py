@@ -729,7 +729,7 @@ class DiffusionPipelineWrapper:
         if adetailer_detector_uris and not _enums.model_type_supports_adetailer(model_type):
             raise _pipelines.UnsupportedPipelineConfigError(
                 '--adetailer-detectors is only compatible with '
-                f'--model-type {_enums.ADETAILER_INPAINT_MODEL_TYPES}. '
+                f'--model-type {", ".join(_enums.ADETAILER_INPAINT_MODEL_TYPES)}. '
                 f'{_enums.ADETAILER_NO_INPAINT}')
 
         if quantizer_uri is not None:

@@ -1178,7 +1178,8 @@ Help Output
             
             If you supply multiple CSV strings, they will be tried in turn.
             
-            This argument only applies to models that utilize a UNet: SD1.5/2, SDXL, and Kolors
+            This argument only applies to model types that utilize a UNet. Supported --model-type values: sd,
+            pix2pix, sdxl, sdxl-pix2pix, kolors, upscaler-x2, and upscaler-x4.
             
             See: https://huggingface.co/docs/diffusers/main/en/using-diffusers/freeu
             
@@ -1192,8 +1193,8 @@ Help Output
             
             See: https://github.com/megvii-research/HiDiffusion
             
-            This is supported for --model-type sd, sdxl, kolors, pix2pix, and sdxl-pix2pix.
-            -------------------------------------------------------------------------------
+            This is supported for --model-type sd, sdxl, and kolors.
+            --------------------------------------------------------
       --hi-diffusion-no-win-attn
             Disable window attention when using HiDiffusion for the primary model?
             
@@ -1201,8 +1202,8 @@ Help Output
             
             See: https://github.com/megvii-research/HiDiffusion
             
-            This is supported for: --model-type sd, sdxl, and --kolors.
-            -----------------------------------------------------------
+            This is supported for --model-type sd, sdxl, and kolors.
+            --------------------------------------------------------
       --hi-diffusion-no-raunet
             Disable RAU-Net when using HiDiffusion for the primary model?
             
@@ -1210,8 +1211,8 @@ Help Output
             
             See: https://github.com/megvii-research/HiDiffusion
             
-            This is supported for: --model-type sd, sdxl, and --kolors.
-            -----------------------------------------------------------
+            This is supported for --model-type sd, sdxl, and kolors.
+            --------------------------------------------------------
       --sada
             Enable SADA (Stability-guided Adaptive Diffusion Acceleration) with model-specific default
             parameters for the primary model.
@@ -1243,7 +1244,7 @@ Help Output
             
             See: https://github.com/Ting-Justin-Jiang/sada-icml
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type sd, sdxl, kolors, flux, flux-fill, and flux-kontext.
             
             SADA is not compatible with HiDiffusion, DeepCache, or TeaCache.
             ----------------------------------------------------------------
@@ -1261,7 +1262,7 @@ Help Output
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type sd, sdxl, kolors, flux, flux-fill, and flux-kontext.
             
             Each value supplied will be tried in turn.
             ------------------------------------------
@@ -1279,7 +1280,7 @@ Help Output
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type sd, sdxl, kolors, flux, flux-fill, and flux-kontext.
             
             Each value supplied will be tried in turn.
             ------------------------------------------
@@ -1297,7 +1298,7 @@ Help Output
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type sd, sdxl, kolors, flux, flux-fill, and flux-kontext.
             
             Each value supplied will be tried in turn.
             ------------------------------------------
@@ -1314,7 +1315,7 @@ Help Output
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type sd, sdxl, kolors, flux, flux-fill, and flux-kontext.
             
             Each value supplied will be tried in turn.
             ------------------------------------------
@@ -1331,7 +1332,7 @@ Help Output
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type sd, sdxl, kolors, flux, flux-fill, and flux-kontext.
             
             Each value supplied will be tried in turn.
             ------------------------------------------
@@ -1349,7 +1350,7 @@ Help Output
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type sd, sdxl, kolors, flux, flux-fill, and flux-kontext.
             
             Each value supplied will be tried in turn.
             ------------------------------------------
@@ -1367,7 +1368,7 @@ Help Output
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type sd, sdxl, kolors, flux, flux-fill, and flux-kontext.
             
             Each value supplied will be tried in turn.
             ------------------------------------------
@@ -1384,7 +1385,7 @@ Help Output
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type sd, sdxl, kolors, flux, flux-fill, and flux-kontext.
             
             Each value supplied will be tried in turn.
             ------------------------------------------
@@ -1397,7 +1398,7 @@ Help Output
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type sd, sdxl, kolors, flux, flux-fill, and flux-kontext.
             
             Each value supplied will be tried in turn.
             ------------------------------------------
@@ -1412,9 +1413,8 @@ Help Output
             
             See: https://github.com/horseee/DeepCache
             
-            This is supported for Stable Diffusion, Stable Diffusion XL, Stable Diffusion Upscaler X4, Kolors,
-            and Pix2Pix variants.
-            ---------------------
+            This is supported for --model-type sd, pix2pix, sdxl, sdxl-pix2pix, kolors, and upscaler-x4.
+            --------------------------------------------------------------------------------------------
       -dci, --deep-cache-intervals INTEGER [INTEGER ...]
             Cache interval for DeepCache for the main model.
             
@@ -1427,8 +1427,7 @@ Help Output
             
             Supplying any values implies --deep-cache.
             
-            This is supported for Stable Diffusion, Stable Diffusion XL, Stable Diffusion Upscaler X4, Kolors,
-            and Pix2Pix variants.
+            This is supported for --model-type sd, pix2pix, sdxl, sdxl-pix2pix, kolors, and upscaler-x4.
             
             (default: 5)
             ------------
@@ -1443,8 +1442,7 @@ Help Output
             
             Supplying any values implies --deep-cache.
             
-            This is supported for Stable Diffusion, Stable Diffusion XL, Stable Diffusion Upscaler X4, Kolors,
-            and Pix2Pix variants.
+            This is supported for --model-type sd, pix2pix, sdxl, sdxl-pix2pix, kolors, and upscaler-x4.
             
             (default: 1)
             ------------
@@ -1497,14 +1495,17 @@ Help Output
             
             Also see: --tea-cache-rel-l1-thresholds
             
-            This is supported for: --model-type flux*.
-            ------------------------------------------
+            This is supported for: --model-type flux, flux-fill, and flux-kontext.
+            ----------------------------------------------------------------------
       --cache-dit
             Enable Cache-DiT's default training-free cache acceleration for supported Diffusers DiT pipelines.
             
-            Cache-DiT supports image, video, and audio transformer pipelines, including Flux, Wan, Wan-Animate,
-            Wan-Animate-2, Stable Diffusion 3, and Qwen-Image. Cache-DiT's default cache settings are used. This
-            option cannot be combined with --tea-cache, --spectrum, --sada, or --dype.
+            Cache-DiT's default cache settings are used. This option cannot be combined with --tea-cache,
+            --spectrum, --sada, or --dype.
+            
+            This is supported for: --model-type sd3, sd3-pix2pix, flux, flux-fill, flux-kontext, flux2,
+            flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, ltx, wan,
+            wan-animate, and wan-animate-2.
             
             See: https://cache-dit.readthedocs.io/en/latest/
             ------------------------------------------------
@@ -1516,6 +1517,10 @@ Help Output
             --dype-methods to choose position encoding methods and --dype-base-resolutions to override the
             reference resolution. This option cannot be combined with --cache-dit, --tea-cache, --spectrum, or
             --sada, because those features reuse or skip denoiser work from an earlier step.
+            
+            This is supported for: --model-type flux, flux-fill, flux-kontext, flux2, flux2-klein-kv,
+            qwen-image, qwen-image-edit, qwen-image-layered, z-image, z-image-omni, wan, wan-animate, and
+            wan-animate-2.
             
             See: https://github.com/guyyariv/DyPE
             -------------------------------------
@@ -1543,7 +1548,9 @@ Help Output
             offload. Supplying this option also enables Cache-DiT.
             
             The file uses Cache-DiT's native YAML sections. Layerwise offload is configured as a mapping from
-            pipeline component names to Cache-DiT layerwise_offload options. See:
+            pipeline component names to Cache-DiT layerwise_offload options. Supported --model-type values: sd3,
+            sd3-pix2pix, flux, flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni,
+            qwen-image, qwen-image-edit, qwen-image-layered, ltx, wan, wan-animate, and wan-animate-2. See:
             https://cache-dit.readthedocs.io/en/latest/user_guide/LOAD_CONFIGS/ Layerwise offload:
             https://cache-dit.readthedocs.io/en/latest/user_guide/OFFLOAD/
             --------------------------------------------------------------
@@ -1561,7 +1568,7 @@ Help Output
             
             Supplying any values implies --tea-cache.
             
-            This is supported for: --model-type flux*.
+            This is supported for: --model-type flux, flux-fill, and flux-kontext.
             
             (default: 0.6)
             --------------
@@ -1646,8 +1653,8 @@ Help Output
             
             See: https://github.com/microsoft/ras
             
-            This is supported for: --model-type sd3.
-            ----------------------------------------
+            This is supported for --model-type sd3 and sd3-pix2pix.
+            -------------------------------------------------------
       -rif, --ras-index-fusion
             Enable index fusion in RAS (Reinforcement Attention System) for the primary model?
             
@@ -1655,8 +1662,8 @@ Help Output
             
             Supplying this flag implies --ras.
             
-            This is supported for: --model-type sd3, (but not for SD3.5 models)
-            -------------------------------------------------------------------
+            This is supported for --model-type sd3 and sd3-pix2pix (but not for SD3.5 models).
+            ----------------------------------------------------------------------------------
       -rsr, --ras-sample-ratios FLOAT [FLOAT ...]
             Average sample ratios for each RAS step.
             
@@ -1669,7 +1676,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type sd3.
+            This is supported for --model-type sd3 and sd3-pix2pix.
             
             (default: 0.5)
             --------------
@@ -1685,7 +1692,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type sd3.
+            This is supported for --model-type sd3 and sd3-pix2pix.
             
             (default: 1.0)
             --------------
@@ -1704,7 +1711,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type sd3.
+            This is supported for --model-type sd3 and sd3-pix2pix.
             
             (default: 0.1)
             --------------
@@ -1721,7 +1728,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type sd3.
+            This is supported for --model-type sd3 and sd3-pix2pix.
             
             (default: "12,22")
             ------------------
@@ -1735,7 +1742,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type sd3.
+            This is supported for --model-type sd3 and sd3-pix2pix.
             
             (default: "std")
             ----------------
@@ -1748,7 +1755,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type sd3.
+            This is supported for --model-type sd3 and sd3-pix2pix.
             
             (default: 4)
             ------------
@@ -1761,7 +1768,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type sd3.
+            This is supported for --model-type sd3 and sd3-pix2pix.
             
             (default: --inference-steps)
             ----------------------------
@@ -1781,7 +1788,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type sd3.
+            This is supported for --model-type sd3 and sd3-pix2pix.
             
             (default: 0)
             ------------
@@ -1801,14 +1808,16 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type sd3.
+            This is supported for --model-type sd3 and sd3-pix2pix.
             
             (default: 0)
             ------------
       -pag, --pag
-            Use perturbed attention guidance? This is supported for --model-type sd, sdxl, and sd3 for most use
-            cases. This enables PAG for the main model using default scale values.
-            ----------------------------------------------------------------------
+            Use perturbed attention guidance for the main model with default scale values.
+            
+            This is supported for --model-type sd, sdxl, kolors, and sd3 for most use cases; Kolors is limited
+            to txt2img.
+            -----------
       -pags, --pag-scales FLOAT [FLOAT ...]
             One or more perturbed attention guidance scales to try. Specifying values enables PAG for the main
             model. (default: [3.0])
@@ -13880,7 +13889,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [88070479098809]
+            Value: [69242273609973]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

@@ -2513,7 +2513,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      
                      If you supply multiple CSV strings, they will be tried in turn.
                      
-                     This argument only applies to models that utilize a UNet: SD1.5/2, SDXL, and Kolors
+                     This argument only applies to model types that utilize a UNet.
+                     Supported --model-type values: {_textprocessing.oxford_comma(_pipelinewrapper.FREEU_MODEL_TYPES, "and")}.
                      
                      See: https://huggingface.co/docs/diffusers/main/en/using-diffusers/freeu
                      
@@ -2535,7 +2536,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      NOWRAP!
                      See: https://github.com/megvii-research/HiDiffusion
                      
-                     This is supported for --model-type sd, sdxl, kolors, pix2pix, and sdxl-pix2pix.
+                     This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.HI_DIFFUSION_MODEL_TYPES, "and")}.
                      """
         )
     )
@@ -2551,7 +2552,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      NOWRAP!
                      See: https://github.com/megvii-research/HiDiffusion
                      
-                     This is supported for: --model-type sd, sdxl, and --kolors.
+                     This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.HI_DIFFUSION_MODEL_TYPES, "and")}.
                      """
         )
     )
@@ -2567,7 +2568,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      NOWRAP!
                      See: https://github.com/megvii-research/HiDiffusion
                      
-                     This is supported for: --model-type sd, sdxl, and --kolors.
+                     This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.HI_DIFFUSION_MODEL_TYPES, "and")}.
                      """
         )
     )
@@ -2577,7 +2578,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sada',
             action='store_true', default=False, dest='sada',
-            help="""Enable SADA (Stability-guided Adaptive Diffusion Acceleration) with model-specific default parameters for the primary model.
+            help=f"""Enable SADA (Stability-guided Adaptive Diffusion Acceleration) with model-specific default parameters for the primary model.
             
             
             This is equivalent to setting all SADA parameters to their model-specific default values:
@@ -2609,7 +2610,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             NOWRAP!
             See: https://github.com/Ting-Justin-Jiang/sada-icml
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.SADA_MODEL_TYPES, "and")}.
             
             SADA is not compatible with HiDiffusion, DeepCache, or TeaCache.
             """
@@ -2621,7 +2622,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--sada-max-downsamples',
             metavar='INTEGER',
             nargs='+', dest='sada_max_downsamples', type=_type_sada_max_downsamples,
-            help="""SADA maximum downsample factors for the primary model.
+            help=f"""SADA maximum downsample factors for the primary model.
             
             Controls the maximum downsample factor in the SADA algorithm. 
             Lower values can improve quality but may reduce speedup.
@@ -2636,7 +2637,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.SADA_MODEL_TYPES, "and")}.
             
             Each value supplied will be tried in turn.
             """
@@ -2648,7 +2649,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--sada-sxs',
             metavar='INTEGER',
             nargs='+', dest='sada_sxs', type=_type_sada_sxs,
-            help="""SADA spatial downsample factors X for the primary model.
+            help=f"""SADA spatial downsample factors X for the primary model.
             
             Controls the spatial downsample factor in the X dimension.
             Higher values can increase speedup but may affect quality.
@@ -2663,7 +2664,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.SADA_MODEL_TYPES, "and")}.
             
             Each value supplied will be tried in turn.
             """
@@ -2675,7 +2676,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--sada-sys',
             metavar='INTEGER',
             nargs='+', dest='sada_sys', type=_type_sada_sys,
-            help="""SADA spatial downsample factors Y for the primary model.
+            help=f"""SADA spatial downsample factors Y for the primary model.
             
             Controls the spatial downsample factor in the Y dimension.
             Higher values can increase speedup but may affect quality.
@@ -2690,7 +2691,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.SADA_MODEL_TYPES, "and")}.
             
             Each value supplied will be tried in turn.
             """
@@ -2702,7 +2703,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--sada-acc-ranges',
             metavar='INTEGER',
             nargs='+', dest='sada_acc_ranges', type=_type_sada_acc_ranges,
-            help="""SADA acceleration range start / end steps for the primary model.
+            help=f"""SADA acceleration range start / end steps for the primary model.
             
             Defines the start / end step for SADA acceleration. 
             
@@ -2714,7 +2715,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.SADA_MODEL_TYPES, "and")}.
             
             Each value supplied will be tried in turn.
             """
@@ -2726,7 +2727,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--sada-lagrange-terms',
             metavar='INTEGER',
             nargs='+', dest='sada_lagrange_terms', type=_type_sada_lagrange_terms,
-            help="""SADA Lagrangian interpolation terms for the primary model.
+            help=f"""SADA Lagrangian interpolation terms for the primary model.
             
             Number of terms to use in Lagrangian interpolation. 
             Set to 0 to disable Lagrangian interpolation.
@@ -2740,7 +2741,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.SADA_MODEL_TYPES, "and")}.
             
             Each value supplied will be tried in turn.
             """
@@ -2752,7 +2753,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--sada-lagrange-ints',
             metavar='INTEGER',
             nargs='+', dest='sada_lagrange_ints', type=_type_sada_lagrange_ints,
-            help="""SADA Lagrangian interpolation intervals for the primary model.
+            help=f"""SADA Lagrangian interpolation intervals for the primary model.
             
             Interval for Lagrangian interpolation. Must be compatible with 
             sada-lagrange-steps (lagrange-step %% lagrange-int == 0).
@@ -2766,7 +2767,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.SADA_MODEL_TYPES, "and")}.
             
             Each value supplied will be tried in turn.
             """
@@ -2778,7 +2779,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--sada-lagrange-steps',
             metavar='INTEGER',
             nargs='+', dest='sada_lagrange_steps', type=_type_sada_lagrange_steps,
-            help="""SADA Lagrangian interpolation steps for the primary model.
+            help=f"""SADA Lagrangian interpolation steps for the primary model.
             
             Step value for Lagrangian interpolation. Must be compatible with 
             sada-lagrange-ints (lagrange-step %% lagrange-int == 0).
@@ -2792,7 +2793,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.SADA_MODEL_TYPES, "and")}.
             
             Each value supplied will be tried in turn.
             """
@@ -2804,7 +2805,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--sada-max-fixes',
             metavar='INTEGER',
             nargs='+', dest='sada_max_fixes', type=_type_sada_max_fixes,
-            help="""SADA maximum fixed memories for the primary model.
+            help=f"""SADA maximum fixed memories for the primary model.
             
             Maximum amount of fixed memory to use in SADA optimization.
             
@@ -2818,7 +2819,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.SADA_MODEL_TYPES, "and")}.
             
             Each value supplied will be tried in turn.
             """
@@ -2830,7 +2831,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--sada-max-intervals',
             metavar='INTEGER',
             nargs='+', dest='sada_max_intervals', type=_type_sada_max_intervals,
-            help="""SADA maximum intervals for optimization for the primary model.
+            help=f"""SADA maximum intervals for optimization for the primary model.
             
             Maximum interval between optimizations in the SADA algorithm.
             
@@ -2838,7 +2839,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any SADA parameter implies that SADA is enabled.
             
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.SADA_MODEL_TYPES, "and")}.
             
             Each value supplied will be tried in turn.
             """
@@ -2869,8 +2870,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                   NOWRAP!
                   See: https://github.com/horseee/DeepCache
                   
-                  This is supported for Stable Diffusion, Stable Diffusion XL,
-                  Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
+                  This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.DEEP_CACHE_MODEL_TYPES, "and")}.
                   """
         )
     )
@@ -2880,7 +2880,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-dci', '--deep-cache-intervals',
             metavar='INTEGER',
             nargs='+', dest='deep_cache_intervals', type=_type_deep_cache_interval,
-            help="""Cache interval for DeepCache for the main model.
+            help=f"""Cache interval for DeepCache for the main model.
             
             Controls how frequently the attention layers are cached during
             the diffusion process. Lower values cache more frequently, potentially
@@ -2892,8 +2892,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --deep-cache.
             
-            This is supported for Stable Diffusion, Stable Diffusion XL,
-            Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.DEEP_CACHE_MODEL_TYPES, "and")}.
             
             (default: 5)"""
         )
@@ -2904,7 +2903,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-dcb', '--deep-cache-branch-ids',
             metavar='INTEGER',
             nargs='+', dest='deep_cache_branch_ids', type=_type_deep_cache_branch_id,
-            help="""Branch ID for DeepCache for the main model.
+            help=f"""Branch ID for DeepCache for the main model.
             
             Controls which branches of the UNet attention blocks the caching
             is applied to. Advanced usage only.
@@ -2915,8 +2914,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --deep-cache.
             
-            This is supported for Stable Diffusion, Stable Diffusion XL,
-            Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.DEEP_CACHE_MODEL_TYPES, "and")}.
             
             (default: 1)"""
         )
@@ -2996,7 +2994,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      
                      Also see: --tea-cache-rel-l1-thresholds
                      
-                     This is supported for: --model-type flux*.
+                     This is supported for: --model-type {_textprocessing.oxford_comma(_pipelinewrapper.TEA_CACHE_MODEL_TYPES, "and")}.
                      """
         )
     )
@@ -3005,12 +3003,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--cache-dit',
             action='store_true', default=False, dest='cache_dit',
-            help="""Enable Cache-DiT's default training-free cache acceleration for supported Diffusers DiT pipelines.
+            help=f"""Enable Cache-DiT's default training-free cache acceleration for supported Diffusers DiT pipelines.
 
-                     Cache-DiT supports image, video, and audio transformer pipelines, including Flux,
-                     Wan, Wan-Animate, Wan-Animate-2, Stable Diffusion 3, and Qwen-Image. Cache-DiT's
-                     default cache settings are used.
+                     Cache-DiT's default cache settings are used.
                      This option cannot be combined with --tea-cache, --spectrum, --sada, or --dype.
+
+                     This is supported for: --model-type {_textprocessing.oxford_comma(_pipelinewrapper.CACHE_DIT_MODEL_TYPES, "and")}.
 
                      NOWRAP!
                      See: https://cache-dit.readthedocs.io/en/latest/
@@ -3022,7 +3020,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--dype',
             action='store_true', default=False, dest='dype',
-            help="""Enable DyPE's positional scaling methods for supported transformer pipelines.
+            help=f"""Enable DyPE's positional scaling methods for supported transformer pipelines.
 
                      Flux.1 and Qwen-Image use the upstream architectures. Flux Fill/Kontext,
                      Qwen Edit/Layered, Flux.2, Z-Image, and Wan are experimental adapters.
@@ -3032,6 +3030,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      This option cannot be combined with --cache-dit, --tea-cache,
                      --spectrum, or --sada, because those features reuse or skip
                      denoiser work from an earlier step.
+
+                     This is supported for: --model-type {_textprocessing.oxford_comma(_pipelinewrapper.DYPE_MODEL_TYPES, "and")}.
 
                      NOWRAP!
                      See: https://github.com/guyyariv/DyPE
@@ -3078,11 +3078,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--cache-dit-config', metavar='FILE', default=None, dest='cache_dit_config',
-            help="""Cache-DiT YAML settings for cache policies, parallelism, quantization, attention,
+            help=f"""Cache-DiT YAML settings for cache policies, parallelism, quantization, attention,
                      and layerwise offload. Supplying this option also enables Cache-DiT.
 
                      The file uses Cache-DiT's native YAML sections. Layerwise offload is configured
                      as a mapping from pipeline component names to Cache-DiT layerwise_offload options.
+                     Supported --model-type values: {_textprocessing.oxford_comma(_pipelinewrapper.CACHE_DIT_MODEL_TYPES, "and")}.
                      See: https://cache-dit.readthedocs.io/en/latest/user_guide/LOAD_CONFIGS/
                      Layerwise offload: https://cache-dit.readthedocs.io/en/latest/user_guide/OFFLOAD/
                      """
@@ -3107,7 +3108,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      
                      Supplying any values implies --tea-cache.
                     
-                     This is supported for: --model-type flux*.
+                     This is supported for: --model-type {_textprocessing.oxford_comma(_pipelinewrapper.TEA_CACHE_MODEL_TYPES, "and")}.
                      
                      (default: 0.6)
                      """
@@ -3247,7 +3248,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      NOWRAP!
                      See: https://github.com/microsoft/ras
                     
-                     This is supported for: --model-type sd3.
+                     This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.RAS_MODEL_TYPES, "and")}.
                      """
         )
     )
@@ -3256,13 +3257,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-rif', '--ras-index-fusion',
             action='store_true', dest='ras_index_fusion', default=None,
-            help="""Enable index fusion in RAS (Reinforcement Attention System) for the primary model?
+            help=f"""Enable index fusion in RAS (Reinforcement Attention System) for the primary model?
 
             This can improve attention computation in RAS for SD3 models.
             
             Supplying this flag implies --ras.
 
-            This is supported for: --model-type sd3, (but not for SD3.5 models)"""
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.RAS_MODEL_TYPES, "and")} (but not for SD3.5 models)."""
         )
     )
 
@@ -3271,7 +3272,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-rsr', '--ras-sample-ratios',
             metavar='FLOAT',
             nargs='+', dest='ras_sample_ratios', type=_type_ras_sample_ratio,
-            help="""Average sample ratios for each RAS step.
+            help=f"""Average sample ratios for each RAS step.
 
             For instance, setting this to 0.5 on a sequence of 4096 tokens will result in
             the noise of averagely 2048 tokens to be updated during each RAS step.
@@ -3282,7 +3283,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type sd3.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.RAS_MODEL_TYPES, "and")}.
 
             (default: 0.5)"""
         )
@@ -3293,7 +3294,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-rhr', '--ras-high-ratios',
             metavar='FLOAT',
             nargs='+', dest='ras_high_ratios', type=_type_ras_high_ratio,
-            help="""Ratios of high value tokens to be cached in RAS.
+            help=f"""Ratios of high value tokens to be cached in RAS.
 
             Based on the metric selected, the ratio of the high value chosen to be cached.
 
@@ -3304,7 +3305,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type sd3.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.RAS_MODEL_TYPES, "and")}.
 
             (default: 1.0)"""
         )
@@ -3315,7 +3316,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-rss', '--ras-starvation-scales',
             metavar='FLOAT',
             nargs='+', dest='ras_starvation_scales', type=_type_ras_starvation_scale,
-            help="""Starvation scales for RAS patch selection.
+            help=f"""Starvation scales for RAS patch selection.
 
             RAS tracks how often a token is dropped and incorporates this count as a scaling
             factor in the metric for selecting tokens. This scale factor prevents excessive blurring
@@ -3329,7 +3330,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type sd3.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.RAS_MODEL_TYPES, "and")}.
 
             (default: 0.1)"""
         )
@@ -3340,7 +3341,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-rer', '--ras-error-reset-steps',
             metavar='CSV_INT',
             nargs='+', dest='ras_error_reset_steps', type=_type_ras_error_reset_steps,
-            help="""Dense sampling steps to reset accumulated error in RAS.
+            help=f"""Dense sampling steps to reset accumulated error in RAS.
 
             The dense sampling steps inserted between the RAS steps to reset the accumulated error.
             Each argument should be either a single integer or a comma-separated list of integers, 
@@ -3353,7 +3354,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type sd3.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.RAS_MODEL_TYPES, "and")}.
 
             (default: "12,22")"""
         )
@@ -3364,7 +3365,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-rme', '--ras-metrics',
             metavar='RAS_METRIC',
             nargs='+', dest='ras_metrics', type=_type_ras_metric,
-            help="""Metrics to try for RAS (Region-Adaptive Sampling).
+            help=f"""Metrics to try for RAS (Region-Adaptive Sampling).
             
             This controls how RAS measures the importance of tokens for caching.
             Valid values are "std" (standard deviation) or "l2norm" (L2 norm).
@@ -3373,7 +3374,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type sd3.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.RAS_MODEL_TYPES, "and")}.
             
             (default: "std")"""
         )
@@ -3384,7 +3385,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-rst', '--ras-start-steps',
             metavar='INTEGER',
             nargs='+', dest='ras_start_steps', type=_type_ras_start_steps,
-            help="""Starting steps to try for RAS (Region-Adaptive Sampling).
+            help=f"""Starting steps to try for RAS (Region-Adaptive Sampling).
 
             This controls when RAS begins applying its sampling strategy. 
             Must be greater than or equal to 1.
@@ -3393,7 +3394,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type sd3.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.RAS_MODEL_TYPES, "and")}.
 
             (default: 4)"""
         )
@@ -3404,7 +3405,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-res', '--ras-end-steps',
             metavar='INTEGER',
             nargs='+', dest='ras_end_steps', type=_type_ras_end_steps,
-            help="""Ending steps to try for RAS (Region-Adaptive Sampling).
+            help=f"""Ending steps to try for RAS (Region-Adaptive Sampling).
 
             This controls when RAS stops applying its sampling strategy.
             Must be greater than or equal to 1.
@@ -3413,7 +3414,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type sd3.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.RAS_MODEL_TYPES, "and")}.
 
             (default: --inference-steps)"""
         )
@@ -3424,7 +3425,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-rsn', '--ras-skip-num-steps',
             metavar='INTEGER',
             nargs='+', dest='ras_skip_num_steps', type=_type_ras_skip_num_step,
-            help="""Skip steps for RAS (Region-Adaptive Sampling).
+            help=f"""Skip steps for RAS (Region-Adaptive Sampling).
 
             This controls the number of steps to skip between RAS steps.
             
@@ -3439,7 +3440,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type sd3.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.RAS_MODEL_TYPES, "and")}.
 
             (default: 0)"""
         )
@@ -3450,7 +3451,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-rsl', '--ras-skip-num-step-lengths',
             metavar='INTEGER',
             nargs='+', dest='ras_skip_num_step_lengths', type=_type_ras_skip_num_step_length,
-            help="""Skip step lengths for RAS (Region-Adaptive Sampling).
+            help=f"""Skip step lengths for RAS (Region-Adaptive Sampling).
 
             This controls the length of steps to skip between RAS steps.
             Must be greater than or equal to 0.
@@ -3466,7 +3467,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type sd3.
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.RAS_MODEL_TYPES, "and")}.
 
             (default: 0)"""
         )
@@ -3475,9 +3476,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-pag', '--pag', action='store_true', default=False,
-            help=f"""Use perturbed attention guidance? This is supported
-            for --model-type sd, sdxl, and sd3 for most use cases.
-            This enables PAG for the main model using default scale values."""
+            help=f"""Use perturbed attention guidance for the main model with default scale values.
+
+            This is supported for --model-type {_textprocessing.oxford_comma(_pipelinewrapper.PAG_MODEL_TYPES, "and")} for most use cases; Kolors is limited to txt2img."""
         )
     )
 

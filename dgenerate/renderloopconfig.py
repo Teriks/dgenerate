@@ -2688,7 +2688,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.adetailer_detector_uris and not _pipelinewrapper.model_type_supports_adetailer(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("adetailer_detector_uris")} is only compatible with '
-                f'{a_namer("model_type")} {_pipelinewrapper.ADETAILER_INPAINT_MODEL_TYPES}. '
+                f'{a_namer("model_type")} {", ".join(_pipelinewrapper.ADETAILER_INPAINT_MODEL_TYPES)}. '
                 f'{_pipelinewrapper.ADETAILER_NO_INPAINT}')
 
         if self.adetailer_detector_uris and self.is_output_latents():
