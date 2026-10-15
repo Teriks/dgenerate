@@ -30,6 +30,7 @@ import signal
 import subprocess
 import sys
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import dgenerate.console.appearance as _appearance
 
@@ -128,6 +129,8 @@ class DgenerateConsole(tk.Tk):
         _resources.set_window_icon(self)
 
         self._shell_process = None
+        self._sash_width = 4
+        self._settings_dialog = None
 
         # Create main menu
 
@@ -251,6 +254,9 @@ class DgenerateConsole(tk.Tk):
         self._auto_scroll_on_output_check_var = tk.BooleanVar(value=False)
         self._options_menu.add_checkbutton(label='Scroll Output On New Output',
                                            variable=self._auto_scroll_on_output_check_var)
+        self._options_menu.add_command(
+            label='Window Sash Width',
+            command=self._open_window_sash_width_dialog)
 
         # View Menu
 
@@ -277,13 +283,14 @@ class DgenerateConsole(tk.Tk):
 
         self._paned_window_horizontal = tk.PanedWindow(self,
                                                        orient=tk.HORIZONTAL,
-                                                       sashwidth=4,
+                                                       sashwidth=self._sash_width,
                                                        bg='#808080', bd=0)
 
         self._paned_window_horizontal.pack(fill=tk.BOTH, expand=True)
 
         self._paned_window_vertical = tk.PanedWindow(self._paned_window_horizontal,
-                                                     orient=tk.VERTICAL, sashwidth=4,
+                                                     orient=tk.VERTICAL,
+                                                     sashwidth=self._sash_width,
                                                      bg='#808080')
 
         self._paned_window_vertical.pack(fill=tk.BOTH, expand=True)
@@ -1117,6 +1124,9 @@ class DgenerateConsole(tk.Tk):
                 config = None
         
         if config:
+            sash_width = config.get('sash_width', self._sash_width)
+            if type(sash_width) is int and 1 <= sash_width <= 30:
+                self._set_sash_width(sash_width)
             self._theme_menu_var.set(config.get('theme', 'dgenerate'))
             self._auto_scroll_on_run_check_var.set(config.get('auto_scroll_on_run', True))
             self._auto_scroll_on_output_check_var.set(config.get('auto_scroll_on_output', False))
@@ -1143,10 +1153,79 @@ class DgenerateConsole(tk.Tk):
             'auto_scroll_on_run': self._auto_scroll_on_run_check_var.get(),
             'auto_scroll_on_output': self._auto_scroll_on_output_check_var.get(),
             'word_wrap_input': self._word_wrap_input_check_var.get(),
-            'word_wrap_output': self._word_wrap_output_check_var.get()
+            'word_wrap_output': self._word_wrap_output_check_var.get(),
+            'sash_width': self._sash_width
         })
         with settings_path.open('w', encoding='utf-8') as file:
             json.dump(config, file)
+
+    def _set_sash_width(self, width):
+        self._sash_width = width
+        self._paned_window_horizontal.configure(sashwidth=width)
+        self._paned_window_vertical.configure(sashwidth=width)
+
+    def _open_window_sash_width_dialog(self):
+        if self._settings_dialog is not None and self._settings_dialog.winfo_exists():
+            self._settings_dialog.lift()
+            return
+
+        dialog = tk.Toplevel(self)
+        self._settings_dialog = dialog
+        dialog.title('Settings')
+        dialog.transient(self)
+        dialog.resizable(False, False)
+        _resources.set_window_icon(dialog)
+
+        frame = ttk.Frame(dialog, padding=12)
+        frame.grid(row=0, column=0, sticky='nsew')
+
+        ttk.Label(frame, text='Window sash width (pixels):').grid(
+            row=0, column=0, sticky='w', padx=(0, 8))
+        sash_width_var = tk.StringVar(value=str(self._sash_width))
+        sash_width_entry = ttk.Spinbox(
+            frame, from_=1, to=30, textvariable=sash_width_var, width=5)
+        sash_width_entry.grid(row=0, column=1, sticky='ew')
+
+        button_frame = ttk.Frame(frame)
+        button_frame.grid(row=1, column=0, columnspan=2, sticky='e', pady=(12, 0))
+
+        def close_dialog():
+            dialog.grab_release()
+            dialog.destroy()
+            self._settings_dialog = None
+
+        def apply_settings():
+            try:
+                width = int(sash_width_var.get())
+            except ValueError:
+                dialog.bell()
+                sash_width_entry.focus_set()
+                return
+
+            if not 1 <= width <= 30:
+                dialog.bell()
+                sash_width_entry.focus_set()
+                return
+
+            self._set_sash_width(width)
+            self.save_settings()
+            close_dialog()
+
+        ttk.Button(button_frame, text='Cancel', command=close_dialog).pack(
+            side=tk.RIGHT, padx=(6, 0))
+        ttk.Button(button_frame, text='OK', command=apply_settings).pack(
+            side=tk.RIGHT)
+
+        dialog.protocol('WM_DELETE_WINDOW', close_dialog)
+        dialog.bind('<Return>', lambda event: apply_settings())
+        dialog.bind('<Escape>', lambda event: close_dialog())
+        _appearance.install(dialog)
+        dialog.update_idletasks()
+        dialog.geometry(
+            f'+{self.winfo_rootx() + (self.winfo_width() - dialog.winfo_width()) // 2}'
+            f'+{self.winfo_rooty() + (self.winfo_height() - dialog.winfo_height()) // 2}')
+        dialog.grab_set()
+        sash_width_entry.focus_set()
 
     def _load_command_history(self):
         if self._max_command_history == 0:
