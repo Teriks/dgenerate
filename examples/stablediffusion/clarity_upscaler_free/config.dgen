@@ -53,9 +53,11 @@
 \set upscaler_model https://huggingface.co/Teriks/dgenerate-example-models/resolve/main/upscalers/4xNomosUniDAT_otf/4xNomosUniDAT_otf.pth
 
 
-# final image size
+\setp image "../../media/low_res_cat.png"
 
-\set output_size 1024x1024
+# final image size 128 * 8 = 1024
+
+\set output_size {{ scale_size(image, 8) }}
 
 
 # this prompt is taken directly from the ComfyUI workflow, we use --prompt-weighter sd-embed
@@ -65,7 +67,7 @@
 
 
 {{ model }}
---image-seeds "../../media/low_res_cat.png"
+--image-seeds {{ quote(image) }}
 --scheduler DPMSolverSDEScheduler;timestep-spacing=trailing
 --inference-steps 8
 --guidance-scales 1.5
