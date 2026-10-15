@@ -24,8 +24,9 @@ Qwen/Qwen-Image-Edit
 --guidance-scales 4
 --image-seeds ../../../media/monalisa.png
 --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
---image-seed-strengths 0.6
+--image-seed-strengths 0.7
+--adetailer-detector-paddings 24
 --gen-seeds 1
 --output-path qwen-image-edit-mona-face-swap
---output-size 800
---prompts "a smiling woman's face, detailed eyes"
+--output-size 1024
+--prompts "Replace Mona Lisa's face with a clearly different, smiling young woman's face. Give her a broad natural smile, open expressive eyes, and realistic facial features. Preserve the original hair, clothing, pose, hands, background, and composition."
