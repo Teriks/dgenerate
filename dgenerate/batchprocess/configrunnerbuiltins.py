@@ -70,9 +70,82 @@ def format_prompt(
 
 def format_size(size: collections.abc.Iterable[int]) -> str:
     """
-    Join an iterable of integers into a string seperated by the character 'x', for example (512, 512) -> "512x512"
+    Join an iterable of integers into a string separated by the character 'x', for example (512, 512) -> "512x512"
     """
     return _textprocessing.format_size(size)
+
+
+def format_image_seed(seed_images: str | collections.abc.Iterable[str] | None = None,
+                      mask_images: str | collections.abc.Iterable[str] | None = None,
+                      control_images: str | collections.abc.Iterable[str] | None = None,
+                      reference_images: str | collections.abc.Iterable[str] | None = None,
+                      adapter_images: str | collections.abc.Iterable[str] | None = None,
+                      latents: str | collections.abc.Iterable[str] | None = None,
+                      floyd_image: str | None = None,
+                      resize: str | tuple[int | str, int | str] | None = None,
+                      aspect: bool = True,
+                      frame_start: int | None = None,
+                      frame_end: int | None = None,
+                      end_image: str | None = None,
+                      wan_pose_video: str | None = None,
+                      wan_face_video: str | None = None,
+                      wan_background_video: str | None = None,
+                      wan_driving_video: str | None = None,
+                      ltx_index: int | None = None,
+                      ltx_strength: float | None = None,
+                      ltx_extra_conditions: collections.abc.Sequence | None = None) -> str:
+    """
+    Format image seed arguments into a ``--image-seeds`` URI.
+
+    Supports all seed URI options, including LTX condition frames and Wan video inputs.
+    """
+    return _textprocessing.format_image_seed_uri(
+        seed_images=seed_images,
+        mask_images=mask_images,
+        control_images=control_images,
+        reference_images=reference_images,
+        adapter_images=adapter_images,
+        latents=latents,
+        floyd_image=floyd_image,
+        resize=resize,
+        aspect=aspect,
+        frame_start=frame_start,
+        frame_end=frame_end,
+        end_image=end_image,
+        wan_pose_video=wan_pose_video,
+        wan_face_video=wan_face_video,
+        wan_background_video=wan_background_video,
+        wan_driving_video=wan_driving_video,
+        ltx_index=ltx_index,
+        ltx_strength=ltx_strength,
+        ltx_extra_conditions=ltx_extra_conditions)
+
+
+def format_image_processors(processors: collections.abc.Iterable[str | None]) -> str:
+    """
+    Format image processor chains for use with image-processor arguments.
+    Per-image + separated chains are supported by
+    --seed-image-processors, --mask-image-processors,
+    --control-image-processors, --reference-image-processors, and
+    --adapter-image-processors. The single-chain options
+    --last-frame-image-processors, --wan-pose-image-processors,
+    --wan-face-image-processors, --wan-driving-image-processors, and
+    --wan-background-image-processors can use this function with one item.
+
+    Each iterable item corresponds to one image chain, in the order expected by
+    the selected argument. Non-empty processor URIs are shell-quoted, and the
+    plus sign separates the chains. For per-image arguments, use None or an
+    empty string for an image that should have no processor; its empty slot is
+    preserved when another item has a processor. If every item is empty, an
+    empty string is returned.
+
+    For example, ``['flip', None, 'grayscale']`` becomes
+    ``flip +  + grayscale``, leaving the middle image unprocessed.
+    """
+    processors = list(processors)
+    if not any(processors):
+        return ''
+    return ' + '.join(quote(processor) if processor else '' for processor in processors)
 
 
 def quote(

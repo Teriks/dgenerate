@@ -17,10 +17,11 @@ order: 25
 \setp background_clip "@file[{"label":"Background Clip (replace)", "optional":true, "mode":"input", "file-types":["videos-in"]}]"
 \setp mask_clip "@file[{"label":"Mask Clip (replace)", "optional":true, "mode":"input", "file-types":["videos-in"], "divider-after":true}]"
 
-\set image_seeds {{ character + ((';wan-pose=' + pose_clip) if pose_clip else '') + ((';wan-face=' + face_clip) if face_clip else '') + ((';wan-driving=' + driving_clip) if driving_clip else '') + ((';wan-background=' + background_clip) if background_clip else '') + ((';mask=' + mask_clip) if mask_clip else '') }}
+\set image_seeds {{ format_image_seed(seed_images=character, wan_pose_video=pose_clip, wan_face_video=face_clip, wan_driving_video=driving_clip, wan_background_video=background_clip, mask_images=mask_clip) }}
+\set image_seeds {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Wan-AI/Wan2.2-Animate-14B-Diffusers", "optional":false, "file-types":["models"]}]
---model-type wan-animate {{ auth_token }}
+--model-type wan-animate {{ image_seeds }} {{ auth_token }}
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["UniPCMultistepScheduler"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
@@ -46,4 +47,4 @@ order: 25
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "add your prompt here" --image-seeds {{ quote(image_seeds) }}
+--prompts "add your prompt here"
