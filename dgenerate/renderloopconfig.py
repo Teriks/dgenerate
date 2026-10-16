@@ -1787,7 +1787,11 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     output_size: _types.OptionalSize = None
     """
-    Desired output size, sizes not aligned by 8 pixels will result in an error message.
+    Desired output size. The command line rejects sizes that are not aligned by 8.
+    When set directly, an unaligned size is rounded down to the alignment the model
+    requires and a warning is issued. Models that need more than 8 (Stable Cascade,
+    Stable Diffusion 3, Flux.2, Z-Image, Qwen-Image, and video models) also round
+    8-aligned sizes this way.
     This corresponds to the ``--output-size`` argument of the dgenerate command line tool.
     """
 

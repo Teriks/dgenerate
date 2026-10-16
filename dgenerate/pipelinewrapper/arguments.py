@@ -145,8 +145,8 @@ class DiffusionArguments(_types.SetFromMixin):
     except in the case of Stable Cascade, which can accept multiple images of any dimension for the purpose of image based
     prompting similar to IP Adapters.
     
-    All incoming images will be aligned by 8 automatically, if they need to be aligned by
-    a value higher than this, a warning will be issued.
+    Incoming images are resized to the pixel alignment the model requires: 8 for most models, 16 for Stable Diffusion 3, Flux.2, Z-Image, and Qwen-Image.
+    Stable Cascade images are used as an image prompt and are not resized.
     
     All other pipelines interpret multiple image inputs as a batching request.
     """
@@ -168,8 +168,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     All input images involved in a generation except for ``ip_adapter_images`` must match in dimension.
     
-    All incoming mask images will be aligned by 8 automatically, if they need to be aligned by a value
-    higher than this, a warning will be issued to ``stdout`` via :py:mod:`dgenerate.messages`.
+    Incoming mask images are resized to the pixel alignment the model requires: 8 for most models, 16 for Stable Diffusion 3, Flux.2, Z-Image, and Qwen-Image.
     """
 
     inpaint_crop: bool = False
@@ -251,8 +250,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     All input images involved in a generation must match in dimension.
     
-    All incoming ControlNet images will be aligned by 8 automatically, if they need to be 
-    aligned by a value higher than this, a warning will be issued to ``stdout`` via :py:mod:`dgenerate.messages`.
+    Incoming ControlNet images are resized to the pixel alignment the model requires: 8 for most models, 16 for Stable Diffusion 3, Flux.2, Z-Image, and Qwen-Image.
     """
 
     ip_adapter_images: _types.OptionalImagesSequence = None
@@ -269,8 +267,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Multiple IP Adapter URIs can be provided, each IP Adapter can get its own set of images.
     
-    All incoming IP Adapter images will be aligned by 8 automatically, if they need to be 
-    aligned by a value higher than this, a warning will be issued to ``stdout`` via :py:mod:`dgenerate.messages`.
+    Incoming IP Adapter images are aligned by 8 automatically.
     """
 
     floyd_image: _types.OptionalImageOrTensor = None
@@ -288,20 +285,20 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Output image width.
     
-    Will be automatically aligned by 8.
-    
-    If alignments of more than 8 need to be forced, 
-    a warning will be issued to ``stdout`` via :py:mod:`dgenerate.messages`.
+    Values that are not aligned are rounded down to the alignment the model requires:
+    8 for most models, 16 for Stable Diffusion 3, Flux.2, Z-Image, and Qwen-Image,
+    and 128 for Stable Cascade. Video models round to their VAE alignment.
+    A warning is issued to ``stdout`` via :py:mod:`dgenerate.messages` when the value is changed.
     """
 
     height: _types.OptionalInteger = None
     """
     Output image height.
     
-    Will be automatically aligned by 8.
-    
-    If alignments of more than 8 need to be forced, 
-    a warning will be issued to ``stdout`` via :py:mod:`dgenerate.messages`.
+    Values that are not aligned are rounded down to the alignment the model requires:
+    8 for most models, 16 for Stable Diffusion 3, Flux.2, Z-Image, and Qwen-Image,
+    and 128 for Stable Cascade. Video models round to their VAE alignment.
+    A warning is issued to ``stdout`` via :py:mod:`dgenerate.messages` when the value is changed.
     """
 
     aspect_correct: bool = False

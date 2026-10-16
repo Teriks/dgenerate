@@ -1909,12 +1909,14 @@ class DiffusionPipelineWrapper:
     # noinspection PyMethodMayBeStatic
     def _output_align(self) -> int:
         """
-        Pixel alignment for ``--output-size`` and seed images.
+        Pixel alignment for ``--output-size`` and for seed, mask, and control images.
 
-        Stable Cascade requires 128-pixel alignment. Stable Diffusion 3 and
-        packed-flow image models require 16-pixel alignment; other image models
-        use the standard 8-pixel VAE alignment. Video models handle their
-        model-specific size requirements in their pipeline implementations.
+        Stable Cascade requires 128-pixel alignment for its output size. Its
+        seed images are an image prompt, so they are not resized to this.
+        Stable Diffusion 3 and packed-flow image models require 16-pixel
+        alignment; other image models use the standard 8-pixel VAE alignment.
+        Video models handle their model-specific size requirements in their
+        pipeline implementations.
         """
         if _enums.model_type_is_s_cascade(self._model_type):
             return 128
@@ -1929,6 +1931,19 @@ class DiffusionPipelineWrapper:
             width: int | None,
             height: int | None,
             mode: str) -> tuple[int | None, int | None]:
+        """
+        Round the user width and height down to :py:meth:`_output_align`.
+
+        A side smaller than the alignment becomes the alignment. A warning
+        is issued when either side changes. The command line already
+        rejects sizes not aligned by 8, so this forcing only applies to
+        larger model alignments or to direct API use.
+
+        :param width: user width, or ``None``
+        :param height: user height, or ``None``
+        :param mode: generation mode named in the warning, such as ``txt2img``
+        :return: ``(width, height)``, ``None`` sides stay ``None``
+        """
         align = self._output_align()
 
         if height is not None:

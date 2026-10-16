@@ -32,7 +32,7 @@ Repository: ``Lightricks/LTX-2.5-Diffusers``.
 * With ``--ltx-ic-lora``, a plain path is instead the reference clip for an IC-LoRA, such as canny, depth, or pose control. See `IC-LoRA control`_.
 * ``images:`` is rejected.
 
-Width and height must be divisible by 32. ``--video-fps`` defaults to 24.
+Width and height are rounded down to a multiple of 32, with a warning. ``--video-fps`` defaults to 24.
 ``--video-lengths`` snaps to ``8k+1`` frames at that rate, the same rule as a
 conditioning clip.
 
@@ -216,7 +216,7 @@ frame, put the reference in ``control=``:
 * Some IC-LoRAs read the reference at a reduced size. dgenerate reads
   ``reference_downscale_factor`` from the IC-LoRA's safetensors metadata, and ``downscale``
   in the URI overrides it. The union control LoRA uses 2, so the output width and height
-  must be divisible by 64.
+  are rounded down to a multiple of 64.
 * ``--ltx-ic-lora`` needs an LTX-2 checkpoint. The earlier LTX-Video pipeline rejects it.
 
 See the examples in `examples/ltx2/ic_lora <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/ic_lora>`_.
@@ -369,7 +369,7 @@ Two-stage generation
 
 ``--ltx-latent-upscale`` runs both stages in the same generation, the way
 ``--sdxl-refiner`` follows a base pass. ``--output-size`` is the finished clip,
-and both sides must be divisible by 64. Stage 1 denoises at half of that size
+and both sides are rounded down to a multiple of 64. Stage 1 denoises at half of that size
 with the main guidance, steps, and ``--sigmas``. The checkpoint ``latent_upsampler``
 doubles the video latents. Stage 2 refines at the full size with the published
 3-value sigma table. ``--ltx-noise-scales`` defaults to the first of those sigmas.
