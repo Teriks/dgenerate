@@ -587,13 +587,11 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
         """
 
         forced_alignment = self.get_alignment()
+        alignment_forced = False
         if forced_alignment is not None:
             if (not _image.is_aligned(image.size, align=forced_alignment)) and align != forced_alignment:
                 align = forced_alignment
-                _messages.warning(
-                    f'"{self.loaded_by_name}" image processor requires an image alignment of {align}, '
-                    f'this alignment has been forced to prevent an error.'
-                )
+                alignment_forced = True
 
         # This is the actual size it will end
         # up being resized to by resize_image
@@ -601,6 +599,10 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
                                                       new_size=resize_resolution,
                                                       aspect_correct=aspect_correct,
                                                       align=align)
+        if alignment_forced:
+            _messages.warning(
+                f'"{self.loaded_by_name}" image processor requires an image alignment of {align}; '
+                f'forcing image size from {image.size} to {calculate_new_size} to prevent an error.')
 
         pre_processed = self._process_pre_resize(image,
                                                  calculate_new_size)

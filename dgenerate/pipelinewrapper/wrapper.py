@@ -1492,8 +1492,7 @@ class DiffusionPipelineWrapper:
                 new_size=target_size,
                 aspect_correct=user_args.aspect_correct,
                 align=align)
-            if align == _pipelines.PACKED_FLOW_SIZE_MULTIPLE:
-                new_size = _pipelines.snap_packed_flow_size(*new_size, multiple=align)
+            new_size = max(align, new_size[0]), max(align, new_size[1])
 
             if img.size != new_size:
                 img = _image.resize_image(img=img, size=new_size)
@@ -1765,7 +1764,7 @@ class DiffusionPipelineWrapper:
             if _enums.model_type_is_sd3(self._model_type):
                 # Handle SD3 model specifics for control images
                 pipeline_args['control_image'] = self._sd3_force_control_to_a16(
-                    pipeline_args, control_images, user_args
+                    pipeline_args, control_images
                 )
             elif (_enums.model_type_is_flux(self._model_type)
                   or _enums.model_type_is_z_image(self._model_type)
@@ -1912,32 +1911,34 @@ class DiffusionPipelineWrapper:
         """
         Pixel alignment for ``--output-size`` and seed images.
 
-        Flux.2, Z-Image, and Qwen-Image pack 2x2 latent patches, so the
-        pixel size has to be divisible by ``vae_scale_factor * 2`` (16).
+        Stable Cascade requires 128-pixel alignment. Stable Diffusion 3 and
+        packed-flow image models require 16-pixel alignment; other image models
+        use the standard 8-pixel VAE alignment. Video models handle their
+        model-specific size requirements in their pipeline implementations.
         """
+        if _enums.model_type_is_s_cascade(self._model_type):
+            return 128
+        if _enums.model_type_is_sd3(self._model_type):
+            return 16
         if _enums.model_type_is_flow_image(self._model_type):
-            return _pipelines.PACKED_FLOW_SIZE_MULTIPLE
+            return 16
         return 8
 
-    def _aligned_8_user_dimensions(self, user_args: DiffusionArguments):
+    def _aligned_user_dimensions(
+            self,
+            width: int | None,
+            height: int | None) -> tuple[int | None, int | None]:
         align = self._output_align()
-        if align == _pipelines.PACKED_FLOW_SIZE_MULTIPLE:
-            return _pipelines.snap_packed_flow_size(
-                user_args.width, user_args.height, multiple=align)
 
-        if user_args.height is not None:
-            if user_args.height % align != 0:
-                user_height = user_args.height - (user_args.height % align)
-            else:
-                user_height = user_args.height
+        if height is not None:
+            user_height = max(
+                align, height - (height % align))
         else:
             user_height = None
 
-        if user_args.width is not None:
-            if user_args.width % align != 0:
-                user_width = user_args.width - (user_args.width % align)
-            else:
-                user_width = user_args.width
+        if width is not None:
+            user_width = max(
+                align, width - (width % align))
         else:
             user_width = None
 
@@ -1963,7 +1964,8 @@ class DiffusionPipelineWrapper:
 
     # noinspection PyUnresolvedReferences,PyTypeChecker
     def _set_pipeline_img2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
-        user_width, user_height = self._aligned_8_user_dimensions(user_args)
+        user_width, user_height = self._aligned_user_dimensions(
+            user_args.width, user_args.height)
         image_arg_inputs = self._get_pipeline_img2img_inputs(user_args)
         non_latent_input = not _torchutil.is_tensor(image_arg_inputs[0])
 
@@ -2094,14 +2096,16 @@ class DiffusionPipelineWrapper:
             pipeline_args['image'] = image_arg_inputs
 
             if non_latent_input:
+                aligned_sizes = []
                 for idx, image in enumerate(image_arg_inputs):
                     if not _image.is_aligned(image.size, 64):
                         size = _image.align_by(image.size, 64)
-                        _messages.warning(
-                            f'Input image size {image.size} is not aligned by 64. '
-                            f'Output dimensions will be forcefully aligned to 64: {size}.'
-                        )
+                        aligned_sizes.append(f'{image.size} to {size}')
                         image_arg_inputs[idx] = _image.resize_image(image, size)
+                if aligned_sizes:
+                    _messages.warning(
+                        'Force-aligning X2 upscaler input image sizes to 64 pixels: '
+                        f'{", ".join(aligned_sizes)}.')
 
             self._set_pipe_dimensions(
                 None, None,
@@ -2109,14 +2113,6 @@ class DiffusionPipelineWrapper:
             )
 
         elif self._model_type == _enums.ModelType.S_CASCADE:
-            # Validate output dimensions for stable cascade
-            if user_width and user_width > 0 and not (user_width % 128) == 0:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Stable Cascade requires an output dimension that is aligned by 128.')
-            if user_height and user_height > 0 and not (user_height % 128) == 0:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Stable Cascade requires an output dimension that is aligned by 128.')
-
             # Override with cascade defaults and set both pipeline and inference dimensions
             cascade_width = _types.default(user_width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
             cascade_height = _types.default(user_height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
@@ -2131,15 +2127,13 @@ class DiffusionPipelineWrapper:
             if _enums.model_type_is_sd3(self._model_type):
                 image_arg_inputs = list(image_arg_inputs)
                 pipeline_args['image'] = image_arg_inputs
+                aligned_sizes = []
 
                 if non_latent_input:
                     for idx, image in enumerate(image_arg_inputs):
                         if not _image.is_aligned(image.size, 16):
                             size = _image.align_by(image.size, 16)
-                            _messages.warning(
-                                f'Input image size {image.size} is not aligned by 16. '
-                                f'Dimensions will be forcefully aligned to 16: {size}.'
-                            )
+                            aligned_sizes.append(f'image {image.size} to {size}')
                             image_arg_inputs[idx] = _image.resize_image(image, size)
 
                     inference_width = image_arg_inputs[0].width
@@ -2149,17 +2143,20 @@ class DiffusionPipelineWrapper:
                     mask_images = list(mask_images)
                     pipeline_args['mask_image'] = mask_images
 
+                    aligned_sizes = []
                     for idx, image in enumerate(mask_images):
                         if not _image.is_aligned(image.size, 16):
                             size = _image.align_by(image.size, 16)
-                            _messages.warning(
-                                f'Input mask image size {image.size} is not aligned by 16. '
-                                f'Dimensions will be forcefully aligned to 16: {size}.'
-                            )
+                            aligned_sizes.append(f'mask {image.size} to {size}')
                             mask_images[idx] = _image.resize_image(image, size)
 
                     inference_width = mask_images[0].width
                     inference_height = mask_images[0].height
+
+                if aligned_sizes:
+                    _messages.warning(
+                        'Force-aligning SD3 input sizes to 16 pixels: '
+                        f'{", ".join(aligned_sizes)}.')
 
             self._set_pipe_dimensions(
                 None, None,
@@ -2170,16 +2167,15 @@ class DiffusionPipelineWrapper:
 
     def _set_pipeline_txt2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
 
-        width, height = self._aligned_8_user_dimensions(user_args)
+        width, height = self._aligned_user_dimensions(
+            user_args.width, user_args.height)
         align = self._output_align()
 
-        if width != user_args.width:
+        if width != user_args.width or height != user_args.height:
             _messages.warning(
-                f'Forcing alignment of txt2img generation argument "width" to {align}.')
-
-        if height != user_args.height:
-            _messages.warning(
-                f'Forcing alignment of txt2img generation argument "height" to {align}.')
+                f'Forcing txt2img output size from '
+                f'{user_args.width}x{user_args.height} to {width}x{height} '
+                f'(aligned by {align}).')
 
         if _enums.model_type_is_sdxl(self._model_type):
             self._inference_height = _types.default(height, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT)
@@ -2193,17 +2189,9 @@ class DiffusionPipelineWrapper:
         elif self._model_type == _enums.ModelType.S_CASCADE:
             self._inference_height = _types.default(height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
             self._inference_width = _types.default(width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
-
-            if not _image.is_aligned((self._inference_height, self._inference_width), 128):
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Stable Cascade requires an output dimension that is aligned by 128.')
         elif self._model_type == _enums.ModelType.SD3:
             self._inference_height = _types.default(height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
             self._inference_width = _types.default(width, _constants.DEFAULT_SD3_OUTPUT_WIDTH)
-
-            if not _image.is_aligned((self._inference_height, self._inference_width), 16):
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Stable Diffusion 3 requires an output dimension that is aligned by 16.')
         elif (_enums.model_type_is_flux(self._model_type)
               or _enums.model_type_is_flow_image(self._model_type)):
             self._inference_height = _types.default(height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT)
@@ -2493,33 +2481,26 @@ class DiffusionPipelineWrapper:
         return latents
 
     @staticmethod
-    def _sd3_force_control_to_a16(args, control_images, user_args):
+    def _sd3_force_control_to_a16(args, control_images):
         processed_control_images = list(control_images)
+        aligned_sizes = []
         for idx, img in enumerate(processed_control_images):
 
             if not _image.is_aligned(img.size, 16):
                 # noinspection PyTypeChecker
                 size: tuple[int, int] = _image.align_by(img.size, 16)
-
-                if user_args.width:
-                    if not (user_args.width % 16) == 0:
-                        raise _pipelines.UnsupportedPipelineConfigError(
-                            'Stable Diffusion 3 requires an output dimension aligned by 16.')
-
-                if user_args.height:
-                    if not (user_args.height % 16) == 0:
-                        raise _pipelines.UnsupportedPipelineConfigError(
-                            'Stable Diffusion 3 requires an output dimension aligned by 16.')
+                aligned_sizes.append(f'{img.size} to {size}')
 
                 args['width'] = size[0]
                 args['height'] = size[1]
 
-                _messages.warning(
-                    f'Control image size {img.size} is not aligned by 16. '
-                    f'Output dimensions will be forcefully aligned by 16: {size}.'
-                )
-
                 processed_control_images[idx] = _image.resize_image(img, size)
+
+        if aligned_sizes:
+            _messages.warning(
+                'Force-aligning SD3 control image sizes to 16 pixels: '
+                f'{", ".join(aligned_sizes)}. Output size is '
+                f'{args["width"]}x{args["height"]}.')
 
         return processed_control_images
 

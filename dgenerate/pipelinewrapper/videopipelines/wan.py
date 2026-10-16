@@ -360,16 +360,6 @@ def _spatial_multiple(pipe) -> int:
     return spatial * 2
 
 
-def _require_wan_size(width: int | None, height: int | None, pipe, model_name: str):
-    if width is None or height is None:
-        return
-    align = _spatial_multiple(pipe)
-    if int(width) % align or int(height) % align:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'{model_name} requires --output-size dimensions divisible by {align}. '
-            f'Got {width}x{height}.')
-
-
 def _animate2_resampled_count(num_frames: int,
                               source_fps: float | None,
                               target_fps: float) -> int:
@@ -538,8 +528,8 @@ def _call_wan(wrapper, user_args):
     _apply_wan_config(pipe, user_args)
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
-    _require_wan_size(width, height, pipe, 'Wan')
     align = _spatial_multiple(pipe)
+    width, height = _vp._force_output_size_alignment(width, height, align, 'Wan')
     if mode == 'wan-image':
         width, height = _fit_output_media(
             user_args, 'images', [], width, height, align, 'Wan image')
@@ -731,11 +721,13 @@ def _call_wan_animate(wrapper, user_args):
     _apply_wan_config(pipe, user_args)
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
-    _require_wan_size(width, height, pipe, 'Wan-Animate')
+    align = _spatial_multiple(pipe)
+    width, height = _vp._force_output_size_alignment(
+        width, height, align, 'Wan-Animate')
     width, height = _fit_output_media(
         user_args, 'wan_pose_video_frames',
         [('wan_background_video_frames', False), ('mask_video_frames', True)],
-        width, height, _spatial_multiple(pipe), 'Wan-Animate pose clip')
+        width, height, align, 'Wan-Animate pose clip')
     pose = user_args.wan_pose_video_frames
 
     fps = float(user_args.video_fps or _constants.DEFAULT_WAN_ANIMATE_FPS)
@@ -817,10 +809,12 @@ def _call_wan_animate_2(wrapper, user_args):
     _require_image_encoder(pipe, 'wan-animate-2')
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
-    _require_wan_size(width, height, pipe, 'Wan-Animate-2')
+    align = _spatial_multiple(pipe)
+    width, height = _vp._force_output_size_alignment(
+        width, height, align, 'Wan-Animate-2')
     width, height = _fit_output_media(
         user_args, 'wan_driving_video_frames', [],
-        width, height, _spatial_multiple(pipe), 'Wan-Animate-2 driving clip')
+        width, height, align, 'Wan-Animate-2 driving clip')
 
     distilled = held.family == 'wan-animate-2-distilled'
     steps = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))

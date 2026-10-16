@@ -3164,15 +3164,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'{a_namer("max_sequence_length")} must be greater than or equal '
                         f'to 1 and less than or equal to 1024 for ltx.')
 
-        if self.output_size is not None and self.model_type == _pipelinewrapper.ModelType.LTX:
-            width, height = self.output_size
-            align = 64 if self.ltx_latent_upscale else 32
-            if width % align or height % align:
-                raise RenderLoopConfigError(
-                    f'{a_namer("output_size")} must be divisible by {align} for '
-                    f'{_pipelinewrapper.get_model_type_string(self.model_type)}. '
-                    f'Got {width}x{height}.')
-
         if self.ltx_latent_upscale and self.output_size is None:
             raise RenderLoopConfigError(
                 f'{a_namer("ltx_latent_upscale")} needs {a_namer("output_size")}. '
@@ -3492,10 +3483,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 self.second_model_inference_steps = [
                     _pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS]
 
-            if self.output_size is not None and not _image.is_aligned(self.output_size, 128):
-                raise RenderLoopConfigError(
-                    f'Stable Cascade requires {a_namer("output_size")} to be aligned by 128.')
-
         elif self.s_cascade_decoder_uri:
             raise RenderLoopConfigError(
                 f'{a_namer("s_cascade_decoder_uri")} may only be used with "s-cascade"')
@@ -3699,11 +3686,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'{a_namer("max_sequence_length")} must be greater than or equal '
                         f'to 1 and less than or equal to 512.'
                     )
-
-            if self.output_size is not None:
-                if not _image.is_aligned(self.output_size, 16):
-                    raise RenderLoopConfigError(
-                        f'Stable Diffusion 3 requires {a_namer("output_size")} to be aligned to 16.')
 
             if self.unet_uri or self.second_model_unet_uri:
                 raise RenderLoopConfigError(

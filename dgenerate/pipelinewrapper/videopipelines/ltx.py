@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import collections.abc
 import inspect
+import math
 import os
 import warnings
 
@@ -189,8 +190,10 @@ def _call_ltx(wrapper, user_args):
     family = held.family
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
-    if width is not None:
-        _vp._require_multiple_of_32(width, height, 'LTX')
+    align = _ltx_canvas_align(pipe, held, mode)
+    if user_args.ltx_latent_upscale:
+        align = math.lcm(align, 64)
+    width, height = _vp._force_output_size_alignment(width, height, align, 'LTX')
     if mode != 'ltx-txt':
         width, height = _fit_ltx_inputs(pipe, held, mode, user_args, width, height)
 
@@ -504,9 +507,9 @@ def _detach_prompt_enhancer(pipe):
 def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
     width = kwargs.get('width')
     height = kwargs.get('height')
-    if width is None or height is None or int(width) % 64 or int(height) % 64:
+    if width is None or height is None:
         raise _pipelines.UnsupportedPipelineConfigError(
-            '--ltx-latent-upscale needs an --output-size divisible by 64. '
+            '--ltx-latent-upscale needs an --output-size. '
             'That size is the finished clip.')
     _enhance_ltx_prompt_once(wrapper, pipe, kwargs)
     stage1 = dict(kwargs)
@@ -854,14 +857,6 @@ def _ltx_reference_kwargs(wrapper, pipe, held, user_args, num_frames: int,
     ic_lora = _vp._parsed_ic_lora(wrapper)
     attention = ic_lora.attention if ic_lora is not None else 1.0
     spatial = int(getattr(pipe, 'vae_spatial_compression_ratio', 32) or 32)
-    if factor > 1 and width is not None and height is not None:
-        width_bad = (int(width) // factor) % spatial
-        height_bad = (int(height) // factor) % spatial
-        if width_bad or (height_bad and not user_args.aspect_correct):
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'The IC-LoRA reads the control clip at 1/{factor} of the output size, '
-                f'so the output width and height must be divisible by {spatial * factor}. '
-                f'Got {int(width)}x{int(height)}.')
 
     clip = _trim_ltx_clip(
         user_args.reference_video_frames, num_frames, _ltx_temporal_compression(pipe))
