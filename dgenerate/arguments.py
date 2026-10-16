@@ -2052,7 +2052,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     The "downscale" argument is the factor the reference clip is shrunk by before encoding.
                     IC-LoRAs trained on reduced-size references store it in their file metadata as
                     "reference_downscale_factor", and that value is used when this argument is omitted.
-                    The output width and height must be divisible by 32 times this factor.
+                    The output width and height are rounded down to a multiple of 32 times this factor.
 
                     "revision", "subfolder", and "weight-name" work the same way they do for --loras."""
         )
@@ -4011,13 +4011,16 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-s', '--output-size', action='store', default=None, type=_type_output_size, metavar="SIZE",
             help="""Image output size, for txt2img generation this is the exact output size.
                     The dimensions specified for this value must be aligned by 8 or you will receive an error message.
+                    Models that require a larger alignment round the size down and print a warning:
+                    16 for Stable Diffusion 3, Flux.2, Z-Image, and Qwen-Image, 128 for Stable Cascade,
+                    and the VAE alignment for video models.
                     If an --image-seeds URI is used its Seed, Mask, and/or Control component image sources will be
                     resized to this dimension with aspect ratio maintained before being used for generation by default,
                     except in the case of Stable Cascade where the images are used as a style prompt (not a noised seed),
                     and can be of varying dimensions.
                     
                     If --no-aspect is not specified, width will be fixed and a new height
-                    (aligned by 8) will be calculated for the input images. In most cases resizing the image inputs
+                    (aligned by the model's required alignment) will be calculated for the input images. In most cases resizing the image inputs
                     will result in an image output of an equal size to the inputs, except for upscalers and Deep Floyd
                     --model-type values (if*).
                     
@@ -5284,8 +5287,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--ltx-latent-upscale', action='store_true', default=False,
             dest='ltx_latent_upscale',
             help="""Run LTX-2 as one two-stage generation, the way --sdxl-refiner
-                    runs after the base pass. --output-size is the finished clip
-                    and both sides must be divisible by 64. The first pass denoises
+                    runs after the base pass. --output-size is the finished clip,
+                    and both sides are rounded down to a multiple of 64. The first pass denoises
                     at half of that size, the checkpoint latent upsampler doubles
                     the video latents, and a short second pass refines them at the
                     full size. The same prompt, seed, and image seed are used.

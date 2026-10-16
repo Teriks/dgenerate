@@ -830,8 +830,8 @@ Help Output
             
             The "downscale" argument is the factor the reference clip is shrunk by before encoding. IC-LoRAs
             trained on reduced-size references store it in their file metadata as "reference_downscale_factor",
-            and that value is used when this argument is omitted. The output width and height must be divisible
-            by 32 times this factor.
+            and that value is used when this argument is omitted. The output width and height are rounded down
+            to a multiple of 32 times this factor.
             
             "revision", "subfolder", and "weight-name" work the same way they do for --loras.
             ---------------------------------------------------------------------------------
@@ -2115,16 +2115,18 @@ Help Output
             ---------------------------------------------------------------------
       -s, --output-size SIZE
             Image output size, for txt2img generation this is the exact output size. The dimensions specified
-            for this value must be aligned by 8 or you will receive an error message. If an --image-seeds URI is
-            used its Seed, Mask, and/or Control component image sources will be resized to this dimension with
-            aspect ratio maintained before being used for generation by default, except in the case of Stable
-            Cascade where the images are used as a style prompt (not a noised seed), and can be of varying
-            dimensions.
+            for this value must be aligned by 8 or you will receive an error message. Models that require a
+            larger alignment round the size down and print a warning: 16 for Stable Diffusion 3, Flux.2,
+            Z-Image, and Qwen-Image, 128 for Stable Cascade, and the VAE alignment for video models. If an
+            --image-seeds URI is used its Seed, Mask, and/or Control component image sources will be resized to
+            this dimension with aspect ratio maintained before being used for generation by default, except in
+            the case of Stable Cascade where the images are used as a style prompt (not a noised seed), and can
+            be of varying dimensions.
             
-            If --no-aspect is not specified, width will be fixed and a new height (aligned by 8) will be
-            calculated for the input images. In most cases resizing the image inputs will result in an image
-            output of an equal size to the inputs, except for upscalers and Deep Floyd --model-type values
-            (if*).
+            If --no-aspect is not specified, width will be fixed and a new height (aligned by the model's
+            required alignment) will be calculated for the input images. In most cases resizing the image inputs
+            will result in an image output of an equal size to the inputs, except for upscalers and Deep Floyd
+            --model-type values (if*).
             
             If only one integer value is provided, that is the value for both dimensions. X/Y dimension values
             should be separated by "x".
@@ -2848,12 +2850,12 @@ Help Output
             ---------------------------------------------------------------------------
       --ltx-latent-upscale
             Run LTX-2 as one two-stage generation, the way --sdxl-refiner runs after the base pass.
-            --output-size is the finished clip and both sides must be divisible by 64. The first pass denoises
-            at half of that size, the checkpoint latent upsampler doubles the video latents, and a short second
-            pass refines them at the full size. The same prompt, seed, and image seed are used. Stage-2 sigmas
-            default to the published 3-value table, and stage-2 guidance defaults to 1. See --ltx-stage-sigmas,
-            --ltx-noise-scales, --ltx-stage-guidance-scales, and --ltx-stage-loras.
-            -----------------------------------------------------------------------
+            --output-size is the finished clip, and both sides are rounded down to a multiple of 64. The first
+            pass denoises at half of that size, the checkpoint latent upsampler doubles the video latents, and a
+            short second pass refines them at the full size. The same prompt, seed, and image seed are used.
+            Stage-2 sigmas default to the published 3-value table, and stage-2 guidance defaults to 1. See
+            --ltx-stage-sigmas, --ltx-noise-scales, --ltx-stage-guidance-scales, and --ltx-stage-loras.
+            -------------------------------------------------------------------------------------------
       --ltx-stage-sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
             Sigma schedule for the --ltx-latent-upscale refine pass. Same syntax as --sigmas. Each schedule will
             be tried in turn. The default is the published 3-value stage-2 table.
@@ -4522,7 +4524,7 @@ Repository: ``Lightricks/LTX-2.5-Diffusers``.
 * With ``--ltx-ic-lora``, a plain path is instead the reference clip for an IC-LoRA, such as canny, depth, or pose control. See `IC-LoRA control`_.
 * ``images:`` is rejected.
 
-Width and height must be divisible by 32. ``--video-fps`` defaults to 24.
+Width and height are rounded down to a multiple of 32, with a warning. ``--video-fps`` defaults to 24.
 ``--video-lengths`` snaps to ``8k+1`` frames at that rate, the same rule as a
 conditioning clip.
 
@@ -4706,7 +4708,7 @@ frame, put the reference in ``control=``:
 * Some IC-LoRAs read the reference at a reduced size. dgenerate reads
   ``reference_downscale_factor`` from the IC-LoRA's safetensors metadata, and ``downscale``
   in the URI overrides it. The union control LoRA uses 2, so the output width and height
-  must be divisible by 64.
+  are rounded down to a multiple of 64.
 * ``--ltx-ic-lora`` needs an LTX-2 checkpoint. The earlier LTX-Video pipeline rejects it.
 
 See the examples in `examples/ltx2/ic_lora <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx2/ic_lora>`_.
@@ -4859,7 +4861,7 @@ Two-stage generation
 
 ``--ltx-latent-upscale`` runs both stages in the same generation, the way
 ``--sdxl-refiner`` follows a base pass. ``--output-size`` is the finished clip,
-and both sides must be divisible by 64. Stage 1 denoises at half of that size
+and both sides are rounded down to a multiple of 64. Stage 1 denoises at half of that size
 with the main guidance, steps, and ``--sigmas``. The checkpoint ``latent_upsampler``
 doubles the video latents. Stage 2 refines at the full size with the published
 3-value sigma table. ``--ltx-noise-scales`` defaults to the first of those sigmas.
@@ -13922,7 +13924,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [43304971985136]
+            Value: [67111868291035]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
