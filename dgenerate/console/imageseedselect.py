@@ -86,10 +86,15 @@ seeds is rejected, and more masks than seeds is rejected.
 
 {_seed(seed_images=['a.png', 'b.png'], mask_images=['mask-a.png', 'mask-b.png'])}
 
-A control image alone is written as the seed. Use it with
---control-nets, or as the reference clip for an LTX IC-LoRA.
+A control image alone is written as the seed by default. Turn on
+"Keep control=" to retain its control role, for example with Wan VACE
+or an LTX IC-LoRA reference clip when combining it with a first frame.
 
 {_seed(control_images='control.png')}
+
+With a preserved control role for Wan VACE.
+
+{_seed(control_images='clip.mp4', preserve_control=True)}
 
 One control image per ControlNet.
 
@@ -471,6 +476,13 @@ class _ImageSeedSelect(tk.Toplevel):
         self._seeds = _FileRows(self, self._open_image, 'Seed image', start=1)
         self._masks = _FileRows(self, self._open_image, 'Inpaint mask')
         self._controls = _FileRows(self, self._open_image, 'Control image')
+        self._preserve_control_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            self._inner,
+            text='Keep control= when no seed image is supplied (VACE / IC-LoRA)',
+            variable=self._preserve_control_var
+        ).grid(row=self._row, column=0, sticky=tk.W, pady=(0, 4))
+        self._row += 1
 
         self._section('Reference', _REFERENCE_HELP)
         self._references = _FileRows(self, self._open_image, 'Reference image')
@@ -679,6 +691,7 @@ class _ImageSeedSelect(tk.Toplevel):
                 seed_images=self._paths_argument(seeds),
                 mask_images=self._paths_argument(masks),
                 control_images=self._paths_argument(controls),
+                preserve_control=self._preserve_control_var.get(),
                 reference_images=self._paths_argument(references),
                 latents=self._paths_argument(latents),
                 adapter_images=self._paths_argument(adapters),

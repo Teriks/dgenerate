@@ -13,7 +13,7 @@ order: 29
 \setp mask_clip "@file[{"label":"Mask Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
 \setp reference "@file[{"label":"Reference Image", "optional":true, "mode":"input", "file-types":["images-in"], "divider-after":true}]"
 
-\set image_seeds {{ format_image_seed(seed_images=first_frame, control_images=control_clip, mask_images=mask_clip, reference_images=reference) }}
+\set image_seeds {{ format_image_seed(seed_images=first_frame, control_images=control_clip, mask_images=mask_clip, reference_images=reference, preserve_control=True) }}
 \set image_seeds {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Wan-AI/Wan2.1-VACE-14B-diffusers", "optional":false, "file-types":["models"]}]

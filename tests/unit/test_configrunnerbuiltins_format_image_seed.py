@@ -30,6 +30,12 @@ class TestConfigRunnerBuiltinsFormatImageSeed(unittest.TestCase):
                 wan_face_video='face.mp4'),
             'character.png;wan-pose=pose.mp4;wan-face=face.mp4')
 
+    def test_preserves_control_only_input(self):
+        self.assertEqual(
+            _builtins.format_image_seed(
+                control_images='control.mp4', preserve_control=True),
+            'control=control.mp4')
+
     def test_formats_image_processor_chains(self):
         format_processors = _builtins.format_image_processors
         self.assertEqual(format_processors([]), '')
