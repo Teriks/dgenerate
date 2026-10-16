@@ -3217,7 +3217,11 @@ class DiffusionPipelineWrapper:
             return self._create_pipeline_result(pipeline_output, output_type, user_args, pipeline_args)
 
     @contextlib.contextmanager
-    def _dype_context(self, pipeline, user_args: DiffusionArguments):
+    def _dype_context(
+            self,
+            pipeline,
+            user_args: DiffusionArguments,
+            pipeline_args: dict[str, typing.Any] | None = None):
         """Apply DyPE for one pipeline call, including ADetailer refinement passes."""
         if not user_args.dype:
             yield
@@ -3245,11 +3249,16 @@ class DiffusionPipelineWrapper:
 
         import dgenerate.extras.dype as _dype
         try:
+            pipeline_args = pipeline_args or {}
             with _dype.dype_context(
                     pipeline,
                     model_family=model_family,
                     base_resolution=user_args.dype_base_resolution,
-                    method=user_args.dype_method):
+                    method=user_args.dype_method,
+                    height=pipeline_args.get('height'),
+                    width=pipeline_args.get('width'),
+                    mscale=user_args.dype_mscale,
+                    axis_scaling=user_args.dype_axis_scaling):
                 yield
         except _dype.DypeError as e:
             raise _pipelines.UnsupportedPipelineConfigError(
@@ -3284,7 +3293,8 @@ class DiffusionPipelineWrapper:
             call_pipeline = configured_pipeline
             if getattr(configured_pipeline, '_cache_dit_ray_pipeline_enabled', False):
                 call_pipeline = _get_cache_dit_ray_pipeline_call_proxy(configured_pipeline)
-            with self._dype_context(configured_pipeline, user_args):
+            with self._dype_context(
+                    configured_pipeline, user_args, pipeline_args=kwargs):
                 return _pipelines.call_pipeline(pipeline=call_pipeline, **kwargs)
 
     def _call_asdff(self,
@@ -3382,7 +3392,8 @@ class DiffusionPipelineWrapper:
                 # should we crop any control image the same way that it crops the mask?
                 asdff_pipe.crop_control_image = self._adetailer_crop_control_image
 
-                with self._dype_context(configured_pipeline, user_args):
+                with self._dype_context(
+                        configured_pipeline, user_args, pipeline_args=pipeline_args):
                     asdff_output = asdff_pipe(
                         pipeline_args=pipeline_args,
                         model_path=detector_uri.get_model_path(
@@ -5086,7 +5097,9 @@ class DiffusionPipelineWrapper:
                     )
 
     def _auto_dype_check(self, args: DiffusionArguments):
-        if args.dype_method is not None or args.dype_base_resolution is not None:
+        if args.dype_method is not None or args.dype_base_resolution is not None or \
+                args.dype_mscale is not None or \
+                args.dype_axis_scaling is not None:
             args.dype = True
         if args.dype_method is not None and args.dype_method not in _constants.DYPE_METHODS:
             raise _pipelines.UnsupportedPipelineConfigError(
@@ -5094,6 +5107,14 @@ class DiffusionPipelineWrapper:
         if args.dype_base_resolution is not None and args.dype_base_resolution < 16:
             raise _pipelines.UnsupportedPipelineConfigError(
                 '--dype-base-resolutions values must be at least 16 pixels.')
+        if args.dype_mscale is not None and args.dype_mscale not in _constants.DYPE_MSCALES:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'--dype-mscales value must be one of: {", ".join(_constants.DYPE_MSCALES)}.')
+        if args.dype_axis_scaling is not None and \
+                args.dype_axis_scaling not in _constants.DYPE_AXIS_SCALINGS:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '--dype-axis-scalings value must be one of: '
+                f'{", ".join(_constants.DYPE_AXIS_SCALINGS)}.')
         if not args.dype:
             return
         if not _enums.model_type_supports_dype(self.model_type):
@@ -5149,7 +5170,9 @@ class DiffusionPipelineWrapper:
 
     @staticmethod
     def _auto_cache_dit_check(args: DiffusionArguments):
-        if args.dype_method is not None or args.dype_base_resolution is not None:
+        if args.dype_method is not None or args.dype_base_resolution is not None or \
+                args.dype_mscale is not None or \
+                args.dype_axis_scaling is not None:
             args.dype = True
         if not args.cache_dit:
             return

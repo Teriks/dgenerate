@@ -1295,15 +1295,37 @@ class RenderLoopConfig(_types.SetFromMixin):
     dype_methods: _types.OptionalStrings = None
     """
     DyPE position encoding methods to try in turn: ``yarn`` (the default),
-    ``ntk``, or ``base`` (the unmodified RoPE baseline). Requires ``dype=True``.
+    ``ntk``, or ``base`` (the unmodified RoPE baseline).
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.dype` is enabled.
     """
 
     dype_base_resolutions: _types.OptionalIntegers = None
     """
     Reference long-side resolutions in pixels for DyPE. Defaults to 1024 for
-    Flux/Flux.2/Z-Image, 1328 for Qwen-Image, and 832 for Wan. Supplying values
-    requires ``dype=True`` and values must be at least 16 pixels. Each value
-    supplied will be tried in turn.
+    Flux/Flux.2/Z-Image, 1328 for Qwen-Image, and 832 for Wan. Values must be
+    at least 16 pixels. Each value supplied will be tried in turn.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.dype` is enabled.
+    """
+
+    dype_mscales: _types.OptionalStrings = None
+    """
+    DyPE YARN attention magnitude scale modes to try in turn: ``constant``
+    (the default, upstream DyPE's fixed scale), ``decay`` (fades the scale out
+    as denoising progresses), or ``off``. Only affects the ``yarn`` method.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.dype` is enabled.
+    """
+
+    dype_axis_scalings: _types.OptionalStrings = None
+    """
+    DyPE spatial axis scaling modes for non-square images to try in turn:
+    ``shared`` (the default, one image-wide factor for NTK and magnitude
+    scaling, per-axis linear interpolation) or ``independent`` (upstream DyPE's
+    per-axis scaling). Square images are unaffected.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.dype` is enabled.
     """
 
     tea_cache_rel_l1_thresholds: _types.OptionalFloats = None
@@ -2560,7 +2582,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.cache_dit_config is not None:
             self.cache_dit = True
-        if self.dype_methods is not None or self.dype_base_resolutions is not None:
+        if self.dype_methods is not None or self.dype_base_resolutions is not None or                 self.dype_mscales is not None or self.dype_axis_scalings is not None:
             self.dype = True
 
         if self.dype_methods:
@@ -2571,6 +2593,22 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer("dype_methods")} values must be one of: '
                     f'{", ".join(_pipelinewrapper.constants.DYPE_METHODS)}.')
+        if self.dype_mscales:
+            invalid_dype_mscales = [
+                mscale for mscale in self.dype_mscales
+                if mscale not in _pipelinewrapper.constants.DYPE_MSCALES]
+            if invalid_dype_mscales:
+                raise RenderLoopConfigError(
+                    f'{a_namer("dype_mscales")} values must be one of: '
+                    f'{", ".join(_pipelinewrapper.constants.DYPE_MSCALES)}.')
+        if self.dype_axis_scalings:
+            invalid_dype_axis_scalings = [
+                axis_scaling for axis_scaling in self.dype_axis_scalings
+                if axis_scaling not in _pipelinewrapper.constants.DYPE_AXIS_SCALINGS]
+            if invalid_dype_axis_scalings:
+                raise RenderLoopConfigError(
+                    f'{a_namer("dype_axis_scalings")} values must be one of: '
+                    f'{", ".join(_pipelinewrapper.constants.DYPE_AXIS_SCALINGS)}.')
         if self.dype_base_resolutions and any(
                 resolution < 16 for resolution in self.dype_base_resolutions):
             raise RenderLoopConfigError(
@@ -4428,6 +4466,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.adetailer_sizes,
             self.dype_methods,
             self.dype_base_resolutions,
+            self.dype_mscales,
+            self.dype_axis_scalings,
             self.tea_cache_rel_l1_thresholds,
             self.spectrum_weights,
             self.spectrum_orders,
@@ -4700,6 +4740,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 dype=ov('dype', [self.dype]),
                 dype_method=ov('dype_method', self.dype_methods),
                 dype_base_resolution=ov('dype_base_resolution', self.dype_base_resolutions),
+                dype_mscale=ov('dype_mscale', self.dype_mscales),
+                dype_axis_scaling=ov('dype_axis_scaling', self.dype_axis_scalings),
                 tea_cache_rel_l1_threshold=ov('tea_cache_rel_l1_threshold', self.tea_cache_rel_l1_thresholds),
                 spectrum=ov('spectrum', [self.spectrum]),
                 spectrum_weight=ov('spectrum_weight', self.spectrum_weights),

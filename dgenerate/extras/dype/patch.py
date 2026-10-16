@@ -13,9 +13,11 @@ import functools
 import inspect
 import math
 
+import diffusers
 import torch
 
-from .rope import dype_rope_1d
+from .rope import AXIS_SCALINGS, MSCALE_MODES, dype_rope_1d
+from .scheduler import resolution_shift_context
 
 
 class DypeError(ValueError):
@@ -91,7 +93,22 @@ def _image_base_patches(base_resolution: int | None, *, default: int = _IMAGE_BA
     return float(base_resolution or default) / _IMAGE_TOKEN_STRIDE
 
 
-def _patch_flux_pos_embed(transformer, base_resolution: int | None, method: str):
+# Height and width position axes in Flux, Flux.2, and Z-Image position IDs.
+_SPATIAL_ID_AXES = (1, 2)
+
+
+def _shared_scale(axis_scaling: str, lengths, base_length: float) -> float | None:
+    """Image-wide extrapolation factor for ``shared`` axis scaling, else ``None``."""
+    if axis_scaling != 'shared':
+        return None
+    return max(1.0, max(float(length) / base_length for length in lengths))
+
+
+def _patch_flux_pos_embed(transformer,
+                          base_resolution: int | None,
+                          method: str,
+                          mscale: str = 'constant',
+                          axis_scaling: str = 'shared'):
     pos_embed = getattr(transformer, 'pos_embed', None)
     if pos_embed is None or not hasattr(pos_embed, 'axes_dim') or not hasattr(pos_embed, 'theta'):
         raise DypeError('The loaded Flux transformer has no compatible positional embedder.')
@@ -112,17 +129,21 @@ def _patch_flux_pos_embed(transformer, base_resolution: int | None, method: str)
             lengths_by_shape[shape_key] = tuple(
                 max(1, int(pos[..., axis].max().item()) + 1) if axis > 0 else 1
                 for axis in range(len(axes_dim)))
+        lengths = lengths_by_shape[shape_key]
+        shared_scale = _shared_scale(
+            axis_scaling, (lengths[axis] for axis in _SPATIAL_ID_AXES), base_patches)
         for axis, dim in enumerate(axes_dim):
             axis_positions = pos[..., axis].reshape(-1)
-            current_length = lengths_by_shape[shape_key][axis]
             cos, sin = dype_rope_1d(
                 axis_positions,
                 dim,
                 theta=theta,
                 base_length=base_patches,
-                current_length=current_length,
+                current_length=lengths[axis],
                 timestep=_CURRENT_TIMESTEP.get(),
                 method=method,
+                mscale=mscale,
+                shared_scale=shared_scale if axis in _SPATIAL_ID_AXES else None,
             )
             output_shape = (*pos.shape[:-1], dim)
             cos_out.append(cos.reshape(output_shape))
@@ -132,7 +153,11 @@ def _patch_flux_pos_embed(transformer, base_resolution: int | None, method: str)
     return _attribute_patch(pos_embed, 'forward', forward)
 
 
-def _patch_zimage_rope(transformer, base_resolution: int | None, method: str):
+def _patch_zimage_rope(transformer,
+                       base_resolution: int | None,
+                       method: str,
+                       mscale: str = 'constant',
+                       axis_scaling: str = 'shared'):
     rope = getattr(transformer, 'rope_embedder', None)
     if rope is None or not all(hasattr(rope, name) for name in ('axes_dims', 'theta')):
         raise DypeError('The loaded Z-Image transformer has no compatible callable RoPE embedder.')
@@ -150,18 +175,22 @@ def _patch_zimage_rope(transformer, base_resolution: int | None, method: str):
             lengths_by_shape[shape_key] = tuple(
                 max(1, int(ids[:, axis].max().item()) + 1) if axis > 0 else 1
                 for axis in range(len(axes_dims)))
+        lengths = lengths_by_shape[shape_key]
+        shared_scale = _shared_scale(
+            axis_scaling, (lengths[axis] for axis in _SPATIAL_ID_AXES), base_patches)
         result = []
         for axis, dim in enumerate(axes_dims):
             axis_positions = ids[:, axis]
-            current_length = lengths_by_shape[shape_key][axis]
             result.append(dype_rope_1d(
                 axis_positions,
                 dim,
                 theta=theta,
                 base_length=base_patches,
-                current_length=current_length,
+                current_length=lengths[axis],
                 timestep=_CURRENT_TIMESTEP.get(),
                 method=method,
+                mscale=mscale,
+                shared_scale=shared_scale if axis in _SPATIAL_ID_AXES else None,
                 output='complex',
                 complex_mscale=True,
             ))
@@ -187,7 +216,9 @@ def _qwen_video_frequencies(embedder,
                             device: torch.device | None = None,
                             condition: bool = False,
                             base_resolution: int | None = None,
-                            method: str = 'yarn'):
+                            method: str = 'yarn',
+                            mscale: str = 'constant',
+                            axis_scaling: str = 'shared'):
     if device is None:
         device = embedder.pos_freqs.device
     elif not isinstance(device, torch.device):
@@ -206,6 +237,7 @@ def _qwen_video_frequencies(embedder,
     output = 'angles' if device.type == 'neuron' else 'complex'
     base_length = _image_base_patches(base_resolution, default=_QWEN_BASE_RESOLUTION)
     timestep = _CURRENT_TIMESTEP.get()
+    shared_scale = _shared_scale(axis_scaling, (height, width), base_length)
     height_positions = _axis_positions(height, bool(embedder.scale_rope), device)
     width_positions = _axis_positions(width, bool(embedder.scale_rope), device)
     height_freqs = dype_rope_1d(
@@ -216,6 +248,8 @@ def _qwen_video_frequencies(embedder,
         current_length=height,
         timestep=timestep,
         method=method,
+        mscale=mscale,
+        shared_scale=shared_scale,
         output=output,
         complex_mscale=True,
         freqs_dtype=torch.float32,
@@ -228,6 +262,8 @@ def _qwen_video_frequencies(embedder,
         current_length=width,
         timestep=timestep,
         method=method,
+        mscale=mscale,
+        shared_scale=shared_scale,
         output=output,
         complex_mscale=True,
         freqs_dtype=torch.float32,
@@ -235,7 +271,11 @@ def _qwen_video_frequencies(embedder,
     return torch.cat([frame_freqs, height_freqs, width_freqs], dim=-1).reshape(frame * height * width, -1).contiguous()
 
 
-def _patch_qwen_rope(transformer, base_resolution: int | None, method: str):
+def _patch_qwen_rope(transformer,
+                     base_resolution: int | None,
+                     method: str,
+                     mscale: str = 'constant',
+                     axis_scaling: str = 'shared'):
     embedder = getattr(transformer, 'pos_embed', None)
     if embedder is None or not all(hasattr(embedder, name) for name in ('_compute_video_freqs', 'axes_dim', 'theta')):
         raise DypeError('The loaded Qwen transformer has no compatible shape-based RoPE embedder.')
@@ -243,7 +283,7 @@ def _patch_qwen_rope(transformer, base_resolution: int | None, method: str):
     def video_freqs(frame, height, width, idx=0, device=None):
         return _qwen_video_frequencies(
             embedder, frame, height, width, idx=idx, device=device, base_resolution=base_resolution,
-            method=method)
+            method=method, mscale=mscale, axis_scaling=axis_scaling)
 
     restorers = [_attribute_patch(embedder, '_compute_video_freqs', video_freqs)]
     try:
@@ -251,7 +291,8 @@ def _patch_qwen_rope(transformer, base_resolution: int | None, method: str):
             def condition_freqs(frame, height, width, device=None):
                 return _qwen_video_frequencies(
                     embedder, frame, height, width, device=device, condition=True,
-                    base_resolution=base_resolution, method=method)
+                    base_resolution=base_resolution, method=method, mscale=mscale,
+                    axis_scaling=axis_scaling)
 
             restorers.append(_attribute_patch(embedder, '_compute_condition_freqs', condition_freqs))
     except Exception:
@@ -287,6 +328,7 @@ def _wan_spatial_axis(rope,
                       *,
                       base_length: float,
                       method: str,
+                      mscale: str,
                       device: torch.device):
     """Return one spatial RoPE axis.
 
@@ -311,11 +353,12 @@ def _wan_spatial_axis(rope,
         current_length=length,
         timestep=_CURRENT_TIMESTEP.get(),
         method=method,
+        mscale=mscale,
     )
     return cos.to(dtype=axis_cos.dtype), sin.to(dtype=axis_sin.dtype)
 
 
-def _patch_wan_rope(transformer, base_resolution: int | None, method: str):
+def _patch_wan_rope(transformer, base_resolution: int | None, method: str, mscale: str = 'constant'):
     rope = getattr(transformer, 'rope', None)
     needed = ('patch_size', 't_dim', 'h_dim', 'w_dim', 'freqs_cos', 'freqs_sin')
     if rope is None or not all(hasattr(rope, name) for name in needed):
@@ -345,10 +388,10 @@ def _patch_wan_rope(transformer, base_resolution: int | None, method: str):
 
         cos_height, sin_height = _wan_spatial_axis(
             rope, freqs_cos[1], freqs_sin[1], patch_height, rope.h_dim,
-            base_length=base_height, method=method, device=hidden_states.device)
+            base_length=base_height, method=method, mscale=mscale, device=hidden_states.device)
         cos_width, sin_width = _wan_spatial_axis(
             rope, freqs_cos[2], freqs_sin[2], patch_width, rope.w_dim,
-            base_length=base_width, method=method, device=hidden_states.device)
+            base_length=base_width, method=method, mscale=mscale, device=hidden_states.device)
         cos_height = cos_height.view(1, patch_height, 1, -1).expand(
             patch_frames, patch_height, patch_width, -1)
         sin_height = sin_height.view(1, patch_height, 1, -1).expand(
@@ -367,15 +410,21 @@ def _patch_wan_rope(transformer, base_resolution: int | None, method: str):
     return _attribute_patch(rope, 'forward', forward)
 
 
-def _patch_transformer(transformer, model_family: str, base_resolution: int | None, method: str):
+def _patch_transformer(transformer,
+                       model_family: str,
+                       base_resolution: int | None,
+                       method: str,
+                       mscale: str,
+                       axis_scaling: str):
     if model_family in {'flux1', 'flux2'}:
-        restore_rope = _patch_flux_pos_embed(transformer, base_resolution, method)
+        restore_rope = _patch_flux_pos_embed(transformer, base_resolution, method, mscale, axis_scaling)
     elif model_family == 'qwen':
-        restore_rope = _patch_qwen_rope(transformer, base_resolution, method)
+        restore_rope = _patch_qwen_rope(transformer, base_resolution, method, mscale, axis_scaling)
     elif model_family == 'zimage':
-        restore_rope = _patch_zimage_rope(transformer, base_resolution, method)
+        restore_rope = _patch_zimage_rope(transformer, base_resolution, method, mscale, axis_scaling)
     elif model_family == 'wan':
-        restore_rope = _patch_wan_rope(transformer, base_resolution, method)
+        # Wan already scales both spatial axes by the long side's ratio.
+        restore_rope = _patch_wan_rope(transformer, base_resolution, method, mscale)
     else:
         raise DypeError(f'No DyPE adapter is registered for model family {model_family!r}.')
     try:
@@ -395,11 +444,21 @@ def _patch_transformer(transformer, model_family: str, base_resolution: int | No
 def dype_context(pipeline,
                  model_family: str,
                  base_resolution: int | None = None,
-                 method: str | None = None):
+                 method: str | None = None,
+                 height: int | None = None,
+                 width: int | None = None,
+                 mscale: str | None = None,
+                 axis_scaling: str | None = None):
     """Apply DyPE adapters for one pipeline call and restore the model afterward."""
     method = 'yarn' if method is None else method
+    mscale = 'constant' if mscale is None else mscale
+    axis_scaling = 'shared' if axis_scaling is None else axis_scaling
     if method not in {'base', 'ntk', 'yarn'}:
         raise DypeError(f'Unknown DyPE position encoding method {method!r}.')
+    if mscale not in MSCALE_MODES:
+        raise DypeError(f'Unknown DyPE mscale mode {mscale!r}.')
+    if axis_scaling not in AXIS_SCALINGS:
+        raise DypeError(f'Unknown DyPE axis scaling {axis_scaling!r}.')
     if base_resolution is not None and base_resolution < 16:
         raise DypeError('The DyPE base resolution must be at least 16 pixels.')
     transformers = []
@@ -412,6 +471,10 @@ def dype_context(pipeline,
         raise DypeError(f'The loaded {model_family} pipeline exposes no transformer for DyPE.')
 
     with contextlib.ExitStack() as stack:
+        if model_family == 'flux1' and isinstance(pipeline, diffusers.FluxPipeline):
+            stack.enter_context(resolution_shift_context(
+                pipeline, height=height, width=width))
         for transformer in transformers:
-            stack.callback(_patch_transformer(transformer, model_family, base_resolution, method))
+            stack.callback(_patch_transformer(
+                transformer, model_family, base_resolution, method, mscale, axis_scaling))
         yield pipeline

@@ -282,6 +282,26 @@ DYPE_METHODS: tuple[str, ...] = ('yarn', 'ntk', 'base')
 Position encoding methods exposed by the DyPE adapter.
 """
 
+DEFAULT_DYPE_MSCALE: str = 'constant'
+"""
+Default YARN attention magnitude scale mode used by the DyPE adapter.
+"""
+
+DYPE_MSCALES: tuple[str, ...] = ('constant', 'decay', 'off')
+"""
+YARN attention magnitude scale modes exposed by the DyPE adapter.
+"""
+
+DEFAULT_DYPE_AXIS_SCALING: str = 'shared'
+"""
+Default spatial axis scaling mode used by the DyPE adapter.
+"""
+
+DYPE_AXIS_SCALINGS: tuple[str, ...] = ('independent', 'shared')
+"""
+Spatial axis scaling modes exposed by the DyPE adapter.
+"""
+
 DEFAULT_RAS_SAMPLE_RATIO: float = 0.5
 """
 Default sample ratio for RAS (Reinforcement Attention System) for Stable Diffusion 3.

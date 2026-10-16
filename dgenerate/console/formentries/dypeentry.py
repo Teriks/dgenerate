@@ -33,8 +33,12 @@ class _DyPEEntry(_entry._Entry):
 
     _METHODS = ('yarn', 'ntk', 'base')
 
+    _MSCALES = ('constant', 'decay', 'off')
+
+    _AXIS_SCALINGS = ('independent', 'shared')
+
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs, widget_rows=3)
+        super().__init__(*args, **kwargs, widget_rows=5)
 
         self.enabled_var = tk.BooleanVar(value=self.config.get('default', False))
         self.label_widget = ttk.Label(
@@ -65,6 +69,25 @@ class _DyPEEntry(_entry._Entry):
             column=1, padx=_entry.ROW_XPAD, sticky='ew')
         self.resolution_var.trace_add('write', lambda *_args: self.valid())
 
+        self.mscale_var = tk.StringVar(value=self.config.get('default-mscale', 'constant'))
+        self.mscale_label = ttk.Label(self.master, text='YARN Magnitude Scale', anchor='e')
+        self.mscale_entry = _combobox.ComboBox(
+            self.master, textvariable=self.mscale_var, values=self._MSCALES)
+        self.mscale_label.grid(
+            row=self.row + 3, column=0, padx=_entry.ROW_XPAD, sticky='e')
+        self.mscale_entry.grid(
+            row=self.row + 3, column=1, padx=_entry.ROW_XPAD, sticky='ew')
+
+        self.axis_scaling_var = tk.StringVar(
+            value=self.config.get('default-axis-scaling', 'shared'))
+        self.axis_scaling_label = ttk.Label(self.master, text='Axis Scaling', anchor='e')
+        self.axis_scaling_entry = _combobox.ComboBox(
+            self.master, textvariable=self.axis_scaling_var, values=self._AXIS_SCALINGS)
+        self.axis_scaling_label.grid(
+            row=self.row + 4, column=0, padx=_entry.ROW_XPAD, sticky='e')
+        self.axis_scaling_entry.grid(
+            row=self.row + 4, column=1, padx=_entry.ROW_XPAD, sticky='ew')
+
         self.enabled_var.trace_add('write', self._update_controls)
         self._update_controls()
 
@@ -84,6 +107,10 @@ class _DyPEEntry(_entry._Entry):
         self.method_entry.config(state=state)
         self.resolution_label.state(['!disabled' if enabled else 'disabled'])
         self.resolution_entry.config(state=state)
+        self.mscale_label.state(['!disabled' if enabled else 'disabled'])
+        self.mscale_entry.config(state=state)
+        self.axis_scaling_label.state(['!disabled' if enabled else 'disabled'])
+        self.axis_scaling_entry.config(state=state)
         if not enabled:
             self.valid()
 
@@ -119,4 +146,10 @@ class _DyPEEntry(_entry._Entry):
         resolution = self.resolution_var.get().strip()
         if resolution:
             arguments.append('--dype-base-resolutions ' + resolution)
+        mscale = self.mscale_var.get().strip()
+        if mscale and mscale != 'constant':
+            arguments.append('--dype-mscales ' + mscale)
+        axis_scaling = self.axis_scaling_var.get().strip()
+        if axis_scaling and axis_scaling != 'shared':
+            arguments.append('--dype-axis-scalings ' + axis_scaling)
         return _entry.replace_first(content, self.placeholder, '\n'.join(arguments))

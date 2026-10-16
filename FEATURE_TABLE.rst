@@ -1030,7 +1030,13 @@ DyPE (``--dype``) adapts spatial RoPE frequencies during denoising. Use
 baseline as combinatoric values. The Flux.1 and Qwen-Image adapters follow the upstream architecture; Flux
 Fill/Kontext, Qwen Edit/Layered, Flux.2, Z-Image, and Wan are experimental
 adapters. Reference long-side defaults are 1024 pixels for Flux/Flux.2/Z-Image,
-1328 for Qwen-Image, and 832 for Wan. DyPE cannot be combined with Cache-DiT,
+1328 for Qwen-Image, and 832 for Wan. ``--dype-mscales`` controls the ``yarn``
+method's attention magnitude scale: ``constant`` (default), ``decay``, or
+``off``. Use ``decay`` or ``off`` if ``yarn`` produces a fine repeating texture,
+as it does with FLUX.1-dev. ``--dype-axis-scalings`` controls non-square
+images: ``shared`` (default) applies the long side's scaling to both axes, as
+ComfyUI-DyPE does; ``independent`` scales each axis separately, as upstream
+DyPE does. DyPE cannot be combined with Cache-DiT,
 TeaCache, Spectrum, or SADA, because those features reuse or skip denoiser work
 from an earlier step. See the `DyPE source
 <https://github.com/guyyariv/DyPE>`__ and the vendored adapter notes under

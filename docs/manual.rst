@@ -56,6 +56,7 @@ Help Output
                      [-dcb INTEGER [INTEGER ...]] [-rdc] [-rdci INTEGER [INTEGER ...]]
                      [-rdcb INTEGER [INTEGER ...]] [-tc] [--cache-dit] [--dype]
                      [--dype-methods METHOD [METHOD ...]] [--dype-base-resolutions PIXELS [PIXELS ...]]
+                     [--dype-mscales MODE [MODE ...]] [--dype-axis-scalings MODE [MODE ...]]
                      [--cache-dit-config FILE] [-tcr [FLOAT ...]] [--spectrum] [--spectrum-weights [FLOAT ...]]
                      [--spectrum-orders [INT ...]] [--spectrum-lambdas [FLOAT ...]]
                      [--spectrum-warmup-steps [INT ...]] [--spectrum-window-sizes [FLOAT ...]]
@@ -1514,9 +1515,11 @@ Help Output
             
             Flux.1 and Qwen-Image use the upstream architectures. Flux Fill/Kontext, Qwen Edit/Layered, Flux.2,
             Z-Image, and Wan are experimental adapters. Defaults to a model-specific reference resolution. See
-            --dype-methods to choose position encoding methods and --dype-base-resolutions to override the
-            reference resolution. This option cannot be combined with --cache-dit, --tea-cache, --spectrum, or
-            --sada, because those features reuse or skip denoiser work from an earlier step.
+            --dype-methods to choose position encoding methods, --dype-base-resolutions to override the
+            reference resolution, --dype-mscales to control YARN's attention magnitude scale, and
+            --dype-axis-scalings to control scaling of non-square images. This option cannot be combined with
+            --cache-dit, --tea-cache, --spectrum, or --sada, because those features reuse or skip denoiser work
+            from an earlier step.
             
             This is supported for: --model-type flux, flux-fill, flux-kontext, flux2, flux2-klein-kv,
             qwen-image, qwen-image-edit, qwen-image-layered, z-image, z-image-omni, wan, wan-animate, and
@@ -1543,6 +1546,28 @@ Help Output
             
             See: https://github.com/guyyariv/DyPE
             -------------------------------------
+      --dype-mscales MODE [MODE ...]
+            YARN attention magnitude scale modes for DyPE, tried in turn as a combinatoric factor.
+            
+            constant applies upstream DyPE's fixed scale (default); decay fades the scale out as denoising
+            progresses so the final steps run unscaled; off disables it. Only the yarn method applies this
+            scale. Use decay or off if yarn produces a fine repeating texture, as seen with FLUX.1-dev.
+            Supplying this option implies --dype.
+            
+            See: https://github.com/wildminder/ComfyUI-DyPE
+            -----------------------------------------------
+      --dype-axis-scalings MODE [MODE ...]
+            Spatial axis scaling modes for DyPE on non-square images, tried in turn as a combinatoric factor.
+            
+            shared (default) computes the NTK frequency base, NTK factor, and YARN magnitude scale once from the
+            larger axis ratio and applies them to both axes, while YARN's linear interpolation stays per-axis,
+            as ComfyUI-DyPE does. independent scales each spatial axis by its own ratio to the base resolution,
+            as upstream DyPE does, so a short side at or below the base resolution is left unscaled. Square
+            images produce identical output in both modes. Wan already scales both axes by the long side and
+            ignores this option. Supplying this option implies --dype.
+            
+            See: https://github.com/wildminder/ComfyUI-DyPE
+            -----------------------------------------------
       --cache-dit-config FILE
             Cache-DiT YAML settings for cache policies, parallelism, quantization, attention, and layerwise
             offload. Supplying this option also enables Cache-DiT.
@@ -9875,6 +9900,8 @@ these are the arguments that are available for use:
     sada-max-interval: int
     dype-method: str
     dype-base-resolution: int
+    dype-mscale: str
+    dype-axis-scaling: str
     tea-cache-rel-l1-threshold: float
     spectrum-weight: float
     spectrum-order: int
@@ -13389,10 +13416,16 @@ The ``\templates_help`` output from the above example is:
         Name: "last_dype"
             Type: <class 'bool'>
             Value: False
+        Name: "last_dype_axis_scalings"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
         Name: "last_dype_base_resolutions"
             Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_dype_methods"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
+        Name: "last_dype_mscales"
             Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_flux2_caption_upsample_temperature"
@@ -13889,7 +13922,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [69242273609973]
+            Value: [43304971985136]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
