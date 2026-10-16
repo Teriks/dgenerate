@@ -3025,8 +3025,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      Flux.1 and Qwen-Image use the upstream architectures. Flux Fill/Kontext,
                      Qwen Edit/Layered, Flux.2, Z-Image, and Wan are experimental adapters.
                      Defaults to a model-specific reference resolution. See
-                     --dype-methods to choose position encoding methods and
-                     --dype-base-resolutions to override the reference resolution.
+                     --dype-methods to choose position encoding methods,
+                     --dype-base-resolutions to override the reference resolution,
+                     --dype-mscales to control YARN's attention magnitude scale, and
+                     --dype-axis-scalings to control scaling of non-square images.
                      This option cannot be combined with --cache-dit, --tea-cache,
                      --spectrum, or --sada, because those features reuse or skip
                      denoiser work from an earlier step.
@@ -3071,6 +3073,47 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
                      NOWRAP!
                      See: https://github.com/guyyariv/DyPE
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--dype-mscales', metavar='MODE', nargs='+',
+            choices=_pipelinewrapper.constants.DYPE_MSCALES,
+            default=None, dest='dype_mscales',
+            help="""YARN attention magnitude scale modes for DyPE, tried in turn as a combinatoric factor.
+
+                     constant applies upstream DyPE's fixed scale (default); decay fades the
+                     scale out as denoising progresses so the final steps run unscaled; off
+                     disables it. Only the yarn method applies this scale. Use decay or off
+                     if yarn produces a fine repeating texture, as seen with FLUX.1-dev.
+                     Supplying this option implies --dype.
+
+                     NOWRAP!
+                     See: https://github.com/wildminder/ComfyUI-DyPE
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--dype-axis-scalings', metavar='MODE', nargs='+',
+            choices=_pipelinewrapper.constants.DYPE_AXIS_SCALINGS,
+            default=None, dest='dype_axis_scalings',
+            help="""Spatial axis scaling modes for DyPE on non-square images, tried in turn as a combinatoric factor.
+
+                     shared (default) computes the NTK frequency base, NTK factor, and YARN magnitude
+                     scale once from the larger axis ratio and applies them to both axes, while YARN's
+                     linear interpolation stays per-axis, as ComfyUI-DyPE does. independent scales each
+                     spatial axis by its own ratio to the base resolution, as upstream DyPE does, so a
+                     short side at or below the base resolution is left unscaled. Square images produce
+                     identical output in both modes. Wan already scales both axes by the long side and
+                     ignores this option.
+                     Supplying this option implies --dype.
+
+                     NOWRAP!
+                     See: https://github.com/wildminder/ComfyUI-DyPE
                      """
         )
     )
@@ -5737,7 +5780,7 @@ def _parse_args(args=None, print_usage=True, overrides: dict[str, typing.Any] | 
     args = parser.parse_args(args, namespace=DgenerateArguments())
     if overrides:
         args.set_from(overrides, missing_value_throws=False)
-    if args.dype_methods is not None or args.dype_base_resolutions is not None:
+    if args.dype_methods is not None or args.dype_base_resolutions is not None or             args.dype_mscales is not None or args.dype_axis_scalings is not None:
         args.dype = True
     args.check(config_attribute_name_to_option)
     return args

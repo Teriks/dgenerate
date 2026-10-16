@@ -435,7 +435,11 @@ def reconstruct_dgenerate_opts(
     if args.dype and (
             args.dype_method is None or
             args.dype_method == _constants.DEFAULT_DYPE_METHOD) and \
-            args.dype_base_resolution is None:
+            args.dype_base_resolution is None and (
+            args.dype_mscale is None or
+            args.dype_mscale == _constants.DEFAULT_DYPE_MSCALE) and (
+            args.dype_axis_scaling is None or
+            args.dype_axis_scaling == _constants.DEFAULT_DYPE_AXIS_SCALING):
         opts.append(('--dype',))
 
     if args.dype_method is not None and args.dype_method != _constants.DEFAULT_DYPE_METHOD:
@@ -443,6 +447,13 @@ def reconstruct_dgenerate_opts(
 
     if args.dype_base_resolution is not None:
         opts.append(('--dype-base-resolutions', args.dype_base_resolution))
+
+    if args.dype_mscale is not None and args.dype_mscale != _constants.DEFAULT_DYPE_MSCALE:
+        opts.append(('--dype-mscales', args.dype_mscale))
+
+    if args.dype_axis_scaling is not None and \
+            args.dype_axis_scaling != _constants.DEFAULT_DYPE_AXIS_SCALING:
+        opts.append(('--dype-axis-scalings', args.dype_axis_scaling))
 
     if args.tea_cache_rel_l1_threshold is not None and \
             args.tea_cache_rel_l1_threshold != _constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD:

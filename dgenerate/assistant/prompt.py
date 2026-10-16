@@ -98,7 +98,7 @@ refiner, inpainting), FLUX.1-schnell, Kolors, Stable Cascade, the upscalers, \
 pix2pix, Tongyi-MAI/Z-Image, Tongyi-MAI/Z-Image-Turbo, \
 Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32, Qwen/Qwen-Image, \
 black-forest-labs/FLUX.2-klein-4B. \
-Gated: FLUX.1-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, \
+Gated: FLUX.1-dev, FLUX.1-Krea-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, \
 black-forest-labs/FLUX.2-dev, black-forest-labs/FLUX.2-klein-base-9B, SD3, SD3.5, \
 LTX-2.5, LTX-Video, DeepFloyd IF. For a gated repo, \\set token %HF_TOKEN%, \
 then {{% if not token.strip() and not '--auth-token' in injected_args %}} \
@@ -265,6 +265,8 @@ Public, no HF_TOKEN. Refine in the same invocation with --sdxl-refiner stability
 with --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16". Public, no HF_TOKEN.
 - Flux Schnell: black-forest-labs/FLUX.1-schnell, 4 steps, guidance 0, --model-type flux --dtype bfloat16. Public, no HF_TOKEN.
 - Flux Dev: black-forest-labs/FLUX.1-dev, --model-type flux --dtype bfloat16. Gated, needs HF_TOKEN.
+- Flux Krea Dev: black-forest-labs/FLUX.1-Krea-dev, --model-type flux --dtype bfloat16, guidance 4.5, 28 steps. \
+Photographic, aesthetic finetune of Flux Dev. Gated, needs HF_TOKEN.
 - Flux inpainting and outpainting: black-forest-labs/FLUX.1-Fill-dev, --model-type flux-fill. Gated, needs HF_TOKEN.
 - Flux image editing: black-forest-labs/FLUX.1-Kontext-dev, --model-type flux-kontext. Gated, needs HF_TOKEN.
 - Flux.2: black-forest-labs/FLUX.2-dev, --model-type flux2 --dtype bfloat16, guidance 4, 50 steps. \
@@ -443,7 +445,7 @@ _WEIGHT_REQUEST = re.compile(
 _FLUX_REQUEST = re.compile(r'\bflux\b', re.IGNORECASE)
 _COMPEL_REQUEST = re.compile(r'\bcompel\b', re.IGNORECASE)
 _GATED_HF = re.compile(
-    r'flux\.1-dev|\bflux[ -]?dev\b|flux[ -]?fill|flux\.1-fill|\bkontext\b|'
+    r'flux\.1-dev|\bflux[ -]?dev\b|flux\.1-krea|\bkrea\b|flux[ -]?fill|flux\.1-fill|\bkontext\b|'
     r'\bsd3\b|stable diffusion 3|\bltx\b|\bdeepfloyd\b',
     re.IGNORECASE)
 _PUBLIC_HF = re.compile(
@@ -475,7 +477,8 @@ def first_draft_recipes(request: str) -> str:
         'even when an example for a different repo has one.',
         'Public, no HF_TOKEN: SD 1.5, SD 2.1, SDXL, FLUX.1-schnell, Kolors, Stable Cascade, '
         'Wan-AI, upscalers, pix2pix.',
-        'Gated, HF_TOKEN required: FLUX.1-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, SD3, SD3.5, '
+        'Gated, HF_TOKEN required: FLUX.1-dev, FLUX.1-Krea-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, '
+        'SD3, SD3.5, '
         'LTX-2.5, LTX-Video, DeepFloyd IF.',
         'For a gated repo the \\print is exactly:',
         r'    \print Set HF_TOKEN environmental variable or pass --auth-token.',

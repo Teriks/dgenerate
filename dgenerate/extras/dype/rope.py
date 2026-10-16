@@ -11,6 +11,10 @@ import math
 
 import torch
 
+MSCALE_MODES = ('constant', 'decay', 'off')
+
+AXIS_SCALINGS = ('independent', 'shared')
+
 
 def _correction_factor(num_rotations: float, dim: int, theta: float, base_length: float) -> float:
     return (dim * math.log(base_length / (num_rotations * 2.0 * math.pi))) / (2.0 * math.log(theta))
@@ -43,11 +47,25 @@ def dype_rope_1d(positions: torch.Tensor,
                  method: str = 'yarn',
                  output: str = 'real',
                  complex_mscale: bool = False,
-                 freqs_dtype: torch.dtype | None = None):
+                 freqs_dtype: torch.dtype | None = None,
+                 mscale: str = 'constant',
+                 shared_scale: float | None = None):
     """Build DyPE frequencies for one position axis using YARN, NTK, or base RoPE.
 
     `timestep` is normalized so 1 is the noisiest step and 0 is the final
     denoising step. `output` may be `real` (cos/sin), `complex`, or `angles`.
+
+    `mscale` controls YARN's attention magnitude scale: `constant` applies
+    upstream DyPE's fixed scale, `decay` fades it toward 1 as `t^2` so the
+    final steps run unscaled, and `off` disables it.
+
+    `shared_scale` is the image-wide extrapolation factor, the largest ratio of
+    any spatial axis to its base length. When given, the NTK base, NTK factor,
+    and YARN magnitude scale use it, while YARN's linear interpolation keeps
+    this axis's own ratio. Axes at or below their base length then still
+    receive the same frequency rebalancing as the long axis, which is how
+    ComfyUI-DyPE's vision_yarn handles non-square images. When omitted, every
+    quantity uses this axis's own ratio, as upstream DyPE does.
     """
     if dim % 2 or dim < 2:
         raise ValueError(f'RoPE axis dimension must be an even integer >= 2, got {dim}.')
@@ -57,6 +75,8 @@ def dype_rope_1d(positions: torch.Tensor,
         raise ValueError(f'Unknown DyPE position encoding method {method!r}.')
     if output not in {'real', 'complex', 'angles'}:
         raise ValueError(f'Unknown RoPE output format {output!r}.')
+    if mscale not in MSCALE_MODES:
+        raise ValueError(f'Unknown DyPE mscale mode {mscale!r}.')
 
     positions = positions.reshape(-1)
     device = positions.device
@@ -65,8 +85,9 @@ def dype_rope_1d(positions: torch.Tensor,
     exponents = torch.arange(0, dim, 2, device=device, dtype=freqs_dtype) / dim
     freqs_base = torch.pow(torch.tensor(theta, device=device, dtype=freqs_dtype), -exponents)
 
-    scale_value = max(1.0, float(current_length) / float(base_length))
-    mscale = 1.0
+    linear_scale = max(1.0, float(current_length) / float(base_length))
+    scale_value = linear_scale if shared_scale is None else max(1.0, float(shared_scale))
+    magnitude = 1.0
     if method == 'ntk' and scale_value > 1.0:
         if dim <= 2:
             raise ValueError('DyPE NTK scaling requires a RoPE axis dimension greater than 2.')
@@ -77,7 +98,7 @@ def dype_rope_1d(positions: torch.Tensor,
         freqs = torch.pow(scaled_theta, -exponents)
     elif method == 'yarn' and scale_value > 1.0:
         scale = torch.tensor(scale_value, device=device, dtype=freqs_dtype)
-        freqs_linear = freqs_base / scale
+        freqs_linear = freqs_base / linear_scale
         new_base = theta * scale.pow(dim / (dim - 2)) if dim > 2 else theta
         freqs_ntk = torch.pow(torch.as_tensor(new_base, device=device, dtype=freqs_dtype), -exponents)
 
@@ -95,7 +116,10 @@ def dype_rope_1d(positions: torch.Tensor,
         high = min(dim // 2, high)
         freqs_mask = 1.0 - _linear_ramp_mask(low, high, dim // 2, device=device, dtype=freqs_dtype)
         freqs = freqs * (1.0 - freqs_mask) + freqs_base * freqs_mask
-        mscale = 0.1 * math.log(scale_value) + 1.0
+        if mscale == 'constant':
+            magnitude = 0.1 * math.log(scale_value) + 1.0
+        elif mscale == 'decay':
+            magnitude = 1.0 + 0.1 * math.log(scale_value) * kappa
     else:
         freqs = freqs_base
 
@@ -106,9 +130,9 @@ def dype_rope_1d(positions: torch.Tensor,
         angles = angles.float()
         frequencies = torch.polar(torch.ones_like(angles), angles)
         if complex_mscale:
-            frequencies = frequencies * mscale
+            frequencies = frequencies * magnitude
         return frequencies.to(torch.complex64)
 
-    cos = angles.cos().repeat_interleave(2, dim=-1).float() * mscale
-    sin = angles.sin().repeat_interleave(2, dim=-1).float() * mscale
+    cos = angles.cos().repeat_interleave(2, dim=-1).float() * magnitude
+    sin = angles.sin().repeat_interleave(2, dim=-1).float() * magnitude
     return cos, sin

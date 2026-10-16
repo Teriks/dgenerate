@@ -9,6 +9,33 @@ and adds no package dependency. DyPE is opt-in with `--dype`.
 tries each supplied method in turn. `base` keeps the original RoPE frequencies
 and is useful as a comparison when swept with the extrapolation methods.
 
+`--dype-mscales` controls YARN's attention magnitude scale, which multiplies
+the rotated query and key vectors by `0.1 * ln(s) + 1` for an extrapolation
+factor `s`. `constant` (default) is upstream DyPE's fixed scale. `decay` fades
+it toward 1 as `t^2`, so the final denoising steps run unscaled; this is the
+`vision_yarn` schedule from [ComfyUI-DyPE](https://github.com/wildminder/ComfyUI-DyPE).
+`off` disables it. Only the `yarn` method applies this scale.
+
+The constant scale suits FLUX.1-Krea-dev, which upstream DyPE was tuned on.
+FLUX.1-dev at the same settings produces a fine diagonal texture, with a period
+of one to two latent tokens, over flat regions; disabling the scale removes it.
+The texture forms late in denoising, which is why `decay` is offered as a
+middle ground that keeps the scale during the structural steps; in testing
+it removes the texture on FLUX.1-dev while leaving Krea output close to
+`constant`.
+
+`--dype-axis-scalings` controls non-square images. Upstream DyPE scales each
+spatial axis by its own ratio to the base length, so at 2048x1024 the height
+axis is interpolated and magnitude-scaled while the 1024-pixel width axis is
+left untouched. `independent` keeps that behavior. `shared` (default) follows
+ComfyUI-DyPE's `vision_yarn`: the NTK frequency base, NTK factor, and YARN
+magnitude scale come from the larger axis ratio and apply to both axes, while
+YARN's linear interpolation stays per-axis. Square images and the long axis are
+identical in both modes. On portrait and landscape tests with FLUX.1-dev and
+Krea, `shared` gave more coherent scene structure where the short side sat at
+the base resolution and somewhat richer detail elsewhere. Wan's adapter already
+scales both axes by the long side, so it ignores this option.
+
 ## Pipeline coverage
 
 | Pipeline family | Adapter | Status |
@@ -25,6 +52,12 @@ The adapters modify only spatial axes. Qwen text frequencies and Wan's temporal
 axis remain unchanged. `--dype-base-resolutions` overrides the reference long
 side used to decide when spatial scaling begins; defaults are 1024 pixels for
 Flux, Flux.2, and Z-Image, 1328 for Qwen-Image, and 832 for Wan.
+
+The upstream DyPE Flux pipeline also adjusts the scheduler shift calculation:
+it passes the current image sequence length as `max_seq_len`, rather than using
+the scheduler config's fixed maximum. The extra's `dype_context` mirrors that
+behavior for Diffusers `FluxPipeline` calls and leaves other pipeline types'
+scheduler behavior unchanged.
 
 DyPE cannot be combined with Cache-DiT, TeaCache, Spectrum, or SADA. Each of
 those features reuses or skips denoiser work computed at an earlier step, so

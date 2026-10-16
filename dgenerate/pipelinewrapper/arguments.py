@@ -895,15 +895,37 @@ class DiffusionArguments(_types.SetFromMixin):
     dype_method: _types.OptionalString = None
     """
     Position encoding method for DyPE: ``yarn`` (the default), ``ntk``, or
-    ``base`` (the unmodified RoPE baseline). Requires :py:attr:`DiffusionArguments.dype`.
+    ``base`` (the unmodified RoPE baseline).
+
+    Supplying any value implies that :py:attr:`DiffusionArguments.dype` is enabled.
     """
 
     dype_base_resolution: _types.OptionalInteger = None
     """
     Reference long-side resolution in pixels used by DyPE to determine when
     positional scaling begins. Defaults to 1024 for Flux/Flux.2/Z-Image,
-    1328 for Qwen-Image, and 832 for Wan. This option requires
-    :py:attr:`DiffusionArguments.dype` and must be at least 16 pixels.
+    1328 for Qwen-Image, and 832 for Wan. Must be at least 16 pixels.
+
+    Supplying any value implies that :py:attr:`DiffusionArguments.dype` is enabled.
+    """
+
+    dype_mscale: _types.OptionalString = None
+    """
+    YARN attention magnitude scale mode for DyPE: ``constant`` (the default,
+    upstream DyPE's fixed scale), ``decay`` (fades the scale out as denoising
+    progresses), or ``off``. Only affects the ``yarn`` method.
+
+    Supplying any value implies that :py:attr:`DiffusionArguments.dype` is enabled.
+    """
+
+    dype_axis_scaling: _types.OptionalString = None
+    """
+    Spatial axis scaling mode for DyPE on non-square images: ``shared`` (the
+    default, one image-wide factor for NTK and magnitude scaling, per-axis
+    linear interpolation) or ``independent`` (upstream DyPE's per-axis
+    scaling). Square images are unaffected.
+
+    Supplying any value implies that :py:attr:`DiffusionArguments.dype` is enabled.
     """
 
     tea_cache_rel_l1_threshold: _types.OptionalFloat = None
@@ -1907,6 +1929,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.sigmas, "Sigmas:"),
             (self.dype_method, "DyPE Position Encoding Method:"),
             (self.dype_base_resolution, "DyPE Base Resolution:"),
+            (self.dype_mscale, "DyPE YARN Magnitude Scale:"),
+            (self.dype_axis_scaling, "DyPE Axis Scaling:"),
             (self.tea_cache_rel_l1_threshold, "TeaCache Relative L1 Threshold:"),
             (self.spectrum_weight, "Spectrum Blend Weight:"),
             (self.spectrum_order, "Spectrum Chebyshev Order:"),
