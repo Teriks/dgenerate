@@ -5780,7 +5780,8 @@ def _parse_args(args=None, print_usage=True, overrides: dict[str, typing.Any] | 
     args = parser.parse_args(args, namespace=DgenerateArguments())
     if overrides:
         args.set_from(overrides, missing_value_throws=False)
-    if args.dype_methods is not None or args.dype_base_resolutions is not None or             args.dype_mscales is not None or args.dype_axis_scalings is not None:
+    if (args.dype_methods is not None or args.dype_base_resolutions is not None
+            or args.dype_mscales is not None or args.dype_axis_scalings is not None):
         args.dype = True
     args.check(config_attribute_name_to_option)
     return args
