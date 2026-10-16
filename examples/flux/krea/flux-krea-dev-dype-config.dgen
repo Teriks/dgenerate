@@ -1,0 +1,38 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Generate above Krea's 1024-pixel native resolution with DyPE. Upstream
+# DyPE was tuned on FLUX.1-Krea-dev, so the default yarn method and
+# constant magnitude scale work well here. Non-square output uses the
+# default shared axis scaling, which applies the long side's scaling to
+# both axes. VAE tiling keeps decoding memory down at this size.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+black-forest-labs/FLUX.1-Krea-dev
+--model-type flux {{ optimization }}
+--dtype bfloat16
+--vae-tiling
+--inference-steps 28
+--guidance-scales 4.5
+--gen-seeds 1
+--dype
+--output-path flux-krea-dev-dype
+--output-size 2560x1440
+--prompts "Wide photo of a red fox walking through a meadow of tall grass and wildflowers at golden hour, a pine forest in the distance"
