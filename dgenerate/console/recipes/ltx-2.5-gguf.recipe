@@ -23,15 +23,17 @@ order: 19
 \setp last_frame "@file[{"label":"Last Frame / Closing Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
 \setp control_clip "@file[{"label":"IC-LoRA Control Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"], "divider-after":true}]"
 
-\set image_seeds {{ control_clip if (control_clip and not first_frame and not last_frame) else ((first_frame + ((';last-frame=' + last_frame) if last_frame else '') + ((';control=' + control_clip) if control_clip else '')) if (first_frame or last_frame) else '') }}
+\set image_seeds {{ format_image_seed(seed_images=first_frame, end_image=last_frame, control_images=control_clip) }}
+\set image_seeds {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}
 
 \setp first_processor "@imageprocessor[{"label":"First Frame Processor"}]"
 \setp last_processor "@imageprocessor[{"label":"Last Frame Processor"}]"
 
-\set seed_processors {{ (quote(first_processor) + ((' + ' + quote(last_processor)) if last_processor else (' +' if last_frame else ''))) if first_processor else (('+ ' + quote(last_processor)) if last_processor else '') }}
+\set seed_processors {{ format_image_processors([first_processor, last_processor] if last_frame else [first_processor]) }}
+\set seed_processors {{ '--seed-image-processors ' + seed_processors if seed_processors else '' }}
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Lightricks/LTX-2.5-Diffusers", "optional":false, "file-types":["models"]}]
---model-type ltx {{ auth_token }}
+--model-type ltx {{ auth_token }} {{ image_seeds }} {{ seed_processors }}
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"], "optional":false, "default":"FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1"}]
 @switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["tc", "sada", "sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
@@ -77,4 +79,4 @@ order: 19
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "add your prompt here" {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }} {{ '--seed-image-processors ' + seed_processors if seed_processors else '' }}
+--prompts "add your prompt here"
