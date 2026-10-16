@@ -182,6 +182,9 @@ def cache_dit_context(pipeline: diffusers.DiffusionPipeline,
 
     _configure_cache_dit_logging()
 
+    import dgenerate._patches.cache_dit_ltx2_patch as _cache_dit_ltx2_patch
+    _cache_dit_ltx2_patch.register_hooks(pipeline)
+
     try:
         import yaml
 
