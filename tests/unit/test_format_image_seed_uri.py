@@ -56,6 +56,14 @@ class TestFormatImageSeedURI(unittest.TestCase):
         result = format_image_seed_uri(seed_images=None, control_images="control.png")
         self.assertEqual(result, "control.png")
 
+    def test_preserve_control_without_seed(self):
+        result = format_image_seed_uri(control_images="control.mp4", preserve_control=True)
+        self.assertEqual(result, "control=control.mp4")
+
+        result = format_image_seed_uri(
+            control_images="control.mp4", mask_images="mask.png", preserve_control=True)
+        self.assertEqual(result, "mask=mask.png;control=control.mp4")
+
     def test_all_arguments(self):
         result = format_image_seed_uri(
             seed_images="seed.png",
@@ -321,7 +329,12 @@ class TestFormatImageSeedURI(unittest.TestCase):
     def test_control_images_only_as_list(self):
         result = format_image_seed_uri(control_images=["control1.png", "control2.png"])
         self.assertEqual(result, "control1.png, control2.png")
-    
+
+    def test_preserve_control_images_only_as_list(self):
+        result = format_image_seed_uri(
+            control_images=["control1.png", "control2.png"], preserve_control=True)
+        self.assertEqual(result, "control=control1.png, control2.png")
+
     def test_adapter_images_only_as_list(self):
         result = format_image_seed_uri(adapter_images=["adapter1.png", "adapter2.png"])
         self.assertEqual(result, "adapter:adapter1.png + adapter2.png")

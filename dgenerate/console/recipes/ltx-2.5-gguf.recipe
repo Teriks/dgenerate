@@ -23,7 +23,7 @@ order: 19
 \setp last_frame "@file[{"label":"Last Frame / Closing Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
 \setp control_clip "@file[{"label":"IC-LoRA Control Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"], "divider-after":true}]"
 
-\set image_seeds {{ format_image_seed(seed_images=first_frame, end_image=last_frame, control_images=control_clip) }}
+\set image_seeds {{ format_image_seed(seed_images=first_frame, end_image=last_frame, control_images=control_clip, preserve_control=True) }}
 \set image_seeds {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}
 
 \setp first_processor "@imageprocessor[{"label":"First Frame Processor"}]"

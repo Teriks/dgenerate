@@ -93,11 +93,14 @@ def format_image_seed(seed_images: str | collections.abc.Iterable[str] | None = 
                       wan_driving_video: str | None = None,
                       ltx_index: int | None = None,
                       ltx_strength: float | None = None,
-                      ltx_extra_conditions: collections.abc.Sequence | None = None) -> str:
+                      ltx_extra_conditions: collections.abc.Sequence | None = None,
+                      preserve_control: bool = False) -> str:
     """
     Format image seed arguments into a ``--image-seeds`` URI.
 
     Supports all seed URI options, including LTX condition frames and Wan video inputs.
+    Set ``preserve_control=True`` to keep a control-only input in ``control=`` instead
+    of shortening it to the seed slot.
     """
     return _textprocessing.format_image_seed_uri(
         seed_images=seed_images,
@@ -118,7 +121,8 @@ def format_image_seed(seed_images: str | collections.abc.Iterable[str] | None = 
         wan_driving_video=wan_driving_video,
         ltx_index=ltx_index,
         ltx_strength=ltx_strength,
-        ltx_extra_conditions=ltx_extra_conditions)
+        ltx_extra_conditions=ltx_extra_conditions,
+        preserve_control=preserve_control)
 
 
 def format_image_processors(processors: collections.abc.Iterable[str | None]) -> str:

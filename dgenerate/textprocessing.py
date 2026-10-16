@@ -1834,7 +1834,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                           wan_driving_video: str | None = None,
                           ltx_index: int | None = None,
                           ltx_strength: float | None = None,
-                          ltx_extra_conditions: collections.abc.Sequence | None = None) -> str:
+                          ltx_extra_conditions: collections.abc.Sequence | None = None,
+                          preserve_control: bool = False) -> str:
     """
     Formats a ``--image-seeds`` URI to its shortest possible string form.
 
@@ -1862,6 +1863,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     :param seed_images: Seed image path(s)
     :param mask_images: Inpaint image path(s)
     :param control_images: Control image path(s)
+    :param preserve_control: Keep control-only inputs in the ``control=`` slot instead
+        of using the primary seed slot.
     :param reference_images: Extra reference image path(s), written as ``reference=``
     :param adapter_images: Adapter image path(s)
     :param latents: Raw latent tensor path(s) (.pt, .pth, .safetensors files)
@@ -2035,10 +2038,9 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     if end_image:
         # Control images stay in control= so they are not read as the opening clip
         pass
-    elif (control_images and not seed_images and not mask_images
+    elif (control_images and not preserve_control and not seed_images and not mask_images
             and not latents and not reference_images):
-        # Control image alone becomes the seed. A mask or reference keeps control=
-        # so a Wan VACE clip is not written as the opening image.
+        # A mask, reference, or preserve_control keeps a Wan VACE clip out of the seed slot.
         seed_images = control_images
         control_images = None
     elif latents and not seed_images and not mask_images and not control_images:
@@ -2073,7 +2075,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         # 2. Control image only
         (
             (seed_images and not control_images) or  # Case 1: seed image (with optional mask)
-            (control_images and not seed_images and not mask_images)  # Case 2: control image only
+            (control_images and not preserve_control and not seed_images and not mask_images)
+            # Case 2: control image only
         )
     )
 

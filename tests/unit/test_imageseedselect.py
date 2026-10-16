@@ -95,6 +95,29 @@ class TestImageSeedSelect(unittest.TestCase):
         finally:
             self._close(root, dialog)
 
+    def test_preserve_control_without_seed(self):
+        root, dialog, inserted = self._dialog()
+        try:
+            dialog._seeds.entries[0].delete(0, tk.END)
+            dialog._controls.add()
+            dialog._controls.entries[0].insert(0, 'control.mp4')
+            dialog._preserve_control_var.set(True)
+            dialog._insert_click()
+            self.assertEqual(inserted, ['control=control.mp4'])
+        finally:
+            self._close(root, dialog)
+
+    def test_control_only_defaults_to_seed_slot(self):
+        root, dialog, inserted = self._dialog()
+        try:
+            dialog._seeds.entries[0].delete(0, tk.END)
+            dialog._controls.add()
+            dialog._controls.entries[0].insert(0, 'control.mp4')
+            dialog._insert_click()
+            self.assertEqual(inserted, ['control.mp4'])
+        finally:
+            self._close(root, dialog)
+
     def test_adapter_rows(self):
         root, dialog, inserted = self._dialog()
         try:

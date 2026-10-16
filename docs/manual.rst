@@ -9900,10 +9900,6 @@ these are the arguments that are available for use:
     sada-lagrange-step: int
     sada-max-fix: int
     sada-max-interval: int
-    dype-method: str
-    dype-base-resolution: int
-    dype-mscale: str
-    dype-axis-scaling: str
     tea-cache-rel-l1-threshold: float
     spectrum-weight: float
     spectrum-order: int
@@ -13379,12 +13375,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_batch_size"
             Type: int | None
             Value: None
-        Name: "last_cache_dit"
-            Type: <class 'bool'>
-            Value: False
-        Name: "last_cache_dit_config"
-            Type: str | None
-            Value: None
         Name: "last_clip_skips"
             Type: collections.abc.Sequence[int] | None
             Value: []
@@ -13415,21 +13405,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_dtype"
             Type: <enum 'DataType'>
             Value: <DataType.AUTO: 0>
-        Name: "last_dype"
-            Type: <class 'bool'>
-            Value: False
-        Name: "last_dype_axis_scalings"
-            Type: collections.abc.Sequence[str] | None
-            Value: []
-        Name: "last_dype_base_resolutions"
-            Type: collections.abc.Sequence[int] | None
-            Value: []
-        Name: "last_dype_methods"
-            Type: collections.abc.Sequence[str] | None
-            Value: []
-        Name: "last_dype_mscales"
-            Type: collections.abc.Sequence[str] | None
-            Value: []
         Name: "last_flux2_caption_upsample_temperature"
             Type: float | None
             Value: None
@@ -13924,7 +13899,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [11893768784104]
+            Value: [90177460068921]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -14013,9 +13988,6 @@ The ``\templates_help`` output from the above example is:
             Type: str | None
             Value: None
         Name: "last_wan_animate_preprocess"
-            Type: <class 'bool'>
-            Value: False
-        Name: "last_wan_animate_preprocess_output"
             Type: <class 'bool'>
             Value: False
         Name: "last_wan_background_image_processors"
@@ -14130,13 +14102,15 @@ The dgenerate specific jinja2 functions/filters are:
         "512x512"
     
     ========================================================================================================
-    format_image_seed(seed_images: str | collections.abc.Iterable[str] | None = None, mask_images: str | collections.abc.Iterable[str] | None = None, control_images: str | collections.abc.Iterable[str] | None = None, reference_images: str | collections.abc.Iterable[str] | None = None, adapter_images: str | collections.abc.Iterable[str] | None = None, latents: str | collections.abc.Iterable[str] | None = None, floyd_image: str | None = None, resize: str | tuple[int | str, int | str] | None = None, aspect: bool = True, frame_start: int | None = None, frame_end: int | None = None, end_image: str | None = None, wan_pose_video: str | None = None, wan_face_video: str | None = None, wan_background_video: str | None = None, wan_driving_video: str | None = None, ltx_index: int | None = None, ltx_strength: float | None = None, ltx_extra_conditions: collections.abc.Sequence | None = None) -> str:
+    format_image_seed(seed_images: str | collections.abc.Iterable[str] | None = None, mask_images: str | collections.abc.Iterable[str] | None = None, control_images: str | collections.abc.Iterable[str] | None = None, reference_images: str | collections.abc.Iterable[str] | None = None, adapter_images: str | collections.abc.Iterable[str] | None = None, latents: str | collections.abc.Iterable[str] | None = None, floyd_image: str | None = None, resize: str | tuple[int | str, int | str] | None = None, aspect: bool = True, frame_start: int | None = None, frame_end: int | None = None, end_image: str | None = None, wan_pose_video: str | None = None, wan_face_video: str | None = None, wan_background_video: str | None = None, wan_driving_video: str | None = None, ltx_index: int | None = None, ltx_strength: float | None = None, ltx_extra_conditions: collections.abc.Sequence | None = None, preserve_control: bool = False) -> str:
     
         Format image seed arguments into a ``--image-seeds`` URI.
     
-        Supports all seed URI options, including LTX condition frames and Wan video inputs.
+        Supports all seed URI options, including LTX condition frames and Wan video inputs. Set
+        ``preserve_control=True`` to keep a control-only input in ``control=`` instead of shortening it to the
+        seed slot.
     
-    =======================================================================================
+    ==========================================================================================================
     format_image_processors(processors: collections.abc.Iterable[str | None]) -> str:
     
         Format image processor chains for use with image-processor arguments. Per-image + separated chains are
