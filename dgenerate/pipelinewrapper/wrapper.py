@@ -1927,7 +1927,8 @@ class DiffusionPipelineWrapper:
     def _aligned_user_dimensions(
             self,
             width: int | None,
-            height: int | None) -> tuple[int | None, int | None]:
+            height: int | None,
+            mode: str) -> tuple[int | None, int | None]:
         align = self._output_align()
 
         if height is not None:
@@ -1941,6 +1942,12 @@ class DiffusionPipelineWrapper:
                 align, width - (width % align))
         else:
             user_width = None
+
+        if user_width != width or user_height != height:
+            _messages.warning(
+                f'Forcing {mode} output size from '
+                f'{width}x{height} to {user_width}x{user_height} '
+                f'(aligned by {align}).')
 
         return user_width, user_height
 
@@ -1965,7 +1972,7 @@ class DiffusionPipelineWrapper:
     # noinspection PyUnresolvedReferences,PyTypeChecker
     def _set_pipeline_img2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
         user_width, user_height = self._aligned_user_dimensions(
-            user_args.width, user_args.height)
+            user_args.width, user_args.height, 'img2img')
         image_arg_inputs = self._get_pipeline_img2img_inputs(user_args)
         non_latent_input = not _torchutil.is_tensor(image_arg_inputs[0])
 
@@ -2143,7 +2150,6 @@ class DiffusionPipelineWrapper:
                     mask_images = list(mask_images)
                     pipeline_args['mask_image'] = mask_images
 
-                    aligned_sizes = []
                     for idx, image in enumerate(mask_images):
                         if not _image.is_aligned(image.size, 16):
                             size = _image.align_by(image.size, 16)
@@ -2168,14 +2174,7 @@ class DiffusionPipelineWrapper:
     def _set_pipeline_txt2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
 
         width, height = self._aligned_user_dimensions(
-            user_args.width, user_args.height)
-        align = self._output_align()
-
-        if width != user_args.width or height != user_args.height:
-            _messages.warning(
-                f'Forcing txt2img output size from '
-                f'{user_args.width}x{user_args.height} to {width}x{height} '
-                f'(aligned by {align}).')
+            user_args.width, user_args.height, 'txt2img')
 
         if _enums.model_type_is_sdxl(self._model_type):
             self._inference_height = _types.default(height, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT)

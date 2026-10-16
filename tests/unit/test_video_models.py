@@ -1754,6 +1754,19 @@ class TestVideoModels(unittest.TestCase):
             output_size=(768, 512))
         aligned.check()
 
+        bounds = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            prompts=[_prompt.Prompt('a')],
+            ltx_video_min_seconds=[2.0, 4.0],
+            ltx_video_max_seconds=[6.0, 8.0])
+        bounds.check()
+        self.assertEqual(bounds.calculate_generation_steps(), 2)
+        pairs = [
+            (arg.ltx_video_min_seconds, arg.ltx_video_max_seconds)
+            for arg in bounds.iterate_diffusion_args()]
+        self.assertEqual(pairs, [(2.0, 6.0), (4.0, 8.0)])
+
     def test_video_output_size_alignment_forces_and_warns(self):
         with unittest.mock.patch('dgenerate.messages.warning') as warning:
             size = _videopipelines._force_output_size_alignment(
@@ -1769,18 +1782,27 @@ class TestVideoModels(unittest.TestCase):
         warning.assert_called_once()
         self.assertIn('992x992', warning.call_args.args[0])
 
-        bounds = _config(
-            model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
-            prompts=[_prompt.Prompt('a')],
-            ltx_video_min_seconds=[2.0, 4.0],
-            ltx_video_max_seconds=[6.0, 8.0])
-        bounds.check()
-        self.assertEqual(bounds.calculate_generation_steps(), 2)
-        pairs = [
-            (arg.ltx_video_min_seconds, arg.ltx_video_max_seconds)
-            for arg in bounds.iterate_diffusion_args()]
-        self.assertEqual(pairs, [(2.0, 6.0), (4.0, 8.0)])
+    def test_ltx_latent_upscale_canvas_keeps_half_size_aligned(self):
+        class Pipe:
+            vae_spatial_compression_ratio = 32
+
+        class Held:
+            reference_downscale_factor = 1
+
+        args = _pipelinewrapper.DiffusionArguments()
+        args.aspect_correct = True
+        args.ltx_latent_upscale = False
+        align = _videopipelines.ltx._ltx_canvas_align(Pipe(), Held(), 'ltx-image', args)
+        self.assertEqual(align, 32)
+
+        args.ltx_latent_upscale = True
+        align = _videopipelines.ltx._ltx_canvas_align(Pipe(), Held(), 'ltx-image', args)
+        self.assertEqual(align, 64)
+
+        width, height = _videopipelines.conditioning_canvas(
+            (1280, 720), 768, 512, True, align)
+        self.assertEqual((width // 2) % 32, 0)
+        self.assertEqual((height // 2) % 32, 0)
 
     def test_ltx_two_stage_is_one_generation(self):
         class Scheduler:
