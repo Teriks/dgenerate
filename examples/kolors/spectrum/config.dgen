@@ -1,0 +1,28 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Spectrum on Kolors. The UNet down, mid, and up blocks are skipped on
+# later steps. The output convolution still runs. DeepCache cannot be
+# combined with --spectrum.
+
+\setp can_quant have_cuda() and have_feature('bitsandbytes')
+\setp total_vram total_memory(unit='gib')
+
+{% if can_quant and total_vram > 15 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif can_quant and total_vram > 7 %}
+    \set optimization --quantizer bnb;bits=4;bits4-quant-type=nf4;bits4-use-double-quant=True
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+Kwai-Kolors/Kolors-diffusers
+--model-type kolors {{ optimization }}
+--variant fp16
+--dtype float16
+--inference-steps 40
+--gen-seeds 2
+--output-size 1024
+--output-path kolors-spectrum
+--spectrum
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
