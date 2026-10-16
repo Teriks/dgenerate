@@ -190,9 +190,7 @@ def _call_ltx(wrapper, user_args):
     family = held.family
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
-    align = _ltx_canvas_align(pipe, held, mode)
-    if user_args.ltx_latent_upscale:
-        align = math.lcm(align, 64)
+    align = _ltx_canvas_align(pipe, held, mode, user_args)
     width, height = _vp._force_output_size_alignment(width, height, align, 'LTX')
     if mode != 'ltx-txt':
         width, height = _fit_ltx_inputs(pipe, held, mode, user_args, width, height)
@@ -872,12 +870,16 @@ def _ltx_reference_kwargs(wrapper, pipe, held, user_args, num_frames: int,
     }
 
 
-def _ltx_canvas_align(pipe, held, mode: str) -> int:
+def _ltx_canvas_align(pipe, held, mode: str, user_args) -> int:
     spatial = int(getattr(pipe, 'vae_spatial_compression_ratio', 32) or 32)
-    if mode != 'ltx-control':
-        return spatial
-    factor = int(getattr(held, 'reference_downscale_factor', None) or 1)
-    return spatial * max(1, factor)
+    align = spatial
+    if mode == 'ltx-control':
+        factor = int(getattr(held, 'reference_downscale_factor', None) or 1)
+        align = spatial * max(1, factor)
+    if user_args.ltx_latent_upscale:
+        # stage 1 runs at half size, which must still be spatially aligned
+        align = math.lcm(align, spatial * 2)
+    return align
 
 
 def _fit_ltx_inputs(pipe, held, mode, user_args, width, height):
@@ -896,7 +898,7 @@ def _fit_ltx_inputs(pipe, held, mode, user_args, width, height):
             break
     if primary is None:
         return width, height
-    align = _ltx_canvas_align(pipe, held, mode)
+    align = _ltx_canvas_align(pipe, held, mode, user_args)
     target_w, target_h = _vp.conditioning_canvas(
         primary, width, height, user_args.aspect_correct, align)
     target = (target_w, target_h)
