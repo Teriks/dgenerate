@@ -52,6 +52,7 @@ import dgenerate.console.promptweighterselect as _promptweighterselect
 import dgenerate.console.quantizerselect as _quantizerselect
 import dgenerate.console.recipesform as _recipesform
 import dgenerate.console.resources as _resources
+import dgenerate.console.showindirectory as _showindirectory
 import dgenerate.console.submodelselect as _submodelselect
 import dgenerate.console.themetext as _themetext
 import dgenerate.textprocessing as _textprocessing
@@ -426,6 +427,10 @@ class DgenerateConsole(tk.Tk):
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Preview Selected Image',
                                               command=lambda: self._preview_selected_image(self._output_text.text))
+        if _showindirectory.is_supported():
+            self._output_text_context.add_command(
+                label='Show File In Directory',
+                command=lambda: self._show_selected_image_in_directory(self._output_text.text))
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Make Window', command=self._toggle_output_float)
         self._output_float_menu_index = self._output_text_context.index(tk.END)
@@ -437,8 +442,12 @@ class DgenerateConsole(tk.Tk):
             selected_text = self._get_selected_text(self._output_text.text)
             if selected_text and self._is_valid_image_path(selected_text):
                 self._output_text_context.entryconfigure('Preview Selected Image', state=tk.NORMAL)
+                if _showindirectory.is_supported():
+                    self._output_text_context.entryconfigure('Show File In Directory', state=tk.NORMAL)
             else:
                 self._output_text_context.entryconfigure('Preview Selected Image', state=tk.DISABLED)
+                if _showindirectory.is_supported():
+                    self._output_text_context.entryconfigure('Show File In Directory', state=tk.DISABLED)
             self._sync_output_window_labels()
             og_output_popup(*args, **kwargs)
 
@@ -1415,15 +1424,23 @@ class DgenerateConsole(tk.Tk):
         menu.add_separator()
         menu.add_command(label='Preview Selected Image',
                          command=lambda: self._preview_selected_image(self._input_text.text))
+        if _showindirectory.is_supported():
+            menu.add_command(
+                label='Show File In Directory',
+                command=lambda: self._show_selected_image_in_directory(self._input_text.text))
 
         def menu_post(*args, **kwargs):
             selected_text = self._get_selected_text(self._input_text.text)
             if selected_text and self._is_valid_image_path(selected_text):
                 menu.entryconfigure(
                     'Preview Selected Image', state=tk.NORMAL)
+                if _showindirectory.is_supported():
+                    menu.entryconfigure('Show File In Directory', state=tk.NORMAL)
             else:
                 menu.entryconfigure(
                     'Preview Selected Image', state=tk.DISABLED)
+                if _showindirectory.is_supported():
+                    menu.entryconfigure('Show File In Directory', state=tk.DISABLED)
 
         menu.configure(postcommand=menu_post)
 
@@ -1490,6 +1507,21 @@ class DgenerateConsole(tk.Tk):
             self._write_console_message(f"Manually loaded image: {path}\n")
         except Exception as e:
             self._write_console_message(f"Failed to load image: {e}\n", error=True)
+
+    def _show_selected_image_in_directory(self, text_widget):
+        try:
+            selected_text = text_widget.selection_get()
+        except tk.TclError:
+            return
+
+        if not self._is_valid_image_path(selected_text):
+            return
+
+        path = self._shell_unquote_path(selected_text)
+        if not os.path.isabs(path):
+            path = os.path.join(self._shell_procmon.cwd(deep=True), path)
+
+        _showindirectory.show_in_directory(path)
 
     @staticmethod
     def _get_selected_text(text_widget: tk.Text):
