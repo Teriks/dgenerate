@@ -112,7 +112,7 @@ class TestVideoModels(unittest.TestCase):
             captured['uri'] = scheduler_uri
             pipeline.scheduler.config['use_dynamic_shifting'] = True
 
-        def invoke(wrapper, pipeline, kwargs):
+        def invoke(wrapper, pipeline, kwargs, user_args=None):
             captured['kwargs'] = kwargs
 
             class Output:
@@ -396,8 +396,11 @@ class TestVideoModels(unittest.TestCase):
             Wrapper(), Pipe(), Held(), fitted, 17, 512, 512)
         self.assertEqual(fitted_kwargs['reference_conditions'][0].frames[0].size, (512, 320))
 
-        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            _videopipelines._ltx_reference_kwargs(Wrapper(), Pipe(), Held(), args, 49, 544, 512)
+        unaligned = _videopipelines._ltx_reference_kwargs(
+            Wrapper(), Pipe(), Held(), args, 49, 544, 512)
+        self.assertEqual(
+            unaligned['reference_conditions'][0].frames[0].size,
+            (512, 512))
 
     def test_call_ltx_control_mode(self):
         class Scheduler:
@@ -439,7 +442,7 @@ class TestVideoModels(unittest.TestCase):
             captured['cache'] = kwargs
             return Held()
 
-        def invoke(wrapper, pipeline, kwargs):
+        def invoke(wrapper, pipeline, kwargs, user_args=None):
             captured['kwargs'] = kwargs
 
             class Output:
@@ -539,7 +542,7 @@ class TestVideoModels(unittest.TestCase):
         config.check()
         self.assertEqual(config.video_fps, [12.0])
 
-    def test_canvas_alignment(self):
+    def test_canvas_alignment_is_forced_at_runtime(self):
         aligned = _config(
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
@@ -550,8 +553,7 @@ class TestVideoModels(unittest.TestCase):
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
             output_size=(520, 512))
-        with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
-            misaligned.check()
+        misaligned.check()
 
     def test_ltx_sigma_expression(self):
         scaled = _videopipelines._eval_sigma_expression(
@@ -1743,8 +1745,7 @@ class TestVideoModels(unittest.TestCase):
             model_type=_pipelinewrapper.ModelType.LTX,
             ltx_latent_upscale=True,
             output_size=(640, 352))
-        with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
-            odd.check()
+        odd.check()
 
         aligned = _config(
             model_path='org/ltx',
@@ -1752,6 +1753,21 @@ class TestVideoModels(unittest.TestCase):
             ltx_latent_upscale=True,
             output_size=(768, 512))
         aligned.check()
+
+    def test_video_output_size_alignment_forces_and_warns(self):
+        with unittest.mock.patch('dgenerate.messages.warning') as warning:
+            size = _videopipelines._force_output_size_alignment(
+                650, 350, 64, 'LTX')
+        self.assertEqual(size, (640, 320))
+        warning.assert_called_once()
+        self.assertIn('640x320', warning.call_args.args[0])
+
+        with unittest.mock.patch('dgenerate.messages.warning') as warning:
+            size = _videopipelines._force_output_size_alignment(
+                1000, 1000, 32, 'Wan')
+        self.assertEqual(size, (992, 992))
+        warning.assert_called_once()
+        self.assertIn('992x992', warning.call_args.args[0])
 
         bounds = _config(
             model_path='org/ltx',
@@ -1792,7 +1808,7 @@ class TestVideoModels(unittest.TestCase):
 
         calls = []
 
-        def invoke(wrapper, pipeline, kwargs):
+        def invoke(wrapper, pipeline, kwargs, user_args=None):
             calls.append(dict(kwargs))
 
             class Output:
@@ -1921,7 +1937,7 @@ class TestVideoModels(unittest.TestCase):
                 calls.append({'enhance': prompt, 'system': system_prompt})
                 return [prompt + ' enhanced']
 
-        def invoke(wrapper, pipeline, kwargs):
+        def invoke(wrapper, pipeline, kwargs, user_args=None):
             calls.append(dict(kwargs))
 
             class Output:
@@ -2586,7 +2602,7 @@ class TestWanModels(unittest.TestCase):
         pipe = Pipe()
         captured = {}
 
-        def invoke(wrapper, pipeline, kwargs):
+        def invoke(wrapper, pipeline, kwargs, user_args=None):
             captured['kwargs'] = kwargs
 
             class Output:
@@ -2600,8 +2616,8 @@ class TestWanModels(unittest.TestCase):
         args.guidance_scale = 5
         args.video_fps = 16
         args.video_length = 2
-        args.width = 832
-        args.height = 480
+        args.width = 830
+        args.height = 478
         args.wan_low_noise_guidance_scale = 3.5
         args.wan_boundary_ratio = 0.9
 
@@ -2641,6 +2657,8 @@ class TestWanModels(unittest.TestCase):
 
         self.assertEqual(captured['mode'], 'wan-txt')
         self.assertEqual(captured['kwargs']['num_frames'], 33)
+        self.assertEqual(captured['kwargs']['width'], 816)
+        self.assertEqual(captured['kwargs']['height'], 464)
         self.assertEqual(captured['kwargs']['guidance_scale_2'], 3.5)
         self.assertEqual(pipe.config['boundary_ratio'], 0.9)
         self.assertEqual(fps, 16)
@@ -2670,7 +2688,7 @@ class TestWanModels(unittest.TestCase):
         pipe = Pipe()
         captured = {}
 
-        def invoke(wrapper, pipeline, kwargs):
+        def invoke(wrapper, pipeline, kwargs, user_args=None):
             captured['kwargs'] = kwargs
 
             class Output:

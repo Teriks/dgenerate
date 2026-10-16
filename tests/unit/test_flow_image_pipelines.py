@@ -719,12 +719,6 @@ class TestFlowImagePipelines(unittest.TestCase):
         _pipelines.pipeline_to(pipe, 'cpu')
         self.assertTrue(_pipelines.is_group_offload_enabled(pipe.transformer))
 
-    def test_packed_flow_size_snap(self):
-        self.assertEqual(_pipelines.snap_packed_flow_size(1024, 1024), (1024, 1024))
-        self.assertEqual(_pipelines.snap_packed_flow_size(1000, 1001), (992, 992))
-        self.assertEqual(_pipelines.snap_packed_flow_size(8, None), (16, None))
-        self.assertEqual(_pipelines.snap_packed_flow_size(None, None), (None, None))
-
     def test_sdnq_checkpoint_detection_and_era_config(self):
         with tempfile.TemporaryDirectory() as directory:
             quant_dir = os.path.join(directory, 'transformer')

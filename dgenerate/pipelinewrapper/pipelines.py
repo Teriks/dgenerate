@@ -2615,35 +2615,6 @@ def pipeline_class_supports_ip_adapter(cls: typing.Type[diffusers.DiffusionPipel
     return any('IPAdapterMixin' in x.__name__ for x in cls.__bases__)
 
 
-PACKED_FLOW_SIZE_MULTIPLE = 16
-"""Pixel multiple for Flux.2, Z-Image, and Qwen-Image (``vae_scale_factor * 2``)."""
-
-
-def snap_packed_flow_size(
-        width: int | None,
-        height: int | None,
-        multiple: int = PACKED_FLOW_SIZE_MULTIPLE
-) -> tuple[int | None, int | None]:
-    """
-    Snap a pixel size down to ``multiple``.
-
-    Flux.2 resizes on its own. Z-Image ControlNet raises when a side is not
-    divisible by ``vae_scale_factor * 2``. Snapping first keeps that from raising.
-    A side smaller than ``multiple`` becomes ``multiple``.
-    """
-
-    def snap(value):
-        if value is None:
-            return None
-        value = int(value)
-        snapped = value - (value % multiple)
-        if snapped < multiple:
-            snapped = multiple
-        return snapped
-
-    return snap(width), snap(height)
-
-
 def qwen_image_call_guidance(
         guidance_scale: float,
         negative_prompt: str | None

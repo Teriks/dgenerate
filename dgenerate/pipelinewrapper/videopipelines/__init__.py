@@ -485,9 +485,12 @@ def conditioning_canvas(source_size,
         aspect_correct=aspect,
         align=align)
     if target[0] < align or target[1] < align:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Conditioning media {source_size[0]}x{source_size[1]} cannot be fit to '
-            f'{requested[0]}x{requested[1]} at the required alignment of {align}.')
+        aligned = max(align, target[0]), max(align, target[1])
+        _messages.warning(
+            f'Conditioning media {source_size[0]}x{source_size[1]} would produce '
+            f'a canvas smaller than the required alignment of {align}; '
+            f'forcing dimensions to at least {align} pixels: {aligned[0]}x{aligned[1]}.')
+        target = aligned
     return int(target[0]), int(target[1])
 
 
@@ -508,11 +511,21 @@ def resize_media(frames, target, nearest: bool = False):
         for frame in frames]
 
 
-def _require_multiple_of_32(width: int, height: int, model_name: str):
-    if width % 32 or height % 32:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'{model_name} requires --output-size dimensions divisible by 32. '
-            f'Got {width}x{height}.')
+def _force_output_size_alignment(width: int | None,
+                                 height: int | None,
+                                 align: int,
+                                 model_name: str) -> tuple[int | None, int | None]:
+    if width is None or height is None:
+        return width, height
+    width, height = int(width), int(height)
+    aligned = (
+        max(align, width - width % align),
+        max(align, height - height % align))
+    if aligned != (width, height):
+        _messages.warning(
+            f'{model_name} output size {width}x{height} is not aligned to {align}; '
+            f'forcing dimensions to {aligned[0]}x{aligned[1]}.')
+    return aligned
 
 
 def _seed(user_args) -> int:
