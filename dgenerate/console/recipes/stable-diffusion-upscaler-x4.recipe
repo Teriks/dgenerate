@@ -18,6 +18,7 @@ order: 36
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
+@float[{"label":"Guidance Rescale", "arg":"--guidance-rescales", "min":0}]
 @int[{"label":"Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":20, "min":0}]
 @seeds[{"label":"Seeds"}]
 @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]

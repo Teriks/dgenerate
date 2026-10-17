@@ -25,6 +25,8 @@ order: 34
 @imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
 @float[{"label":"True CFG Scale", "arg":"--guidance-scales", "default":4, "min":0}]
+@float[{"label":"Distilled Guidance Scale", "arg":"--qwen-guidance-scale", "min":0}]
+@int[{"label":"Max Sequence Length", "arg":"--max-sequence-length", "min":1, "max":1024}]
 @seeds[{"label":"Seeds"}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
 @imageformat[{}]
