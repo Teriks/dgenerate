@@ -5358,10 +5358,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""How an LTX-2 clip is decoded. conv is the convolutional VAE.
                     diffusion is the diffusion decoder in the checkpoint's
                     diffusion_decoder folder. The decode is part of the same
-                    generation. It uses NATTEN through the kernels package, which is
-                    installed with dgenerate. The first decode downloads that kernel
-                    from the Hub, so leave DIFFUSERS_DISABLE_REMOTE_CODE unset.
-                    The FlexAttention fallback does not fit in GPU memory."""
+                    generation. Linux uses the NATTEN kernel downloaded through the
+                    kernels package; leave DIFFUSERS_DISABLE_REMOTE_CODE unset.
+                    Windows has no NATTEN build. That window runs with Triton when
+                    it is installed, including the triton-windows extra. Without
+                    Triton the same window is gathered in PyTorch. The FlexAttention
+                    mask does not fit in GPU memory."""
         )
     )
 

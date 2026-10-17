@@ -2029,17 +2029,8 @@ class TestVideoModels(unittest.TestCase):
         self.assertIsNone(seen['during_lora'])
         self.assertIs(pipe.prompt_enhancer, enhancer)
 
-    def test_diffusion_decoder_does_not_fall_back_to_flex(self):
-        import diffusers.models.autoencoders.ltx2_diffusion_decoder as decoder_module
-
-        class MissingKernels:
-            def __init__(self):
-                raise ImportError(
-                    'Install it with `pip install kernels`, or use the default '
-                    '`LTX2VideoVaeNeighborhoodAttnProcessor` (FlexAttention) instead.')
-
-        decoder = unittest.mock.Mock()
-        wrapper = unittest.mock.Mock(
+    def _decoder_wrapper(self):
+        return unittest.mock.Mock(
             model_path='org/ltx',
             _dtype=_pipelinewrapper.DataType.BFLOAT16,
             _auth_token=None,
@@ -2048,19 +2039,145 @@ class TestVideoModels(unittest.TestCase):
             model_cpu_offload=False,
             model_sequential_offload=False,
             model_group_offload=False)
+
+    def test_diffusion_decoder_gathers_when_natten_is_missing(self):
+        import diffusers.models.autoencoders.ltx2_diffusion_decoder as decoder_module
+        from dgenerate.pipelinewrapper.videopipelines.ltx import (
+            _LTXWindowNeighborhoodProcessor)
+
+        class MissingKernels:
+            def __init__(self):
+                raise ImportError('no shi-labs/natten build for this platform')
+
+        decoder = unittest.mock.Mock()
         held = unittest.mock.Mock(spec=[])
+        decode_pipe = unittest.mock.Mock(return_value=(['frame'],))
 
         with unittest.mock.patch(
                 'diffusers.LTX2VideoDiffusionDecoderModel.from_pretrained',
                 return_value=decoder), \
+                unittest.mock.patch(
+                    'diffusers.LTX2VideoDiffusionDecodePipeline',
+                    return_value=decode_pipe), \
+                unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.videopipelines.frames_from_output',
+                    return_value=['ok']), \
                 unittest.mock.patch.object(
                     decoder_module, 'LTX2VideoVaeNeighborhoodNattenProcessor', MissingKernels):
-            with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError) as raised:
-                _videopipelines._decode_ltx_diffusion(wrapper, None, held, None, None)
+            result = _videopipelines._decode_ltx_diffusion(
+                self._decoder_wrapper(), unittest.mock.Mock(), held, None, None)
 
-        self.assertIn('kernels', str(raised.exception))
-        self.assertIn('does not fit in GPU memory', str(raised.exception))
-        decoder.set_attn_processor.assert_not_called()
+        processor = decoder.set_attn_processor.call_args.args[0]
+        self.assertIsInstance(processor, _LTXWindowNeighborhoodProcessor)
+        self.assertNotIsInstance(
+            processor, decoder_module.LTX2VideoVaeNeighborhoodAttnProcessor)
+        decoder.enable_tiling.assert_called_once()
+        self.assertEqual(result, ['ok'])
+
+    def test_diffusion_decoder_keeps_natten_processor(self):
+        import diffusers.models.autoencoders.ltx2_diffusion_decoder as decoder_module
+
+        class Loaded:
+            def __init__(self):
+                self.loaded = True
+
+        decoder = unittest.mock.Mock()
+        held = unittest.mock.Mock(spec=[])
+        decode_pipe = unittest.mock.Mock(return_value=(['frame'],))
+
+        with unittest.mock.patch(
+                'diffusers.LTX2VideoDiffusionDecoderModel.from_pretrained',
+                return_value=decoder), \
+                unittest.mock.patch(
+                    'diffusers.LTX2VideoDiffusionDecodePipeline',
+                    return_value=decode_pipe), \
+                unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.videopipelines.frames_from_output',
+                    return_value=['ok']), \
+                unittest.mock.patch.object(
+                    decoder_module, 'LTX2VideoVaeNeighborhoodNattenProcessor', Loaded):
+            _videopipelines._decode_ltx_diffusion(
+                self._decoder_wrapper(), unittest.mock.Mock(), held, None, None)
+
+        processor = decoder.set_attn_processor.call_args.args[0]
+        self.assertIsInstance(processor, Loaded)
+        decoder.enable_tiling.assert_not_called()
+
+    def test_neighborhood_attention_matches_inward_window(self):
+        from dgenerate.pipelinewrapper.videopipelines import ltx as ltx_module
+
+        def reference(query, key, value, kernel_size):
+            batch, frames, height, width, heads, dim = query.shape
+            kernel_t, kernel_h, kernel_w = kernel_size
+            output = torch.empty_like(query)
+            for t in range(frames):
+                for h in range(height):
+                    for w in range(width):
+                        start_t = min(max(t - kernel_t // 2, 0), frames - kernel_t)
+                        start_h = min(max(h - kernel_h // 2, 0), height - kernel_h)
+                        start_w = min(max(w - kernel_w // 2, 0), width - kernel_w)
+                        keys = key[
+                            :, start_t:start_t + kernel_t,
+                            start_h:start_h + kernel_h,
+                            start_w:start_w + kernel_w]
+                        values = value[
+                            :, start_t:start_t + kernel_t,
+                            start_h:start_h + kernel_h,
+                            start_w:start_w + kernel_w]
+                        keys = keys.reshape(batch, -1, heads, dim)
+                        values = values.reshape(batch, -1, heads, dim)
+                        scores = torch.einsum('bhd,bkhd->bhk', query[:, t, h, w], keys)
+                        weights = torch.softmax(scores.float(), dim=-1).to(values.dtype)
+                        output[:, t, h, w] = torch.einsum('bhk,bkhd->bhd', weights, values)
+            return output
+
+        torch.manual_seed(0)
+        query = torch.randn(1, 4, 5, 6, 2, 4)
+        key = torch.randn_like(query)
+        value = torch.randn_like(query)
+        kernel = (3, 3, 3)
+        with unittest.mock.patch.object(ltx_module, '_NEIGHBORHOOD_BUDGET_BYTES', 1):
+            gathered = ltx_module._neighborhood_attention(query, key, value, kernel)
+        expected = reference(query, key, value, kernel)
+        self.assertTrue(torch.allclose(gathered, expected, atol=1e-5, rtol=1e-5))
+
+        # The border window slides inward. A length-3 cube on 5 frames is
+        # frames 0..2 at the start and 2..4 at the end, so the means are 1 and 3.
+        frames = torch.arange(5, dtype=torch.float32).view(1, 5, 1, 1, 1, 1)
+        ones = torch.ones_like(frames)
+        border = ltx_module._neighborhood_attention(ones, ones, frames, (3, 1, 1))
+        self.assertAlmostEqual(border[0, 0, 0, 0, 0, 0].item(), 1.0)
+        self.assertAlmostEqual(border[0, 2, 0, 0, 0, 0].item(), 2.0)
+        self.assertAlmostEqual(border[0, 4, 0, 0, 0, 0].item(), 3.0)
+
+    @unittest.skipUnless(torch.cuda.is_available(), 'needs CUDA')
+    def test_neighborhood_attention_triton_matches_gather(self):
+        from dgenerate.pipelinewrapper.videopipelines import ltx as ltx_module
+
+        self.assertTrue(ltx_module._triton_neighborhood_ready())
+        torch.manual_seed(1)
+        query = torch.randn(1, 3, 6, 8, 2, 64, device='cuda')
+        key = torch.randn_like(query)
+        value = torch.randn_like(query)
+        kernel_t, kernel_h, kernel_w = 3, 5, 5
+        reference = ltx_module._neighborhood_attention_gather(
+            query, key, value, kernel_t, kernel_h, kernel_w)
+        triton_out = ltx_module._neighborhood_attention_triton(
+            query, key, value, kernel_t, kernel_h, kernel_w)
+        self.assertTrue(torch.allclose(triton_out, reference, atol=1e-4, rtol=1e-4))
+
+        # The Triton dots stay in fp32. bf16 storage is within a few ulps of that.
+        bf16 = ltx_module._neighborhood_attention(
+            query.bfloat16(), key.bfloat16(), value.bfloat16(),
+            (kernel_t, kernel_h, kernel_w))
+        self.assertLess(float((bf16.float() - reference).abs().mean()), 0.01)
+
+        frames = torch.arange(5, device='cuda', dtype=torch.float32).view(
+            1, 5, 1, 1, 1, 1).expand(1, 5, 4, 4, 1, 8).contiguous()
+        ones = torch.ones_like(frames)
+        border = ltx_module._neighborhood_attention(ones, ones, frames, (3, 3, 3))
+        self.assertAlmostEqual(border[0, 0, 0, 0, 0, 0].item(), 1.0, places=4)
+        self.assertAlmostEqual(border[0, 4, 3, 3, 0, 0].item(), 3.0, places=4)
 
 
 class TestWanModels(unittest.TestCase):
