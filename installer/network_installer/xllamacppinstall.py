@@ -80,6 +80,8 @@ def xllamacpp_index_url(
         # which still runs on current CUDA 12 and 13 drivers.
         if nvidia_legacy or (cuda is not None and cuda < (12, 8)):
             return f'{_INDEX_ROOT}/vulkan'
+        if cuda is not None and cuda >= (13, 2):
+            return f'{_INDEX_ROOT}/cu132'
         if cuda is not None and cuda >= (13, 0):
             return f'{_INDEX_ROOT}/cu130'
         return f'{_INDEX_ROOT}/cu128'

@@ -26,7 +26,7 @@ def run_command(cmd, check=True, capture_output=False):
 
 
 ROCM_INDEX = "https://download.pytorch.org/whl/rocm7.2/"
-CUDA_INDEX = "https://download.pytorch.org/whl/cu130/"
+CUDA_INDEX = "https://download.pytorch.org/whl/cu132/"
 XPU_INDEX = "https://download.pytorch.org/whl/xpu/"
 
 

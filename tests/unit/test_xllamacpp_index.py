@@ -12,11 +12,11 @@ from network_installer.xllamacppinstall import wheel_install_command, xllamacpp_
 class TestXllamaCppIndex(unittest.TestCase):
 
     def test_macos_keeps_pypi_metal_wheel(self):
-        self.assertIsNone(xllamacpp_index_url('Darwin', cuda=(13, 0), has_nvidia=True))
+        self.assertIsNone(xllamacpp_index_url('Darwin', cuda=(13, 2), has_nvidia=True))
 
     def test_cuda_version_selects_index(self):
         self.assertTrue(
-            xllamacpp_index_url('Windows', cuda=(13, 2), has_nvidia=True).endswith('/cu130')
+            xllamacpp_index_url('Windows', cuda=(13, 2), has_nvidia=True).endswith('/cu132')
         )
         self.assertTrue(
             xllamacpp_index_url('Windows', cuda=(13, 0), has_nvidia=True).endswith('/cu130')
@@ -65,7 +65,7 @@ class TestXllamaCppIndex(unittest.TestCase):
         command = wheel_install_command(
             python=r'C:\app\venv\Scripts\python.exe',
             version='2026.9.11063',
-            index_url='https://xorbitsai.github.io/xllamacpp/whl/cu130',
+            index_url='https://xorbitsai.github.io/xllamacpp/whl/cu132',
             uv=r'C:\app\uv\uv.exe',
         )
         self.assertEqual(command[:4], [r'C:\app\uv\uv.exe', 'pip', 'install', '--python'])
@@ -73,7 +73,7 @@ class TestXllamaCppIndex(unittest.TestCase):
         self.assertNotIn('pip.exe', command[0])
         self.assertIn('--reinstall-package', command)
         self.assertIn('xllamacpp==2026.9.11063', command)
-        self.assertIn('https://xorbitsai.github.io/xllamacpp/whl/cu130', command)
+        self.assertIn('https://xorbitsai.github.io/xllamacpp/whl/cu132', command)
 
     def test_plain_virtualenv_still_uses_pip_module(self):
         command = wheel_install_command(
