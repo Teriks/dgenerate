@@ -24,6 +24,7 @@
 from __future__ import annotations
 
 import collections.abc
+import contextlib
 import inspect
 import math
 import os
@@ -34,11 +35,13 @@ import torch
 
 import dgenerate.eval as _eval
 import dgenerate.hfhub as _hfhub
+import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.uris as _uris
+import dgenerate.pipelinewrapper.util as _putil
 import dgenerate.types as _types
 
 
@@ -352,6 +355,8 @@ def _reject_ltx2_only_options(user_args):
         used.append('--ltx-latent-upscale')
     if user_args.ltx_video_decoder == 'diffusion':
         used.append('--ltx-video-decoder diffusion')
+    if user_args.ltx_diffusion_decode_tile:
+        used.append('--ltx-diffusion-decode-tile')
     if user_args.ltx_prompt_enhancer:
         used.append('--ltx-prompt-enhancer')
     if user_args.ltx_image_crf is not None:
@@ -451,7 +456,9 @@ def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
         kwargs = dict(kwargs)
         kwargs['output_type'] = 'latent'
     output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
-    return _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, kwargs.get('generator'))
+    return _ltx_pixels_from_output(
+        wrapper, pipe, held, output, diffusion, kwargs.get('generator'),
+        getattr(user_args, 'ltx_diffusion_decode_tile', None))
 
 
 def _enhance_ltx_prompt_once(wrapper, pipe, kwargs):
@@ -570,7 +577,8 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
         if enhancer is not None:
             pipe.prompt_enhancer = enhancer
     return _ltx_pixels_from_output(
-        wrapper, pipe, held, second, diffusion, kwargs.get('generator'))
+        wrapper, pipe, held, second, diffusion, kwargs.get('generator'),
+        getattr(user_args, 'ltx_diffusion_decode_tile', None))
 
 
 def _video_latent_tensor(frames):
@@ -627,14 +635,106 @@ def _upsample_ltx_latents(wrapper, pipe, video_latent):
     return upscaled
 
 
-def _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, generator):
+# Denoiser weights can leave the GPU before the diffusion decoder runs.
+# Audio modules stay until the waveform is decoded.
+_LTX_PARK_BEFORE_DIFFUSION_DECODE = (
+    'transformer',
+    'text_encoder',
+    'connectors',
+    'duration_head',
+    'prompt_enhancer',
+)
+_LTX_PARK_AFTER_DIFFUSION_DECODE = (
+    'audio_vae',
+    'vocoder',
+)
+
+
+def _ltx_module_parkable(module) -> bool:
+    if module is None or not isinstance(module, torch.nn.Module):
+        return False
+    if _putil.is_loaded_in_8bit_bnb(module):
+        return False
+    if hasattr(module, '_DGENERATE_ORIGINAL_TO_DISABLED'):
+        return False
+    if (_pipelines.is_sequential_cpu_offload_enabled(module)
+            or _pipelines.is_model_cpu_offload_enabled(module)
+            or _pipelines.is_group_offload_enabled(module)):
+        return False
+    return True
+
+
+def _ltx_park_module(module) -> None:
+    if not _ltx_module_parkable(module):
+        return
+    try:
+        module.to('cpu')
+    except Exception as error:
+        _messages.debug_log(f'Could not park {module.__class__.__name__} on CPU: {error}')
+
+
+def _release_ltx_offload_hooks(pipe) -> None:
+    free_hooks = getattr(pipe, 'maybe_free_model_hooks', None)
+    if callable(free_hooks):
+        free_hooks()
+
+
+def _park_named_ltx_modules(pipe, names) -> None:
+    for name in names:
+        _ltx_park_module(getattr(pipe, name, None))
+
+
+def _park_ltx_for_diffusion_decode(pipe, wrapper) -> None:
+    """
+    Drop denoiser weights from VRAM before the diffusion decoder runs.
+
+    Offloaded pipelines release GPU-resident hooks first. Full-GPU loads move
+    the transformer and text stack to CPU. The audio VAE stays until the
+    waveform decode that follows the video decode.
+    """
+    _release_ltx_offload_hooks(pipe)
+    if not _vp._offload_requested(wrapper):
+        _park_named_ltx_modules(pipe, _LTX_PARK_BEFORE_DIFFUSION_DECODE)
+    _memory.torch_gc()
+
+
+def _place_ltx_module(module, device) -> None:
+    if not _ltx_module_parkable(module):
+        return
+    try:
+        module.to(device)
+    except Exception as error:
+        _messages.debug_log(f'Could not place {module.__class__.__name__} on {device}: {error}')
+
+
+def _park_ltx_after_diffusion_decode(pipe, decode_pipe, wrapper) -> None:
+    """Return audio modules and the diffusion decoder to CPU after both decodes."""
+    _release_ltx_offload_hooks(pipe)
+    if decode_pipe is not None:
+        _release_ltx_offload_hooks(decode_pipe)
+    if _vp._offload_requested(wrapper):
+        _memory.torch_gc()
+        return
+    _park_named_ltx_modules(pipe, _LTX_PARK_AFTER_DIFFUSION_DECODE)
+    if decode_pipe is not None:
+        _ltx_park_module(getattr(decode_pipe, 'diffusion_decoder', None))
+    _memory.torch_gc()
+
+
+def _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, generator, decode_tile=None):
     video = output.frames
     audio_raw = getattr(output, 'audio', None)
     if diffusion:
         if isinstance(video, (list, tuple)):
             video = video[0]
-        frames = _decode_ltx_diffusion(wrapper, pipe, held, video, generator)
-        audio = _waveform_from_audio_latents(pipe, audio_raw)
+        _park_ltx_for_diffusion_decode(pipe, wrapper)
+        try:
+            frames = _decode_ltx_diffusion(
+                wrapper, pipe, held, video, generator, decode_tile)
+            audio = _waveform_from_audio_latents(pipe, audio_raw)
+        finally:
+            _park_ltx_after_diffusion_decode(
+                pipe, getattr(held, 'diffusion_decoder_pipe', None), wrapper)
     else:
         frames = _vp.frames_from_output(video)
         audio = _vp.audio_to_numpy(audio_raw)
@@ -656,6 +756,15 @@ def _waveform_from_audio_latents(pipe, audio_latents):
 _NEIGHBORHOOD_BUDGET_BYTES = 256 * 1024 * 1024
 _TRITON_NEIGHBORHOOD_KERNEL = None
 _triton_neighborhood_failed = False
+
+
+def _neighborhood_budget_bytes() -> int:
+    return _NEIGHBORHOOD_BUDGET_BYTES
+
+
+def _neighborhood_query_chunk(tokens, heads, dim, element_size, window_volume):
+    bytes_per_query = max(window_volume * heads * dim * element_size, dim * element_size)
+    return max(1, min(tokens, _neighborhood_budget_bytes() // max(bytes_per_query, 1)))
 
 
 def _triton_neighborhood_ready() -> bool:
@@ -683,15 +792,16 @@ def _neighborhood_kernel():
             query_ptr, key_ptr, value_ptr, output_ptr,
             frames, height, width, dim,
             kernel_t, kernel_h, kernel_w,
+            token_offset, chunk_tokens,
             stride_bh, stride_token,
             BLOCK_D: tl.constexpr,
             OUT_DTYPE: tl.constexpr,
     ):
         pid = tl.program_id(0)
         plane = height * width
-        tokens = frames * plane
-        token = pid % tokens
-        group = pid // tokens
+        local_token = pid % chunk_tokens
+        token = token_offset + local_token
+        group = pid // chunk_tokens
         frame = token // plane
         remainder = token - frame * plane
         row = remainder // width
@@ -745,25 +855,42 @@ def _triton_dtype(dtype):
     return tl.float32
 
 
+def _grouped_kv(key, value, batch, heads, tokens, dim):
+    grouped_key = key.permute(0, 4, 1, 2, 3, 5).contiguous().view(batch * heads, tokens, dim)
+    grouped_value = value.permute(0, 4, 1, 2, 3, 5).contiguous().view(batch * heads, tokens, dim)
+    return grouped_key, grouped_value
+
+
 def _neighborhood_attention_triton(query, key, value, kernel_t, kernel_h, kernel_w):
     """One program per query. The window matches NATTEN's inward shift."""
     import triton
 
     batch, frames, height, width, heads, dim = query.shape
     tokens = frames * height * width
+    volume = kernel_t * kernel_h * kernel_w
     grouped_query = query.permute(0, 4, 1, 2, 3, 5).contiguous().view(batch * heads, tokens, dim)
-    grouped_key = key.permute(0, 4, 1, 2, 3, 5).contiguous().view(batch * heads, tokens, dim)
-    grouped_value = value.permute(0, 4, 1, 2, 3, 5).contiguous().view(batch * heads, tokens, dim)
+    grouped_key, grouped_value = _grouped_kv(key, value, batch, heads, tokens, dim)
     output = torch.empty_like(grouped_query)
-    _neighborhood_kernel()[(batch * heads * tokens,)](
-        grouped_query, grouped_key, grouped_value, output,
-        frames, height, width, dim,
-        kernel_t, kernel_h, kernel_w,
-        grouped_query.stride(0), grouped_query.stride(1),
-        BLOCK_D=triton.next_power_of_2(dim),
-        OUT_DTYPE=_triton_dtype(query.dtype),
-        num_warps=1,
-    )
+    chunk = _neighborhood_query_chunk(
+        tokens, heads, dim, query.element_size(), volume)
+    kernel = _neighborhood_kernel()
+    block_d = triton.next_power_of_2(dim)
+    out_dtype = _triton_dtype(query.dtype)
+    stride_bh = grouped_query.stride(0)
+    stride_token = grouped_query.stride(1)
+    for start in range(0, tokens, chunk):
+        stop = min(start + chunk, tokens)
+        chunk_tokens = stop - start
+        kernel[(batch * heads * chunk_tokens,)](
+            grouped_query, grouped_key, grouped_value, output,
+            frames, height, width, dim,
+            kernel_t, kernel_h, kernel_w,
+            start, chunk_tokens,
+            stride_bh, stride_token,
+            BLOCK_D=block_d,
+            OUT_DTYPE=out_dtype,
+            num_warps=1,
+        )
     return output.view(batch, heads, frames, height, width, dim).permute(0, 2, 3, 4, 1, 5).contiguous()
 
 
@@ -778,8 +905,8 @@ def _neighborhood_attention_gather(query, key, value, kernel_t, kernel_h, kernel
     output = torch.empty_like(query_flat)
 
     volume = kernel_t * kernel_h * kernel_w
-    bytes_per_token = volume * heads * dim * query.element_size()
-    chunk = max(1, min(tokens, _NEIGHBORHOOD_BUDGET_BYTES // max(bytes_per_token, 1)))
+    chunk = _neighborhood_query_chunk(
+        tokens, heads, dim, query.element_size(), volume)
     device = query.device
     offset_t = torch.arange(kernel_t, device=device)
     offset_h = torch.arange(kernel_h, device=device)
@@ -888,22 +1015,207 @@ def _ltx_diffusion_natten_processor():
         return _LTXWindowNeighborhoodProcessor()
 
 
-def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator):
+def _load_ltx_diffusion_decoder(wrapper, pipe):
+    decoder = getattr(pipe, 'diffusion_decoder', None)
+    if isinstance(decoder, torch.nn.Module):
+        _messages.debug_log('Reusing the main LTX pipeline diffusion_decoder for decode.')
+        return decoder
+    from diffusers import LTX2VideoDiffusionDecoderModel
+
+    dtype = _enums.get_torch_dtype(wrapper._dtype) or torch.bfloat16
+    return LTX2VideoDiffusionDecoderModel.from_pretrained(
+        wrapper.model_path,
+        subfolder='diffusion_decoder',
+        torch_dtype=dtype,
+        token=wrapper._auth_token,
+        local_files_only=bool(wrapper._local_files_only))
+
+
+# Pixel tiles for the missing-NATTEN path. The decoder default is 768x768 and 80
+# frames, which is the whole frame at the usual LTX size, so the expensive stages
+# never split. 384x384 and 24 frames stay on the 8-pixel / 2-frame grid.
+_LTX_DECODE_TILE_HEIGHT = 384
+_LTX_DECODE_TILE_WIDTH = 384
+_LTX_DECODE_TILE_FRAMES = 24
+_LTX_DECODE_TILE_OVERLAP_PX = 64
+_LTX_DECODE_TILE_OVERLAP_FRAMES = 8
+
+
+def _aligned_tile_size(value: int, step: int, minimum: int) -> int:
+    size = max(minimum, int(value) // step * step)
+    return max(size, minimum)
+
+
+def _ltx_fallback_decode_tile(override: str | None = None) -> tuple[int, int, int, int, int, int]:
+    """Height, width, frames, and the three strides, in decoded pixels and frames."""
+    raw = '' if override is None else str(override).strip().lower().replace(' ', '')
+    height, width, frames = (
+        _LTX_DECODE_TILE_HEIGHT, _LTX_DECODE_TILE_WIDTH, _LTX_DECODE_TILE_FRAMES)
+    if raw:
+        parts = raw.split('x')
+        try:
+            if len(parts) == 1:
+                frames = int(parts[0], 0)
+            elif len(parts) == 2:
+                width = height = int(parts[0], 0)
+                frames = int(parts[1], 0)
+            elif len(parts) == 3:
+                width = int(parts[0], 0)
+                height = int(parts[1], 0)
+                frames = int(parts[2], 0)
+            else:
+                raise ValueError
+        except ValueError:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '--ltx-diffusion-decode-tile must look like 384x384x24, 384x24, or 24.')
+    # The last upsample cell is 8 pixels and 2 frames. A neighborhood kernel needs
+    # at least 48 pixels and 12 frames.
+    height = _aligned_tile_size(height, 8, 48)
+    width = _aligned_tile_size(width, 8, 48)
+    frames = _aligned_tile_size(frames, 2, 12)
+    overlap_px = min(_LTX_DECODE_TILE_OVERLAP_PX, height // 2, width // 2)
+    overlap_frames = min(_LTX_DECODE_TILE_OVERLAP_FRAMES, frames // 2)
+    stride_height = _aligned_tile_size(height - overlap_px, 8, 8)
+    stride_width = _aligned_tile_size(width - overlap_px, 8, 8)
+    stride_frames = _aligned_tile_size(frames - overlap_frames, 2, 2)
+    stride_height = min(stride_height, height - 8)
+    stride_width = min(stride_width, width - 8)
+    stride_frames = min(stride_frames, frames - 2)
+    return height, width, frames, stride_height, stride_width, stride_frames
+
+
+def _enable_ltx_fallback_tiling(decoder, decode_tile: str | None = None) -> None:
+    height, width, frames, stride_height, stride_width, stride_frames = (
+        _ltx_fallback_decode_tile(decode_tile))
+    decoder.enable_tiling(
+        tile_sample_min_height=height,
+        tile_sample_min_width=width,
+        tile_sample_min_num_frames=frames,
+        tile_sample_stride_height=stride_height,
+        tile_sample_stride_width=stride_width,
+        tile_sample_stride_num_frames=stride_frames)
+    _messages.log(
+        f'LTX diffusion decoder tiles are {width}x{height}, {frames} frames.')
+
+
+def _prepare_ltx_diffusion_decoder(decoder, decode_tile: str | None = None):
+    processor = _ltx_diffusion_natten_processor()
+    decoder._dgenerate_ltx_fallback_tiles = bool(getattr(processor, 'tiles', False))
+    if (decoder._dgenerate_ltx_fallback_tiles or decode_tile) and hasattr(decoder, 'enable_tiling'):
+        _enable_ltx_fallback_tiling(decoder, decode_tile)
+    decoder.set_attn_processor(processor)
+    return decoder
+
+
+def _diffusion_decoder_is_tiled(outer, latents) -> bool:
+    if not getattr(outer, 'use_tiling', False) or not torch.is_tensor(latents) or latents.ndim < 5:
+        return False
+    spatial = int(getattr(outer, 'spatial_compression_ratio', 32) or 32)
+    temporal = int(getattr(outer, 'temporal_compression_ratio', 8) or 8)
+    return (
+        latents.shape[2] > outer.tile_sample_min_num_frames // temporal
+        or latents.shape[3] > outer.tile_sample_min_height // spatial
+        or latents.shape[4] > outer.tile_sample_min_width // spatial)
+
+
+def _diffusion_decode_tile_count(outer, features) -> int:
+    """How many stage-5 tiles ``tiled_decode`` will denoise for ``features``."""
+    from diffusers.models.autoencoders.ltx2_diffusion_decoder import _tile_intervals
+
+    inner = outer.decoder
+    upsample_stride = inner.upsamples[-1].stride
+    patch_size = inner.patch_size
+    scale_t = upsample_stride[0]
+    scale_h = upsample_stride[1] * patch_size
+    scale_w = upsample_stride[2] * patch_size
+    min_sizes = [
+        max(kernel_4, -(-kernel_5 // stride))
+        for kernel_4, kernel_5, stride in zip(
+            outer.config.decoder_stage_kernels[-1],
+            outer.config.decoder_stage5_kernel,
+            upsample_stride)
+    ]
+    ghost_frames = inner.trailing_pad_latent_frames * math.prod(
+        up.stride[0] for up in inner.upsamples[:-1])
+    num_frames = features.shape[1] - ghost_frames
+    temporal = _tile_intervals(
+        num_frames,
+        outer.tile_sample_min_num_frames // scale_t,
+        outer.tile_sample_stride_num_frames // scale_t,
+        min_sizes[0])
+    heights = _tile_intervals(
+        features.shape[2],
+        outer.tile_sample_min_height // scale_h,
+        outer.tile_sample_stride_height // scale_h,
+        min_sizes[1])
+    widths = _tile_intervals(
+        features.shape[3],
+        outer.tile_sample_min_width // scale_w,
+        outer.tile_sample_stride_width // scale_w,
+        min_sizes[2])
+    return max(1, len(temporal) * len(heights) * len(widths))
+
+
+@contextlib.contextmanager
+def _diffusion_decode_progress(decode_pipe):
+    """
+    Show a diffusers progress bar for the diffusion decoder.
+
+    The bar is one step per tile. An untiled decode is one step, and that step
+    completes when the single denoise returns.
+    """
+    outer = getattr(decode_pipe, 'diffusion_decoder', None)
+    inner = getattr(outer, 'decoder', None)
+    if inner is None or not callable(getattr(inner, 'denoise', None)):
+        yield
+        return
+    if not callable(getattr(inner, 'forward_stages_1_to_3', None)):
+        yield
+        return
+
+    bar = None
+    original_stages = inner.forward_stages_1_to_3
+    original_denoise = inner.denoise
+
+    def stages(hidden_states, *args, **kwargs):
+        nonlocal bar
+        features = original_stages(hidden_states, *args, **kwargs)
+        if bar is None:
+            total = 1
+            if _diffusion_decoder_is_tiled(outer, hidden_states):
+                try:
+                    total = _diffusion_decode_tile_count(outer, features)
+                except Exception as error:
+                    _messages.debug_log(
+                        f'Could not count LTX diffusion decoder tiles: {error}')
+            decode_pipe.set_progress_bar_config(desc='Diffusion decode')
+            bar = decode_pipe.progress_bar(total=total)
+        return features
+
+    def denoise(*args, **kwargs):
+        result = original_denoise(*args, **kwargs)
+        if bar is not None:
+            bar.update()
+        return result
+
+    inner.forward_stages_1_to_3 = stages
+    inner.denoise = denoise
+    try:
+        yield
+    finally:
+        inner.forward_stages_1_to_3 = original_stages
+        inner.denoise = original_denoise
+        if bar is not None:
+            bar.close()
+
+
+def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator, decode_tile=None):
     decode_pipe = getattr(held, 'diffusion_decoder_pipe', None)
     if decode_pipe is None:
-        from diffusers import LTX2VideoDiffusionDecodePipeline, LTX2VideoDiffusionDecoderModel
+        from diffusers import LTX2VideoDiffusionDecodePipeline
 
-        dtype = _enums.get_torch_dtype(wrapper._dtype) or torch.bfloat16
-        decoder = LTX2VideoDiffusionDecoderModel.from_pretrained(
-            wrapper.model_path,
-            subfolder='diffusion_decoder',
-            torch_dtype=dtype,
-            token=wrapper._auth_token,
-            local_files_only=bool(wrapper._local_files_only))
-        processor = _ltx_diffusion_natten_processor()
-        if getattr(processor, 'tiles', False) and hasattr(decoder, 'enable_tiling'):
-            decoder.enable_tiling()
-        decoder.set_attn_processor(processor)
+        decoder = _prepare_ltx_diffusion_decoder(
+            _load_ltx_diffusion_decoder(wrapper, pipe), decode_tile)
         decode_pipe = LTX2VideoDiffusionDecodePipeline(
             diffusion_decoder=decoder, scheduler=pipe.scheduler, vae=pipe.vae)
         _vp._offload_ltx(
@@ -911,12 +1223,21 @@ def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator):
             bool(wrapper.model_cpu_offload), bool(wrapper.model_sequential_offload),
             bool(getattr(wrapper, 'model_group_offload', False)))
         held.diffusion_decoder_pipe = decode_pipe
-    frames = decode_pipe(
-        latents=latents,
-        denormalize=False,
-        generator=generator,
-        output_type='pil',
-        return_dict=False)[0]
+    else:
+        decoder = getattr(decode_pipe, 'diffusion_decoder', None)
+        if decoder is not None and (
+                getattr(decoder, '_dgenerate_ltx_fallback_tiles', False) or decode_tile):
+            _enable_ltx_fallback_tiling(decoder, decode_tile)
+    if not _vp._offload_requested(wrapper):
+        _place_ltx_module(getattr(decode_pipe, 'diffusion_decoder', None), wrapper.device)
+        _place_ltx_module(getattr(decode_pipe, 'vae', None), wrapper.device)
+    with _diffusion_decode_progress(decode_pipe):
+        frames = decode_pipe(
+            latents=latents,
+            denormalize=False,
+            generator=generator,
+            output_type='pil',
+            return_dict=False)[0]
     return _vp.frames_from_output(frames)
 
 

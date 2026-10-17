@@ -521,6 +521,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     ``diffusion`` uses the LTX-2 diffusion decoder. ``None`` uses the convolutional VAE.
     """
 
+    ltx_diffusion_decode_tile: _types.OptionalString = None
+    """
+    Diffusion-decoder tile as ``WIDTHxHEIGHTxFRAMES``. ``None`` uses the
+    built-in tile when NATTEN is unavailable.
+    """
+
     ltx_decode_timesteps: _types.OptionalFloats = None
     """
     Decode timesteps for the LTX video decode.
@@ -3198,6 +3204,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("ltx_video_decoder")} must be "conv" or "diffusion". '
                 f'Got {self.ltx_video_decoder!r}.')
 
+        if self.ltx_diffusion_decode_tile and self.ltx_video_decoder != 'diffusion':
+            raise RenderLoopConfigError(
+                f'{a_namer("ltx_diffusion_decode_tile")} applies when '
+                f'{a_namer("ltx_video_decoder")} is "diffusion".')
+
         if self.ltx_system_prompt and not self.ltx_prompt_enhancer:
             raise RenderLoopConfigError(
                 f'{a_namer("ltx_system_prompt")} needs {a_namer("ltx_prompt_enhancer")}.')
@@ -4780,6 +4791,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     'ltx_stage_audio_guidance_scale', self.ltx_stage_audio_guidance_scales),
                 ltx_stage_lora_uris=ov('ltx_stage_lora_uris', [self.ltx_stage_lora_uris]),
                 ltx_video_decoder=ov('ltx_video_decoder', [self.ltx_video_decoder]),
+                ltx_diffusion_decode_tile=ov('ltx_diffusion_decode_tile', [self.ltx_diffusion_decode_tile]),
                 ltx_decode_timestep=ov('ltx_decode_timestep', self.ltx_decode_timesteps),
                 ltx_decode_noise_scale=ov('ltx_decode_noise_scale', self.ltx_decode_noise_scales),
                 ltx_image_crf=ov('ltx_image_crf', self.ltx_image_crfs),

@@ -150,6 +150,9 @@ class _RecipesForm(tk.Toplevel):
         missing_fields = False
 
         for entry in self._entries:
+            if entry._row_inactive:
+                content = _formentries.replace_first(content, entry.placeholder, '')
+                continue
             content = entry.template(content)
             if entry.is_empty() and not entry.optional:
                 entry.invalid()
@@ -390,7 +393,24 @@ class _RecipesForm(tk.Toplevel):
 
             self._entries.append(entry)
 
+        self._bind_enabled_when()
         _appearance.apply(self)
+
+    def _bind_enabled_when(self) -> None:
+        for entry in self._entries:
+            spec = entry.config.get('enabled-when') or entry.config.get('visible-when')
+            if not spec:
+                continue
+            source = self._id_map.get(spec.get('id'))
+            equals = spec.get('equals', '')
+            if source is None or not hasattr(source, 'text_var'):
+                continue
+
+            def apply(_name=None, _index=None, _mode=None, entry=entry, source=source, equals=equals):
+                entry.set_row_enabled(source.text_var.get().strip() == equals)
+
+            source.text_var.trace_add('write', apply)
+            apply()
 
     def destroy(self) -> None:
         self.unbind_mousewheel()

@@ -166,6 +166,8 @@ def reconstruct_dgenerate_opts(
             opts.append(('--ltx-stage-loras', args.ltx_stage_lora_uris))
         if args.ltx_video_decoder == 'diffusion':
             opts.append(('--ltx-video-decoder', 'diffusion'))
+        if args.ltx_diffusion_decode_tile:
+            opts.append(('--ltx-diffusion-decode-tile', args.ltx_diffusion_decode_tile))
         if args.ltx_decode_timestep is not None:
             opts.append(('--ltx-decode-timesteps', args.ltx_decode_timestep))
         if args.ltx_decode_noise_scale is not None:

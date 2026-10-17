@@ -2072,6 +2072,17 @@ class TestVideoModels(unittest.TestCase):
         self.assertNotIsInstance(
             processor, decoder_module.LTX2VideoVaeNeighborhoodAttnProcessor)
         decoder.enable_tiling.assert_called_once()
+        from dgenerate.pipelinewrapper.videopipelines import ltx as ltx_module
+        tile = ltx_module._ltx_fallback_decode_tile('256x256x16')
+        self.assertEqual(tile[:3], (256, 256, 16))
+        self.assertEqual(tile[3:5], (192, 192))
+        self.assertEqual(tile[5], 8)
+        tile = decoder.enable_tiling.call_args.kwargs
+        self.assertEqual(tile['tile_sample_min_height'], 384)
+        self.assertEqual(tile['tile_sample_min_width'], 384)
+        self.assertEqual(tile['tile_sample_min_num_frames'], 24)
+        self.assertLess(tile['tile_sample_stride_height'], 384)
+        self.assertLess(tile['tile_sample_stride_num_frames'], 24)
         self.assertEqual(result, ['ok'])
 
     def test_diffusion_decoder_keeps_natten_processor(self):
@@ -2102,6 +2113,146 @@ class TestVideoModels(unittest.TestCase):
         processor = decoder.set_attn_processor.call_args.args[0]
         self.assertIsInstance(processor, Loaded)
         decoder.enable_tiling.assert_not_called()
+
+    def test_diffusion_decoder_reuses_main_pipeline_module(self):
+        import diffusers.models.autoencoders.ltx2_diffusion_decoder as decoder_module
+        from dgenerate.pipelinewrapper.videopipelines.ltx import (
+            _LTXWindowNeighborhoodProcessor)
+
+        class MissingKernels:
+            def __init__(self):
+                raise ImportError('no shi-labs/natten build for this platform')
+
+        class StubDecoder(torch.nn.Module):
+            def enable_tiling(self, *args, **kwargs):
+                pass
+
+            def set_attn_processor(self, processor):
+                self.processor = processor
+
+        decoder = StubDecoder()
+        pipe = unittest.mock.Mock(
+            diffusion_decoder=decoder,
+            scheduler=unittest.mock.Mock(),
+            vae=unittest.mock.Mock())
+        held = unittest.mock.Mock(spec=[])
+        decode_pipe = unittest.mock.Mock(return_value=(['frame'],))
+
+        with unittest.mock.patch(
+                'diffusers.LTX2VideoDiffusionDecoderModel.from_pretrained') as load_decoder, \
+                unittest.mock.patch(
+                    'diffusers.LTX2VideoDiffusionDecodePipeline',
+                    return_value=decode_pipe), \
+                unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.videopipelines.frames_from_output',
+                    return_value=['ok']), \
+                unittest.mock.patch.object(
+                    decoder_module, 'LTX2VideoVaeNeighborhoodNattenProcessor', MissingKernels):
+            _videopipelines._decode_ltx_diffusion(
+                self._decoder_wrapper(), pipe, held, None, None)
+
+        load_decoder.assert_not_called()
+        self.assertIsInstance(decoder.processor, _LTXWindowNeighborhoodProcessor)
+        decode_pipe.assert_called_once()
+
+    def test_diffusion_decode_progress_updates_once_per_denoise(self):
+        from dgenerate.pipelinewrapper.videopipelines import ltx as ltx_module
+
+        updates = []
+
+        class Bar:
+            def __init__(self, total):
+                self.total = total
+
+            def update(self):
+                updates.append(self.total)
+
+            def close(self):
+                updates.append('close')
+
+        class Inner:
+            def forward_stages_1_to_3(self, hidden):
+                return hidden
+
+            def denoise(self):
+                return 'decoded'
+
+        class Outer:
+            use_tiling = False
+            decoder = Inner()
+
+        class Pipe:
+            diffusion_decoder = Outer()
+
+            def set_progress_bar_config(self, **kwargs):
+                self.config = kwargs
+
+            def progress_bar(self, total):
+                return Bar(total)
+
+        pipe = Pipe()
+        inner = pipe.diffusion_decoder.decoder
+        with ltx_module._diffusion_decode_progress(pipe):
+            inner.forward_stages_1_to_3(torch.zeros(1, 4, 2, 2, 2))
+            inner.denoise()
+            inner.denoise()
+        self.assertEqual(updates, [1, 1, 'close'])
+        self.assertEqual(pipe.config['desc'], 'Diffusion decode')
+        self.assertEqual(inner.denoise(), 'decoded')
+        self.assertEqual(updates, [1, 1, 'close'])
+
+    def test_diffusion_decode_parks_denoiser_before_audio(self):
+        from dgenerate.pipelinewrapper.videopipelines import ltx as ltx_module
+
+        class Track(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.weight = torch.nn.Parameter(torch.zeros(1))
+                self.devices = []
+
+            def to(self, *args, **kwargs):
+                if args:
+                    self.devices.append(args[0])
+                return super().to(*args, **kwargs)
+
+        transformer = Track()
+        audio_vae = Track()
+        vocoder = Track()
+        pipe = unittest.mock.Mock(
+            spec=['transformer', 'audio_vae', 'vocoder', 'maybe_free_model_hooks'],
+            transformer=transformer,
+            audio_vae=audio_vae,
+            vocoder=vocoder,
+            maybe_free_model_hooks=lambda: None)
+        wrapper = self._decoder_wrapper()
+        held = unittest.mock.Mock(spec=[])
+        order = []
+
+        def decode(*args, **kwargs):
+            order.append('video')
+            self.assertEqual(transformer.devices[-1], 'cpu')
+            self.assertEqual(audio_vae.devices, [])
+            return ['frame']
+
+        def waveform(pipe_arg, audio):
+            order.append('audio')
+            self.assertEqual(audio_vae.devices, [])
+            return 'wave'
+
+        output = unittest.mock.Mock(frames=torch.zeros(1), audio=torch.zeros(1))
+        with unittest.mock.patch.object(ltx_module, '_decode_ltx_diffusion', side_effect=decode), \
+                unittest.mock.patch.object(ltx_module, '_waveform_from_audio_latents', side_effect=waveform), \
+                unittest.mock.patch.object(
+                    ltx_module, 'audio_sample_rate_from_pipeline', return_value=24000):
+            frames, audio, rate = ltx_module._ltx_pixels_from_output(
+                wrapper, pipe, held, output, True, None)
+
+        self.assertEqual(order, ['video', 'audio'])
+        self.assertEqual(frames, ['frame'])
+        self.assertEqual(audio, 'wave')
+        self.assertEqual(rate, 24000)
+        self.assertEqual(audio_vae.devices, ['cpu'])
+        self.assertEqual(vocoder.devices, ['cpu'])
 
     def test_neighborhood_attention_matches_inward_window(self):
         from dgenerate.pipelinewrapper.videopipelines import ltx as ltx_module
