@@ -68,23 +68,17 @@ index has to be ``--index-url`` or pip keeps the PyPI build (CPU on Linux and Wi
 Metal on macOS). PyPI and the torch index stay on ``--extra-index-url``.
 The network installer selects the index for you.
 
-CUDA 13.2+:
+CUDA 13.0+:
 
 .. code-block:: bash
 
-    pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu132/ --extra-index-url https://pypi.org/simple
+    pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu130 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
 CUDA 12.8 through 12.9:
 
 .. code-block:: bash
 
     pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
-
-CUDA 13.0 through 13.1:
-
-.. code-block:: bash
-
-    pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
 Linux ROCm 7.2:
 

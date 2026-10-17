@@ -11,7 +11,7 @@ Note that the name of the ``pip`` executable may be named ``pip3`` on some syste
 
     # cuda
 
-    pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/cu132
+    pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/cu130
 
     # ROCm
 
@@ -21,7 +21,7 @@ Note that the name of the ``pip`` executable may be named ``pip3`` on some syste
     # ncnn, xllamacpp, bitsandbytes, console_ui_vulkan, console_ui_opengl
     # console_ui_opengl is Windows and Linux only. macOS uses Metal.
 
-    pip install "dgenerate[ncnn,console_ui_vulkan] @ git+https://github.com/Teriks/dgenerate@BRANCH_NAME" --extra-index-url https://download.pytorch.org/whl/cu132
+    pip install "dgenerate[ncnn,console_ui_vulkan] @ git+https://github.com/Teriks/dgenerate@BRANCH_NAME" --extra-index-url https://download.pytorch.org/whl/cu130
 
 
 This same syntax should work with ``pipx`` as well, as long as you have ``git`` installed.

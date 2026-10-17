@@ -363,9 +363,10 @@ class SetupAnalyzer:
         
         # Platform and GPU-specific compatibility checks
         if extra_name == 'xformers':
-            # Current releases do not ship this extra. Older releases still do.
-            # Selecting it caps torch at 2.10, so judge the index from that pin
-            # when the release itself wants something newer.
+            # Current releases omit this extra. Newer PyTorch builds include
+            # attention, so xFormers is no longer worth shipping. Older releases
+            # still have it. Selecting it caps torch at 2.10, so judge the index
+            # from that pin when the release itself wants something newer.
             if not (gpu_info.has_nvidia and gpu_info.cuda_version):
                 return False
             
