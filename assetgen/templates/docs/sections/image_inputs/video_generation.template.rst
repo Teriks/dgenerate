@@ -405,10 +405,13 @@ Decode, prompts, and duration
 
 ``--ltx-video-decoder diffusion`` decodes with the checkpoint diffusion decoder
 instead of the convolutional VAE, in the same generation. ``conv`` is the default.
-That decoder uses NATTEN through the ``kernels`` package, which is installed with
-dgenerate. The first decode downloads the kernel from the Hub, so leave
-``DIFFUSERS_DISABLE_REMOTE_CODE`` unset. The FlexAttention path builds a neighborhood
-mask that does not fit in GPU memory at video resolution.
+Linux uses NATTEN through the ``kernels`` package. The first decode downloads
+that kernel from the Hub, so leave ``DIFFUSERS_DISABLE_REMOTE_CODE`` unset.
+Windows has no NATTEN build. That window runs with Triton when it is
+installed, including the ``triton-windows`` extra. Without Triton the same
+window is gathered in PyTorch. The diffusion decoder is tiled either way.
+The FlexAttention path
+builds a neighborhood mask that does not fit in GPU memory at video resolution.
 ``--ltx-decode-timesteps`` and ``--ltx-decode-noise-scales`` are the decode arguments.
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 

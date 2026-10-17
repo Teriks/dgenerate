@@ -2880,10 +2880,11 @@ Help Output
             ---------------------------------------------
       --ltx-video-decoder DECODER
             How an LTX-2 clip is decoded. conv is the convolutional VAE. diffusion is the diffusion decoder in
-            the checkpoint's diffusion_decoder folder. The decode is part of the same generation. It uses NATTEN
-            through the kernels package, which is installed with dgenerate. The first decode downloads that
-            kernel from the Hub, so leave DIFFUSERS_DISABLE_REMOTE_CODE unset. The FlexAttention fallback does
-            not fit in GPU memory.
+            the checkpoint's diffusion_decoder folder. The decode is part of the same generation. Linux uses the
+            NATTEN kernel downloaded through the kernels package; leave DIFFUSERS_DISABLE_REMOTE_CODE unset.
+            Windows has no NATTEN build. That window runs with Triton when it is installed, including the
+            triton-windows extra. Without Triton the same window is gathered in PyTorch. The FlexAttention mask does not
+            fit in GPU memory.
             ----------------------
       --ltx-decode-timesteps FLOAT [FLOAT ...]
             Decode timestep for the LTX video decode. Several values are tried in turn.
@@ -4870,10 +4871,13 @@ Decode, prompts, and duration
 
 ``--ltx-video-decoder diffusion`` decodes with the checkpoint diffusion decoder
 instead of the convolutional VAE, in the same generation. ``conv`` is the default.
-That decoder uses NATTEN through the ``kernels`` package, which is installed with
-dgenerate. The first decode downloads the kernel from the Hub, so leave
-``DIFFUSERS_DISABLE_REMOTE_CODE`` unset. The FlexAttention path builds a neighborhood
-mask that does not fit in GPU memory at video resolution.
+Linux uses NATTEN through the ``kernels`` package. The first decode downloads
+that kernel from the Hub, so leave ``DIFFUSERS_DISABLE_REMOTE_CODE`` unset.
+Windows has no NATTEN build. That window runs with Triton when it is
+installed, including the ``triton-windows`` extra. Without Triton the same
+window is gathered in PyTorch. The diffusion decoder is tiled either way.
+The FlexAttention path
+builds a neighborhood mask that does not fit in GPU memory at video resolution.
 ``--ltx-decode-timesteps`` and ``--ltx-decode-noise-scales`` are the decode arguments.
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
