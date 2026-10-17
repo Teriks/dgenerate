@@ -304,6 +304,9 @@ _PyOpenGL_accelerate_requires = 'pyopengl-accelerate' + requires.pop('pyopengl-a
 _ncnn_requires = 'ncnn' + requires.pop('ncnn')
 _xllamacpp_requires_spec = requires.pop('xllamacpp')
 
+# xformers is not an extra. Newer PyTorch builds include attention, so the
+# package is no longer worth shipping. The installer still honors the extra
+# on older releases and caps those at torch 2.10.
 extras: dict[str, list[str]] = {
     'ncnn': [_ncnn_requires],
     # Default console preview on Windows and Linux; opt-in on macOS

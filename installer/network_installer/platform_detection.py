@@ -348,7 +348,9 @@ AMD_WINDOWS_MULTIARCH_INDEX = "https://repo.amd.com/rocm/whl-multi-arch/"
 # Patch-specific keys are (major, minor, patch); otherwise (major, minor).
 _CUDA_INDEX_TABLE: dict[tuple, list[tuple[int, int, str]]] = {
     (2, 14): [(13, 2, "cu132"), (13, 0, "cu130"), (12, 6, "cu126")],
-    (2, 13): [(13, 2, "cu132"), (13, 0, "cu130"), (12, 9, "cu129"), (12, 6, "cu126")],
+    # Current NATTEN wheels for this torch stop at cu130. Newer builds can
+    # add cu132 back here when they exist.
+    (2, 13): [(13, 0, "cu130"), (12, 6, "cu126")],
     (2, 12, 1): [(13, 2, "cu132"), (13, 0, "cu130"), (12, 9, "cu129"), (12, 6, "cu126")],
     (2, 12): [(13, 2, "cu132"), (13, 0, "cu130"), (12, 6, "cu126")],
     (2, 11): [(13, 0, "cu130"), (12, 9, "cu129"), (12, 8, "cu128"), (12, 6, "cu126")],
@@ -378,7 +380,9 @@ _ROCM_INDEX_TABLE: dict[tuple, list[tuple[int, int, str]]] = {
 }
 
 
-# xFormers 0.0.35 is built for torch 2.10. Newer torch wheels do not load it.
+# Older releases shipped an xformers extra. Those wheels load on torch 2.10,
+# so a newer pin is capped there. Current releases omit the extra: newer
+# PyTorch builds include attention, and xFormers is no longer worth shipping.
 # torchvision 0.25.0 is the build published with torch 2.10.0.
 XFORMERS_MAX_TORCH = (2, 10)
 XFORMERS_TORCH_VERSION = "2.10.0"

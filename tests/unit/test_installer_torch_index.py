@@ -35,9 +35,9 @@ class TestInstallerTorchIndex(unittest.TestCase):
         )
         self.assertEqual(_parse_nvidia_smi_cuda_version('CUDA Version: 12.8'), '12.8')
 
-    def test_torch_214_cuda_mapping(self):
+    def test_torch_213_cuda_mapping(self):
         cases = [
-            (13, 2, False, 'cu132'),
+            (13, 2, False, 'cu130'),
             (13, 1, False, 'cu130'),
             (13, 0, False, 'cu130'),
             (12, 9, False, 'cu126'),
@@ -46,7 +46,7 @@ class TestInstallerTorchIndex(unittest.TestCase):
             (13, 2, True, 'cu126'),
         ]
         for cuda_major, cuda_minor, legacy, suffix in cases:
-            url = _get_torch_cuda_url(2, 14, 0, cuda_major, cuda_minor, legacy)
+            url = _get_torch_cuda_url(2, 13, 0, cuda_major, cuda_minor, legacy)
             self.assertTrue(url.endswith(suffix), (cuda_major, cuda_minor, legacy, url))
 
     def test_older_torch_cuda_mappings_preserved(self):
@@ -59,10 +59,10 @@ class TestInstallerTorchIndex(unittest.TestCase):
         self.assertTrue(_get_torch_cuda_url(2, 5, 0, 12, 4, False).endswith('cu124'))
         self.assertTrue(_get_torch_cuda_url(2, 3, 0, 12, 1, False).endswith('cu121'))
 
-    def test_torch_214_rocm_mapping(self):
-        self.assertTrue(_get_torch_rocm_url(2, 14, 0, '7.14').endswith('rocm7.14'))
-        self.assertTrue(_get_torch_rocm_url(2, 14, 0, '7.2').endswith('rocm7.2'))
-        self.assertTrue(_get_torch_rocm_url(2, 14, 0, '6.3').endswith('/cpu'))
+    def test_torch_213_rocm_mapping(self):
+        self.assertTrue(_get_torch_rocm_url(2, 13, 0, '7.2').endswith('rocm7.2'))
+        self.assertTrue(_get_torch_rocm_url(2, 13, 0, '7.1').endswith('rocm7.1'))
+        self.assertTrue(_get_torch_rocm_url(2, 13, 0, '6.3').endswith('/cpu'))
 
     def test_older_torch_rocm_mappings(self):
         self.assertTrue(_get_torch_rocm_url(2, 8, 0, '6.4').endswith('rocm6.4'))
@@ -81,9 +81,9 @@ class TestInstallerTorchIndex(unittest.TestCase):
         self.assertFalse(is_amd_windows_multiarch_index(None))
 
     def test_xformers_caps_torch_newer_than_210(self):
-        self.assertEqual(cap_torch_version_for_xformers('2.14.0'), '2.10.0')
+        self.assertEqual(cap_torch_version_for_xformers('2.13.0'), '2.10.0')
         self.assertEqual(cap_torch_version_for_xformers('2.11.0'), '2.10.0')
-        self.assertEqual(cap_torch_version_for_xformers('==2.14.0'), '2.10.0')
+        self.assertEqual(cap_torch_version_for_xformers('==2.13.0'), '2.10.0')
         self.assertEqual(cap_torch_version_for_xformers('2.10.0'), '2.10.0')
         self.assertEqual(cap_torch_version_for_xformers('2.10.1'), '2.10.1')
         self.assertEqual(cap_torch_version_for_xformers('2.8.0'), '2.8.0')
@@ -93,28 +93,53 @@ class TestInstallerTorchIndex(unittest.TestCase):
         self.assertIsNone(xformers_version_overrides('2.8.0', '==0.23.0'))
         self.assertIsNone(xformers_version_overrides('2.10.0', '==0.25.0'))
         self.assertEqual(
-            xformers_version_overrides('2.14.0', '==0.29.0'),
+            xformers_version_overrides('2.13.0', '==0.29.0'),
             {'torch': '2.10.0', 'torchvision': '0.25.0'},
         )
         self.assertEqual(
-            xformers_version_overrides('2.14.0', '==0.29.0', '==2.14.0'),
+            xformers_version_overrides('2.13.0', '==0.29.0', '==2.13.0'),
             {'torch': '2.10.0', 'torchvision': '0.25.0', 'torchaudio': '2.10.0'},
         )
 
     def test_xformers_uses_capped_torch_index(self):
         analyzer = SetupAnalyzer.__new__(SetupAnalyzer)
-        analyzer.torch_version = '2.14.0'
+        analyzer.torch_version = '2.13.0'
         analyzer.log_callback = lambda message: None
-        # torch 2.14 would select cu132 here; xformers caps that pin at 2.10,
-        # which publishes a wheel on cu130.
+        # The cap is applied before the index lookup, so this uses the torch
+        # 2.10 table. CUDA 12.9 stays on cu129, which the current 2.13 row
+        # no longer publishes.
+        capped = cap_torch_version_for_xformers(analyzer.torch_version)
+        self.assertEqual(capped, '2.10.0')
+        self.assertTrue(_get_torch_cuda_url(2, 10, 0, 13, 3, False).endswith('cu130'))
+        self.assertTrue(_get_torch_cuda_url(2, 10, 0, 12, 9, False).endswith('cu129'))
+        self.assertTrue(_get_torch_cuda_url(2, 10, 0, 12, 8, False).endswith('cu128'))
+        self.assertTrue(_get_torch_cuda_url(2, 10, 0, 12, 6, False).endswith('cu126'))
         cuda_133 = GPUInfo(has_nvidia=True, cuda_version='13.3')
         cuda_130 = GPUInfo(has_nvidia=True, cuda_version='13.0')
+        cuda_129 = GPUInfo(has_nvidia=True, cuda_version='12.9')
         self.assertTrue(analyzer._is_extra_compatible('xformers', cuda_133))
         self.assertTrue(analyzer._is_extra_compatible('xformers', cuda_130))
+        self.assertTrue(analyzer._is_extra_compatible('xformers', cuda_129))
+
+        # Releases that already pin torch 2.10 or older keep that pin and its index.
+        self.assertEqual(cap_torch_version_for_xformers('2.8.0'), '2.8.0')
+        self.assertIsNone(xformers_version_overrides('2.8.0', '==0.23.0'))
+        self.assertTrue(_get_torch_cuda_url(2, 8, 0, 12, 8, False).endswith('cu128'))
+        self.assertTrue(_get_torch_cuda_url(2, 8, 0, 13, 0, False).endswith('cu129'))
+        analyzer.torch_version = '2.8.0'
+        self.assertTrue(analyzer._is_extra_compatible(
+            'xformers', GPUInfo(has_nvidia=True, cuda_version='12.8')))
 
         analyzer.torch_version = '2.7.1'
         cuda_118 = GPUInfo(has_nvidia=True, cuda_version='11.8')
         self.assertFalse(analyzer._is_extra_compatible('xformers', cuda_118))
+        self.assertTrue(_get_torch_cuda_url(2, 7, 1, 11, 8, False).endswith('cu118'))
+
+    def test_current_release_does_not_ship_xformers_extra(self):
+        setup_py = Path(__file__).resolve().parents[2] / 'setup.py'
+        text = setup_py.read_text(encoding='utf-8')
+        self.assertNotIn("'xformers'", text)
+        self.assertNotIn('"xformers"', text)
 
     def test_vulkan_preview_is_recommended_on_every_platform(self):
         analyzer = SetupAnalyzer.__new__(SetupAnalyzer)
