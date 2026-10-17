@@ -348,9 +348,7 @@ AMD_WINDOWS_MULTIARCH_INDEX = "https://repo.amd.com/rocm/whl-multi-arch/"
 # Patch-specific keys are (major, minor, patch); otherwise (major, minor).
 _CUDA_INDEX_TABLE: dict[tuple, list[tuple[int, int, str]]] = {
     (2, 14): [(13, 2, "cu132"), (13, 0, "cu130"), (12, 6, "cu126")],
-    # Current NATTEN wheels for this torch stop at cu130. Newer builds can
-    # add cu132 back here when they exist.
-    (2, 13): [(13, 0, "cu130"), (12, 6, "cu126")],
+    (2, 13): [(13, 2, "cu132"), (13, 0, "cu130"), (12, 9, "cu129"), (12, 6, "cu126")],
     (2, 12, 1): [(13, 2, "cu132"), (13, 0, "cu130"), (12, 9, "cu129"), (12, 6, "cu126")],
     (2, 12): [(13, 2, "cu132"), (13, 0, "cu130"), (12, 6, "cu126")],
     (2, 11): [(13, 0, "cu130"), (12, 9, "cu129"), (12, 8, "cu128"), (12, 6, "cu126")],

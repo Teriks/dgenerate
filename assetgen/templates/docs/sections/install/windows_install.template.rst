@@ -59,29 +59,35 @@ Install dgenerate:
     #   plays video and audio. The network installer selects this extra.
     #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
-    # The commands below use the CUDA 13.0 torch index.
+    # The commands below use the CUDA 13.2 torch index.
+    # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
     # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
     pipx install dgenerate ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu132/"
 
     # with NCNN upscaler support
 
     pipx install dgenerate[ncnn] ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu132/"
 
     # The GPU and CPU wheels share one version, so the GPU index is --index-url.
 
-    # CUDA 13.0+
+    # CUDA 13.2+
 
     pipx install "dgenerate[xllamacpp]" ^
-    --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/cu130 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple"
+    --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu132/ --extra-index-url https://pypi.org/simple"
 
     # CUDA 12.8 through 12.9
 
     pipx install "dgenerate[xllamacpp]" ^
     --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple"
+
+    # CUDA 13.0 through 13.1
+
+    pipx install "dgenerate[xllamacpp]" ^
+    --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple"
 
     # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
     # Windows AMD torch uses https://repo.amd.com/rocm/whl-multi-arch/
@@ -93,29 +99,32 @@ Install dgenerate:
     # If you want a specific version
 
     pipx install dgenerate==@VERSION ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu132/"
 
     # with NCNN upscaler support and a specific version
 
     pipx install dgenerate[ncnn]==@VERSION ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu132/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
+    pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu132/
 
     # Or with NCNN
 
-    pip install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
+    pip install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu132/
 
-    # CUDA 13.0+
+    # CUDA 13.2+
 
-    pip install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu130 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
+    pip install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu132/ --extra-index-url https://pypi.org/simple
 
     # CUDA 12.8 through 12.9
 
     pip install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
+    # CUDA 13.0 through 13.1
+
+    pip install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
     # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
     # Windows AMD torch uses https://repo.amd.com/rocm/whl-multi-arch/
@@ -149,24 +158,28 @@ a cloned repository like this:
     #   plays video and audio. The network installer selects this extra.
     #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
-    # The commands below use the CUDA 13.0 torch index.
+    # The commands below use the CUDA 13.2 torch index.
+    # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
     # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
-    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu130/
+    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu132/
 
     # Install with pip into the environment, include NCNN
 
-    pip install --editable .[dev,ncnn] --extra-index-url https://download.pytorch.org/whl/cu130/
+    pip install --editable .[dev,ncnn] --extra-index-url https://download.pytorch.org/whl/cu132/
 
-    # CUDA 13.0+
+    # CUDA 13.2+
 
-    pip install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu130 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
+    pip install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu132/ --extra-index-url https://pypi.org/simple
 
     # CUDA 12.8 through 12.9
 
     pip install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
+    # CUDA 13.0 through 13.1
+
+    pip install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
     # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
     # Windows AMD torch uses https://repo.amd.com/rocm/whl-multi-arch/
