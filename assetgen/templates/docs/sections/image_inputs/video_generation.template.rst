@@ -82,7 +82,7 @@ repository still supplies the VAE and text encoders. ``--scheduler`` accepts
 These options are rejected: ``--ltx-audio-guidance-scales``,
 ``--ltx-audio-guidance-rescales``, ``--sigmas``, ``--ltx-ic-lora``,
 ``--ltx-latent-upscale``, ``--ltx-stg-scales``, ``--ltx-modality-scales``,
-``--ltx-video-decoder diffusion``, ``--ltx-prompt-enhancer``,
+``--ltx-video-decoder diffusion``, ``--ltx-diffusion-decode-tile``, ``--ltx-prompt-enhancer``,
 ``--ltx-image-crfs``, ``--ltx-no-cross-timestep``,
 ``--ltx-video-min-seconds``, and ``--ltx-video-max-seconds``.
 
@@ -412,6 +412,8 @@ installed, including the ``triton-windows`` extra. Without Triton the same
 window is gathered in PyTorch. The diffusion decoder is tiled either way.
 The FlexAttention path
 builds a neighborhood mask that does not fit in GPU memory at video resolution.
+``--ltx-diffusion-decode-tile`` sets the diffusion-decoder tile, for example ``384x384x24``.
+Omit it and the missing-NATTEN path uses that size. NATTEN stays untiled unless the option is set.
 ``--ltx-decode-timesteps`` and ``--ltx-decode-noise-scales`` are the decode arguments.
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 

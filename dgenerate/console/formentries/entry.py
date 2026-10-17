@@ -94,6 +94,30 @@ class _Entry:
         self.arg = config.get('arg', None)
         self.before = config.get('before', None)
         self.after = config.get('after', None)
+        self._row_inactive = False
+
+    def set_row_enabled(self, enabled: bool) -> None:
+        """Enable or gray out this recipe row. A gray row emits no argument."""
+        self._row_inactive = not enabled
+        state = 'normal' if enabled else 'disabled'
+        label = getattr(self, 'label_widget', None)
+        field = getattr(self, 'entry', None)
+        if label is not None:
+            try:
+                label.configure(state=state)
+            except tkinter.TclError:
+                pass
+        if field is not None:
+            try:
+                if enabled:
+                    field.configure(state=state)
+                else:
+                    field.configure(state=state, disabledforeground='gray')
+            except tkinter.TclError:
+                try:
+                    field.configure(state=state)
+                except tkinter.TclError:
+                    pass
 
     def get_label(self, default, key='label'):
         if self.optional:

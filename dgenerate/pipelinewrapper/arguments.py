@@ -1319,6 +1319,12 @@ class DiffusionArguments(_types.SetFromMixin):
     ``None`` uses the convolutional VAE.
     """
 
+    ltx_diffusion_decode_tile: _types.OptionalString = None
+    """
+    Diffusion-decoder tile as ``WIDTHxHEIGHTxFRAMES``. ``None`` uses the
+    built-in tile when NATTEN is unavailable.
+    """
+
     ltx_decode_timestep: _types.OptionalFloat = None
     """
     Timestep passed to the LTX video decode.
@@ -1953,6 +1959,7 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.ltx_stage_guidance_scale, "Stage Guidance Scale:"),
             (self.ltx_stage_audio_guidance_scale, "Stage Audio Guidance Scale:"),
             (self.ltx_video_decoder, "Video Decoder:"),
+            (self.ltx_diffusion_decode_tile, "Decode Tile:"),
             (self.ltx_image_crf, "Image CRF:"),
             (self.ltx_prompt_enhancer, "Prompt Enhancer:"),
             (self.wan_low_noise_guidance_scale, "Wan Low-Noise Guidance Scale:"),

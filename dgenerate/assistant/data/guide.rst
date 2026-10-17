@@ -428,7 +428,7 @@ The distilled checkpoint needs no stage LoRA. The full transformer uses
 ``--ltx-stg-blocks 28``, video guidance 3, and ``--ltx-audio-guidance-scales 7``.
 Its refine LoRA is ``--ltx-stage-loras``, not a second config.
 ``--ltx-prompt-enhancer google/gemma-4-E2B-it`` rewrites the prompt.
-``--ltx-video-decoder diffusion`` uses the diffusion decoder. Linux loads NATTEN through the kernels package. Windows runs that window with Triton, or gathers it in PyTorch when Triton is not installed.
+``--ltx-video-decoder diffusion`` uses the diffusion decoder. Linux loads NATTEN through the kernels package. Windows runs that window with Triton, or gathers it in PyTorch when Triton is not installed. ``--ltx-diffusion-decode-tile`` sets that tile, for example ``384x384x24``.
 ``--ltx-image-crfs`` recompresses a conditioning still.
 ``--ltx-ic-lora`` is the IC-LoRA. The last frame is ``last-frame=``, not ``end=``.
 ``ltx-index`` is the latent frame and ``strength`` is from 0 to 1.

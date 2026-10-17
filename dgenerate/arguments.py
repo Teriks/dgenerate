@@ -293,6 +293,22 @@ def _type_stg_blocks(val):
     return blocks
 
 
+def _type_ltx_diffusion_decode_tile(val):
+    raw = str(val).strip().lower().replace(' ', '')
+    parts = raw.split('x')
+    if len(parts) not in (1, 2, 3) or not raw:
+        raise argparse.ArgumentTypeError(
+            'Use frames, WIDTHxFRAMES, or WIDTHxHEIGHTxFRAMES, for example 384x384x24')
+    try:
+        sizes = [int(part, 0) for part in parts]
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            'Use frames, WIDTHxFRAMES, or WIDTHxHEIGHTxFRAMES, for example 384x384x24')
+    if any(size < 1 for size in sizes):
+        raise argparse.ArgumentTypeError('Tile sizes must be greater than 0')
+    return raw
+
+
 def _type_image_crf(val):
     try:
         crf = int(val)
@@ -5364,6 +5380,18 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     it is installed, including the triton-windows extra. Without
                     Triton the same window is gathered in PyTorch. The FlexAttention
                     mask does not fit in GPU memory."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-diffusion-decode-tile', action='store', default=None, metavar='WIDTHxHEIGHTxFRAMES',
+            dest='ltx_diffusion_decode_tile', type=_type_ltx_diffusion_decode_tile,
+            help="""Tile size for --ltx-video-decoder diffusion. The value is
+                    WIDTHxHEIGHTxFRAMES, WIDTHxFRAMES, or a frame count.
+                    384x384x24 is used when this is omitted and the NATTEN
+                    kernel is unavailable. Sizes snap to 8 pixels and 2 frames.
+                    Omit it when NATTEN is available and the decoder is not tiled."""
         )
     )
 
