@@ -39,6 +39,7 @@ order: 16
 @latentsprocessor[{"arg":"--latents-processors", "label":"Raw Latents Processor", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":28, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":4.5, "min":0}]
+@int[{"label":"Max Sequence Length", "arg":"--max-sequence-length", "min":1, "max":512}]
 @seeds[{"label":"Seeds"}]
 @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
 @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]

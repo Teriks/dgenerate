@@ -24,6 +24,8 @@ order: 33
 @imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":4, "min":0}]
+@string[{"label":"Text Encoder Out Layers", "arg":"--flux2-text-encoder-out-layers"}]
+@int[{"label":"Max Sequence Length", "arg":"--max-sequence-length", "min":1, "max":512}]
 @seeds[{"label":"Seeds"}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
 @imageformat[{}]
