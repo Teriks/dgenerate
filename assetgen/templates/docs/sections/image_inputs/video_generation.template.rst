@@ -409,8 +409,7 @@ Linux uses NATTEN through the ``kernels`` package. The first decode downloads
 that kernel from the Hub, so leave ``DIFFUSERS_DISABLE_REMOTE_CODE`` unset.
 Windows has no NATTEN build. That window runs with Triton when it is
 installed, including the ``triton-windows`` extra. Without Triton the same
-window is gathered in PyTorch. The diffusion decoder is tiled either way.
-The FlexAttention path
+window is gathered in PyTorch. The FlexAttention path
 builds a neighborhood mask that does not fit in GPU memory at video resolution.
 ``--ltx-diffusion-decode-tile`` sets the diffusion-decoder tile, for example ``384x384x24``.
 Omit it and the missing-NATTEN path uses that size. NATTEN stays untiled unless the option is set.

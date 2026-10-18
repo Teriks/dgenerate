@@ -3,8 +3,10 @@
 
 # --ltx-video-decoder diffusion uses the checkpoint diffusion decoder.
 # conv, the default, is the convolutional VAE. The decode is part of this generation.
-# NATTEN is loaded through the kernels package, which is installed with dgenerate.
-# Leave DIFFUSERS_DISABLE_REMOTE_CODE unset. FlexAttention does not fit in GPU memory.
+# Linux loads NATTEN through the kernels package. Leave DIFFUSERS_DISABLE_REMOTE_CODE unset.
+# Windows has no NATTEN build. That window runs with Triton, or is gathered in PyTorch.
+# --ltx-diffusion-decode-tile splits stages 4 and 5. 384x384x24 is the size used
+# when NATTEN is missing. Omit the option when NATTEN is available to decode in one pass.
 
 \set token %HF_TOKEN%
 \setp gpu_memory_gib total_memory(unit='gib')
@@ -14,8 +16,8 @@
     \exit
 {% endif %}
 
-{% if not have_cuda() or gpu_memory_gib <= 80 %}
-    \print Skipping the LTX diffusion decoder example. It needs more than 80 GiB of VRAM.
+{% if not have_cuda() or gpu_memory_gib < 16 %}
+    \print Skipping the LTX diffusion decoder example. It needs a CUDA GPU with at least 16 GiB.
     \exit
 {% endif %}
 
@@ -24,6 +26,7 @@ Lightricks/LTX-2.5-Diffusers
 --dtype bfloat16
 --model-sequential-offload
 --ltx-video-decoder diffusion
+--ltx-diffusion-decode-tile 384x384x24
 --guidance-scales 1
 --gen-seeds 1
 --output-size 640x384

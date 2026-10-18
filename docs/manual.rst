@@ -2884,14 +2884,14 @@ Help Output
             the checkpoint's diffusion_decoder folder. The decode is part of the same generation. Linux uses the
             NATTEN kernel downloaded through the kernels package; leave DIFFUSERS_DISABLE_REMOTE_CODE unset.
             Windows has no NATTEN build. That window runs with Triton when it is installed, including the
-            triton-windows extra. Without Triton the same window is gathered in PyTorch. The FlexAttention mask does not
-            fit in GPU memory.
-            ----------------------
+            triton-windows extra. Without Triton the same window is gathered in PyTorch. The FlexAttention mask
+            does not fit in GPU memory.
+            ---------------------------
       --ltx-diffusion-decode-tile WIDTHxHEIGHTxFRAMES
             Tile size for --ltx-video-decoder diffusion. The value is WIDTHxHEIGHTxFRAMES, WIDTHxFRAMES, or a
-            frame count. 384x384x24 is used when this is omitted and the NATTEN kernel is unavailable. Sizes snap to
-            8 pixels and 2 frames. Omit it when NATTEN is available and the decoder is not tiled.
-            ---------------------------------------------------------------------------------------------------------
+            frame count. 384x384x24 is used when this is omitted and the NATTEN kernel is unavailable. Sizes
+            snap to 8 pixels and 2 frames. Omit it when NATTEN is available and the decoder is not tiled.
+            ---------------------------------------------------------------------------------------------
       --ltx-decode-timesteps FLOAT [FLOAT ...]
             Decode timestep for the LTX video decode. Several values are tried in turn.
             ---------------------------------------------------------------------------
@@ -4908,8 +4908,7 @@ Linux uses NATTEN through the ``kernels`` package. The first decode downloads
 that kernel from the Hub, so leave ``DIFFUSERS_DISABLE_REMOTE_CODE`` unset.
 Windows has no NATTEN build. That window runs with Triton when it is
 installed, including the ``triton-windows`` extra. Without Triton the same
-window is gathered in PyTorch. The diffusion decoder is tiled either way.
-The FlexAttention path
+window is gathered in PyTorch. The FlexAttention path
 builds a neighborhood mask that does not fit in GPU memory at video resolution.
 ``--ltx-diffusion-decode-tile`` sets the diffusion-decoder tile, for example ``384x384x24``.
 Omit it and the missing-NATTEN path uses that size. NATTEN stays untiled unless the option is set.
@@ -9912,6 +9911,10 @@ these are the arguments that are available for use:
     sada-lagrange-step: int
     sada-max-fix: int
     sada-max-interval: int
+    dype-method: str
+    dype-base-resolution: int
+    dype-mscale: str
+    dype-axis-scaling: str
     tea-cache-rel-l1-threshold: float
     spectrum-weight: float
     spectrum-order: int
@@ -9953,6 +9956,7 @@ these are the arguments that are available for use:
     ltx-stage-audio-guidance-scale: float
     ltx-stage-lora-uris: [str, ...]
     ltx-video-decoder: str
+    ltx-diffusion-decode-tile: str
     ltx-decode-timestep: float
     ltx-decode-noise-scale: float
     ltx-image-crf: int
@@ -13387,6 +13391,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_batch_size"
             Type: int | None
             Value: None
+        Name: "last_cache_dit"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_cache_dit_config"
+            Type: str | None
+            Value: None
         Name: "last_clip_skips"
             Type: collections.abc.Sequence[int] | None
             Value: []
@@ -13417,6 +13427,21 @@ The ``\templates_help`` output from the above example is:
         Name: "last_dtype"
             Type: <enum 'DataType'>
             Value: <DataType.AUTO: 0>
+        Name: "last_dype"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_dype_axis_scalings"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
+        Name: "last_dype_base_resolutions"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_dype_methods"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
+        Name: "last_dype_mscales"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
         Name: "last_flux2_caption_upsample_temperature"
             Type: float | None
             Value: None
@@ -13525,6 +13550,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ltx_decode_timesteps"
             Type: collections.abc.Sequence[float] | None
             Value: []
+        Name: "last_ltx_diffusion_decode_tile"
+            Type: str | None
+            Value: None
         Name: "last_ltx_ic_lora_uri"
             Type: str | None
             Value: None
@@ -13911,7 +13939,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [90177460068921]
+            Value: [36702816424214]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -14000,6 +14028,9 @@ The ``\templates_help`` output from the above example is:
             Type: str | None
             Value: None
         Name: "last_wan_animate_preprocess"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_wan_animate_preprocess_output"
             Type: <class 'bool'>
             Value: False
         Name: "last_wan_background_image_processors"
