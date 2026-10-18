@@ -2,6 +2,7 @@ import unittest
 
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.uris.transformeruri as _transformeruri
+import dgenerate.pipelinewrapper.uris.util as _uriutil
 from dgenerate.pipelinewrapper.uris.exceptions import InvalidTransformerUriError
 
 
@@ -80,6 +81,40 @@ class TestTransformerUri(unittest.TestCase):
             'https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/LowNoise/Wan2.2-T2V-A14B-LowNoise-Q4_K_S.gguf')
         self.assertTrue(result.model.lower().endswith('.gguf'))
         self.assertFalse(result.quantizer)
+
+    def test_cached_module_unloads_lora_when_no_pipeline_holds_it(self):
+        class Module:
+            def __init__(self):
+                self.peft_config = {'0': object()}
+                self.unfused = False
+
+            def unfuse_lora(self):
+                self.unfused = True
+
+            def unload_lora(self):
+                self.peft_config = {}
+
+        module = Module()
+        reloaded = []
+        result = _uriutil.reuse_lora_free_module(module, lambda: reloaded.append(True))
+        self.assertIs(result, module)
+        self.assertTrue(module.unfused)
+        self.assertEqual(module.peft_config, {})
+        self.assertEqual(reloaded, [])
+
+    def test_cached_module_reloads_when_unload_leaves_adapters(self):
+        class Module:
+            peft_config = {'0': object()}
+
+            def unfuse_lora(self):
+                return None
+
+            def unload_lora(self):
+                return None
+
+        fresh = object()
+        result = _uriutil.reuse_lora_free_module(Module(), lambda: fresh)
+        self.assertIs(result, fresh)
 
 
 if __name__ == '__main__':

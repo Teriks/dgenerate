@@ -488,4 +488,62 @@ def _patch_module_to_for_sized_cache(cache: _memory.SizedConstrainedObjectCache,
     module.to = new_to
 
 
+_LORA_MODULE_NAMES = (
+    'unet',
+    'transformer',
+    'transformer_2',
+    'vae',
+    'text_encoder',
+    'text_encoder_2',
+    'text_encoder_3',
+    'connectors',
+)
+
+
+def module_used_by_cached_pipeline(module) -> bool:
+    """True when a pipeline still in the pipeline cache holds this module."""
+    from dgenerate.pipelinewrapper.pipelines import _pipeline_cache
+
+    for cached in _pipeline_cache.values():
+        pipe = getattr(cached, 'pipeline', cached)
+        for name in _LORA_MODULE_NAMES:
+            if getattr(pipe, name, None) is module:
+                return True
+    return False
+
+
+def reuse_lora_free_module(module, reload):
+    """
+    Return a module that can accept a new set of LoRA adapters.
+
+    A cached UNet, transformer, or text encoder may already have adapters
+    fused into it. When no cached pipeline still uses that object, those
+    adapters are unloaded and the same module is returned. When another
+    pipeline still holds it, ``reload`` supplies a separate copy.
+    """
+    if module is None or not getattr(module, 'peft_config', None):
+        return module
+    if module_used_by_cached_pipeline(module):
+        _messages.debug_log(
+            'A cached module still has LoRA adapters and belongs to another pipeline. '
+            'Loading another copy.')
+        return reload()
+    _messages.debug_log('Unloading LoRA adapters from a cached module so it can be reused.')
+    try:
+        if hasattr(module, 'unfuse_lora'):
+            module.unfuse_lora()
+        if hasattr(module, 'unload_lora'):
+            module.unload_lora()
+    except Exception as error:
+        _messages.debug_log(
+            f'Could not unload LoRA adapters from the cached module ({error}). '
+            'Loading another copy.')
+        return reload()
+    if getattr(module, 'peft_config', None):
+        _messages.debug_log(
+            'The cached module still has LoRA adapters after unload. Loading another copy.')
+        return reload()
+    return module
+
+
 __all__ = _types.module_all()
