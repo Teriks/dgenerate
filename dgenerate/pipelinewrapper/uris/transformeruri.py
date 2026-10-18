@@ -204,7 +204,14 @@ class TransformerUri:
             args = locals()
             args.pop('self')
             args.pop('cache_all')
-            return self._load(**args)
+            loaded = self._load(**args)
+
+            def reload():
+                fresh = dict(args)
+                fresh['no_cache'] = True
+                return self._load(**fresh)
+
+            return _util.reuse_lora_free_module(loaded, reload)
 
     @staticmethod
     def _enforce_cache_size(new_transformer_size):
