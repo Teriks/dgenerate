@@ -375,6 +375,10 @@ doubles the video latents. Stage 2 refines at the full size with the published
 3-value sigma table. ``--ltx-noise-scales`` defaults to the first of those sigmas.
 Stage 2 guidance defaults to 1. ``--ltx-stage-sigmas``, ``--ltx-stage-guidance-scales``,
 and ``--ltx-stage-audio-guidance-scales`` override the refine pass.
+Passing a URI to ``--ltx-latent-upscale`` selects a separate upsampler; its URI
+accepts ``revision``, ``variant``, and ``subfolder``. For example,
+``Lightricks/LTX-2.5-Diffusers;subfolder=latent_upsampler``. The upsampler uses
+the main model's dtype.
 
 The distilled checkpoint needs no stage LoRA. See
 `examples/ltx2/two_stage/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/two_stage/image-to-video-config.dgen>`_.
@@ -405,6 +409,10 @@ Decode, prompts, and duration
 
 ``--ltx-video-decoder diffusion`` decodes with the checkpoint diffusion decoder
 instead of the convolutional VAE, in the same generation. ``conv`` is the default.
+``--ltx-diffusion-decoder`` can select a separate decoder repository or local folder;
+its URI accepts ``revision``, ``subfolder``, and ``dtype``. For example,
+``Lightricks/LTX-2.5-Diffusers;subfolder=diffusion_decoder;dtype=bfloat16``.
+When omitted, the decoder is loaded from the main checkpoint's ``diffusion_decoder`` folder.
 Linux uses NATTEN through the ``kernels`` package. The first decode downloads
 that kernel from the Hub, so leave ``DIFFUSERS_DISABLE_REMOTE_CODE`` unset.
 Windows has no NATTEN build. That window runs with Triton when it is
@@ -417,8 +425,9 @@ Omit it and the missing-NATTEN path uses that size. NATTEN stays untiled unless 
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
 ``--ltx-prompt-enhancer`` loads a model such as ``google/gemma-4-E2B-it`` and rewrites
-the prompt before denoising. ``--ltx-system-prompt`` overrides the built-in text or
-image system prompt. See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/prompt-enhancer-config.dgen>`_.
+the prompt before denoising. Its URI accepts ``revision``, ``subfolder``, and ``dtype``;
+for example, ``google/gemma-4-E2B-it;dtype=bfloat16``. ``--ltx-system-prompt`` overrides
+the built-in text or image system prompt. See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/prompt-enhancer-config.dgen>`_.
 
 ``--ltx-image-crfs`` recompresses a conditioning still before the VAE encode. Omit it
 and the pipeline default is used (``18`` on LTX-2.5). ``0`` skips recompression.

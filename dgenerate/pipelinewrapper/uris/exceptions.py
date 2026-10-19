@@ -66,6 +66,27 @@ class InvalidSCascadeDecoderUriError(InvalidModelUriError):
     pass
 
 
+class InvalidLTXLatentUpsamplerUriError(InvalidModelUriError):
+    """
+    Error in ``--ltx-latent-upscale`` uri
+    """
+    pass
+
+
+class InvalidLTXPromptEnhancerUriError(InvalidModelUriError):
+    """
+    Error in ``--ltx-prompt-enhancer`` uri
+    """
+    pass
+
+
+class InvalidLTXDiffusionDecoderUriError(InvalidModelUriError):
+    """
+    Error in ``--ltx-diffusion-decoder`` URI
+    """
+    pass
+
+
 class InvalidVaeUriError(InvalidModelUriError):
     """
     Error in ``--vae`` uri

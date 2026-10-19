@@ -124,15 +124,16 @@ Help Output
                      [--ltx-audio-guidance-rescales FLOAT [FLOAT ...]] [--ltx-stg-scales FLOAT [FLOAT ...]]
                      [--ltx-audio-stg-scales FLOAT [FLOAT ...]] [--ltx-modality-scales FLOAT [FLOAT ...]]
                      [--ltx-audio-modality-scales FLOAT [FLOAT ...]] [--ltx-stg-blocks BLOCKS [BLOCKS ...]]
-                     [--ltx-no-cross-timestep] [--ltx-latent-upscale]
+                     [--ltx-no-cross-timestep] [--ltx-latent-upscale [URI]] [--ltx-latent-upscale-mode MODE]
+                     [--ltx-temporal-upscale-rounds ROUNDS]
                      [--ltx-stage-sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]]
                      [--ltx-noise-scales FLOAT [FLOAT ...]] [--ltx-stage-guidance-scales FLOAT [FLOAT ...]]
                      [--ltx-stage-audio-guidance-scales FLOAT [FLOAT ...]]
                      [--ltx-stage-loras LORA_URI [LORA_URI ...]] [--ltx-video-decoder DECODER]
-                     [--ltx-diffusion-decode-tile WIDTHxHEIGHTxFRAMES]
+                     [--ltx-diffusion-decoder URI] [--ltx-diffusion-decode-tile WIDTHxHEIGHTxFRAMES]
                      [--ltx-decode-timesteps FLOAT [FLOAT ...]] [--ltx-decode-noise-scales FLOAT [FLOAT ...]]
                      [--ltx-image-crfs INTEGER [INTEGER ...]] [--ltx-video-min-seconds SECONDS [SECONDS ...]]
-                     [--ltx-video-max-seconds SECONDS [SECONDS ...]] [--ltx-prompt-enhancer MODEL]
+                     [--ltx-video-max-seconds SECONDS [SECONDS ...]] [--ltx-prompt-enhancer URI]
                      [--ltx-system-prompt TEXT] [--wan-low-noise-guidance-scales FLOAT [FLOAT ...]]
                      [--wan-boundary-ratios FLOAT [FLOAT ...]] [--wan-expand-timesteps]
                      [--wan-second-transformer TRANSFORMER_URI] [--wan-timesteps CSV_INT [CSV_INT ...]]
@@ -2849,14 +2850,26 @@ Help Output
       --ltx-no-cross-timestep
             Use the LTX-2.0 cross-modality timestep. LTX-2.3 and LTX-2.5 leave this on.
             ---------------------------------------------------------------------------
-      --ltx-latent-upscale
+      --ltx-latent-upscale [URI]
             Run LTX-2 as one two-stage generation, the way --sdxl-refiner runs after the base pass.
             --output-size is the finished clip, and both sides are rounded down to a multiple of 64. The first
             pass denoises at half of that size, the checkpoint latent upsampler doubles the video latents, and a
-            short second pass refines them at the full size. The same prompt, seed, and image seed are used.
-            Stage-2 sigmas default to the published 3-value table, and stage-2 guidance defaults to 1. See
-            --ltx-stage-sigmas, --ltx-noise-scales, --ltx-stage-guidance-scales, and --ltx-stage-loras.
-            -------------------------------------------------------------------------------------------
+            short second pass refines them at the full size. The same prompt, seed, and image seed are used. If
+            a URI is specified, it is used as the latent upsampler, for example
+            repo/model;subfolder=latent_upsampler. The URI accepts revision, variant, and subfolder. The
+            upsampler uses the main model's dtype. Stage-2 sigmas default to the published 3-value table, and
+            stage-2 guidance defaults to 1. See --ltx-stage-sigmas, --ltx-noise-scales,
+            --ltx-stage-guidance-scales, and --ltx-stage-loras.
+            ---------------------------------------------------
+      --ltx-latent-upscale-mode MODE
+            How --ltx-latent-upscale operates. spatial (default) doubles width and height. temporal runs the
+            LTX-2.5 DFR spatial stages and then doubles the frame rate and frame count once using the
+            temporal_latent_upsampler selected by its URI.
+            ----------------------------------------------
+      --ltx-temporal-upscale-rounds ROUNDS
+            Number of temporal DFR rounds (1 doubles the frames; 2 quadruples them). Applies only with
+            --ltx-latent-upscale-mode temporal.
+            -----------------------------------
       --ltx-stage-sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
             Sigma schedule for the --ltx-latent-upscale refine pass. Same syntax as --sigmas. Each schedule will
             be tried in turn. The default is the published 3-value stage-2 table.
@@ -2887,6 +2900,11 @@ Help Output
             triton-windows extra. Without Triton the same window is gathered in PyTorch. The FlexAttention mask
             does not fit in GPU memory.
             ---------------------------
+      --ltx-diffusion-decoder URI
+            Optional URI for the LTX-2 diffusion decoder used by --ltx-video-decoder diffusion. When omitted,
+            the decoder is loaded from the main checkpoint's diffusion_decoder subfolder. The URI accepts
+            revision, subfolder, and dtype, for example repo/model;subfolder=diffusion_decoder;dtype=bfloat16.
+            --------------------------------------------------------------------------------------------------
       --ltx-diffusion-decode-tile WIDTHxHEIGHTxFRAMES
             Tile size for --ltx-video-decoder diffusion. The value is WIDTHxHEIGHTxFRAMES, WIDTHxFRAMES, or a
             frame count. 384x384x24 is used when this is omitted and the NATTEN kernel is unavailable. Sizes
@@ -2928,10 +2946,11 @@ Help Output
             
             (default: None; 20 when only a lower bound is given)
             ----------------------------------------------------
-      --ltx-prompt-enhancer MODEL
-            Model used to rewrite the LTX prompt before denoising, for example google/gemma-4-E2B-it. Setting
-            this turns enhancement on. LTX-2.5 uses its own system prompt unless --ltx-system-prompt is set.
-            ------------------------------------------------------------------------------------------------
+      --ltx-prompt-enhancer URI
+            URI for the model used to rewrite the LTX prompt before denoising, for example google/gemma-4-E2B-it
+            or google/gemma-4-E2B-it;revision=main;subfolder=model;dtype=bfloat16. Setting this turns
+            enhancement on. LTX-2.5 uses its own system prompt unless --ltx-system-prompt is set.
+            -------------------------------------------------------------------------------------
       --ltx-system-prompt TEXT
             System prompt for --ltx-prompt-enhancer. Omit it and LTX-2.5 uses its text-to-video or
             image-to-video default.
@@ -4874,6 +4893,10 @@ doubles the video latents. Stage 2 refines at the full size with the published
 3-value sigma table. ``--ltx-noise-scales`` defaults to the first of those sigmas.
 Stage 2 guidance defaults to 1. ``--ltx-stage-sigmas``, ``--ltx-stage-guidance-scales``,
 and ``--ltx-stage-audio-guidance-scales`` override the refine pass.
+Passing a URI to ``--ltx-latent-upscale`` selects a separate upsampler; its URI
+accepts ``revision``, ``variant``, and ``subfolder``. For example,
+``Lightricks/LTX-2.5-Diffusers;subfolder=latent_upsampler``. The upsampler uses
+the main model's dtype.
 
 The distilled checkpoint needs no stage LoRA. See
 `examples/ltx2/two_stage/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/two_stage/image-to-video-config.dgen>`_.
@@ -4904,6 +4927,10 @@ Decode, prompts, and duration
 
 ``--ltx-video-decoder diffusion`` decodes with the checkpoint diffusion decoder
 instead of the convolutional VAE, in the same generation. ``conv`` is the default.
+``--ltx-diffusion-decoder`` can select a separate decoder repository or local folder;
+its URI accepts ``revision``, ``subfolder``, and ``dtype``. For example,
+``Lightricks/LTX-2.5-Diffusers;subfolder=diffusion_decoder;dtype=bfloat16``.
+When omitted, the decoder is loaded from the main checkpoint's ``diffusion_decoder`` folder.
 Linux uses NATTEN through the ``kernels`` package. The first decode downloads
 that kernel from the Hub, so leave ``DIFFUSERS_DISABLE_REMOTE_CODE`` unset.
 Windows has no NATTEN build. That window runs with Triton when it is
@@ -4916,8 +4943,9 @@ Omit it and the missing-NATTEN path uses that size. NATTEN stays untiled unless 
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
 ``--ltx-prompt-enhancer`` loads a model such as ``google/gemma-4-E2B-it`` and rewrites
-the prompt before denoising. ``--ltx-system-prompt`` overrides the built-in text or
-image system prompt. See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/basic/prompt-enhancer-config.dgen>`_.
+the prompt before denoising. Its URI accepts ``revision``, ``subfolder``, and ``dtype``;
+for example, ``google/gemma-4-E2B-it;dtype=bfloat16``. ``--ltx-system-prompt`` overrides
+the built-in text or image system prompt. See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/basic/prompt-enhancer-config.dgen>`_.
 
 ``--ltx-image-crfs`` recompresses a conditioning still before the VAE encode. Omit it
 and the pipeline default is used (``18`` on LTX-2.5). ``0`` skips recompression.
@@ -9950,12 +9978,14 @@ these are the arguments that are available for use:
     ltx-audio-modality-scale: float
     ltx-stg-blocks: [int, ...]
     ltx-use-cross-timestep: bool
-    ltx-latent-upscale: bool
+    ltx-latent-upscale-mode: str
+    ltx-temporal-upscale-rounds: int
     ltx-noise-scale: float
     ltx-stage-guidance-scale: float
     ltx-stage-audio-guidance-scale: float
     ltx-stage-lora-uris: [str, ...]
     ltx-video-decoder: str
+    ltx-diffusion-decoder: str
     ltx-diffusion-decode-tile: str
     ltx-decode-timestep: float
     ltx-decode-noise-scale: float
@@ -13553,6 +13583,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ltx_diffusion_decode_tile"
             Type: str | None
             Value: None
+        Name: "last_ltx_diffusion_decoder"
+            Type: str | None
+            Value: None
         Name: "last_ltx_ic_lora_uri"
             Type: str | None
             Value: None
@@ -13560,8 +13593,11 @@ The ``\templates_help`` output from the above example is:
             Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_ltx_latent_upscale"
-            Type: <class 'bool'>
+            Type: bool | str
             Value: False
+        Name: "last_ltx_latent_upscale_mode"
+            Type: <class 'str'>
+            Value: 'spatial'
         Name: "last_ltx_modality_scales"
             Type: collections.abc.Sequence[float] | None
             Value: []
@@ -13592,6 +13628,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ltx_system_prompt"
             Type: str | None
             Value: None
+        Name: "last_ltx_temporal_upscale_rounds"
+            Type: <class 'int'>
+            Value: 1
         Name: "last_ltx_use_cross_timestep"
             Type: bool | None
             Value: None
@@ -13939,7 +13978,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [36702816424214]
+            Value: [17053171602290]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

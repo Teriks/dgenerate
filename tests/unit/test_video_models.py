@@ -1904,6 +1904,11 @@ class TestVideoModels(unittest.TestCase):
                 unittest.mock.patch.object(
                     _videopipelines, '_invoke', side_effect=invoke), \
                 unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.videopipelines.ltx._putil.fetch_model_index_dict',
+                    return_value={'_class_name': 'LTX2Pipeline'}), \
+                unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.videopipelines.ltx._check_ltx_latent_upsampler_available'), \
+                unittest.mock.patch(
                     'diffusers.pipelines.ltx2.latent_upsampler.LTX2LatentUpsamplerModel.from_pretrained',
                     return_value=type('Upsampler', (), {'to': lambda self, *args, **kwargs: self})()), \
                 unittest.mock.patch(

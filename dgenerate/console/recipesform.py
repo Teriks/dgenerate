@@ -28,6 +28,7 @@ import typing
 
 import dgenerate.console.appearance as _appearance
 import dgenerate.console.formentries as _formentries
+import dgenerate.console.formentries.entry as _form_entry
 import dgenerate.console.resources as _resources
 import dgenerate.console.textentry as _t_entry
 import dgenerate.console.util as _util
@@ -151,7 +152,7 @@ class _RecipesForm(tk.Toplevel):
 
         for entry in self._entries:
             if entry._row_inactive:
-                content = _formentries.replace_first(content, entry.placeholder, '')
+                content = _form_entry.replace_first(content, entry.placeholder, '')
                 continue
             content = entry.template(content)
             if entry.is_empty() and not entry.optional:
@@ -401,15 +402,51 @@ class _RecipesForm(tk.Toplevel):
             spec = entry.config.get('enabled-when') or entry.config.get('visible-when')
             if not spec:
                 continue
-            source = self._id_map.get(spec.get('id'))
-            equals = spec.get('equals', '')
-            if source is None or not hasattr(source, 'text_var'):
-                continue
 
-            def apply(_name=None, _index=None, _mode=None, entry=entry, source=source, equals=equals):
-                entry.set_row_enabled(source.text_var.get().strip() == equals)
+            variables = []
 
-            source.text_var.trace_add('write', apply)
+            def collect_variables(condition) -> None:
+                if 'all' in condition:
+                    for item in condition['all']:
+                        collect_variables(item)
+                    return
+
+                source = self._id_map.get(condition.get('id'))
+                if source is None:
+                    return
+                variable = getattr(source, 'text_var', None)
+                if variable is None:
+                    variable = getattr(source, 'bool_var', None)
+                if variable is not None and variable not in variables:
+                    variables.append(variable)
+
+            def matches_condition(condition) -> bool:
+                if 'all' in condition:
+                    return all(matches_condition(item) for item in condition['all'])
+
+                source = self._id_map.get(condition.get('id'))
+                if source is None:
+                    return False
+
+                variable = getattr(source, 'text_var', None)
+                if variable is None:
+                    variable = getattr(source, 'bool_var', None)
+                if variable is None:
+                    return False
+
+                value = variable.get()
+                equals = condition.get('equals', '')
+                if isinstance(value, bool):
+                    return value == (str(equals).lower() == 'true')
+                return str(value).strip() == equals
+
+            def apply(_name=None, _index=None, _mode=None, entry=entry,
+                      spec=spec, matches_condition=matches_condition):
+                entry.set_row_enabled(matches_condition(spec))
+
+            collect_variables(spec)
+            for variable in variables:
+                variable.trace_add('write', apply)
             apply()
 
     def destroy(self) -> None:

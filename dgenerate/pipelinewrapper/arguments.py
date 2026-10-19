@@ -1279,10 +1279,22 @@ class DiffusionArguments(_types.SetFromMixin):
     ``None`` leaves the pipeline default, which is on.
     """
 
-    ltx_latent_upscale: _types.OptionalBoolean = None
+    ltx_latent_upscale: _types.OptionalBoolean | _types.OptionalUri = None
     """
     Run the LTX-2 two-stage pass in this generation: half-resolution denoise,
     latent upscale, then a short full-resolution refine.
+    If a URI is provided, it is used as the latent upsampler model.
+    """
+
+    ltx_latent_upscale_mode: str = 'spatial'
+    """
+    LTX latent upscaling mode: ``spatial`` doubles width/height; ``temporal``
+    runs DFR temporal refinement rounds after the spatial DFR stages.
+    """
+
+    ltx_temporal_upscale_rounds: int = 1
+    """
+    Number of temporal DFR rounds (1 doubles frames; 2 quadruples them).
     """
 
     ltx_stage_sigmas: collections.abc.Sequence[float] | str | None = None
@@ -1317,6 +1329,12 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     ``diffusion`` decodes the clip with the LTX-2 diffusion decoder.
     ``None`` uses the convolutional VAE.
+    """
+
+    ltx_diffusion_decoder: _types.OptionalString = None
+    """
+    Optional URI for the LTX-2 diffusion decoder. When omitted, it is loaded
+    from the main checkpoint's ``diffusion_decoder`` subfolder.
     """
 
     ltx_diffusion_decode_tile: _types.OptionalString = None
@@ -1954,6 +1972,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.ltx_audio_modality_scale, "Audio Modality Scale:"),
             (self.ltx_stg_blocks, "STG Blocks:"),
             (self.ltx_latent_upscale, "Latent Upscale:"),
+            (self.ltx_latent_upscale_mode, "Latent Upscale Mode:"),
+            (self.ltx_temporal_upscale_rounds, "Temporal Upscale Rounds:"),
             (self.ltx_stage_sigmas, "Stage Sigmas:"),
             (self.ltx_noise_scale, "Noise Scale:"),
             (self.ltx_stage_guidance_scale, "Stage Guidance Scale:"),
