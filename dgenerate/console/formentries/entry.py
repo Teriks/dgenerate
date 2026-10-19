@@ -100,24 +100,24 @@ class _Entry:
         """Enable or gray out this recipe row. A gray row emits no argument."""
         self._row_inactive = not enabled
         state = 'normal' if enabled else 'disabled'
-        label = getattr(self, 'label_widget', None)
-        field = getattr(self, 'entry', None)
-        if label is not None:
+
+        def set_widget_enabled(widget):
             try:
-                label.configure(state=state)
+                widget.configure(state=state)
             except tkinter.TclError:
                 pass
-        if field is not None:
-            try:
-                if enabled:
-                    field.configure(state=state)
-                else:
-                    field.configure(state=state, disabledforeground='gray')
-            except tkinter.TclError:
-                try:
-                    field.configure(state=state)
-                except tkinter.TclError:
-                    pass
+            for child in widget.winfo_children():
+                set_widget_enabled(child)
+
+        # An entry may put controls such as spin buttons in sibling widgets,
+        # or put several controls on separate rows. Apply the state to every
+        # widget laid out in this entry's rows, including nested controls.
+        seen = set()
+        for row in range(self.row, self.row + self.widget_rows):
+            for widget in self.master.grid_slaves(row=row):
+                if str(widget) not in seen:
+                    seen.add(str(widget))
+                    set_widget_enabled(widget)
 
     def get_label(self, default, key='label'):
         if self.optional:

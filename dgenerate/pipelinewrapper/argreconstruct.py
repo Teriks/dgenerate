@@ -155,7 +155,14 @@ def reconstruct_dgenerate_opts(
         if args.ltx_use_cross_timestep is False:
             opts.append(('--ltx-no-cross-timestep',))
         if args.ltx_latent_upscale:
-            opts.append(('--ltx-latent-upscale',))
+            if isinstance(args.ltx_latent_upscale, str):
+                opts.append(('--ltx-latent-upscale', args.ltx_latent_upscale))
+            else:
+                opts.append(('--ltx-latent-upscale',))
+        if args.ltx_latent_upscale_mode != 'spatial':
+            opts.append(('--ltx-latent-upscale-mode', args.ltx_latent_upscale_mode))
+        if args.ltx_temporal_upscale_rounds != 1:
+            opts.append(('--ltx-temporal-upscale-rounds', args.ltx_temporal_upscale_rounds))
         if args.ltx_noise_scale is not None:
             opts.append(('--ltx-noise-scales', args.ltx_noise_scale))
         if args.ltx_stage_guidance_scale is not None:
@@ -166,6 +173,8 @@ def reconstruct_dgenerate_opts(
             opts.append(('--ltx-stage-loras', args.ltx_stage_lora_uris))
         if args.ltx_video_decoder == 'diffusion':
             opts.append(('--ltx-video-decoder', 'diffusion'))
+        if args.ltx_diffusion_decoder:
+            opts.append(('--ltx-diffusion-decoder', args.ltx_diffusion_decoder))
         if args.ltx_diffusion_decode_tile:
             opts.append(('--ltx-diffusion-decode-tile', args.ltx_diffusion_decode_tile))
         if args.ltx_decode_timestep is not None:

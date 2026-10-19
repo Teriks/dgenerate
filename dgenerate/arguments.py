@@ -5300,17 +5300,40 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ltx-latent-upscale', action='store_true', default=False,
-            dest='ltx_latent_upscale',
+            '--ltx-latent-upscale', action='store', nargs='?', const=True, default=False,
+            dest='ltx_latent_upscale', metavar="URI",
             help="""Run LTX-2 as one two-stage generation, the way --sdxl-refiner
                     runs after the base pass. --output-size is the finished clip,
                     and both sides are rounded down to a multiple of 64. The first pass denoises
                     at half of that size, the checkpoint latent upsampler doubles
                     the video latents, and a short second pass refines them at the
                     full size. The same prompt, seed, and image seed are used.
+                    If a URI is specified, it is used as the latent upsampler,
+                    for example repo/model;subfolder=latent_upsampler.
+                    The URI accepts revision, variant, and subfolder. The upsampler
+                    uses the main model's dtype.
                     Stage-2 sigmas default to the published 3-value table, and
                     stage-2 guidance defaults to 1. See --ltx-stage-sigmas,
                     --ltx-noise-scales, --ltx-stage-guidance-scales, and --ltx-stage-loras."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-latent-upscale-mode', action='store', default='spatial',
+            dest='ltx_latent_upscale_mode', choices=['spatial', 'temporal'], metavar='MODE',
+            help="""How --ltx-latent-upscale operates. spatial (default) doubles width and height.
+                    temporal runs the LTX-2.5 DFR spatial stages and then doubles the frame rate and
+                    frame count once using the temporal_latent_upsampler selected by its URI."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-temporal-upscale-rounds', action='store', default=1,
+            dest='ltx_temporal_upscale_rounds', type=int, choices=[1, 2], metavar='ROUNDS',
+            help="""Number of temporal DFR rounds (1 doubles the frames; 2 quadruples them).
+                    Applies only with --ltx-latent-upscale-mode temporal."""
         )
     )
 
@@ -5380,6 +5403,18 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     it is installed, including the triton-windows extra. Without
                     Triton the same window is gathered in PyTorch. The FlexAttention
                     mask does not fit in GPU memory."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-diffusion-decoder', action='store', default=None, metavar='URI',
+            dest='ltx_diffusion_decoder',
+            help="""Optional URI for the LTX-2 diffusion decoder used by
+                    --ltx-video-decoder diffusion. When omitted, the decoder is
+                    loaded from the main checkpoint's diffusion_decoder subfolder.
+                    The URI accepts revision, subfolder, and dtype, for example
+                    repo/model;subfolder=diffusion_decoder;dtype=bfloat16."""
         )
     )
 
@@ -5476,12 +5511,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ltx-prompt-enhancer', action='store', default=None, metavar="MODEL",
+            '--ltx-prompt-enhancer', action='store', default=None, metavar="URI",
             dest='ltx_prompt_enhancer',
-            help="""Model used to rewrite the LTX prompt before denoising, for
-                    example google/gemma-4-E2B-it. Setting this turns enhancement
-                    on. LTX-2.5 uses its own system prompt unless --ltx-system-prompt
-                    is set."""
+            help="""URI for the model used to rewrite the LTX prompt before denoising,
+                    for example google/gemma-4-E2B-it or
+                    google/gemma-4-E2B-it;revision=main;subfolder=model;dtype=bfloat16.
+                    Setting this turns enhancement on. LTX-2.5 uses its own system prompt
+                    unless --ltx-system-prompt is set."""
         )
     )
 

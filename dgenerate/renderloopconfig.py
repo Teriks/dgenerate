@@ -486,9 +486,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     ``False`` selects the LTX-2.0 cross-modality timestep. ``None`` leaves it on.
     """
 
-    ltx_latent_upscale: bool = False
+    ltx_latent_upscale: bool | str = False
+    ltx_latent_upscale_mode: str = 'spatial'
+    ltx_temporal_upscale_rounds: int = 1
     """
     Run the LTX-2 half-resolution pass, latent upscale, and refine inside one generation.
+    A URI string selects a latent upsampler other than the main checkpoint's.
     """
 
     ltx_stage_sigmas: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float] | str]] = None
@@ -519,6 +522,11 @@ class RenderLoopConfig(_types.SetFromMixin):
     ltx_video_decoder: _types.OptionalName = None
     """
     ``diffusion`` uses the LTX-2 diffusion decoder. ``None`` uses the convolutional VAE.
+    """
+
+    ltx_diffusion_decoder: _types.OptionalString = None
+    """
+    URI for a diffusion decoder separate from the main LTX checkpoint.
     """
 
     ltx_diffusion_decode_tile: _types.OptionalString = None
@@ -3179,6 +3187,25 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("ltx_latent_upscale")} needs {a_namer("output_size")}. '
                 f'That size is the finished clip. The first pass uses half of each side.')
 
+        if self.ltx_latent_upscale_mode not in ('spatial', 'temporal'):
+            raise RenderLoopConfigError(
+                f'{a_namer("ltx_latent_upscale_mode")} must be "spatial" or "temporal".')
+        if self.ltx_temporal_upscale_rounds not in (1, 2):
+            raise RenderLoopConfigError(
+                f'{a_namer("ltx_temporal_upscale_rounds")} must be 1 or 2.')
+        if self.ltx_latent_upscale_mode != 'spatial' and not self.ltx_latent_upscale:
+            raise RenderLoopConfigError(
+                f'{a_namer("ltx_latent_upscale_mode")} needs {a_namer("ltx_latent_upscale")}.')
+        if self.ltx_temporal_upscale_rounds != 1 and self.ltx_latent_upscale_mode != 'temporal':
+            raise RenderLoopConfigError(
+                f'{a_namer("ltx_temporal_upscale_rounds")} applies only to temporal mode.')
+
+        if isinstance(self.ltx_latent_upscale, str):
+            try:
+                _pipelinewrapper.uris.LTXLatentUpsamplerUri.parse(self.ltx_latent_upscale)
+            except _pipelinewrapper.uris.InvalidLTXLatentUpsamplerUriError as e:
+                raise RenderLoopConfigError(f'{a_namer("ltx_latent_upscale")}: {e}') from e
+
         refine_without_upscale = (
             ('ltx_stage_sigmas', self.ltx_stage_sigmas),
             ('ltx_noise_scales', self.ltx_noise_scales),
@@ -3209,9 +3236,27 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("ltx_diffusion_decode_tile")} applies when '
                 f'{a_namer("ltx_video_decoder")} is "diffusion".')
 
+        if self.ltx_diffusion_decoder:
+            if self.ltx_video_decoder != 'diffusion':
+                raise RenderLoopConfigError(
+                    f'{a_namer("ltx_diffusion_decoder")} needs '
+                    f'{a_namer("ltx_video_decoder")} "diffusion".')
+            try:
+                _pipelinewrapper.uris.LTXDiffusionDecoderUri.parse(self.ltx_diffusion_decoder)
+            except _pipelinewrapper.uris.InvalidLTXDiffusionDecoderUriError as e:
+                raise RenderLoopConfigError(
+                    f'{a_namer("ltx_diffusion_decoder")}: {e}') from e
+
         if self.ltx_system_prompt and not self.ltx_prompt_enhancer:
             raise RenderLoopConfigError(
                 f'{a_namer("ltx_system_prompt")} needs {a_namer("ltx_prompt_enhancer")}.')
+
+        if self.ltx_prompt_enhancer:
+            try:
+                _pipelinewrapper.uris.LTXPromptEnhancerUri.parse(self.ltx_prompt_enhancer)
+            except _pipelinewrapper.uris.InvalidLTXPromptEnhancerUriError as e:
+                raise RenderLoopConfigError(
+                    f'{a_namer("ltx_prompt_enhancer")}: {e}') from e
 
         if self.ltx_video_min_seconds or self.ltx_video_max_seconds:
             if self.video_lengths:
@@ -4784,6 +4829,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 ltx_stg_blocks=ov('ltx_stg_blocks', self.ltx_stg_blocks),
                 ltx_use_cross_timestep=ov('ltx_use_cross_timestep', [self.ltx_use_cross_timestep]),
                 ltx_latent_upscale=ov('ltx_latent_upscale', [self.ltx_latent_upscale]),
+                ltx_latent_upscale_mode=ov('ltx_latent_upscale_mode', [self.ltx_latent_upscale_mode]),
+                ltx_temporal_upscale_rounds=ov(
+                    'ltx_temporal_upscale_rounds', [self.ltx_temporal_upscale_rounds]),
                 ltx_stage_sigmas=ov('ltx_stage_sigmas', self.ltx_stage_sigmas),
                 ltx_noise_scale=ov('ltx_noise_scale', self.ltx_noise_scales),
                 ltx_stage_guidance_scale=ov('ltx_stage_guidance_scale', self.ltx_stage_guidance_scales),
@@ -4791,6 +4839,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     'ltx_stage_audio_guidance_scale', self.ltx_stage_audio_guidance_scales),
                 ltx_stage_lora_uris=ov('ltx_stage_lora_uris', [self.ltx_stage_lora_uris]),
                 ltx_video_decoder=ov('ltx_video_decoder', [self.ltx_video_decoder]),
+                ltx_diffusion_decoder=ov('ltx_diffusion_decoder', [self.ltx_diffusion_decoder]),
                 ltx_diffusion_decode_tile=ov('ltx_diffusion_decode_tile', [self.ltx_diffusion_decode_tile]),
                 ltx_decode_timestep=ov('ltx_decode_timestep', self.ltx_decode_timesteps),
                 ltx_decode_noise_scale=ov('ltx_decode_noise_scale', self.ltx_decode_noise_scales),

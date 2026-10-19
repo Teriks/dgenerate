@@ -11,8 +11,7 @@ from diffusers.pipelines.stable_diffusion_xl.pipeline_output import StableDiffus
 from diffusers.image_processor import PipelineImageInput
 from diffusers.utils.torch_utils import is_compiled_module, is_torch_version, apply_freeu
 from diffusers.pipelines import auto_pipeline
-from diffusers.pipelines.controlnet.multicontrolnet import MultiControlNetModel
-from diffusers.models import ControlNetModel
+from diffusers.models import ControlNetModel, MultiControlNetModel
 from diffusers.models.attention import _chunked_feed_forward
 import packaging.version
 import warnings

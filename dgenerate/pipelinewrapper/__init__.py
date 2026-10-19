@@ -201,6 +201,18 @@ from .uris import (
     SCascadeDecoderUri,
     InvalidSCascadeDecoderUriError,
 
+    # LTX Latent Upsampler
+    LTXLatentUpsamplerUri,
+    InvalidLTXLatentUpsamplerUriError,
+
+    # LTX Prompt Enhancer
+    LTXPromptEnhancerUri,
+    InvalidLTXPromptEnhancerUriError,
+
+    # LTX Diffusion Decoder
+    LTXDiffusionDecoderUri,
+    InvalidLTXDiffusionDecoderUriError,
+
     # Quantizer URIs
     BNBQuantizerUri,
     InvalidBNBQuantizerUriError,

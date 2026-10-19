@@ -1293,20 +1293,19 @@ transformers = "*"
 
 [[package]]
 name = "diffusers"
-version = "0.40.0"
+version = "0.41.0"
 description = "State-of-the-art diffusion in PyTorch."
 optional = false
 python-versions = ">=3.10.0"
 groups = ["main"]
 files = [
-    {file = "diffusers-0.40.0-py3-none-any.whl", hash = "sha256:5b5da7c3ddb62152fa4afc577f02e050af688c797375c34fb2d01006da3f3541"},
-    {file = "diffusers-0.40.0.tar.gz", hash = "sha256:49f112ce52ff6d332ab68afec01f79a53e6489b42cb69104444c98b4a2f64af8"},
+    {file = "diffusers-0.41.0-py3-none-any.whl", hash = "sha256:ea8918b7dfd92ce793b6db689a551b8cd25d52c6c0fcd3ade0706a5fd2a25990"},
+    {file = "diffusers-0.41.0.tar.gz", hash = "sha256:69dcced7230b6bc0b70b5c6cfdff1aa62da487ab52ae74b642e46b1b9bfacc47"},
 ]
 
 [package.dependencies]
 filelock = "*"
-httpx = "<1.0.0"
-huggingface-hub = ">=1.23.0,<2.0"
+huggingface-hub = ">=1.32.0,<2.0"
 importlib_metadata = "*"
 numpy = "*"
 Pillow = "*"
@@ -1326,7 +1325,7 @@ quality = ["hf-doc-builder (>=0.3.0)", "isort (>=5.5.4)", "ruff (==0.9.10)", "ur
 sdnq = ["sdnq (>=0.2.2)"]
 test = ["GitPython (<3.1.19)", "Jinja2", "datasets", "ftfy", "invisible-watermark (>=0.2.0)", "librosa", "llvmlite (>=0.40.0)", "numba (>=0.57.0)", "parameterized", "phonemizer", "protobuf (>=3.20.3,<4)", "pytest", "pytest-timeout", "pytest-xdist", "requests-mock (==1.10.0)", "safetensors (>=0.8.0)", "scipy", "sentencepiece (>=0.1.91,!=0.1.92)", "tiktoken (>=0.7.0)", "torchsde", "torchvision", "transformers (>=4.41.2)"]
 torch = ["accelerate (>=0.31.0)", "torch (>=2.6)"]
-torchao = ["accelerate (>=0.31.0)", "torchao (>=0.7.0)"]
+torchao = ["accelerate (>=0.31.0)", "torchao (>=0.15.0)"]
 training = ["Jinja2", "accelerate (>=0.31.0)", "datasets", "peft (>=0.17.0)", "protobuf (>=3.20.3,<4)", "tensorboard", "timm"]
 
 [[package]]
@@ -6933,4 +6932,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,!=3.14.1,<3.15"
-content-hash = "db0c2bf32f2eff11bca1e1beff96c34454726be850467943edab358accf03a8c"
+content-hash = "1030204b70f8a7f52425c7d84839791dda393f935fdcc5d3ff411209b14f2797"

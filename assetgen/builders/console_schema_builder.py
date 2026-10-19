@@ -191,7 +191,10 @@ class ConsoleSchemaBuilder:
             _pipelinewrapper.uris.TextualInversionUri,
             _pipelinewrapper.uris.AdetailerDetectorUri,
             _pipelinewrapper.uris.SCascadeDecoderUri,
-            _pipelinewrapper.uris.SDXLRefinerUri
+            _pipelinewrapper.uris.SDXLRefinerUri,
+            _pipelinewrapper.uris.LTXLatentUpsamplerUri,
+            _pipelinewrapper.uris.LTXPromptEnhancerUri,
+            _pipelinewrapper.uris.LTXDiffusionDecoderUri
         ]
 
         schema = dict()

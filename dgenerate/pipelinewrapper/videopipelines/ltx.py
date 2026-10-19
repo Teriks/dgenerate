@@ -26,8 +26,10 @@ from __future__ import annotations
 import collections.abc
 import contextlib
 import inspect
+import json
 import math
 import os
+import re
 import warnings
 
 import numpy
@@ -189,6 +191,10 @@ def _call_ltx(wrapper, user_args):
     else:
         mode = 'ltx-txt'
 
+    # Inspect the checkpoint/component metadata before _video_pipeline can
+    # start loading the main model weights. These checks do not instantiate
+    # either optional component.
+    _preflight_ltx_components(wrapper, user_args)
     pipe, held = _vp._video_pipeline(wrapper, mode, user_args.scheduler_uri)
     family = held.family
     positive, negative = _vp._prompt_text(user_args)
@@ -336,6 +342,8 @@ def _call_ltx(wrapper, user_args):
         _reject_ltx2_only_options(user_args)
 
     frames, audio, sample_rate = _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family)
+    if user_args.ltx_latent_upscale and user_args.ltx_latent_upscale_mode == 'temporal':
+        fps *= 2 ** int(user_args.ltx_temporal_upscale_rounds)
     return frames, audio, sample_rate, fps
 
 
@@ -355,6 +363,8 @@ def _reject_ltx2_only_options(user_args):
         used.append('--ltx-latent-upscale')
     if user_args.ltx_video_decoder == 'diffusion':
         used.append('--ltx-video-decoder diffusion')
+    if user_args.ltx_diffusion_decoder:
+        used.append('--ltx-diffusion-decoder')
     if user_args.ltx_diffusion_decode_tile:
         used.append('--ltx-diffusion-decode-tile')
     if user_args.ltx_prompt_enhancer:
@@ -429,28 +439,37 @@ def _apply_ltx2_options(wrapper, pipe, user_args, kwargs):
         kwargs['decode_noise_scale'] = float(user_args.ltx_decode_noise_scale)
 
 
-def _ensure_prompt_enhancer(wrapper, pipe, repo):
-    if getattr(pipe, '_dgenerate_prompt_enhancer', None) == repo:
+def _ensure_prompt_enhancer(wrapper, pipe, uri_string):
+    if getattr(pipe, '_dgenerate_prompt_enhancer', None) == uri_string:
         return
     from transformers import AutoModelForImageTextToText, AutoProcessor
 
-    dtype = _enums.get_torch_dtype(wrapper._dtype) or torch.bfloat16
+    uri = _uris.LTXPromptEnhancerUri.parse(uri_string)
+    dtype = _enums.get_torch_dtype(uri.dtype or wrapper._dtype) or torch.bfloat16
     load = {
         'token': wrapper._auth_token,
         'local_files_only': bool(wrapper._local_files_only),
     }
-    _messages.debug_log(f'Loading LTX prompt enhancer "{repo}".')
+    if uri.revision is not None:
+        load['revision'] = uri.revision
+    if uri.subfolder is not None:
+        load['subfolder'] = uri.subfolder
+    _messages.debug_log(f'Loading LTX prompt enhancer "{uri.model}".')
     pipe.prompt_enhancer = AutoModelForImageTextToText.from_pretrained(
-        repo, torch_dtype=dtype, **load)
-    pipe.processor = AutoProcessor.from_pretrained(repo, **load)
+        uri.model, torch_dtype=dtype, **load)
+    pipe.processor = AutoProcessor.from_pretrained(uri.model, **load)
     device = 'cpu' if _vp._offload_requested(wrapper) else wrapper.device
     pipe.prompt_enhancer.to(device)
-    pipe._dgenerate_prompt_enhancer = repo
+    pipe._dgenerate_prompt_enhancer = uri_string
 
 
 def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
     diffusion = family == 'ltx2' and user_args.ltx_video_decoder == 'diffusion'
     if user_args.ltx_latent_upscale:
+        if user_args.ltx_latent_upscale_mode == 'temporal':
+            frames, audio, sample_rate = _ltx_temporal_upscale(
+                wrapper, pipe, held, user_args, kwargs, diffusion)
+            return frames, audio, sample_rate
         return _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion)
     if diffusion:
         kwargs = dict(kwargs)
@@ -458,7 +477,8 @@ def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
     output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
     return _ltx_pixels_from_output(
         wrapper, pipe, held, output, diffusion, kwargs.get('generator'),
-        getattr(user_args, 'ltx_diffusion_decode_tile', None))
+        getattr(user_args, 'ltx_diffusion_decode_tile', None),
+        getattr(user_args, 'ltx_diffusion_decoder', None))
 
 
 def _enhance_ltx_prompt_once(wrapper, pipe, kwargs):
@@ -528,7 +548,7 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
     video_latent = _video_latent_tensor(first.frames)
     audio_latent = getattr(first, 'audio', None)
 
-    upscaled = _upsample_ltx_latents(wrapper, pipe, video_latent)
+    upscaled = _upsample_ltx_latents(wrapper, pipe, video_latent, user_args)
     stage2 = {key: value for key, value in kwargs.items() if key not in ('image', 'conditions')}
     stage2['width'] = int(width)
     stage2['height'] = int(height)
@@ -578,7 +598,170 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
             pipe.prompt_enhancer = enhancer
     return _ltx_pixels_from_output(
         wrapper, pipe, held, second, diffusion, kwargs.get('generator'),
-        getattr(user_args, 'ltx_diffusion_decode_tile', None))
+        getattr(user_args, 'ltx_diffusion_decode_tile', None),
+        getattr(user_args, 'ltx_diffusion_decoder', None))
+
+
+def _ltx_temporal_upscale(wrapper, pipe, held, user_args, kwargs, diffusion):
+    """Compose the Diffusers 0.41 LTX-2.5 DFR spatial and temporal passes."""
+    from diffusers import LTX2DFRPipeline, LTX2DFRTemporalRefinePipeline
+    from diffusers.pipelines.ltx2.utils import (
+        DISTILLED_SIGMA_VALUES, TEMPORAL_ROUND_DISTILLED_SIGMA_VALUES)
+    from diffusers.schedulers import LTXEulerAncestralRFScheduler
+
+    if not getattr(pipe.transformer.config, 'use_keyframes_abs_pos_embedding', False):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'Temporal latent upscaling requires an LTX-2.5 transformer with '
+            'use_keyframes_abs_pos_embedding enabled.')
+    if user_args.reference_video_frames:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'Temporal DFR does not preserve the IC-LoRA control clip through its refine rounds. '
+            'Use --ltx-latent-upscale-mode spatial for control= generations.')
+    if (kwargs.get('guidance_scale', 1.0) != 1.0
+            or kwargs.get('audio_guidance_scale', 1.0) != 1.0
+            or kwargs.get('guidance_rescale') is not None
+            or user_args.ltx_stg_scale not in (None, 0, 0.0)
+            or user_args.ltx_audio_stg_scale not in (None, 0, 0.0)
+            or user_args.ltx_modality_scale not in (None, 1, 1.0)
+            or user_args.ltx_audio_modality_scale not in (None, 1, 1.0)
+            or user_args.ltx_audio_guidance_scale not in (None, 1, 1.0)
+            or user_args.ltx_audio_guidance_rescale is not None
+            or user_args.ltx_stage_guidance_scale not in (None, 1, 1.0)
+            or user_args.ltx_stage_audio_guidance_scale not in (None, 1, 1.0)
+            or user_args.ltx_stage_lora_uris):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'Temporal DFR uses its distilled schedule without CFG, STG, or modality guidance. '
+            'Set video/audio guidance to 1, omit guidance rescale, and omit '
+            '--ltx-stg-scales and --ltx-modality-scales.')
+
+    width, height = int(kwargs['width']), int(kwargs['height'])
+    requested_frames = kwargs.get('num_frames')
+    num_frames = int(requested_frames) if requested_frames is not None else None
+    fps = float(kwargs['frame_rate'])
+    dtype = _enums.get_torch_dtype(wrapper._dtype) or torch.bfloat16
+    dfr = LTX2DFRPipeline.from_pipe(pipe, dtype=dtype)
+    accepted = set(inspect.signature(dfr.__call__).parameters)
+
+    def dfr_kwargs(values):
+        return {key: value for key, value in values.items() if key in accepted}
+
+    _enhance_ltx_prompt_once(wrapper, dfr, kwargs)
+    kwargs['enable_prompt_enhancement'] = False
+    first_kwargs = dfr_kwargs(kwargs)
+    first_kwargs.update(
+        width=width // 2,
+        height=height // 2,
+        output_type='latent',
+        return_dict=True,
+        generate_slots=True,
+        sigmas=(kwargs.get('sigmas') or list(DISTILLED_SIGMA_VALUES)))
+    first_kwargs.pop('guidance_scale', None)
+    first_kwargs.pop('audio_guidance_scale', None)
+    _messages.log(
+        f'LTX DFR spatial pass 1 at {width // 2}x{height // 2}, '
+        f'pass 2 at {width}x{height}, then {user_args.ltx_temporal_upscale_rounds} '
+        'temporal refinement round(s).')
+    first = _vp._invoke(wrapper, dfr, first_kwargs, user_args=user_args)
+    if num_frames is None:
+        num_frames = ((int(first.frames.shape[2]) - 1) *
+                      _ltx_temporal_compression(pipe) + 1)
+
+    upscaled = _upsample_ltx_latents(
+        wrapper, pipe, first.frames, user_args, use_custom_uri=False)
+    second_kwargs = {
+        'prompt': kwargs.get('prompt'),
+        'conditions': kwargs.get('conditions'),
+        'height': height,
+        'width': width,
+        'num_frames': num_frames,
+        'frame_rate': fps,
+        'latents': upscaled,
+        'audio_latents': first.audio,
+        'keyframes_latents': first.keyframes,
+        'keyframe_positions': first.keyframe_positions,
+        'reference_latents': first.frames,
+        'reference_downscale_factor': 2,
+        'sigmas': _stage_sigmas(user_args),
+        'noise_scale': user_args.ltx_noise_scale,
+        'generator': kwargs.get('generator'),
+        'use_cross_timestep': kwargs.get('use_cross_timestep', True),
+        'output_type': 'latent',
+        'return_dict': True,
+        'max_sequence_length': kwargs.get('max_sequence_length', 1024),
+    }
+    second_kwargs = dfr_kwargs(second_kwargs)
+    if second_kwargs.get('noise_scale') is None:
+        second_kwargs.pop('noise_scale')
+    second = _vp._invoke(wrapper, dfr, second_kwargs, user_args=user_args)
+
+    temporal_upsampler = _load_ltx_latent_upsampler(wrapper, user_args)
+    temporal = LTX2DFRTemporalRefinePipeline.from_pipe(
+        dfr,
+        temporal_latent_upsampler=temporal_upsampler,
+        scheduler=LTXEulerAncestralRFScheduler(eta=0.5),
+        dtype=dtype)
+    if (getattr(temporal_upsampler.config, 'spatial_upsample', None) is not False):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'Temporal mode needs a temporal-only latent upsampler with '
+            'spatial_upsample=false; select subfolder=temporal_latent_upsampler.')
+    temporal_upsampler.to(device=wrapper.device, dtype=dtype)
+    output = second
+    canvas_frames = (int(second.frames.shape[2]) - 1) * _ltx_temporal_compression(pipe) + 1
+    source_seconds = num_frames / fps
+    try:
+        for round_index in range(1, int(user_args.ltx_temporal_upscale_rounds) + 1):
+            refine_kwargs = {
+                'prompt': kwargs.get('prompt'),
+                'conditions': kwargs.get('conditions'),
+                'latents': output.frames,
+                'keyframes_latents': output.keyframes,
+                'keyframe_positions': output.keyframe_positions,
+                'audio_latents': output.audio,
+                'height': height,
+                'width': width,
+                'num_frames': canvas_frames,
+                'frame_rate': fps,
+                'source_seconds': source_seconds,
+                'condition_num_frames': num_frames,
+                'round_index': round_index,
+                'sigmas': list(TEMPORAL_ROUND_DISTILLED_SIGMA_VALUES),
+                'generator': kwargs.get('generator'),
+                'use_cross_timestep': kwargs.get('use_cross_timestep', True),
+                'output_type': 'latent',
+                'return_dict': True,
+                'max_sequence_length': kwargs.get('max_sequence_length', 1024),
+            }
+            refine_kwargs = {
+                key: value for key, value in refine_kwargs.items()
+                if key in inspect.signature(temporal.__call__).parameters}
+            _messages.log(f'LTX temporal DFR round {round_index}.')
+            output = _vp._invoke(wrapper, temporal, refine_kwargs, user_args=user_args)
+            canvas_frames = 2 * (canvas_frames - 1) + 1
+            fps *= 2
+    finally:
+        if _vp._offload_requested(wrapper):
+            temporal_upsampler.to('cpu')
+
+    if diffusion:
+        result = _ltx_pixels_from_output(
+            wrapper, pipe, held, output, True, kwargs.get('generator'),
+            getattr(user_args, 'ltx_diffusion_decode_tile', None),
+            getattr(user_args, 'ltx_diffusion_decoder', None))
+    else:
+        latent = output.frames
+        normalized = pipe._normalize_latents(
+            latent.float(), pipe.vae.latents_mean, pipe.vae.latents_std,
+            pipe.vae.config.scaling_factor)
+        timestep = None
+        if pipe.vae.config.timestep_conditioning:
+            timestep = torch.full((latent.shape[0],), float(user_args.ltx_decode_timestep or 0.0),
+                                  device=latent.device, dtype=latent.dtype)
+        decoded = pipe.vae.decode(
+            normalized.to(pipe.vae.dtype), timestep, return_dict=False)[0]
+        frames = pipe.video_processor.postprocess_video(decoded, output_type='pil')
+        audio = _waveform_from_audio_latents(pipe, output.audio)
+        result = (frames, audio, audio_sample_rate_from_pipeline(pipe, audio))
+    return result
 
 
 def _video_latent_tensor(frames):
@@ -601,17 +784,383 @@ def _stage_sigmas(user_args):
     return [float(value) for value in user_args.ltx_stage_sigmas]
 
 
-def _upsample_ltx_latents(wrapper, pipe, video_latent):
+def _ltx_repo_component_files(wrapper, repo_id: str, subfolder: str,
+                              revision: str | None,
+                              variant: str | None = None) -> set[str]:
+    """List component filenames from a local HF cache or Hub metadata only."""
+    import huggingface_hub
+
+    local_files_only = bool(wrapper._local_files_only) or _hfhub.is_offline_mode()
+    config_name = os.path.join(subfolder, 'config.json').replace('\\', '/')
+    cached_config = huggingface_hub.try_to_load_from_cache(
+        repo_id, config_name, revision=revision)
+    if isinstance(cached_config, str):
+        component_dir = os.path.dirname(cached_config)
+        cached_names = set(os.listdir(component_dir))
+        if local_files_only or _ltx_component_has_weights(cached_names, variant):
+            return cached_names
+
+    if local_files_only:
+        return set()
+
+    # list_repo_files only queries repository metadata; it does not download
+    # model weights. Strip the component prefix to make local and Hub results
+    # use the same filename checks below.
+    filenames = huggingface_hub.HfApi(token=wrapper._auth_token).list_repo_files(
+        repo_id, revision=revision)
+    prefix = subfolder.strip('/\\')
+    if not prefix:
+        return {os.path.basename(name) for name in filenames}
+    prefix = prefix.replace('\\', '/') + '/'
+    return {
+        name[len(prefix):]
+        for name in filenames
+        if name.replace('\\', '/').startswith(prefix)
+    }
+
+
+def _ltx_component_has_weights(filenames: set[str], variant: str | None) -> bool:
+    """Check for Diffusers single-file or complete indexed component weights."""
+    base_names = {
+        'diffusion_pytorch_model.safetensors',
+        'diffusion_pytorch_model.bin',
+    }
+    if variant:
+        base_names = {
+            'diffusion_pytorch_model.' + variant + '.safetensors',
+            'diffusion_pytorch_model.' + variant + '.bin',
+        }
+
+    available = set()
+    for filename in filenames:
+        name = os.path.basename(filename)
+        if name in base_names:
+            return True
+        if not _putil.variant_match(filename, variant):
+            continue
+        if name.endswith(('.safetensors', '.bin')) and name.startswith('diffusion_pytorch_model'):
+            available.add(name)
+
+    # Sharded Diffusers models have an index plus numbered weight files.
+    index_names = {
+        'diffusion_pytorch_model.safetensors.index.json',
+        'diffusion_pytorch_model.bin.index.json',
+    }
+    if variant:
+        index_names |= {
+            'diffusion_pytorch_model.safetensors.index.' + variant + '.json',
+            'diffusion_pytorch_model.bin.index.' + variant + '.json',
+            'diffusion_pytorch_model.safetensors.' + variant + '.index.json',
+            'diffusion_pytorch_model.bin.' + variant + '.index.json',
+        }
+    indexes = [name for name in filenames if os.path.basename(name) in index_names]
+    shards = [name for name in available if '-of-' in name]
+    if not indexes or not shards:
+        return False
+
+    groups = {}
+    for shard in shards:
+        match = re.search(r'-(\d+)-of-(\d+)\.(?:safetensors|bin)$', shard)
+        if match:
+            index, total = map(int, match.groups())
+            groups.setdefault((total, os.path.splitext(shard)[1]), set()).add(index)
+    return any(len(indices) == total and indices == set(range(1, total + 1))
+               for (total, _extension), indices in groups.items())
+
+
+def _ltx_component_files(wrapper, model_path: str, subfolder: str,
+                         revision: str | None, variant: str | None,
+                         allow_single_file: bool = False):
+    """Return (filenames, is_single_file) without loading model weights."""
+    if os.path.isdir(model_path):
+        component_dir = os.path.join(model_path, subfolder)
+        if not os.path.isdir(component_dir):
+            return set(), False
+        return set(os.listdir(component_dir)), False
+
+    if os.path.isfile(model_path):
+        return ({os.path.basename(model_path)}, True) if allow_single_file else (set(), False)
+
+    blob = _hfhub.HFBlobLink.parse(model_path)
+    if blob is not None:
+        if not allow_single_file:
+            return set(), False
+        import huggingface_hub
+        filename = os.path.join(blob.subfolder or '', blob.weight_name).replace('\\', '/')
+        cached_file = huggingface_hub.try_to_load_from_cache(
+            blob.repo_id, filename, revision=blob.revision)
+        if isinstance(cached_file, str):
+            return {blob.weight_name}, True
+        if bool(wrapper._local_files_only) or _hfhub.is_offline_mode():
+            return set(), True
+        filenames = huggingface_hub.HfApi(token=wrapper._auth_token).list_repo_files(
+            blob.repo_id, revision=blob.revision)
+        return ({blob.weight_name} if filename in filenames else set()), True
+
+    if model_path.startswith(('http://', 'https://')):
+        if not allow_single_file:
+            return set(), False
+        # Probe a direct URL with HEAD only. Some hosts do not support HEAD;
+        # in that case leave the decision to the normal loader.
+        if bool(wrapper._local_files_only) or _hfhub.is_offline_mode():
+            return set(), True
+        import urllib.error
+        import urllib.request
+        try:
+            request = urllib.request.Request(model_path, method='HEAD')
+            with urllib.request.urlopen(request, timeout=15) as response:
+                return ({os.path.basename(model_path)} if 200 <= response.status < 400 else set()), True
+        except urllib.error.HTTPError as error:
+            if error.code == 404:
+                return set(), True
+        except (urllib.error.URLError, TimeoutError, OSError):
+            pass
+        return None
+
+    if _hfhub.is_single_file_model_load(model_path):
+        return (set(), True) if allow_single_file else (set(), False)
+
+    return _ltx_repo_component_files(wrapper, model_path, subfolder, revision, variant), False
+
+
+def _check_ltx_component_available(wrapper, model_path: str, component: str,
+                                   display_name: str, subfolder: str,
+                                   revision: str | None = None,
+                                   variant: str | None = None,
+                                   allow_single_file: bool = False,
+                                   config_name: str = 'config.json') -> None:
+    files = _ltx_component_files(
+        wrapper, model_path, subfolder, revision, variant, allow_single_file)
+    if files is None:
+        return
+    filenames, single_file = files
+    available = bool(filenames) if single_file else (
+        config_name in filenames and _ltx_component_has_weights(filenames, variant))
+    if available:
+        return
+
+    if model_path == wrapper.model_path:
+        if bool(wrapper._local_files_only) or _hfhub.is_offline_mode():
+            message = (f'The {display_name} in "{model_path}/{subfolder}" is not available '
+                       'in the local cache.')
+        else:
+            message = (f'The LTX checkpoint at "{model_path}" does not contain an available '
+                       f'{display_name} in "{subfolder}".')
+    else:
+        message = (f'The {display_name} model "{model_path}" is missing its config or '
+                   'Diffusers weight files.')
+    if component == 'diffusion_decoder':
+        message += ' Use --ltx-video-decoder conv to use the convolutional VAE instead.'
+    elif component == 'latent_upsampler':
+        message += ' Ensure the selected model is an LTX latent upsampler.'
+    raise _pipelines.UnsupportedPipelineConfigError(message)
+
+
+def _check_ltx_latent_upsampler_available(wrapper, user_args, temporal: bool = False) -> None:
+    model_path = wrapper.model_path
+    subfolder = 'temporal_latent_upsampler' if temporal else 'latent_upsampler'
+    revision = None
+    variant = None
+    if isinstance(getattr(user_args, 'ltx_latent_upscale', None), str):
+        uri = _uris.LTXLatentUpsamplerUri.parse(user_args.ltx_latent_upscale)
+        model_path = uri.model
+        revision = uri.revision
+        variant = uri.variant
+        if uri.subfolder:
+            subfolder = uri.subfolder
+        if _hfhub.is_single_file_model_load(model_path):
+            subfolder = ''
+
+    _check_ltx_component_available(
+        wrapper, model_path, 'latent_upsampler', 'latent upsampler',
+        subfolder, revision, variant, _hfhub.is_single_file_model_load(model_path))
+
+    config = _ltx_latent_upsampler_config(wrapper, model_path, subfolder, revision)
+    if config is not None and config.get('spatial_upsample') is not (not temporal):
+        actual = 'spatial' if config.get('spatial_upsample') else 'temporal-only'
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'The latent upsampler in "{model_path}/{subfolder}" is {actual}. '
+            f'--ltx-latent-upscale-mode {"temporal" if temporal else "spatial"} requires a '
+            f'component with spatial_upsample={not temporal}.')
+
+
+def _check_ltx_diffusion_decoder_available(wrapper, user_args) -> None:
+    model_path = wrapper.model_path
+    revision = None
+    subfolder = 'diffusion_decoder'
+    if user_args.ltx_diffusion_decoder:
+        uri = _uris.LTXDiffusionDecoderUri.parse(user_args.ltx_diffusion_decoder)
+        model_path = uri.model
+        revision = uri.revision
+        if uri.subfolder:
+            subfolder = uri.subfolder
+    _check_ltx_component_available(
+        wrapper, model_path, 'diffusion_decoder', 'diffusion decoder',
+        subfolder, revision=revision, config_name='config.json')
+
+
+def _ltx_latent_upsampler_config(wrapper, model_path: str, subfolder: str,
+                                  revision: str | None) -> dict | None:
+    """Read a latent upsampler config without loading its weights."""
+    if os.path.isdir(model_path):
+        config_path = os.path.join(model_path, subfolder, 'config.json')
+        if not os.path.isfile(config_path):
+            return None
+    else:
+        # Single-file checkpoints may not have a separate Diffusers config.
+        if os.path.isfile(model_path) or _hfhub.HFBlobLink.parse(model_path) is not None \
+                or _hfhub.is_single_file_model_load(model_path):
+            return None
+
+        import huggingface_hub
+
+        filename = os.path.join(subfolder, 'config.json').replace('\\', '/')
+        config_path = huggingface_hub.try_to_load_from_cache(
+            model_path, filename, revision=revision)
+        local_files_only = bool(wrapper._local_files_only) or _hfhub.is_offline_mode()
+        if not isinstance(config_path, str):
+            if local_files_only:
+                return None
+            config_path = huggingface_hub.hf_hub_download(
+                model_path,
+                filename=filename,
+                revision=revision,
+                token=wrapper._auth_token,
+                local_files_only=False)
+
+    with open(config_path, encoding='utf-8') as config_file:
+        return json.load(config_file)
+
+
+def _preflight_ltx_components(wrapper, user_args) -> None:
+    """Check requested optional LTX components using repository metadata only."""
+    if not user_args.ltx_latent_upscale and user_args.ltx_video_decoder != 'diffusion':
+        return
+
+    if user_args.ltx_latent_upscale:
+        width, height = _vp._size(user_args)
+        if width is None or height is None:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '--ltx-latent-upscale needs an --output-size. '
+                'That size is the finished clip.')
+
+    index = _putil.fetch_model_index_dict(
+        wrapper.model_path,
+        subfolder=wrapper._subfolder,
+        revision=wrapper._revision,
+        use_auth_token=wrapper._auth_token,
+        local_files_only=bool(wrapper._local_files_only))
+    family = ltx_family_from_index(index)
+
+    # Report unsupported LTX-2-only options before probing for components that
+    # cannot be used by an earlier LTX checkpoint. The normal call path checks
+    # these again after loading the pipeline for options that do not require
+    # preflight.
+    if family != 'ltx2':
+        _reject_ltx2_only_options(user_args)
+
+    if user_args.ltx_latent_upscale:
+        temporal = user_args.ltx_latent_upscale_mode == 'temporal'
+        _check_ltx_latent_upsampler_available(wrapper, user_args, temporal=temporal)
+        if temporal:
+            _check_ltx_component_available(
+                wrapper, wrapper.model_path, 'latent_upsampler', 'spatial latent upsampler',
+                subfolder='latent_upsampler')
+    if family == 'ltx2' and user_args.ltx_video_decoder == 'diffusion':
+        _check_ltx_diffusion_decoder_available(wrapper, user_args)
+
+
+def _is_missing_ltx_component(error, model_path: str, component: str, config_name: str) -> bool:
+    """Return whether Diffusers could not find the component's config file."""
+    if os.path.isdir(model_path):
+        # Diffusers falls back to the root config when a local subfolder config
+        # is missing. Check the requested component directly to avoid treating
+        # the main pipeline config as the component config.
+        return not os.path.isfile(os.path.join(model_path, component, config_name))
+
+    if error is None:
+        return False
+
+    pending = [error]
+    seen = set()
+    while pending:
+        current = pending.pop()
+        if current is None or id(current) in seen:
+            continue
+        seen.add(id(current))
+
+        message = str(current).lower()
+        missing_config = config_name.lower()
+        if (f'does not appear to have a file named {missing_config}' in message
+                or f'error no file named {missing_config} found in directory' in message):
+            return True
+
+        pending.extend((current.__cause__, current.__context__))
+    return False
+
+
+def _load_ltx_latent_upsampler(wrapper, user_args, use_custom_uri=True):
     from diffusers.pipelines.ltx2.latent_upsampler import LTX2LatentUpsamplerModel
-    from diffusers.pipelines.ltx2.pipeline_ltx2_latent_upsample import LTX2LatentUpsamplePipeline
 
     dtype = _enums.get_torch_dtype(wrapper._dtype) or torch.bfloat16
-    upsampler = LTX2LatentUpsamplerModel.from_pretrained(
-        wrapper.model_path,
-        subfolder='latent_upsampler',
-        torch_dtype=dtype,
-        token=wrapper._auth_token,
-        local_files_only=bool(wrapper._local_files_only))
+    model_path = wrapper.model_path
+    load_kwargs = {
+        'subfolder': ('temporal_latent_upsampler'
+                      if getattr(user_args, 'ltx_latent_upscale_mode', 'spatial') == 'temporal'
+                      else 'latent_upsampler'),
+        'torch_dtype': dtype,
+        'token': wrapper._auth_token,
+        'local_files_only': bool(wrapper._local_files_only),
+    }
+
+    using_custom_upsampler = (use_custom_uri and
+                              isinstance(getattr(user_args, 'ltx_latent_upscale', None), str))
+    if using_custom_upsampler:
+        uri = _uris.LTXLatentUpsamplerUri.parse(user_args.ltx_latent_upscale)
+        model_path = uri.model
+        if uri.revision is not None:
+            load_kwargs['revision'] = uri.revision
+        if uri.variant is not None:
+            load_kwargs['variant'] = uri.variant
+        if uri.subfolder:
+            load_kwargs['subfolder'] = uri.subfolder
+        if _hfhub.is_single_file_model_load(model_path):
+            load_kwargs.pop('subfolder', None)
+
+    if (not using_custom_upsampler
+            and _is_missing_ltx_component(None, model_path, 'latent_upsampler',
+                                          LTX2LatentUpsamplerModel.config_name)):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'The LTX checkpoint at "{wrapper.model_path}" does not contain a latent upsampler. '
+            'Ensure you are using an LTX-2 checkpoint that supports latent upscaling.')
+
+    try:
+        if _hfhub.is_single_file_model_load(model_path):
+            from_single_file = getattr(LTX2LatentUpsamplerModel, 'from_single_file', None)
+            if from_single_file is None:
+                from diffusers.loaders.single_file_model import FromOriginalModelMixin
+                from_single_file = FromOriginalModelMixin.from_single_file.__get__(
+                    LTX2LatentUpsamplerModel, LTX2LatentUpsamplerModel)
+            return from_single_file(model_path, **load_kwargs)
+        return LTX2LatentUpsamplerModel.from_pretrained(model_path, **load_kwargs)
+    except Exception as e:
+        # Preserve the loader's original error for a separately selected model;
+        # it may indicate authentication, revision, or weight format problems.
+        if (not using_custom_upsampler
+                and _is_missing_ltx_component(
+                    e, model_path, 'latent_upsampler', LTX2LatentUpsamplerModel.config_name)):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'The LTX checkpoint at "{wrapper.model_path}" does not contain a latent upsampler. '
+                'Ensure you are using an LTX-2 checkpoint that supports latent upscaling.') from e
+        raise
+
+
+def _upsample_ltx_latents(wrapper, pipe, video_latent, user_args, use_custom_uri=True):
+    from diffusers.pipelines.ltx2.pipeline_ltx2_latent_upsample import LTX2LatentUpsamplePipeline
+
+    # Keep model weights out of memory until stage 1 is complete.
+    upsampler = _load_ltx_latent_upsampler(wrapper, user_args, use_custom_uri=use_custom_uri)
+    dtype = _enums.get_torch_dtype(wrapper._dtype) or torch.bfloat16
     up_pipe = LTX2LatentUpsamplePipeline(vae=pipe.vae, latent_upsampler=upsampler)
     # Sequential offload stores this model's weights as meta tensors. The
     # upsample forward then cannot copy them onto the GPU. The upsampler is
@@ -721,7 +1270,8 @@ def _park_ltx_after_diffusion_decode(pipe, decode_pipe, wrapper) -> None:
     _memory.torch_gc()
 
 
-def _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, generator, decode_tile=None):
+def _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, generator,
+                            decode_tile=None, diffusion_decoder_uri=None):
     video = output.frames
     audio_raw = getattr(output, 'audio', None)
     if diffusion:
@@ -730,7 +1280,7 @@ def _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, generator, d
         _park_ltx_for_diffusion_decode(pipe, wrapper)
         try:
             frames = _decode_ltx_diffusion(
-                wrapper, pipe, held, video, generator, decode_tile)
+                wrapper, pipe, held, video, generator, decode_tile, diffusion_decoder_uri)
             audio = _waveform_from_audio_latents(pipe, audio_raw)
         finally:
             _park_ltx_after_diffusion_decode(
@@ -1015,20 +1565,44 @@ def _ltx_diffusion_natten_processor():
         return _LTXWindowNeighborhoodProcessor()
 
 
-def _load_ltx_diffusion_decoder(wrapper, pipe):
+def _load_ltx_diffusion_decoder(wrapper, pipe, uri_string=None):
     decoder = getattr(pipe, 'diffusion_decoder', None)
-    if isinstance(decoder, torch.nn.Module):
+    if uri_string is None and isinstance(decoder, torch.nn.Module):
         _messages.debug_log('Reusing the main LTX pipeline diffusion_decoder for decode.')
         return decoder
     from diffusers import LTX2VideoDiffusionDecoderModel
 
+    model_path = wrapper.model_path
+    subfolder = 'diffusion_decoder'
+    revision = None
     dtype = _enums.get_torch_dtype(wrapper._dtype) or torch.bfloat16
-    return LTX2VideoDiffusionDecoderModel.from_pretrained(
-        wrapper.model_path,
-        subfolder='diffusion_decoder',
-        torch_dtype=dtype,
-        token=wrapper._auth_token,
-        local_files_only=bool(wrapper._local_files_only))
+    if uri_string:
+        uri = _uris.LTXDiffusionDecoderUri.parse(uri_string)
+        model_path = uri.model
+        revision = uri.revision
+        subfolder = uri.subfolder or subfolder
+        dtype = _enums.get_torch_dtype(uri.dtype or wrapper._dtype) or torch.bfloat16
+    if uri_string is None and _is_missing_ltx_component(
+            None, model_path, subfolder, LTX2VideoDiffusionDecoderModel.config_name):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'The LTX checkpoint at "{wrapper.model_path}" does not contain a diffusion decoder. '
+            'Use --ltx-video-decoder conv to use the convolutional VAE instead.')
+
+    try:
+        return LTX2VideoDiffusionDecoderModel.from_pretrained(
+            model_path,
+            subfolder=subfolder,
+            torch_dtype=dtype,
+            token=wrapper._auth_token,
+            revision=revision,
+            local_files_only=bool(wrapper._local_files_only))
+    except Exception as e:
+        if uri_string is None and _is_missing_ltx_component(
+                e, model_path, subfolder, LTX2VideoDiffusionDecoderModel.config_name):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'The LTX checkpoint at "{wrapper.model_path}" does not contain a diffusion decoder. '
+                'Use --ltx-video-decoder conv to use the convolutional VAE instead.') from e
+        raise
 
 
 # Pixel tiles for the missing-NATTEN path. The decoder default is 768x768 and 80
@@ -1209,13 +1783,18 @@ def _diffusion_decode_progress(decode_pipe):
             bar.close()
 
 
-def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator, decode_tile=None):
+def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator, decode_tile=None,
+                          diffusion_decoder_uri=None):
     decode_pipe = getattr(held, 'diffusion_decoder_pipe', None)
+    if (decode_pipe is not None and getattr(
+            decode_pipe, '_dgenerate_ltx_diffusion_decoder_uri', None) != diffusion_decoder_uri):
+        held.diffusion_decoder_pipe = None
+        decode_pipe = None
     if decode_pipe is None:
         from diffusers import LTX2VideoDiffusionDecodePipeline
 
         decoder = _prepare_ltx_diffusion_decoder(
-            _load_ltx_diffusion_decoder(wrapper, pipe), decode_tile)
+            _load_ltx_diffusion_decoder(wrapper, pipe, diffusion_decoder_uri), decode_tile)
         decode_pipe = LTX2VideoDiffusionDecodePipeline(
             diffusion_decoder=decoder, scheduler=pipe.scheduler, vae=pipe.vae)
         _vp._offload_ltx(
@@ -1223,6 +1802,7 @@ def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator, decode_tile=N
             bool(wrapper.model_cpu_offload), bool(wrapper.model_sequential_offload),
             bool(getattr(wrapper, 'model_group_offload', False)))
         held.diffusion_decoder_pipe = decode_pipe
+        decode_pipe._dgenerate_ltx_diffusion_decoder_uri = diffusion_decoder_uri
     else:
         decoder = getattr(decode_pipe, 'diffusion_decoder', None)
         if decoder is not None and (
