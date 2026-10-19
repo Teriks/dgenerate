@@ -1972,8 +1972,6 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.ltx_audio_modality_scale, "Audio Modality Scale:"),
             (self.ltx_stg_blocks, "STG Blocks:"),
             (self.ltx_latent_upscale, "Latent Upscale:"),
-            (self.ltx_latent_upscale_mode, "Latent Upscale Mode:"),
-            (self.ltx_temporal_upscale_rounds, "Temporal Upscale Rounds:"),
             (self.ltx_stage_sigmas, "Stage Sigmas:"),
             (self.ltx_noise_scale, "Noise Scale:"),
             (self.ltx_stage_guidance_scale, "Stage Guidance Scale:"),
@@ -2017,6 +2015,11 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.sada_max_fix, "SADA Max Fix:"),
             (self.sada_max_interval, "SADA Max Interval:")
         ]
+
+        if self.ltx_latent_upscale:
+            descriptions.append((self.ltx_latent_upscale_mode, "Latent Upscale Mode:"))
+            if self.ltx_latent_upscale_mode == 'temporal':
+                descriptions.append((self.ltx_temporal_upscale_rounds, "Temporal Upscale Rounds:"))
 
         if not self.prompt.weighter:
             descriptions.append(
