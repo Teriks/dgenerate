@@ -425,9 +425,13 @@ Omit it and the missing-NATTEN path uses that size. NATTEN stays untiled unless 
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
 ``--ltx-prompt-enhancer`` loads a model such as ``google/gemma-4-E2B-it`` and rewrites
-the prompt before denoising. Its URI accepts ``revision``, ``subfolder``, and ``dtype``;
-for example, ``google/gemma-4-E2B-it;dtype=bfloat16``. ``--ltx-system-prompt`` overrides
-the built-in text or image system prompt. See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/prompt-enhancer-config.dgen>`_.
+the prompt before denoising. Its URI accepts ``revision``, ``subfolder``, ``dtype``,
+and ``quantizer``; for example, ``google/gemma-4-E2B-it;dtype=bfloat16`` or
+``google/gemma-4-E2B-it;quantizer="bnb;bits=4"``. ``--ltx-system-prompt`` overrides
+the built-in system prompt. LTX-2.5 selects its text-to-video prompt for text-only
+generation and its image-to-video prompt when image conditioning is supplied. For
+image-conditioned generation, the reference image is also provided to the enhancer.
+See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/prompt-enhancer-config.dgen>`_.
 
 ``--ltx-image-crfs`` recompresses a conditioning still before the VAE encode. Omit it
 and the pipeline default is used (``18`` on LTX-2.5). ``0`` skips recompression.

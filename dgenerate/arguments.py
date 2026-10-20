@@ -5515,9 +5515,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             dest='ltx_prompt_enhancer',
             help="""URI for the model used to rewrite the LTX prompt before denoising,
                     for example google/gemma-4-E2B-it or
-                    google/gemma-4-E2B-it;revision=main;subfolder=model;dtype=bfloat16.
-                    Setting this turns enhancement on. LTX-2.5 uses its own system prompt
-                    unless --ltx-system-prompt is set."""
+                    google/gemma-4-E2B-it;revision=main;subfolder=model;dtype=bfloat16,
+                    with an optional quantizer URI such as
+                    google/gemma-4-E2B-it;quantizer="sdnq;type=int4".
+                    Setting this turns enhancement on. LTX-2.5 selects its text-to-video
+                    or image-to-video system prompt from the conditioning input unless
+                    --ltx-system-prompt is set."""
         )
     )
 
@@ -5526,7 +5529,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--ltx-system-prompt', action='store', default=None, metavar="TEXT",
             dest='ltx_system_prompt',
             help="""System prompt for --ltx-prompt-enhancer. Omit it and LTX-2.5
-                    uses its text-to-video or image-to-video default."""
+                    selects its text-to-video or image-to-video default from the
+                    conditioning input."""
         )
     )
 

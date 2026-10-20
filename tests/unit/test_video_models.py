@@ -1,4 +1,5 @@
 import inspect
+import json
 import math
 import os
 import tempfile
@@ -1368,6 +1369,38 @@ class TestVideoModels(unittest.TestCase):
             _videopipelines._quantize_component(
                 'connectors', 'sdnq', ['transformer']))
 
+    def test_video_lora_quantizer_planning_respects_text_encoder_replacements(self):
+        class Pipeline:
+            _lora_loadable_modules = ('transformer', 'text_encoder')
+
+        components, quantizers = _videopipelines._video_lora_component_quantizers(
+            Pipeline, 'sdnq;type=int4', None, None, None,
+            ('text_encoder',), ('CLIPTextModel;model=org/custom-encoder',))
+        self.assertEqual(components, ('transformer', 'text_encoder'))
+        self.assertEqual(quantizers, {'transformer': 'sdnq;type=int4'})
+
+        _, quantizers = _videopipelines._video_lora_component_quantizers(
+            Pipeline, 'sdnq;type=int4', None, None, None,
+            ('text_encoder',), ('+',))
+        self.assertEqual(quantizers['text_encoder'], 'sdnq;type=int4')
+
+        _, quantizers = _videopipelines._video_lora_component_quantizers(
+            Pipeline, 'sdnq;type=int4', None, None, None,
+            ('text_encoder',),
+            ('CLIPTextModel;model=org/custom-encoder;quantizer="bnb;bits=4"',))
+        self.assertEqual(quantizers['text_encoder'], 'bnb;bits=4')
+
+    def test_video_lora_component_cache_identity_ignores_manual_quantizers(self):
+        first = _videopipelines._video_lora_component_uri_cache_key(
+            ('transformer', 'text_encoder'),
+            'org/transformer;quantizer="sdnq;type=int4"', None,
+            ('text_encoder',),
+            ('CLIPTextModel;model=org/encoder;quantizer="bnb;bits=4"',))
+        second = _videopipelines._video_lora_component_uri_cache_key(
+            ('transformer', 'text_encoder'), 'org/transformer', None,
+            ('text_encoder',), ('CLIPTextModel;model=org/encoder',))
+        self.assertEqual(first, second)
+
     def test_resolve_ltx_index_class(self):
         from diffusers.pipelines.ltx2.connectors import LTX2TextConnectors
         from diffusers import LTX2VideoTransformer3DModel
@@ -2033,6 +2066,225 @@ class TestVideoModels(unittest.TestCase):
         self.assertFalse(calls[2]['enable_prompt_enhancement'])
         self.assertIsNone(seen['during_lora'])
         self.assertIs(pipe.prompt_enhancer, enhancer)
+
+    def test_ltx_prompt_enhancer_uses_image_prompt_and_releases_bnb8_model(self):
+        from diffusers.pipelines.ltx2.utils import LTX2_5_I2V_DEFAULT_SYSTEM_PROMPT
+        from dgenerate.pipelinewrapper.videopipelines import ltx as _ltx
+
+        image = PIL.Image.new('RGB', (8, 8))
+
+        class Enhancer:
+            def __init__(self):
+                self.calls = []
+
+            def enhance_prompt(self, **kwargs):
+                self.calls.append(kwargs)
+                return ['rewritten prompt']
+
+        enhancer = Enhancer()
+        pipe = unittest.mock.Mock(
+            prompt_enhancer=enhancer, enhance_prompt=enhancer.enhance_prompt)
+        wrapper = unittest.mock.Mock(device='cuda')
+        kwargs = {'prompt': 'starting prompt', 'image': image,
+                  'enable_prompt_enhancement': True}
+
+        with unittest.mock.patch.object(
+                _ltx._putil, 'is_loaded_in_8bit_bnb', return_value=True), \
+                unittest.mock.patch.object(_ltx.torch.cuda, 'is_available', return_value=True), \
+                unittest.mock.patch.object(_ltx.torch.cuda, 'empty_cache'):
+            _ltx._enhance_ltx_prompt_once(wrapper, pipe, kwargs)
+
+        self.assertEqual(kwargs['prompt'], 'rewritten prompt')
+        self.assertFalse(kwargs['enable_prompt_enhancement'])
+        self.assertEqual(enhancer.calls[0]['system_prompt'], LTX2_5_I2V_DEFAULT_SYSTEM_PROMPT)
+        self.assertIs(enhancer.calls[0]['image'], image)
+        self.assertIsNone(pipe.prompt_enhancer)
+
+    def test_quantized_ltx_enhancer_uses_default_bfloat16_dtype(self):
+        from transformers import AutoProcessor
+        from dgenerate.pipelinewrapper.videopipelines import ltx as _ltx
+
+        enhancer = unittest.mock.Mock()
+        pipe = unittest.mock.Mock()
+        wrapper = unittest.mock.Mock(
+            device='cuda', _dtype=_pipelinewrapper.DataType.AUTO,
+            _auth_token=None, _local_files_only=True, model_cpu_offload=False,
+            model_sequential_offload=False, model_group_offload=False)
+
+        with unittest.mock.patch.object(
+                _ltx._vp, '_load_quantized_module', return_value=enhancer) as load_model, \
+                unittest.mock.patch.object(
+                    _ltx._vp, '_quantized_device_map', return_value={'': 'cuda'}), \
+                unittest.mock.patch.object(
+                    AutoProcessor, 'from_pretrained', return_value=object()), \
+                unittest.mock.patch.object(
+                    _ltx._putil, 'is_loaded_in_8bit_bnb', return_value=False):
+            _ltx._ensure_prompt_enhancer(
+                wrapper, pipe, 'google/gemma-4-E2B-it;quantizer="sdnq;type=int4"')
+
+        self.assertIs(load_model.call_args.args[5], _pipelinewrapper.DataType.BFLOAT16)
+        enhancer.to.assert_called_once_with('cuda')
+
+    def test_standard_ltx_call_enhances_before_pipeline_inference(self):
+        from dgenerate.pipelinewrapper.videopipelines import ltx as _ltx
+
+        events = []
+
+        class Enhancer:
+            def enhance_prompt(self, **kwargs):
+                events.append('enhance')
+                return 'rewritten prompt'
+
+            def to(self, device):
+                events.append(('move', device))
+                return self
+
+        enhancer = Enhancer()
+        pipe = unittest.mock.Mock(
+            prompt_enhancer=enhancer, enhance_prompt=enhancer.enhance_prompt)
+        wrapper = unittest.mock.Mock(device='cuda')
+        kwargs = {'prompt': 'starting prompt', 'enable_prompt_enhancement': True}
+        user_args = unittest.mock.Mock(
+            ltx_latent_upscale=False, ltx_video_decoder='vae', ltx_diffusion_decode_tile=None,
+            ltx_diffusion_decoder=None)
+
+        def invoke(_wrapper, _pipe, call_kwargs, user_args=None):
+            events.append('inference')
+            self.assertIsNone(_pipe.prompt_enhancer)
+            self.assertEqual(call_kwargs['prompt'], 'rewritten prompt')
+            self.assertFalse(call_kwargs['enable_prompt_enhancement'])
+            return unittest.mock.Mock(frames=['latent'], audio=None)
+
+        with unittest.mock.patch.object(
+                _ltx._vp, '_invoke', side_effect=invoke), \
+                unittest.mock.patch.object(
+                    _ltx, '_ltx_pixels_from_output', return_value=(['frame'], None, None)), \
+                unittest.mock.patch.object(
+                    _ltx._putil, 'is_loaded_in_8bit_bnb', return_value=False), \
+                unittest.mock.patch.object(_ltx.torch.cuda, 'is_available', return_value=False):
+            result = _ltx._complete_ltx_call(
+                wrapper, pipe, None, user_args, kwargs, 'ltx2')
+
+        self.assertEqual(result, (['frame'], None, None))
+        self.assertIs(pipe.prompt_enhancer, enhancer)
+        self.assertLess(events.index('enhance'), events.index(('move', 'cpu')))
+        self.assertLess(events.index(('move', 'cpu')), events.index('inference'))
+
+    def test_video_lora_preflight_persists_in_sqlite_and_skips_missing_components(self):
+        import hashlib
+
+        class Component:
+            def __init__(self, lora_attached=False):
+                self.peft_config = {'0': object()} if lora_attached else {}
+
+            def save_pretrained(self, path):
+                os.makedirs(path)
+
+        class Pipeline:
+            loads = 0
+
+            def __init__(self):
+                self.transformer = Component(lora_attached=True)
+                # Wan declares this optional component as LoRA-loadable, but
+                # this checkpoint has neither a second transformer nor an
+                # adapter for it.
+                self.transformer_2 = None
+
+            @classmethod
+            def from_pretrained(cls, model_path, **kwargs):
+                cls.loads += 1
+                return cls()
+
+            def unload_lora_weights(self):
+                self.transformer.peft_config = {}
+
+        with tempfile.TemporaryDirectory() as cache_dir:
+            cache_root = os.path.join(cache_dir, 'video_lora_fused')
+            os.makedirs(cache_root)
+            identity = repr((
+                'org/model', str(_pipelinewrapper.ModelType.WAN), None, None, None,
+                None, ('org/lora;scale=1',), 1.0, (),
+                ('transformer', 'transformer_2')))
+            preferred_path = os.path.join(
+                cache_root, hashlib.sha256(identity.encode('utf-8')).hexdigest())
+            os.makedirs(preferred_path)
+
+            with unittest.mock.patch.object(
+                    _videopipelines._pipelines, 'get_converted_checkpoint_cache_dir',
+                    return_value=cache_dir), \
+                    unittest.mock.patch.object(_videopipelines, '_apply_video_loras') as apply_loras:
+                args = (
+                    Pipeline, 'org/model', {}, {}, _pipelinewrapper.ModelType.WAN,
+                    ['org/lora;scale=1'], None, None, True, 'wan',
+                )
+                components, manifest = _videopipelines._preflight_quantized_video_loras(
+                    *args, components=('transformer', 'transformer_2'))
+
+                self.assertEqual(set(components), {'transformer'})
+                self.assertEqual(set(manifest), {'transformer'})
+                self.assertNotEqual(os.path.dirname(components['transformer']), preferred_path)
+                self.assertTrue(os.path.isfile(os.path.join(
+                    cache_dir, 'video_lora_fused', 'cache.db')))
+                self.assertEqual(Pipeline.loads, 1)
+                apply_loras.assert_called_once()
+
+                with unittest.mock.patch.object(
+                        Pipeline, 'from_pretrained', side_effect=AssertionError('cache miss')):
+                    reused_components, reused_manifest = (
+                        _videopipelines._preflight_quantized_video_loras(
+                            *args, components=('transformer', 'transformer_2')))
+
+                self.assertEqual(reused_components, components)
+                self.assertEqual(reused_manifest, manifest)
+                self.assertEqual(Pipeline.loads, 1)
+
+    def test_video_lora_preflight_rebuilds_malformed_component_manifest(self):
+        class Component:
+            def __init__(self):
+                self.peft_config = {'0': object()}
+
+            def save_pretrained(self, path):
+                os.makedirs(path)
+
+        class Pipeline:
+            loads = 0
+
+            def __init__(self):
+                self.transformer = Component()
+                self.transformer_2 = Component()
+
+            @classmethod
+            def from_pretrained(cls, model_path, **kwargs):
+                cls.loads += 1
+                return cls()
+
+            def unload_lora_weights(self):
+                self.transformer.peft_config = {}
+                self.transformer_2.peft_config = {}
+
+        with tempfile.TemporaryDirectory() as cache_dir:
+            with unittest.mock.patch.object(
+                    _videopipelines._pipelines, 'get_converted_checkpoint_cache_dir',
+                    return_value=cache_dir), \
+                    unittest.mock.patch.object(_videopipelines, '_apply_video_loras'):
+                args = (
+                    Pipeline, 'org/model', {}, {}, _pipelinewrapper.ModelType.WAN,
+                    ['org/lora;scale=1'], None, None, True, 'wan',
+                )
+                components, _ = _videopipelines._preflight_quantized_video_loras(
+                    *args, components=('transformer', 'transformer_2'))
+                manifest_path = os.path.join(
+                    os.path.dirname(components['transformer']), 'components.json')
+                with open(manifest_path, encoding='utf-8') as manifest_file:
+                    manifest = json.load(manifest_file)
+                manifest.pop('transformer_2')
+                with open(manifest_path, 'w', encoding='utf-8') as manifest_file:
+                    json.dump(manifest, manifest_file)
+
+                _videopipelines._preflight_quantized_video_loras(
+                    *args, components=('transformer', 'transformer_2'))
+
+        self.assertEqual(Pipeline.loads, 2)
 
     def _decoder_wrapper(self):
         return unittest.mock.Mock(

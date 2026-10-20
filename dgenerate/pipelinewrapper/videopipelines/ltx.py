@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import collections.abc
 import contextlib
+import gc
 import inspect
 import json
 import math
@@ -440,12 +441,16 @@ def _apply_ltx2_options(wrapper, pipe, user_args, kwargs):
 
 
 def _ensure_prompt_enhancer(wrapper, pipe, uri_string):
-    if getattr(pipe, '_dgenerate_prompt_enhancer', None) == uri_string:
+    if (getattr(pipe, '_dgenerate_prompt_enhancer', None) == uri_string
+            and getattr(pipe, 'prompt_enhancer', None) is not None):
         return
     from transformers import AutoModelForImageTextToText, AutoProcessor
 
     uri = _uris.LTXPromptEnhancerUri.parse(uri_string)
-    dtype = _enums.get_torch_dtype(uri.dtype or wrapper._dtype) or torch.bfloat16
+    enhancer_dtype = uri.dtype or wrapper._dtype
+    if _enums.get_torch_dtype(enhancer_dtype) is None:
+        enhancer_dtype = _enums.DataType.BFLOAT16
+    dtype = _enums.get_torch_dtype(enhancer_dtype)
     load = {
         'token': wrapper._auth_token,
         'local_files_only': bool(wrapper._local_files_only),
@@ -455,63 +460,104 @@ def _ensure_prompt_enhancer(wrapper, pipe, uri_string):
     if uri.subfolder is not None:
         load['subfolder'] = uri.subfolder
     _messages.debug_log(f'Loading LTX prompt enhancer "{uri.model}".')
-    pipe.prompt_enhancer = AutoModelForImageTextToText.from_pretrained(
-        uri.model, torch_dtype=dtype, **load)
+    if uri.quantizer:
+        pipe.prompt_enhancer = _vp._load_quantized_module(
+            AutoModelForImageTextToText, uri.model, uri.subfolder, uri.revision,
+            None, enhancer_dtype, uri.quantizer, wrapper._auth_token,
+            wrapper._local_files_only,
+            _vp._quantized_device_map(wrapper.device, False, uri.quantizer))
+    else:
+        pipe.prompt_enhancer = AutoModelForImageTextToText.from_pretrained(
+            uri.model, torch_dtype=dtype, **load)
     pipe.processor = AutoProcessor.from_pretrained(uri.model, **load)
     device = 'cpu' if _vp._offload_requested(wrapper) else wrapper.device
-    pipe.prompt_enhancer.to(device)
+    if not _putil.is_loaded_in_8bit_bnb(pipe.prompt_enhancer):
+        pipe.prompt_enhancer.to(device)
     pipe._dgenerate_prompt_enhancer = uri_string
 
 
 def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
-    diffusion = family == 'ltx2' and user_args.ltx_video_decoder == 'diffusion'
-    if user_args.ltx_latent_upscale:
-        if user_args.ltx_latent_upscale_mode == 'temporal':
-            frames, audio, sample_rate = _ltx_temporal_upscale(
-                wrapper, pipe, held, user_args, kwargs, diffusion)
-            return frames, audio, sample_rate
-        return _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion)
-    if diffusion:
-        kwargs = dict(kwargs)
-        kwargs['output_type'] = 'latent'
-    output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
-    return _ltx_pixels_from_output(
-        wrapper, pipe, held, output, diffusion, kwargs.get('generator'),
-        getattr(user_args, 'ltx_diffusion_decode_tile', None),
-        getattr(user_args, 'ltx_diffusion_decoder', None))
+    # Run enhancement before entering Diffusers' denoising call so its model can
+    # be returned to CPU (or released for BNB 8-bit) before video inference.
+    enhancement_requested = (
+        kwargs.get('enable_prompt_enhancement')
+        and kwargs.get('prompt') is not None
+        and getattr(pipe, 'prompt_enhancer', None) is not None)
+    _enhance_ltx_prompt_once(wrapper, pipe, kwargs)
+    enhancer = _detach_prompt_enhancer(pipe) if enhancement_requested else None
+    try:
+        diffusion = family == 'ltx2' and user_args.ltx_video_decoder == 'diffusion'
+        if user_args.ltx_latent_upscale:
+            if user_args.ltx_latent_upscale_mode == 'temporal':
+                frames, audio, sample_rate = _ltx_temporal_upscale(
+                    wrapper, pipe, held, user_args, kwargs, diffusion)
+                return frames, audio, sample_rate
+            return _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion)
+        if diffusion:
+            kwargs = dict(kwargs)
+            kwargs['output_type'] = 'latent'
+        output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
+        return _ltx_pixels_from_output(
+            wrapper, pipe, held, output, diffusion, kwargs.get('generator'),
+            getattr(user_args, 'ltx_diffusion_decode_tile', None),
+            getattr(user_args, 'ltx_diffusion_decoder', None))
+    finally:
+        if enhancer is not None:
+            pipe.prompt_enhancer = enhancer
 
 
 def _enhance_ltx_prompt_once(wrapper, pipe, kwargs):
     """
     Rewrite the prompt once, then turn enhancement off for every later pipeline call.
 
-    ``enhance_prompt`` moves Gemma onto the compute device and leaves it there.
-    A second call, which the two-stage refine would otherwise make, also meets
-    the sequential-offload hooks that loading a stage LoRA puts back on every
-    pipeline module. Gemma indexes ``embed_tokens.weight`` directly, and that
-    weight is a meta tensor under those hooks.
+    ``enhance_prompt`` moves Gemma onto the compute device. Return it to CPU
+    immediately afterward so it does not occupy accelerator memory during
+    denoising, including when the main pipeline has no offload mode enabled.
     """
     if not kwargs.get('enable_prompt_enhancement') or kwargs.get('prompt') is None:
         return
     if getattr(pipe, 'prompt_enhancer', None) is None:
         return
     system_prompt = kwargs.get('system_prompt')
+    image = kwargs.get('image')
+    conditions = kwargs.get('conditions') or ()
+    if image is None:
+        for condition in conditions:
+            image = getattr(condition, 'frames', getattr(condition, 'image', None))
+            if isinstance(image, (list, tuple)):
+                image = image[0] if image else None
+            if image is not None:
+                break
     if system_prompt is None:
-        from diffusers.pipelines.ltx2.utils import LTX2_5_T2V_DEFAULT_SYSTEM_PROMPT
-        system_prompt = LTX2_5_T2V_DEFAULT_SYSTEM_PROMPT
+        from diffusers.pipelines.ltx2.utils import (
+            LTX2_5_I2V_DEFAULT_SYSTEM_PROMPT,
+            LTX2_5_T2V_DEFAULT_SYSTEM_PROMPT)
+        if image is not None or conditions:
+            system_prompt = LTX2_5_I2V_DEFAULT_SYSTEM_PROMPT
+        else:
+            system_prompt = LTX2_5_T2V_DEFAULT_SYSTEM_PROMPT
     enhanced = pipe.enhance_prompt(
         prompt=kwargs['prompt'],
         system_prompt=system_prompt,
         generator=kwargs.get('generator'),
-        device=wrapper.device)
+        device=wrapper.device,
+        image=image)
     if isinstance(enhanced, (list, tuple)):
         enhanced = enhanced[0]
     kwargs['prompt'] = enhanced
     kwargs['enable_prompt_enhancement'] = False
-    if _vp._offload_requested(wrapper):
-        pipe.prompt_enhancer.to('cpu')
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+    enhancer = pipe.prompt_enhancer
+    if _putil.is_loaded_in_8bit_bnb(enhancer):
+        # BitsAndBytes 8-bit modules cannot be moved back to CPU with .to().
+        # Drop the pipeline reference instead so the accelerator memory can be
+        # reclaimed; _ensure_prompt_enhancer reloads it for the next generation.
+        pipe.prompt_enhancer = None
+        del enhancer
+        gc.collect()
+    else:
+        enhancer.to('cpu')
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 def _detach_prompt_enhancer(pipe):

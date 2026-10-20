@@ -2948,13 +2948,15 @@ Help Output
             ----------------------------------------------------
       --ltx-prompt-enhancer URI
             URI for the model used to rewrite the LTX prompt before denoising, for example google/gemma-4-E2B-it
-            or google/gemma-4-E2B-it;revision=main;subfolder=model;dtype=bfloat16. Setting this turns
-            enhancement on. LTX-2.5 uses its own system prompt unless --ltx-system-prompt is set.
-            -------------------------------------------------------------------------------------
+            or google/gemma-4-E2B-it;revision=main;subfolder=model;dtype=bfloat16, with an optional quantizer
+            URI such as google/gemma-4-E2B-it;quantizer="sdnq;type=int4". Setting this turns enhancement on.
+            LTX-2.5 selects its text-to-video or image-to-video system prompt from the conditioning input unless
+            --ltx-system-prompt is set.
+            ---------------------------
       --ltx-system-prompt TEXT
-            System prompt for --ltx-prompt-enhancer. Omit it and LTX-2.5 uses its text-to-video or
-            image-to-video default.
-            -----------------------
+            System prompt for --ltx-prompt-enhancer. Omit it and LTX-2.5 selects its text-to-video or
+            image-to-video default from the conditioning input.
+            ---------------------------------------------------
       --wan-low-noise-guidance-scales FLOAT [FLOAT ...]
             CFG scales for the Wan 2.2 MoE low-noise expert. When omitted, that expert copies --guidance-scales.
             ----------------------------------------------------------------------------------------------------
@@ -4943,9 +4945,13 @@ Omit it and the missing-NATTEN path uses that size. NATTEN stays untiled unless 
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
 ``--ltx-prompt-enhancer`` loads a model such as ``google/gemma-4-E2B-it`` and rewrites
-the prompt before denoising. Its URI accepts ``revision``, ``subfolder``, and ``dtype``;
-for example, ``google/gemma-4-E2B-it;dtype=bfloat16``. ``--ltx-system-prompt`` overrides
-the built-in text or image system prompt. See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/basic/prompt-enhancer-config.dgen>`_.
+the prompt before denoising. Its URI accepts ``revision``, ``subfolder``, ``dtype``,
+and ``quantizer``; for example, ``google/gemma-4-E2B-it;dtype=bfloat16`` or
+``google/gemma-4-E2B-it;quantizer="bnb;bits=4"``. ``--ltx-system-prompt`` overrides
+the built-in system prompt. LTX-2.5 selects its text-to-video prompt for text-only
+generation and its image-to-video prompt when image conditioning is supplied. For
+image-conditioned generation, the reference image is also provided to the enhancer.
+See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/basic/prompt-enhancer-config.dgen>`_.
 
 ``--ltx-image-crfs`` recompresses a conditioning still before the VAE encode. Omit it
 and the pipeline default is used (``18`` on LTX-2.5). ``0`` skips recompression.
@@ -12785,6 +12791,12 @@ the quantization backend and settings, and applies the quantization
 pre-process to the unet/transformer, and all text encoders of the
 diffusion pipeline as it loads.
 
+When ``--loras`` and ``--quantizer`` are used together, affected static-pipeline
+components are fused without quantization and cached on disk before quantization.
+LTX and Wan cache only the LoRA-loadable components after fusing them without
+quantization. The first run loads the unquantized pipeline once; later runs reuse
+the cached components and quantize them as they load.
+
 You can control which sub modules of the diffusion pipeline get quantized
 by using the ``--quantizer-map`` argument, which accepts a list
 of ``diffusers`` module names, e.g. ``unet``, ``text_encoder``, ``text_encoder_2``, 
@@ -13978,7 +13990,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [17053171602290]
+            Value: [54272803927200]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
