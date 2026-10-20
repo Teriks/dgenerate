@@ -26,7 +26,7 @@ from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 
 _ltx_prompt_enhancer_uri_parser = _textprocessing.ConceptUriParser(
-    'LTX Prompt Enhancer', ['revision', 'subfolder', 'dtype'])
+    'LTX Prompt Enhancer', ['revision', 'subfolder', 'dtype', 'quantizer'])
 
 
 class LTXPromptEnhancerUri:
@@ -71,11 +71,17 @@ class LTXPromptEnhancerUri:
         """Model data type."""
         return self._dtype
 
+    @property
+    def quantizer(self) -> _types.OptionalUri:
+        """Optional quantizer URI for the enhancer model."""
+        return self._quantizer
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
-                 dtype: _enums.DataType | str | None = None):
+                 dtype: _enums.DataType | str | None = None,
+                 quantizer: _types.OptionalUri = None):
         self._model = model
         self._revision = revision
         self._subfolder = subfolder
@@ -87,6 +93,7 @@ class LTXPromptEnhancerUri:
                 self._dtype is None and dtype is not None):
             raise _exceptions.InvalidLTXPromptEnhancerUriError(
                 'dtype must be float16, bfloat16, or float32.')
+        self._quantizer = quantizer
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'LTXPromptEnhancerUri':
@@ -97,6 +104,7 @@ class LTXPromptEnhancerUri:
                 model=parsed.concept,
                 revision=parsed.args.get('revision'),
                 subfolder=parsed.args.get('subfolder'),
-                dtype=parsed.args.get('dtype'))
+                dtype=parsed.args.get('dtype'),
+                quantizer=parsed.args.get('quantizer'))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidLTXPromptEnhancerUriError(e) from e

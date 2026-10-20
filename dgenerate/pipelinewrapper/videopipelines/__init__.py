@@ -30,17 +30,25 @@ depends on ``--model-type``.
 
 import collections.abc
 import gc
+import hashlib
 import importlib
 import inspect
+import json
 import os
+import pathlib
+import random
+import shutil
+import tempfile
 import warnings
 
 import PIL.Image
+import filelock
 import numpy
 import torch
 
 import dgenerate.eval as _eval
 import dgenerate.exceptions as _d_exceptions
+import dgenerate.filecache as _filecache
 import dgenerate.hfhub as _hfhub
 import dgenerate.mediainput as _mediainput
 import dgenerate.memoize as _d_memoize
@@ -608,14 +616,20 @@ def _load_replacement_transformer(model_type, transformer_uri, dtype, variant,
                                   auth_token, local_files_only, quantizer_uri=None,
                                   quantizer_map=None, device=None, offload=False,
                                   component_name='transformer', config_repo=None,
-                                  family: str = 'ltx2'):
+                                  family: str = 'ltx2', force_unquantized=False):
     if not isinstance(dtype, _enums.DataType):
         dtype = _enums.DataType.AUTO
     parsed = _uris.TransformerUri.parse(transformer_uri)
     if (not _hfhub.is_gguf_model(parsed.model)
+            and not force_unquantized
             and quantizer_uri and not parsed.quantizer
             and _quantize_component(component_name, quantizer_uri, quantizer_map)):
         parsed.quantizer = quantizer_uri
+    if force_unquantized:
+        if _hfhub.is_gguf_model(parsed.model):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Cannot fuse LoRAs into quantized GGUF replacement component "{component_name}".')
+        parsed.quantizer = None
     _messages.debug_log(f'Loading replacement video transformer "{transformer_uri}".')
     return parsed.load(
         variant_fallback=variant,
@@ -642,6 +656,191 @@ def _apply_video_loras(pipe, model_type, lora_uris, fuse_scale, auth_token, loca
         fuse=True)
 
 
+def _preflight_quantized_video_loras(
+        pipeline_class, model_path, load_kwargs, injected, model_type, lora_uris,
+        fuse_scale, auth_token, local_files_only, family, component_uris=(),
+        components=()):
+    """Serialize creation of each fused-LoRA cache entry across processes."""
+    cache_root = pathlib.Path(_pipelines.get_converted_checkpoint_cache_dir()) / 'video_lora_fused'
+    cache_root.mkdir(parents=True, exist_ok=True)
+    cache_identity = repr((
+        model_path, str(model_type), load_kwargs.get('revision'),
+        load_kwargs.get('variant'), load_kwargs.get('subfolder'),
+        load_kwargs.get('torch_dtype'), tuple(lora_uris),
+        1.0 if fuse_scale is None else fuse_scale,
+        tuple(component_uris), tuple(components)))
+    cache_hash = hashlib.sha256(cache_identity.encode('utf-8')).hexdigest()
+    lock_root = cache_root / '.locks'
+    lock_root.mkdir(parents=True, exist_ok=True)
+    # Keep the lock file in place: unlinking a lock after releasing it can let
+    # another process lock a new inode while a waiter still holds the old one.
+    with filelock.FileLock(str(lock_root / f'{cache_hash}.lock')):
+        return _preflight_quantized_video_loras_locked(
+            pipeline_class, model_path, load_kwargs, injected, model_type,
+            lora_uris, fuse_scale, auth_token, local_files_only, family,
+            component_uris, components)
+
+
+def _preflight_quantized_video_loras_locked(
+        pipeline_class, model_path, load_kwargs, injected, model_type, lora_uris,
+        fuse_scale, auth_token, local_files_only, family, component_uris=(),
+        components=()):
+    """Fuse video LoRAs and cache only the pipeline components they can affect."""
+    if not lora_uris:
+        return {}
+
+    cache_root = pathlib.Path(_pipelines.get_converted_checkpoint_cache_dir()) / 'video_lora_fused'
+    cache_root.mkdir(parents=True, exist_ok=True)
+    cache_identity = repr((
+        model_path, str(model_type), load_kwargs.get('revision'),
+        load_kwargs.get('variant'), load_kwargs.get('subfolder'),
+        load_kwargs.get('torch_dtype'), tuple(lora_uris),
+        1.0 if fuse_scale is None else fuse_scale,
+        tuple(component_uris), tuple(components)))
+    cache_hash = hashlib.sha256(cache_identity.encode('utf-8')).hexdigest()
+    cache_store = _filecache.KeyValueStore(str(cache_root / 'cache.db'))
+    cached_path = cache_store.get(cache_identity)
+    if cached_path is not None:
+        manifest_path = pathlib.Path(cached_path) / 'components.json'
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+            if not isinstance(manifest, dict) or not manifest:
+                raise ValueError('LoRA component manifest must be a nonempty object.')
+            if any(
+                    not isinstance(name, str)
+                    or name not in components
+                    or not isinstance(info, dict)
+                    or not isinstance(info.get('module'), str)
+                    or not info.get('module')
+                    or not isinstance(info.get('class'), str)
+                    or not info.get('class')
+                    for name, info in manifest.items()):
+                raise ValueError('LoRA component manifest has invalid component metadata.')
+            component_dirs = {
+                path.name for path in pathlib.Path(cached_path).iterdir() if path.is_dir()}
+            if component_dirs != set(manifest):
+                raise ValueError('LoRA component manifest does not match cached component directories.')
+            paths = {name: str(pathlib.Path(cached_path) / name) for name in manifest}
+            if all(pathlib.Path(path).is_dir() for path in paths.values()):
+                _messages.debug_log(f'Using cached LoRA-fused video components: {cached_path}')
+                return paths, manifest
+        except (OSError, ValueError):
+            pass
+        try:
+            del cache_store[cache_identity]
+        except KeyError:
+            pass
+
+    # Match the static component cache: SQLite is keyed by the full identity,
+    # while the hash is only a preferred directory name. If that path already
+    # belongs to another entry (including a hash collision), choose a unique one.
+    with cache_store:
+        cache_uuid = cache_hash
+        fused_path = cache_root / cache_uuid
+        while fused_path.exists():
+            cache_uuid = hashlib.sha256(
+                (cache_identity + str(random.random())).encode('utf-8')).hexdigest()
+            fused_path = cache_root / cache_uuid
+
+    temporary_path = pathlib.Path(tempfile.mkdtemp(prefix=f'{cache_hash}.', dir=cache_root))
+    try:
+        _messages.warning(
+            f'Fusing LoRAs into unquantized video components and caching them at "{fused_path}". '
+            'This is a one-time task for this model and LoRA scale.')
+        with _hfhub.with_hf_errors_as_model_not_found():
+            if str(family).startswith('wan-animate-2'):
+                from . import wan
+                pipeline = wan.load_wan_animate_2_pipeline(
+                    pipeline_class, model_path, load_kwargs, injected, load_kwargs.get('torch_dtype'))
+            else:
+                pipeline = pipeline_class.from_pretrained(model_path, **load_kwargs)
+        _apply_video_loras(
+            pipeline, model_type, lora_uris, fuse_scale, auth_token, local_files_only)
+        # Pipelines advertise every component *capable* of loading a LoRA, but
+        # a particular adapter can target only a subset (for example, LTX
+        # adapters commonly leave ``connectors`` untouched).  Capture that
+        # subset before unloading PEFT so the cache contains only fused
+        # components and the regular checkpoint continues to supply the rest.
+        affected_components = tuple(
+            name for name in components
+            if getattr(getattr(pipeline, name, None), 'peft_config', None))
+        unload_lora_weights = getattr(pipeline, 'unload_lora_weights', None)
+        if not callable(unload_lora_weights):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'{pipeline_class.__name__} cannot unload fused LoRA adapters before caching.')
+        # fuse_lora merges the adapter deltas into the base weights, but leaves
+        # PEFT wrappers in place. Save the merged base modules without those
+        # wrappers so from_pretrained sees the checkpoint's expected keys.
+        unload_lora_weights()
+        manifest = {}
+        for name in affected_components:
+            module = getattr(pipeline, name, None)
+            # Diffusers pipeline classes can advertise optional LoRA targets
+            # (for example Wan's transformer_2 for MoE checkpoints) even when
+            # the selected checkpoint does not provide that component.
+            if module is None:
+                continue
+            if not hasattr(module, 'save_pretrained'):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Cannot cache LoRA-affected video component "{name}" before quantization.')
+            if getattr(module, 'peft_config', None):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'LoRA adapters remain attached to video component "{name}" after unloading.')
+            component_path = temporary_path / name
+            module.save_pretrained(str(component_path))
+            manifest[name] = {
+                'module': type(module).__module__,
+                'class': type(module).__name__,
+            }
+        if not manifest:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'{pipeline_class.__name__} exposes no saveable LoRA components for quantization preflight.')
+        (temporary_path / 'components.json').write_text(
+            json.dumps(manifest, indent=2), encoding='utf-8')
+        del pipeline
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        if fused_path.exists():
+            if fused_path.is_dir():
+                shutil.rmtree(fused_path)
+            else:
+                fused_path.unlink()
+        temporary_path.replace(fused_path)
+        cache_store[cache_identity] = str(fused_path)
+    except Exception:
+        shutil.rmtree(temporary_path, ignore_errors=True)
+        raise
+    return ({name: str(fused_path / name) for name in manifest}, manifest)
+
+
+def _load_fused_video_component(name, component_path, component_info, dtype,
+                                quantizer_uri, auth_token,
+                                local_files_only, device, offload):
+    module_class = getattr(
+        importlib.import_module(component_info['module']), component_info['class'])
+    if quantizer_uri:
+        return _load_quantized_module(
+            module_class, component_path, None, None, None, dtype, quantizer_uri,
+            auth_token, True, _quantized_device_map(device, offload, quantizer_uri),
+            offload=offload)
+
+    kwargs = {'local_files_only': True}
+    torch_dtype = _enums.get_torch_dtype(dtype)
+    if torch_dtype is not None:
+        if getattr(module_class, '__module__', '').startswith('transformers'):
+            kwargs['dtype'] = torch_dtype
+        else:
+            kwargs['torch_dtype'] = torch_dtype
+    with _hfhub.with_hf_errors_as_model_not_found():
+        module = module_class.from_pretrained(component_path, **kwargs)
+    if offload:
+        module.to('cpu')
+    else:
+        module.to(device)
+    return module
+
+
 _DEFAULT_QUANT_NAMES = {
     'transformer',
     'transformer_2',
@@ -665,6 +864,71 @@ def _quantize_component(name: str, quantizer_uri, quantizer_map) -> bool:
     if quantizer_map is None:
         return name in _DEFAULT_QUANT_NAMES
     return name in quantizer_map
+
+
+def _video_lora_component_quantizers(
+        pipeline_class, quantizer_uri, quantizer_map, transformer_uri,
+        wan_second_transformer_uri, text_encoder_slots, text_encoder_uris):
+    """Resolve quantizers for LoRA-loadable video components and replacements."""
+    lora_components = tuple(getattr(
+        pipeline_class, '_lora_loadable_modules', ('transformer',)))
+    component_quantizers = {
+        name: quantizer_uri
+        for name in lora_components
+        if _quantize_component(name, quantizer_uri, quantizer_map)
+    }
+    for name, uri in (
+            ('transformer', transformer_uri),
+            ('transformer_2', wan_second_transformer_uri)):
+        if name in lora_components and uri:
+            parsed = _uris.TransformerUri.parse(uri)
+            if parsed.quantizer:
+                component_quantizers[name] = parsed.quantizer
+    for index, name in enumerate(text_encoder_slots):
+        if name not in lora_components or index >= len(text_encoder_uris):
+            continue
+        uri = text_encoder_uris[index]
+        if _pipelines._text_encoder_default(uri):
+            continue
+        if _pipelines._text_encoder_null(uri):
+            component_quantizers.pop(name, None)
+            continue
+        parsed = _uris.TextEncoderUri.parse(uri)
+        if parsed.quantizer:
+            component_quantizers[name] = parsed.quantizer
+        else:
+            # Global --quantizer applies to the checkpoint's default encoder,
+            # not to a replacement supplied through --text-encoders.
+            component_quantizers.pop(name, None)
+    return lora_components, component_quantizers
+
+
+def _video_lora_component_uri_cache_key(
+        lora_components, transformer_uri, wan_second_transformer_uri,
+        text_encoder_slots, text_encoder_uris):
+    """Build a LoRA cache key from component sources, excluding quantizers."""
+    component_uris = []
+    for name, uri in (
+            ('transformer', transformer_uri),
+            ('transformer_2', wan_second_transformer_uri)):
+        if name not in lora_components or not uri:
+            continue
+        parsed = _uris.TransformerUri.parse(uri)
+        component_uris.append((
+            name, parsed.model, parsed.revision, parsed.variant,
+            parsed.subfolder, parsed.dtype))
+    for index, name in enumerate(text_encoder_slots):
+        if name not in lora_components or index >= len(text_encoder_uris):
+            continue
+        uri = text_encoder_uris[index]
+        if (_pipelines._text_encoder_default(uri)
+                or _pipelines._text_encoder_null(uri)):
+            continue
+        parsed = _uris.TextEncoderUri.parse(uri)
+        component_uris.append((
+            name, parsed.encoder, parsed.model, parsed.revision,
+            parsed.variant, parsed.subfolder, parsed.dtype, parsed.mode))
+    return tuple(component_uris)
 
 
 def _quantizer_config(quantizer_uri, dtype, transformers_module: bool):
@@ -895,7 +1159,8 @@ def _inject_video_text_encoders(index,
                                 auth_token,
                                 local_files_only,
                                 device,
-                                offload):
+                                offload,
+                                force_unquantized=()):
     """
     Load ``--text-encoders`` replacements for a video pipeline.
 
@@ -923,6 +1188,8 @@ def _inject_video_text_encoders(index,
             _messages.debug_log(f'Video pipeline skipping "{name}" (--text-encoders null).')
             continue
         parsed = _uris.TextEncoderUri.parse(uri)
+        if name in force_unquantized:
+            parsed.quantizer = None
         # Global --quantizer only applies when the slot is left as +.
         # Put quantizer= on the URI to quantize a replacement encoder.
         device_map = (
@@ -990,6 +1257,10 @@ def _create_cached_video_pipeline(model_path,
             dtype = detected_dtype
     te_slots = _text_encoder_slots(index)
     te_uris = list(text_encoder_uris or ())
+    lora_components, lora_component_quantizers = _video_lora_component_quantizers(
+        pipeline_class, quantizer_uri, quantizer_map, transformer_uri,
+        wan_second_transformer_uri, te_slots, te_uris)
+    preflight_loras = bool(all_lora_uris and lora_component_quantizers)
     all_text_encoders_replaced = bool(
         te_slots
         and len(te_uris) >= len(te_slots)
@@ -1020,17 +1291,20 @@ def _create_cached_video_pipeline(model_path,
     offload = bool(model_cpu_offload or sequential_cpu_offload or model_group_offload)
     injected = {}
     if transformer_uri:
+        force_unquantized = preflight_loras and 'transformer' in lora_component_quantizers
         injected['transformer'] = _load_replacement_transformer(
             model_type, transformer_uri, dtype, variant, auth_token, local_files_only,
             quantizer_uri=quantizer_uri, quantizer_map=quantizer_map, device=device,
-            offload=offload, config_repo=model_path, family=family)
+            offload=offload, config_repo=model_path, family=family,
+            force_unquantized=force_unquantized)
         load_kwargs['transformer'] = injected['transformer']
     if wan_second_transformer_uri:
+        force_unquantized = preflight_loras and 'transformer_2' in lora_component_quantizers
         injected['transformer_2'] = _load_replacement_transformer(
             model_type, wan_second_transformer_uri, dtype, variant, auth_token, local_files_only,
             quantizer_uri=quantizer_uri, quantizer_map=quantizer_map, device=device,
             offload=offload, component_name='transformer_2', config_repo=model_path,
-            family=family)
+            family=family, force_unquantized=force_unquantized)
         load_kwargs['transformer_2'] = injected['transformer_2']
     if vae_uri:
         parsed_vae = _uris.VAEUri.parse(vae_uri)
@@ -1047,8 +1321,28 @@ def _create_cached_video_pipeline(model_path,
         load_kwargs['vae'] = injected['vae']
         _messages.debug_log(f'Video pipeline using --vae "{vae_uri}".')
     injected.update(_inject_video_text_encoders(
-        index, te_uris, dtype, auth_token, local_files_only, device, offload))
+        index, te_uris, dtype, auth_token, local_files_only, device, offload,
+        force_unquantized=(lora_component_quantizers if preflight_loras else ())))
     load_kwargs.update(injected)
+    fused_lora_components = {}
+    if preflight_loras:
+        fused_lora_cache = _preflight_quantized_video_loras(
+            pipeline_class, model_path, load_kwargs, injected, model_type,
+            all_lora_uris, lora_fuse_scale, auth_token, local_files_only, family,
+            component_uris=_video_lora_component_uri_cache_key(
+                lora_components, transformer_uri, wan_second_transformer_uri,
+                te_slots, te_uris),
+            components=lora_components)
+        fused_lora_components, fused_lora_manifest = fused_lora_cache
+        for component_name, component_path in fused_lora_components.items():
+            load_kwargs.pop(component_name, None)
+            injected.pop(component_name, None)
+            injected[component_name] = _load_fused_video_component(
+                component_name, component_path, fused_lora_manifest[component_name],
+                dtype, lora_component_quantizers.get(component_name),
+                auth_token, local_files_only,
+                device, offload)
+        load_kwargs.update(injected)
     injected.update(_quantized_classic_modules(
         model_path, revision, variant, subfolder, dtype, quantizer_uri, quantizer_map,
         auth_token, local_files_only, device, offload,
@@ -1062,8 +1356,9 @@ def _create_cached_video_pipeline(model_path,
                 pipeline_class, model_path, load_kwargs, injected, dtype)
         else:
             pipe = pipeline_class.from_pretrained(model_path, **load_kwargs)
-    _apply_video_loras(
-        pipe, model_type, all_lora_uris, lora_fuse_scale, auth_token, local_files_only)
+    if not fused_lora_components:
+        _apply_video_loras(
+            pipe, model_type, all_lora_uris, lora_fuse_scale, auth_token, local_files_only)
     # Wan VAE defaults to float32. Cast before offload so streamed group
     # offload snapshots float32 weights. Skip when --vae already chose a dtype
     # (including the float32 fallback above), or when the VAE is quantized.

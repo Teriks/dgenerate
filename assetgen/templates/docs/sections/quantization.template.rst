@@ -39,6 +39,12 @@ the quantization backend and settings, and applies the quantization
 pre-process to the unet/transformer, and all text encoders of the
 diffusion pipeline as it loads.
 
+When ``--loras`` and ``--quantizer`` are used together, affected static-pipeline
+components are fused without quantization and cached on disk before quantization.
+LTX and Wan cache only the LoRA-loadable components after fusing them without
+quantization. The first run loads the unquantized pipeline once; later runs reuse
+the cached components and quantize them as they load.
+
 You can control which sub modules of the diffusion pipeline get quantized
 by using the ``--quantizer-map`` argument, which accepts a list
 of ``diffusers`` module names, e.g. ``unet``, ``text_encoder``, ``text_encoder_2``, 
