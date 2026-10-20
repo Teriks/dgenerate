@@ -4691,6 +4691,12 @@ _component_cache_stores = {
     'unet': _get_component_cache_store('unet'),
 }
 
+# Records LoRA-to-component relationships as individual SQLite key/value
+# entries. Older cache databases have no such records and remain readable via
+# the legacy component lookup below.
+_lora_component_cache_store = _filecache.KeyValueStore(
+    os.path.join(_to_diffusers_cache_dir, 'lora_components', 'cache.db'))
+
 
 def _get_component_cache_key(
         component_name: str,
@@ -4770,6 +4776,27 @@ def _get_affected_components_for_lora(pipeline_class) -> list[str]:
     if hasattr(pipeline_class, '_lora_loadable_modules'):
         return list(pipeline_class._lora_loadable_modules)
     return []
+
+
+def _get_lora_component_cache_identity(
+        model_path: str,
+        model_type: _enums.ModelType,
+        pipeline_type: _enums.PipelineType,
+        lora_uris: _types.OptionalUris,
+        lora_fuse_scale: float | None,
+        revision: str | None,
+        variant: str | None,
+        subfolder: str | None,
+        dtype: _enums.DataType,
+        original_config: str | None,
+        manual_component_uris: dict[str, str] | None,
+        components: list[str]
+) -> str:
+    """Build a database identity for a LoRA and its candidate components."""
+    return repr((
+        model_path, str(model_type), str(pipeline_type), tuple(lora_uris or ()),
+        lora_fuse_scale, revision, variant, subfolder, str(dtype), original_config,
+        tuple(sorted((manual_component_uris or {}).items())), tuple(components)))
 
 
 def _get_quantizable_components(model_type: _enums.ModelType) -> list[str]:
@@ -5073,6 +5100,22 @@ def _cache_components_granular(
     cached_component_paths = {}
     components_to_load = []
 
+    lora_cache_identity = None
+    component_mapping_known = False
+    if lora_uris:
+        lora_cache_identity = _get_lora_component_cache_identity(
+            model_path, model_type, pipeline_type, lora_uris, lora_fuse_scale,
+            revision, variant, subfolder, dtype, original_config,
+            manual_component_uris, components_to_cache)
+        known_key = f'{lora_cache_identity}|complete'
+        known_value = _lora_component_cache_store.get(known_key)
+        if known_value == '1':
+            component_mapping_known = True
+            components_to_cache = [
+                component for component in components_to_cache
+                if _lora_component_cache_store.get(
+                    f'{lora_cache_identity}|component|{component}') == '1']
+
     # Check which components are already cached
     for component in components_to_cache:
         cache_key = _get_component_cache_key(
@@ -5090,6 +5133,12 @@ def _cache_components_granular(
                 _messages.debug_log(f"Using cached {component} from: {cached_path}")
             else:
                 components_to_load.append(component)
+
+    # A partial set without database metadata may come from an older broad
+    # cache. Reinspect all candidates before recording the affected components.
+    if lora_uris and not component_mapping_known and components_to_load and cached_component_paths:
+        cached_component_paths.clear()
+        components_to_load = list(components_to_cache)
 
     # If all components are cached, we still need to extract manual quantizer info
     manual_quantizers = {}
@@ -5150,10 +5199,19 @@ def _cache_components_granular(
         )
 
     if lora_uris:
+        affected_components = tuple(dict.fromkeys((
+            *cached_component_paths,
+            *(component for component in components_to_load
+              if hasattr(pipeline, component)
+              and getattr(getattr(pipeline, component), 'peft_config', None)))))
         pipeline.unload_lora_weights()
+    else:
+        affected_components = tuple(components_to_load)
 
     # Cache each component individually
     for component in components_to_load:
+        if component not in affected_components:
+            continue
         if not hasattr(pipeline, component):
             _messages.debug_log(
                 f"Component {component} not found in pipeline, skipping cache")
@@ -5197,6 +5255,13 @@ def _cache_components_granular(
             cache_store[cache_key] = cache_path
 
         cached_component_paths[component] = cache_path
+
+    if lora_uris and lora_cache_identity is not None:
+        with _lora_component_cache_store:
+            for component in affected_components:
+                _lora_component_cache_store[
+                    f'{lora_cache_identity}|component|{component}'] = '1'
+            _lora_component_cache_store[f'{lora_cache_identity}|complete'] = '1'
 
     return cached_component_paths, manual_quantizers
 
