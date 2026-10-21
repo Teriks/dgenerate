@@ -1,0 +1,27 @@
+{
+  "_class_name": "MotifVideoTransformer3DModel",
+  "_diffusers_version": "0.36.0",
+  "_library": "diffusers",
+  "attention_head_dim": 128,
+  "image_embed_dim": 1152,
+  "in_channels": 33,
+  "mlp_ratio": 4.0,
+  "norm_type": "layer_norm",
+  "num_attention_heads": 12,
+  "num_decoder_layers": 8,
+  "num_layers": 12,
+  "num_single_layers": 24,
+  "out_channels": 16,
+  "patch_size": 2,
+  "patch_size_t": 1,
+  "qk_norm": "rms_norm",
+  "rope_axes_dim": [
+    16,
+    56,
+    56
+  ],
+  "rope_theta": 10000.0,
+  "text_embed_dim": 2560,
+  "enable_text_cross_attention_dual": false,
+  "enable_text_cross_attention_single": true
+}

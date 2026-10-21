@@ -1,0 +1,32 @@
+{
+  "_class_name": "MotifVideoPipeline",
+  "_diffusers_version": "0.35.2",
+  "scheduler": [
+    "diffusers",
+    "FlowMatchEulerDiscreteScheduler"
+  ],
+  "text_encoder": [
+    "transformers",
+    "T5Gemma2Encoder"
+  ],
+  "tokenizer": [
+    "transformers",
+    "GemmaTokenizer"
+  ],
+  "transformer": [
+    "diffusers",
+    "MotifVideoTransformer3DModel"
+  ],
+  "vae": [
+    "diffusers",
+    "AutoencoderKLWan"
+  ],
+  "feature_extractor": [
+    "transformers",
+    "SiglipImageProcessor"
+  ],
+  "guider": [
+    "diffusers",
+    "AdaptiveProjectedGuidance"
+  ]
+}

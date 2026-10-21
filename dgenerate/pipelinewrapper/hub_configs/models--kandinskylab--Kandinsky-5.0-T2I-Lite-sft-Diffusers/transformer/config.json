@@ -1,0 +1,27 @@
+{
+  "_class_name": "Kandinsky5Transformer3DModel",
+  "_diffusers_version": "0.33.0.dev0",
+  "in_visual_dim": 16,
+  "out_visual_dim": 16,
+  "time_dim": 512,
+  "patch_size": [
+    1, 
+    2, 
+    2
+  ],
+  "model_dim": 2560,
+  "ff_dim": 10240,
+  "num_text_blocks": 2,
+  "num_visual_blocks": 50,
+  "axes_dims": [
+    32, 
+    48, 
+    48
+  ],
+  "visual_cond": false,
+  "in_text_dim": 3584,
+  "in_text_dim2": 768,
+  "attention_type": "regular"
+}
+
+

@@ -1,0 +1,36 @@
+{
+  "_class_name": "HunyuanVideo15Pipeline",
+  "_diffusers_version": "0.36.0.dev0",
+  "guider": [
+    "diffusers",
+    "ClassifierFreeGuidance"
+  ],
+  "scheduler": [
+    "diffusers",
+    "FlowMatchEulerDiscreteScheduler"
+  ],
+  "text_encoder": [
+    "transformers",
+    "Qwen2_5_VLTextModel"
+  ],
+  "text_encoder_2": [
+    "transformers",
+    "T5EncoderModel"
+  ],
+  "tokenizer": [
+    "transformers",
+    "Qwen2TokenizerFast"
+  ],
+  "tokenizer_2": [
+    "transformers",
+    "ByT5Tokenizer"
+  ],
+  "transformer": [
+    "diffusers",
+    "HunyuanVideo15Transformer3DModel"
+  ],
+  "vae": [
+    "diffusers",
+    "AutoencoderKLHunyuanVideo15"
+  ]
+}
