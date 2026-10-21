@@ -247,6 +247,25 @@ def _type_wan_timesteps(val):
     return steps
 
 
+def _type_video_timesteps(val):
+    val = str(val).strip()
+    if val.startswith('expr:'):
+        expression = val.removeprefix('expr:').strip()
+        if not expression:
+            raise argparse.ArgumentTypeError('Video timestep expression cannot be empty')
+        return expression
+    parts = [part.strip() for part in str(val).split(',') if part.strip()]
+    if not parts:
+        raise argparse.ArgumentTypeError('Video timesteps cannot be empty')
+    try:
+        steps = [int(part) for part in parts]
+    except ValueError:
+        raise argparse.ArgumentTypeError('Video timesteps must be integers')
+    if any(step < 0 for step in steps):
+        raise argparse.ArgumentTypeError('Video timesteps must be greater than or equal to 0')
+    return steps
+
+
 def _type_wan_conditioning_scale(val):
     parts = [part.strip() for part in str(val).split(',') if part.strip()]
     if not parts:
@@ -4022,8 +4041,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         )
     )
 
+    output_size_group = parser.add_mutually_exclusive_group()
     actions.append(
-        parser.add_argument(
+        output_size_group.add_argument(
             '-s', '--output-size', action='store', default=None, type=_type_output_size, metavar="SIZE",
             help="""Image output size, for txt2img generation this is the exact output size.
                     The dimensions specified for this value must be aligned by 8 or you will receive an error message.
@@ -4051,6 +4071,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     that are specified  with the 'floyd' keyword argument in an --image-seeds definition are
                     never resized or processed in any way."""
         )
+    )
+    actions.append(
+        output_size_group.add_argument(
+            '--qwen21-output-resolution', type=_type_positive_int, default=None, metavar="RESOLUTION",
+            help="Target side length for Qwen-Image 2.1 output resolution inference. Only supported by Qwen-Image 2.1.")
     )
 
     actions.append(
@@ -5177,13 +5202,24 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""One or more output frame rates for video model types.
                     Each value will be tried in turn.
 
-                    Defaults to 24 for --model-type ltx, 16 for wan,
-                    30 for wan-animate, and 24 for wan-animate-2.
+                    Defaults to 24 for --model-type ltx, motif-video, and 15 for
+                    hunyuan-video-15; 16 for wan;
+                    30 for wan-animate; and 24 for wan-animate-2.
 
                     NOWRAP!
                     (default: model type default)"""
         )
     )
+
+    actions.append(parser.add_argument(
+        '--video-timesteps', action='store', nargs='+', default=None,
+        dest='video_timesteps', metavar='CSV_INT_OR_EXPRESSION', type=_type_video_timesteps,
+        help='One or more comma-separated timestep schedules or "expr: ..." expressions for Motif-Video. '
+              'Expressions receive the scheduler default array as "timesteps".'))
+    actions.append(parser.add_argument(
+        '--qwen21-no-kv-cache', action='store_const', const=False, default=None,
+        dest='qwen21_use_kv_cache',
+        help='Disable the Qwen-Image 2.1 key/value attention cache.'))
 
     actions.append(
         parser.add_argument(
@@ -5710,7 +5746,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
                     
-                    For SD3/Flux models, FlowMatchEulerDiscreteScheduler is supported.
+                    For SD3, Flux, Qwen-Image, Qwen-Image 2.1, Krea 2,
+                    Kandinsky 5 Image, and Z-Image, FlowMatchEulerDiscreteScheduler is supported.
                     
                     NOWRAP!
                     Example: --denoising-start 0.8
@@ -5746,7 +5783,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
                     
-                    For SD3/Flux models, FlowMatchEulerDiscreteScheduler is supported.
+                    For SD3, Flux, Qwen-Image, Qwen-Image 2.1, Krea 2,
+                    Kandinsky 5 Image, and Z-Image, FlowMatchEulerDiscreteScheduler is supported.
                     
                     NOWRAP!
                     Example: --denoising-end 0.5

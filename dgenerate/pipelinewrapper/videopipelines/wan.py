@@ -579,7 +579,7 @@ def _call_wan(wrapper, user_args):
     if user_args.max_sequence_length is not None:
         kwargs['max_sequence_length'] = int(user_args.max_sequence_length)
 
-    _vp._set_ltx_vae_slicing(pipe, bool(user_args.vae_slicing))
+    _vp._set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
 
     if mode == 'wan-image':
         kwargs['image'] = user_args.images[0]
@@ -785,7 +785,7 @@ def _call_wan_animate(wrapper, user_args):
         kwargs['background_video'] = user_args.wan_background_video_frames[:len(pose)]
         kwargs['mask_video'] = user_args.mask_video_frames[:len(pose)]
 
-    _vp._set_ltx_vae_slicing(pipe, bool(user_args.vae_slicing))
+    _vp._set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
     output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
     frames = _vp.frames_from_output(getattr(output, 'frames', output))
     return frames[:len(pose)], None, None, fps
@@ -875,7 +875,7 @@ def _call_wan_animate_2(wrapper, user_args):
     if user_args.max_sequence_length is not None:
         kwargs['max_sequence_length'] = int(user_args.max_sequence_length)
 
-    _vp._set_ltx_vae_slicing(pipe, bool(user_args.vae_slicing))
+    _vp._set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
     videos = pipe(**kwargs)
     frames = _vp.frames_from_output(videos)
     return frames, None, None, fps

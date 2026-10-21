@@ -4538,6 +4538,112 @@ Audio from LTX-2.5 is muxed into an mp4. GIF, WebP, and ``--animation-format fra
 
 Conditioning stays in ``--image-seeds``.
 
+HunyuanVideo 1.5, Motif-Video, and Kandinsky 5.0 Video each provide a
+text-to-video pipeline and a separate single-image-to-video pipeline. With no
+image seed, a prompt generates a clip from noise. With one still image in
+``--image-seeds``, the image conditions the clip's opening. These models do not
+accept multiple reference images, video seeds, ``last-frame=``, or the Wan VACE
+conditioning keywords. The checkpoint's ``model_index.json`` selects the
+pipeline variant; use a checkpoint published for the mode you want.
+
+They share the video options ``--video-lengths`` (seconds), ``--video-fps``,
+``--output-size``, ``--animation-format``, and the usual prompt, seed, guidance,
+and step arguments. One argument combination writes one clip. The requested
+duration is converted to a frame count using the selected frame rate and the
+checkpoint VAE's temporal stride. Width and height are aligned down to a
+multiple of 16 when needed. For image-to-video, the first image supplies the
+aspect ratio by default; the image is resized to the generation canvas. Video
+VAEs are tiled automatically, so ``--vae-tiling`` is rejected. ``--vae-slicing``
+is available to reduce VAE memory use. These integrations generate video frames
+only; they do not synthesize audio.
+
+HunyuanVideo 1.5
+----------------
+
+Use ``--model-type hunyuan-video-15`` with a Diffusers HunyuanVideo 1.5
+checkpoint. The published 480p T2V and I2V checkpoints are separate; the
+checkpoint determines which pipeline is loaded. The defaults are 15 fps,
+guidance 6, and 50 inference steps. ``FlowMatchEulerDiscreteScheduler`` is the
+supported scheduler. Hunyuan also accepts ``--sigmas`` when specifying a custom
+FlowMatch schedule; the number of sigmas determines the number of denoising
+steps.
+
+The examples use ``bfloat16``, sequential CPU offload, 50 steps, and an
+``848x480`` canvas. Sequential offload is a useful starting point on consumer
+GPUs; it reduces peak GPU memory at the cost of transferring model components
+between CPU and GPU. ``--model-cpu-offload`` and ``--model-group-offload`` are
+also available. ``--torch-compile`` compiles the repeated transformer blocks;
+the first run can take longer while compilation happens.
+
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hunyuan_video_15/text-to-video/config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hunyuan_video_15/image-to-video/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hunyuan_video_15/gguf/config.dgen>`_
+
+Motif-Video
+-----------
+
+Use ``--model-type motif-video`` with ``Motif-Technologies/Motif-Video-2B``.
+The same repository supports text-to-video and first-frame image-to-video; the
+mode selects the corresponding pipeline. Defaults are 24 fps, guidance 5, and
+50 inference steps. Motif supports ``FlowMatchEulerDiscreteScheduler`` and
+``DPMSolverMultistepScheduler``. ``--max-sequence-length`` controls the prompt
+token limit (default 512).
+
+``--video-timesteps`` is Motif's explicit timestep-schedule option. Give one or
+more comma-separated integer schedules, such as ``1000,700,300,0``, or
+``expr:`` expressions evaluated with the scheduler's default array named
+``timesteps`` (for example, ``expr: timesteps[::2]``). Multiple schedules are
+tried in turn. The number of selected timesteps replaces ``--inference-steps``
+for that run. Do not combine
+``--video-timesteps`` with ``--sigmas``; Motif uses a timestep schedule rather
+than a sigma schedule.
+
+The standard examples use ``bfloat16``, sequential CPU offload, 50 steps, and
+``832x480``. Offload options and ``--torch-compile`` are available. A GGUF
+transformer can be used with either text-to-video or image-to-video while
+keeping the parent Diffusers repository as the model path.
+
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/text-to-video/config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/image-to-video/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/gguf/config.dgen>`_
+* `I2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/image-to-video-gguf/config.dgen>`_
+
+Kandinsky 5.0 Video
+-------------------
+
+Use ``--model-type kandinsky5-video`` with a Kandinsky 5.0 video checkpoint.
+Text-to-video checkpoints include Lite and Pro variants; image-to-video
+checkpoints are published separately. Choose a T2V or I2V repository for the
+intended mode. Defaults are 24 fps, guidance 5, and 50 inference steps, with
+``FlowMatchEulerDiscreteScheduler``. The common 5-second checkpoints generate
+121 frames at 24 fps. T2V Lite also has 10-second checkpoints; match the
+requested duration to the duration for which the checkpoint was trained.
+
+Checkpoint variants can have different guidance and step expectations. The
+16-step distilled T2V Lite checkpoint should be run with 16 inference steps and
+guidance 1, as should the distilled Pro checkpoints; no-CFG checkpoints should
+also use guidance 1. The GGUF example uses a community Q4_K_S quantization of
+the T2V Pro sft transformer. ``--torch-compile`` and Cache-DiT can be
+used to reduce denoising cost. The examples use sequential CPU offload; the
+other model offload modes are available as well.
+
+LoRAs are supported through ``--loras``. The examples include camera-orbit and
+object-rotation LoRAs for T2V Lite/Pro and I2V Lite/Pro; preserve each LoRA's
+trigger phrase in the prompt. GGUF is currently demonstrated for T2V only; a
+compatible I2V GGUF checkpoint is not provided in these examples.
+
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text-to-video/config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/image-to-video/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text-to-video-gguf/config.dgen>`_
+* `Kandinsky 5 video LoRA examples <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/kandinsky5/lora>`_
+
+For all three model types, ``--transformer`` replaces only the denoising
+transformer; the parent Diffusers checkpoint continues to provide the VAE and
+text encoders. ``--quantizer-map`` can target the transformer and the
+family-specific text components. These models do not support video batching
+with ``--batch-size`` greater than 1. The Console UI provides separate T2V and
+I2V recipes where the corresponding checkpoints are available.
+
 LTX-2.5 (``ltx``)
 -----------------
 
@@ -5472,6 +5578,9 @@ Supported Model Types:
 - Flux.1 models (use ``latents: ...`` or ``latents= ...`` syntax)
 - Flux.2 models (use ``latents: ...`` or ``latents= ...`` syntax)
 - Qwen-Image models (use ``latents: ...`` or ``latents= ...`` syntax; not Layered)
+- Qwen-Image 2.1 (use ``latents: ...`` syntax)
+- Krea 2 (use ``latents: ...`` syntax)
+- Kandinsky 5 Image (use ``latents: ...`` syntax)
 - Z-Image models (use ``latents: ...`` or ``latents= ...`` syntax)
 - SDXL / Kolors models (use direct img2img latents input, no special syntax)
 
@@ -5494,8 +5603,8 @@ Note for SDXL: SDXL models do not use the ``latents: ...`` syntax (or ``latents=
 cooperative denoising. Instead, SDXL takes latent tensors directly through the standard img2img slot
 without special syntax.
 
-SD3, Flux.1, Flux.2, Qwen-Image, and Z-Image use the ``latents:`` syntax
-similar to SD 1.5/2.x models.
+SD3, Flux.1, Flux.2, Qwen-Image, Qwen-Image 2.1, Krea 2, Kandinsky 5 Image,
+and Z-Image use the ``latents:`` syntax similar to SD 1.5/2.x models.
 
 Combined Image and Latents Input:
 
@@ -5549,7 +5658,9 @@ with each model handling a specific portion of the denoising steps. This is acco
 the ``--denoising-start`` and ``--denoising-end`` arguments in combination with latents interchange.
 
 This is supported for SD1.5/2.x (with certain schedulers), SDXL, Kolors, SD3,
-Flux.1, Flux.2, Qwen-Image (not Layered), and Z-Image models.
+Flux.1, Flux.2, Qwen-Image (not Layered), Qwen-Image 2.1, Krea 2 Raw,
+Kandinsky 5 Image, and Z-Image models. Flow-matching image models require
+``FlowMatchEulerDiscreteScheduler`` for denoising splits.
 
 The process works as follows:
 
@@ -5900,6 +6011,123 @@ Qwen-Image Cooperative Denoising:
     --output-size 1024
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
 
+Qwen-Image 2.1 Cooperative Denoising:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Split Qwen-Image 2.1 denoising between two calls using saved spatial latents.
+    
+    \set split 0.8
+    \set prompt "A red fox standing in a snowy pine forest at sunrise, detailed photography"
+    
+    Qwen/Qwen-Image-2.1
+    --model-type qwen-image-21
+    --dtype bfloat16
+    --model-sequential-offload
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 40
+    --gen-seeds 1
+    --output-path cooperative
+    --image-format pt
+    --output-size 1024
+    --denoising-end {{ split }}
+    --prompts {{ quote(prompt) }}
+    
+    Qwen/Qwen-Image-2.1
+    --model-type qwen-image-21
+    --dtype bfloat16
+    --model-sequential-offload
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 40
+    --gen-seeds 1
+    --output-path cooperative
+    --image-seeds "latents: {{ quote(last_images) }}"
+    --output-size 1024
+    --denoising-start {{ split }}
+    --prompts "A red fox standing in a snowy pine forest at sunrise, crisp detailed photography"
+
+Krea 2 Cooperative Denoising:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Split Krea 2 Raw denoising between two calls. Turbo is distilled and is not
+    # intended for cooperative denoising; this uses the full Raw checkpoint.
+    
+    \set split 0.8
+    
+    krea/Krea-2-Raw
+    --model-type krea2
+    --dtype bfloat16
+    --model-sequential-offload
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 28
+    --guidance-scales 4.5
+    --gen-seeds 1
+    --output-path cooperative
+    --image-format pt
+    --output-size 1024
+    --denoising-end {{ split }}
+    --prompts "A red fox standing in a snowy pine forest at sunrise, detailed photography"
+    
+    krea/Krea-2-Raw
+    --model-type krea2
+    --dtype bfloat16
+    --model-sequential-offload
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 28
+    --guidance-scales 4.5
+    --gen-seeds 1
+    --output-path cooperative
+    --image-seeds "latents: {{ quote(last_images) }}"
+    --output-size 1024
+    --denoising-start {{ split }}
+    --prompts "A red fox standing in a snowy pine forest at sunrise, crisp detailed photography"
+
+Kandinsky 5 Image Cooperative Denoising:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Split Kandinsky 5 Image Lite denoising between two calls using saved latents.
+    
+    \set split 0.8
+    
+    kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers
+    --model-type kandinsky5-image
+    --dtype bfloat16
+    --model-sequential-offload
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 50
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path cooperative
+    --image-format pt
+    --output-size 1024
+    --denoising-end {{ split }}
+    --prompts "A red fox standing in a snowy pine forest at sunrise, detailed photography"
+    
+    kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers
+    --model-type kandinsky5-image
+    --dtype bfloat16
+    --model-sequential-offload
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 50
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path cooperative
+    --image-seeds "latents: {{ quote(last_images) }}"
+    --output-size 1024
+    --denoising-start {{ split }}
+    --prompts "A red fox standing in a snowy pine forest at sunrise, crisp detailed photography"
+
 Z-Image Cooperative Denoising:
 
 .. code-block:: jinja
@@ -6020,7 +6248,8 @@ when ``--denoising-start`` has been specified with an SDXL or Kolors model:
 Advanced Usage with Image Input:
 
 You can also combine cooperative denoising with img2img input by using the combined syntax,
-this works for SD1.5/2.x, SD3, Flux.1, Flux.2, Qwen-Image, and Z-Image
+this works for SD1.5/2.x, SD3, Flux.1, Flux.2, Qwen-Image, Qwen-Image 2.1,
+Kandinsky 5 Image, and Z-Image
 models using the ``latents= ...`` syntax:
 
 .. code-block:: bash
@@ -7797,6 +8026,88 @@ inpainting ControlNet has ``extra_condition_channels=4``. ``start`` and
 See `examples/qwen-image/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/config.dgen>`_
 and `examples/qwen-image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/inpaint-config.dgen>`_.
 
+Qwen-Image 2.1
+~~~~~~~~~~~~~~
+
+``--model-type qwen-image-21`` selects Qwen-Image 2.1's unified text-to-image
+and image-conditioned pipeline. An image seed is optional and acts as a
+reference condition, not as an img2img starting image: there is no strength
+control, img2img mode, inpaint mode, or ControlNet support. Multiple reference
+images can be passed with the ``images:`` image-seed syntax.
+
+The default is 40 steps with true CFG disabled (guidance 1). Setting
+``--guidance-scales`` above 1 enables true CFG; a negative prompt can be given
+after ``;`` in the prompt. ``--qwen21-output-resolution`` is the pipeline's
+target-side setting, not a width, height, or maximum-side option. It uses the
+square of that value as the target image area and derives width and height,
+preserving the reference image aspect ratio when conditioning. Use
+``--output-size`` when you need explicit dimensions. The pipeline defaults the
+target side to 1024. ``--qwen21-no-kv-cache`` disables the prefix key/value
+cache, which is enabled by default.
+
+The Turbo checkpoint supplies a short sigma schedule and is intended to run
+with that schedule rather than the base checkpoint's 40-step setting. Qwen-Image
+2.1 also supports LoRAs, compatible GGUF transformer weights through
+``--transformer``, PyTorch latent output/input, and FlowMatch cooperative
+denoising. ``--max-sequence-length`` is not supported by this pipeline.
+
+* `Basic text-to-image <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/basic/config.dgen>`_
+* `Image-conditioned generation <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/image-conditioned/config.dgen>`_
+* `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/turbo/config.dgen>`_
+* `LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/lora/config.dgen>`_
+* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/gguf/config.dgen>`_
+* `Cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/qwen-image-21/cooperative-denoising-config.dgen>`_
+
+Krea 2
+~~~~~~
+
+``--model-type krea2`` is text-to-image only. It has no image-seed editing or
+inpainting pipeline and does not support ControlNet. The two supplied
+checkpoints use different sampling defaults:
+
+* ``krea/Krea-2-Raw`` uses 28 steps and guidance 4.5.
+* ``krea/Krea-2-Turbo`` is distilled, uses 8 steps, and runs without guidance
+  (scale 0). It does not use a negative prompt; use the Turbo checkpoint's
+  intended short-step settings rather than the Raw defaults.
+
+Krea 2 Raw accepts a negative prompt after ``;`` in the prompt. The Turbo
+checkpoint does not expose negative-prompt guidance.
+
+``--output-size`` defaults to a square 1024-pixel image in the examples. Krea 2
+supports transformer LoRAs and compatible GGUF transformer files with
+``--transformer``. It also supports PyTorch latent output/input and FlowMatch
+cooperative denoising; the cooperative-denoising example uses the Raw model.
+
+* `Raw checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/raw/config.dgen>`_
+* `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/turbo/config.dgen>`_
+* `Turbo LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/lora/turbo-config.dgen>`_
+* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/gguf/config.dgen>`_
+* `Raw cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/krea2/cooperative-denoising-config.dgen>`_
+
+Kandinsky 5 Image
+~~~~~~~~~~~~~~~~~
+
+``--model-type kandinsky5-image`` selects text-to-image or instruction-based
+image editing according to the checkpoint. The examples use
+``Kandinsky-5.0-T2I-Lite-sft-Diffusers`` for generation and
+``Kandinsky-5.0-I2I-Lite-sft-Diffusers`` for editing. For editing, pass the
+source image in ``--image-seeds`` and describe the requested change in the
+prompt. The image is a condition, not an img2img strength input; there is no
+inpaint or ControlNet mode. Negative prompts are supported after ``;`` in the
+prompt. The defaults are 50 steps and guidance 3.5; ``--max-sequence-length``
+can adjust the text token limit (default 512).
+
+The examples use ``--output-size 1024x1024`` and ``bfloat16`` with sequential
+CPU offload. Kandinsky 5 Image supports PyTorch latent output/input and FlowMatch
+cooperative denoising. ``--transformer`` can replace the image transformer,
+but there is currently no Kandinsky 5 Image GGUF example in the examples
+directory; the Kandinsky 5 Video GGUF is a different transformer/checkpoint
+family and is not an image GGUF example.
+
+* `Text-to-image <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text-to-image/config.dgen>`_
+* `Image editing <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/image-edit/config.dgen>`_
+* `Kandinsky 5 Image cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/kandinsky5-image/cooperative-denoising-config.dgen>`_
+
 Qwen-Image Edit
 ~~~~~~~~~~~~~~~
 
@@ -7856,7 +8167,9 @@ Console recipes
 The Console UI recipes are ``Flux.2 (Dev)``, ``Flux.2 Klein``, ``Flux.2 Klein KV``,
 ``Z-Image (Turbo)``, ``Z-Image Turbo (SDNQ)``, ``Z-Image (Base, 2-step LoRA)``,
 ``Z-Image (ControlNet)``, ``Z-Image Omni``, ``Qwen-Image``, ``Qwen-Image Edit``,
-and ``Qwen-Image Layered``. GGUF recipes for those models set ``--transformer``
+``Qwen-Image Layered``, ``Qwen-Image 2.1``, ``Qwen-Image 2.1 Turbo``,
+``Krea 2 Raw``, ``Krea 2 Turbo``, ``Kandinsky 5 Image``, and
+``Kandinsky 5 Image Edit``. GGUF recipes for those models set ``--transformer``
 to a quantized file and leave the parent repository as the model line.
 
 Specifying T2I Adapters
@@ -9945,10 +10258,6 @@ these are the arguments that are available for use:
     sada-lagrange-step: int
     sada-max-fix: int
     sada-max-interval: int
-    dype-method: str
-    dype-base-resolution: int
-    dype-mscale: str
-    dype-axis-scaling: str
     tea-cache-rel-l1-threshold: float
     spectrum-weight: float
     spectrum-order: int
@@ -9984,15 +10293,12 @@ these are the arguments that are available for use:
     ltx-audio-modality-scale: float
     ltx-stg-blocks: [int, ...]
     ltx-use-cross-timestep: bool
-    ltx-latent-upscale-mode: str
-    ltx-temporal-upscale-rounds: int
+    ltx-latent-upscale: bool
     ltx-noise-scale: float
     ltx-stage-guidance-scale: float
     ltx-stage-audio-guidance-scale: float
     ltx-stage-lora-uris: [str, ...]
     ltx-video-decoder: str
-    ltx-diffusion-decoder: str
-    ltx-diffusion-decode-tile: str
     ltx-decode-timestep: float
     ltx-decode-noise-scale: float
     ltx-image-crf: int
@@ -13433,12 +13739,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_batch_size"
             Type: int | None
             Value: None
-        Name: "last_cache_dit"
-            Type: <class 'bool'>
-            Value: False
-        Name: "last_cache_dit_config"
-            Type: str | None
-            Value: None
         Name: "last_clip_skips"
             Type: collections.abc.Sequence[int] | None
             Value: []
@@ -13469,21 +13769,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_dtype"
             Type: <enum 'DataType'>
             Value: <DataType.AUTO: 0>
-        Name: "last_dype"
-            Type: <class 'bool'>
-            Value: False
-        Name: "last_dype_axis_scalings"
-            Type: collections.abc.Sequence[str] | None
-            Value: []
-        Name: "last_dype_base_resolutions"
-            Type: collections.abc.Sequence[int] | None
-            Value: []
-        Name: "last_dype_methods"
-            Type: collections.abc.Sequence[str] | None
-            Value: []
-        Name: "last_dype_mscales"
-            Type: collections.abc.Sequence[str] | None
-            Value: []
         Name: "last_flux2_caption_upsample_temperature"
             Type: float | None
             Value: None
@@ -13592,12 +13877,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ltx_decode_timesteps"
             Type: collections.abc.Sequence[float] | None
             Value: []
-        Name: "last_ltx_diffusion_decode_tile"
-            Type: str | None
-            Value: None
-        Name: "last_ltx_diffusion_decoder"
-            Type: str | None
-            Value: None
         Name: "last_ltx_ic_lora_uri"
             Type: str | None
             Value: None
@@ -13605,11 +13884,8 @@ The ``\templates_help`` output from the above example is:
             Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_ltx_latent_upscale"
-            Type: bool | str
+            Type: <class 'bool'>
             Value: False
-        Name: "last_ltx_latent_upscale_mode"
-            Type: <class 'str'>
-            Value: 'spatial'
         Name: "last_ltx_modality_scales"
             Type: collections.abc.Sequence[float] | None
             Value: []
@@ -13640,9 +13916,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ltx_system_prompt"
             Type: str | None
             Value: None
-        Name: "last_ltx_temporal_upscale_rounds"
-            Type: <class 'int'>
-            Value: 1
         Name: "last_ltx_use_cross_timestep"
             Type: bool | None
             Value: None
@@ -13990,7 +14263,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [54272803927200]
+            Value: [90177460068921]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -14079,9 +14352,6 @@ The ``\templates_help`` output from the above example is:
             Type: str | None
             Value: None
         Name: "last_wan_animate_preprocess"
-            Type: <class 'bool'>
-            Value: False
-        Name: "last_wan_animate_preprocess_output"
             Type: <class 'bool'>
             Value: False
         Name: "last_wan_background_image_processors"

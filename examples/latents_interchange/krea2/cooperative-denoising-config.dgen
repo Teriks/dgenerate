@@ -1,0 +1,35 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Split Krea 2 Raw denoising between two calls. Turbo is distilled and is not
+# intended for cooperative denoising; this uses the full Raw checkpoint.
+
+\set split 0.8
+
+krea/Krea-2-Raw
+--model-type krea2
+--dtype bfloat16
+--model-sequential-offload
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 28
+--guidance-scales 4.5
+--gen-seeds 1
+--output-path cooperative
+--image-format pt
+--output-size 1024
+--denoising-end {{ split }}
+--prompts "A red fox standing in a snowy pine forest at sunrise, detailed photography"
+
+krea/Krea-2-Raw
+--model-type krea2
+--dtype bfloat16
+--model-sequential-offload
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 28
+--guidance-scales 4.5
+--gen-seeds 1
+--output-path cooperative
+--image-seeds "latents: {{ quote(last_images) }}"
+--output-size 1024
+--denoising-start {{ split }}
+--prompts "A red fox standing in a snowy pine forest at sunrise, crisp detailed photography"

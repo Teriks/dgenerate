@@ -41,7 +41,8 @@ _ACTIVE: contextvars.ContextVar[SpectrumSettings | None] = contextvars.ContextVa
     default=None,
 )
 
-_BLOCK_LISTS = ('transformer_blocks', 'single_transformer_blocks', 'blocks', 'layers')
+_BLOCK_LISTS = (
+    'transformer_blocks', 'single_transformer_blocks', 'visual_transformer_blocks', 'blocks', 'layers')
 _DENOISER_ATTRS = ('transformer', 'transformer_2', 'unet')
 _RESIDUAL_ARGS = (
     'down_block_additional_residuals',

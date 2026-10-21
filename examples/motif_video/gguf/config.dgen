@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Public Motif-Video Q4_K_M GGUF transformer.
+
+Motif-Technologies/Motif-Video-2B
+--model-type motif-video
+--transformer "https://huggingface.co/Motif-Technologies/Motif-Video-2B-GGUF/blob/main/motifv-2b-dev-Q4_K_M.gguf"
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--video-lengths 4
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path motif-video-gguf
+--output-size 832x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"

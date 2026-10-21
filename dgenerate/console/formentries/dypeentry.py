@@ -100,6 +100,9 @@ class _DyPEEntry(_entry._Entry):
                 if other_entry is not None:
                     self.exclude(other_entry)
 
+    def sync_widget_states(self):
+        self._update_controls()
+
     def _update_controls(self, *_args):
         enabled = self.enabled_var.get()
         state = tk.NORMAL if enabled else tk.DISABLED
@@ -116,6 +119,9 @@ class _DyPEEntry(_entry._Entry):
 
     def is_valid(self):
         return not self.enabled_var.get() or self.resolution_entry.is_valid()
+
+    def is_active(self):
+        return self.enabled_var.get()
 
     def invalid(self):
         if self.enabled_var.get() and not self.resolution_entry.is_valid():

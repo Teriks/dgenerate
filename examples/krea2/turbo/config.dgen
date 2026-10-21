@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Turbo sampler: 8 steps with guidance disabled.
+
+krea/Krea-2-Turbo
+--model-type krea2
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 8
+--guidance-scales 0
+--gen-seeds 1
+--output-path krea2-turbo
+--output-size 1024
+--prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"

@@ -1,5 +1,5 @@
 title: Generic Image Process (to directory)
-order: 38
+order: 103
 
 \image_process @file[{"label":"Input File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
 @dir[{"label":"Output Directory", "default":"output", "arg":"--output", "after":"/", "mode":"output"}]

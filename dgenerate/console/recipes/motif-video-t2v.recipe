@@ -1,0 +1,29 @@
+title: Motif-Video Text to Video
+order: 43
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default":"Motif-Technologies/Motif-Video-2B", "optional":false, "file-types":["models"]}]
+--model-type motif-video
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter":["FlowMatchEulerDiscreteScheduler", "DPMSolverMultistepScheduler"]}]
+@switch[{"id":"sp", "label":"Use Spectrum", "arg":"--spectrum"}]
+@dype[{"exclude":["sp"], "divider-after":true}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@quantizer[{"divider-after":true}]
+@switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
+@submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
+@string[{"label":"Custom Video Timesteps", "arg":"--video-timesteps", "default":"", "divider-after":true}]
+@float[{"label":"Video Length (seconds)", "arg":"--video-lengths", "default":5, "min":0.1}]
+@float[{"label":"Video FPS", "arg":"--video-fps", "default":24, "min":1}]
+@dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@switch[{"label":"Output Configs", "arg":"--output-configs"}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"832x480"}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here; worst quality, inconsistent motion, blurry, jittery, distorted"

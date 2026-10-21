@@ -26,6 +26,7 @@ import typing
 ROW_XPAD = (5, 2)
 DIVIDER_YPAD = (5, 5)
 
+
 def replace_first(text, old, new):
     out = []
     replaced = False
@@ -95,15 +96,24 @@ class _Entry:
         self.before = config.get('before', None)
         self.after = config.get('after', None)
         self._row_inactive = False
+        self._saved_widget_states: dict[str, str] = {}
 
     def set_row_enabled(self, enabled: bool) -> None:
         """Enable or gray out this recipe row. A gray row emits no argument."""
+        if enabled != self._row_inactive:
+            # Already in the requested state.
+            return
         self._row_inactive = not enabled
-        state = 'normal' if enabled else 'disabled'
 
         def set_widget_enabled(widget):
             try:
-                widget.configure(state=state)
+                if enabled:
+                    # Restore the state the widget had before the row was
+                    # grayed out, such as 'readonly' for a combobox.
+                    widget.configure(state=self._saved_widget_states.pop(str(widget), 'normal'))
+                else:
+                    self._saved_widget_states[str(widget)] = str(widget.cget('state'))
+                    widget.configure(state='disabled')
             except tkinter.TclError:
                 pass
             for child in widget.winfo_children():
@@ -119,6 +129,16 @@ class _Entry:
                     seen.add(str(widget))
                     set_widget_enabled(widget)
 
+        if enabled:
+            # Entry values may have changed while the row was gray, for example
+            # a mutually exclusive checkbox being unchecked, so states the
+            # entry manages itself are reapplied from its current values.
+            self.sync_widget_states()
+
+    def sync_widget_states(self) -> None:
+        """Reapply widget states this entry manages from its own values."""
+        pass
+
     def get_label(self, default, key='label'):
         if self.optional:
             return f'(Optional) {self.config.get(key, default)}'
@@ -133,6 +153,9 @@ class _Entry:
 
     def is_empty(self) -> bool:
         return False
+
+    def is_active(self) -> bool:
+        return not self.is_empty()
 
     def is_valid(self) -> bool:
         return True

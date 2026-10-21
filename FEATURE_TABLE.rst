@@ -24,10 +24,16 @@ Diffusion Model Feature Support Tables
    * ``--model-type qwen-image`` (Qwen-Image)
    * ``--model-type qwen-image-edit`` (Qwen-Image Edit and Edit-Plus)
    * ``--model-type qwen-image-layered`` (Qwen-Image Layered)
+   * ``--model-type qwen-image-21`` (Qwen-Image 2.1)
+   * ``--model-type krea2`` (Krea 2)
+   * ``--model-type kandinsky5-image`` (Kandinsky 5.0 Image)
    * ``--model-type ltx`` (LTX-2.5 and LTX-Video, see `Video Model Feature Support`_)
    * ``--model-type wan`` (Wan 2.1 / 2.2 T2V, I2V, FLF2V, V2V, VACE)
    * ``--model-type wan-animate`` (Wan-Animate)
    * ``--model-type wan-animate-2`` (Wan-Animate-2)
+   * ``--model-type hunyuan-video-15`` (HunyuanVideo 1.5, see `Video Model Feature Support`_)
+   * ``--model-type motif-video`` (Motif-Video, see `Video Model Feature Support`_)
+   * ``--model-type kandinsky5-video`` (Kandinsky 5.0 Video, see `Video Model Feature Support`_)
 
 .. list-table:: Generation modes by ``--model-type``
    :widths: 40 10 10 10
@@ -151,6 +157,21 @@ Diffusion Model Feature Support Tables
    * - ``qwen-image-layered``
      - ✅
      - ❌
+     - ❌
+
+   * - ``qwen-image-21``
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``krea2``
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``kandinsky5-image``
+     - ✅
+     - ✅
      - ❌
 
 .. list-table:: Guidance by ``--model-type``
@@ -301,6 +322,24 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
 
+   * - ``qwen-image-21``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``krea2``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``kandinsky5-image``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+
 .. list-table:: Adapters by ``--model-type``
    :widths: 40 10 10
    :header-rows: 1
@@ -398,6 +437,18 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``qwen-image-layered``
+     - ❌
+     - ❌
+
+   * - ``qwen-image-21``
+     - ❌
+     - ❌
+
+   * - ``krea2``
+     - ❌
+     - ❌
+
+   * - ``kandinsky5-image``
      - ❌
      - ❌
 
@@ -521,6 +572,21 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``qwen-image-layered``
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``qwen-image-21``
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``krea2``
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``kandinsky5-image``
      - ❌
      - ❌
      - ❌
@@ -817,6 +883,42 @@ Diffusion Model Feature Support Tables
      - ❌
      - ✅
 
+   * - ``qwen-image-21``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+
+   * - ``krea2``
+     - ✅
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+
+   * - ``kandinsky5-image``
+     - ❌
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+
 Video Model Feature Support
 ---------------------------
 
@@ -971,6 +1073,68 @@ shared ``--video-lengths`` and ``--video-fps`` options.
      - ✅
      - ✅
 
+HunyuanVideo 1.5, Motif-Video, and Kandinsky 5.0 Video also generate a whole clip
+in one pipeline call. Their supported modes and generation features are:
+
+.. list-table:: Features by newer video model
+   :widths: 34 12 12 10 16 12 10 10 14 14 12
+   :header-rows: 1
+
+   * - Model Type
+     - Text to video
+     - Image to video
+     - LoRA
+     - GGUF / quantization
+     - Cache-DiT
+     - DyPE
+     - Spectrum
+     - Torch compile
+     - ``--video-timesteps``
+     - Audio output
+
+   * - ``hunyuan-video-15``
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``motif-video``
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ❌
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ❌
+
+   * - ``kandinsky5-video``
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ❌
+     - ❌
+     - ✅
+     - ❌
+     - ❌
+
+The HunyuanVideo 1.5 Diffusers checkpoints support text-to-video and single-image-to-video.
+Motif-Video supports text-to-video and first-frame image-to-video; ``--video-timesteps``
+is Motif-specific. Kandinsky 5.0 Video has Lite and Pro checkpoints for both text-to-video
+and image-to-video. GGUF transformer replacement is available for all three; the only
+published Kandinsky 5.0 Video GGUF checkpoints are T2V Pro. These three pipelines do
+not return audio in dgenerate.
+
 Flow Image Model Notes
 ----------------------
 
@@ -984,12 +1148,18 @@ strength.
 ``qwen-image-edit`` inpainting is the edit pipeline with a mask. Edit-plus has
 no inpaint pipeline.
 
+``qwen-image-21`` accepts optional reference images but has no img2img or inpaint
+pipeline. ``krea2`` is text-to-image only. ``kandinsky5-image`` supports text-to-image
+and image-to-image editing, but not inpainting. All three support latent interchange
+and cooperative denoising; see their examples under ``examples/latents_interchange``.
+
 ControlNet on ``z-image`` and ``qwen-image`` is text-to-image and inpaint.
 ``z-image`` accepts one union model. ``qwen-image`` can take more than one.
 
-These model types support LoRA, Cache-DiT, DyPE, and Spectrum. They do not support textual
-inversions, IP adapters, T2I adapters, prompt weighters, PAG, DeepCache, TeaCache, SADA, RAS, or
-HiDiffusion.
+The model-specific rows above show LoRA, Cache-DiT, DyPE, and Spectrum support. In particular,
+``qwen-image-21`` supports Spectrum but not Cache-DiT or DyPE; ``kandinsky5-image``
+supports Cache-DiT and Spectrum but not DyPE; ``krea2`` supports all three. These flow image models do not support textual inversions,
+IP adapters, T2I adapters, prompt weighters, PAG, DeepCache, TeaCache, SADA, RAS, or HiDiffusion.
 
 PAG Support Caveats
 -------------------
@@ -1027,9 +1197,10 @@ SADA cannot be combined with Hi-Diffusion, DeepCache, or TeaCache.
 
 DyPE (``--dype``) adapts spatial RoPE frequencies during denoising. Use
 ``--dype-methods`` to try ``yarn`` (default), ``ntk``, or the ``base`` RoPE
-baseline as combinatoric values. The Flux.1 and Qwen-Image adapters follow the upstream architecture; Flux
-Fill/Kontext, Qwen Edit/Layered, Flux.2, Z-Image, and Wan are experimental
-adapters. Reference long-side defaults are 1024 pixels for Flux/Flux.2/Z-Image,
+baseline as combinatoric values. The Flux.1 and Qwen-Image adapters follow the upstream
+architecture; Flux Fill/Kontext, Qwen Edit/Layered, Flux.2, Z-Image, Wan, Krea 2,
+HunyuanVideo 1.5, and Motif-Video are experimental adapters. Reference long-side defaults are
+1024 pixels for Flux/Flux.2/Z-Image,
 1328 for Qwen-Image, and 832 for Wan. ``--dype-mscales`` controls the ``yarn``
 method's attention magnitude scale: ``constant`` (default), ``decay``, or
 ``off``. Use ``decay`` or ``off`` if ``yarn`` produces a fine repeating texture,
@@ -1042,4 +1213,4 @@ from an earlier step. See the `DyPE source
 <https://github.com/guyyariv/DyPE>`__ and the vendored adapter notes under
 ``dgenerate/extras/dype``.
 
-Spectrum (``--spectrum``) forecasts denoiser block outputs and skips those blocks on later steps. Transformers skip their blocks. SDXL and Kolors skip the UNet down, mid, and up blocks and still run the output convolution. It is supported on SD3, SDXL, Kolors, Flux, Flux.2, Z-Image, Qwen-Image, and Wan. The moderate schedule is the default (window ``2``, flex ``0.75``). ``--spectrum-flex-windows 3`` is the paper's aggressive schedule. Details are at `Spectrum <https://github.com/hanjq17/Spectrum>`__.
+Spectrum (``--spectrum``) forecasts denoiser block outputs and skips those blocks on later steps. Transformers skip their blocks. SDXL and Kolors skip the UNet down, mid, and up blocks and still run the output convolution. It is supported on SD3, SDXL, Kolors, Flux, Flux.2, Z-Image, Qwen-Image (including 2.1), Krea 2, Kandinsky 5 Image, Wan, HunyuanVideo 1.5, and Motif-Video. The moderate schedule is the default (window ``2``, flex ``0.75``). ``--spectrum-flex-windows 3`` is the paper's aggressive schedule. Details are at `Spectrum <https://github.com/hanjq17/Spectrum>`__.

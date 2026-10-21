@@ -32,7 +32,7 @@ class _UriWithFloatArgEntry(_uriwithfloatentry._UriWithFloatEntry):
 
     def template(self, content):
         uri = self.uri_var.get().strip()
-        float_val = self.float_var.get().strip()
+        float_val = self.float_value()
 
         new_content = ''
 

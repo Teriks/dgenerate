@@ -1,0 +1,20 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# 360-degree object-rotation LoRA for Kandinsky 5 Video Pro T2V.
+# The LoRA expects its M1CR0W4V3 r0t4tION trigger phrase in the prompt.
+
+kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers
+--model-type kandinsky5-video
+--loras "kandinskylab/Kandinsky-5.0-T2V-Pro-LoRa-Microwave-left;scale=1.0"
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 5
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky5-video-t2v-pro-lora
+--output-size 1024x768
+--prompts "M1CR0W4V3 r0t4tION, 360-degree rotation. A silver teapot slowly turns on a wooden table in a sunlit kitchen; smooth cinematic motion; worst quality, blurry, jittery, distorted"

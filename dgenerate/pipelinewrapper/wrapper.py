@@ -1914,7 +1914,8 @@ class DiffusionPipelineWrapper:
         Stable Cascade requires 128-pixel alignment for its output size. Its
         seed images are an image prompt, so they are not resized to this.
         Stable Diffusion 3 and packed-flow image models require 16-pixel
-        alignment; other image models use the standard 8-pixel VAE alignment.
+        alignment, except Qwen-Image 2.1, whose 16x VAE requires 32-pixel
+        alignment. Other image models use the standard 8-pixel VAE alignment.
         Video models handle their model-specific size requirements in their
         pipeline implementations.
         """
@@ -1922,6 +1923,8 @@ class DiffusionPipelineWrapper:
             return 128
         if _enums.model_type_is_sd3(self._model_type):
             return 16
+        if self._model_type == _enums.ModelType.QWEN_IMAGE_21:
+            return 32
         if _enums.model_type_is_flow_image(self._model_type):
             return 16
         return 8
@@ -2047,7 +2050,10 @@ class DiffusionPipelineWrapper:
                     _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL)
                 )
             check_no_image_seed_strength()
-        elif self._model_type in [_enums.ModelType.FLUX_FILL, _enums.ModelType.FLUX_KONTEXT]:
+        elif self._model_type in {
+                _enums.ModelType.FLUX_FILL,
+                _enums.ModelType.FLUX_KONTEXT,
+                _enums.ModelType.KANDINSKY5_IMAGE}:
             check_no_image_seed_strength()
         elif self._model_type == _enums.ModelType.IFS:
             if self._pipeline_type != _enums.PipelineType.INPAINT:
@@ -2744,9 +2750,10 @@ class DiffusionPipelineWrapper:
         pipeline_args.pop('negative_crops_coords_top_left', None)
 
     def _latents_use_flux_style_packing(self) -> bool:
-        """Flux.1 and Qwen-Image pack 2x2 patches into the channel dimension."""
+        """Models that pack 2x2 latent patches into the channel dimension."""
         return (
                 _enums.model_type_is_flux(self._model_type)
+                or self._model_type == _enums.ModelType.KREA2
                 or (_enums.model_type_is_qwen_image_family(self._model_type)
                     and not _enums.model_type_is_qwen_image_layered(self._model_type))
         )
@@ -2754,6 +2761,56 @@ class DiffusionPipelineWrapper:
     def _latents_use_flux2_packing(self) -> bool:
         """Flux.2 patchifies then packs tokens as a dense sequence."""
         return _enums.model_type_is_flux2_family(self._model_type)
+
+    def _latents_use_qwen21_packing(self) -> bool:
+        """Qwen-Image 2.1 flattens unpatched spatial latents into tokens."""
+        return self._model_type == _enums.ModelType.QWEN_IMAGE_21
+
+    def _latents_use_kandinsky5_image_layout(self) -> bool:
+        """Kandinsky 5 Image uses [B, 1, H, W, C] transformer latents."""
+        return self._model_type == _enums.ModelType.KANDINSKY5_IMAGE
+
+    @staticmethod
+    def _unpack_qwen21_latents(latents: torch.Tensor,
+                               height: int | None = None,
+                               width: int | None = None,
+                               vae_scale_factor: int = 16) -> torch.Tensor:
+        """Unpack Qwen-Image 2.1 tokens [B, H*W, C] to spatial [B, C, H, W]."""
+        if latents.ndim == 2:
+            latents = latents.unsqueeze(0)
+        if height is None or width is None:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Qwen-Image 2.1 latent interchange requires known output dimensions.')
+        # Same flooring as QwenImage21Pipeline._unpack_latents.
+        latent_height = 2 * (int(height) // (vae_scale_factor * 2))
+        latent_width = 2 * (int(width) // (vae_scale_factor * 2))
+        batch_size, sequence_length, channels = latents.shape
+        if sequence_length != latent_height * latent_width:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Qwen-Image 2.1 latent token count {sequence_length} does not match '
+                f'the requested latent dimensions {latent_width}x{latent_height}.')
+        return latents.transpose(1, 2).reshape(
+            batch_size, channels, latent_height, latent_width)
+
+    @staticmethod
+    def _repack_qwen21_latents(latents: torch.Tensor) -> torch.Tensor:
+        """Pack spatial Qwen-Image 2.1 latents [B, C, H, W] as [B, H*W, C]."""
+        return latents.flatten(2).transpose(1, 2)
+
+    @staticmethod
+    def _unpack_kandinsky5_image_latents(latents: torch.Tensor) -> torch.Tensor:
+        """Convert Kandinsky [B, 1, H, W, C] latents to [B, C, H, W]."""
+        if latents.ndim == 4:
+            latents = latents.unsqueeze(0)
+        if latents.ndim != 5 or latents.shape[1] != 1:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Unexpected Kandinsky 5 Image latent shape: {tuple(latents.shape)}.')
+        return latents[:, 0].permute(0, 3, 1, 2).contiguous()
+
+    @staticmethod
+    def _repack_kandinsky5_image_latents(latents: torch.Tensor) -> torch.Tensor:
+        """Convert spatial [B, C, H, W] latents to Kandinsky [B, 1, H, W, C]."""
+        return latents.permute(0, 2, 3, 1).unsqueeze(1).contiguous()
 
     def _packed_flow_pixel_size(
             self,
@@ -2891,16 +2948,25 @@ class DiffusionPipelineWrapper:
                                height: int | None = None,
                                width: int | None = None) -> torch.Tensor:
         """Convert pipeline latent output to the external spatial storage layout."""
+        if self._latents_use_kandinsky5_image_layout():
+            return self._unpack_kandinsky5_image_latents(latents)
         if self._latents_use_flux2_packing():
             return self._unpack_flux2_latents(latents, height, width)
+        if self._latents_use_qwen21_packing():
+            return self._unpack_qwen21_latents(
+                latents, height, width, self._pipeline.vae_scale_factor)
         if self._latents_use_flux_style_packing():
             return self._unpack_flux_latents(latents, height, width)
         return latents
 
     def _repack_input_latents(self, latents: torch.Tensor) -> torch.Tensor:
         """Convert external spatial latents to the layout expected by ``latents=``."""
+        if self._latents_use_kandinsky5_image_layout():
+            return self._repack_kandinsky5_image_latents(latents)
         if self._latents_use_flux2_packing():
             return self._repack_flux2_latents(latents)
+        if self._latents_use_qwen21_packing():
+            return self._repack_qwen21_latents(latents)
         if self._latents_use_flux_style_packing():
             return self._repack_flux_latents(latents)
         return latents
@@ -3072,6 +3138,15 @@ class DiffusionPipelineWrapper:
             guidance_scale = pipeline_args.pop('guidance_scale')
             pipeline_args.update(_pipelines.qwen_image_call_guidance(
                 guidance_scale, prompt.negative if prompt.negative else None))
+        elif self._model_type == _enums.ModelType.QWEN_IMAGE_21:
+            # Qwen-Image 2.1 is sampled unguided by default. A user-supplied
+            # --guidance-scales opts into true CFG, as on the original model.
+            guidance_scale = user_args.guidance_scale
+            if guidance_scale is None:
+                guidance_scale = 1.0
+            pipeline_args.pop('guidance_scale', None)
+            pipeline_args.update(_pipelines.qwen_image_call_guidance(
+                guidance_scale, prompt.negative if prompt.negative else None))
         else:
             accepts_negative = 'negative_prompt' in inspect.signature(self._pipeline.__call__).parameters
             if prompt.negative and not accepts_negative:
@@ -3081,8 +3156,51 @@ class DiffusionPipelineWrapper:
             elif accepts_negative:
                 pipeline_args['negative_prompt'] = prompt.negative if prompt.negative else None
 
-        if user_args.max_sequence_length is not None:
+        if user_args.max_sequence_length is not None \
+                and self._model_type == _enums.ModelType.QWEN_IMAGE_21:
+            self._set_accepted_call_argument(
+                pipeline_args, 'max_sequence_length', user_args.max_sequence_length,
+                '--max-sequence-length is not supported by Qwen-Image 2.1.')
+        elif user_args.max_sequence_length is not None:
             pipeline_args['max_sequence_length'] = user_args.max_sequence_length
+
+        qres = user_args.qwen21_output_resolution
+        self._set_accepted_call_argument(
+            pipeline_args, 'output_resolution', qres,
+            '--qwen21-output-resolution is only supported by Qwen-Image 2.1.')
+        if qres is not None and user_args.width is None and user_args.height is None:
+            # Pin the dimensions the pipeline derives from output_resolution
+            # (including image-conditioned aspect ratio) so latent unpacking
+            # and size reporting match the real output.
+            from diffusers.pipelines.qwenimage21.pipeline_qwenimage21 import calculate_dimensions
+            width = height = qres
+            if user_args.reference_images:
+                reference = user_args.reference_images[-1]
+                if isinstance(reference, PIL.Image.Image):
+                    width, height, _ = calculate_dimensions(
+                        qres * qres, reference.width / reference.height)
+            multiple_of = self._pipeline.vae_scale_factor * 2
+            self._inference_width = width // multiple_of * multiple_of
+            self._inference_height = height // multiple_of * multiple_of
+            pipeline_args['width'] = self._inference_width
+            pipeline_args['height'] = self._inference_height
+        self._set_accepted_call_argument(
+            pipeline_args, 'use_kv_cache', user_args.qwen21_use_kv_cache,
+            '--qwen21-no-kv-cache is only supported by Qwen-Image 2.1.')
+
+        if self._model_type == _enums.ModelType.QWEN_IMAGE_21 and user_args.inference_steps is None:
+            pipeline_args['num_inference_steps'] = 40
+        elif self._model_type == _enums.ModelType.KREA2:
+            distilled = bool(self._pipeline.config.get('is_distilled', False))
+            if user_args.inference_steps is None:
+                pipeline_args['num_inference_steps'] = 8 if distilled else 28
+            if user_args.guidance_scale is None:
+                pipeline_args['guidance_scale'] = 0.0 if distilled else 4.5
+        elif self._model_type == _enums.ModelType.KANDINSKY5_IMAGE:
+            if user_args.inference_steps is None:
+                pipeline_args['num_inference_steps'] = 50
+            if user_args.guidance_scale is None:
+                pipeline_args['guidance_scale'] = 3.5
 
         self._set_accepted_call_argument(
             pipeline_args, 'caption_upsample_temperature',
@@ -3202,14 +3320,47 @@ class DiffusionPipelineWrapper:
                     prompt_weighter=None)
 
             output_type = 'latent' if user_args.output_latents else 'pil'
-            pipeline_output = self._call_pipeline_with_cache_dit(
-                pipeline=self._pipeline,
-                user_args=user_args,
-                device=self._device,
-                output_type=output_type,
-                **pipeline_args
-            )
+            with self._kandinsky5_i2i_supplied_latents(pipeline_args):
+                pipeline_output = self._call_pipeline_with_cache_dit(
+                    pipeline=self._pipeline,
+                    user_args=user_args,
+                    device=self._device,
+                    output_type=output_type,
+                    **pipeline_args
+                )
             return self._create_pipeline_result(pipeline_output, output_type, user_args, pipeline_args)
+
+    @contextlib.contextmanager
+    def _kandinsky5_i2i_supplied_latents(self, pipeline_args):
+        """
+        Keep the image condition channels when Kandinsky 5 image editing gets ``latents``.
+
+        ``Kandinsky5I2IPipeline.prepare_latents`` returns supplied latents as-is,
+        without the encoded image and mask channels its transformer expects.
+        Prepare those channels normally, then put the supplied latents in the
+        denoised channel slice.
+        """
+        pipeline = self._pipeline
+        if (self._model_type != _enums.ModelType.KANDINSKY5_IMAGE
+                or pipeline_args.get('latents') is None
+                or pipeline_args.get('image') is None):
+            yield
+            return
+
+        original = pipeline.prepare_latents
+
+        def prepare_latents(*args, latents=None, **kwargs):
+            prepared = original(*args, latents=None, **kwargs)
+            if latents is None:
+                return prepared
+            latents = latents.to(device=prepared.device, dtype=prepared.dtype)
+            return torch.cat([latents, prepared[..., latents.shape[-1]:]], -1)
+
+        pipeline.prepare_latents = prepare_latents
+        try:
+            yield
+        finally:
+            del pipeline.prepare_latents
 
     @contextlib.contextmanager
     def _dype_context(
@@ -3229,6 +3380,8 @@ class DiffusionPipelineWrapper:
 
         if _enums.model_type_is_flux(self.model_type):
             model_family = 'flux1'
+        elif self.model_type is _enums.ModelType.KREA2:
+            model_family = 'krea2'
         elif _enums.model_type_is_flux2_family(self.model_type):
             model_family = 'flux2'
         elif _enums.model_type_is_qwen_image_family(self.model_type):
@@ -3237,6 +3390,10 @@ class DiffusionPipelineWrapper:
             model_family = 'zimage'
         elif _enums.model_type_is_wan_family(self.model_type):
             model_family = 'wan'
+        elif self.model_type is _enums.ModelType.HUNYUAN_VIDEO_15:
+            model_family = 'hunyuan-video-15'
+        elif self.model_type is _enums.ModelType.MOTIF_VIDEO:
+            model_family = 'motif-video'
         else:
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'DyPE is not supported for --model-type '
@@ -4659,6 +4816,8 @@ class DiffusionPipelineWrapper:
             # Extract latents
             if hasattr(pipeline_output, 'images'):
                 raw_latents = pipeline_output.images
+            elif self._latents_use_kandinsky5_image_layout() and hasattr(pipeline_output, 'image'):
+                raw_latents = pipeline_output.image
             else:
                 raw_latents = getattr(pipeline_output, 'latents', None)
 
@@ -4679,6 +4838,9 @@ class DiffusionPipelineWrapper:
         else:
             # Extract PIL images. Layered output is a list of layer lists.
             final_images = getattr(pipeline_output, 'images', None)
+            if final_images is None:
+                # Kandinsky 5.0 names its image batch ``image`` (singular).
+                final_images = getattr(pipeline_output, 'image', None)
             if final_images and isinstance(final_images[0], (list, tuple)):
                 flat_images = []
                 for group in final_images:
@@ -4689,13 +4851,20 @@ class DiffusionPipelineWrapper:
         if final_latents is not None:
             # Unpack packed-flow / Flux.2 latents to external spatial format
             if (self._latents_use_flux_style_packing()
+                    or self._latents_use_qwen21_packing()
+                    or self._latents_use_kandinsky5_image_layout()
                     or self._latents_use_flux2_packing()):
-                # Get dimensions with priority: pipeline_kwargs > user_args > None
+                # Resolve each dimension in priority order: pipeline kwargs,
+                # effective inference dimensions, then the user arguments.
                 height = None
                 width = None
                 if pipeline_kwargs:
                     height = pipeline_kwargs.get('height')
                     width = pipeline_kwargs.get('width')
+                if height is None:
+                    height = self._inference_height
+                if width is None:
+                    width = self._inference_width
                 if height is None and user_args:
                     height = user_args.height
                 if width is None and user_args:

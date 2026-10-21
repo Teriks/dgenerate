@@ -1,3 +1,4 @@
+import inspect
 import json
 import os
 import tempfile
@@ -7,6 +8,7 @@ from unittest.mock import patch
 
 import diffusers
 
+import dgenerate.arguments as _arguments
 import dgenerate.mediainput as _mediainput
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.pipelinewrapper.pipelines as _pipelines
@@ -56,6 +58,29 @@ def _config(**values):
 
 
 class TestFlowImagePipelines(unittest.TestCase):
+    def test_new_image_models_plan_transformer_lora_quantization_preflight(self):
+        for pipeline_class, model_type in (
+                (diffusers.QwenImage21Pipeline, _pipelinewrapper.ModelType.QWEN_IMAGE_21),
+                (diffusers.Krea2Pipeline, _pipelinewrapper.ModelType.KREA2),
+                (diffusers.Kandinsky5T2IPipeline, _pipelinewrapper.ModelType.KANDINSKY5_IMAGE)):
+            components = _pipelines._get_affected_components_for_lora(pipeline_class)
+            self.assertIn('transformer', components, pipeline_class.__name__)
+            self.assertIn('transformer', _pipelines._get_quantizable_components(
+                model_type))
+
+    def test_cache_dit_rejected_without_block_adapter(self):
+        for model_type in (_pipelinewrapper.ModelType.QWEN_IMAGE_21,
+                           _pipelinewrapper.ModelType.MOTIF_VIDEO):
+            with self.subTest(model_type=model_type):
+                with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
+                    _config(model_path='org/model', model_type=model_type,
+                            cache_dit=True).check()
+        for model_type in (_pipelinewrapper.ModelType.KREA2,
+                           _pipelinewrapper.ModelType.KANDINSKY5_IMAGE):
+            with self.subTest(model_type=model_type):
+                _config(model_path='org/model', model_type=model_type,
+                        cache_dit=True).check()
+
     def test_enum_parsing(self):
         self.assertEqual(_pipelinewrapper.get_model_type_enum('flux2'), _pipelinewrapper.ModelType.FLUX2)
         self.assertEqual(_pipelinewrapper.get_model_type_enum('z-image'), _pipelinewrapper.ModelType.Z_IMAGE)
@@ -69,7 +94,54 @@ class TestFlowImagePipelines(unittest.TestCase):
         self.assertFalse(_pipelinewrapper.model_type_is_flux('flux2'))
         self.assertTrue(_pipelinewrapper.model_type_is_flux2('flux2'))
         self.assertTrue(_pipelinewrapper.model_type_is_flow_image('qwen-image'))
+        for model_type in ('qwen-image-21', 'krea2', 'kandinsky5-image'):
+            self.assertTrue(_pipelinewrapper.model_type_is_flow_image(model_type))
+        self.assertTrue(_pipelinewrapper.model_type_is_qwen_image_21('qwen-image-21'))
+        self.assertTrue(_pipelinewrapper.model_type_is_qwen_image_21(
+            _pipelinewrapper.ModelType.QWEN_IMAGE_21))
+        self.assertTrue(_pipelinewrapper.model_type_is_krea2('krea2'))
+        self.assertTrue(_pipelinewrapper.model_type_is_krea2(
+            _pipelinewrapper.ModelType.KREA2))
+        self.assertTrue(_pipelinewrapper.model_type_is_kandinsky5_image('kandinsky5-image'))
+        self.assertTrue(_pipelinewrapper.model_type_is_kandinsky5_image(
+            _pipelinewrapper.ModelType.KANDINSKY5_IMAGE))
         self.assertFalse(_pipelinewrapper.model_type_is_flow_image('flux'))
+
+        parsed = _arguments.parse_args([
+            'org/qwen-image-2.1', '--model-type', 'qwen-image-21',
+            '--prompts', 'a fox', '--qwen21-output-resolution', '768',
+            '--qwen21-no-kv-cache'], throw=True, log_error=False)
+        self.assertEqual(parsed.qwen21_output_resolution, 768)
+        self.assertFalse(parsed.qwen21_use_kv_cache)
+
+        import shlex
+
+        import dgenerate.pipelinewrapper.argreconstruct as _argreconstruct
+
+        wrapper = _pipelinewrapper.DiffusionPipelineWrapper(
+            model_path=parsed.model_path,
+            model_type=parsed.model_type,
+            device='cpu')
+        command = _argreconstruct.gen_dgenerate_command(
+            wrapper, next(parsed.iterate_diffusion_args()), omit_device=True)
+        again = _arguments.parse_args(
+            shlex.split(command)[1:], throw=True, log_error=False)
+        self.assertEqual(again.qwen21_output_resolution, 768)
+        self.assertFalse(again.qwen21_use_kv_cache)
+
+    def test_new_flow_image_models_allow_latent_output_and_denoising_splits(self):
+        for model_type, model_path in (
+                (_pipelinewrapper.ModelType.QWEN_IMAGE_21, 'Qwen/Qwen-Image-2.1'),
+                (_pipelinewrapper.ModelType.KREA2, 'krea/Krea-2-Raw'),
+                (_pipelinewrapper.ModelType.KANDINSKY5_IMAGE,
+                 'kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers')):
+            with self.subTest(model_type=model_type):
+                config = _config(
+                    model_path=model_path,
+                    model_type=model_type,
+                    image_format='pt',
+                    denoising_end=0.8)
+                config.check()
 
     def test_model_index_class_names(self):
         flux2 = _pipelinewrapper.ModelType.FLUX2
@@ -210,6 +282,35 @@ class TestFlowImagePipelines(unittest.TestCase):
         self.assertIs(
             _pipelines.get_pipeline_class(_pipelinewrapper.ModelType.QWEN_IMAGE_LAYERED, txt2img),
             diffusers.QwenImageLayeredPipeline)
+
+        qwen21 = _pipelinewrapper.ModelType.QWEN_IMAGE_21
+        krea2 = _pipelinewrapper.ModelType.KREA2
+        kandinsky5 = _pipelinewrapper.ModelType.KANDINSKY5_IMAGE
+        self.assertIs(_pipelines.get_pipeline_class(qwen21, txt2img), diffusers.QwenImage21Pipeline)
+        self.assertIs(_pipelines.get_pipeline_class(krea2, txt2img), diffusers.Krea2Pipeline)
+        self.assertIs(
+            _pipelines.get_pipeline_class(kandinsky5, txt2img), diffusers.Kandinsky5T2IPipeline)
+        self.assertIs(
+            _pipelines.get_pipeline_class(kandinsky5, img2img), diffusers.Kandinsky5I2IPipeline)
+        for model_type in (qwen21, krea2):
+            with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
+                _pipelines.get_pipeline_class(model_type, img2img)
+        with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
+            _pipelines.get_pipeline_class(kandinsky5, inpaint)
+        for model_type, expected in (
+                (qwen21, diffusers.QwenImage21Transformer2DModel),
+                (krea2, diffusers.Krea2Transformer2DModel),
+                (kandinsky5, diffusers.Kandinsky5Transformer3DModel)):
+            self.assertIs(_pipelines.diffusion_transformer_class(model_type), expected)
+
+        krea_text_encoder_args = [
+            name for name in inspect.getfullargspec(diffusers.Krea2Pipeline.__init__).args
+            if _pipelines._is_text_encoder_component(name)
+        ]
+        self.assertEqual(krea_text_encoder_args, ['text_encoder'])
+        self.assertFalse(_pipelines._is_text_encoder_component('text_encoder_select_layers'))
+        self.assertTrue(_pipelines._is_text_encoder_component('text_encoder_2'))
+
         with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
             _pipelines.get_pipeline_class(_pipelinewrapper.ModelType.Z_IMAGE_OMNI, inpaint)
         with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
@@ -368,6 +469,43 @@ class TestFlowImagePipelines(unittest.TestCase):
         q_kept.check()
         self.assertEqual(next(q_kept.iterate_diffusion_args()).qwen_guidance_scale, 3.5)
 
+        qwen21 = _config(
+            model_path='org/Qwen-Image-2.1',
+            model_type=_pipelinewrapper.ModelType.QWEN_IMAGE_21,
+            qwen21_output_resolution=768,
+            qwen21_use_kv_cache=False)
+        qwen21.check()
+        qwen21_args = next(qwen21.iterate_diffusion_args())
+        self.assertEqual(qwen21_args.qwen21_output_resolution, 768)
+        self.assertFalse(qwen21_args.qwen21_use_kv_cache)
+
+        older_qwen_models = (
+            (_pipelinewrapper.ModelType.QWEN_IMAGE, 'Qwen/Qwen-Image', {}),
+            (_pipelinewrapper.ModelType.QWEN_IMAGE_EDIT, 'Qwen/Qwen-Image-Edit',
+             {'image_seeds': ['examples/media/beach.jpg']}),
+            (_pipelinewrapper.ModelType.QWEN_IMAGE_LAYERED, 'Qwen/Qwen-Image-Layered',
+             {'image_seeds': ['examples/media/beach.jpg']}),
+        )
+        for model_type, model_path, extra in older_qwen_models:
+            for option in (
+                    {'qwen21_output_resolution': 768},
+                    {'qwen21_use_kv_cache': False}):
+                with self.subTest(model_type=model_type, option=option):
+                    with self.assertRaisesRegex(
+                            _renderloopconfig.RenderLoopConfigError,
+                            'only supported for --model-type qwen-image-21'):
+                        _config(
+                            model_path=model_path,
+                            model_type=model_type,
+                            **extra,
+                            **option).check()
+
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
+            _config(
+                model_path='org/Z-Image',
+                model_type=z_image,
+                qwen21_output_resolution=768).check()
+
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             _config(
                 model_path='Tongyi-MAI/Z-Image-Turbo',
@@ -440,6 +578,7 @@ class TestFlowImagePipelines(unittest.TestCase):
         edit = _pipelinewrapper.ModelType.QWEN_IMAGE_EDIT
         layered = _pipelinewrapper.ModelType.QWEN_IMAGE_LAYERED
         omni = _pipelinewrapper.ModelType.Z_IMAGE_OMNI
+        kandinsky5 = _pipelinewrapper.ModelType.KANDINSKY5_IMAGE
 
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             _config(model_path='Qwen/Qwen-Image-Edit', model_type=edit).check()
@@ -449,6 +588,21 @@ class TestFlowImagePipelines(unittest.TestCase):
             model_type=edit,
             image_seeds=[beach])
         kept.check()
+
+        kandinsky_edit = _config(
+            model_path='org/Kandinsky-5-I2I',
+            model_type=kandinsky5,
+            image_seeds=[beach])
+        kandinsky_edit.check()
+        self.assertTrue(_pipelinewrapper.model_type_image_is_condition(kandinsky5))
+        self.assertEqual(
+            kandinsky_edit.parsed_image_seeds[0].images[0], beach)
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
+            _config(
+                model_path='org/Kandinsky-5-I2I',
+                model_type=kandinsky5,
+                image_seeds=[beach],
+                image_seed_strengths=[0.5]).check()
 
         layers = _config(
             model_path='Qwen/Qwen-Image-Layered',

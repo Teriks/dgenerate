@@ -109,7 +109,9 @@ def text_encoder_help(pipeline_class: type[diffusers.DiffusionPipeline], indent:
         str(idx) + ' = ' + n for idx, n in
         enumerate(v[1].__name__ for v in
                   typing.get_type_hints(pipeline_class.__init__).items()
-                  if v[0].startswith('text_encoder')))))
+                  if v[0] == 'text_encoder'
+                  or (v[0].startswith('text_encoder_')
+                      and v[0][len('text_encoder_'):].isdigit())))))
 
 
 def text_encoder_is_help(text_encoder_uris: _types.OptionalUris):

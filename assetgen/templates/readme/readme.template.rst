@@ -50,6 +50,7 @@ Video Generation
 * Set clip length and frame rate with ``--video-lengths`` and ``--video-fps``; LTX-2.5 can predict duration from the prompt when length is omitted
 * LTX-2.5 muxes generated audio into mp4 output; the earlier LTX-Video model accepts a GGUF diffusion transformer
 * Generate Wan 2.1 / 2.2 clips with ``--model-type wan`` (`Wan-AI <https://huggingface.co/Wan-AI>`_): text-to-video, image-to-video, first-last-frame, video-to-video, and VACE
+* Generate clips with Hunyuan Video 1.5, Kandinsky 5 Video, or Motif Video via ``--model-type hunyuan-video-15``, ``--model-type kandinsky5-video`` and ``--model-type motif-video`` respectively
 * Animate a character still with ``--model-type wan-animate`` using ``wan-pose=`` and ``wan-face=``, or ``wan-driving=`` with ``--wan-animate-preprocess`` (the existing ``openpose`` and ``yolo`` processors) or ``--wan-pose-image-processors`` / ``--wan-face-image-processors``
 * Animate a character still with ``--model-type wan-animate-2`` using ``wan-driving=`` as the motion clip
 * Compile denoiser, ControlNet, and VAE blocks with ``--torch-compile``

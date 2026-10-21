@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Base Krea 2 sampler: 28 steps and guidance 4.5.
+
+krea/Krea-2-Raw
+--model-type krea2
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 28
+--guidance-scales 4.5
+--gen-seeds 1
+--output-path krea2-raw
+--output-size 1024
+--prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"

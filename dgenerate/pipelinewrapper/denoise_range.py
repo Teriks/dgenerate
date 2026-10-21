@@ -48,6 +48,17 @@ def _is_qwen_image_pipeline(pipeline):
     return pipeline.__class__.__name__.startswith('QwenImage')
 
 
+def _is_krea2_pipeline(pipeline):
+    """Check if a pipeline is a Krea 2 pipeline."""
+    return pipeline.__class__.__name__.startswith('Krea2')
+
+
+def _is_kandinsky5_image_pipeline(pipeline):
+    """Check if a pipeline is a Kandinsky 5 image pipeline."""
+    name = pipeline.__class__.__name__
+    return name.startswith(('Kandinsky5T2I', 'Kandinsky5I2I'))
+
+
 def _is_z_image_pipeline(pipeline):
     """Check if a pipeline is a Z-Image family pipeline."""
     return pipeline.__class__.__name__.startswith('ZImage')
@@ -139,6 +150,8 @@ def _supports_denoise_range_flow_matching(pipeline):
         _is_sd3_pipeline(pipeline)
         or _is_flux_pipeline(pipeline)
         or _is_qwen_image_pipeline(pipeline)
+        or _is_krea2_pipeline(pipeline)
+        or _is_kandinsky5_image_pipeline(pipeline)
         or _is_z_image_pipeline(pipeline)
     )
 
@@ -598,7 +611,8 @@ def denoise_range(pipeline, start: float | None = 0.0, end: float | None = 1.0):
     * ``DDPMScheduler``
     * ``PNDMScheduler``
 
-    SD3 / Flux.1 / Flux.2 / Qwen-Image / Z-Image supported schedulers:
+    SD3 / Flux.1 / Flux.2 / Qwen-Image / Qwen-Image 2.1 / Krea 2 /
+    Kandinsky 5 Image / Z-Image supported schedulers:
 
     * ``FlowMatchEulerDiscreteScheduler`` (flow matching with dedicated support)
 

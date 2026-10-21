@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# This LoRA is documented for Krea 2 Turbo and uses the trigger phrase below.
+
+krea/Krea-2-Turbo
+--model-type krea2
+--loras krea/Krea-2-LoRA-sunsetblur;weight-name=sunsetblur.safetensors;scale=1.0
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 8
+--guidance-scales 0
+--gen-seeds 1
+--output-path krea2-turbo-lora
+--output-size 1024
+--prompts "Two samurais in flowing robes doing a muay thai fight, ethereal motion blur style"

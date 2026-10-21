@@ -1,12 +1,15 @@
+import types
 import unittest
 
 import torch
 
+import dgenerate.pipelinewrapper.denoise_range as denoise_range
+from dgenerate.pipelinewrapper.enums import ModelType
 from dgenerate.pipelinewrapper.wrapper import DiffusionPipelineWrapper
 
 
 class TestFlowLatentsPacking(unittest.TestCase):
-    """Round-trip tests for Flux.1 / Qwen / Flux.2 latent pack helpers."""
+    """Round-trip tests for packed-flow image latent layouts."""
 
     def test_flux_style_pack_unpack_roundtrip(self):
         # External spatial [B, C, H, W] <-> packed [B, L, C*4]
@@ -22,6 +25,68 @@ class TestFlowLatentsPacking(unittest.TestCase):
         unpacked = unpacked.reshape(batch_size, channels // 4, height, width)
 
         self.assertTrue(torch.allclose(unpacked, spatial, atol=1e-6))
+
+    def test_qwen21_flatten_pack_unpack_roundtrip(self):
+        spatial = torch.randn(2, 16, 64, 96)
+        packed = DiffusionPipelineWrapper._repack_qwen21_latents(spatial)
+        restored = DiffusionPipelineWrapper._unpack_qwen21_latents(
+            packed, height=1024, width=1536)
+
+        self.assertEqual(packed.shape, (2, 64 * 96, 16))
+        self.assertTrue(torch.allclose(restored, spatial, atol=1e-6))
+
+        wrapper = DiffusionPipelineWrapper.__new__(DiffusionPipelineWrapper)
+        wrapper._model_type = ModelType.QWEN_IMAGE_21
+        wrapper._pipeline = types.SimpleNamespace(vae_scale_factor=16)
+        self.assertTrue(wrapper._latents_use_qwen21_packing())
+        self.assertTrue(torch.allclose(
+            wrapper._repack_input_latents(spatial), packed, atol=1e-6))
+        self.assertTrue(torch.allclose(
+            wrapper._unpack_output_latents(packed[0], height=1024, width=1536),
+            spatial[:1], atol=1e-6))
+
+    def test_kandinsky5_image_layout_roundtrip(self):
+        spatial = torch.randn(2, 16, 64, 96)
+        pipeline_layout = DiffusionPipelineWrapper._repack_kandinsky5_image_latents(spatial)
+        restored = DiffusionPipelineWrapper._unpack_kandinsky5_image_latents(pipeline_layout)
+
+        self.assertEqual(pipeline_layout.shape, (2, 1, 64, 96, 16))
+        self.assertTrue(torch.allclose(restored, spatial, atol=1e-6))
+
+        wrapper = DiffusionPipelineWrapper.__new__(DiffusionPipelineWrapper)
+        wrapper._model_type = ModelType.KANDINSKY5_IMAGE
+        self.assertTrue(wrapper._latents_use_kandinsky5_image_layout())
+        self.assertTrue(torch.allclose(
+            wrapper._repack_input_latents(spatial), pipeline_layout, atol=1e-6))
+        self.assertTrue(torch.allclose(
+            wrapper._unpack_output_latents(pipeline_layout[0]), spatial[:1], atol=1e-6))
+
+        wrapper._inference_height = 512
+        wrapper._inference_width = 768
+        output = type('Output', (), {})()
+        output.image = pipeline_layout
+        result = wrapper._create_pipeline_result(output, output_type='latent')
+        self.assertEqual(len(result.latents), 2)
+        self.assertTrue(torch.allclose(result.latents[0], spatial[:1], atol=1e-6))
+
+    def test_krea2_uses_flux_style_packing(self):
+        from types import SimpleNamespace
+        wrapper = DiffusionPipelineWrapper.__new__(DiffusionPipelineWrapper)
+        wrapper._model_type = ModelType.KREA2
+        wrapper._pipeline = SimpleNamespace(default_sample_size=64, vae_scale_factor=8)
+        spatial = torch.randn(1, 16, 64, 64)
+        packed = wrapper._repack_input_latents(spatial)
+        unpacked = wrapper._unpack_output_latents(packed[0], height=512, width=512)
+
+        self.assertTrue(wrapper._latents_use_flux_style_packing())
+        self.assertEqual(packed.shape, (1, 32 * 32, 64))
+        self.assertTrue(torch.allclose(unpacked, spatial, atol=1e-6))
+
+    def test_new_flow_pipelines_are_recognized_for_denoise_splits(self):
+        for name in ('Krea2Pipeline', 'Kandinsky5T2IPipeline', 'Kandinsky5I2IPipeline'):
+            with self.subTest(pipeline=name):
+                pipeline = type(name, (), {})()
+                self.assertTrue(denoise_range._supports_denoise_range_flow_matching(pipeline))
 
     def test_flux2_patchify_unpatchify_roundtrip(self):
         spatial = torch.randn(2, 32, 128, 128)

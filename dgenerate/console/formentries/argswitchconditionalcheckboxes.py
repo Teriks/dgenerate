@@ -73,21 +73,11 @@ class _ArgSwitchConditionalCheckboxes(_entry._Entry):
             self.check_boxes[-1].grid(
                 row=self.row + idx, column=1, sticky='w')
 
-        # Set up the master checkbox behavior
-        def master_changed():
-            master_enabled = self.bool_vars[0].get()
-            for idx in range(1, len(self.check_boxes)):
-                if master_enabled:
-                    self.check_boxes[idx].config(state='normal')
-                else:
-                    self.check_boxes[idx].config(state='disabled')
-                    self.bool_vars[idx].set(False)
-
         # Bind the master checkbox change event
-        self.bool_vars[0].trace_add('write', lambda *args: master_changed())
+        self.bool_vars[0].trace_add('write', lambda *args: self.sync_widget_states())
 
         # Initialize the state
-        master_changed()
+        self.sync_widget_states()
 
         if hasattr(self.form, 'get_entry_by_id'):
             exclude: str | list | None = self.config.get('exclude', None)
@@ -102,6 +92,16 @@ class _ArgSwitchConditionalCheckboxes(_entry._Entry):
                         if hasattr(other_entry, 'exclude'):
                             other_entry.exclude(self)
 
+    def sync_widget_states(self):
+        """Dependent checkboxes are only usable while the master checkbox is checked."""
+        master_enabled = self.bool_vars[0].get()
+        for idx in range(1, len(self.check_boxes)):
+            if master_enabled:
+                self.check_boxes[idx].config(state='normal')
+            else:
+                self.check_boxes[idx].config(state='disabled')
+                self.bool_vars[idx].set(False)
+
     def exclude(self, other_entry):
         """Set up mutual exclusion with another checkbox entry.
         When this master checkbox is checked, the other will be unchecked and vice versa."""
@@ -109,7 +109,7 @@ class _ArgSwitchConditionalCheckboxes(_entry._Entry):
         from dgenerate.console.formentries.checkboxwithfloatargentry import _CheckboxWithFloatArgEntry
         from dgenerate.console.formentries.checkboxwithtwointargsentry import _CheckboxWithTwoIntArgsEntry
 
-        if isinstance(other_entry, _ArgSwitchCheckbox):
+        if isinstance(other_entry, _ArgSwitchCheckbox) and hasattr(other_entry, 'bool_var'):
             # Master checkbox excludes simple checkbox
             self.bool_vars[0].trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_vars[
                 0].get() else None)
@@ -152,3 +152,6 @@ class _ArgSwitchConditionalCheckboxes(_entry._Entry):
 
         arg_string = '\n'.join(args)
         return _entry.replace_first(content, self.placeholder, arg_string)
+
+    def is_active(self):
+        return self.bool_vars[0].get()

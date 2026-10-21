@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Animate the example portrait from the first frame.
+
+hunyuanvideo-community/HunyuanVideo-1.5-480p_i2v
+--model-type hunyuan-video-15
+--image-seeds ../../media/horse1.jpg
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 6
+--video-lengths 4
+--video-fps 15
+--animation-format mp4
+--gen-seeds 1
+--output-path hunyuan-video-15-i2v
+--output-size 848x480
+--prompts "The kite lifts and drifts gently across the sky as the grass moves in the breeze"
