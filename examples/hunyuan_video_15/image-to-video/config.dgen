@@ -3,7 +3,7 @@
 
 # Animate the example portrait from the first frame.
 
-hunyuanvideo-community/HunyuanVideo-1.5-480p_i2v
+hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v
 --model-type hunyuan-video-15
 --image-seeds ../../media/horse1.jpg
 --dtype bfloat16

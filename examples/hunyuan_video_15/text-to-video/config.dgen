@@ -3,7 +3,7 @@
 
 # 480p text-to-video. Sequential offload reduces the GPU memory requirement.
 
-hunyuanvideo-community/HunyuanVideo-1.5-480p_t2v
+hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v
 --model-type hunyuan-video-15
 --dtype bfloat16
 --model-sequential-offload
