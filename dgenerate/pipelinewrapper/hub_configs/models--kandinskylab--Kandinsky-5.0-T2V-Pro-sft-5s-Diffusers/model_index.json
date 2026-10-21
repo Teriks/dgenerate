@@ -1,0 +1,32 @@
+{
+  "_class_name": "Kandinsky5T2VPipeline",
+  "_diffusers_version": "0.33.0.dev0",
+  "scheduler": [
+    "diffusers",
+    "FlowMatchEulerDiscreteScheduler"
+  ],
+  "text_encoder": [
+    "transformers",
+    "Qwen2_5_VLForConditionalGeneration"
+  ],
+  "tokenizer": [
+    "transformers",
+    "Qwen2VLProcessor"
+  ],
+  "text_encoder_2": [
+    "transformers",
+    "CLIPTextModel"
+  ],
+  "tokenizer_2": [
+    "transformers",
+    "CLIPTokenizer"
+  ],
+  "transformer": [
+    "diffusers",
+    "Kandinsky5Transformer3DModel"
+  ],
+  "vae": [
+    "diffusers",
+    "AutoencoderKLHunyuanVideo"
+  ]
+}

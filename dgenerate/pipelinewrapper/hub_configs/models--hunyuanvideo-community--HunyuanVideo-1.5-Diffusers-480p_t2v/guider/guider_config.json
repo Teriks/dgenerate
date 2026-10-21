@@ -1,0 +1,10 @@
+{
+  "_class_name": "ClassifierFreeGuidance",
+  "_diffusers_version": "0.36.0.dev0",
+  "enabled": true,
+  "guidance_rescale": 0.0,
+  "guidance_scale": 6.0,
+  "start": 0.0,
+  "stop": 1.0,
+  "use_original_formulation": false
+}

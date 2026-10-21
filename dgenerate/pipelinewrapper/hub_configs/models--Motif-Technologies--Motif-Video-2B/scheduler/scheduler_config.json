@@ -1,0 +1,10 @@
+{
+  "_class_name": "DPMSolverMultistepScheduler",
+  "_diffusers_version": "0.36.0",
+  "algorithm_type": "dpmsolver++",
+  "flow_shift": 15.0,
+  "num_train_timesteps": 1000,
+  "prediction_type": "flow_prediction",
+  "solver_order": 2,
+  "use_flow_sigmas": true
+}

@@ -1,0 +1,26 @@
+{
+  "additional_special_tokens": null,
+  "backend": "tokenizers",
+  "boi_token": "<start_of_image>",
+  "bos_token": "<bos>",
+  "clean_up_tokenization_spaces": false,
+  "eoi_token": "<end_of_image>",
+  "eos_token": "<eos>",
+  "image_token": "<image_soft_token>",
+  "is_local": false,
+  "mask_token": "<mask>",
+  "model_max_length": 1000000000000000019884624838656,
+  "model_specific_special_tokens": {
+    "boi_token": "<start_of_image>",
+    "eoi_token": "<end_of_image>",
+    "image_token": "<image_soft_token>"
+  },
+  "pad_token": "<pad>",
+  "padding_side": "right",
+  "processor_class": "Gemma3Processor",
+  "sp_model_kwargs": null,
+  "spaces_between_special_tokens": false,
+  "tokenizer_class": "GemmaTokenizer",
+  "unk_token": "<unk>",
+  "use_default_system_prompt": false
+}
