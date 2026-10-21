@@ -323,7 +323,7 @@ def _call_ltx(wrapper, user_args):
     if user_args.max_sequence_length is not None:
         kwargs['max_sequence_length'] = int(user_args.max_sequence_length)
 
-    _vp._set_ltx_vae_slicing(pipe, bool(user_args.vae_slicing))
+    _vp._set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
 
     if mode == 'ltx-image':
         kwargs['image'] = user_args.images[0]
@@ -1843,7 +1843,7 @@ def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator, decode_tile=N
             _load_ltx_diffusion_decoder(wrapper, pipe, diffusion_decoder_uri), decode_tile)
         decode_pipe = LTX2VideoDiffusionDecodePipeline(
             diffusion_decoder=decoder, scheduler=pipe.scheduler, vae=pipe.vae)
-        _vp._offload_ltx(
+        _vp._apply_video_offload(
             decode_pipe, wrapper.device,
             bool(wrapper.model_cpu_offload), bool(wrapper.model_sequential_offload),
             bool(getattr(wrapper, 'model_group_offload', False)))

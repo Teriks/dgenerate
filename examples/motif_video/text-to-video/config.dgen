@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+Motif-Technologies/Motif-Video-2B
+--model-type motif-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 5
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path motif-video-t2v
+--output-size 832x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement; worst quality, blurry, jittery, distorted"

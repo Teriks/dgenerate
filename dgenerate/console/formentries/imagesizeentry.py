@@ -44,7 +44,7 @@ class _ImageSizeEntry(_entry._Entry):
 
         self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
-        self.entry.bind('<Key>', lambda e: self.valid())
+        self.text_var.trace_add('write', lambda *e: self.valid())
 
     def invalid(self):
         _entry.invalid_colors(self.entry)

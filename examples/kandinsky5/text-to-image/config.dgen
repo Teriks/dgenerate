@@ -1,0 +1,13 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers
+--model-type kandinsky5-image
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path kandinsky5-t2i
+--output-size 1024
+--prompts "A tiny bookshop inside a hollow tree, warm lamps glowing through the windows"

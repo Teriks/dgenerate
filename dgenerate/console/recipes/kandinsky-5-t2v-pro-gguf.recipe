@@ -1,0 +1,30 @@
+title: Kandinsky 5 Video Pro GGUF
+order: 46
+
+# Community Q4_K_S GGUF of the T2V Pro sft transformer (~14 GB). A Q8_0 file is
+# also available: https://huggingface.co/Ada321/Kandinsky-5.0-T2V-Pro-sft-5s-Q8.gguf
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default":"kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers", "optional":false, "file-types":["models"]}]
+--model-type kandinsky5-video
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter":["FlowMatchEulerDiscreteScheduler"]}]
+@switchfile[{"label":"Use Cache-DiT", "arg":"--cache-dit", "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@quantizer[{"divider-after":true}]
+@submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
+@submodelbuilder[{"label":"Transformer GGUF", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Ada321/Kandinsky-5.0-T2V-Pro-sft-5s-Q4_K_S.gguf/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf", "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
+@int[{"label":"Max Sequence Length", "arg":"--max-sequence-length", "default":512, "min":1, "max":512}]
+@float[{"label":"Video Length (seconds)", "arg":"--video-lengths", "default":5, "min":0.1}]
+@float[{"label":"Video FPS", "arg":"--video-fps", "default":24, "min":1}]
+@dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@switch[{"label":"Output Configs", "arg":"--output-configs"}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x768"}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here; Static, 2D cartoon, cartoon, 2d animation, paintings, images, worst quality, low quality, ugly, deformed, walking backwards"

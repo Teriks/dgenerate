@@ -235,6 +235,88 @@ inpainting ControlNet has ``extra_condition_channels=4``. ``start`` and
 See `examples/qwen-image/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/controlnet/config.dgen>`_
 and `examples/qwen-image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/controlnet/inpaint-config.dgen>`_.
 
+Qwen-Image 2.1
+~~~~~~~~~~~~~~
+
+``--model-type qwen-image-21`` selects Qwen-Image 2.1's unified text-to-image
+and image-conditioned pipeline. An image seed is optional and acts as a
+reference condition, not as an img2img starting image: there is no strength
+control, img2img mode, inpaint mode, or ControlNet support. Multiple reference
+images can be passed with the ``images:`` image-seed syntax.
+
+The default is 40 steps with true CFG disabled (guidance 1). Setting
+``--guidance-scales`` above 1 enables true CFG; a negative prompt can be given
+after ``;`` in the prompt. ``--qwen21-output-resolution`` is the pipeline's
+target-side setting, not a width, height, or maximum-side option. It uses the
+square of that value as the target image area and derives width and height,
+preserving the reference image aspect ratio when conditioning. Use
+``--output-size`` when you need explicit dimensions. The pipeline defaults the
+target side to 1024. ``--qwen21-no-kv-cache`` disables the prefix key/value
+cache, which is enabled by default.
+
+The Turbo checkpoint supplies a short sigma schedule and is intended to run
+with that schedule rather than the base checkpoint's 40-step setting. Qwen-Image
+2.1 also supports LoRAs, compatible GGUF transformer weights through
+``--transformer``, PyTorch latent output/input, and FlowMatch cooperative
+denoising. ``--max-sequence-length`` is not supported by this pipeline.
+
+* `Basic text-to-image <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/basic/config.dgen>`_
+* `Image-conditioned generation <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/image-conditioned/config.dgen>`_
+* `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/turbo/config.dgen>`_
+* `LoRA <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/lora/config.dgen>`_
+* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/gguf/config.dgen>`_
+* `Cooperative denoising <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/latents_interchange/qwen-image-21/cooperative-denoising-config.dgen>`_
+
+Krea 2
+~~~~~~
+
+``--model-type krea2`` is text-to-image only. It has no image-seed editing or
+inpainting pipeline and does not support ControlNet. The two supplied
+checkpoints use different sampling defaults:
+
+* ``krea/Krea-2-Raw`` uses 28 steps and guidance 4.5.
+* ``krea/Krea-2-Turbo`` is distilled, uses 8 steps, and runs without guidance
+  (scale 0). It does not use a negative prompt; use the Turbo checkpoint's
+  intended short-step settings rather than the Raw defaults.
+
+Krea 2 Raw accepts a negative prompt after ``;`` in the prompt. The Turbo
+checkpoint does not expose negative-prompt guidance.
+
+``--output-size`` defaults to a square 1024-pixel image in the examples. Krea 2
+supports transformer LoRAs and compatible GGUF transformer files with
+``--transformer``. It also supports PyTorch latent output/input and FlowMatch
+cooperative denoising; the cooperative-denoising example uses the Raw model.
+
+* `Raw checkpoint <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/krea2/raw/config.dgen>`_
+* `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/krea2/turbo/config.dgen>`_
+* `Turbo LoRA <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/krea2/lora/turbo-config.dgen>`_
+* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/krea2/gguf/config.dgen>`_
+* `Raw cooperative denoising <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/latents_interchange/krea2/cooperative-denoising-config.dgen>`_
+
+Kandinsky 5 Image
+~~~~~~~~~~~~~~~~~
+
+``--model-type kandinsky5-image`` selects text-to-image or instruction-based
+image editing according to the checkpoint. The examples use
+``Kandinsky-5.0-T2I-Lite-sft-Diffusers`` for generation and
+``Kandinsky-5.0-I2I-Lite-sft-Diffusers`` for editing. For editing, pass the
+source image in ``--image-seeds`` and describe the requested change in the
+prompt. The image is a condition, not an img2img strength input; there is no
+inpaint or ControlNet mode. Negative prompts are supported after ``;`` in the
+prompt. The defaults are 50 steps and guidance 3.5; ``--max-sequence-length``
+can adjust the text token limit (default 512).
+
+The examples use ``--output-size 1024x1024`` and ``bfloat16`` with sequential
+CPU offload. Kandinsky 5 Image supports PyTorch latent output/input and FlowMatch
+cooperative denoising. ``--transformer`` can replace the image transformer,
+but there is currently no Kandinsky 5 Image GGUF example in the examples
+directory; the Kandinsky 5 Video GGUF is a different transformer/checkpoint
+family and is not an image GGUF example.
+
+* `Text-to-image <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/text-to-image/config.dgen>`_
+* `Image editing <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/image-edit/config.dgen>`_
+* `Kandinsky 5 Image cooperative denoising <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/latents_interchange/kandinsky5-image/cooperative-denoising-config.dgen>`_
+
 Qwen-Image Edit
 ~~~~~~~~~~~~~~~
 
@@ -294,5 +376,7 @@ Console recipes
 The Console UI recipes are ``Flux.2 (Dev)``, ``Flux.2 Klein``, ``Flux.2 Klein KV``,
 ``Z-Image (Turbo)``, ``Z-Image Turbo (SDNQ)``, ``Z-Image (Base, 2-step LoRA)``,
 ``Z-Image (ControlNet)``, ``Z-Image Omni``, ``Qwen-Image``, ``Qwen-Image Edit``,
-and ``Qwen-Image Layered``. GGUF recipes for those models set ``--transformer``
+``Qwen-Image Layered``, ``Qwen-Image 2.1``, ``Qwen-Image 2.1 Turbo``,
+``Krea 2 Raw``, ``Krea 2 Turbo``, ``Kandinsky 5 Image``, and
+``Kandinsky 5 Image Edit``. GGUF recipes for those models set ``--transformer``
 to a quantized file and leave the parent repository as the model line.

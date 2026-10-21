@@ -19,6 +19,9 @@ Supported Model Types:
 - Flux.1 models (use ``latents: ...`` or ``latents= ...`` syntax)
 - Flux.2 models (use ``latents: ...`` or ``latents= ...`` syntax)
 - Qwen-Image models (use ``latents: ...`` or ``latents= ...`` syntax; not Layered)
+- Qwen-Image 2.1 (use ``latents: ...`` syntax)
+- Krea 2 (use ``latents: ...`` syntax)
+- Kandinsky 5 Image (use ``latents: ...`` syntax)
 - Z-Image models (use ``latents: ...`` or ``latents= ...`` syntax)
 - SDXL / Kolors models (use direct img2img latents input, no special syntax)
 
@@ -41,8 +44,8 @@ Note for SDXL: SDXL models do not use the ``latents: ...`` syntax (or ``latents=
 cooperative denoising. Instead, SDXL takes latent tensors directly through the standard img2img slot
 without special syntax.
 
-SD3, Flux.1, Flux.2, Qwen-Image, and Z-Image use the ``latents:`` syntax
-similar to SD 1.5/2.x models.
+SD3, Flux.1, Flux.2, Qwen-Image, Qwen-Image 2.1, Krea 2, Kandinsky 5 Image,
+and Z-Image use the ``latents:`` syntax similar to SD 1.5/2.x models.
 
 Combined Image and Latents Input:
 
@@ -96,7 +99,9 @@ with each model handling a specific portion of the denoising steps. This is acco
 the ``--denoising-start`` and ``--denoising-end`` arguments in combination with latents interchange.
 
 This is supported for SD1.5/2.x (with certain schedulers), SDXL, Kolors, SD3,
-Flux.1, Flux.2, Qwen-Image (not Layered), and Z-Image models.
+Flux.1, Flux.2, Qwen-Image (not Layered), Qwen-Image 2.1, Krea 2 Raw,
+Kandinsky 5 Image, and Z-Image models. Flow-matching image models require
+``FlowMatchEulerDiscreteScheduler`` for denoising splits.
 
 The process works as follows:
 
@@ -142,6 +147,18 @@ Qwen-Image Cooperative Denoising:
 
 @EXAMPLE[@PROJECT_DIR/examples/latents_interchange/qwen-image/cooperative-denoising-config.dgen]
 
+Qwen-Image 2.1 Cooperative Denoising:
+
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/qwen-image-21/cooperative-denoising-config.dgen]
+
+Krea 2 Cooperative Denoising:
+
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/krea2/cooperative-denoising-config.dgen]
+
+Kandinsky 5 Image Cooperative Denoising:
+
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/kandinsky5-image/cooperative-denoising-config.dgen]
+
 Z-Image Cooperative Denoising:
 
 @EXAMPLE[@PROJECT_DIR/examples/latents_interchange/z-image/cooperative-denoising-config.dgen]
@@ -156,7 +173,8 @@ when ``--denoising-start`` has been specified with an SDXL or Kolors model:
 Advanced Usage with Image Input:
 
 You can also combine cooperative denoising with img2img input by using the combined syntax,
-this works for SD1.5/2.x, SD3, Flux.1, Flux.2, Qwen-Image, and Z-Image
+this works for SD1.5/2.x, SD3, Flux.1, Flux.2, Qwen-Image, Qwen-Image 2.1,
+Kandinsky 5 Image, and Z-Image
 models using the ``latents= ...`` syntax:
 
 .. code-block:: bash

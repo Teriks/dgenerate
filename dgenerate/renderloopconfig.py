@@ -293,6 +293,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     ``--qwen-guidance-scale``. Embedded Qwen-Image guidance.
     """
 
+    qwen21_output_resolution: _types.OptionalInteger = None
+    """Target side length for Qwen-Image 2.1 output resolution inference."""
+
+    qwen21_use_kv_cache: _types.OptionalBoolean = None
+    """Enable Qwen-Image 2.1's prefix KV cache; omitted keeps it enabled."""
+
     qwen_layered_layers: _types.OptionalInteger = None
     """
     ``--qwen-layered-layers``. Layer count for Qwen-Image layered.
@@ -428,10 +434,26 @@ class RenderLoopConfig(_types.SetFromMixin):
     video_fps: _types.OptionalFloats = None
     """
     Frame rates for video model types. Each value is a factor in the generation
-    step product. When omitted this defaults to ``[24]`` for LTX, ``[16]`` for
-    Wan, and ``[30]`` for Wan-Animate.
+    step product. When omitted this defaults to ``[24]`` for LTX, Motif-Video,
+    and Kandinsky 5 Video; ``[15]`` for HunyuanVideo 1.5; ``[16]`` for Wan; and
+    ``[30]`` for Wan-Animate.
 
     This corresponds to the ``--video-fps`` argument of the dgenerate command line tool.
+    """
+
+    video_timesteps: typing.Optional[
+        collections.abc.Sequence[collections.abc.Sequence[int] | str]] = None
+    """
+    Optional explicit denoising timestep schedules for ``--model-type
+    motif-video``. Each schedule can be a sequence of non-negative integers or
+    an ``expr:`` expression evaluated against the scheduler's default timestep
+    array (named ``timesteps`` in the expression). Values are passed in order
+    to the pipeline's ``timesteps`` argument. The resulting schedule length
+    determines the inference-step count for that invocation, overriding
+    ``--inference-steps``. Do not combine it with ``--sigmas``. When omitted,
+    the scheduler generates the timestep schedule.
+
+    This corresponds to the ``--video-timesteps`` command-line argument.
     """
 
     ltx_audio_guidance_scales: _types.OptionalFloats = None
@@ -2253,7 +2275,8 @@ class RenderLoopConfig(_types.SetFromMixin):
       ``LMSDiscreteScheduler``, ``EDMEulerScheduler``, ``DPMSolverMultistepScheduler``, 
       ``DDIMScheduler``, ``DDPMScheduler``, ``PNDMScheduler``)
     * SDXL models: All schedulers supported via native denoising_start/denoising_end
-    * SD3/Flux models: FlowMatchEulerDiscreteScheduler and standard schedulers supported
+    * SD3, Flux, Qwen-Image, Qwen-Image 2.1, Krea 2, Kandinsky 5 Image, and Z-Image:
+      FlowMatchEulerDiscreteScheduler supported
     
     This corresponds to the ``--denoising-start`` argument of the dgenerate command line tool.
     """
@@ -2270,7 +2293,8 @@ class RenderLoopConfig(_types.SetFromMixin):
       ``LMSDiscreteScheduler``, ``EDMEulerScheduler``, ``DPMSolverMultistepScheduler``, 
       ``DDIMScheduler``, ``DDPMScheduler``, ``PNDMScheduler``)
     * SDXL models: All schedulers supported via native denoising_start/denoising_end
-    * SD3/Flux models: FlowMatchEulerDiscreteScheduler and standard schedulers supported
+    * SD3, Flux, Qwen-Image, Qwen-Image 2.1, Krea 2, Kandinsky 5 Image, and Z-Image:
+      FlowMatchEulerDiscreteScheduler supported
     
     This corresponds to the ``--denoising-end`` argument of the dgenerate command line tool.
     """
@@ -2637,6 +2661,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("dype")} is supported for {a_namer("model_type")} '
                 f'{_textprocessing.oxford_comma(_pipelinewrapper.DYPE_MODEL_TYPES, "and")}.')
 
+        if self.cache_dit and self.model_type in (
+                _pipelinewrapper.ModelType.QWEN_IMAGE_21,
+                _pipelinewrapper.ModelType.MOTIF_VIDEO):
+            # cache-dit has no block adapter for these transformers.
+            raise RenderLoopConfigError(
+                f'{a_namer("cache_dit")} is not supported for --model-type '
+                f'{_pipelinewrapper.get_model_type_string(self.model_type)}.')
+
         if self.dype and self.cache_dit:
             raise RenderLoopConfigError(
                 f'{a_namer("dype")} cannot be used with {a_namer("cache_dit")}.')
@@ -2918,6 +2950,11 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_output_arguments(self, a_namer: typing.Callable[[str], str]):
         """Check output-related arguments for compatibility."""
+        if self.output_size is not None and self.qwen21_output_resolution is not None:
+            raise RenderLoopConfigError(
+                f'Cannot specify both {a_namer("output_size")} and '
+                f'{a_namer("qwen21_output_resolution")}.')
+
         # Check output prefix
         if self.output_prefix:
             if '/' in self.output_prefix or '\\' in self.output_prefix:
@@ -3106,6 +3143,9 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_video_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check video model types and set their length, fps, and step defaults."""
+        if self.model_type != _pipelinewrapper.ModelType.MOTIF_VIDEO and self.video_timesteps:
+            raise RenderLoopConfigError(
+                f'{a_namer("video_timesteps")} is not supported for this model type.')
         if not _pipelinewrapper.model_type_is_video(self.model_type):
             if self.video_lengths:
                 raise RenderLoopConfigError(
@@ -3155,6 +3195,27 @@ class RenderLoopConfig(_types.SetFromMixin):
                     raise RenderLoopConfigError(
                         f'{a_namer(name)} cannot be used with --model-type wan-animate-2.')
             self._check_wan_animate_2_requirements(a_namer)
+        else:
+            for name in _ltx_arguments_in_use(self):
+                raise RenderLoopConfigError(
+                    f'{a_namer(name)} is only supported for the ltx video model type.')
+            for name in _wan_arguments_in_use(self):
+                raise RenderLoopConfigError(
+                    f'{a_namer(name)} is only supported for wan video model types.')
+            if self.video_timesteps:
+                if self.sigmas:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("video_timesteps")} cannot be combined with {a_namer("sigmas")}.'
+                    )
+                for schedule in self.video_timesteps:
+                    if isinstance(schedule, str):
+                        if not schedule.strip():
+                            raise RenderLoopConfigError(
+                                f'{a_namer("video_timesteps")} expression cannot be empty.')
+                        continue
+                    if not schedule or any(int(step) < 0 for step in schedule):
+                        raise RenderLoopConfigError(
+                            f'{a_namer("video_timesteps")} must contain non-empty, non-negative schedules.')
 
         self._check_video_shared_requirements(a_namer)
 
@@ -3376,6 +3437,12 @@ class RenderLoopConfig(_types.SetFromMixin):
                 self.video_fps = [30.0]
             elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE_2:
                 self.video_fps = [24.0]
+            elif self.model_type == _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15:
+                self.video_fps = [15.0]
+            elif self.model_type == _pipelinewrapper.ModelType.MOTIF_VIDEO:
+                self.video_fps = [24.0]
+            elif self.model_type == _pipelinewrapper.ModelType.KANDINSKY5_VIDEO:
+                self.video_fps = [24.0]
 
         if self.batch_size is not None and self.batch_size > 1:
             raise RenderLoopConfigError(
@@ -3401,15 +3468,21 @@ class RenderLoopConfig(_types.SetFromMixin):
                     'transformer', 'text_encoder', 'connectors'
                 }
                 allowed = 'transformer, text_encoder, or connectors'
+                if self.model_type == _pipelinewrapper.ModelType.KANDINSKY5_VIDEO:
+                    video_quant_names = {'transformer', 'text_encoder', 'text_encoder_2'}
+                    allowed = 'transformer, text_encoder, or text_encoder_2'
             unknown = [name for name in self.quantizer_map if name not in video_quant_names]
             if unknown:
                 raise RenderLoopConfigError(
                     f'{a_namer("quantizer_map")} value {unknown[0]!r} cannot be used with '
                     f'video model types. Use {allowed}.')
 
-        if self.model_type != _pipelinewrapper.ModelType.LTX and self.sigmas:
+        if self.model_type not in (
+                _pipelinewrapper.ModelType.LTX,
+                _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15) and self.sigmas:
             raise RenderLoopConfigError(
-                f'{a_namer("sigmas")} is only supported for the ltx video model type.')
+                f'{a_namer("sigmas")} is not supported for --model-type '
+                f'{_pipelinewrapper.get_model_type_string(self.model_type)}.')
 
         blocked = (
             ('controlnet_uris', self.controlnet_uris),
@@ -3481,6 +3554,18 @@ class RenderLoopConfig(_types.SetFromMixin):
                 ' including URI arguments such as shift and use-dynamic-shifting '
                 '(3.0 for 480p, 5.0 for 720p).'
             )
+        elif self.model_type == _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15:
+            allowed = _videopipelines.HUNYUAN_VIDEO_15_SCHEDULER_NAMES
+            family = 'HunyuanVideo 1.5'
+            extra = ''
+        elif self.model_type == _pipelinewrapper.ModelType.MOTIF_VIDEO:
+            allowed = _videopipelines.MOTIF_VIDEO_SCHEDULER_NAMES
+            family = 'Motif-Video'
+            extra = ''
+        elif self.model_type == _pipelinewrapper.ModelType.KANDINSKY5_VIDEO:
+            allowed = _videopipelines.KANDINSKY5_VIDEO_SCHEDULER_NAMES
+            family = 'Kandinsky 5.0 Video'
+            extra = ''
         else:
             allowed = _videopipelines.LTX_SCHEDULER_NAMES
             family = 'LTX'
@@ -3623,6 +3708,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     def _check_prefixed_flow_options(self, a_namer: typing.Callable[[str], str]):
         """Reject a Flux.2, Z-Image, or Qwen option on the wrong model type."""
         groups = (
+            (_pipelinewrapper.model_type_is_qwen_image_21, (
+                'qwen21_output_resolution', 'qwen21_use_kv_cache',
+            ), 'qwen-image-21'),
             (_pipelinewrapper.model_type_is_flux2, (
                 'flux2_caption_upsample_temperature',
             ), 'flux2'),
@@ -3661,6 +3749,9 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.qwen_guidance_scale is not None and self.qwen_guidance_scale < 0:
             raise RenderLoopConfigError(
                 f'{a_namer("qwen_guidance_scale")} must be greater than or equal to 0.')
+        if self.qwen21_output_resolution is not None and self.qwen21_output_resolution < 1:
+            raise RenderLoopConfigError(
+                f'{a_namer("qwen21_output_resolution")} must be greater than 0.')
         if self.qwen_layered_layers is not None and self.qwen_layered_layers < 1:
             raise RenderLoopConfigError(
                 f'{a_namer("qwen_layered_layers")} must be greater than or equal to 1.')
@@ -3669,7 +3760,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("qwen_layered_resolution")} must be 640 or 1024.')
 
     def _check_flow_image_model_requirements(self, a_namer: typing.Callable[[str], str]):
-        """Flux.2, Z-Image, and Qwen-Image do not take Flux.1-only adapters."""
+        """Validate adapter and interchange compatibility for flow-image families."""
         if not _pipelinewrapper.model_type_is_flow_image(self.model_type):
             return
 
@@ -3713,8 +3804,16 @@ class RenderLoopConfig(_types.SetFromMixin):
                         'Z-Image ControlNet only accepts scale. '
                         f'{a_namer("controlnet_uris")} start and end are not pipeline arguments.')
 
+        if self.model_type == _pipelinewrapper.ModelType.QWEN_IMAGE_21 \
+                and self.max_sequence_length is not None:
+            raise RenderLoopConfigError(
+                f'{a_namer("max_sequence_length")} is not supported by Qwen-Image 2.1.')
+
         if self.max_sequence_length is not None:
-            limit = 1024 if _pipelinewrapper.model_type_is_qwen_image_family(self.model_type) else 512
+            limit = 1024 if (
+                _pipelinewrapper.model_type_is_qwen_image_family(self.model_type)
+                or self.model_type == _pipelinewrapper.ModelType.KANDINSKY5_IMAGE
+            ) else 512
             if self.max_sequence_length < 1 or self.max_sequence_length > limit:
                 raise RenderLoopConfigError(
                     f'{a_namer("max_sequence_length")} must be from 1 to {limit} '
@@ -3872,6 +3971,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     (self.controlnet_uris or self.t2i_adapter_uris) and image_seed.is_single_spec
 
                 if (_pipelinewrapper.model_type_image_is_condition(self.model_type)
+                        and self.model_type != _pipelinewrapper.ModelType.KANDINSKY5_IMAGE
                         and image_seed.images and not image_seed.mask_images
                         and not self.adetailer_detector_uris):
                     # Condition images. There is no img2img class.
@@ -4534,6 +4634,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_sigmas,
             self.video_lengths,
             self.video_fps,
+            self.video_timesteps,
             self.ltx_audio_guidance_scales,
             self.ltx_audio_guidance_rescales,
             self.ltx_stg_scales,
@@ -4743,6 +4844,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 qwen_guidance_scale=ov(
                     'qwen_guidance_scale',
                     [self.qwen_guidance_scale]),
+                qwen21_output_resolution=ov(
+                    'qwen21_output_resolution', [self.qwen21_output_resolution]),
+                qwen21_use_kv_cache=ov(
+                    'qwen21_use_kv_cache', [self.qwen21_use_kv_cache]),
                 qwen_layered_layers=ov(
                     'qwen_layered_layers',
                     [self.qwen_layered_layers]),
@@ -4820,6 +4925,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 inference_steps=ov('inference_steps', self.inference_steps),
                 video_length=ov('video_length', self.video_lengths),
                 video_fps=ov('video_fps', self.video_fps),
+                video_timesteps=ov('video_timesteps', self.video_timesteps),
                 ltx_audio_guidance_scale=ov('ltx_audio_guidance_scale', self.ltx_audio_guidance_scales),
                 ltx_audio_guidance_rescale=ov('ltx_audio_guidance_rescale', self.ltx_audio_guidance_rescales),
                 ltx_stg_scale=ov('ltx_stg_scale', self.ltx_stg_scales),

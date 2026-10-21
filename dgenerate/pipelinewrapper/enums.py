@@ -259,6 +259,24 @@ class ModelType(enum.Enum):
     WAN_ANIMATE_2 = 27
     """Wan-Animate-2. A character still plus a driving clip. The checkpoint class selects distilled."""
 
+    QWEN_IMAGE_21 = 28
+    """Qwen-Image 2.1 text-to-image and image-conditioned generation."""
+
+    KREA2 = 29
+    """Krea 2 text-to-image generation (base and distilled checkpoints)."""
+
+    KANDINSKY5_IMAGE = 30
+    """Kandinsky 5.0 Image Lite text-to-image and image editing."""
+
+    HUNYUAN_VIDEO_15 = 31
+    """HunyuanVideo 1.5 text-to-video and image-to-video."""
+
+    MOTIF_VIDEO = 32
+    """Motif-Video text-to-video and image-to-video."""
+
+    KANDINSKY5_VIDEO = 33
+    """Kandinsky 5.0 text-to-video and image-to-video."""
+
 
 def supported_model_type_strings():
     """
@@ -290,7 +308,13 @@ def supported_model_type_strings():
             'ltx',
             'wan',
             'wan-animate',
-            'wan-animate-2']
+            'wan-animate-2',
+            'qwen-image-21',
+            'krea2',
+            'kandinsky5-image',
+            'kandinsky5-video',
+            'hunyuan-video-15',
+            'motif-video']
 
 
 def supported_model_type_enums() -> list[ModelType]:
@@ -341,7 +365,13 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'ltx': ModelType.LTX,
                 'wan': ModelType.WAN,
                 'wan-animate': ModelType.WAN_ANIMATE,
-                'wan-animate-2': ModelType.WAN_ANIMATE_2}[id_str.strip().lower()]
+                'wan-animate-2': ModelType.WAN_ANIMATE_2,
+                'qwen-image-21': ModelType.QWEN_IMAGE_21,
+                'krea2': ModelType.KREA2,
+                'kandinsky5-image': ModelType.KANDINSKY5_IMAGE,
+                'kandinsky5-video': ModelType.KANDINSKY5_VIDEO,
+                'hunyuan-video-15': ModelType.HUNYUAN_VIDEO_15,
+                'motif-video': ModelType.MOTIF_VIDEO}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid ModelType string')
 
@@ -383,7 +413,13 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.LTX: 'ltx',
             ModelType.WAN: 'wan',
             ModelType.WAN_ANIMATE: 'wan-animate',
-            ModelType.WAN_ANIMATE_2: 'wan-animate-2'}[model_type]
+            ModelType.WAN_ANIMATE_2: 'wan-animate-2',
+            ModelType.QWEN_IMAGE_21: 'qwen-image-21',
+            ModelType.KREA2: 'krea2',
+            ModelType.KANDINSKY5_IMAGE: 'kandinsky5-image',
+            ModelType.KANDINSKY5_VIDEO: 'kandinsky5-video',
+            ModelType.HUNYUAN_VIDEO_15: 'hunyuan-video-15',
+            ModelType.MOTIF_VIDEO: 'motif-video'}[model_type]
 
 
 def model_type_is_sd15(model_type: ModelType | str) -> bool:
@@ -546,6 +582,21 @@ def model_type_is_qwen_image(model_type: ModelType | str) -> bool:
     return get_model_type_enum(model_type) == ModelType.QWEN_IMAGE
 
 
+def model_type_is_qwen_image_21(model_type: ModelType | str) -> bool:
+    """Qwen-Image 2.1 (separate architecture from the original Qwen-Image)."""
+    return get_model_type_enum(model_type) == ModelType.QWEN_IMAGE_21
+
+
+def model_type_is_krea2(model_type: ModelType | str) -> bool:
+    """Krea 2 image-generation pipelines."""
+    return get_model_type_enum(model_type) == ModelType.KREA2
+
+
+def model_type_is_kandinsky5_image(model_type: ModelType | str) -> bool:
+    """Kandinsky 5 image-generation and editing pipelines."""
+    return get_model_type_enum(model_type) == ModelType.KANDINSKY5_IMAGE
+
+
 def model_type_is_qwen_image_edit(model_type: ModelType | str) -> bool:
     """Qwen-Image edit, edit-plus, or edit-inpaint."""
     return get_model_type_enum(model_type) == ModelType.QWEN_IMAGE_EDIT
@@ -557,7 +608,7 @@ def model_type_is_qwen_image_layered(model_type: ModelType | str) -> bool:
 
 
 def model_type_is_qwen_image_family(model_type: ModelType | str) -> bool:
-    """Qwen-Image, edit, or layered. ``--guidance-scales`` is true CFG for all of them."""
+    """The original Qwen-Image, edit, and layered pipelines."""
     model_type = get_model_type_enum(model_type)
     return model_type in {
         ModelType.QWEN_IMAGE,
@@ -571,8 +622,9 @@ def model_type_image_is_condition(model_type: ModelType | str) -> bool:
     An ``--image-seeds`` value with no mask is a condition image, not img2img.
 
     There is no strength. Flux.2 references, Klein KV, Z-Image Omni, Qwen edit,
-    and Qwen layered work this way. ``--adetailer-detectors`` is the exception:
-    that seed is the image being inpainted.
+    Qwen layered, Qwen-Image 2.1, and Kandinsky 5 image editing work this way.
+    ``--adetailer-detectors`` is the exception: that seed is the image being
+    inpainted.
     """
     model_type = get_model_type_enum(model_type)
     return model_type in {
@@ -581,6 +633,8 @@ def model_type_image_is_condition(model_type: ModelType | str) -> bool:
         ModelType.Z_IMAGE_OMNI,
         ModelType.QWEN_IMAGE_EDIT,
         ModelType.QWEN_IMAGE_LAYERED,
+        ModelType.QWEN_IMAGE_21,
+        ModelType.KANDINSKY5_IMAGE,
     }
 
 
@@ -602,7 +656,7 @@ def model_type_supports_adetailer(model_type: ModelType | str) -> bool:
 
 def model_type_is_flow_image(model_type: ModelType | str) -> bool:
     """
-    Flux.2, Z-Image, Qwen-Image, and their edit, layered, Omni, and Klein KV variants.
+    Flux.2, Z-Image, and Qwen-family image transformers.
 
     These are flow-matching image transformers. Pixel size snaps to
     ``vae_scale_factor * 2``, which is 16 when the VAE factor is 8.
@@ -619,6 +673,9 @@ def model_type_is_flow_image(model_type: ModelType | str) -> bool:
         ModelType.QWEN_IMAGE,
         ModelType.QWEN_IMAGE_EDIT,
         ModelType.QWEN_IMAGE_LAYERED,
+        ModelType.QWEN_IMAGE_21,
+        ModelType.KREA2,
+        ModelType.KANDINSKY5_IMAGE,
     }
 
 
@@ -633,7 +690,8 @@ def model_type_is_video(model_type: ModelType | str) -> bool:
     model_type = get_model_type_enum(model_type)
 
     return model_type in {
-        ModelType.LTX, ModelType.WAN, ModelType.WAN_ANIMATE, ModelType.WAN_ANIMATE_2}
+        ModelType.LTX, ModelType.WAN, ModelType.WAN_ANIMATE, ModelType.WAN_ANIMATE_2,
+        ModelType.HUNYUAN_VIDEO_15, ModelType.MOTIF_VIDEO, ModelType.KANDINSKY5_VIDEO}
 
 
 def model_type_is_wan_family(model_type: ModelType | str) -> bool:
@@ -714,10 +772,14 @@ CACHE_DIT_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.QWEN_IMAGE,
     ModelType.QWEN_IMAGE_EDIT,
     ModelType.QWEN_IMAGE_LAYERED,
+    ModelType.KREA2,
+    ModelType.KANDINSKY5_IMAGE,
     ModelType.LTX,
     ModelType.WAN,
     ModelType.WAN_ANIMATE,
     ModelType.WAN_ANIMATE_2,
+    ModelType.HUNYUAN_VIDEO_15,
+    ModelType.KANDINSKY5_VIDEO,
 )
 """``--model-type`` values with Cache-DiT adapters."""
 
@@ -845,9 +907,14 @@ SPECTRUM_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.QWEN_IMAGE,
     ModelType.QWEN_IMAGE_EDIT,
     ModelType.QWEN_IMAGE_LAYERED,
+    ModelType.QWEN_IMAGE_21,
+    ModelType.KREA2,
+    ModelType.KANDINSKY5_IMAGE,
     ModelType.WAN,
     ModelType.WAN_ANIMATE,
     ModelType.WAN_ANIMATE_2,
+    ModelType.HUNYUAN_VIDEO_15,
+    ModelType.MOTIF_VIDEO,
 )
 """``--model-type`` values that accept Spectrum."""
 
@@ -874,11 +941,14 @@ DYPE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.QWEN_IMAGE,
     ModelType.QWEN_IMAGE_EDIT,
     ModelType.QWEN_IMAGE_LAYERED,
+    ModelType.KREA2,
     ModelType.Z_IMAGE,
     ModelType.Z_IMAGE_OMNI,
     ModelType.WAN,
     ModelType.WAN_ANIMATE,
     ModelType.WAN_ANIMATE_2,
+    ModelType.HUNYUAN_VIDEO_15,
+    ModelType.MOTIF_VIDEO,
 )
 """``--model-type`` values that accept DyPE."""
 

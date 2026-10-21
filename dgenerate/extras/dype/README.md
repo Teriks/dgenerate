@@ -47,11 +47,17 @@ scales both axes by the long side, so it ignores this option.
 | Flux.2 and Klein KV | Flux.2 positional embedder | Experimental candidate |
 | Z-Image and Omni | Callable spatial RoPE | Experimental candidate |
 | Wan, Wan-Animate, Wan-Animate-2 | Spatial axes of 3D RoPE | Experimental video candidate |
+| Hunyuan Video 1.5 and Motif Video | Spatial axes of factorized 3D RoPE | Experimental video candidate |
 
-The adapters modify only spatial axes. Qwen text frequencies and Wan's temporal
-axis remain unchanged. `--dype-base-resolutions` overrides the reference long
-side used to decide when spatial scaling begins; defaults are 1024 pixels for
-Flux, Flux.2, and Z-Image, 1328 for Qwen-Image, and 832 for Wan.
+The video adapters modify only spatial axes and leave temporal frequencies
+unchanged. Qwen text frequencies also remain unchanged. Hunyuan Video 1.5 and
+Motif use their native factorized `[time, height, width]` RoPE tables; DyPE
+reuses the model's time-axis table and replaces the spatial tables. The video
+adapters use family-specific reference long sides, which can be changed with
+`--dype-base-resolutions`. That option overrides the reference long side used
+to decide when spatial scaling begins; defaults are 1024 pixels for Flux,
+Flux.2, and Z-Image, 1328 for Qwen-Image, 832 for Wan and Motif Video, and 640
+for Hunyuan Video 1.5.
 
 The upstream DyPE Flux pipeline also adjusts the scheduler shift calculation:
 it passes the current image sequence length as `max_seq_len`, rather than using

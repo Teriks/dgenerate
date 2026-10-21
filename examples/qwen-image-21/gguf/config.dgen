@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Public Qwen-Image 2.1 Q3_K_S GGUF transformer.
+# The base pipeline supplies the transformer config to the GGUF loader.
+
+Qwen/Qwen-Image-2.1
+--model-type qwen-image-21
+--transformer https://huggingface.co/molbal/Qwen-Image-2.1-GGUF/blob/main/qwen_image_2.1_Q4_0.gguf
+--dtype bfloat16
+--model-sequential-offload
+--qwen21-output-resolution 1024
+--gen-seeds 1
+--output-path qwen-image-21-gguf
+--prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

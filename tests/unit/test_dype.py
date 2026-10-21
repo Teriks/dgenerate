@@ -18,6 +18,12 @@ def _config(**values):
 
 
 class TestDyPE(unittest.TestCase):
+    def test_new_video_model_types_advertise_dype(self):
+        from dgenerate.pipelinewrapper.enums import model_type_supports_dype
+
+        self.assertTrue(model_type_supports_dype('hunyuan-video-15'))
+        self.assertTrue(model_type_supports_dype('motif-video'))
+
     def test_config_rejects_step_reuse_features(self):
         flux = _pipelinewrapper.ModelType.FLUX
         for kwargs in (
@@ -166,6 +172,32 @@ class TestDyPE(unittest.TestCase):
             restore()
         self.assertGreater(float(freqs.abs().max()), 1.01)
 
+    def test_krea2_flux_compatible_rotary_embedder(self):
+        class _Rope:
+            axes_dim = (8, 4, 4)
+            theta = 1000.0
+
+            def forward(self, ids):
+                return ids, ids
+
+        class _Transformer:
+            def __init__(self):
+                self.rotary_emb = _Rope()
+
+            def forward(self, timestep=None):
+                return timestep
+
+        transformer = _Transformer()
+        restore = _dype_patch._patch_transformer(
+            transformer, 'krea2', 256, 'yarn', 'constant', 'shared')
+        try:
+            cos, sin = transformer.rotary_emb.forward(torch.tensor([[0, 24, 16]]))
+            self.assertEqual(cos.shape, (1, sum(_Rope.axes_dim)))
+            self.assertEqual(sin.shape, (1, sum(_Rope.axes_dim)))
+        finally:
+            restore()
+        self.assertNotIn('forward', transformer.rotary_emb.__dict__)
+
     def test_yarn_mscale_modes(self):
         from dgenerate.extras.dype.rope import dype_rope_1d
 
@@ -306,3 +338,39 @@ class TestDyPE(unittest.TestCase):
             restore()
         self.assertEqual(tuple(cos.shape), (1, 64, 1, 64))
         self.assertEqual(sin.shape, cos.shape)
+
+    def test_factorized_video_rope_preserves_time_axis_and_scales_spatial_axes(self):
+        class _FactorizedRope(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.patch_size = 1
+                self.patch_size_t = 1
+                self.rope_dim = (4, 4, 4)
+                self.theta = 256.0
+
+            def forward(self, hidden_states):
+                frames, height, width = hidden_states.shape[-3:]
+                size = frames * height * width
+                # Distinct axis values make the temporal slice easy to verify.
+                return (torch.zeros(size, 12), torch.zeros(size, 12))
+
+        class _Holder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.rope = _FactorizedRope()
+
+        for family in ('hunyuan-video-15', 'motif-video'):
+            with self.subTest(family=family):
+                holder = _Holder()
+                hidden = torch.zeros(1, 4, 2, 32, 48)
+                original = holder.rope(hidden)
+                restore = _dype_patch._patch_factorized_video_rope(
+                    holder, family, 16, 'yarn', axis_scaling='shared')
+                try:
+                    patched = holder.rope(hidden)
+                finally:
+                    restore()
+                self.assertTrue(torch.equal(original[0][:, :4], patched[0][:, :4]))
+                self.assertTrue(torch.equal(original[1][:, :4], patched[1][:, :4]))
+                self.assertFalse(torch.equal(original[0][:, 4:], patched[0][:, 4:]))
+                self.assertFalse(torch.equal(original[1][:, 4:], patched[1][:, 4:]))

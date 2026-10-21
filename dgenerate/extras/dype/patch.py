@@ -108,10 +108,12 @@ def _patch_flux_pos_embed(transformer,
                           base_resolution: int | None,
                           method: str,
                           mscale: str = 'constant',
-                          axis_scaling: str = 'shared'):
-    pos_embed = getattr(transformer, 'pos_embed', None)
+                          axis_scaling: str = 'shared',
+                          embedder_attribute: str = 'pos_embed'):
+    pos_embed = getattr(transformer, embedder_attribute, None)
     if pos_embed is None or not hasattr(pos_embed, 'axes_dim') or not hasattr(pos_embed, 'theta'):
-        raise DypeError('The loaded Flux transformer has no compatible positional embedder.')
+        raise DypeError(
+            f'The loaded transformer has no compatible {embedder_attribute} positional embedder.')
 
     axes_dim = tuple(pos_embed.axes_dim)
     theta = float(pos_embed.theta)
@@ -410,6 +412,75 @@ def _patch_wan_rope(transformer, base_resolution: int | None, method: str, mscal
     return _attribute_patch(rope, 'forward', forward)
 
 
+def _patch_factorized_video_rope(transformer,
+                                 model_family: str,
+                                 base_resolution: int | None,
+                                 method: str,
+                                 mscale: str = 'constant',
+                                 axis_scaling: str = 'shared'):
+    """Apply DyPE to the spatial axes of HunyuanVideo15 and Motif RoPE.
+
+    Both models build factorized [time, height, width] cos/sin tables from
+    the latent shape. Keep the model's temporal frequencies intact and replace
+    only the height and width frequency tables.
+    """
+    rope = getattr(transformer, 'rope', None)
+    needed = ('patch_size', 'patch_size_t', 'rope_dim', 'theta')
+    if rope is None or not all(hasattr(rope, name) for name in needed):
+        raise DypeError('The loaded video transformer has no compatible factorized 3D RoPE module.')
+
+    default_resolution = 640 if model_family == 'hunyuan-video-15' else _WAN_BASE_RESOLUTION
+    base_resolution = base_resolution or default_resolution
+    base_patches = float(base_resolution) / _WAN_TOKEN_STRIDE
+
+    def forward(hidden_states: torch.Tensor):
+        if method == 'base':
+            return original(hidden_states)
+
+        original_cos, original_sin = original(hidden_states)
+        _, _, num_frames, height, width = hidden_states.shape
+        frames = num_frames // rope.patch_size_t
+        patch_height = height // rope.patch_size
+        patch_width = width // rope.patch_size
+        dims = tuple(int(dim) for dim in rope.rope_dim)
+        expected_seq = frames * patch_height * patch_width
+        if len(dims) != 3 or original_cos.shape[0] != expected_seq or original_cos.shape[-1] != sum(dims):
+            raise DypeError('Video RoPE output does not match its configured [time, height, width] axes.')
+
+        positions = (
+            torch.arange(frames, device=hidden_states.device),
+            torch.arange(patch_height, device=hidden_states.device),
+            torch.arange(patch_width, device=hidden_states.device),
+        )
+        shared_scale = _shared_scale(
+            axis_scaling, (patch_height, patch_width), base_patches)
+        cos_axes = [original_cos[:, :dims[0]]]
+        sin_axes = [original_sin[:, :dims[0]]]
+        for axis, (length, dim) in enumerate(((patch_height, dims[1]), (patch_width, dims[2])), start=1):
+            cos, sin = dype_rope_1d(
+                positions[axis], dim,
+                theta=float(rope.theta),
+                base_length=base_patches,
+                current_length=length,
+                timestep=_CURRENT_TIMESTEP.get(),
+                method=method,
+                mscale=mscale,
+                shared_scale=shared_scale,
+            )
+            if axis == 1:
+                cos = cos.view(1, patch_height, 1, dim).expand(frames, patch_height, patch_width, dim)
+                sin = sin.view(1, patch_height, 1, dim).expand(frames, patch_height, patch_width, dim)
+            else:
+                cos = cos.view(1, 1, patch_width, dim).expand(frames, patch_height, patch_width, dim)
+                sin = sin.view(1, 1, patch_width, dim).expand(frames, patch_height, patch_width, dim)
+            cos_axes.append(cos.reshape(expected_seq, dim).to(dtype=original_cos.dtype))
+            sin_axes.append(sin.reshape(expected_seq, dim).to(dtype=original_sin.dtype))
+        return torch.cat(cos_axes, dim=-1), torch.cat(sin_axes, dim=-1)
+
+    original = rope.forward
+    return _attribute_patch(rope, 'forward', forward)
+
+
 def _patch_transformer(transformer,
                        model_family: str,
                        base_resolution: int | None,
@@ -418,6 +489,12 @@ def _patch_transformer(transformer,
                        axis_scaling: str):
     if model_family in {'flux1', 'flux2'}:
         restore_rope = _patch_flux_pos_embed(transformer, base_resolution, method, mscale, axis_scaling)
+    elif model_family == 'krea2':
+        # Diffusers' Krea2RotaryPosEmbed is copied from FluxPosEmbed and uses
+        # the same position-ID contract, under transformer.rotary_emb.
+        restore_rope = _patch_flux_pos_embed(
+            transformer, base_resolution, method, mscale, axis_scaling,
+            embedder_attribute='rotary_emb')
     elif model_family == 'qwen':
         restore_rope = _patch_qwen_rope(transformer, base_resolution, method, mscale, axis_scaling)
     elif model_family == 'zimage':
@@ -425,6 +502,9 @@ def _patch_transformer(transformer,
     elif model_family == 'wan':
         # Wan already scales both spatial axes by the long side's ratio.
         restore_rope = _patch_wan_rope(transformer, base_resolution, method, mscale)
+    elif model_family in {'hunyuan-video-15', 'motif-video'}:
+        restore_rope = _patch_factorized_video_rope(
+            transformer, model_family, base_resolution, method, mscale, axis_scaling)
     else:
         raise DypeError(f'No DyPE adapter is registered for model family {model_family!r}.')
     try:

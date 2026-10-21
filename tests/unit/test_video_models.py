@@ -28,6 +28,23 @@ def _config(**values):
 
 
 class TestVideoModels(unittest.TestCase):
+    def test_motif_custom_timesteps_bypass_pipeline_sigmas(self):
+        import diffusers
+        from diffusers.pipelines.motif_video.pipeline_motif_video import retrieve_timesteps
+
+        scheduler = diffusers.FlowMatchEulerDiscreteScheduler(use_dynamic_shifting=True)
+        custom = [1000, 700, 300, 50]
+        with _videopipelines._forced_scheduler_timesteps(scheduler, custom):
+            # Motif always passes its own sigmas, sized to num_inference_steps.
+            timesteps, steps = retrieve_timesteps(
+                scheduler, len(custom), 'cpu', None,
+                sigmas=numpy.linspace(1.0, 1 / len(custom), len(custom)), mu=0.5)
+        self.assertEqual(steps, len(custom))
+        expected = diffusers.FlowMatchEulerDiscreteScheduler(use_dynamic_shifting=True)
+        expected.set_timesteps(timesteps=custom, mu=0.5)
+        self.assertTrue(torch.allclose(timesteps, expected.timesteps))
+        self.assertNotIn('set_timesteps', vars(scheduler))
+
     def test_end_image_parse(self):
         parsed = _mediainput.parse_image_seed_uri(
             'examples/media/earth.jpg;last-frame=examples/media/beach.jpg')
@@ -75,6 +92,187 @@ class TestVideoModels(unittest.TestCase):
         with self.assertRaises(ValueError):
             _pipelinewrapper.get_model_type_enum('hunyuan-video')
         self.assertFalse(_pipelinewrapper.model_type_is_video(_pipelinewrapper.ModelType.FLUX))
+
+    def test_video_family_registration(self):
+        from diffusers import (
+            HunyuanVideo15ImageToVideoPipeline,
+            HunyuanVideo15Pipeline,
+            MotifVideoImage2VideoPipeline,
+            MotifVideoPipeline,
+        )
+
+        self.assertTrue(_pipelinewrapper.model_type_is_video('hunyuan-video-15'))
+        self.assertTrue(_pipelinewrapper.model_type_is_video('motif-video'))
+        self.assertEqual(
+            _videopipelines._resolve_video_load(
+                _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15,
+                {'_class_name': 'HunyuanVideo15Pipeline'}, None)[:2],
+            ('hunyuan-video-15', HunyuanVideo15Pipeline))
+        self.assertEqual(
+            _videopipelines._resolve_video_load(
+                _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15,
+                {'_class_name': 'HunyuanVideo15ImageToVideoPipeline'}, None)[:2],
+            ('hunyuan-video-15', HunyuanVideo15ImageToVideoPipeline))
+        self.assertEqual(
+            _videopipelines._resolve_video_load(
+                _pipelinewrapper.ModelType.MOTIF_VIDEO,
+                {'_class_name': 'MotifVideoPipeline'}, None)[:2],
+            ('motif-video', MotifVideoPipeline))
+        self.assertIs(
+            _videopipelines.hunyuan_video15.pipeline_class('image-to-video'),
+            HunyuanVideo15ImageToVideoPipeline)
+        self.assertIs(
+            _videopipelines.motif_video.pipeline_class('image-to-video'),
+            MotifVideoImage2VideoPipeline)
+
+    def test_video_options_and_timesteps(self):
+        parsed = _arguments.parse_args([
+            'org/motif', '--model-type', 'motif-video', '--prompts', 'a fox',
+            '--video-timesteps', '1000,700,300,0'], throw=True, log_error=False)
+        self.assertEqual(parsed.video_timesteps, [[1000, 700, 300, 0]])
+        expression = _arguments.parse_args([
+            'org/motif', '--model-type', 'motif-video', '--prompts', 'a fox',
+            '--video-timesteps', 'expr: timesteps[::2]'], throw=True, log_error=False)
+        self.assertEqual(expression.video_timesteps, ['timesteps[::2]'])
+        with self.assertRaises(_arguments.DgenerateUsageError):
+            _arguments.parse_args([
+                'org/motif', '--model-type', 'motif-video', '--prompts', 'a fox',
+                '--kandinsky-no-audio'], throw=True, log_error=False)
+
+        config = _config(
+            model_path='org/motif',
+            model_type=_pipelinewrapper.ModelType.MOTIF_VIDEO,
+            video_timesteps=[[1000, 700, 300, 0]])
+        config.check()
+        self.assertEqual(config.video_fps, [24.0])
+        self.assertEqual(next(config.iterate_diffusion_args()).video_timesteps,
+                         [1000, 700, 300, 0])
+        expression_config = _config(
+            model_path='org/motif',
+            model_type=_pipelinewrapper.ModelType.MOTIF_VIDEO,
+            video_timesteps=['timesteps[::2]'])
+        expression_config.check()
+        self.assertEqual(
+            next(expression_config.iterate_diffusion_args()).video_timesteps,
+            'timesteps[::2]')
+        self.assertEqual(
+            _videopipelines._eval_video_timesteps_expression(
+                'timesteps[::2]', [1000, 800, 600, 400, 200]),
+            [1000, 600, 200])
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines._eval_video_timesteps_expression(
+                'timesteps * 0.5', [1000, 801, 600])
+        motif_pipe = self._motif_schedule_pipe()
+        self.assertEqual(
+            _videopipelines._motif_default_timesteps(
+                motif_pipe, 3, {}, inspect.signature(motif_pipe.__call__).parameters).tolist(),
+            [1000, 500, 0])
+        dpm_config = _config(
+            model_path='org/motif',
+            model_type=_pipelinewrapper.ModelType.MOTIF_VIDEO,
+            scheduler_uri='DPMSolverMultistepScheduler')
+        dpm_config.check()
+
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
+            _config(
+                model_path='org/hunyuan',
+                model_type=_pipelinewrapper.ModelType.HUNYUAN_VIDEO_15,
+                video_timesteps=[[1000, 500, 0]]).check()
+
+    @staticmethod
+    def _motif_schedule_pipe():
+        class Scheduler:
+            config = {}
+            timesteps = numpy.array([7, 3])
+            sigmas = numpy.array([1.0, 0.0])
+            num_inference_steps = 2
+
+            def set_timesteps(self, steps, device=None, mu=None, sigmas=None, timesteps=None):
+                self.timesteps = numpy.array([1000, 500, 0])[:steps]
+                self.sigmas = numpy.array([1.0, 0.5, 0.0])[:steps]
+                self.num_inference_steps = steps
+
+        class Pipe:
+            scheduler = Scheduler()
+            vae_scale_factor_spatial = 8
+            vae_scale_factor_temporal = 4
+            transformer_spatial_patch_size = 2
+            transformer_temporal_patch_size = 1
+
+            def __call__(self, height=352, width=640, num_frames=65):
+                pass
+
+        return Pipe()
+
+
+    def test_motif_call_uses_custom_timesteps_and_guider(self):
+        import diffusers
+
+        captured = {}
+
+        class Guider:
+            def new(self, **kwargs):
+                captured['guider'] = kwargs
+                return self
+
+        class Pipe:
+            guider = Guider()
+            scheduler = diffusers.FlowMatchEulerDiscreteScheduler()
+            vae_scale_factor_temporal = 4
+
+            def __call__(self, prompt=None, negative_prompt=None, width=None, height=None,
+                         num_frames=121, num_inference_steps=50, timesteps=None,
+                         max_sequence_length=512, output_type='pil', generator=None):
+                pass
+
+        class Held:
+            family = 'motif-video'
+
+        class Wrapper:
+            model_type = _pipelinewrapper.ModelType.MOTIF_VIDEO
+
+        class Output:
+            frames = [[PIL.Image.new('RGB', (16, 16))]]
+            audio = None
+
+        args = _pipelinewrapper.DiffusionArguments()
+        args.prompt = _prompt.Prompt('a fox')
+        args.guidance_scale = 4.25
+        args.video_fps = 24
+        args.video_timesteps = [1000, 700, 300, 0]
+        args.inference_steps = None
+        args.video_length = None
+        args.width = None
+        args.height = None
+        args.sigmas = None
+        args.max_sequence_length = None
+        args.vae_slicing = False
+        args.images = None
+
+        def invoke(wrapper, pipe, kwargs, user_args=None):
+            captured['kwargs'] = kwargs
+            # The pipeline's own sigmas are replaced by the custom schedule.
+            pipe.scheduler.set_timesteps(
+                kwargs['num_inference_steps'],
+                sigmas=numpy.linspace(1.0, 0.25, kwargs['num_inference_steps']))
+            captured['timesteps'] = pipe.scheduler.timesteps.tolist()
+            return Output()
+
+        with unittest.mock.patch.object(
+                _videopipelines, '_video_pipeline', return_value=(Pipe(), Held())), \
+                unittest.mock.patch.object(_videopipelines, '_generator', return_value=None), \
+                unittest.mock.patch.object(_videopipelines, '_invoke', side_effect=invoke):
+            frames, audio, sample_rate, fps = _videopipelines._call_single_image_video(
+                Wrapper(), args)
+
+        self.assertNotIn('timesteps', captured['kwargs'])
+        self.assertEqual(captured['timesteps'], [1000, 700, 300, 0])
+        self.assertEqual(captured['kwargs']['num_inference_steps'], 4)
+        self.assertEqual(captured['guider'], {'guidance_scale': 4.25})
+        self.assertEqual(len(frames), 1)
+        self.assertIsNone(audio)
+        self.assertIsNone(sample_rate)
+        self.assertEqual(fps, 24)
 
     def test_ltx_scheduler_uri(self):
         rejected = _config(
@@ -1389,6 +1587,20 @@ class TestVideoModels(unittest.TestCase):
             ('text_encoder',),
             ('CLIPTextModel;model=org/custom-encoder;quantizer="bnb;bits=4"',))
         self.assertEqual(quantizers['text_encoder'], 'bnb;bits=4')
+
+    def test_new_video_models_plan_transformer_lora_quantization_preflight(self):
+        import diffusers
+
+        for pipeline_class in (
+                diffusers.HunyuanVideo15Pipeline,
+                diffusers.HunyuanVideo15ImageToVideoPipeline,
+                diffusers.MotifVideoPipeline,
+                diffusers.MotifVideoImage2VideoPipeline):
+            components, quantizers = _videopipelines._video_lora_component_quantizers(
+                pipeline_class, 'sdnq;type=int4', None, None, None, (), ())
+            self.assertIn('transformer', components, pipeline_class.__name__)
+            self.assertEqual(
+                quantizers, {'transformer': 'sdnq;type=int4'}, pipeline_class.__name__)
 
     def test_video_lora_component_cache_identity_ignores_manual_quantizers(self):
         first = _videopipelines._video_lora_component_uri_cache_key(

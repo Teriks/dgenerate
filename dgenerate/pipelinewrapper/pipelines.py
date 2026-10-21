@@ -579,6 +579,11 @@ def extra_pipeline_weight_directories(model_index: dict | None) -> list[str]:
     return extras
 
 
+def _is_text_encoder_component(name: str) -> bool:
+    """Match encoder component slots, not similarly prefixed pipeline config fields."""
+    return name == 'text_encoder' or bool(re.fullmatch(r'text_encoder_\d+', name))
+
+
 def _reject_mixed_offload(model_cpu_offload: bool,
                           sequential_cpu_offload: bool,
                           model_group_offload: bool,
@@ -2652,6 +2657,14 @@ def diffusion_transformer_class(model_type: _enums.ModelType):
         return diffusers.ZImageTransformer2DModel
     if _enums.model_type_is_qwen_image_family(model_type):
         return diffusers.QwenImageTransformer2DModel
+    if model_type == _enums.ModelType.QWEN_IMAGE_21:
+        return diffusers.QwenImage21Transformer2DModel
+    if model_type == _enums.ModelType.KREA2:
+        return diffusers.Krea2Transformer2DModel
+    if model_type in {
+            _enums.ModelType.KANDINSKY5_IMAGE,
+            _enums.ModelType.KANDINSKY5_VIDEO}:
+        return diffusers.Kandinsky5Transformer3DModel
     return None
 
 
@@ -2720,6 +2733,35 @@ def _flow_image_pipeline_class(
     if unet_uri:
         raise UnsupportedPipelineConfigError(
             f'--model-type {model_type_string} does not use a UNet. Use --transformer.')
+
+    if model_type == _enums.ModelType.QWEN_IMAGE_21:
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type qwen-image-21 does not support --control-nets.')
+        if pipeline_type != _enums.PipelineType.TXT2IMG and not help_mode:
+            raise UnsupportedPipelineConfigError(
+                '--model-type qwen-image-21 accepts optional condition images, but has no '
+                'img2img or inpaint pipeline.')
+        return diffusers.QwenImage21Pipeline
+
+    if model_type == _enums.ModelType.KREA2:
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError('--model-type krea2 does not support --control-nets.')
+        if pipeline_type != _enums.PipelineType.TXT2IMG and not help_mode:
+            raise UnsupportedPipelineConfigError('--model-type krea2 supports text-to-image only.')
+        return diffusers.Krea2Pipeline
+
+    if model_type == _enums.ModelType.KANDINSKY5_IMAGE:
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type kandinsky5-image does not support --control-nets.')
+        if pipeline_type == _enums.PipelineType.INPAINT and not help_mode:
+            raise UnsupportedPipelineConfigError(
+                '--model-type kandinsky5-image has no inpaint pipeline; use it for text-to-image '
+                'or image-to-image editing.')
+        if pipeline_type == _enums.PipelineType.IMG2IMG:
+            return diffusers.Kandinsky5I2IPipeline
+        return diffusers.Kandinsky5T2IPipeline
 
     if _enums.model_type_is_flux2_klein_kv(model_type):
         if controlnet_uris:
@@ -2826,6 +2868,9 @@ _MODEL_INDEX_CHECKS = [
     (_enums.model_type_is_qwen_image_layered, ('^QwenImageLayered', 'Qwen-Image layered')),
     (_enums.model_type_is_qwen_image_edit, ('^QwenImageEdit', 'Qwen-Image edit')),
     (_enums.model_type_is_qwen_image, ('^QwenImage', 'Qwen-Image')),
+    (_enums.model_type_is_qwen_image_21, ('^QwenImage21', 'Qwen-Image 2.1')),
+    (_enums.model_type_is_krea2, ('^Krea2', 'Krea 2')),
+    (_enums.model_type_is_kandinsky5_image, ('^Kandinsky5', 'Kandinsky 5.0 Image')),
     (_enums.model_type_is_flux, ('^Flux(?!2)', 'Flux')),
     (_enums.model_type_is_sd3, ('^StableDiffusion3.*', 'Stable Diffusion 3')),
     (_enums.model_type_is_sdxl, ('^StableDiffusionXL.*', 'Stable Diffusion XL')),
@@ -2843,6 +2888,7 @@ _MODEL_INDEX_FALLBACK_CHECKS = [
 _REDIRECTED_FLOW_CLASSES = (
     ('Flux2KleinKV', _enums.model_type_is_flux2, 'flux2-klein-kv'),
     ('ZImageOmni', _enums.model_type_is_z_image, 'z-image-omni'),
+    ('QwenImage21', _enums.model_type_is_qwen_image, 'qwen-image-21'),
     ('QwenImageLayered', _enums.model_type_is_qwen_image, 'qwen-image-layered'),
     ('QwenImageEdit', _enums.model_type_is_qwen_image, 'qwen-image-edit'),
 )
@@ -3605,7 +3651,8 @@ def _create_diffusion_pipeline(
     )
 
     text_encoder_count = len(
-        [a for a in inspect.getfullargspec(pipeline_class.__init__).args if a.startswith('text_encoder')])
+        [a for a in inspect.getfullargspec(pipeline_class.__init__).args
+         if _is_text_encoder_component(a)])
 
     if not text_encoder_uris:
         text_encoder_uris = []
@@ -4038,6 +4085,10 @@ def _create_diffusion_pipeline(
         return unet_model
 
     def load_transformer(uri: _uris.TransformerUri, transformer_class):
+        # External single-file transformer checkpoints (notably GGUF) need the
+        # pipeline's transformer config to construct the module. Video
+        # pipelines pass this explicitly; keep static pipelines equivalent.
+        transformer_config = None if _hfhub.is_single_file_model_load(model_path) else model_path
         transformer_model = uri.load(
             variant_fallback=variant,
             dtype_fallback=dtype,
@@ -4046,6 +4097,8 @@ def _create_diffusion_pipeline(
             local_files_only=local_files_only,
             no_cache=bool(lora_uris) or submodules_on_pipeline,
             device_map=get_device_map_for_quantizer(uri.quantizer),
+            config=transformer_config,
+            config_subfolder='transformer' if transformer_config else None,
             transformer_class=transformer_class
         )
         if sdnq_cast_hack or _sdnqload.module_is_sdnq(transformer_model):
@@ -4106,7 +4159,10 @@ def _create_diffusion_pipeline(
 
     for idx, (name, param) in enumerate(
             [n for n in sorted(model_index.items(), key=lambda x: x[0])
-             if n[0].startswith('text_encoder') and n[1][0] is not None]):
+             if _is_text_encoder_component(n[0])
+             and isinstance(n[1], (list, tuple))
+             and len(n[1]) >= 2
+             and n[1][0] is not None]):
         if text_encoder_override_states[idx]:
             continue
 
@@ -4737,7 +4793,7 @@ def _get_component_cache_key(
                     quantizer=None
                 )
                 manual_uri_part = f"|manual:{str(uri_without_quantizer)}"
-            elif component_name.startswith('text_encoder'):
+            elif _is_text_encoder_component(component_name):
                 parsed_uri = _uris.TextEncoderUri.parse(manual_component_uris[component_name])
                 uri_without_quantizer = _uris.TextEncoderUri(
                     encoder=parsed_uri.encoder,
@@ -4847,7 +4903,7 @@ def _create_minimal_pipeline_for_component_extraction(
 
     # Get all text encoder parameters that the pipeline expects
     pipe_params = inspect.signature(pipeline_class.__init__).parameters
-    text_encoder_params = [name for name in pipe_params.keys() if name.startswith('text_encoder')]
+    text_encoder_params = [name for name in pipe_params.keys() if _is_text_encoder_component(name)]
 
     # Load ALL text encoders that the pipeline expects, even if not being cached
     # This prevents SingleFileComponentError during pipeline creation
@@ -4963,7 +5019,7 @@ def _create_minimal_pipeline_for_component_extraction(
     # Load manual components that are not text encoders
     if manual_component_uris:
         for component in components_needed:
-            if component in manual_component_uris and not component.startswith('text_encoder'):
+            if component in manual_component_uris and not _is_text_encoder_component(component):
                 if component == 'unet':
                     unet_class = diffusers.UNet2DConditionModel
                     parsed_uri = _uris.UNetUri.parse(manual_component_uris[component])
@@ -5019,6 +5075,8 @@ def _create_minimal_pipeline_for_component_extraction(
                         use_auth_token=auth_token,
                         local_files_only=False,
                         no_cache=True,
+                        config=None if _hfhub.is_single_file_model_load(model_path) else model_path,
+                        config_subfolder='transformer' if not _hfhub.is_single_file_model_load(model_path) else None,
                         transformer_class=transformer_class
                     )
 
@@ -5154,7 +5212,7 @@ def _cache_components_granular(
                         parsed_uri = _uris.TransformerUri.parse(uri)
                         if parsed_uri.quantizer:
                             manual_quantizers[component] = parsed_uri.quantizer
-                    elif component.startswith('text_encoder'):
+                    elif _is_text_encoder_component(component):
                         parsed_uri = _uris.TextEncoderUri.parse(uri)
                         if parsed_uri.quantizer:
                             manual_quantizers[component] = parsed_uri.quantizer

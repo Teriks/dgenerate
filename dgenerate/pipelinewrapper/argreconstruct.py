@@ -112,6 +112,12 @@ def reconstruct_dgenerate_opts(
             opts.append(('--video-lengths', args.video_length))
         if args.video_fps is not None:
             opts.append(('--video-fps', args.video_fps))
+        if args.video_timesteps:
+            if isinstance(args.video_timesteps, str):
+                opts.append(('--video-timesteps', f'expr: {args.video_timesteps}'))
+            else:
+                opts.append((
+                    '--video-timesteps', ','.join(str(step) for step in args.video_timesteps)))
         if args.wan_low_noise_guidance_scale is not None:
             opts.append(('--wan-low-noise-guidance-scales', args.wan_low_noise_guidance_scale))
         if args.wan_boundary_ratio is not None:
@@ -257,6 +263,12 @@ def reconstruct_dgenerate_opts(
 
     if args.qwen_guidance_scale is not None:
         opts.append(('--qwen-guidance-scale', args.qwen_guidance_scale))
+
+    if args.qwen21_output_resolution is not None:
+        opts.append(('--qwen21-output-resolution', args.qwen21_output_resolution))
+
+    if args.qwen21_use_kv_cache is False:
+        opts.append(('--qwen21-no-kv-cache',))
 
     if args.qwen_layered_layers is not None:
         opts.append(('--qwen-layered-layers', args.qwen_layered_layers))

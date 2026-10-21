@@ -1,0 +1,13 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Krea 2 Raw GGUF transformer from the public Krea-2 GGUF repository.
+
+krea/Krea-2-Raw
+--model-type krea2
+--transformer "https://huggingface.co/realrebelai/KREA-2_GGUFs/blob/main/BASE/Krea-2-Base-Q4_K_M.gguf"
+--dtype bfloat16
+--model-sequential-offload
+--gen-seeds 1
+--output-path krea-2-gguf
+--prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

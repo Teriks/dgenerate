@@ -132,6 +132,9 @@ class _CheckboxWithTwoIntArgsEntry(_entry._Entry):
     def is_valid(self):
         return self.int1_entry.is_valid() and self.int2_entry.is_valid()
 
+    def is_active(self):
+        return self.bool_var.get()
+
     def invalid(self):
         if not self.int1_entry.is_valid():
             _entry.invalid_colors(self.int1_entry)
@@ -143,6 +146,9 @@ class _CheckboxWithTwoIntArgsEntry(_entry._Entry):
             _entry.valid_colors(self.int1_entry)
         if self.int2_entry.is_valid():
             _entry.valid_colors(self.int2_entry)
+
+    def sync_widget_states(self):
+        self._check_int_active()
 
     def _check_int_active(self):
         if self.bool_var.get():
@@ -185,7 +191,7 @@ class _CheckboxWithTwoIntArgsEntry(_entry._Entry):
         from dgenerate.console.formentries.argswitchconditionalcheckboxes import _ArgSwitchConditionalCheckboxes
         from dgenerate.console.formentries.checkboxwithfloatargentry import _CheckboxWithFloatArgEntry
 
-        if isinstance(other_entry, _ArgSwitchCheckbox):
+        if isinstance(other_entry, _ArgSwitchCheckbox) and hasattr(other_entry, 'bool_var'):
             # This checkbox excludes simple checkbox
             self.bool_var.trace_add('write',
                                     lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)

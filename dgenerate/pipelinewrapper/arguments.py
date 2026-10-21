@@ -340,6 +340,12 @@ class DiffusionArguments(_types.SetFromMixin):
     Omitted leaves it unset. ``--guidance-scales`` remains true CFG.
     """
 
+    qwen21_output_resolution: _types.OptionalInteger = None
+    """Target-side length used by Qwen-Image 2.1 to infer output dimensions."""
+
+    qwen21_use_kv_cache: _types.OptionalBoolean = None
+    """Use Qwen-Image 2.1's step-invariant prefix KV cache (enabled by default)."""
+
     qwen_layered_layers: _types.OptionalInteger = None
     """
     Qwen-Image layered output count. Omitted keeps 4.
@@ -1244,6 +1250,16 @@ class DiffusionArguments(_types.SetFromMixin):
 
     ``None`` copies :py:attr:`.DiffusionArguments.guidance_rescale` when that
     is set, otherwise the pipeline default ``0.7`` is left in place.
+    """
+
+    video_timesteps: collections.abc.Sequence[int] | str | None = None
+    """
+    Explicit timestep values, or an expression that transforms the scheduler's
+    default timestep array (available to the expression as ``timesteps``).
+    Values are passed in order to Motif-Video's ``timesteps`` argument. Their
+    count determines the inference-step count and overrides ``inference_steps``.
+    Leave unset to use the scheduler-generated schedule. Only supported when
+    the loaded Motif-Video pipeline accepts ``timesteps``.
     """
 
     ltx_stg_scale: _types.OptionalFloat = None

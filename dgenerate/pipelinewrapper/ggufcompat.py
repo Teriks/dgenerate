@@ -13,7 +13,7 @@
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Detect Flux.2, Qwen-Image, Z-Image, LTX 2.5, and Wan GGUF checkpoints and
+Detect Flux.2, Qwen-Image, Z-Image, LTX 2.5, Kandinsky 5, and Wan GGUF checkpoints and
 adapt ComfyUI layouts so Diffusers can load them without a manual config.
 """
 
@@ -34,6 +34,11 @@ _FLUX2_BY_HIDDEN = {
     3072: 'black-forest-labs/FLUX.2-klein-4B',
     4096: 'black-forest-labs/FLUX.2-klein-base-9B',
     6144: 'black-forest-labs/FLUX.2-dev',
+}
+
+_KANDINSKY5_BY_HIDDEN = {
+    1792: 'kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers',
+    4096: 'kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers',
 }
 
 _patches_installed = False
@@ -104,6 +109,12 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
         return GGUFLayout(
             'z-image-turbo', 'Tongyi-MAI/Z-Image-Turbo', comfy=comfy, adapt=False)
 
+    if _has(shapes, 'txtfusion.projector.weight',
+            _COMFY_PREFIX + 'txtfusion.projector.weight',
+            'first.weight', _COMFY_PREFIX + 'first.weight'):
+        return GGUFLayout(
+            'krea2', 'krea/Krea-2-Raw', comfy=comfy, adapt=True)
+
     if _has(shapes, 'single_stream_modulation.lin.weight',
             _COMFY_PREFIX + 'single_stream_modulation.lin.weight'):
         hidden = _flux2_hidden(shapes)
@@ -135,6 +146,19 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
                 comfy=comfy, adapt=True)
         return GGUFLayout(
             'qwen-image', 'Qwen/Qwen-Image', comfy=comfy, adapt=comfy)
+
+    if _has(shapes, 'visual_transformer_blocks.0.visual_modulation.out_layer.weight',
+            _COMFY_PREFIX + 'visual_transformer_blocks.0.visual_modulation.out_layer.weight'):
+        # Always adapt: files store some unquantized tensors with extra
+        # singleton dimensions, and some store quantized weights flattened.
+        bias = _lookup_shape(
+            shapes, 'visual_transformer_blocks.0.self_attention.to_query.bias',
+            _COMFY_PREFIX + 'visual_transformer_blocks.0.self_attention.to_query.bias')
+        hidden = math.prod(bias) if bias is not None else None
+        return GGUFLayout(
+            'kandinsky5',
+            _KANDINSKY5_BY_HIDDEN.get(hidden, _KANDINSKY5_BY_HIDDEN[1792]),
+            comfy=comfy, adapt=True)
 
     wan = _detect_wan_layout(shapes, comfy)
     if wan is not None:
@@ -248,6 +272,8 @@ def _align_tensor(param, target_shape: tuple[int, ...]):
         quant_shape = _shape(quant_shape)
         if quant_shape == target_shape:
             return param
+        if len(quant_shape) == 1 and len(target_shape) == 2                 and quant_shape[0] == math.prod(target_shape):
+            return _unflatten_quantized(param, target_shape)
         if (len(quant_shape) == 2 and len(target_shape) == 2
                 and quant_shape == tuple(reversed(target_shape))):
             param._dgenerate_comfy_transpose = True
@@ -258,11 +284,29 @@ def _align_tensor(param, target_shape: tuple[int, ...]):
         return param
     if param.numel() != math.prod(target_shape):
         return param
-    if param.ndim == 1 and target_shape == (1, current[0]):
+    if tuple(d for d in current if d != 1) == tuple(d for d in target_shape if d != 1):
+        # Only singleton dimensions differ.
         return param.reshape(target_shape)
     if param.ndim == 2 and target_shape == tuple(reversed(current)):
         return param.transpose(0, 1).contiguous()
     return param
+
+
+def _unflatten_quantized(param, target_shape: tuple[int, int]):
+    """
+    Restore the rows of a quantized weight stored flattened to one dimension.
+
+    Quant blocks run along the last dimension, so when a row holds a whole
+    number of blocks the flat bytes are already in row-major order.
+    """
+    from diffusers.quantizers.gguf.utils import GGML_QUANT_SIZES, GGUFParameter
+
+    block_size, _ = GGML_QUANT_SIZES[param.quant_type]
+    rows, columns = target_shape
+    if columns % block_size != 0:
+        return param
+    packed = param.as_tensor() if hasattr(param, 'as_tensor') else param
+    return GGUFParameter(packed.reshape(rows, -1), quant_type=param.quant_type)
 
 
 def _target_shapes(config_repo: str, subfolder: str, model_class, token, local_files_only):
@@ -407,9 +451,94 @@ def adapt_wan_flf_checkpoint(checkpoint: dict) -> dict:
     return checkpoint
 
 
+def convert_hunyuan_video15_transformer_checkpoint(checkpoint: dict, **kwargs) -> dict:
+    """Convert original Hunyuan Video weights to the Diffusers 1.5 names."""
+    from diffusers.loaders.single_file_utils import convert_hunyuan_video_transformer_to_diffusers
+
+    converted = convert_hunyuan_video_transformer_to_diffusers(
+        _strip_comfy_prefix(checkpoint), **kwargs)
+    renamed = {}
+    vision_projection = {
+        'vision_in.proj.0.': 'image_embedder.norm_in.',
+        'vision_in.proj.1.': 'image_embedder.linear_1.',
+        'vision_in.proj.3.': 'image_embedder.linear_2.',
+        'vision_in.proj.4.': 'image_embedder.norm_out.',
+    }
+    byt5_projection = {
+        'byt5_in.net.0.proj.': 'context_embedder_2.linear_1.',
+        'byt5_in.net.2.': 'context_embedder_2.linear_2.',
+        'byt5_in.fc3.': 'context_embedder_2.linear_3.',
+        'byt5_in.layernorm.': 'context_embedder_2.norm.',
+    }
+    for name, value in converted.items():
+        for source, target in byt5_projection.items():
+            if name.startswith(source):
+                name = target + name[len(source):]
+                break
+        if name.startswith('time_text_embed.'):
+            name = 'time_embed.' + name[len('time_text_embed.'):]
+        elif name.startswith('cond_type_embedding.'):
+            name = 'cond_type_embed.' + name[len('cond_type_embedding.'):]
+        else:
+            for source, target in vision_projection.items():
+                if name.startswith(source):
+                    name = target + name[len(source):]
+                    break
+        renamed[name] = value
+    return renamed
+
+
 def adapt_qwen_checkpoint(checkpoint: dict) -> dict:
     """Drop the Comfy ``model.diffusion_model.`` prefix. Names are otherwise Diffusers names."""
     return _strip_comfy_prefix(checkpoint)
+
+
+def adapt_krea2_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
+                           token=None, local_files_only: bool = False) -> dict:
+    """Convert Krea 2 GGUF keys and align unquantized singleton tensors."""
+    import diffusers
+    from diffusers.loaders.single_file_utils import convert_krea2_transformer_checkpoint_to_diffusers
+
+    checkpoint = _strip_comfy_prefix(checkpoint)
+    converted = convert_krea2_transformer_checkpoint_to_diffusers(checkpoint)
+    targets = _target_shapes(
+        config_repo, subfolder, diffusers.Krea2Transformer2DModel,
+        token, local_files_only)
+    return {
+        name: _align_tensor(param, targets[name])
+        for name, param in converted.items()
+        if name in targets
+    }
+
+
+def _check_quantized_decodes(checkpoint: dict, label: str) -> None:
+    """Fail clearly when a quantized weight does not decode to finite values."""
+    from diffusers.quantizers.gguf.utils import dequantize_gguf_tensor
+
+    quantized = [value for value in checkpoint.values() if _is_gguf_parameter(value)]
+    if not quantized:
+        return
+    sample = min(quantized, key=lambda value: value.numel())
+    if not torch.isfinite(dequantize_gguf_tensor(sample)).all():
+        raise ValueError(
+            f'{label} GGUF quantized weights decode to NaN/Inf values. The file '
+            f'is corrupt or was written with a nonstandard block layout.')
+
+
+def adapt_kandinsky5_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
+                                token=None, local_files_only: bool = False) -> dict:
+    """Align Kandinsky 5 GGUF tensors. Keys are already Diffusers names."""
+    import diffusers
+
+    checkpoint = _strip_comfy_prefix(checkpoint)
+    _check_quantized_decodes(checkpoint, 'Kandinsky 5')
+    targets = _target_shapes(
+        config_repo, subfolder, diffusers.Kandinsky5Transformer3DModel,
+        token, local_files_only)
+    return {
+        name: _align_tensor(param, targets[name]) if name in targets else param
+        for name, param in checkpoint.items()
+    }
 
 
 _QWEN_LAYERED_ADDITION_T = 'time_text_embed.addition_t_embedding.weight'
@@ -502,6 +631,7 @@ def install_gguf_patches() -> None:
     if _patches_installed:
         return
 
+    import diffusers
     import diffusers.loaders.single_file_model as single_file_model
     import diffusers.quantizers.gguf.gguf_quantizer as gguf_quantizer
     import diffusers.quantizers.gguf.utils as gguf_utils
@@ -512,6 +642,25 @@ def install_gguf_patches() -> None:
     original_forward = gguf_utils.GGUFLinear.forward_native
     original_new = gguf_utils.GGUFParameter.__new__
     original_torch_function = gguf_utils.GGUFParameter.__torch_function__
+
+    # Diffusers provides the Hunyuan 1.5 architecture but (as of 0.41) does
+    # not expose it through the single-file loader. Its source checkpoint
+    # converter is reusable once the 1.5-only component names are remapped.
+    if hasattr(diffusers, 'HunyuanVideo15Transformer3DModel'):
+        single_file_model.SINGLE_FILE_LOADABLE_CLASSES.setdefault(
+            'HunyuanVideo15Transformer3DModel', {
+                'checkpoint_mapping_fn': convert_hunyuan_video15_transformer_checkpoint,
+                'default_subfolder': 'transformer',
+            })
+
+    # Kandinsky 5 is likewise not registered. Its GGUF files use the Diffusers
+    # tensor names, so the checkpoint loads unconverted.
+    if hasattr(diffusers, 'Kandinsky5Transformer3DModel'):
+        single_file_model.SINGLE_FILE_LOADABLE_CLASSES.setdefault(
+            'Kandinsky5Transformer3DModel', {
+                'checkpoint_mapping_fn': lambda checkpoint, **kwargs: checkpoint,
+                'default_subfolder': 'transformer',
+            })
 
     def should_convert(model_state_dict, checkpoint_state_dict):
         if os.environ.get('DGENERATE_GGUF_SKIP_RECONVERT') == '1':
@@ -649,6 +798,16 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
         return checkpoint, config, subfolder, True
     if layout.kind == 'qwen-image':
         return adapt_qwen_checkpoint(checkpoint), config, subfolder, False
+    if layout.kind == 'krea2':
+        checkpoint = adapt_krea2_checkpoint(
+            checkpoint, config, subfolder or 'transformer',
+            token=token, local_files_only=local_files_only)
+        return checkpoint, config, subfolder, True
+    if layout.kind == 'kandinsky5':
+        checkpoint = adapt_kandinsky5_checkpoint(
+            checkpoint, config, subfolder or 'transformer',
+            token=token, local_files_only=local_files_only)
+        return checkpoint, config, subfolder, False
     if layout.kind == 'qwen-image-layered':
         return adapt_qwen_layered_checkpoint(checkpoint), config, subfolder, False
     if layout.kind == 'wan-animate-14B':

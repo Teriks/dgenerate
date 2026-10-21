@@ -394,60 +394,78 @@ class _RecipesForm(tk.Toplevel):
 
             self._entries.append(entry)
 
-        self._bind_enabled_when()
+        self._bind_refresh()
+        self.refresh_exclusions()
         _appearance.apply(self)
 
-    def _bind_enabled_when(self) -> None:
+    @staticmethod
+    def _entry_variables(entry) -> list:
+        """Tk variables whose writes can change an entry's value or active state."""
+        variables = [
+            getattr(entry, name) for name in ('text_var', 'bool_var', 'enabled_var', 'uri_var')
+            if getattr(entry, name, None) is not None
+        ]
+        variables.extend(getattr(entry, 'bool_vars', []))
+        return variables
+
+    def _bind_refresh(self) -> None:
+        """
+        Re-evaluate conditions and exclusions on any entry value change.
+
+        'enabled-when' / 'visible-when' conditions read ``text_var`` or
+        ``bool_var`` of their source entry, which are traced here too, so a
+        single refresh path applies conditions before exclusions.
+        """
+        traced = set()
+        for entry in self._entries:
+            for variable in self._entry_variables(entry):
+                if str(variable) in traced:
+                    continue
+                traced.add(str(variable))
+                variable.trace_add('write', lambda *_args: self.refresh_exclusions())
+
+    def _matches_condition(self, condition) -> bool:
+        if 'all' in condition:
+            return all(self._matches_condition(item) for item in condition['all'])
+
+        source = self._id_map.get(condition.get('id'))
+        if source is None:
+            return False
+
+        variable = getattr(source, 'text_var', None)
+        if variable is None:
+            variable = getattr(source, 'bool_var', None)
+        if variable is None:
+            return False
+
+        value = variable.get()
+        equals = condition.get('equals', '')
+        if isinstance(value, bool):
+            return value == (str(equals).lower() == 'true')
+        return str(value).strip() == str(equals).strip()
+
+    def refresh_exclusions(self) -> None:
+        """Re-evaluate all enabled-when conditions, then exclusions."""
+        enabled = {}
         for entry in self._entries:
             spec = entry.config.get('enabled-when') or entry.config.get('visible-when')
-            if not spec:
-                continue
+            enabled[entry] = self._matches_condition(spec) if spec else True
 
-            variables = []
+        # Only entries left enabled by their conditions can exclude others.
+        for entry in self._entries:
+            if enabled[entry] and entry.is_active():
+                exclude = entry.config.get('exclude', [])
+                if isinstance(exclude, str):
+                    exclude = [exclude]
+                for other_id in exclude:
+                    other_entry = self.get_entry_by_id(other_id)
+                    if other_entry is not None:
+                        enabled[other_entry] = False
 
-            def collect_variables(condition) -> None:
-                if 'all' in condition:
-                    for item in condition['all']:
-                        collect_variables(item)
-                    return
-
-                source = self._id_map.get(condition.get('id'))
-                if source is None:
-                    return
-                variable = getattr(source, 'text_var', None)
-                if variable is None:
-                    variable = getattr(source, 'bool_var', None)
-                if variable is not None and variable not in variables:
-                    variables.append(variable)
-
-            def matches_condition(condition) -> bool:
-                if 'all' in condition:
-                    return all(matches_condition(item) for item in condition['all'])
-
-                source = self._id_map.get(condition.get('id'))
-                if source is None:
-                    return False
-
-                variable = getattr(source, 'text_var', None)
-                if variable is None:
-                    variable = getattr(source, 'bool_var', None)
-                if variable is None:
-                    return False
-
-                value = variable.get()
-                equals = condition.get('equals', '')
-                if isinstance(value, bool):
-                    return value == (str(equals).lower() == 'true')
-                return str(value).strip() == equals
-
-            def apply(_name=None, _index=None, _mode=None, entry=entry,
-                      spec=spec, matches_condition=matches_condition):
-                entry.set_row_enabled(matches_condition(spec))
-
-            collect_variables(spec)
-            for variable in variables:
-                variable.trace_add('write', apply)
-            apply()
+        # Rows only change state when their result differs, so an entry's
+        # own widget states are not reset on every refresh.
+        for entry in self._entries:
+            entry.set_row_enabled(enabled[entry])
 
     def destroy(self) -> None:
         self.unbind_mousewheel()

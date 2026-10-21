@@ -29,6 +29,7 @@ depends on ``--model-type``.
 """
 
 import collections.abc
+import contextlib
 import gc
 import hashlib
 import importlib
@@ -66,7 +67,7 @@ from dgenerate.memoize import memoize as _memoize
 
 _LTX_FALLBACK_EXTRA_DIRS = ('audio_vae', 'vocoder')
 
-_LTX_CORE_INDEX_NAMES = frozenset({
+_VIDEO_CORE_INDEX_NAMES = frozenset({
     'transformer',
     'transformer_2',
     'unet',
@@ -84,6 +85,55 @@ _LTX_CORE_INDEX_NAMES = frozenset({
 })
 
 
+HUNYUAN_VIDEO_15_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
+MOTIF_VIDEO_SCHEDULER_NAMES = frozenset({
+    'FlowMatchEulerDiscreteScheduler', 'DPMSolverMultistepScheduler'})
+KANDINSKY5_VIDEO_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
+
+
+def _single_image_video_pipeline_class(family, mode):
+    from . import hunyuan_video15, kandinsky5_video, motif_video
+    module = {
+        'hunyuan-video-15': hunyuan_video15,
+        'motif-video': motif_video,
+        'kandinsky5-video': kandinsky5_video,
+    }.get(family)
+    if module is None:
+        raise _pipelines.UnsupportedPipelineConfigError(f'Unknown video family {family!r}.')
+    return module.pipeline_class(mode)
+
+
+def _classify_single_image_video_seed(model_type, parsed):
+    if parsed is None or not parsed.images:
+        return 'text-to-video'
+    if parsed.multi_image_mode or len(parsed.images) != 1:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'{_enums.get_model_type_string(model_type)} accepts one still condition image.')
+    if parsed.end_image or parsed.reference_images or parsed.control_images:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'{_enums.get_model_type_string(model_type)} accepts only a single image condition.')
+    return 'image-to-video'
+
+
+def _resolve_single_image_video_load(model_type, index):
+    model_type = _enums.get_model_type_enum(model_type)
+    family, prefix = {
+        _enums.ModelType.HUNYUAN_VIDEO_15: ('hunyuan-video-15', 'HunyuanVideo15'),
+        _enums.ModelType.MOTIF_VIDEO: ('motif-video', 'MotifVideo'),
+        _enums.ModelType.KANDINSKY5_VIDEO: ('kandinsky5-video', 'Kandinsky5'),
+    }[model_type]
+    name = str((index or {}).get('_class_name') or '')
+    if name.startswith(prefix):
+        image_to_video_markers = ('I2V', 'ImageToVideo', 'Image2Video')
+        mode = ('image-to-video'
+                if any(marker in name for marker in image_to_video_markers)
+                else 'text-to-video')
+        return family, _single_image_video_pipeline_class(family, mode), False
+    raise _pipelines.UnsupportedPipelineConfigError(
+        f'This repository is not a {prefix} pipeline '
+        f'(model_index.json _class_name is {name!r}).')
+
+
 def extra_weight_directories_from_index(index: dict | None) -> list[str]:
     """
     Repo folders that belong on the LTX pipeline cache estimate besides
@@ -96,7 +146,7 @@ def extra_weight_directories_from_index(index: dict | None) -> list[str]:
         return list(_LTX_FALLBACK_EXTRA_DIRS)
     extras = []
     for name, spec in index.items():
-        if name.startswith('_') or name in _LTX_CORE_INDEX_NAMES:
+        if name.startswith('_') or name in _VIDEO_CORE_INDEX_NAMES:
             continue
         if isinstance(spec, (list, tuple)) and len(spec) == 2:
             extras.append(name)
@@ -119,10 +169,11 @@ def apply_video_arg_rewrites(source, dest) -> None:
 class _VideoPipeline:
     """A video pipeline kept in the shared diffusion pipeline cache."""
 
-    def __init__(self, pipeline, family: str, moe: bool = False):
+    def __init__(self, pipeline, family: str, moe: bool = False, model_mode: str | None = None):
         self.pipeline = pipeline
         self.family = family
         self.moe = moe
+        self.model_mode = model_mode
         self.reference_downscale_factor = None
 
 
@@ -159,6 +210,14 @@ def classify_video_seed(model_type: _enums.ModelType | str,
     if model_type == _enums.ModelType.WAN_ANIMATE:
         from . import wan
         return wan._classify_wan_animate(parsed)
+    if model_type in {
+            _enums.ModelType.HUNYUAN_VIDEO_15,
+            _enums.ModelType.MOTIF_VIDEO,
+            _enums.ModelType.KANDINSKY5_VIDEO}:
+        if ic_lora:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '--ltx-ic-lora is only supported with --model-type ltx.')
+        return _classify_single_image_video_seed(model_type, parsed)
 
     raise _pipelines.UnsupportedPipelineConfigError(
         f'{_enums.get_model_type_string(model_type)} is not a video model type.')
@@ -357,6 +416,11 @@ def generate(wrapper, user_args) -> tuple[list[PIL.Image.Image], numpy.ndarray |
         if model_type == _enums.ModelType.WAN_ANIMATE_2:
             from . import wan
             return wan._call_wan_animate_2(wrapper, user_args)
+        if model_type in {
+                _enums.ModelType.HUNYUAN_VIDEO_15,
+                _enums.ModelType.MOTIF_VIDEO,
+                _enums.ModelType.KANDINSKY5_VIDEO}:
+            return _call_single_image_video(wrapper, user_args)
     except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
         _d_exceptions.raise_if_not_cuda_oom(e)
         _memory.torch_gc()
@@ -364,6 +428,245 @@ def generate(wrapper, user_args) -> tuple[list[PIL.Image.Image], numpy.ndarray |
 
     raise _pipelines.UnsupportedPipelineConfigError(
         f'{_enums.get_model_type_string(model_type)} is not a video model type.')
+
+
+def _motif_default_timesteps(pipe, steps: int, call_kwargs: dict, call_parameters: dict):
+    """Read Motif's normal timestep schedule without leaving scheduler state changed."""
+    scheduler = pipe.scheduler
+    set_timesteps = scheduler.set_timesteps
+    set_parameters = inspect.signature(set_timesteps).parameters
+    if 'timesteps' not in set_parameters:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'The loaded Motif scheduler does not accept custom timesteps.')
+
+    def call_default(name, fallback):
+        parameter = call_parameters.get(name)
+        if parameter is None or parameter.default is inspect.Parameter.empty:
+            return fallback
+        return parameter.default
+
+    height = int(call_kwargs.get('height', call_default('height', 736)))
+    width = int(call_kwargs.get('width', call_default('width', 1280)))
+    num_frames = int(call_kwargs.get('num_frames', call_default('num_frames', 121)))
+    vae_spatial = int(getattr(pipe, 'vae_scale_factor_spatial', 8) or 8)
+    vae_temporal = int(getattr(pipe, 'vae_scale_factor_temporal', 4) or 4)
+    transformer = getattr(pipe, 'transformer', None)
+    transformer_config = getattr(transformer, 'config', None)
+    spatial_patch = int(getattr(
+        pipe, 'transformer_spatial_patch_size',
+        getattr(transformer_config, 'patch_size', 2)) or 2)
+    temporal_patch = int(getattr(pipe, 'transformer_temporal_patch_size', 1) or 1)
+    latent_height = height // vae_spatial
+    latent_width = width // vae_spatial
+    latent_frames = (num_frames - 1) // vae_temporal + 1
+    sequence_length = (
+        (latent_frames // temporal_patch) *
+        (latent_height // spatial_patch) *
+        (latent_width // spatial_patch))
+
+    config = scheduler.config
+    calculate_shift = getattr(pipe.__class__.__call__, '__globals__', {}).get('calculate_shift')
+    if callable(calculate_shift):
+        mu = calculate_shift(
+            sequence_length,
+            config.get('base_image_seq_len', 256),
+            config.get('max_image_seq_len', 4096),
+            config.get('base_shift', 0.5),
+            config.get('max_shift', 1.15))
+    else:
+        base_seq_len = config.get('base_image_seq_len', 256)
+        max_seq_len = config.get('max_image_seq_len', 4096)
+        base_shift = config.get('base_shift', 0.5)
+        max_shift = config.get('max_shift', 1.15)
+        mu = base_shift + (sequence_length - base_seq_len) * (
+            (max_shift - base_shift) / (max_seq_len - base_seq_len))
+
+    old_state = {
+        name: getattr(scheduler, name)
+        for name in ('timesteps', 'sigmas', 'num_inference_steps')
+        if hasattr(scheduler, name)
+    }
+    kwargs = {}
+    if 'device' in set_parameters:
+        kwargs['device'] = 'cpu'
+    if 'mu' in set_parameters:
+        kwargs['mu'] = mu
+    is_multistep = scheduler.__class__.__name__ in {
+        'DPMSolverMultistepScheduler', 'UniPCMultistepScheduler', 'FlowUniPCMultistepScheduler'}
+    if not is_multistep and 'sigmas' in set_parameters:
+        kwargs['sigmas'] = numpy.linspace(1.0, 1.0 / steps, steps)
+
+    try:
+        set_timesteps(steps, **kwargs)
+        scheduled = getattr(scheduler, 'timesteps', None)
+        if scheduled is None:
+            raise ValueError('scheduler did not produce a timestep schedule')
+        if hasattr(scheduled, 'detach'):
+            scheduled = scheduled.detach().cpu().numpy()
+        return numpy.rint(numpy.asarray(scheduled, dtype=float)).astype(numpy.int64)
+    except Exception as e:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'Could not read Motif-Video scheduler timesteps for a video-timestep expression.') from e
+    finally:
+        for name, value in old_state.items():
+            setattr(scheduler, name, value)
+
+
+@contextlib.contextmanager
+def _forced_scheduler_timesteps(scheduler, timesteps: list[int]):
+    """Substitute a custom schedule inside ``scheduler.set_timesteps``.
+
+    Motif pipelines always pass their own ``sigmas`` to ``retrieve_timesteps``,
+    which rejects a caller ``timesteps`` argument alongside them, so the custom
+    schedule is applied at the scheduler instead. ``mu`` is still forwarded.
+    """
+    original = scheduler.set_timesteps
+    accepted = inspect.signature(original).parameters
+
+    def set_timesteps(num_inference_steps=None, device=None, sigmas=None, **kwargs):
+        kwargs = {name: value for name, value in kwargs.items()
+                  if name in accepted and name != 'timesteps'}
+        return original(device=device, timesteps=list(timesteps), **kwargs)
+
+    shadowed = scheduler.__dict__.get('set_timesteps')
+    scheduler.set_timesteps = set_timesteps
+    try:
+        yield
+    finally:
+        if shadowed is None:
+            del scheduler.set_timesteps
+        else:
+            scheduler.set_timesteps = shadowed
+
+
+def _eval_video_timesteps_expression(expression: str, base_timesteps) -> list[int]:
+    expression = str(expression).strip().removeprefix('expr:').strip()
+    if not expression:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'Video timesteps expression cannot be empty.')
+    interpreter = _eval.standard_interpreter(symtable=_eval.safe_builtins())
+    interpreter.symtable['np'] = numpy
+    interpreter.symtable['timesteps'] = numpy.asarray(base_timesteps, dtype=float)
+    try:
+        value = interpreter.eval(expression, show_errors=False, raise_errors=True)
+    except Exception as e:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'Error interpreting video timesteps expression "{expression}":\n{e}') from e
+    if not isinstance(value, collections.abc.Iterable) or isinstance(value, (str, bytes)):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'Video timesteps expression did not evaluate to an array, got: {value}')
+    result = []
+    for item in value:
+        try:
+            numeric = float(item)
+        except (TypeError, ValueError) as e:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Video timesteps expression must produce integer values.') from e
+        if not numpy.isfinite(numeric) or not numeric.is_integer() or numeric < 0:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Video timesteps expression must produce non-negative integer values.')
+        result.append(int(numeric))
+    if not result:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'Video timesteps expression produced an empty schedule.')
+    return result
+
+
+def _call_single_image_video(wrapper, user_args):
+    model_type = wrapper.model_type
+    mode = 'image-to-video' if user_args.images else 'text-to-video'
+    pipe, held = _video_pipeline(wrapper, mode, user_args.scheduler_uri)
+    family = held.family
+    call_parameters = inspect.signature(pipe.__call__).parameters
+    positive, negative = _prompt_text(user_args)
+    width, height = _size(user_args)
+    default_fps = 15.0 if family == 'hunyuan-video-15' else 24.0
+    fps = float(user_args.video_fps or default_fps)
+    kwargs = {
+        'prompt': positive,
+        'generator': _generator(wrapper, user_args),
+        'output_type': 'np' if family == 'hunyuan-video-15' else 'pil',
+    }
+    if negative:
+        kwargs['negative_prompt'] = negative
+    if width is not None:
+        width, height = _force_output_size_alignment(width, height, 16, family)
+    if mode == 'image-to-video':
+        source = user_args.images[0]
+        width, height = conditioning_canvas(
+            source.size, width, height, user_args.aspect_correct, 16)
+        user_args.images[0] = resize_media([source], (width, height))[0]
+        kwargs['image'] = user_args.images[0]
+    if width is not None and {'width', 'height'} <= call_parameters.keys():
+        kwargs.update(width=width, height=height)
+    if user_args.video_length is not None:
+        temporal = int(getattr(pipe, 'vae_scale_factor_temporal', 4) or 4)
+        kwargs['num_frames'] = wan_num_frames(user_args.video_length, fps, temporal)
+
+    guidance_default = 6.0 if family == 'hunyuan-video-15' else 5.0
+    guidance = float(_types.default(user_args.guidance_scale, guidance_default))
+    if family == 'kandinsky5-video':
+        kwargs['guidance_scale'] = guidance
+    else:
+        guider = getattr(pipe, 'guider', None)
+        if guider is None or not hasattr(guider, 'new'):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'{family} pipeline does not expose a configurable guider.')
+        pipe.guider = guider.new(guidance_scale=guidance)
+
+    steps = int(_types.default(user_args.inference_steps, 50))
+    kwargs['num_inference_steps'] = steps
+    custom_timesteps = None
+    if family == 'motif-video' and user_args.video_timesteps is not None:
+        if 'timesteps' not in inspect.signature(pipe.scheduler.set_timesteps).parameters:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'The loaded {family} scheduler does not support custom timesteps.')
+        if isinstance(user_args.video_timesteps, str):
+            base_timesteps = _motif_default_timesteps(
+                pipe, steps, kwargs, call_parameters)
+            custom_timesteps = _eval_video_timesteps_expression(
+                user_args.video_timesteps, base_timesteps)
+        else:
+            custom_timesteps = [int(value) for value in user_args.video_timesteps]
+        kwargs['num_inference_steps'] = len(custom_timesteps)
+        user_args.inference_steps = len(custom_timesteps)
+    if user_args.max_sequence_length is not None:
+        if 'max_sequence_length' not in call_parameters:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'--max-sequence-length is not supported by {family}.')
+        kwargs['max_sequence_length'] = int(user_args.max_sequence_length)
+    if user_args.sigmas is not None:
+        if 'sigmas' not in call_parameters:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'--sigmas is not supported by {family}; its pipeline accepts a timestep schedule instead.')
+        if isinstance(user_args.sigmas, str):
+            from .ltx import _eval_sigma_expression
+            scheduler = pipe.scheduler
+            old_timesteps = getattr(scheduler, 'timesteps', None)
+            old_sigmas = getattr(scheduler, 'sigmas', None)
+            old_num = getattr(scheduler, 'num_inference_steps', None)
+            try:
+                scheduler.set_timesteps(kwargs['num_inference_steps'])
+                kwargs['sigmas'] = _eval_sigma_expression(user_args.sigmas, scheduler.sigmas)
+            finally:
+                if old_timesteps is not None:
+                    scheduler.timesteps = old_timesteps
+                if old_sigmas is not None:
+                    scheduler.sigmas = old_sigmas
+                if old_num is not None:
+                    scheduler.num_inference_steps = old_num
+        else:
+            kwargs['sigmas'] = [float(value) for value in user_args.sigmas]
+        user_args.inference_steps = len(kwargs['sigmas'])
+
+    _set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
+    with (_forced_scheduler_timesteps(pipe.scheduler, custom_timesteps)
+          if custom_timesteps is not None else contextlib.nullcontext()):
+        output = _invoke(wrapper, pipe, kwargs, user_args=user_args)
+    frames = frames_from_output(getattr(output, 'frames', output))
+    audio = audio_to_numpy(getattr(output, 'audio', None))
+    sample_rate = getattr(pipe, 'audio_sample_rate', None) if audio is not None else None
+    return frames, audio, int(sample_rate) if sample_rate else None, fps
 
 
 def _reject_still_extras(parsed, model_name: str, allow_mask: bool = False):
@@ -577,7 +880,7 @@ def _enable_vae_tiling(pipe):
         vae.enable_tiling()
 
 
-def _set_ltx_vae_slicing(pipe, enabled: bool):
+def _set_video_vae_slicing(pipe, enabled: bool):
     for name in ('vae', 'audio_vae'):
         vae = getattr(pipe, name, None)
         if vae is None:
@@ -588,7 +891,8 @@ def _set_ltx_vae_slicing(pipe, enabled: bool):
             vae.disable_slicing()
 
 
-def _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload=False):
+def _apply_video_offload(pipe, device, model_cpu_offload, sequential_cpu_offload,
+                         model_group_offload=False):
     if sequential_cpu_offload:
         _pipelines.enable_sequential_cpu_offload(pipe, device)
     elif model_cpu_offload:
@@ -608,6 +912,17 @@ def _video_transformer_class(model_type, family: str = 'ltx2'):
     if _enums.model_type_is_wan_family(model_type):
         from . import wan
         return wan._wan_transformer_class(model_type, family)
+    if _enums.get_model_type_enum(model_type) in {
+            _enums.ModelType.HUNYUAN_VIDEO_15,
+            _enums.ModelType.MOTIF_VIDEO,
+            _enums.ModelType.KANDINSKY5_VIDEO}:
+        from . import hunyuan_video15, kandinsky5_video, motif_video
+        module = {
+            'hunyuan-video-15': hunyuan_video15,
+            'motif-video': motif_video,
+            'kandinsky5-video': kandinsky5_video,
+        }[family]
+        return module.transformer_class()
     raise _pipelines.UnsupportedPipelineConfigError(
         f'{_enums.get_model_type_string(model_type)} does not take --transformer.')
 
@@ -1044,10 +1359,13 @@ def pipeline_for_mode(pipe, mode: str, family: str = 'ltx2'):
     quantized modules (SDNQ / bitsandbytes).
 
     :param pipe: cached video pipeline
-    :param mode: ``ltx-*`` or ``wan-*`` mode name
+    :param mode: a pipeline mode such as ``ltx-image``, ``wan-i2v``,
+        ``text-to-video``, or ``image-to-video``
     :return: pipeline of the class for ``mode``
     """
-    if str(mode).startswith('wan'):
+    if family in {'hunyuan-video-15', 'motif-video', 'kandinsky5-video'}:
+        cls = _single_image_video_pipeline_class(family, mode)
+    elif str(mode).startswith('wan'):
         from . import wan
         if str(family).startswith('wan-animate-2'):
             wan._require_image_encoder(pipe, 'wan-animate-2')
@@ -1134,6 +1452,11 @@ def _resolve_video_load(model_type, index, ltx_ic_lora_uri):
     if _enums.model_type_is_wan_family(model_type):
         from . import wan
         return wan._resolve_wan_load(model_type, index)
+    if model_type in {
+            _enums.ModelType.HUNYUAN_VIDEO_15,
+            _enums.ModelType.MOTIF_VIDEO,
+            _enums.ModelType.KANDINSKY5_VIDEO}:
+        return _resolve_single_image_video_load(model_type, index)
     from . import ltx
     family = ltx.ltx_family_from_index(index)
     mode = 'ltx-control' if ltx_ic_lora_uri else 'ltx-txt'
@@ -1146,7 +1469,7 @@ def _text_encoder_slots(index: dict | None) -> list[str]:
         return []
     return [
         name for name, spec in sorted(index.items())
-        if name.startswith('text_encoder')
+        if _pipelines._is_text_encoder_component(name)
         and isinstance(spec, (list, tuple))
         and len(spec) >= 2
         and spec[0] is not None
@@ -1373,10 +1696,15 @@ def _create_cached_video_pipeline(model_path,
     else:
         if torch_compile:
             _pipelines.apply_torch_compile(pipe, device)
-        _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
+        _apply_video_offload(
+            pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
     _pin_video_8bit_modules(pipe)
     _enable_vae_tiling(pipe)
-    held = _VideoPipeline(pipe, family, moe=moe)
+    model_mode = None
+    if family == 'kandinsky5-video':
+        model_mode = 'image-to-video' if isinstance(pipe, _single_image_video_pipeline_class(
+            family, 'image-to-video')) else 'text-to-video'
+    held = _VideoPipeline(pipe, family, moe=moe, model_mode=model_mode)
     if ltx_ic_lora_uri:
         held.reference_downscale_factor = _ic_lora_downscale_factor(
             ltx_ic_lora_uri, ic_lora_downscale, auth_token, local_files_only)
@@ -1403,6 +1731,12 @@ def _video_pipeline(wrapper, mode: str, scheduler_uri=None):
     if text_encoder_uris:
         kwargs['text_encoder_uris'] = tuple(text_encoder_uris)
     held = _create_cached_video_pipeline(**kwargs)
+    model_mode = getattr(held, 'model_mode', None)
+    if model_mode is not None and mode != model_mode:
+        expected = 'an image seed' if model_mode == 'image-to-video' else 'no image seed'
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'This Kandinsky 5.0 video checkpoint requires {expected}; '
+            f'model_index.json selected {type(held.pipeline).__name__}.')
     # Same as still pipelines: scheduler is not a cache key.
     # Overlay the URI on the cached object, then wrap for mode.
     _schedulers.load_scheduler(held.pipeline, scheduler_uri)
@@ -1480,5 +1814,8 @@ from .ltx import (
     _eval_sigma_expression,
     _ltx_is_distilled,
 )
+from .hunyuan_video15 import SCHEDULER_NAMES as HUNYUAN_VIDEO_15_SCHEDULER_NAMES
+from .motif_video import SCHEDULER_NAMES as MOTIF_VIDEO_SCHEDULER_NAMES
+from .kandinsky5_video import SCHEDULER_NAMES as KANDINSKY5_VIDEO_SCHEDULER_NAMES
 
 __all__ = _types.module_all()

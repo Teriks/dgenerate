@@ -1,0 +1,14 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# This model uses the image as a condition; it does not use image seed strength.
+
+Qwen/Qwen-Image-2.1
+--model-type qwen-image-21
+--image-seeds ../../media/monalisa.png
+--dtype bfloat16
+--model-sequential-offload
+--qwen21-output-resolution 1024
+--gen-seeds 1
+--output-path qwen-image-21-conditioned
+--prompts "Keep the subject, but place it in a snowy mountain landscape at sunrise"

@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Example Qwen-Image 2.1 LoRA repository and checkpoint.
+
+Qwen/Qwen-Image-2.1-Turbo
+--model-type qwen-image-21
+--loras zimageapp/qwen-image-2.1-loras;weight-name=Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r128.safetensors;scale=1.0
+--dtype bfloat16
+--model-sequential-offload
+--qwen21-output-resolution 1024
+--inference-steps 6
+--gen-seeds 1
+--output-path qwen-image-21-lora
+--prompts "A dancer performs a fast turn on a sunlit city rooftop, cinematic movement"

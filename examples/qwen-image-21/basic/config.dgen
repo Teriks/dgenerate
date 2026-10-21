@@ -1,0 +1,14 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image 2.1 defaults to 40 steps and unguided generation.
+# The image seed is an optional condition, not an img2img strength input.
+
+Qwen/Qwen-Image-2.1
+--model-type qwen-image-21
+--dtype bfloat16
+--model-sequential-offload
+--qwen21-output-resolution 1024
+--gen-seeds 1
+--output-path qwen-image-21
+--prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

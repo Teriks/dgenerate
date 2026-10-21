@@ -18,6 +18,112 @@ Audio from LTX-2.5 is muxed into an mp4. GIF, WebP, and ``--animation-format fra
 
 Conditioning stays in ``--image-seeds``.
 
+HunyuanVideo 1.5, Motif-Video, and Kandinsky 5.0 Video each provide a
+text-to-video pipeline and a separate single-image-to-video pipeline. With no
+image seed, a prompt generates a clip from noise. With one still image in
+``--image-seeds``, the image conditions the clip's opening. These models do not
+accept multiple reference images, video seeds, ``last-frame=``, or the Wan VACE
+conditioning keywords. The checkpoint's ``model_index.json`` selects the
+pipeline variant; use a checkpoint published for the mode you want.
+
+They share the video options ``--video-lengths`` (seconds), ``--video-fps``,
+``--output-size``, ``--animation-format``, and the usual prompt, seed, guidance,
+and step arguments. One argument combination writes one clip. The requested
+duration is converted to a frame count using the selected frame rate and the
+checkpoint VAE's temporal stride. Width and height are aligned down to a
+multiple of 16 when needed. For image-to-video, the first image supplies the
+aspect ratio by default; the image is resized to the generation canvas. Video
+VAEs are tiled automatically, so ``--vae-tiling`` is rejected. ``--vae-slicing``
+is available to reduce VAE memory use. These integrations generate video frames
+only; they do not synthesize audio.
+
+HunyuanVideo 1.5
+----------------
+
+Use ``--model-type hunyuan-video-15`` with a Diffusers HunyuanVideo 1.5
+checkpoint. The published 480p T2V and I2V checkpoints are separate; the
+checkpoint determines which pipeline is loaded. The defaults are 15 fps,
+guidance 6, and 50 inference steps. ``FlowMatchEulerDiscreteScheduler`` is the
+supported scheduler. Hunyuan also accepts ``--sigmas`` when specifying a custom
+FlowMatch schedule; the number of sigmas determines the number of denoising
+steps.
+
+The examples use ``bfloat16``, sequential CPU offload, 50 steps, and an
+``848x480`` canvas. Sequential offload is a useful starting point on consumer
+GPUs; it reduces peak GPU memory at the cost of transferring model components
+between CPU and GPU. ``--model-cpu-offload`` and ``--model-group-offload`` are
+also available. ``--torch-compile`` compiles the repeated transformer blocks;
+the first run can take longer while compilation happens.
+
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hunyuan_video_15/text-to-video/config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hunyuan_video_15/image-to-video/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hunyuan_video_15/gguf/config.dgen>`_
+
+Motif-Video
+-----------
+
+Use ``--model-type motif-video`` with ``Motif-Technologies/Motif-Video-2B``.
+The same repository supports text-to-video and first-frame image-to-video; the
+mode selects the corresponding pipeline. Defaults are 24 fps, guidance 5, and
+50 inference steps. Motif supports ``FlowMatchEulerDiscreteScheduler`` and
+``DPMSolverMultistepScheduler``. ``--max-sequence-length`` controls the prompt
+token limit (default 512).
+
+``--video-timesteps`` is Motif's explicit timestep-schedule option. Give one or
+more comma-separated integer schedules, such as ``1000,700,300,0``, or
+``expr:`` expressions evaluated with the scheduler's default array named
+``timesteps`` (for example, ``expr: timesteps[::2]``). Multiple schedules are
+tried in turn. The number of selected timesteps replaces ``--inference-steps``
+for that run. Do not combine
+``--video-timesteps`` with ``--sigmas``; Motif uses a timestep schedule rather
+than a sigma schedule.
+
+The standard examples use ``bfloat16``, sequential CPU offload, 50 steps, and
+``832x480``. Offload options and ``--torch-compile`` are available. A GGUF
+transformer can be used with either text-to-video or image-to-video while
+keeping the parent Diffusers repository as the model path.
+
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/text-to-video/config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/image-to-video/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/gguf/config.dgen>`_
+* `I2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/image-to-video-gguf/config.dgen>`_
+
+Kandinsky 5.0 Video
+-------------------
+
+Use ``--model-type kandinsky5-video`` with a Kandinsky 5.0 video checkpoint.
+Text-to-video checkpoints include Lite and Pro variants; image-to-video
+checkpoints are published separately. Choose a T2V or I2V repository for the
+intended mode. Defaults are 24 fps, guidance 5, and 50 inference steps, with
+``FlowMatchEulerDiscreteScheduler``. The common 5-second checkpoints generate
+121 frames at 24 fps. T2V Lite also has 10-second checkpoints; match the
+requested duration to the duration for which the checkpoint was trained.
+
+Checkpoint variants can have different guidance and step expectations. The
+16-step distilled T2V Lite checkpoint should be run with 16 inference steps and
+guidance 1, as should the distilled Pro checkpoints; no-CFG checkpoints should
+also use guidance 1. The GGUF example uses a community Q4_K_S quantization of
+the T2V Pro sft transformer. ``--torch-compile`` and Cache-DiT can be
+used to reduce denoising cost. The examples use sequential CPU offload; the
+other model offload modes are available as well.
+
+LoRAs are supported through ``--loras``. The examples include camera-orbit and
+object-rotation LoRAs for T2V Lite/Pro and I2V Lite/Pro; preserve each LoRA's
+trigger phrase in the prompt. GGUF is currently demonstrated for T2V only; a
+compatible I2V GGUF checkpoint is not provided in these examples.
+
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/text-to-video/config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/image-to-video/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/text-to-video-gguf/config.dgen>`_
+* `Kandinsky 5 video LoRA examples <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/kandinsky5/lora>`_
+
+For all three model types, ``--transformer`` replaces only the denoising
+transformer; the parent Diffusers checkpoint continues to provide the VAE and
+text encoders. ``--quantizer-map`` can target the transformer and the
+family-specific text components. These models do not support video batching
+with ``--batch-size`` greater than 1. The Console UI provides separate T2V and
+I2V recipes where the corresponding checkpoints are available.
+
 LTX-2.5 (``ltx``)
 -----------------
 

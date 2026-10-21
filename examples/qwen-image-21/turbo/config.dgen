@@ -1,0 +1,13 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# The Turbo checkpoint supplies its own short sigma schedule.
+
+Qwen/Qwen-Image-2.1-Turbo
+--model-type qwen-image-21
+--dtype bfloat16
+--model-sequential-offload
+--qwen21-output-resolution 1024
+--gen-seeds 1
+--output-path qwen-image-21-turbo
+--prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

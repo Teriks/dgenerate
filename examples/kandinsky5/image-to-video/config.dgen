@@ -1,0 +1,17 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+kandinskylab/Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers
+--model-type kandinsky5-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 5
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky5-video-i2v
+--output-size 768x512
+--image-seeds "../../media/beach.jpg"
+--prompts "A lone sailboat drifts along the coast as the tide rolls in; gentle cinematic camera movement; worst quality, blurry, jittery, distorted"

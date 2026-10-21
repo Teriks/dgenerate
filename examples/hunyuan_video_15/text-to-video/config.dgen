@@ -1,0 +1,18 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# 480p text-to-video. Sequential offload reduces the GPU memory requirement.
+
+hunyuanvideo-community/HunyuanVideo-1.5-480p_t2v
+--model-type hunyuan-video-15
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 6
+--video-lengths 4
+--video-fps 15
+--animation-format mp4
+--gen-seeds 1
+--output-path hunyuan-video-15-t2v
+--output-size 848x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"

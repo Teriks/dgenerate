@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# 360-degree camera-orbit LoRA for Kandinsky 5 Video Lite I2V.
+# The LoRA expects its r0t4tION orb1t trigger phrase in the prompt.
+
+kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers
+--model-type kandinsky5-video
+--loras "kandinskylab/Kandinsky-5.0-I2V-Lite-LoRa-Arc-left;scale=1.0"
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 5
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky5-video-i2v-lite-lora
+--output-size 768x512
+--image-seeds "../../../media/beach.jpg"
+--prompts "r0t4tION orb1t, 360-degree camera orbit. A sailboat glides along the coast at sunset; gentle cinematic movement; worst quality, blurry, jittery, distorted"
