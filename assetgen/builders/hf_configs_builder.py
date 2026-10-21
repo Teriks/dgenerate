@@ -90,6 +90,9 @@ class HfConfigsBuilder:
             "Qwen/Qwen-Image-Edit",
             "Qwen/Qwen-Image-Edit-2509",
             "Qwen/Qwen-Image-Layered",
+            # Qwen Image 2.1 family
+            "Qwen/Qwen-Image-2.1",
+            "Qwen/Qwen-Image-2.1-Turbo",
             #
             ### Model type: LTX
             "Lightricks/LTX-Video",
@@ -110,6 +113,19 @@ class HfConfigsBuilder:
             "Wan-AI/Wan2.2-Animate-2-14B-Diffusers",
             "Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers",
             #
+            # Hunyuan Video 1.5
+            "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v",
+            "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v",
+            # Kandinsky 5 Video
+            "kandinskylab/Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers",
+            "kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers",
+            "kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers",
+            "kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers",
+            # Motif Video
+            "Motif-Technologies/Motif-Video-2B",
+            # Krea 2
+            "krea/Krea-2-Raw",
+            "krea/Krea-2-Turbo",
             ### Model type: SD3x
             # SD3m
             "stabilityai/stable-diffusion-3-medium-diffusers",
@@ -120,6 +136,9 @@ class HfConfigsBuilder:
             ### Model type: Pix2Pix
             # Pix2Pix
             "timbrooks/instruct-pix2pix",
+            # Kandinsky Image models
+            "kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers",
+            "kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers",
             #
             ### Model type: Upscaler
             "stabilityai/stable-diffusion-x4-upscaler",
