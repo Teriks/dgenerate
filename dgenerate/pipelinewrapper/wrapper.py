@@ -704,8 +704,8 @@ class DiffusionPipelineWrapper:
                     and not _enums.model_type_is_video(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     '--transformer is only supported for --model-type sd3, flux, flux2, flux2-klein-kv, '
-                    'z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, ltx, '
-                    'wan, wan-animate, and wan-animate-2.')
+                    'z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, '
+                    'and video model types.')
 
         if wan_second_transformer_uri:
             if _enums.get_model_type_enum(model_type) not in (
