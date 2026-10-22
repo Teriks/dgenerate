@@ -234,19 +234,6 @@ def _type_video_fps(val):
     return val
 
 
-def _type_wan_timesteps(val):
-    parts = [part.strip() for part in str(val).split(',') if part.strip()]
-    if not parts:
-        raise argparse.ArgumentTypeError('Wan timesteps cannot be empty')
-    try:
-        steps = [int(part) for part in parts]
-    except ValueError:
-        raise argparse.ArgumentTypeError('Wan timesteps must be integers')
-    if any(step < 0 for step in steps):
-        raise argparse.ArgumentTypeError('Wan timesteps must be greater than or equal to 0')
-    return steps
-
-
 def _type_video_timesteps(val):
     val = str(val).strip()
     if val.startswith('expr:'):
@@ -5212,10 +5199,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     )
 
     actions.append(parser.add_argument(
-        '--video-timesteps', action='store', nargs='+', default=None,
-        dest='video_timesteps', metavar='CSV_INT_OR_EXPRESSION', type=_type_video_timesteps,
-        help='One or more comma-separated timestep schedules or "expr: ..." expressions for Motif-Video. '
-              'Expressions receive the scheduler default array as "timesteps".'))
+        '--timesteps', action='store', nargs='+', default=None,
+        dest='timesteps', metavar='CSV_INT_OR_EXPRESSION', type=_type_video_timesteps,
+        help='One or more comma-separated timestep schedules or "expr: ..." expressions. '
+              'Expressions receive the scheduler default array as "timesteps". The schedule length '
+              'sets the inference step count. Supported where the pipeline accepts a timestep '
+              'schedule, for example SD 1.5/2/XL, Kolors, Wan video-to-video, LTX-2, Motif-Video, '
+              'Hunyuan Video 1.5, and Kandinsky 5 video. Cannot be combined with --sigmas.'))
+
     actions.append(parser.add_argument(
         '--qwen21-no-kv-cache', action='store_const', const=False, default=None,
         dest='qwen21_use_kv_cache',
@@ -5602,15 +5593,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             metavar="TRANSFORMER_URI", dest='wan_second_transformer_uri',
             help="""Replacement URI for the Wan 2.2 MoE low-noise transformer,
                     the same grammar as --transformer, including GGUF files."""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '--wan-timesteps', action='store', nargs='+', default=None,
-            dest='wan_timesteps', metavar="CSV_INT", type=_type_wan_timesteps,
-            help="""Explicit integer timestep schedules for Wan video-to-video.
-                    Each value is a comma-separated list, tried in turn."""
         )
     )
 

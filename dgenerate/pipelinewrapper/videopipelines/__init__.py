@@ -28,129 +28,19 @@ Conditioning still comes from ``--image-seeds``, and the meaning of each slot
 depends on ``--model-type``.
 """
 
-import collections.abc
-import contextlib
-import gc
-import hashlib
-import importlib
-import inspect
-import json
-import os
-import pathlib
-import random
-import shutil
-import tempfile
-import warnings
-
 import PIL.Image
-import filelock
 import numpy
 import torch
 
-import dgenerate.eval as _eval
 import dgenerate.exceptions as _d_exceptions
-import dgenerate.filecache as _filecache
-import dgenerate.hfhub as _hfhub
 import dgenerate.mediainput as _mediainput
-import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
-import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.uris as _uris
-import dgenerate.pipelinewrapper.util as _util
 import dgenerate.types as _types
-from dgenerate.memoize import memoize as _memoize
-
-
-_LTX_FALLBACK_EXTRA_DIRS = ('audio_vae', 'vocoder')
-
-_VIDEO_CORE_INDEX_NAMES = frozenset({
-    'transformer',
-    'transformer_2',
-    'unet',
-    'vae',
-    'text_encoder',
-    'text_encoder_2',
-    'text_encoder_3',
-    'image_encoder',
-    'scheduler',
-    'tokenizer',
-    'tokenizer_2',
-    'tokenizer_3',
-    'feature_extractor',
-    'safety_checker',
-})
-
-
-HUNYUAN_VIDEO_15_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
-MOTIF_VIDEO_SCHEDULER_NAMES = frozenset({
-    'FlowMatchEulerDiscreteScheduler', 'DPMSolverMultistepScheduler'})
-KANDINSKY5_VIDEO_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
-
-
-def _single_image_video_pipeline_class(family, mode):
-    from . import hunyuan_video15, kandinsky5_video, motif_video
-    module = {
-        'hunyuan-video-15': hunyuan_video15,
-        'motif-video': motif_video,
-        'kandinsky5-video': kandinsky5_video,
-    }.get(family)
-    if module is None:
-        raise _pipelines.UnsupportedPipelineConfigError(f'Unknown video family {family!r}.')
-    return module.pipeline_class(mode)
-
-
-def _classify_single_image_video_seed(model_type, parsed):
-    if parsed is None or not parsed.images:
-        return 'text-to-video'
-    if parsed.multi_image_mode or len(parsed.images) != 1:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'{_enums.get_model_type_string(model_type)} accepts one still condition image.')
-    if parsed.end_image or parsed.reference_images or parsed.control_images:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'{_enums.get_model_type_string(model_type)} accepts only a single image condition.')
-    return 'image-to-video'
-
-
-def _resolve_single_image_video_load(model_type, index):
-    model_type = _enums.get_model_type_enum(model_type)
-    family, prefix = {
-        _enums.ModelType.HUNYUAN_VIDEO_15: ('hunyuan-video-15', 'HunyuanVideo15'),
-        _enums.ModelType.MOTIF_VIDEO: ('motif-video', 'MotifVideo'),
-        _enums.ModelType.KANDINSKY5_VIDEO: ('kandinsky5-video', 'Kandinsky5'),
-    }[model_type]
-    name = str((index or {}).get('_class_name') or '')
-    if name.startswith(prefix):
-        image_to_video_markers = ('I2V', 'ImageToVideo', 'Image2Video')
-        mode = ('image-to-video'
-                if any(marker in name for marker in image_to_video_markers)
-                else 'text-to-video')
-        return family, _single_image_video_pipeline_class(family, mode), False
-    raise _pipelines.UnsupportedPipelineConfigError(
-        f'This repository is not a {prefix} pipeline '
-        f'(model_index.json _class_name is {name!r}).')
-
-
-def extra_weight_directories_from_index(index: dict | None) -> list[str]:
-    """
-    Repo folders that belong on the LTX pipeline cache estimate besides
-    transformer, VAE, and text encoders.
-
-    :param index: ``model_index.json`` dict, or ``None``
-    :return: folder names such as ``audio_vae`` and ``vocoder``
-    """
-    if not index:
-        return list(_LTX_FALLBACK_EXTRA_DIRS)
-    extras = []
-    for name, spec in index.items():
-        if name.startswith('_') or name in _VIDEO_CORE_INDEX_NAMES:
-            continue
-        if isinstance(spec, (list, tuple)) and len(spec) == 2:
-            extras.append(name)
-    return extras
 
 
 def apply_video_arg_rewrites(source, dest) -> None:
@@ -164,17 +54,6 @@ def apply_video_arg_rewrites(source, dest) -> None:
     dest.inference_steps = source.inference_steps
     dest.ltx_audio_guidance_scale = source.ltx_audio_guidance_scale
     dest.ltx_audio_guidance_rescale = source.ltx_audio_guidance_rescale
-
-
-class _VideoPipeline:
-    """A video pipeline kept in the shared diffusion pipeline cache."""
-
-    def __init__(self, pipeline, family: str, moe: bool = False, model_mode: str | None = None):
-        self.pipeline = pipeline
-        self.family = family
-        self.moe = moe
-        self.model_mode = model_mode
-        self.reference_downscale_factor = None
 
 
 def classify_video_seed(model_type: _enums.ModelType | str,
@@ -210,10 +89,7 @@ def classify_video_seed(model_type: _enums.ModelType | str,
     if model_type == _enums.ModelType.WAN_ANIMATE:
         from . import wan
         return wan._classify_wan_animate(parsed)
-    if model_type in {
-            _enums.ModelType.HUNYUAN_VIDEO_15,
-            _enums.ModelType.MOTIF_VIDEO,
-            _enums.ModelType.KANDINSKY5_VIDEO}:
+    if model_type in SINGLE_IMAGE_VIDEO_MODEL_TYPES:
         if ic_lora:
             raise _pipelines.UnsupportedPipelineConfigError(
                 '--ltx-ic-lora is only supported with --model-type ltx.')
@@ -242,156 +118,6 @@ def video_seed_slots(parsed: _mediainput.ImageSeedParseResult | None,
     if ic_lora and parsed.is_single_spec and not parsed.multi_image_mode:
         opening, control = None, opening
     return opening, parsed.end_image, control
-
-
-def load_rgb_frames(path: str,
-                    local_files_only: bool = False,
-                    resize_resolution: _types.OptionalSize = None,
-                    aspect_correct: bool = True,
-                    align: int = 1,
-                    frame_start: int = 0,
-                    frame_end: _types.OptionalInteger = None,
-                    max_frames: _types.OptionalInteger = None) -> tuple[list[PIL.Image.Image], float | None]:
-    """
-    Open a local path or URL as a list of RGB frames.
-
-    A still image gives one frame. Videos and animated images are sliced by
-    ``frame_start`` and ``frame_end`` (inclusive), then cut to ``max_frames``.
-
-    :param path: file path or URL
-    :param local_files_only: refuse to download
-    :param resize_resolution: optional resize
-    :param aspect_correct: preserve aspect ratio when resizing
-    :param align: pixel alignment, ``1`` disables it
-    :param frame_start: first frame index to keep
-    :param frame_end: last frame index to keep, ``None`` for the end of the file
-    :param max_frames: stop after this many frames, ``None`` for no limit
-    :raise UnsupportedPipelineConfigError: if the slice selects no frames
-    :return: ``(frames, fps)``. ``fps`` is ``None`` for a still image.
-    """
-    mime_type, stream = _mediainput.fetch_media_data_stream(
-        path, local_files_only=local_files_only)
-    try:
-        if _mediainput.mimetype_is_static_image(mime_type):
-            return [_mediainput.create_image(
-                stream,
-                file_source=path,
-                resize_resolution=resize_resolution,
-                aspect_correct=aspect_correct,
-                align=align)], None
-
-        if not (_mediainput.mimetype_is_video(mime_type) or
-                _mediainput.mimetype_is_animated_image(mime_type)):
-            raise _mediainput.UnknownMimetypeError(
-                f'Expected an image, animated image, or video for "{path}", '
-                f'got mimetype "{mime_type}".')
-
-        frames = []
-        try:
-            with _mediainput.create_animation_reader(
-                    mime_type,
-                    file_source=path,
-                    file=stream,
-                    resize_resolution=resize_resolution,
-                    aspect_correct=aspect_correct,
-                    align=align) as reader:
-                fps = float(reader.fps)
-                for index, frame in enumerate(reader):
-                    if frame_end is not None and index > frame_end:
-                        frame.close()
-                        break
-                    if index < frame_start:
-                        frame.close()
-                        continue
-                    frames.append(_to_rgb_image(frame))
-                    if max_frames is not None and len(frames) >= max_frames:
-                        break
-        except Exception:
-            for frame in frames:
-                frame.close()
-            raise
-
-        if not frames:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'No frames were read from "{path}" between frame {frame_start} '
-                f'and frame {"end" if frame_end is None else frame_end}.')
-        return frames, fps
-    finally:
-        stream.close()
-
-
-def frames_from_output(value) -> list[PIL.Image.Image]:
-    """
-    Normalize a pipeline video output to a list of RGB images.
-
-    Accepts a list of images, a batch of those lists, or an array/tensor in
-    frame-major channels-last or channels-first layout. A batch uses the first clip.
-
-    :param value: pipeline video output
-    :return: RGB frames
-    """
-    if value is None:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            'The video pipeline did not return frames.')
-
-    if torch.is_tensor(value):
-        value = value.detach().cpu().numpy()
-
-    if isinstance(value, numpy.ndarray):
-        return _frames_from_array(value)
-
-    if isinstance(value, list):
-        if not value:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                'The video pipeline returned an empty frame list.')
-        head = value[0]
-        if isinstance(head, PIL.Image.Image):
-            return [_to_rgb_image(frame) for frame in value]
-        if isinstance(head, list):
-            return frames_from_output(head)
-        if torch.is_tensor(head) or isinstance(head, numpy.ndarray):
-            array = head.detach().cpu().numpy() if torch.is_tensor(head) else numpy.asarray(head)
-            if array.ndim >= 4:
-                return frames_from_output(head)
-            return [_array_frame_to_image(frame) for frame in value]
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Cannot read video frames from a list of {type(head).__name__}.')
-
-    raise _pipelines.UnsupportedPipelineConfigError(
-        f'Cannot read video frames from {type(value).__name__}.')
-
-
-def audio_to_numpy(audio) -> numpy.ndarray | None:
-    """
-    Normalize pipeline audio to a float32 array of shape ``(channels, samples)``.
-
-    At most two channels are kept. ``None`` and empty audio return ``None``.
-
-    :param audio: tensor or array, or ``None``
-    :return: planar audio, or ``None``
-    """
-    if audio is None:
-        return None
-
-    if torch.is_tensor(audio):
-        audio = audio.detach().float().cpu().numpy()
-
-    audio = numpy.asarray(audio, dtype=numpy.float32)
-    if audio.size == 0:
-        return None
-    if audio.ndim == 3:
-        audio = audio[0]
-    if audio.ndim == 1:
-        audio = audio.reshape(1, -1)
-    if audio.ndim != 2:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Cannot mux audio of shape {audio.shape}.')
-
-    if audio.shape[0] > 2 and audio.shape[1] <= 2:
-        audio = numpy.transpose(audio, (1, 0))
-    if audio.shape[0] > 2:
-        audio = audio[:2]
-    return numpy.ascontiguousarray(audio, dtype=numpy.float32)
 
 
 def generate(wrapper, user_args) -> tuple[list[PIL.Image.Image], numpy.ndarray | None, int | None, float]:
@@ -430,245 +156,6 @@ def generate(wrapper, user_args) -> tuple[list[PIL.Image.Image], numpy.ndarray |
         f'{_enums.get_model_type_string(model_type)} is not a video model type.')
 
 
-def _motif_default_timesteps(pipe, steps: int, call_kwargs: dict, call_parameters: dict):
-    """Read Motif's normal timestep schedule without leaving scheduler state changed."""
-    scheduler = pipe.scheduler
-    set_timesteps = scheduler.set_timesteps
-    set_parameters = inspect.signature(set_timesteps).parameters
-    if 'timesteps' not in set_parameters:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            'The loaded Motif scheduler does not accept custom timesteps.')
-
-    def call_default(name, fallback):
-        parameter = call_parameters.get(name)
-        if parameter is None or parameter.default is inspect.Parameter.empty:
-            return fallback
-        return parameter.default
-
-    height = int(call_kwargs.get('height', call_default('height', 736)))
-    width = int(call_kwargs.get('width', call_default('width', 1280)))
-    num_frames = int(call_kwargs.get('num_frames', call_default('num_frames', 121)))
-    vae_spatial = int(getattr(pipe, 'vae_scale_factor_spatial', 8) or 8)
-    vae_temporal = int(getattr(pipe, 'vae_scale_factor_temporal', 4) or 4)
-    transformer = getattr(pipe, 'transformer', None)
-    transformer_config = getattr(transformer, 'config', None)
-    spatial_patch = int(getattr(
-        pipe, 'transformer_spatial_patch_size',
-        getattr(transformer_config, 'patch_size', 2)) or 2)
-    temporal_patch = int(getattr(pipe, 'transformer_temporal_patch_size', 1) or 1)
-    latent_height = height // vae_spatial
-    latent_width = width // vae_spatial
-    latent_frames = (num_frames - 1) // vae_temporal + 1
-    sequence_length = (
-        (latent_frames // temporal_patch) *
-        (latent_height // spatial_patch) *
-        (latent_width // spatial_patch))
-
-    config = scheduler.config
-    calculate_shift = getattr(pipe.__class__.__call__, '__globals__', {}).get('calculate_shift')
-    if callable(calculate_shift):
-        mu = calculate_shift(
-            sequence_length,
-            config.get('base_image_seq_len', 256),
-            config.get('max_image_seq_len', 4096),
-            config.get('base_shift', 0.5),
-            config.get('max_shift', 1.15))
-    else:
-        base_seq_len = config.get('base_image_seq_len', 256)
-        max_seq_len = config.get('max_image_seq_len', 4096)
-        base_shift = config.get('base_shift', 0.5)
-        max_shift = config.get('max_shift', 1.15)
-        mu = base_shift + (sequence_length - base_seq_len) * (
-            (max_shift - base_shift) / (max_seq_len - base_seq_len))
-
-    old_state = {
-        name: getattr(scheduler, name)
-        for name in ('timesteps', 'sigmas', 'num_inference_steps')
-        if hasattr(scheduler, name)
-    }
-    kwargs = {}
-    if 'device' in set_parameters:
-        kwargs['device'] = 'cpu'
-    if 'mu' in set_parameters:
-        kwargs['mu'] = mu
-    is_multistep = scheduler.__class__.__name__ in {
-        'DPMSolverMultistepScheduler', 'UniPCMultistepScheduler', 'FlowUniPCMultistepScheduler'}
-    if not is_multistep and 'sigmas' in set_parameters:
-        kwargs['sigmas'] = numpy.linspace(1.0, 1.0 / steps, steps)
-
-    try:
-        set_timesteps(steps, **kwargs)
-        scheduled = getattr(scheduler, 'timesteps', None)
-        if scheduled is None:
-            raise ValueError('scheduler did not produce a timestep schedule')
-        if hasattr(scheduled, 'detach'):
-            scheduled = scheduled.detach().cpu().numpy()
-        return numpy.rint(numpy.asarray(scheduled, dtype=float)).astype(numpy.int64)
-    except Exception as e:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            'Could not read Motif-Video scheduler timesteps for a video-timestep expression.') from e
-    finally:
-        for name, value in old_state.items():
-            setattr(scheduler, name, value)
-
-
-@contextlib.contextmanager
-def _forced_scheduler_timesteps(scheduler, timesteps: list[int]):
-    """Substitute a custom schedule inside ``scheduler.set_timesteps``.
-
-    Motif pipelines always pass their own ``sigmas`` to ``retrieve_timesteps``,
-    which rejects a caller ``timesteps`` argument alongside them, so the custom
-    schedule is applied at the scheduler instead. ``mu`` is still forwarded.
-    """
-    original = scheduler.set_timesteps
-    accepted = inspect.signature(original).parameters
-
-    def set_timesteps(num_inference_steps=None, device=None, sigmas=None, **kwargs):
-        kwargs = {name: value for name, value in kwargs.items()
-                  if name in accepted and name != 'timesteps'}
-        return original(device=device, timesteps=list(timesteps), **kwargs)
-
-    shadowed = scheduler.__dict__.get('set_timesteps')
-    scheduler.set_timesteps = set_timesteps
-    try:
-        yield
-    finally:
-        if shadowed is None:
-            del scheduler.set_timesteps
-        else:
-            scheduler.set_timesteps = shadowed
-
-
-def _eval_video_timesteps_expression(expression: str, base_timesteps) -> list[int]:
-    expression = str(expression).strip().removeprefix('expr:').strip()
-    if not expression:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            'Video timesteps expression cannot be empty.')
-    interpreter = _eval.standard_interpreter(symtable=_eval.safe_builtins())
-    interpreter.symtable['np'] = numpy
-    interpreter.symtable['timesteps'] = numpy.asarray(base_timesteps, dtype=float)
-    try:
-        value = interpreter.eval(expression, show_errors=False, raise_errors=True)
-    except Exception as e:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Error interpreting video timesteps expression "{expression}":\n{e}') from e
-    if not isinstance(value, collections.abc.Iterable) or isinstance(value, (str, bytes)):
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Video timesteps expression did not evaluate to an array, got: {value}')
-    result = []
-    for item in value:
-        try:
-            numeric = float(item)
-        except (TypeError, ValueError) as e:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                'Video timesteps expression must produce integer values.') from e
-        if not numpy.isfinite(numeric) or not numeric.is_integer() or numeric < 0:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                'Video timesteps expression must produce non-negative integer values.')
-        result.append(int(numeric))
-    if not result:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            'Video timesteps expression produced an empty schedule.')
-    return result
-
-
-def _call_single_image_video(wrapper, user_args):
-    model_type = wrapper.model_type
-    mode = 'image-to-video' if user_args.images else 'text-to-video'
-    pipe, held = _video_pipeline(wrapper, mode, user_args.scheduler_uri)
-    family = held.family
-    call_parameters = inspect.signature(pipe.__call__).parameters
-    positive, negative = _prompt_text(user_args)
-    width, height = _size(user_args)
-    default_fps = 15.0 if family == 'hunyuan-video-15' else 24.0
-    fps = float(user_args.video_fps or default_fps)
-    kwargs = {
-        'prompt': positive,
-        'generator': _generator(wrapper, user_args),
-        'output_type': 'np' if family == 'hunyuan-video-15' else 'pil',
-    }
-    if negative:
-        kwargs['negative_prompt'] = negative
-    if width is not None:
-        width, height = _force_output_size_alignment(width, height, 16, family)
-    if mode == 'image-to-video':
-        source = user_args.images[0]
-        width, height = conditioning_canvas(
-            source.size, width, height, user_args.aspect_correct, 16)
-        user_args.images[0] = resize_media([source], (width, height))[0]
-        kwargs['image'] = user_args.images[0]
-    if width is not None and {'width', 'height'} <= call_parameters.keys():
-        kwargs.update(width=width, height=height)
-    if user_args.video_length is not None:
-        temporal = int(getattr(pipe, 'vae_scale_factor_temporal', 4) or 4)
-        kwargs['num_frames'] = wan_num_frames(user_args.video_length, fps, temporal)
-
-    guidance_default = 6.0 if family == 'hunyuan-video-15' else 5.0
-    guidance = float(_types.default(user_args.guidance_scale, guidance_default))
-    if family == 'kandinsky5-video':
-        kwargs['guidance_scale'] = guidance
-    else:
-        guider = getattr(pipe, 'guider', None)
-        if guider is None or not hasattr(guider, 'new'):
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'{family} pipeline does not expose a configurable guider.')
-        pipe.guider = guider.new(guidance_scale=guidance)
-
-    steps = int(_types.default(user_args.inference_steps, 50))
-    kwargs['num_inference_steps'] = steps
-    custom_timesteps = None
-    if family == 'motif-video' and user_args.video_timesteps is not None:
-        if 'timesteps' not in inspect.signature(pipe.scheduler.set_timesteps).parameters:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'The loaded {family} scheduler does not support custom timesteps.')
-        if isinstance(user_args.video_timesteps, str):
-            base_timesteps = _motif_default_timesteps(
-                pipe, steps, kwargs, call_parameters)
-            custom_timesteps = _eval_video_timesteps_expression(
-                user_args.video_timesteps, base_timesteps)
-        else:
-            custom_timesteps = [int(value) for value in user_args.video_timesteps]
-        kwargs['num_inference_steps'] = len(custom_timesteps)
-        user_args.inference_steps = len(custom_timesteps)
-    if user_args.max_sequence_length is not None:
-        if 'max_sequence_length' not in call_parameters:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'--max-sequence-length is not supported by {family}.')
-        kwargs['max_sequence_length'] = int(user_args.max_sequence_length)
-    if user_args.sigmas is not None:
-        if 'sigmas' not in call_parameters:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'--sigmas is not supported by {family}; its pipeline accepts a timestep schedule instead.')
-        if isinstance(user_args.sigmas, str):
-            from .ltx import _eval_sigma_expression
-            scheduler = pipe.scheduler
-            old_timesteps = getattr(scheduler, 'timesteps', None)
-            old_sigmas = getattr(scheduler, 'sigmas', None)
-            old_num = getattr(scheduler, 'num_inference_steps', None)
-            try:
-                scheduler.set_timesteps(kwargs['num_inference_steps'])
-                kwargs['sigmas'] = _eval_sigma_expression(user_args.sigmas, scheduler.sigmas)
-            finally:
-                if old_timesteps is not None:
-                    scheduler.timesteps = old_timesteps
-                if old_sigmas is not None:
-                    scheduler.sigmas = old_sigmas
-                if old_num is not None:
-                    scheduler.num_inference_steps = old_num
-        else:
-            kwargs['sigmas'] = [float(value) for value in user_args.sigmas]
-        user_args.inference_steps = len(kwargs['sigmas'])
-
-    _set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
-    with (_forced_scheduler_timesteps(pipe.scheduler, custom_timesteps)
-          if custom_timesteps is not None else contextlib.nullcontext()):
-        output = _invoke(wrapper, pipe, kwargs, user_args=user_args)
-    frames = frames_from_output(getattr(output, 'frames', output))
-    audio = audio_to_numpy(getattr(output, 'audio', None))
-    sample_rate = getattr(pipe, 'audio_sample_rate', None) if audio is not None else None
-    return frames, audio, int(sample_rate) if sample_rate else None, fps
-
-
 def _reject_still_extras(parsed, model_name: str, allow_mask: bool = False):
     if parsed is None:
         return
@@ -702,56 +189,6 @@ def _has_end(parsed) -> bool:
     return bool(parsed is not None and parsed.end_image)
 
 
-def _to_rgb_image(image: PIL.Image.Image) -> PIL.Image.Image:
-    if image.mode == 'RGB':
-        return image
-    converted = image.convert('RGB')
-    if converted is not image:
-        image.close()
-    return converted
-
-
-def _array_frame_to_image(frame) -> PIL.Image.Image:
-    if torch.is_tensor(frame):
-        frame = frame.detach().cpu().numpy()
-    frame = numpy.asarray(frame)
-    if frame.ndim == 3 and frame.shape[0] in (1, 3, 4) and frame.shape[-1] not in (1, 3, 4):
-        frame = numpy.transpose(frame, (1, 2, 0))
-    if frame.dtype != numpy.uint8:
-        frame = frame.astype(numpy.float32)
-        finite = frame[numpy.isfinite(frame)]
-        if finite.size and float(finite.max()) <= 1.0:
-            frame = frame * 255.0
-        frame = numpy.clip(frame, 0, 255).astype(numpy.uint8)
-    if frame.ndim == 2:
-        return PIL.Image.fromarray(frame, mode='L').convert('RGB')
-    if frame.shape[-1] == 1:
-        return PIL.Image.fromarray(frame.squeeze(-1), mode='L').convert('RGB')
-    if frame.shape[-1] == 4:
-        return PIL.Image.fromarray(frame, mode='RGBA').convert('RGB')
-    return PIL.Image.fromarray(frame[..., :3], mode='RGB')
-
-
-def _frames_from_array(array: numpy.ndarray) -> list[PIL.Image.Image]:
-    array = numpy.asarray(array)
-    if array.ndim == 5:
-        array = array[0]
-    if array.ndim == 3:
-        return [_array_frame_to_image(array)]
-    if array.ndim != 4:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Cannot read video frames from an array of shape {array.shape}.')
-
-    if array.shape[-1] in (1, 3, 4):
-        frames = (array[index] for index in range(array.shape[0]))
-    elif array.shape[1] in (1, 3, 4):
-        frames = (numpy.transpose(array[index], (1, 2, 0)) for index in range(array.shape[0]))
-    else:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Cannot read video frames from an array of shape {array.shape}.')
-    return [_array_frame_to_image(frame) for frame in frames]
-
-
 def _prompt_text(user_args) -> tuple[str, str | None]:
     prompt = user_args.prompt
     if prompt is None or not getattr(prompt, 'positive', None):
@@ -764,79 +201,6 @@ def _size(user_args) -> tuple[int | None, int | None]:
     if user_args.width is None or user_args.height is None:
         return None, None
     return int(user_args.width), int(user_args.height)
-
-
-def conditioning_canvas(source_size,
-                        width,
-                        height,
-                        aspect_correct: bool,
-                        align: int) -> tuple[int, int]:
-    """
-    Generation canvas for one conditioning image or clip.
-
-    This matches still-image ``--output-size`` handling. The requested width
-    is kept. Unless aspect correction is off, the height follows the source
-    and is aligned down. With no requested size, the source itself is aligned.
-    """
-    import dgenerate.image as _image
-
-    source_size = (int(source_size[0]), int(source_size[1]))
-    align = max(1, int(align))
-    if width is None and height is None:
-        requested = source_size
-        aspect = False
-    else:
-        requested = (
-            int(width) if width is not None else source_size[0],
-            int(height) if height is not None else source_size[1])
-        aspect = bool(aspect_correct)
-    target = _image.resize_image_calc(
-        old_size=source_size,
-        new_size=requested,
-        aspect_correct=aspect,
-        align=align)
-    if target[0] < align or target[1] < align:
-        aligned = max(align, target[0]), max(align, target[1])
-        _messages.warning(
-            f'Conditioning media {source_size[0]}x{source_size[1]} would produce '
-            f'a canvas smaller than the required alignment of {align}; '
-            f'forcing dimensions to at least {align} pixels: {aligned[0]}x{aligned[1]}.')
-        target = aligned
-    return int(target[0]), int(target[1])
-
-
-def resize_media(frames, target, nearest: bool = False):
-    """Resize every frame to ``target``. ``nearest`` keeps mask edges hard."""
-    import PIL.Image
-
-    import dgenerate.image as _image
-
-    if not frames:
-        return frames
-    target = (int(target[0]), int(target[1]))
-    if all(frame.size == target for frame in frames):
-        return frames
-    algo = PIL.Image.Resampling.NEAREST if nearest else None
-    return [
-        _image.resize_image(frame, target, aspect_correct=False, algo=algo)
-        for frame in frames]
-
-
-def _force_output_size_alignment(width: int | None,
-                                 height: int | None,
-                                 align: int,
-                                 model_name: str) -> tuple[int | None, int | None]:
-    if width is None or height is None:
-        return width, height
-    width, height = int(width), int(height)
-    aligned = (
-        max(align, width - width % align),
-        max(align, height - height % align))
-    if aligned != (width, height):
-        _messages.warning(
-            f'{model_name} output size {width}x{height} is not aligned to {align}; '
-            f'forcing dimensions to {aligned[0]}x{aligned[1]}.')
-    return aligned
 
 
 def _seed(user_args) -> int:
@@ -857,29 +221,6 @@ def _generator(wrapper, user_args) -> torch.Generator:
     return torch.Generator(device=device).manual_seed(_seed(user_args))
 
 
-def _pretrained_kwargs(revision, variant, subfolder, local_files_only, auth_token, dtype, include_dtype):
-    kwargs = {'local_files_only': local_files_only}
-    if revision:
-        kwargs['revision'] = revision
-    if variant:
-        kwargs['variant'] = variant
-    if subfolder:
-        kwargs['subfolder'] = subfolder
-    if auth_token:
-        kwargs['token'] = auth_token
-    if include_dtype:
-        torch_dtype = _enums.get_torch_dtype(dtype)
-        if torch_dtype is not None:
-            kwargs['torch_dtype'] = torch_dtype
-    return kwargs
-
-
-def _enable_vae_tiling(pipe):
-    vae = getattr(pipe, 'vae', None)
-    if vae is not None and hasattr(vae, 'enable_tiling'):
-        vae.enable_tiling()
-
-
 def _set_video_vae_slicing(pipe, enabled: bool):
     for name in ('vae', 'audio_vae'):
         vae = getattr(pipe, name, None)
@@ -889,827 +230,6 @@ def _set_video_vae_slicing(pipe, enabled: bool):
             vae.enable_slicing()
         elif not enabled and hasattr(vae, 'disable_slicing'):
             vae.disable_slicing()
-
-
-def _apply_video_offload(pipe, device, model_cpu_offload, sequential_cpu_offload,
-                         model_group_offload=False):
-    if sequential_cpu_offload:
-        _pipelines.enable_sequential_cpu_offload(pipe, device)
-    elif model_cpu_offload:
-        _pipelines.enable_model_cpu_offload(pipe, device)
-    elif model_group_offload:
-        _pipelines.enable_group_offload(pipe, device)
-
-
-def _video_transformer_class(model_type, family: str = 'ltx2'):
-    model_type = _enums.get_model_type_enum(model_type)
-    if model_type == _enums.ModelType.LTX:
-        if family == 'ltx':
-            from diffusers import LTXVideoTransformer3DModel
-            return LTXVideoTransformer3DModel
-        from diffusers import LTX2VideoTransformer3DModel
-        return LTX2VideoTransformer3DModel
-    if _enums.model_type_is_wan_family(model_type):
-        from . import wan
-        return wan._wan_transformer_class(model_type, family)
-    if _enums.get_model_type_enum(model_type) in {
-            _enums.ModelType.HUNYUAN_VIDEO_15,
-            _enums.ModelType.MOTIF_VIDEO,
-            _enums.ModelType.KANDINSKY5_VIDEO}:
-        from . import hunyuan_video15, kandinsky5_video, motif_video
-        module = {
-            'hunyuan-video-15': hunyuan_video15,
-            'motif-video': motif_video,
-            'kandinsky5-video': kandinsky5_video,
-        }[family]
-        return module.transformer_class()
-    raise _pipelines.UnsupportedPipelineConfigError(
-        f'{_enums.get_model_type_string(model_type)} does not take --transformer.')
-
-
-def _load_replacement_transformer(model_type, transformer_uri, dtype, variant,
-                                  auth_token, local_files_only, quantizer_uri=None,
-                                  quantizer_map=None, device=None, offload=False,
-                                  component_name='transformer', config_repo=None,
-                                  family: str = 'ltx2', force_unquantized=False):
-    if not isinstance(dtype, _enums.DataType):
-        dtype = _enums.DataType.AUTO
-    parsed = _uris.TransformerUri.parse(transformer_uri)
-    if (not _hfhub.is_gguf_model(parsed.model)
-            and not force_unquantized
-            and quantizer_uri and not parsed.quantizer
-            and _quantize_component(component_name, quantizer_uri, quantizer_map)):
-        parsed.quantizer = quantizer_uri
-    if force_unquantized:
-        if _hfhub.is_gguf_model(parsed.model):
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'Cannot fuse LoRAs into quantized GGUF replacement component "{component_name}".')
-        parsed.quantizer = None
-    _messages.debug_log(f'Loading replacement video transformer "{transformer_uri}".')
-    return parsed.load(
-        variant_fallback=variant,
-        dtype_fallback=dtype,
-        use_auth_token=auth_token,
-        local_files_only=local_files_only,
-        device_map=_quantized_device_map(
-            device, offload, parsed.quantizer) if parsed.quantizer else None,
-        config=config_repo,
-        config_subfolder=component_name,
-        transformer_class=_video_transformer_class(model_type, family))
-
-
-def _apply_video_loras(pipe, model_type, lora_uris, fuse_scale, auth_token, local_files_only):
-    if not lora_uris:
-        return
-    del model_type
-    _uris.LoRAUri.load_on_pipeline(
-        pipeline=pipe,
-        uris=lora_uris,
-        fuse_scale=1.0 if fuse_scale is None else fuse_scale,
-        use_auth_token=auth_token,
-        local_files_only=local_files_only,
-        fuse=True)
-
-
-def _preflight_quantized_video_loras(
-        pipeline_class, model_path, load_kwargs, injected, model_type, lora_uris,
-        fuse_scale, auth_token, local_files_only, family, component_uris=(),
-        components=()):
-    """Serialize creation of each fused-LoRA cache entry across processes."""
-    cache_root = pathlib.Path(_pipelines.get_converted_checkpoint_cache_dir()) / 'video_lora_fused'
-    cache_root.mkdir(parents=True, exist_ok=True)
-    cache_identity = repr((
-        model_path, str(model_type), load_kwargs.get('revision'),
-        load_kwargs.get('variant'), load_kwargs.get('subfolder'),
-        load_kwargs.get('torch_dtype'), tuple(lora_uris),
-        1.0 if fuse_scale is None else fuse_scale,
-        tuple(component_uris), tuple(components)))
-    cache_hash = hashlib.sha256(cache_identity.encode('utf-8')).hexdigest()
-    lock_root = cache_root / '.locks'
-    lock_root.mkdir(parents=True, exist_ok=True)
-    # Keep the lock file in place: unlinking a lock after releasing it can let
-    # another process lock a new inode while a waiter still holds the old one.
-    with filelock.FileLock(str(lock_root / f'{cache_hash}.lock')):
-        return _preflight_quantized_video_loras_locked(
-            pipeline_class, model_path, load_kwargs, injected, model_type,
-            lora_uris, fuse_scale, auth_token, local_files_only, family,
-            component_uris, components)
-
-
-def _preflight_quantized_video_loras_locked(
-        pipeline_class, model_path, load_kwargs, injected, model_type, lora_uris,
-        fuse_scale, auth_token, local_files_only, family, component_uris=(),
-        components=()):
-    """Fuse video LoRAs and cache only the pipeline components they can affect."""
-    if not lora_uris:
-        return {}
-
-    cache_root = pathlib.Path(_pipelines.get_converted_checkpoint_cache_dir()) / 'video_lora_fused'
-    cache_root.mkdir(parents=True, exist_ok=True)
-    cache_identity = repr((
-        model_path, str(model_type), load_kwargs.get('revision'),
-        load_kwargs.get('variant'), load_kwargs.get('subfolder'),
-        load_kwargs.get('torch_dtype'), tuple(lora_uris),
-        1.0 if fuse_scale is None else fuse_scale,
-        tuple(component_uris), tuple(components)))
-    cache_hash = hashlib.sha256(cache_identity.encode('utf-8')).hexdigest()
-    cache_store = _filecache.KeyValueStore(str(cache_root / 'cache.db'))
-    cached_path = cache_store.get(cache_identity)
-    if cached_path is not None:
-        manifest_path = pathlib.Path(cached_path) / 'components.json'
-        try:
-            manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
-            if not isinstance(manifest, dict) or not manifest:
-                raise ValueError('LoRA component manifest must be a nonempty object.')
-            if any(
-                    not isinstance(name, str)
-                    or name not in components
-                    or not isinstance(info, dict)
-                    or not isinstance(info.get('module'), str)
-                    or not info.get('module')
-                    or not isinstance(info.get('class'), str)
-                    or not info.get('class')
-                    for name, info in manifest.items()):
-                raise ValueError('LoRA component manifest has invalid component metadata.')
-            component_dirs = {
-                path.name for path in pathlib.Path(cached_path).iterdir() if path.is_dir()}
-            if component_dirs != set(manifest):
-                raise ValueError('LoRA component manifest does not match cached component directories.')
-            paths = {name: str(pathlib.Path(cached_path) / name) for name in manifest}
-            if all(pathlib.Path(path).is_dir() for path in paths.values()):
-                _messages.debug_log(f'Using cached LoRA-fused video components: {cached_path}')
-                return paths, manifest
-        except (OSError, ValueError):
-            pass
-        try:
-            del cache_store[cache_identity]
-        except KeyError:
-            pass
-
-    # Match the static component cache: SQLite is keyed by the full identity,
-    # while the hash is only a preferred directory name. If that path already
-    # belongs to another entry (including a hash collision), choose a unique one.
-    with cache_store:
-        cache_uuid = cache_hash
-        fused_path = cache_root / cache_uuid
-        while fused_path.exists():
-            cache_uuid = hashlib.sha256(
-                (cache_identity + str(random.random())).encode('utf-8')).hexdigest()
-            fused_path = cache_root / cache_uuid
-
-    temporary_path = pathlib.Path(tempfile.mkdtemp(prefix=f'{cache_hash}.', dir=cache_root))
-    try:
-        _messages.warning(
-            f'Fusing LoRAs into unquantized video components and caching them at "{fused_path}". '
-            'This is a one-time task for this model and LoRA scale.')
-        with _hfhub.with_hf_errors_as_model_not_found():
-            if str(family).startswith('wan-animate-2'):
-                from . import wan
-                pipeline = wan.load_wan_animate_2_pipeline(
-                    pipeline_class, model_path, load_kwargs, injected, load_kwargs.get('torch_dtype'))
-            else:
-                pipeline = pipeline_class.from_pretrained(model_path, **load_kwargs)
-        _apply_video_loras(
-            pipeline, model_type, lora_uris, fuse_scale, auth_token, local_files_only)
-        # Pipelines advertise every component *capable* of loading a LoRA, but
-        # a particular adapter can target only a subset (for example, LTX
-        # adapters commonly leave ``connectors`` untouched).  Capture that
-        # subset before unloading PEFT so the cache contains only fused
-        # components and the regular checkpoint continues to supply the rest.
-        affected_components = tuple(
-            name for name in components
-            if getattr(getattr(pipeline, name, None), 'peft_config', None))
-        unload_lora_weights = getattr(pipeline, 'unload_lora_weights', None)
-        if not callable(unload_lora_weights):
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'{pipeline_class.__name__} cannot unload fused LoRA adapters before caching.')
-        # fuse_lora merges the adapter deltas into the base weights, but leaves
-        # PEFT wrappers in place. Save the merged base modules without those
-        # wrappers so from_pretrained sees the checkpoint's expected keys.
-        unload_lora_weights()
-        manifest = {}
-        for name in affected_components:
-            module = getattr(pipeline, name, None)
-            # Diffusers pipeline classes can advertise optional LoRA targets
-            # (for example Wan's transformer_2 for MoE checkpoints) even when
-            # the selected checkpoint does not provide that component.
-            if module is None:
-                continue
-            if not hasattr(module, 'save_pretrained'):
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    f'Cannot cache LoRA-affected video component "{name}" before quantization.')
-            if getattr(module, 'peft_config', None):
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    f'LoRA adapters remain attached to video component "{name}" after unloading.')
-            component_path = temporary_path / name
-            module.save_pretrained(str(component_path))
-            manifest[name] = {
-                'module': type(module).__module__,
-                'class': type(module).__name__,
-            }
-        if not manifest:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'{pipeline_class.__name__} exposes no saveable LoRA components for quantization preflight.')
-        (temporary_path / 'components.json').write_text(
-            json.dumps(manifest, indent=2), encoding='utf-8')
-        del pipeline
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        if fused_path.exists():
-            if fused_path.is_dir():
-                shutil.rmtree(fused_path)
-            else:
-                fused_path.unlink()
-        temporary_path.replace(fused_path)
-        cache_store[cache_identity] = str(fused_path)
-    except Exception:
-        shutil.rmtree(temporary_path, ignore_errors=True)
-        raise
-    return ({name: str(fused_path / name) for name in manifest}, manifest)
-
-
-def _load_fused_video_component(name, component_path, component_info, dtype,
-                                quantizer_uri, auth_token,
-                                local_files_only, device, offload):
-    module_class = getattr(
-        importlib.import_module(component_info['module']), component_info['class'])
-    if quantizer_uri:
-        return _load_quantized_module(
-            module_class, component_path, None, None, None, dtype, quantizer_uri,
-            auth_token, True, _quantized_device_map(device, offload, quantizer_uri),
-            offload=offload)
-
-    kwargs = {'local_files_only': True}
-    torch_dtype = _enums.get_torch_dtype(dtype)
-    if torch_dtype is not None:
-        if getattr(module_class, '__module__', '').startswith('transformers'):
-            kwargs['dtype'] = torch_dtype
-        else:
-            kwargs['torch_dtype'] = torch_dtype
-    with _hfhub.with_hf_errors_as_model_not_found():
-        module = module_class.from_pretrained(component_path, **kwargs)
-    if offload:
-        module.to('cpu')
-    else:
-        module.to(device)
-    return module
-
-
-_DEFAULT_QUANT_NAMES = {
-    'transformer',
-    'transformer_2',
-    'text_encoder',
-    'text_encoder_2',
-    'text_encoder_3',
-    'image_encoder',
-    'connectors',
-}
-
-# Loaded as None so from_pretrained does not pull the unused Gemma
-# prompt enhancer (about 9.5 GiB) onto the GPU.
-_LTX_SKIP_OPTIONAL_MODULES = {
-    'prompt_enhancer': None,
-}
-
-
-def _quantize_component(name: str, quantizer_uri, quantizer_map) -> bool:
-    if not quantizer_uri:
-        return False
-    if quantizer_map is None:
-        return name in _DEFAULT_QUANT_NAMES
-    return name in quantizer_map
-
-
-def _video_lora_component_quantizers(
-        pipeline_class, quantizer_uri, quantizer_map, transformer_uri,
-        wan_second_transformer_uri, text_encoder_slots, text_encoder_uris):
-    """Resolve quantizers for LoRA-loadable video components and replacements."""
-    lora_components = tuple(getattr(
-        pipeline_class, '_lora_loadable_modules', ('transformer',)))
-    component_quantizers = {
-        name: quantizer_uri
-        for name in lora_components
-        if _quantize_component(name, quantizer_uri, quantizer_map)
-    }
-    for name, uri in (
-            ('transformer', transformer_uri),
-            ('transformer_2', wan_second_transformer_uri)):
-        if name in lora_components and uri:
-            parsed = _uris.TransformerUri.parse(uri)
-            if parsed.quantizer:
-                component_quantizers[name] = parsed.quantizer
-    for index, name in enumerate(text_encoder_slots):
-        if name not in lora_components or index >= len(text_encoder_uris):
-            continue
-        uri = text_encoder_uris[index]
-        if _pipelines._text_encoder_default(uri):
-            continue
-        if _pipelines._text_encoder_null(uri):
-            component_quantizers.pop(name, None)
-            continue
-        parsed = _uris.TextEncoderUri.parse(uri)
-        if parsed.quantizer:
-            component_quantizers[name] = parsed.quantizer
-        else:
-            # Global --quantizer applies to the checkpoint's default encoder,
-            # not to a replacement supplied through --text-encoders.
-            component_quantizers.pop(name, None)
-    return lora_components, component_quantizers
-
-
-def _video_lora_component_uri_cache_key(
-        lora_components, transformer_uri, wan_second_transformer_uri,
-        text_encoder_slots, text_encoder_uris):
-    """Build a LoRA cache key from component sources, excluding quantizers."""
-    component_uris = []
-    for name, uri in (
-            ('transformer', transformer_uri),
-            ('transformer_2', wan_second_transformer_uri)):
-        if name not in lora_components or not uri:
-            continue
-        parsed = _uris.TransformerUri.parse(uri)
-        component_uris.append((
-            name, parsed.model, parsed.revision, parsed.variant,
-            parsed.subfolder, parsed.dtype))
-    for index, name in enumerate(text_encoder_slots):
-        if name not in lora_components or index >= len(text_encoder_uris):
-            continue
-        uri = text_encoder_uris[index]
-        if (_pipelines._text_encoder_default(uri)
-                or _pipelines._text_encoder_null(uri)):
-            continue
-        parsed = _uris.TextEncoderUri.parse(uri)
-        component_uris.append((
-            name, parsed.encoder, parsed.model, parsed.revision,
-            parsed.variant, parsed.subfolder, parsed.dtype, parsed.mode))
-    return tuple(component_uris)
-
-
-def _quantizer_config(quantizer_uri, dtype, transformers_module: bool):
-    parsed = _uris.get_quantizer_uri_class(quantizer_uri).parse(quantizer_uri)
-    torch_dtype = _enums.get_torch_dtype(dtype) if isinstance(dtype, _enums.DataType) else None
-    if transformers_module and hasattr(parsed, 'to_transformers_config'):
-        return parsed.to_transformers_config(torch_dtype)
-    return parsed.to_config(torch_dtype)
-
-
-def _resolve_index_class(library: str, class_name: str):
-    import diffusers.pipelines as pipelines
-
-    if hasattr(pipelines, library):
-        module = importlib.import_module(f'diffusers.pipelines.{library}')
-    else:
-        module = importlib.import_module(library)
-    return getattr(module, class_name)
-
-
-def _load_quantized_module(component_class, model_path, subfolder, revision, variant,
-                           dtype, quantizer_uri, auth_token, local_files_only, device_map,
-                           offload=False):
-    module_name = getattr(component_class, '__module__', '')
-    transformers_module = module_name.startswith('transformers')
-    config = _quantizer_config(quantizer_uri, dtype, transformers_module)
-    from dgenerate.pipelinewrapper.quant_skips import apply_architecture_quant_skips
-    apply_architecture_quant_skips(config, component_class)
-    torch_dtype = _enums.get_torch_dtype(dtype) if isinstance(dtype, _enums.DataType) else None
-    _messages.debug_log(
-        f'Quantizing {component_class.__name__} from "{model_path}" '
-        f'subfolder "{subfolder}" with "{quantizer_uri}".')
-    load_kwargs = {
-        'subfolder': subfolder or '',
-        'revision': revision,
-        'variant': variant,
-        'token': auth_token,
-        'local_files_only': local_files_only,
-        'quantization_config': config,
-        'device_map': device_map,
-        'low_cpu_mem_usage': True,
-    }
-    if torch_dtype is not None:
-        if transformers_module:
-            load_kwargs['dtype'] = torch_dtype
-        else:
-            load_kwargs['torch_dtype'] = torch_dtype
-    with _hfhub.with_hf_errors_as_model_not_found():
-        module = component_class.from_pretrained(model_path, **load_kwargs)
-    # 8-bit BnB weights cannot leave the GPU. Pin .to() like still pipelines.
-    if _util.is_loaded_in_8bit_bnb(module):
-        _pipelines._disable_to(module)
-    elif offload:
-        module.to('cpu')
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        gc.collect()
-    return module
-
-
-def _pin_video_8bit_modules(pipe):
-    """Disable ``.to()`` on 8-bit BnB modules after the video pipeline is built."""
-    for module in _pipelines.get_pipeline_modules(pipe).values():
-        if _util.is_loaded_in_8bit_bnb(module):
-            _pipelines._disable_to(module)
-
-
-def _quantized_device_map(device, offload: bool, quantizer_uri=None):
-    # bitsandbytes rejects a CPU or disk device_map, so it has to be
-    # created on the GPU. SDNQ weights can be quantized on the CPU and
-    # streamed later, which is what keeps a 16GB card from filling up.
-    del offload
-    if not quantizer_uri or not str(quantizer_uri).split(';', 1)[0] == 'bnb':
-        return None
-    if device is None or str(device) == 'cpu':
-        return None
-    return {'': str(device)}
-
-
-def _quantized_classic_modules(model_path, revision, variant, subfolder, dtype,
-                               quantizer_uri, quantizer_map, auth_token,
-                               local_files_only, device, offload, skip_names=()):
-    if not quantizer_uri:
-        return {}
-    index = _util.fetch_model_index_dict(
-        model_path,
-        subfolder=subfolder,
-        revision=revision,
-        use_auth_token=auth_token,
-        local_files_only=local_files_only)
-    device_map = _quantized_device_map(device, offload, quantizer_uri)
-    modules = {}
-    for name, spec in index.items():
-        if name.startswith('_') or name in skip_names:
-            continue
-        if not isinstance(spec, (list, tuple)) or len(spec) != 2:
-            continue
-        if not _quantize_component(name, quantizer_uri, quantizer_map):
-            continue
-        component_class = _resolve_index_class(spec[0], spec[1])
-        folder = f'{subfolder}/{name}' if subfolder else name
-        modules[name] = _load_quantized_module(
-            component_class, model_path, folder, revision, variant, dtype,
-            quantizer_uri, auth_token, local_files_only, device_map, offload=offload)
-    return modules
-
-
-def pipeline_for_mode(pipe, mode: str, family: str = 'ltx2'):
-    """
-    Return a video pipeline of the requested class that shares ``pipe.components``.
-
-    ``from_pipe`` is not used: it calls ``.to(dtype=...)``, which raises on
-    quantized modules (SDNQ / bitsandbytes).
-
-    :param pipe: cached video pipeline
-    :param mode: a pipeline mode such as ``ltx-image``, ``wan-i2v``,
-        ``text-to-video``, or ``image-to-video``
-    :return: pipeline of the class for ``mode``
-    """
-    if family in {'hunyuan-video-15', 'motif-video', 'kandinsky5-video'}:
-        cls = _single_image_video_pipeline_class(family, mode)
-    elif str(mode).startswith('wan'):
-        from . import wan
-        if str(family).startswith('wan-animate-2'):
-            wan._require_image_encoder(pipe, 'wan-animate-2')
-            return pipe
-        cls = wan._wan_pipeline_class(mode, family)
-        wan._require_image_encoder(pipe, mode)
-    else:
-        cls = _ltx_pipeline_class(mode, family)
-    if type(pipe) is cls:
-        return pipe
-    accepted = set(inspect.signature(cls.__init__).parameters)
-    accepted.discard('self')
-    kwargs = {name: value for name, value in pipe.components.items() if name in accepted}
-    return cls(**kwargs)
-
-
-def _ltx_extra_weight_directories(model_path, revision, subfolder, auth_token, local_files_only):
-    try:
-        index = _util.fetch_model_index_dict(
-            model_path,
-            subfolder=subfolder,
-            revision=revision,
-            use_auth_token=auth_token,
-            local_files_only=local_files_only)
-    except Exception:
-        return list(_LTX_FALLBACK_EXTRA_DIRS)
-    return extra_weight_directories_from_index(index)
-
-
-def _torch_compile_for_cache(wrapper) -> bool:
-    """
-    Cache identity for block compilation.
-
-    Wan-Animate-2 compiles on every load, so its cache entry is compiled
-    whether or not ``--torch-compile`` was passed. ``DGENERATE_TORCH_COMPILE=0``
-    leaves that entry eager. Other models compile only when the flag is set.
-    """
-    if _pipelines.torch_compile_disabled():
-        return False
-    model_type = getattr(wrapper, 'model_type', None)
-    if model_type == _enums.ModelType.WAN_ANIMATE_2:
-        return True
-    if isinstance(model_type, str):
-        try:
-            model_type = _enums.get_model_type_enum(model_type)
-        except ValueError:
-            model_type = None
-    if model_type == _enums.ModelType.WAN_ANIMATE_2:
-        return True
-    return bool(getattr(wrapper, 'torch_compile', False))
-
-
-def _cache_kwargs(wrapper) -> dict:
-    quantizer_map = wrapper.quantizer_map
-    return {
-        'model_path': wrapper.model_path,
-        'model_type': wrapper.model_type,
-        'revision': wrapper._revision,
-        'variant': wrapper._variant,
-        'subfolder': wrapper._subfolder,
-        'dtype': wrapper._dtype,
-        'device': wrapper.device,
-        'model_cpu_offload': bool(wrapper.model_cpu_offload),
-        'sequential_cpu_offload': bool(wrapper.model_sequential_offload),
-        'model_group_offload': bool(getattr(wrapper, 'model_group_offload', False)),
-        'torch_compile': _torch_compile_for_cache(wrapper),
-        'local_files_only': bool(wrapper._local_files_only),
-        'auth_token': wrapper._auth_token,
-        'quantizer_uri': wrapper.quantizer_uri,
-        'quantizer_map': tuple(quantizer_map) if quantizer_map else None,
-    }
-
-
-def _video_on_hit(key, hit):
-    _d_memoize.simple_cache_hit_debug('Torch Video Pipeline', key, hit.pipeline)
-
-
-def _video_on_create(key, new):
-    _d_memoize.simple_cache_miss_debug('Torch Video Pipeline', key, new.pipeline)
-
-
-def _resolve_video_load(model_type, index, ltx_ic_lora_uri):
-    model_type = _enums.get_model_type_enum(model_type)
-    if _enums.model_type_is_wan_family(model_type):
-        from . import wan
-        return wan._resolve_wan_load(model_type, index)
-    if model_type in {
-            _enums.ModelType.HUNYUAN_VIDEO_15,
-            _enums.ModelType.MOTIF_VIDEO,
-            _enums.ModelType.KANDINSKY5_VIDEO}:
-        return _resolve_single_image_video_load(model_type, index)
-    from . import ltx
-    family = ltx.ltx_family_from_index(index)
-    mode = 'ltx-control' if ltx_ic_lora_uri else 'ltx-txt'
-    return family, _ltx_pipeline_class(mode, family), False
-
-
-def _text_encoder_slots(index: dict | None) -> list[str]:
-    """Ordered ``text_encoder*`` component names from ``model_index.json``."""
-    if not index:
-        return []
-    return [
-        name for name, spec in sorted(index.items())
-        if _pipelines._is_text_encoder_component(name)
-        and isinstance(spec, (list, tuple))
-        and len(spec) >= 2
-        and spec[0] is not None
-    ]
-
-
-def _inject_video_text_encoders(index,
-                                text_encoder_uris,
-                                dtype,
-                                auth_token,
-                                local_files_only,
-                                device,
-                                offload,
-                                force_unquantized=()):
-    """
-    Load ``--text-encoders`` replacements for a video pipeline.
-
-    ``+`` keeps the checkpoint default for that slot. ``null`` skips loading
-    that encoder. Trailing omitted slots keep their defaults.
-    """
-    if not text_encoder_uris:
-        return {}
-    slots = _text_encoder_slots(index)
-    if not slots:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            '--text-encoders cannot be used with this video model; '
-            'the checkpoint has no text encoder.')
-    uris = list(text_encoder_uris)
-    if len(uris) > len(slots):
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Too many --text-encoders values for this video model '
-            f'(got {len(uris)}, max {len(slots)}).')
-    injected = {}
-    for name, uri in zip(slots, uris):
-        if _pipelines._text_encoder_default(uri):
-            continue
-        if _pipelines._text_encoder_null(uri):
-            injected[name] = None
-            _messages.debug_log(f'Video pipeline skipping "{name}" (--text-encoders null).')
-            continue
-        parsed = _uris.TextEncoderUri.parse(uri)
-        if name in force_unquantized:
-            parsed.quantizer = None
-        # Global --quantizer only applies when the slot is left as +.
-        # Put quantizer= on the URI to quantize a replacement encoder.
-        device_map = (
-            _quantized_device_map(device, offload, parsed.quantizer)
-            if parsed.quantizer else None)
-        injected[name] = parsed.load(
-            dtype_fallback=dtype,
-            use_auth_token=auth_token,
-            local_files_only=local_files_only,
-            device_map=device_map)
-        _messages.debug_log(f'Video pipeline using --text-encoders for "{name}": "{uri}".')
-    return injected
-
-
-@_memoize(_pipelines._pipeline_cache,
-          exceptions={'local_files_only'},
-          hasher=_d_memoize.args_cache_key,
-          extra_identities=[lambda held: held.pipeline],
-          on_hit=_video_on_hit,
-          on_create=_video_on_create)
-def _create_cached_video_pipeline(model_path,
-                                  model_type,
-                                  revision,
-                                  variant,
-                                  subfolder,
-                                  dtype,
-                                  device,
-                                  model_cpu_offload,
-                                  sequential_cpu_offload,
-                                  model_group_offload,
-                                  torch_compile,
-                                  local_files_only,
-                                  auth_token,
-                                  transformer_uri=None,
-                                  lora_uris=None,
-                                  lora_fuse_scale=None,
-                                  quantizer_uri=None,
-                                  quantizer_map=None,
-                                  ltx_ic_lora_uri=None,
-                                  ic_lora_downscale=None,
-                                  wan_second_transformer_uri=None,
-                                  vae_uri=None,
-                                  text_encoder_uris=None):
-    all_lora_uris = list(lora_uris or ()) + ([ltx_ic_lora_uri] if ltx_ic_lora_uri else [])
-    index = _util.fetch_model_index_dict(
-        model_path,
-        subfolder=subfolder,
-        revision=revision,
-        use_auth_token=auth_token,
-        local_files_only=local_files_only)
-    extra_dirs = extra_weight_directories_from_index(index)
-    family, pipeline_class, moe = _resolve_video_load(model_type, index, ltx_ic_lora_uri)
-    if transformer_uri and wan_second_transformer_uri is None and index.get('transformer_2'):
-        extra_dirs = list(extra_dirs) + ['transformer_2']
-    if dtype is _enums.DataType.AUTO:
-        detected_dtype = _util.auto_dtype(
-            model_path,
-            revision=revision,
-            subfolder=subfolder,
-            use_auth_token=auth_token,
-            local_files_only=local_files_only,
-            model_index=index)
-        if detected_dtype is not None:
-            _messages.debug_log(f'--dtype auto selected: {_enums.get_data_type_string(detected_dtype)}')
-            dtype = detected_dtype
-    te_slots = _text_encoder_slots(index)
-    te_uris = list(text_encoder_uris or ())
-    lora_components, lora_component_quantizers = _video_lora_component_quantizers(
-        pipeline_class, quantizer_uri, quantizer_map, transformer_uri,
-        wan_second_transformer_uri, te_slots, te_uris)
-    preflight_loras = bool(all_lora_uris and lora_component_quantizers)
-    all_text_encoders_replaced = bool(
-        te_slots
-        and len(te_uris) >= len(te_slots)
-        and all(
-            not _pipelines._text_encoder_default(uri)
-            for uri in te_uris[:len(te_slots)]))
-    estimate = _pipelines.estimate_pipeline_cache_footprint(
-        model_path=model_path,
-        model_type=model_type,
-        revision=revision or 'main',
-        variant=variant,
-        subfolder=subfolder,
-        include_unet_or_transformer=not transformer_uri,
-        include_vae=not vae_uri,
-        include_text_encoders=not all_text_encoders_replaced,
-        lora_uris=all_lora_uris,
-        include_directories=extra_dirs,
-        auth_token=auth_token,
-        local_files_only=local_files_only)
-    _pipelines._enforce_pipeline_cache_size(estimate)
-
-    load_kwargs = _pretrained_kwargs(
-        revision, variant, subfolder, local_files_only, auth_token, dtype,
-        include_dtype=True)
-    if family == 'ltx2':
-        load_kwargs.update(_LTX_SKIP_OPTIONAL_MODULES)
-
-    offload = bool(model_cpu_offload or sequential_cpu_offload or model_group_offload)
-    injected = {}
-    if transformer_uri:
-        force_unquantized = preflight_loras and 'transformer' in lora_component_quantizers
-        injected['transformer'] = _load_replacement_transformer(
-            model_type, transformer_uri, dtype, variant, auth_token, local_files_only,
-            quantizer_uri=quantizer_uri, quantizer_map=quantizer_map, device=device,
-            offload=offload, config_repo=model_path, family=family,
-            force_unquantized=force_unquantized)
-        load_kwargs['transformer'] = injected['transformer']
-    if wan_second_transformer_uri:
-        force_unquantized = preflight_loras and 'transformer_2' in lora_component_quantizers
-        injected['transformer_2'] = _load_replacement_transformer(
-            model_type, wan_second_transformer_uri, dtype, variant, auth_token, local_files_only,
-            quantizer_uri=quantizer_uri, quantizer_map=quantizer_map, device=device,
-            offload=offload, component_name='transformer_2', config_repo=model_path,
-            family=family, force_unquantized=force_unquantized)
-        load_kwargs['transformer_2'] = injected['transformer_2']
-    if vae_uri:
-        parsed_vae = _uris.VAEUri.parse(vae_uri)
-        # Wan VAE defaults to float32 even when replaced via --vae, unless the
-        # URI sets dtype= explicitly.
-        vae_dtype_fallback = dtype
-        if (_enums.model_type_is_wan_family(model_type)
-                and parsed_vae.dtype is None):
-            vae_dtype_fallback = _constants.DEFAULT_WAN_VAE_DTYPE
-        injected['vae'] = parsed_vae.load(
-            dtype_fallback=vae_dtype_fallback,
-            use_auth_token=auth_token,
-            local_files_only=local_files_only)
-        load_kwargs['vae'] = injected['vae']
-        _messages.debug_log(f'Video pipeline using --vae "{vae_uri}".')
-    injected.update(_inject_video_text_encoders(
-        index, te_uris, dtype, auth_token, local_files_only, device, offload,
-        force_unquantized=(lora_component_quantizers if preflight_loras else ())))
-    load_kwargs.update(injected)
-    fused_lora_components = {}
-    if preflight_loras:
-        fused_lora_cache = _preflight_quantized_video_loras(
-            pipeline_class, model_path, load_kwargs, injected, model_type,
-            all_lora_uris, lora_fuse_scale, auth_token, local_files_only, family,
-            component_uris=_video_lora_component_uri_cache_key(
-                lora_components, transformer_uri, wan_second_transformer_uri,
-                te_slots, te_uris),
-            components=lora_components)
-        fused_lora_components, fused_lora_manifest = fused_lora_cache
-        for component_name, component_path in fused_lora_components.items():
-            load_kwargs.pop(component_name, None)
-            injected.pop(component_name, None)
-            injected[component_name] = _load_fused_video_component(
-                component_name, component_path, fused_lora_manifest[component_name],
-                dtype, lora_component_quantizers.get(component_name),
-                auth_token, local_files_only,
-                device, offload)
-        load_kwargs.update(injected)
-    injected.update(_quantized_classic_modules(
-        model_path, revision, variant, subfolder, dtype, quantizer_uri, quantizer_map,
-        auth_token, local_files_only, device, offload,
-        skip_names=frozenset(load_kwargs)))
-    load_kwargs.update(injected)
-    _messages.debug_log(f'Loading {pipeline_class.__name__} from "{model_path}".')
-    with _hfhub.with_hf_errors_as_model_not_found():
-        if str(family).startswith('wan-animate-2'):
-            from . import wan
-            pipe = wan.load_wan_animate_2_pipeline(
-                pipeline_class, model_path, load_kwargs, injected, dtype)
-        else:
-            pipe = pipeline_class.from_pretrained(model_path, **load_kwargs)
-    if not fused_lora_components:
-        _apply_video_loras(
-            pipe, model_type, all_lora_uris, lora_fuse_scale, auth_token, local_files_only)
-    # Wan VAE defaults to float32. Cast before offload so streamed group
-    # offload snapshots float32 weights. Skip when --vae already chose a dtype
-    # (including the float32 fallback above), or when the VAE is quantized.
-    if _enums.model_type_is_wan_family(model_type) and not vae_uri:
-        from . import wan
-        wan._set_wan_vae_dtype(pipe)
-    if str(family).startswith('wan-animate-2'):
-        from . import wan
-        # Compiles on every load, before the offload hooks wrap forward.
-        wan.place_wan_animate_2(
-            pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
-    else:
-        if torch_compile:
-            _pipelines.apply_torch_compile(pipe, device)
-        _apply_video_offload(
-            pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
-    _pin_video_8bit_modules(pipe)
-    _enable_vae_tiling(pipe)
-    model_mode = None
-    if family == 'kandinsky5-video':
-        model_mode = 'image-to-video' if isinstance(pipe, _single_image_video_pipeline_class(
-            family, 'image-to-video')) else 'text-to-video'
-    held = _VideoPipeline(pipe, family, moe=moe, model_mode=model_mode)
-    if ltx_ic_lora_uri:
-        held.reference_downscale_factor = _ic_lora_downscale_factor(
-            ltx_ic_lora_uri, ic_lora_downscale, auth_token, local_files_only)
-
-    return held, _d_memoize.CachedObjectMetadata(size=estimate)
 
 
 def _video_pipeline(wrapper, mode: str, scheduler_uri=None):
@@ -1756,8 +276,9 @@ def _invoke(wrapper, pipe, kwargs, user_args):
         **kwargs)
 
 
-# LTX implementation lives in ltx.py. Re-export the names tests and
-# callers already import from this package.
+# Loading, media, family, and schedule implementations live in the
+# submodules. Re-export the names tests and callers already import from this
+# package.
 from .wan import (
     WAN_ANIMATE_2_SCHEDULER_NAMES,
     WAN_ANIMATE_SCHEDULER_NAMES,
@@ -1790,10 +311,14 @@ from .ltx import (
     _ltx_two_stage,
     _video_latent_tensor,
     _stage_sigmas,
-    _upsample_ltx_latents,
     _ltx_pixels_from_output,
     _waveform_from_audio_latents,
-    _decode_ltx_diffusion,
+    _ltx_ignored_steps_warning,
+    _ltx_base_sigmas,
+    _ltx_is_distilled,
+)
+from .ltx.components import _upsample_ltx_latents
+from .ltx.conditions import (
     _ltx_temporal_compression,
     _trim_ltx_clip,
     _ltx_conditions,
@@ -1803,19 +328,86 @@ from .ltx import (
     _ltx_reference_kwargs,
     _ic_lora_downscale_factor,
     _lora_file_metadata,
+)
+from .ltx.decoder import _decode_ltx_diffusion
+from .ltx.legacy import (
     _legacy_ltx_schedule_finite,
     _legacy_ltx_timesteps,
     _legacy_ltx_compression,
     _fix_legacy_ltx_condition_schedule,
     _require_legacy_ltx_schedule,
     _warn_legacy_ltx_canvas,
-    _ltx_ignored_steps_warning,
-    _ltx_base_sigmas,
-    _eval_sigma_expression,
-    _ltx_is_distilled,
 )
-from .hunyuan_video15 import SCHEDULER_NAMES as HUNYUAN_VIDEO_15_SCHEDULER_NAMES
-from .motif_video import SCHEDULER_NAMES as MOTIF_VIDEO_SCHEDULER_NAMES
-from .kandinsky5_video import SCHEDULER_NAMES as KANDINSKY5_VIDEO_SCHEDULER_NAMES
+from .single_image_video import (
+    HUNYUAN_VIDEO_15_SCHEDULER_NAMES,
+    KANDINSKY5_VIDEO_SCHEDULER_NAMES,
+    MOTIF_VIDEO_SCHEDULER_NAMES,
+    SINGLE_IMAGE_VIDEO_FAMILIES,
+    SINGLE_IMAGE_VIDEO_MODEL_TYPES,
+    _call_single_image_video,
+    _classify_single_image_video_seed,
+    _motif_default_timesteps,
+    _resolve_single_image_video_load,
+    _single_image_video_pipeline_class,
+    _single_image_video_transformer_class,
+)
+from .schedules import (
+    _default_video_timesteps,
+    _eval_sigma_expression,
+    _eval_video_timesteps_expression,
+    _forced_scheduler_timesteps,
+)
+
+from .media import (
+    _array_frame_to_image,
+    audio_to_numpy,
+    conditioning_canvas,
+    _force_output_size_alignment,
+    _frames_from_array,
+    frames_from_output,
+    load_rgb_frames,
+    resize_media,
+    _to_rgb_image,
+)
+from .quantization import (
+    _DEFAULT_QUANT_NAMES,
+    _load_quantized_module,
+    _LTX_SKIP_OPTIONAL_MODULES,
+    _pin_video_8bit_modules,
+    _quantize_component,
+    _quantized_classic_modules,
+    _quantized_device_map,
+    _quantizer_config,
+    _resolve_index_class,
+)
+from .lora import (
+    _apply_video_loras,
+    _load_fused_video_component,
+    _preflight_quantized_video_loras,
+    _preflight_quantized_video_loras_locked,
+    _video_lora_component_quantizers,
+    _video_lora_component_uri_cache_key,
+)
+from .loading import (
+    _apply_video_offload,
+    _cache_kwargs,
+    _create_cached_video_pipeline,
+    _enable_vae_tiling,
+    extra_weight_directories_from_index,
+    _inject_video_text_encoders,
+    _load_replacement_transformer,
+    _ltx_extra_weight_directories,
+    _LTX_FALLBACK_EXTRA_DIRS,
+    pipeline_for_mode,
+    _pretrained_kwargs,
+    _resolve_video_load,
+    _text_encoder_slots,
+    _torch_compile_for_cache,
+    _VIDEO_CORE_INDEX_NAMES,
+    _video_on_create,
+    _video_on_hit,
+    _video_transformer_class,
+    _VideoPipeline,
+)
 
 __all__ = _types.module_all()

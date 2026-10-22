@@ -82,8 +82,9 @@ Help Output
                      [--sdxl-refiner-negative-original-sizes SIZE [SIZE ...]]
                      [--sdxl-refiner-negative-target-sizes SIZE [SIZE ...]]
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]] [-hnf FLOAT [FLOAT ...]]
-                     [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE] [-t DTYPE] [-s SIZE] [-na] [-o PATH]
-                     [-op PREFIX] [-ox] [-oc] [-om | -oam] [-pw PROMPT_WEIGHTER_URI] [-pw2 PROMPT_WEIGHTER_URI]
+                     [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE] [-t DTYPE] [-s SIZE |
+                     --qwen21-output-resolution RESOLUTION] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om |
+                     -oam] [-pw PROMPT_WEIGHTER_URI] [-pw2 PROMPT_WEIGHTER_URI]
                      [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]]
                      [-lp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
                      [-ilp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
@@ -120,6 +121,7 @@ Help Output
                      [-si CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-igs FLOAT [FLOAT ...]]
                      [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]]
                      [--video-lengths SECONDS [SECONDS ...]] [--video-fps FPS [FPS ...]]
+                     [--timesteps CSV_INT_OR_EXPRESSION [CSV_INT_OR_EXPRESSION ...]] [--qwen21-no-kv-cache]
                      [--ltx-audio-guidance-scales FLOAT [FLOAT ...]]
                      [--ltx-audio-guidance-rescales FLOAT [FLOAT ...]] [--ltx-stg-scales FLOAT [FLOAT ...]]
                      [--ltx-audio-stg-scales FLOAT [FLOAT ...]] [--ltx-modality-scales FLOAT [FLOAT ...]]
@@ -136,7 +138,7 @@ Help Output
                      [--ltx-video-max-seconds SECONDS [SECONDS ...]] [--ltx-prompt-enhancer URI]
                      [--ltx-system-prompt TEXT] [--wan-low-noise-guidance-scales FLOAT [FLOAT ...]]
                      [--wan-boundary-ratios FLOAT [FLOAT ...]] [--wan-expand-timesteps]
-                     [--wan-second-transformer TRANSFORMER_URI] [--wan-timesteps CSV_INT [CSV_INT ...]]
+                     [--wan-second-transformer TRANSFORMER_URI]
                      [--wan-conditioning-scales FLOAT_OR_CSV [FLOAT_OR_CSV ...]] [--wan-animate-mode MODE]
                      [--wan-segment-frame-lengths INTEGER [INTEGER ...]]
                      [--wan-prev-segment-frames INTEGER [INTEGER ...]]
@@ -261,8 +263,9 @@ Help Output
             Use when loading different model types. Currently supported: sd, pix2pix, sdxl, sdxl-pix2pix,
             kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, sd3-pix2pix, flux,
             flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
-            qwen-image-layered, ltx, wan, wan-animate, or wan-animate-2. (default: sd)
-            --------------------------------------------------------------------------
+            qwen-image-layered, ltx, wan, wan-animate, wan-animate-2, qwen-image-21, krea2, kandinsky5-image,
+            kandinsky5-video, hunyuan-video-15, or motif-video. (default: sd)
+            -----------------------------------------------------------------
       -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -1507,8 +1510,8 @@ Help Output
             --spectrum, --sada, or --dype.
             
             This is supported for: --model-type sd3, sd3-pix2pix, flux, flux-fill, flux-kontext, flux2,
-            flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, ltx, wan,
-            wan-animate, and wan-animate-2.
+            flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, krea2,
+            kandinsky5-image, ltx, wan, wan-animate, wan-animate-2, hunyuan-video-15, and kandinsky5-video.
             
             See: https://cache-dit.readthedocs.io/en/latest/
             ------------------------------------------------
@@ -1524,8 +1527,8 @@ Help Output
             from an earlier step.
             
             This is supported for: --model-type flux, flux-fill, flux-kontext, flux2, flux2-klein-kv,
-            qwen-image, qwen-image-edit, qwen-image-layered, z-image, z-image-omni, wan, wan-animate, and
-            wan-animate-2.
+            qwen-image, qwen-image-edit, qwen-image-layered, krea2, z-image, z-image-omni, wan, wan-animate,
+            wan-animate-2, hunyuan-video-15, and motif-video.
             
             See: https://github.com/guyyariv/DyPE
             -------------------------------------
@@ -1577,7 +1580,8 @@ Help Output
             The file uses Cache-DiT's native YAML sections. Layerwise offload is configured as a mapping from
             pipeline component names to Cache-DiT layerwise_offload options. Supported --model-type values: sd3,
             sd3-pix2pix, flux, flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni,
-            qwen-image, qwen-image-edit, qwen-image-layered, ltx, wan, wan-animate, and wan-animate-2. See:
+            qwen-image, qwen-image-edit, qwen-image-layered, krea2, kandinsky5-image, ltx, wan, wan-animate,
+            wan-animate-2, hunyuan-video-15, and kandinsky5-video. See:
             https://cache-dit.readthedocs.io/en/latest/user_guide/LOAD_CONFIGS/ Layerwise offload:
             https://cache-dit.readthedocs.io/en/latest/user_guide/OFFLOAD/
             --------------------------------------------------------------
@@ -1614,8 +1618,9 @@ Help Output
             
             This is supported for: --model-type sd3, sd3-pix2pix, sdxl, sdxl-pix2pix, kolors, flux, flux-fill,
             flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
-            qwen-image-layered, wan, wan-animate, and wan-animate-2.
-            --------------------------------------------------------
+            qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, wan, wan-animate, wan-animate-2,
+            hunyuan-video-15, and motif-video.
+            ----------------------------------
       --spectrum-weights [FLOAT ...]
             Spectrum Chebyshev blend weights to try when --spectrum is enabled.
             
@@ -2141,6 +2146,9 @@ Help Output
             the 'floyd' keyword argument in an --image-seeds definition are never resized or processed in any
             way.
             ----
+      --qwen21-output-resolution RESOLUTION
+            Target side length for Qwen-Image 2.1 output resolution inference. Only supported by Qwen-Image 2.1.
+            ----------------------------------------------------------------------------------------------------
       -na, --no-aspect
             This option disables aspect correct resizing of images provided to --image-seeds globally. Seed,
             Mask, and Control guidance images will be resized to the closest dimension specified by
@@ -2790,10 +2798,20 @@ Help Output
       --video-fps FPS [FPS ...]
             One or more output frame rates for video model types. Each value will be tried in turn.
             
-            Defaults to 24 for --model-type ltx, 16 for wan, 30 for wan-animate, and 24 for wan-animate-2.
+            Defaults to 24 for --model-type ltx, motif-video, and 15 for hunyuan-video-15; 16 for wan; 30 for
+            wan-animate; and 24 for wan-animate-2.
             
             (default: model type default)
             -----------------------------
+      --timesteps CSV_INT_OR_EXPRESSION [CSV_INT_OR_EXPRESSION ...]
+            One or more comma-separated timestep schedules or "expr: ..." expressions. Expressions receive the
+            scheduler default array as "timesteps". The schedule length sets the inference step count. Supported
+            where the pipeline accepts a timestep schedule, for example SD 1.5/2/XL, Kolors, Wan video-to-video,
+            LTX-2, Motif-Video, Hunyuan Video 1.5, and Kandinsky 5 video. Cannot be combined with --sigmas.
+            -----------------------------------------------------------------------------------------------
+      --qwen21-no-kv-cache
+            Disable the Qwen-Image 2.1 key/value attention cache.
+            -----------------------------------------------------
       --ltx-audio-guidance-scales FLOAT [FLOAT ...]
             One or more audio CFG scales to try, for --model-type ltx. Each value will be tried in turn.
             
@@ -2970,10 +2988,6 @@ Help Output
             Replacement URI for the Wan 2.2 MoE low-noise transformer, the same grammar as --transformer,
             including GGUF files.
             ---------------------
-      --wan-timesteps CSV_INT [CSV_INT ...]
-            Explicit integer timestep schedules for Wan video-to-video. Each value is a comma-separated list,
-            tried in turn.
-            --------------
       --wan-conditioning-scales FLOAT_OR_CSV [FLOAT_OR_CSV ...]
             VACE conditioning scales. A single float is one scale. A comma-separated list is a per-VACE-layer
             scale. Multiple values are tried in turn.
@@ -3033,7 +3047,8 @@ Help Output
             
             For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
             
-            For SD3/Flux models, FlowMatchEulerDiscreteScheduler is supported.
+            For SD3, Flux, Qwen-Image, Qwen-Image 2.1, Krea 2, Kandinsky 5 Image, and Z-Image,
+            FlowMatchEulerDiscreteScheduler is supported.
             
             Example: --denoising-start 0.8
             
@@ -3060,7 +3075,8 @@ Help Output
             
             For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
             
-            For SD3/Flux models, FlowMatchEulerDiscreteScheduler is supported.
+            For SD3, Flux, Qwen-Image, Qwen-Image 2.1, Krea 2, Kandinsky 5 Image, and Z-Image,
+            FlowMatchEulerDiscreteScheduler is supported.
             
             Example: --denoising-end 0.5
             
@@ -4589,14 +4605,16 @@ mode selects the corresponding pipeline. Defaults are 24 fps, guidance 5, and
 ``DPMSolverMultistepScheduler``. ``--max-sequence-length`` controls the prompt
 token limit (default 512).
 
-``--video-timesteps`` is Motif's explicit timestep-schedule option. Give one or
+``--timesteps`` sets an explicit timestep schedule for Motif. Give one or
 more comma-separated integer schedules, such as ``1000,700,300,0``, or
 ``expr:`` expressions evaluated with the scheduler's default array named
 ``timesteps`` (for example, ``expr: timesteps[::2]``). Multiple schedules are
 tried in turn. The number of selected timesteps replaces ``--inference-steps``
 for that run. Do not combine
-``--video-timesteps`` with ``--sigmas``; Motif uses a timestep schedule rather
-than a sigma schedule.
+``--timesteps`` with ``--sigmas``; Motif uses a timestep schedule rather
+than a sigma schedule. ``--timesteps`` also works with Wan video-to-video,
+LTX-2, Hunyuan Video 1.5, Kandinsky 5 video, and the SD 1.5/2/XL and Kolors
+image models.
 
 The standard examples use ``bfloat16``, sequential CPU offload, 50 steps, and
 ``832x480``. Offload options and ``--torch-compile`` are available. A GGUF
@@ -5245,8 +5263,9 @@ A video or animated image in the seed path is video-to-video. ``--video-lengths`
 is rejected. The output follows the input clip. Trim it with ``frame-start=``
 and ``frame-end=`` on the seed, or with ``--frame-start`` and ``--frame-end``.
 ``--image-seed-strengths``, or ``strength=`` on the seed, is how strongly the
-result stays with the input. ``--wan-timesteps`` is an explicit integer schedule
-for this mode only. Each value is a comma-separated list, tried in turn.
+result stays with the input. ``--timesteps`` takes an explicit timestep schedule
+in this mode only. Each value is a comma-separated integer list or an ``expr:``
+expression, tried in turn.
 
 .. code-block:: bash
 

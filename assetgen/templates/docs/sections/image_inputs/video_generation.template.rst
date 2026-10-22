@@ -69,14 +69,16 @@ mode selects the corresponding pipeline. Defaults are 24 fps, guidance 5, and
 ``DPMSolverMultistepScheduler``. ``--max-sequence-length`` controls the prompt
 token limit (default 512).
 
-``--video-timesteps`` is Motif's explicit timestep-schedule option. Give one or
+``--timesteps`` sets an explicit timestep schedule for Motif. Give one or
 more comma-separated integer schedules, such as ``1000,700,300,0``, or
 ``expr:`` expressions evaluated with the scheduler's default array named
 ``timesteps`` (for example, ``expr: timesteps[::2]``). Multiple schedules are
 tried in turn. The number of selected timesteps replaces ``--inference-steps``
 for that run. Do not combine
-``--video-timesteps`` with ``--sigmas``; Motif uses a timestep schedule rather
-than a sigma schedule.
+``--timesteps`` with ``--sigmas``; Motif uses a timestep schedule rather
+than a sigma schedule. ``--timesteps`` also works with Wan video-to-video,
+LTX-2, Hunyuan Video 1.5, Kandinsky 5 video, and the SD 1.5/2/XL and Kolors
+image models.
 
 The standard examples use ``bfloat16``, sequential CPU offload, 50 steps, and
 ``832x480``. Offload options and ``--torch-compile`` are available. A GGUF
@@ -725,8 +727,9 @@ A video or animated image in the seed path is video-to-video. ``--video-lengths`
 is rejected. The output follows the input clip. Trim it with ``frame-start=``
 and ``frame-end=`` on the seed, or with ``--frame-start`` and ``--frame-end``.
 ``--image-seed-strengths``, or ``strength=`` on the seed, is how strongly the
-result stays with the input. ``--wan-timesteps`` is an explicit integer schedule
-for this mode only. Each value is a comma-separated list, tried in turn.
+result stays with the input. ``--timesteps`` takes an explicit timestep schedule
+in this mode only. Each value is a comma-separated integer list or an ``expr:``
+expression, tried in turn.
 
 .. code-block:: bash
 

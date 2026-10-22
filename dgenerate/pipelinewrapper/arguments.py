@@ -1252,14 +1252,14 @@ class DiffusionArguments(_types.SetFromMixin):
     is set, otherwise the pipeline default ``0.7`` is left in place.
     """
 
-    video_timesteps: collections.abc.Sequence[int] | str | None = None
+    timesteps: collections.abc.Sequence[int] | str | None = None
     """
     Explicit timestep values, or an expression that transforms the scheduler's
     default timestep array (available to the expression as ``timesteps``).
-    Values are passed in order to Motif-Video's ``timesteps`` argument. Their
-    count determines the inference-step count and overrides ``inference_steps``.
-    Leave unset to use the scheduler-generated schedule. Only supported when
-    the loaded Motif-Video pipeline accepts ``timesteps``.
+    Values are passed in order to the pipeline's ``timesteps`` argument.
+    Their count determines the inference-step count and overrides ``inference_steps``.
+    Leave unset to use the scheduler-generated schedule.
+    Mutually exclusive with ``sigmas``.
     """
 
     ltx_stg_scale: _types.OptionalFloat = None
@@ -1437,11 +1437,6 @@ class DiffusionArguments(_types.SetFromMixin):
     wan_expand_timesteps: _types.OptionalBoolean = None
     """
     Per-token timestep expansion, from ``--wan-expand-timesteps``.
-    """
-
-    wan_timesteps: collections.abc.Sequence[int] | None = None
-    """
-    Explicit timestep schedule for Wan video-to-video, from ``--wan-timesteps``.
     """
 
     wan_conditioning_scale: float | collections.abc.Sequence[float] | None = None

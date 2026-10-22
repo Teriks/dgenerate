@@ -707,6 +707,20 @@ def model_type_is_wan_family(model_type: ModelType | str) -> bool:
     return model_type in {ModelType.WAN, ModelType.WAN_ANIMATE, ModelType.WAN_ANIMATE_2}
 
 
+def model_type_uses_wan_vae(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value use the
+    Wan VAE (``AutoencoderKLWan``)? That is the Wan family and Motif-Video.
+
+    The Wan VAE is fragile in bfloat16, so these model types keep it in float32.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    model_type = get_model_type_enum(model_type)
+    return model_type_is_wan_family(model_type) or model_type == ModelType.MOTIF_VIDEO
+
+
 def _model_type_names(*model_types: ModelType) -> tuple[str, ...]:
     return tuple(get_model_type_string(item) for item in model_types)
 

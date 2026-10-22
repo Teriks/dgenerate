@@ -3,6 +3,7 @@ import unittest.mock
 
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.videopipelines.ltx as _ltx
+import dgenerate.pipelinewrapper.videopipelines.ltx.components as _ltx_components
 import dgenerate.pipelinewrapper.uris.ltxlatentupsampleruri as _uri
 from dgenerate.pipelinewrapper.arguments import DiffusionArguments
 
@@ -25,8 +26,8 @@ class TestLTXLatentUpsampler(unittest.TestCase):
             'diffusion_pytorch_model-00002-of-00002.safetensors',
         }
 
-        self.assertTrue(_ltx._ltx_component_has_weights(filenames, None))
-        self.assertFalse(_ltx._ltx_component_has_weights(
+        self.assertTrue(_ltx_components._ltx_component_has_weights(filenames, None))
+        self.assertFalse(_ltx_components._ltx_component_has_weights(
             filenames - {'diffusion_pytorch_model-00002-of-00002.safetensors'}, None))
 
     def test_older_ltx_rejects_upscale_before_component_probe(self):
@@ -63,13 +64,13 @@ class TestLTXLatentUpsampler(unittest.TestCase):
             _local_files_only = True
             _auth_token = None
 
-        with unittest.mock.patch.object(_ltx, '_check_ltx_component_available'), \
+        with unittest.mock.patch.object(_ltx_components, '_check_ltx_component_available'), \
                 unittest.mock.patch.object(
-                    _ltx, '_ltx_latent_upsampler_config',
+                    _ltx_components, '_ltx_latent_upsampler_config',
                     return_value={'spatial_upsample': False, 'temporal_upsample': True}):
             with self.assertRaisesRegex(
                     _pipelines.UnsupportedPipelineConfigError, 'temporal-only'):
-                _ltx._check_ltx_latent_upsampler_available(Wrapper(), args)
+                _ltx_components._check_ltx_latent_upsampler_available(Wrapper(), args)
 
 
 if __name__ == '__main__':

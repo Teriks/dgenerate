@@ -1238,5 +1238,46 @@ class TestFlowImagePipelines(unittest.TestCase):
         self.assertIn('scale_shift_table', ltx1_sdnq.modules_to_not_convert)
 
 
+class TestFlowImageTimesteps(unittest.TestCase):
+    def test_timesteps_eval(self):
+        import numpy as np
+        from dgenerate.pipelinewrapper.wrapper import DiffusionPipelineWrapper
+
+        class _Scheduler:
+            def set_timesteps(self, num_inference_steps=None, timesteps=None):
+                self.timesteps = np.array([1000, 500, 0])[:num_inference_steps or 3]
+
+        class _Pipeline:
+            pass
+
+        pipe = _Pipeline()
+        pipe.scheduler = _Scheduler()
+
+        self.assertEqual(
+            DiffusionPipelineWrapper._timesteps_eval('primary', pipe, 2, [100, 50]),
+            [100, 50])
+        self.assertEqual(
+            DiffusionPipelineWrapper._timesteps_eval('primary', pipe, 2, 'timesteps[::2]'),
+            [1000])
+
+        class _NoTimestepsScheduler:
+            def set_timesteps(self, num_inference_steps=None):
+                pass
+
+        pipe2 = _Pipeline()
+        pipe2.scheduler = _NoTimestepsScheduler()
+        with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
+            DiffusionPipelineWrapper._timesteps_eval('primary', pipe2, 2, 'timesteps[::2]')
+
+        # Reading the default schedule for an expression leaves the scheduler as it was.
+        pipe.scheduler.timesteps = np.array([7, 3])
+        DiffusionPipelineWrapper._timesteps_eval('primary', pipe, 3, 'timesteps[1:]')
+        self.assertEqual(pipe.scheduler.timesteps.tolist(), [7, 3])
+
+        for invalid in ([], [10.5], [-1], 'timesteps + 0.5', '5'):
+            with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
+                DiffusionPipelineWrapper._timesteps_eval('primary', pipe, 3, invalid)
+
+
 if __name__ == '__main__':
     unittest.main()

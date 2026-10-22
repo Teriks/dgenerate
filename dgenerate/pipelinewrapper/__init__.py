@@ -73,6 +73,7 @@ from .enums import (
     model_type_is_kolors,
     model_type_is_video,
     model_type_is_wan_family,
+    model_type_uses_wan_vae,
     model_type_supports_tea_cache,
     TEA_CACHE_MODEL_TYPES,
     model_type_supports_deep_cache,

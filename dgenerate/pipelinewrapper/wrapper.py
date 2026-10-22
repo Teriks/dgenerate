@@ -3048,6 +3048,7 @@ class DiffusionPipelineWrapper:
                     user_args.inference_steps,
                     _constants.DEFAULT_INFERENCE_STEPS)
             ))
+        self._set_timesteps_pipeline_arg(pipeline_args, user_args)
 
         if hasattr(self._pipeline, 'controlnet'):
             pipeline_args['controlnet_conditioning_scale'] = \
@@ -3285,6 +3286,7 @@ class DiffusionPipelineWrapper:
                     user_args.inference_steps,
                     _constants.DEFAULT_INFERENCE_STEPS)
             ))
+        self._set_timesteps_pipeline_arg(pipeline_args, user_args)
 
         if hasattr(self._pipeline, 'controlnet'):
             pipeline_args['controlnet_conditioning_scale'] = \
@@ -3580,6 +3582,8 @@ class DiffusionPipelineWrapper:
 
         if user_args.sigmas is not None:
             raise _pipelines.UnsupportedPipelineConfigError('Stable Cascade does not support sigmas.')
+        if user_args.timesteps is not None:
+            raise _pipelines.UnsupportedPipelineConfigError('Stable Cascade does not support timesteps.')
 
         prompt: _prompt.Prompt = _types.default(user_args.prompt, _prompt.Prompt())
         pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
@@ -3708,6 +3712,94 @@ class DiffusionPipelineWrapper:
         else:
             return list(val)
 
+    def _set_timesteps_pipeline_arg(self, pipeline_args: dict, user_args: DiffusionArguments):
+        self._set_non_universal_pipeline_arg(
+            self._pipeline,
+            pipeline_args, user_args,
+            'timesteps', 'timesteps',
+            '--timesteps',
+            transform=functools.partial(
+                self._timesteps_eval,
+                'primary',
+                self._pipeline,
+                _types.default(
+                    user_args.inference_steps,
+                    _constants.DEFAULT_INFERENCE_STEPS)
+            ))
+        timesteps = pipeline_args.get('timesteps')
+        if timesteps is not None:
+            # The schedule length is the step count, record it so the refiner
+            # and the output metadata agree with the schedule that ran.
+            pipeline_args['num_inference_steps'] = len(timesteps)
+            user_args.inference_steps = len(timesteps)
+
+    @staticmethod
+    def _timesteps_eval(model_title: str, pipeline, steps: int, val: str | list):
+        scheduler = pipeline.scheduler
+        if 'timesteps' not in inspect.signature(scheduler.set_timesteps).parameters:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'The current {model_title} model scheduler '
+                f'"{scheduler.__class__.__name__}" does not support '
+                f'custom timestep schedules. Please ensure that you are using a '
+                f'supported scheduler.')
+
+        if isinstance(val, str):
+            old_state = {
+                name: getattr(scheduler, name)
+                for name in ('timesteps', 'sigmas', 'num_inference_steps')
+                if hasattr(scheduler, name)
+            }
+            try:
+                scheduler.set_timesteps(steps)
+                timesteps = scheduler.timesteps
+            except Exception as e:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Could not read the default timesteps of the {model_title} model '
+                    f'scheduler "{scheduler.__class__.__name__}" for a timesteps '
+                    f'expression. Pass a CSV list with --timesteps instead.') from e
+            finally:
+                for name, value in old_state.items():
+                    setattr(scheduler, name, value)
+
+            if hasattr(timesteps, 'detach'):
+                timesteps = timesteps.detach().cpu().numpy()
+
+            interpreter = _eval.standard_interpreter(
+                symtable=_eval.safe_builtins()
+            )
+            interpreter.symtable['np'] = numpy
+            interpreter.symtable['timesteps'] = numpy.asarray(timesteps, dtype=float)
+            try:
+                val = interpreter.eval(val, show_errors=False, raise_errors=True)
+            except Exception as e:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Error interpreting timesteps expression "{val}":\n{e}'
+                ) from e
+
+            if not isinstance(val, collections.abc.Iterable) or isinstance(val, (str, bytes)):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Timesteps expression for the {model_title} model did not '
+                    f'evaluate to an array, got: {val}'
+                )
+
+        result = []
+        for item in val:
+            try:
+                numeric = float(item)
+            except (TypeError, ValueError) as e:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Timesteps for the {model_title} model must be '
+                    f'non-negative integers.') from e
+            if not numpy.isfinite(numeric) or not numeric.is_integer() or numeric < 0:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Timesteps for the {model_title} model must be '
+                    f'non-negative integers.')
+            result.append(int(numeric))
+        if not result:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Timesteps for the {model_title} model cannot be empty.')
+        return result
+
     def _call_torch(self, pipeline_args, user_args: DiffusionArguments):
         self._check_for_invalid_model_specific_opts(user_args)
 
@@ -3799,6 +3891,7 @@ class DiffusionPipelineWrapper:
                     user_args.inference_steps,
                     _constants.DEFAULT_INFERENCE_STEPS)
             ))
+        self._set_timesteps_pipeline_arg(pipeline_args, user_args)
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,
@@ -4050,6 +4143,7 @@ class DiffusionPipelineWrapper:
         pipeline_args.pop('ip_adapter_image', None)
         pipeline_args.pop('guidance_rescale', None)
         pipeline_args.pop('sigmas', None)
+        pipeline_args.pop('timesteps', None)
         pipeline_args.pop('controlnet_conditioning_scale', None)
         pipeline_args.pop('control_guidance_start', None)
         pipeline_args.pop('control_guidance_end', None)

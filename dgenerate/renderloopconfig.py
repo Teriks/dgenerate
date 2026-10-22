@@ -103,7 +103,6 @@ _WAN_NOT_ANIMATE_2_FIELDS = _WAN_ANIMATE_1_ONLY_FIELDS | frozenset({
 })
 
 _WAN_PLAIN_ONLY_FIELDS = frozenset({
-    'wan_timesteps',
     'wan_conditioning_scales',
 })
 
@@ -441,19 +440,20 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--video-fps`` argument of the dgenerate command line tool.
     """
 
-    video_timesteps: typing.Optional[
+    timesteps: typing.Optional[
         collections.abc.Sequence[collections.abc.Sequence[int] | str]] = None
     """
-    Optional explicit denoising timestep schedules for ``--model-type
-    motif-video``. Each schedule can be a sequence of non-negative integers or
-    an ``expr:`` expression evaluated against the scheduler's default timestep
-    array (named ``timesteps`` in the expression). Values are passed in order
-    to the pipeline's ``timesteps`` argument. The resulting schedule length
-    determines the inference-step count for that invocation, overriding
-    ``--inference-steps``. Do not combine it with ``--sigmas``. When omitted,
-    the scheduler generates the timestep schedule.
+    Optional explicit denoising timestep schedules. Each schedule can be a
+    sequence of non-negative integers or an ``expr:`` expression evaluated
+    against the scheduler's default timestep array (named ``timesteps`` in
+    the expression). Values are passed in order to the pipeline's
+    ``timesteps`` argument. The resulting schedule length determines the
+    inference-step count for that invocation, overriding ``--inference-steps``.
+    Do not combine it with ``--sigmas``. When omitted, the scheduler generates
+    the timestep schedule. Only supported for model types whose pipeline accepts
+    ``timesteps`` (scheduler and pipeline dependent).
 
-    This corresponds to the ``--video-timesteps`` command-line argument.
+    This corresponds to the ``--timesteps`` command-line argument.
     """
 
     ltx_audio_guidance_scales: _types.OptionalFloats = None
@@ -610,11 +610,6 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     Per-token timestep expansion. ``None`` keeps the checkpoint value.
     ``--wan-expand-timesteps``.
-    """
-
-    wan_timesteps: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[int]]] = None
-    """
-    Explicit timestep schedules for Wan video-to-video. ``--wan-timesteps``.
     """
 
     wan_conditioning_scales: typing.Optional[
@@ -2317,7 +2312,6 @@ class RenderLoopConfig(_types.SetFromMixin):
         # Create attribute namer function for consistent error reporting
         a_namer = self._create_attribute_namer(attribute_namer)
 
-        # Validate basic type constraints
         self._validate_type_constraints(a_namer)
 
         # Setup help mode and validate help-related arguments
@@ -3130,6 +3124,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     def _check_model_specific_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check specific requirements for different model types."""
         self._check_video_model_requirements(a_namer)
+        self._check_timesteps_requirements(a_namer)
         self._check_stable_cascade_requirements(a_namer)
         self._check_upscaler_requirements(a_namer)
         self._check_pix2pix_requirements(a_namer)
@@ -3143,9 +3138,6 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_video_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check video model types and set their length, fps, and step defaults."""
-        if self.model_type != _pipelinewrapper.ModelType.MOTIF_VIDEO and self.video_timesteps:
-            raise RenderLoopConfigError(
-                f'{a_namer("video_timesteps")} is not supported for this model type.')
         if not _pipelinewrapper.model_type_is_video(self.model_type):
             if self.video_lengths:
                 raise RenderLoopConfigError(
@@ -3202,22 +3194,32 @@ class RenderLoopConfig(_types.SetFromMixin):
             for name in _wan_arguments_in_use(self):
                 raise RenderLoopConfigError(
                     f'{a_namer(name)} is only supported for wan video model types.')
-            if self.video_timesteps:
-                if self.sigmas:
-                    raise RenderLoopConfigError(
-                        f'{a_namer("video_timesteps")} cannot be combined with {a_namer("sigmas")}.'
-                    )
-                for schedule in self.video_timesteps:
-                    if isinstance(schedule, str):
-                        if not schedule.strip():
-                            raise RenderLoopConfigError(
-                                f'{a_namer("video_timesteps")} expression cannot be empty.')
-                        continue
-                    if not schedule or any(int(step) < 0 for step in schedule):
-                        raise RenderLoopConfigError(
-                            f'{a_namer("video_timesteps")} must contain non-empty, non-negative schedules.')
-
         self._check_video_shared_requirements(a_namer)
+
+    def _check_timesteps_requirements(self, a_namer: typing.Callable[[str], str]):
+        if self.timesteps:
+            if self.sigmas:
+                raise RenderLoopConfigError(
+                    f'{a_namer("timesteps")} cannot be combined with {a_namer("sigmas")}.')
+            for schedule in self.timesteps:
+                if isinstance(schedule, str):
+                    if not schedule.strip():
+                        raise RenderLoopConfigError(
+                            f'{a_namer("timesteps")} expression cannot be empty.')
+                    continue
+                if not schedule or any(int(step) < 0 for step in schedule):
+                    raise RenderLoopConfigError(
+                        f'{a_namer("timesteps")} must contain non-empty, non-negative schedules.')
+            if self.model_type in {_pipelinewrapper.ModelType.WAN_ANIMATE,
+                                   _pipelinewrapper.ModelType.WAN_ANIMATE_2}:
+                raise RenderLoopConfigError(
+                    f'{a_namer("timesteps")} is not supported for Wan-Animate. '
+                    f'Wan takes a timestep schedule in video-to-video mode only.')
+            if self.model_type in {_pipelinewrapper.ModelType.S_CASCADE,
+                                   _pipelinewrapper.ModelType.UPSCALER_X2,
+                                   _pipelinewrapper.ModelType.UPSCALER_X4}:
+                raise RenderLoopConfigError(
+                    f'{a_namer("timesteps")} is not supported for this model type.')
 
     def _check_ltx_requirements(self, a_namer: typing.Callable[[str], str]):
         if self.ltx_ic_lora_uri:
@@ -4634,7 +4636,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_sigmas,
             self.video_lengths,
             self.video_fps,
-            self.video_timesteps,
+            self.timesteps,
             self.ltx_audio_guidance_scales,
             self.ltx_audio_guidance_rescales,
             self.ltx_stg_scales,
@@ -4651,7 +4653,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.ltx_image_crfs,
             self.wan_low_noise_guidance_scales,
             self.wan_boundary_ratios,
-            self.wan_timesteps,
             self.wan_conditioning_scales,
             self.wan_segment_frame_lengths,
             self.wan_prev_segment_frames,
@@ -4925,7 +4926,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 inference_steps=ov('inference_steps', self.inference_steps),
                 video_length=ov('video_length', self.video_lengths),
                 video_fps=ov('video_fps', self.video_fps),
-                video_timesteps=ov('video_timesteps', self.video_timesteps),
+                timesteps=ov('timesteps', self.timesteps),
                 ltx_audio_guidance_scale=ov('ltx_audio_guidance_scale', self.ltx_audio_guidance_scales),
                 ltx_audio_guidance_rescale=ov('ltx_audio_guidance_rescale', self.ltx_audio_guidance_rescales),
                 ltx_stg_scale=ov('ltx_stg_scale', self.ltx_stg_scales),
@@ -4956,7 +4957,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                     'wan_low_noise_guidance_scale', self.wan_low_noise_guidance_scales),
                 wan_boundary_ratio=ov('wan_boundary_ratio', self.wan_boundary_ratios),
                 wan_expand_timesteps=ov('wan_expand_timesteps', [self.wan_expand_timesteps]),
-                wan_timesteps=ov('wan_timesteps', self.wan_timesteps),
                 wan_conditioning_scale=ov(
                     'wan_conditioning_scale', self.wan_conditioning_scales),
                 wan_animate_mode=ov('wan_animate_mode', [self.wan_animate_mode]),
