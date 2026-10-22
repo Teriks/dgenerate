@@ -1124,15 +1124,15 @@ For ``--model-type ltx``, the checkpoint's ``model_index.json`` selects LTX-2.5
      - ✅
      - ✅
 
-   * - Replacement transformer
+   * - Replacement transformer (``--transformer``)
      - ✅
      - ✅
-     - ❌
-     - ❌
-     - ❌
-     - ❌
-     - ❌
-     - ❌
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
 
    * - Cache-DiT
      - ✅
@@ -1175,21 +1175,22 @@ For ``--model-type ltx``, the checkpoint's ``model_index.json`` selects LTX-2.5
      - ❌
 
    * - Torch compile
-     - ❌
-     - ❌
-     - ❌
-     - ❌
+     - ✅
+     - ✅
+     - ✅
+     - ✅
      - ✅
      - ✅
      - ✅
      - ✅
 
 LTX does not support ControlNets, adapters, textual inversions, prompt weighters, or inpainting.
-Cache-DiT is supported for LTX; other acceleration features in the tables above are not. GGUF transformers
+LTX supports Cache-DiT and ``--torch-compile``, but not Spectrum or DyPE. GGUF transformers
 are tested with LTX-Video. LTX video conditioning covers first and last frames, reference audio, and IC-LoRA.
 
 Wan video-to-video is the only Wan mode that uses ``--timesteps``. Wan timesteps and audio guidance follow
-the Wan pipeline's scheduler. ``wan-animate-2`` expects a character still plus a driving clip.
+the Wan pipeline's scheduler. ``wan-animate-2`` expects a character still plus a driving clip. Wan-Animate-2 compiles its transformer
+on every load, with or without ``--torch-compile``; ``DGENERATE_TORCH_COMPILE=0`` turns that off.
 
 HunyuanVideo 1.5 supports text-to-video and single-image-to-video. Motif-Video supports text-to-video and
 first-frame image-to-video; ``--timesteps`` is Motif-Video specific. Kandinsky 5.0 Video has Lite and Pro

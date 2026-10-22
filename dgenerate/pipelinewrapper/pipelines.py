@@ -1297,6 +1297,19 @@ def _promote_bare_parameter_tensors(module: torch.nn.Module) -> None:
                 value, requires_grad=bool(value.requires_grad))
 
 
+def _sequential_offload_preload_classes(module: torch.nn.Module) -> list[str] | None:
+    """
+    Class names whose submodule weights accelerate must load as one unit.
+
+    ``torch.nn.MultiheadAttention`` reads ``out_proj.weight`` directly instead of
+    calling ``out_proj``, so the per-leaf offload hook on ``out_proj`` never runs
+    and the weight stays on the meta device (SigLIP pooling head, for example).
+    """
+    names = {type(m).__name__ for m in module.modules()
+             if isinstance(m, torch.nn.MultiheadAttention)}
+    return sorted(names) if names else None
+
+
 def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
                                   device: torch.device | str = _torchutil.default_device()):
     """
@@ -1340,7 +1353,8 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
         elif not is_sequential_cpu_offload_enabled(model) or not hasattr(model, '_hf_hook'):
             _set_sequential_cpu_offload_flag(model, True)
             _promote_bare_parameter_tensors(model)
-            accelerate.cpu_offload(model, torch_device, offload_buffers=len(model._parameters) > 0)
+            accelerate.cpu_offload(model, torch_device, offload_buffers=len(model._parameters) > 0,
+                                   preload_module_classes=_sequential_offload_preload_classes(model))
             _disable_to(
                 model,
                 name == 'vae'
@@ -1469,6 +1483,52 @@ def _clear_group_offload_hooks(module: torch.nn.Module):
             registry.remove_hook(name, recurse=True)
 
 
+def _group_multihead_attention(module: torch.nn.Module):
+    """
+    Regroup each ``torch.nn.MultiheadAttention`` under ``module`` as one offload group.
+
+    Leaf-level group offload hooks ``out_proj`` as its own group, but
+    ``MultiheadAttention`` reads ``out_proj.weight`` without calling ``out_proj``,
+    so that group is never onloaded. Run this after ``apply_group_offloading``
+    and before the first forward, which traces the prefetch order.
+    """
+    from diffusers.hooks.group_offloading import (
+        _GROUP_OFFLOADING,
+        ModuleGroup,
+        _apply_group_offloading_hook,
+    )
+
+    for mha in module.modules():
+        if not isinstance(mha, torch.nn.MultiheadAttention):
+            continue
+
+        hooks = [m._diffusers_hook.get_hook(_GROUP_OFFLOADING)
+                 for m in mha.modules() if hasattr(m, '_diffusers_hook')]
+        hooks = [h for h in hooks if h is not None]
+        if not hooks:
+            continue
+
+        old = hooks[0].group
+        for m in mha.modules():
+            registry = getattr(m, '_diffusers_hook', None)
+            if registry is not None and registry.get_hook(_GROUP_OFFLOADING) is not None:
+                registry.remove_hook(_GROUP_OFFLOADING, recurse=False)
+
+        group = ModuleGroup(
+            modules=[mha],
+            offload_device=old.offload_device,
+            onload_device=old.onload_device,
+            offload_leader=mha,
+            onload_leader=mha,
+            non_blocking=old.non_blocking,
+            stream=old.stream,
+            record_stream=old.record_stream,
+            low_cpu_mem_usage=old.low_cpu_mem_usage,
+            onload_self=True,
+        )
+        _apply_group_offloading_hook(mha, group, config=hooks[0].config)
+
+
 def enable_group_offload(pipeline: diffusers.DiffusionPipeline,
                          device: torch.device | str = _torchutil.default_device()):
     """
@@ -1542,6 +1602,7 @@ def enable_group_offload(pipeline: diffusers.DiffusionPipeline,
             use_stream=use_stream,
             non_blocking=use_stream,
         )
+        _group_multihead_attention(model)
         _set_group_offload_flag(model, True)
 
     _bind_pipeline_offload_method(pipeline, 'enable_group_offload', enable_group_offload)
@@ -3045,7 +3106,8 @@ def get_pipeline_class(
                 and not _enums.model_type_is_video(model_type):
             raise UnsupportedPipelineConfigError(
                 '--transformer is only supported for --model-type sd3, flux, flux2, flux2-klein-kv, '
-                'z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, and ltx.')
+                'z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, '
+                'and video model types.')
 
     # Incompatible combinations
     if controlnet_uris and t2i_adapter_uris:
