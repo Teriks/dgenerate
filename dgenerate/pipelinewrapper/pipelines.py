@@ -3105,9 +3105,10 @@ def get_pipeline_class(
                 and not _enums.model_type_is_flow_image(model_type) \
                 and not _enums.model_type_is_video(model_type):
             raise UnsupportedPipelineConfigError(
-                '--transformer is only supported for --model-type sd3, flux, flux2, flux2-klein-kv, '
-                'z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, '
-                'and video model types.')
+                '--transformer is only supported for --model-type sd3, sd3-pix2pix, flux, flux-fill, '
+                'flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, '
+                'qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, ltx, wan, wan-animate, '
+                'wan-animate-2, hunyuan-video-15, motif-video, and kandinsky5-video.')
 
     # Incompatible combinations
     if controlnet_uris and t2i_adapter_uris:
