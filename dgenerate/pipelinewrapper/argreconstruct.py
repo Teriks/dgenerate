@@ -112,20 +112,17 @@ def reconstruct_dgenerate_opts(
             opts.append(('--video-lengths', args.video_length))
         if args.video_fps is not None:
             opts.append(('--video-fps', args.video_fps))
-        if args.video_timesteps:
-            if isinstance(args.video_timesteps, str):
-                opts.append(('--video-timesteps', f'expr: {args.video_timesteps}'))
+        if args.timesteps:
+            if isinstance(args.timesteps, str):
+                opts.append(('--timesteps', f'expr: {args.timesteps}'))
             else:
-                opts.append((
-                    '--video-timesteps', ','.join(str(step) for step in args.video_timesteps)))
+                opts.append(('--timesteps', ','.join(str(step) for step in args.timesteps)))
         if args.wan_low_noise_guidance_scale is not None:
             opts.append(('--wan-low-noise-guidance-scales', args.wan_low_noise_guidance_scale))
         if args.wan_boundary_ratio is not None:
             opts.append(('--wan-boundary-ratios', args.wan_boundary_ratio))
         if args.wan_expand_timesteps:
             opts.append(('--wan-expand-timesteps',))
-        if args.wan_timesteps:
-            opts.append(('--wan-timesteps', ','.join(str(step) for step in args.wan_timesteps)))
         if args.wan_conditioning_scale is not None:
             scale = args.wan_conditioning_scale
             if isinstance(scale, (list, tuple)):
