@@ -58,6 +58,8 @@ Help Output
 
 @INCLUDE[sections/sub_models/specifying_transformer.template.rst]
 
+@INCLUDE[sections/sub_models/comfyui_quantized_checkpoints.template.rst]
+
 @INCLUDE[sections/sub_models/specifying_sdxl_refiner.template.rst]
 
 @INCLUDE[sections/sub_models/specifying_stable_cascade_decoder.template.rst]

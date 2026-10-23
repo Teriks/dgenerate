@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import collections.abc
 import contextlib
 import functools
@@ -53,6 +54,7 @@ import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.pipelinewrapper.safetensorscompat as _safetensorscompat
 import dgenerate.pipelinewrapper.sdnqload as _sdnqload
 import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.uris as _uris
@@ -64,6 +66,10 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper import constants as _constants
 import dgenerate.pipelinewrapper.models as _models
+
+# Text encoders, VAEs, and UNets read from a ComfyUI quantized single file
+# are dequantized as Diffusers loads them.
+_safetensorscompat.install_single_file_patch()
 
 
 class UnsupportedPipelineConfigError(Exception):
@@ -2509,7 +2515,14 @@ def create_diffusion_pipeline(
         if name.endswith('_uris') and isinstance(value, str):
             __locals[name] = [value]
 
-    with _hfhub.with_hf_errors_as_model_not_found():
+    # dgenerate's own component loads (text encoders, VAEs) read only their
+    # weights from a single file, unless the model has a UNet, which
+    # UNetUri reads from the file too. The pipeline's own single file load
+    # narrows this to whether dgenerate supplied the transformer.
+    transformer_loaded = diffusion_transformer_class(__locals['model_type']) is not None
+
+    with _hfhub.with_hf_errors_as_model_not_found(), \
+            _safetensorscompat.single_file_components(transformer_loaded=transformer_loaded):
         return _create_diffusion_pipeline(**__locals)
 
 class PipelineFactory:
@@ -4611,19 +4624,23 @@ def _create_diffusion_pipeline(
         try:
             _enforce_pipeline_cache_size(estimated_memory_usage)
 
-            pipeline = _pipeline_creation_args_debug(
-                backend='Torch',
-                cls=pipeline_class,
-                method=pipeline_class.from_single_file,
-                original_config=original_config,
-                model=model_path,
-                token=auth_token,
-                revision=revision,
-                variant=variant,
-                torch_dtype=torch_dtype,
-                use_safe_tensors=model_path.endswith('.safetensors'),
-                local_files_only=local_files_only,
-                **creation_kwargs)
+            # Diffusers loads the transformer out of the file itself unless
+            # dgenerate already supplied it.
+            with _safetensorscompat.single_file_components(
+                    transformer_loaded='transformer' in creation_kwargs):
+                pipeline = _pipeline_creation_args_debug(
+                    backend='Torch',
+                    cls=pipeline_class,
+                    method=pipeline_class.from_single_file,
+                    original_config=original_config,
+                    model=model_path,
+                    token=auth_token,
+                    revision=revision,
+                    variant=variant,
+                    torch_dtype=torch_dtype,
+                    use_safe_tensors=model_path.endswith('.safetensors'),
+                    local_files_only=local_files_only,
+                    **creation_kwargs)
 
         except diffusers.loaders.single_file.SingleFileComponentError as e:
             _handle_single_file_component_error(e)

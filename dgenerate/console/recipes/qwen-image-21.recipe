@@ -1,5 +1,5 @@
 title: Qwen-Image 2.1
-order: 39
+order: 78
 
 # Unified text-to-image and image-conditioned generation.
 # Image seeds are conditions, not img2img strength inputs.

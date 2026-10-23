@@ -373,9 +373,9 @@ multiply the number of images.
 Console recipes
 ---------------
 
-The Console UI recipes are ``Flux.2 (Dev)``, ``Flux.2 Klein``, ``Flux.2 Klein KV``,
-``Z-Image (Turbo)``, ``Z-Image Turbo (SDNQ)``, ``Z-Image (Base, 2-step LoRA)``,
-``Z-Image (ControlNet)``, ``Z-Image Omni``, ``Qwen-Image``, ``Qwen-Image Edit``,
+The Console UI recipes are ``Flux.2 Dev``, ``Flux.2 Klein``, ``Flux.2 Klein KV``,
+``Z-Image Turbo``, ``Z-Image Turbo (SDNQ)``, ``Z-Image Base (2-step LoRA)``,
+``Z-Image ControlNet``, ``Z-Image Omni``, ``Qwen-Image``, ``Qwen-Image Edit``,
 ``Qwen-Image Layered``, ``Qwen-Image 2.1``, ``Qwen-Image 2.1 Turbo``,
 ``Krea 2 Raw``, ``Krea 2 Turbo``, ``Kandinsky 5 Image``, and
 ``Kandinsky 5 Image Edit``. GGUF recipes for those models set ``--transformer``

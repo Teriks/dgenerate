@@ -1,5 +1,5 @@
 title: Wan Image to Video
-order: 22
+order: 40
 
 # Wan image to video. The seed image is the first frame.
 # last-frame= needs a FLF2V checkpoint such as

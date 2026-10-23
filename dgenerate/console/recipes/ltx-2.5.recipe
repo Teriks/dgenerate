@@ -1,5 +1,5 @@
-title: LTX-2.5 (Non-distilled)
-order: 19
+title: LTX-2.5 Non-distilled
+order: 33
 
 # LTX-2.5 full transformer. The published scheduler is the distilled table;
 # use-dynamic-shifting=true and shift-terminal=0.1 make --inference-steps apply.

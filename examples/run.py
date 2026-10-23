@@ -161,7 +161,10 @@ def run_config(config, injected_args, extra_args, use_subprocess=False):
                 check_return_code([config], result.returncode)
                 return True
         else:
-            with open(config, mode='rt' if _batchprocess else 'rb') as f:
+            # Configs are UTF-8 (some prompts hold emoji); text mode would
+            # otherwise use the Windows ANSI code page.
+            with open(config, mode='rt' if _batchprocess else 'rb',
+                      encoding='utf-8' if _batchprocess else None) as f:
                 if ext == '.dgen':
                     try:
                         if _batchprocess is not None:

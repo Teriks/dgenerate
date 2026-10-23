@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image 2.1 Turbo with ComfyUI's INT8 ConvRot transformer. The Turbo
+# repository supplies its own short sigma schedule.
+
+Qwen/Qwen-Image-2.1-Turbo
+--model-type qwen-image-21
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors
+--qwen21-output-resolution 1024
+--gen-seeds 1
+--output-path qwen-image-21-comfy-quant-turbo
+--prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

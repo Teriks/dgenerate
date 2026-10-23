@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Krea 2 Turbo with ComfyUI's scaled FP8 transformer. The weights stay in
+# FP8. Layers the file marks full precision decode to bfloat16 for the
+# matmul, as in ComfyUI; the others use FP8 matmuls where the GPU has them
+# (CUDA sm89+, ROCm MI300+).
+
+krea/Krea-2-Turbo
+--model-type krea2
+--transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_fp8_scaled.safetensors
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 8
+--guidance-scales 0
+--gen-seeds 1
+--output-path krea2-comfy-quant-turbo-fp8
+--output-size 1024
+--prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"

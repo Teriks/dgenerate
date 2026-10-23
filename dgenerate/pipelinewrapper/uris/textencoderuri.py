@@ -21,6 +21,7 @@
 import contextlib
 import json
 import logging
+import os
 import pathlib
 import typing
 
@@ -37,6 +38,7 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.pipelinewrapper.safetensorscompat as _safetensorscompat
 import dgenerate.pipelinewrapper.sdnqload as _sdnqload
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
@@ -212,7 +214,203 @@ def _flattened_clip_checkpoint_keys(model):
         modeling.load_state_dict = original
 
 
+_LANGUAGE_MODEL_PREFIXES = (
+    # checkpoint prefix -> model prefix, tried in order for each tensor
+    ('', ''),
+    ('model.', ''),
+    ('', 'model.'),
+    ('model.', 'model.language_model.'),
+    ('model.', 'language_model.model.'),
+    ('visual.', 'model.visual.'),
+)
+
+
+def _language_model_layout(header: dict) -> tuple[str, int, int, int] | None:
+    """``(embedding name, vocab size, hidden size, decoder layers)`` from a file header."""
+    embed = next((key for key in header if key.endswith('embed_tokens.weight')
+                  and 'visual' not in key), None)
+    if embed is None:
+        return None
+    vocab, hidden = header[embed]['shape'][:2]
+    prefix = embed[:-len('embed_tokens.weight')] + 'layers.'
+    indices = {key[len(prefix):].split('.', 1)[0] for key in header if key.startswith(prefix)}
+    layers = 1 + max((int(index) for index in indices if index.isdigit()), default=-1)
+    return embed, vocab, hidden, layers
+
+
+def _language_model_config(model_path: str, encoder) -> str | None:
+    """
+    A config shipped with dgenerate for a single file language model text
+    encoder (Qwen3, Mistral 3, ...), matched by model type, vocabulary, and
+    hidden size in the file header. A file may hold fewer decoder layers than
+    the config: ComfyUI trims encoders to the layers a pipeline reads.
+    ``None`` when there is no match.
+    """
+    config_class = getattr(encoder, 'config_class', None)
+    model_type = getattr(config_class, 'model_type', None)
+    if not model_type or not model_path.lower().endswith('.safetensors'):
+        return None
+    header = _safetensorscompat._read_header(model_path) if os.path.isfile(model_path) else None
+    if not header:
+        return None
+    header.pop('__metadata__', None)
+    layout = _language_model_layout(header)
+    if layout is None:
+        return None
+    _, vocab, hidden, layers = layout
+
+    configs = pathlib.Path(__file__).parent.parent / 'hub_configs'
+    best = None
+    for config_path in sorted(configs.glob('*/text_encoder*/config.json')):
+        with open(config_path, 'r', encoding='utf-8') as file:
+            config = json.load(file)
+        if config.get('model_type') != model_type:
+            continue
+        text = config.get('text_config') or config
+        config_layers = text.get('num_hidden_layers') or 0
+        if (text.get('hidden_size'), text.get('vocab_size')) != (hidden, vocab) or config_layers < layers:
+            continue
+        # The closest layer count: an exact match, else the least trimming.
+        if best is None or config_layers < best[0]:
+            best = (config_layers, str(config_path))
+    return best[1] if best else None
+
+
+def _language_model_rename(model_keys: set, checkpoint_keys) -> typing.Callable[[str], str]:
+    """
+    Checkpoint -> model tensor names.
+
+    Each tensor takes the first prefix mapping that names a model tensor, so a
+    language model and a vision tower under different prefixes both resolve
+    (Qwen2.5-VL: ``model.`` -> ``model.language_model.``, ``visual.`` ->
+    ``model.visual.``).
+    """
+    def make(source, target):
+        def rename(key):
+            if source and not key.startswith(source):
+                return None
+            return target + key[len(source):]
+        return rename
+
+    rules = [make(source, target) for source, target in _LANGUAGE_MODEL_PREFIXES]
+
+    def rename(key):
+        for rule in rules:
+            target = rule(key)
+            if target is not None and target in model_keys:
+                return target
+        return key
+
+    checkpoint_keys = list(checkpoint_keys)
+    matches = sum(1 for key in checkpoint_keys if rename(key) in model_keys)
+    if matches < 0.9 * len(checkpoint_keys):
+        raise _exceptions.TextEncoderUriLoadError(
+            f'Only {matches} of {len(checkpoint_keys)} tensors in the text encoder file '
+            f'match the model, it is not a checkpoint of this text encoder.')
+    return rename
+
+
+def _load_language_model_from_single_file(model_class, model_path: str, config_path: str,
+                                          dtype: torch.dtype | None):
+    """
+    A transformers language model text encoder from a single ``.safetensors``
+    file (as ComfyUI distributes them), with a config shipped with dgenerate.
+
+    ComfyUI quantized linears stay packed. Weights the file does not hold, such
+    as the vision tower of Mistral 3, which text encoding does not use, are
+    zeros.
+
+    A file trimmed to fewer decoder layers than the config (ComfyUI's Flux.2
+    Mistral keeps the 30 of 40 layers whose hidden states the pipeline reads)
+    builds that many layers. Without the final norm in the file, the norm is
+    an identity, so the last hidden state is the raw output of the last layer,
+    as it is at that index in the full model.
+    """
+    config = model_class.config_class.from_json_file(config_path)
+    dtype = dtype or torch.bfloat16
+    header = _safetensorscompat._read_header(model_path)
+    header.pop('__metadata__', None)
+    embed, _, _, layers = _language_model_layout(header)
+
+    text_config = getattr(config, 'text_config', None) or config
+    trimmed = layers < text_config.num_hidden_layers
+    if trimmed:
+        text_config.num_hidden_layers = layers
+        layer_types = getattr(text_config, 'layer_types', None)
+        if layer_types:
+            text_config.layer_types = list(layer_types)[:layers]
+
+    with accelerate.init_empty_weights(include_buffers=False):
+        model = model_class(config)
+
+    model_keys = set(model.state_dict().keys())
+    # Model tensors: not scales or markers, and not uint8 blobs such as the
+    # tokenizer some ComfyUI files embed (NVFP4 weights are uint8 ``.weight``).
+    weight_keys = [key for key in header
+                   if key != _safetensorscompat._LEGACY_MARKER
+                   and not key.endswith(_safetensorscompat._AUX_SUFFIXES)
+                   and not key.endswith(tuple(_safetensorscompat._LEGACY_SCALE_NAMES))
+                   and (header[key]['dtype'] != 'U8' or key.endswith('.weight'))]
+    rename = _language_model_rename(model_keys, weight_keys)
+
+    if trimmed:
+        norm_name = rename(embed)[:-len('embed_tokens.weight')] + 'norm'
+        norm_weight = norm_name + '.weight'
+        if norm_weight in model_keys and not any(rename(key) == norm_weight for key in weight_keys):
+            _safetensorscompat._set_submodule(model, norm_name, torch.nn.Identity())
+            model_keys = set(model.state_dict().keys())
+            _messages.debug_log(
+                f'Text encoder file "{model_path}" holds {layers} of '
+                f'{text_config.num_hidden_layers} layers and no final norm; '
+                f'its last hidden state is the raw output of layer {layers}.')
+
+    state = _safetensorscompat.prepare_text_encoder(model, model_path, dtype, rename=rename)
+    keep_fp32 = set(_keep_in_fp32_module_names(model))
+    for key, value in state.items():
+        target = rename(key)
+        if target not in model_keys:
+            continue
+        module = target.rsplit('.', 2)[-2] if target.count('.') else ''
+        value_dtype = None
+        if value.is_floating_point():
+            value_dtype = torch.float32 if module in keep_fp32 else dtype
+        accelerate.utils.set_module_tensor_to_device(model, target, 'cpu', value=value, dtype=value_dtype)
+
+    model.tie_weights()
+    missing = {name: tensor for name, tensor in
+               list(model.named_parameters()) + list(model.named_buffers())
+               if tensor.device.type == 'meta'}
+    for name, tensor in missing.items():
+        accelerate.utils.set_module_tensor_to_device(
+            model, name, 'cpu', value=torch.zeros(tensor.shape, dtype=tensor.dtype))
+    missing = list(missing)
+    if missing:
+        _messages.debug_log(
+            f'Text encoder file "{model_path}" holds no weights for {len(missing)} tensors '
+            f'(for example {missing[0]}); they are zeros.')
+    return model.eval()
+
+
 def _load_monolithic_checkpoint(
+        model,
+        checkpoint,
+        device_map,
+        dtype,
+        no_split_module_classes,
+):
+    if _safetensorscompat.is_comfy_quantized(checkpoint):
+        # Keep its quantized linears packed, unless another quantizer already
+        # replaced the linears and needs dense weights.
+        quantized = getattr(model.config, 'quantization_config', None) is not None
+        state = _safetensorscompat.prepare_text_encoder(
+            model, checkpoint, dtype, pack=not quantized)
+        with _safetensorscompat.accelerate_checkpoint(checkpoint, state):
+            return _load_monolithic_state(
+                model, checkpoint, device_map, dtype, no_split_module_classes)
+    return _load_monolithic_state(model, checkpoint, device_map, dtype, no_split_module_classes)
+
+
+def _load_monolithic_state(
         model,
         checkpoint,
         device_map,
@@ -1194,6 +1392,19 @@ class TextEncoderUri:
                     device_map=device_map
                 )
 
+                estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
+            elif (encoder_library == 'transformers' and not self.mode
+                  and (language_model_config := _language_model_config(model_path, encoder))):
+                # Language model encoders (Qwen3, Mistral 3, ...) as single files,
+                # which Diffusers' single file loader does not handle.
+                if quant_config is not None:
+                    raise _exceptions.TextEncoderUriLoadError(
+                        'A quantizer is not supported for single file language model '
+                        'text encoders. Use a pre-quantized file, or load the encoder '
+                        'from a Hugging Face repository.')
+                self._enforce_cache_size(os.path.getsize(model_path))
+                text_encoder = _load_language_model_from_single_file(
+                    encoder, model_path, language_model_config, torch_dtype)
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
             else:
                 try:

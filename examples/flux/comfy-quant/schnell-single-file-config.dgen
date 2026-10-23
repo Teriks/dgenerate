@@ -1,0 +1,18 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# ComfyUI's all-in-one FLUX.1 schnell FP8 checkpoint as the model. One file
+# holds the transformer, CLIP-L, T5-XXL, and VAE. The transformer stays in
+# FP8; the text encoders are cast to bfloat16 as they load.
+
+https://huggingface.co/Comfy-Org/flux1-schnell/blob/main/flux1-schnell-fp8.safetensors
+--model-type flux
+--dtype bfloat16
+--model-sequential-offload
+--max-sequence-length 256
+--inference-steps 4
+--guidance-scales 0
+--gen-seeds 1
+--output-path flux-comfy-quant-schnell-single-file
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

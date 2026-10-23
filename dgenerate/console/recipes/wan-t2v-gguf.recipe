@@ -1,5 +1,5 @@
 title: Wan Text to Video (GGUF)
-order: 26
+order: 44
 
 # Wan text to video with a GGUF transformer. The repository still
 # supplies the VAE and text encoder. --video-lengths is seconds.

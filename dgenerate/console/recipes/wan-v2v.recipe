@@ -1,5 +1,5 @@
 title: Wan Video to Video
-order: 21
+order: 39
 
 # Wan video-to-video on a T2V checkpoint. The seed is a video clip in
 # --image-seeds. --video-lengths is rejected; trim with --frame-start

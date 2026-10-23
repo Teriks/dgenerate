@@ -1,5 +1,5 @@
-title: Qwen-Image 2.1 Turbo GGUF
-order: 39
+title: Qwen-Image 2.1 Turbo (GGUF)
+order: 82
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"Qwen/Qwen-Image-2.1-Turbo", "optional":false, "file-types":["models"]}]
 --model-type qwen-image-21

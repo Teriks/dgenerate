@@ -144,4 +144,14 @@ with additional fine-tuning.
 
 This can also be utilized with SD3.
 
+Language model text encoders, such as ``Qwen3ForCausalLM`` (Flux.2 Klein),
+``Qwen3Model`` (Z-Image), ``Mistral3ForConditionalGeneration`` (Flux.2), and
+``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image), can be loaded from a single
+``.safetensors`` file as ComfyUI distributes them, with no ``mode`` or ``subfolder``.
+The model configuration is matched from the file.
+
+ComfyUI quantized text encoder files (FP8, INT8, NVFP4) work with both of these,
+and with the ``mode`` argument for CLIP and T5. Their linears stay quantized.
+See :ref:`comfyui-quantized-checkpoints`.
+
 @EXAMPLE[@PROJECT_DIR/examples/stablediffusion3/singlefile/clip-L-G-T5-XXL-monolithic-config.dgen]

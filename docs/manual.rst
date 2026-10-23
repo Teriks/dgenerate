@@ -7141,8 +7141,317 @@ ComfyUI layouts. Quantize the text encoders with ``bnb`` or ``sdnq`` and
 `examples/qwen-image/gguf <examples/qwen-image/gguf_>`_,
 and `examples/ltx2/gguf <examples/ltx2/gguf_>`_.
 
+A transformer can also be a pre-quantized ComfyUI ``.safetensors`` file in FP8,
+INT8 (ConvRot), or NVFP4, such as the ComfyUI, Black Forest Labs, and Lightricks
+releases. The same rules apply: point ``--transformer`` at the file and do not
+set ``quantizer=``. See :ref:`comfyui-quantized-checkpoints`.
+
 ``--model-type ltx`` also accepts ``--transformer``.
 That argument replaces the diffusion transformer only. See :ref:`video-generation`.
+
+.. _comfyui-quantized-checkpoints:
+
+ComfyUI Quantized Checkpoints
+=============================
+
+dgenerate loads pre-quantized ``.safetensors`` checkpoints written for ComfyUI,
+including the official files from ComfyUI, Black Forest Labs, and Lightricks,
+and the fine-tunes published in the same formats. Like a ``.gguf`` file, such
+a checkpoint is a file format, not a ``--quantizer`` backend: point
+``--transformer`` (or the model path, or ``--text-encoders``) at the file and it
+is recognized from its contents.
+
+Supported formats:
+
+* ``float8_e4m3fn`` and ``float8_e5m2``, with a per tensor or per row scale
+  (``fp8_scaled``, ``fp8mixed``), including older files that name their scales
+  ``scale_weight`` and ``scale_input``
+* ``int8_tensorwise``, with or without ConvRot (``int8_convrot``)
+* ``nvfp4`` (``fp4``, ``nvfp4``, ``fp4_mixed``), including NVIDIA ModelOpt exports
+  without ComfyUI markers, such as the LTX-2 and Flux.2 FP4 files
+* Plain FP8 files with no scales (``fp8_e4m3fn``)
+
+Other ComfyUI formats (``mxfp8``, ``convrot_w4a4``, ``asym_w4a8_int8``, ``w6a8_int8``)
+are reported as unsupported instead of loading.
+
+Quantized linears stay packed in memory, so a model needs roughly the size of
+its file. Diffusers checkpoint conversion often splits fused weights, for
+instance the attention qkv projection of Flux, SD3, Z-Image, and
+HunyuanVideo 1.5. Those weights are split while still packed.
+
+Transformers
+------------
+
+Point ``--transformer`` at the file or a Hugging Face blob link. The repository
+still supplies the VAE and text encoders. Do not set ``quantizer=`` on that URI.
+This is the simplest way to use one of these files.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Krea 2 Raw with ComfyUI's INT8 ConvRot transformer. The quantized linears
+    # stay packed. On CUDA (sm75+), ROCm, and XPU, large layers run as INT8
+    # matmuls; elsewhere the weights are decoded per layer. The repository still
+    # supplies the text encoder and VAE.
+    
+    krea/Krea-2-Raw
+    --model-type krea2
+    --transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_raw_int8_convrot.safetensors
+    --dtype bfloat16
+    --model-sequential-offload
+    --inference-steps 28
+    --guidance-scales 4.5
+    --gen-seeds 1
+    --output-path krea2-comfy-quant-raw-int8
+    --output-size 1024
+    --prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"
+
+Wan 2.2 MoE takes the low noise expert through ``--wan-second-transformer``.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Wan 2.2 T2V A14B with both experts from ComfyUI's scaled FP8 files: the
+    # high noise transformer through --transformer, the low noise one through
+    # --wan-second-transformer. Same settings as examples/wan/moe/moe-config.dgen.
+    
+    \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+    
+    \set files https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models
+    
+    Wan-AI/Wan2.2-T2V-A14B-Diffusers
+    --model-type wan
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer {{ files }}/wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
+    --wan-second-transformer {{ files }}/wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors
+    --inference-steps 30
+    --guidance-scales 4
+    --wan-low-noise-guidance-scales 3
+    --video-fps 16
+    --gen-seeds 1
+    --output-size 832x480
+    --video-lengths 5
+    --animation-format mp4
+    --output-path wan-comfy-quant-moe
+    --prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"
+
+As the Model
+------------
+
+A ComfyUI file can also be the model itself. An all-in-one checkpoint that
+bundles text encoders and a VAE needs nothing else; its quantized text encoders
+are dequantized as they load.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # ComfyUI's all-in-one SD3.5 Medium checkpoint as the model. One file holds
+    # the transformer, CLIP-L, CLIP-G, a scaled FP8 T5-XXL, and the VAE. The T5
+    # weights are dequantized with their scales as the text encoder loads.
+    
+    # The config comes from the gated stabilityai/stable-diffusion-3.5-medium
+    # repository. Request access, then set HF_TOKEN or pass --auth-token.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors
+    --model-type sd3
+    --dtype float16
+    --model-cpu-offload
+    --inference-steps 40
+    --guidance-scales 4.5
+    --gen-seeds 1
+    --output-path sd3-comfy-quant-35-medium-single-file
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+A file holding only the transformer needs ``--text-encoders`` and ``--vae``.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # The ComfyUI INT8 ConvRot transformer as the model itself, instead of
+    # --transformer. The file holds only the transformer, so the text encoder
+    # and VAE come from the Tongyi repository. --transformer with the repository
+    # as the model (turbo-int8-convrot-config.dgen) is the simpler form.
+    
+    \set model https://huggingface.co/Comfy-Org/z_image_turbo/blob/main/split_files/diffusion_models/z_image_turbo_int8_convrot.safetensors
+    
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if not have_cuda() or gpu_memory_gib <= 16 %}
+        \set offload --model-sequential-offload
+    {% else %}
+        \set offload --model-cpu-offload
+    {% endif %}
+    
+    {{ model }}
+    --model-type z-image {{ offload }}
+    --dtype bfloat16
+    --text-encoders Qwen3Model;model=Tongyi-MAI/Z-Image-Turbo;subfolder=text_encoder
+    --vae AutoencoderKL;model=Tongyi-MAI/Z-Image-Turbo;subfolder=vae
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 9
+    --guidance-scales 0
+    --gen-seeds 1
+    --output-path z-image-comfy-quant-single-file
+    --output-size 1024
+    --prompts "A red fox sitting in a snowy forest, photograph"
+
+Text Encoders
+-------------
+
+ComfyUI quantized text encoder files load through ``--text-encoders``, and their
+linears stay packed. Monolithic CLIP and T5 files use the ``mode`` argument as usual.
+T5 keeps its feed-forward output projection dense, as T5 runs it in float32.
+
+Language model text encoders (``Qwen3ForCausalLM``, ``Qwen3Model``,
+``Mistral3ForConditionalGeneration``, ``Qwen2_5_VLForConditionalGeneration``, and
+others) load from a single file with no ``mode`` and no ``subfolder``. The model
+configuration is matched from the file against the configurations dgenerate ships
+with. ComfyUI trims some of these files to the layers a pipeline reads, for example
+the Flux.2 dev Mistral encoder keeps 30 of its 40 layers; dgenerate builds the
+trimmed model to match. The ``quantizer`` argument is not supported for these files.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux.2 Klein 4B with Black Forest Labs' official FP8 transformer, and
+    # ComfyUI's FP4 Qwen3 text encoder as a single file. Both stay quantized:
+    # the transformer's fused qkv weights are split on load and stay packed,
+    # and the text encoder keeps its NVFP4 and FP8 linears packed.
+    
+    # Distilled Klein ignores guidance above 1. Four steps is the short schedule.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token.
+        \exit
+    {% endif %}
+    
+    \set text_encoder https://huggingface.co/Comfy-Org/flux2-klein-4B/blob/main/split_files/text_encoders/qwen_3_4b_fp4_flux2.safetensors
+    
+    black-forest-labs/FLUX.2-klein-4B
+    --model-type flux2
+    --dtype bfloat16
+    --model-cpu-offload
+    --transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/blob/main/flux-2-klein-4b-fp8.safetensors
+    --text-encoders Qwen3ForCausalLM;model={{ text_encoder }}
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 4
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-path flux2-comfy-quant-klein-4b-fp8
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux Kontext with ComfyUI's scaled FP8 transformer, and ComfyUI's scaled
+    # FP8 T5-XXL as a single file. The fused qkv and linear1 weights are split
+    # on load and stay packed. The T5 linears stay packed too, except the
+    # feed-forward output projection, which T5 runs in float32.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token to run this example.
+        \exit
+    {% endif %}
+    
+    \set clip_l https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/clip_l.safetensors
+    \set t5_xxl https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp8_e4m3fn_scaled.safetensors
+    
+    black-forest-labs/FLUX.1-Kontext-dev
+    --model-type flux-kontext
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/flux1-kontext-dev_ComfyUI/blob/main/split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors
+    --text-encoders CLIPTextModel;model={{ clip_l }};mode=clip-l \
+                    T5EncoderModel;model={{ t5_xxl }};mode=t5-xxl
+    --image-seeds "../../media/monalisa.png"
+    --inference-steps 30
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path flux-comfy-quant-kontext
+    --output-size 1024
+    --prompts "The monalisa wearing a red top hat"
+
+Matrix Multiplication
+---------------------
+
+Where the hardware has a matching kernel, quantized layers run as low precision
+matmuls. Otherwise each weight is decoded to the activation dtype for the matmul,
+which works on any device, CPU included.
+
+=========  ==========================================================================
+Format     Hardware kernels, in the order they are tried
+=========  ==========================================================================
+INT8       CUDA (sm75+) and XPU: ``torch._int_mm``. ROCm: AITER ``gemm_a8w8``,
+           then ``torch._int_mm``. MPS: MLX ``quantized_matmul``, then
+           ``torch._weight_int8pack_mm``
+FP8        CUDA (sm89+) and XPU: ``torch._scaled_mm``. ROCm MI300, MI350, and
+           RDNA4: AITER ``gemm_a8w8``, then ``torch._scaled_mm``. MPS: MLX
+           ``quantized_matmul``
+NVFP4      CUDA Blackwell: block scaled ``scaled_mm``. MPS: MLX ``quantized_matmul``
+=========  ==========================================================================
+
+The CUDA, ROCm, and XPU kernels quantize the activations on the fly (W8A8, W4A4),
+as ComfyUI does. Layers a file marks ``full_precision_matrix_mult``, and plain FP8
+files, skip those kernels and decode instead, again as in ComfyUI. The MPS kernels
+decode the weights inside the matmul and keep the activations as they are, so they
+serve those layers too.
+
+The AITER (ROCm) and MLX (MPS) kernels are downloaded from the Hugging Face Hub
+through the ``kernels`` package, ``kernels-community/aiter-kernels`` and
+``kernels-community/mlx-quantization-metal-kernels``. They are skipped when
+``DIFFUSERS_DISABLE_REMOTE_CODE`` is set, or when they cannot be loaded.
+
+The first call of each kernel for a layer shape is compared against the decoded
+matmul for accuracy and speed. A kernel that fails or disagrees is turned off for
+the device, and one that is slower is skipped for that shape; the next candidate
+is tried in either case. Set the environment variable
+``DGENERATE_COMFY_QUANT_SOFTWARE=1`` to always decode.
+
+Other Options
+-------------
+
+``--loras`` load on top of the packed weights. The adapters stay active instead
+of being fused into the weights, with the same result.
+
+A ``--quantizer`` that applies to the transformer, for example the global
+``--quantizer`` of the video pipelines, dequantizes the file first and quantizes
+the dense weights with that backend.
+
+Packed weights are ordinary integer parameters, so ``--model-cpu-offload``,
+``--model-sequential-offload``, and ``--model-group-offload`` move them like any
+other weights.
+
+More examples are under ``examples/*/comfy-quant``, for instance
+`examples/flux2/comfy-quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/flux2/comfy-quant>`_,
+`examples/qwen-image/comfy-quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/qwen-image/comfy-quant>`_,
+`examples/wan/comfy-quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan/comfy-quant>`_,
+and `examples/ltx2/comfy-quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx2/comfy-quant>`_.
 
 Specifying an SDXL Refiner
 ==========================
@@ -8183,9 +8492,9 @@ multiply the number of images.
 Console recipes
 ---------------
 
-The Console UI recipes are ``Flux.2 (Dev)``, ``Flux.2 Klein``, ``Flux.2 Klein KV``,
-``Z-Image (Turbo)``, ``Z-Image Turbo (SDNQ)``, ``Z-Image (Base, 2-step LoRA)``,
-``Z-Image (ControlNet)``, ``Z-Image Omni``, ``Qwen-Image``, ``Qwen-Image Edit``,
+The Console UI recipes are ``Flux.2 Dev``, ``Flux.2 Klein``, ``Flux.2 Klein KV``,
+``Z-Image Turbo``, ``Z-Image Turbo (SDNQ)``, ``Z-Image Base (2-step LoRA)``,
+``Z-Image ControlNet``, ``Z-Image Omni``, ``Qwen-Image``, ``Qwen-Image Edit``,
 ``Qwen-Image Layered``, ``Qwen-Image 2.1``, ``Qwen-Image 2.1 Turbo``,
 ``Krea 2 Raw``, ``Krea 2 Turbo``, ``Kandinsky 5 Image``, and
 ``Kandinsky 5 Image Edit``. GGUF recipes for those models set ``--transformer``
@@ -8813,6 +9122,16 @@ with additional fine-tuning.
                and distant mountains. Warm, inviting color palette evokes serene countryside ambiance."
 
 This can also be utilized with SD3.
+
+Language model text encoders, such as ``Qwen3ForCausalLM`` (Flux.2 Klein),
+``Qwen3Model`` (Z-Image), ``Mistral3ForConditionalGeneration`` (Flux.2), and
+``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image), can be loaded from a single
+``.safetensors`` file as ComfyUI distributes them, with no ``mode`` or ``subfolder``.
+The model configuration is matched from the file.
+
+ComfyUI quantized text encoder files (FP8, INT8, NVFP4) work with both of these,
+and with the ``mode`` argument for CLIP and T5. Their linears stay quantized.
+See :ref:`comfyui-quantized-checkpoints`.
 
 .. code-block:: jinja
 
@@ -10236,6 +10555,8 @@ these are the arguments that are available for use:
     z-image-cfg-normalization: bool
     z-image-cfg-truncation: float
     qwen-guidance-scale: float
+    qwen21-output-resolution: int
+    qwen21-use-kv-cache: bool
     qwen-layered-layers: int
     qwen-layered-resolution: int
     qwen-layered-cfg-normalize: bool
@@ -10277,6 +10598,10 @@ these are the arguments that are available for use:
     sada-lagrange-step: int
     sada-max-fix: int
     sada-max-interval: int
+    dype-method: str
+    dype-base-resolution: int
+    dype-mscale: str
+    dype-axis-scaling: str
     tea-cache-rel-l1-threshold: float
     spectrum-weight: float
     spectrum-order: int
@@ -10312,12 +10637,15 @@ these are the arguments that are available for use:
     ltx-audio-modality-scale: float
     ltx-stg-blocks: [int, ...]
     ltx-use-cross-timestep: bool
-    ltx-latent-upscale: bool
+    ltx-latent-upscale-mode: str
+    ltx-temporal-upscale-rounds: int
     ltx-noise-scale: float
     ltx-stage-guidance-scale: float
     ltx-stage-audio-guidance-scale: float
     ltx-stage-lora-uris: [str, ...]
     ltx-video-decoder: str
+    ltx-diffusion-decoder: str
+    ltx-diffusion-decode-tile: str
     ltx-decode-timestep: float
     ltx-decode-noise-scale: float
     ltx-image-crf: int
@@ -13343,6 +13671,10 @@ And for ``sdnq``:
 A pre-quantized ``.gguf`` transformer is a file format, not a ``--quantizer`` backend.
 Point ``--transformer`` at the ``.gguf`` file or blob link. See :ref:`specifying-a-transformer`.
 
+ComfyUI quantized ``.safetensors`` files (FP8, INT8 ConvRot, NVFP4) are also file
+formats. They load through ``--transformer``, ``--text-encoders``, or as the model,
+and run with hardware matmuls where available. See :ref:`comfyui-quantized-checkpoints`.
+
 Cache-DiT Configuration
 ========================
 
@@ -13758,6 +14090,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_batch_size"
             Type: int | None
             Value: None
+        Name: "last_cache_dit"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_cache_dit_config"
+            Type: str | None
+            Value: None
         Name: "last_clip_skips"
             Type: collections.abc.Sequence[int] | None
             Value: []
@@ -13788,6 +14126,21 @@ The ``\templates_help`` output from the above example is:
         Name: "last_dtype"
             Type: <enum 'DataType'>
             Value: <DataType.AUTO: 0>
+        Name: "last_dype"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_dype_axis_scalings"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
+        Name: "last_dype_base_resolutions"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_dype_methods"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
+        Name: "last_dype_mscales"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
         Name: "last_flux2_caption_upsample_temperature"
             Type: float | None
             Value: None
@@ -13896,6 +14249,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ltx_decode_timesteps"
             Type: collections.abc.Sequence[float] | None
             Value: []
+        Name: "last_ltx_diffusion_decode_tile"
+            Type: str | None
+            Value: None
+        Name: "last_ltx_diffusion_decoder"
+            Type: str | None
+            Value: None
         Name: "last_ltx_ic_lora_uri"
             Type: str | None
             Value: None
@@ -13903,8 +14262,11 @@ The ``\templates_help`` output from the above example is:
             Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_ltx_latent_upscale"
-            Type: <class 'bool'>
+            Type: bool | str
             Value: False
+        Name: "last_ltx_latent_upscale_mode"
+            Type: <class 'str'>
+            Value: 'spatial'
         Name: "last_ltx_modality_scales"
             Type: collections.abc.Sequence[float] | None
             Value: []
@@ -13935,6 +14297,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ltx_system_prompt"
             Type: str | None
             Value: None
+        Name: "last_ltx_temporal_upscale_rounds"
+            Type: <class 'int'>
+            Value: 1
         Name: "last_ltx_use_cross_timestep"
             Type: bool | None
             Value: None
@@ -14036,6 +14401,12 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_quantizer_uri"
             Type: str | None
+            Value: None
+        Name: "last_qwen21_output_resolution"
+            Type: int | None
+            Value: None
+        Name: "last_qwen21_use_kv_cache"
+            Type: bool | None
             Value: None
         Name: "last_qwen_guidance_scale"
             Type: float | None
@@ -14282,7 +14653,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [90177460068921]
+            Value: [47682387755830]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -14334,6 +14705,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_third_prompts"
             Type: collections.abc.Sequence[dgenerate.prompt.Prompt] | None
             Value: []
+        Name: "last_timesteps"
+            Type: collections.abc.Sequence[collections.abc.Sequence[int] | str] | None
+            Value: []
         Name: "last_torch_compile"
             Type: <class 'bool'>
             Value: False
@@ -14373,6 +14747,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_wan_animate_preprocess"
             Type: <class 'bool'>
             Value: False
+        Name: "last_wan_animate_preprocess_output"
+            Type: <class 'bool'>
+            Value: False
         Name: "last_wan_background_image_processors"
             Type: collections.abc.Sequence[str] | None
             Value: []
@@ -14408,9 +14785,6 @@ The ``\templates_help`` output from the above example is:
             Value: None
         Name: "last_wan_segment_frame_lengths"
             Type: collections.abc.Sequence[int] | None
-            Value: []
-        Name: "last_wan_timesteps"
-            Type: collections.abc.Sequence[collections.abc.Sequence[int]] | None
             Value: []
         Name: "last_z_image_cfg_normalization"
             Type: bool | None

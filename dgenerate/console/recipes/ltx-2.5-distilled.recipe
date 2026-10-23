@@ -1,5 +1,5 @@
-title: LTX-2.5 (Distilled)
-order: 19
+title: LTX-2.5 Distilled
+order: 30
 
 # LTX-2.5 distilled checkpoint. Omitting Scheduler keeps the published
 # 8-value sigma table. Inference Steps is ignored on that path.

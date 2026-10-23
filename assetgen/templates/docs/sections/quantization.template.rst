@@ -167,3 +167,7 @@ And for ``sdnq``:
 A pre-quantized ``.gguf`` transformer is a file format, not a ``--quantizer`` backend.
 Point ``--transformer`` at the ``.gguf`` file or blob link. See :ref:`specifying-a-transformer`.
 
+ComfyUI quantized ``.safetensors`` files (FP8, INT8 ConvRot, NVFP4) are also file
+formats. They load through ``--transformer``, ``--text-encoders``, or as the model,
+and run with hardware matmuls where available. See :ref:`comfyui-quantized-checkpoints`.
+

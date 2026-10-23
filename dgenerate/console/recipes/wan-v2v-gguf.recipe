@@ -1,5 +1,5 @@
 title: Wan Video to Video (GGUF)
-order: 26
+order: 46
 
 # Wan video-to-video with a GGUF transformer. The repository still
 # supplies the VAE and text encoder. The seed is a video clip in

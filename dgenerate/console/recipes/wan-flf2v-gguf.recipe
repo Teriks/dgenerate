@@ -1,5 +1,5 @@
 title: Wan First-Last Frame (GGUF)
-order: 28
+order: 48
 
 # Wan first-last-frame with a GGUF transformer. last-frame= is required.
 # The repository still supplies the VAE, text encoder, and image encoder.

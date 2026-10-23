@@ -1,5 +1,5 @@
 title: Wan-Animate-2
-order: 31
+order: 52
 
 # Wan-Animate-2. The seed is the character still. wan-driving= is the
 # motion clip. The distilled checkpoint samples in 10 steps; the base

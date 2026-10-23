@@ -1,5 +1,5 @@
-title: Motif-Video Image to Video GGUF
-order: 43
+title: Motif-Video Image to Video (GGUF)
+order: 98
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"Motif-Technologies/Motif-Video-2B", "optional":false, "file-types":["models"]}]
 --model-type motif-video

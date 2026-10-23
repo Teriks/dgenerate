@@ -64,6 +64,16 @@ def _pipeline_has_quantized_modules(pipeline) -> bool:
     return False
 
 
+def _pipeline_has_comfy_quant(pipeline) -> bool:
+    """True when a component keeps ComfyUI packed weights, which PEFT cannot merge into."""
+    from dgenerate.pipelinewrapper import safetensorscompat as _safetensorscompat
+
+    components = getattr(pipeline, 'components', None)
+    if not isinstance(components, dict):
+        return False
+    return any(_safetensorscompat.module_has_comfy_quant(module) for module in components.values())
+
+
 def _pipeline_is_z_image(pipeline) -> bool:
     return pipeline.__class__.__name__.startswith('ZImage')
 
@@ -256,6 +266,14 @@ class LoRAUri:
 
                 _messages.debug_log(f'Added LoRA: "{lora_uri}" to pipeline: "{pipeline.__class__.__name__}"')
 
+            if fuse and _pipeline_has_comfy_quant(pipeline):
+                # Adapter outputs scale linearly, so folding the fuse scale into
+                # the adapter weights matches fusing.
+                _messages.debug_log(
+                    'Leaving LoRA adapters active on ComfyUI quantized weights '
+                    f'with global scale: {fuse_scale}')
+                adapter_weights = [weight * fuse_scale for weight in adapter_weights]
+                fuse = False
             pipeline.set_adapters(adapter_names, adapter_weights=adapter_weights)
             if fuse:
                 if _pipeline_has_quantized_modules(pipeline):

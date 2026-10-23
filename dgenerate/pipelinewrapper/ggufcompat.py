@@ -6,11 +6,18 @@
 #
 # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
 #
-# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the distribution.
 #
-# 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 Detect Flux.2, Qwen-Image, Z-Image, LTX 2.5, Kandinsky 5, and Wan GGUF checkpoints and
@@ -622,6 +629,35 @@ def adapt_qwen_layered_checkpoint(checkpoint: dict) -> dict:
     return checkpoint
 
 
+def register_single_file_classes() -> None:
+    """
+    Register transformers Diffusers can build but not load from a single file.
+
+    Used by GGUF and ComfyUI quantized ``.safetensors`` loads alike.
+    """
+    import diffusers
+    import diffusers.loaders.single_file_model as single_file_model
+
+    # Diffusers provides the Hunyuan 1.5 architecture but (as of 0.41) does
+    # not expose it through the single-file loader. Its source checkpoint
+    # converter is reusable once the 1.5-only component names are remapped.
+    if hasattr(diffusers, 'HunyuanVideo15Transformer3DModel'):
+        single_file_model.SINGLE_FILE_LOADABLE_CLASSES.setdefault(
+            'HunyuanVideo15Transformer3DModel', {
+                'checkpoint_mapping_fn': convert_hunyuan_video15_transformer_checkpoint,
+                'default_subfolder': 'transformer',
+            })
+
+    # Kandinsky 5 is likewise not registered. Its checkpoints use the Diffusers
+    # tensor names, so they load unconverted.
+    if hasattr(diffusers, 'Kandinsky5Transformer3DModel'):
+        single_file_model.SINGLE_FILE_LOADABLE_CLASSES.setdefault(
+            'Kandinsky5Transformer3DModel', {
+                'checkpoint_mapping_fn': lambda checkpoint, **kwargs: checkpoint,
+                'default_subfolder': 'transformer',
+            })
+
+
 def install_gguf_patches() -> None:
     """
     Let a Comfy quantized linear whose packed shape is transposed load
@@ -643,24 +679,7 @@ def install_gguf_patches() -> None:
     original_new = gguf_utils.GGUFParameter.__new__
     original_torch_function = gguf_utils.GGUFParameter.__torch_function__
 
-    # Diffusers provides the Hunyuan 1.5 architecture but (as of 0.41) does
-    # not expose it through the single-file loader. Its source checkpoint
-    # converter is reusable once the 1.5-only component names are remapped.
-    if hasattr(diffusers, 'HunyuanVideo15Transformer3DModel'):
-        single_file_model.SINGLE_FILE_LOADABLE_CLASSES.setdefault(
-            'HunyuanVideo15Transformer3DModel', {
-                'checkpoint_mapping_fn': convert_hunyuan_video15_transformer_checkpoint,
-                'default_subfolder': 'transformer',
-            })
-
-    # Kandinsky 5 is likewise not registered. Its GGUF files use the Diffusers
-    # tensor names, so the checkpoint loads unconverted.
-    if hasattr(diffusers, 'Kandinsky5Transformer3DModel'):
-        single_file_model.SINGLE_FILE_LOADABLE_CLASSES.setdefault(
-            'Kandinsky5Transformer3DModel', {
-                'checkpoint_mapping_fn': lambda checkpoint, **kwargs: checkpoint,
-                'default_subfolder': 'transformer',
-            })
+    register_single_file_classes()
 
     def should_convert(model_state_dict, checkpoint_state_dict):
         if os.environ.get('DGENERATE_GGUF_SKIP_RECONVERT') == '1':

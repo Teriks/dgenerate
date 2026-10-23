@@ -29,9 +29,11 @@ What You Can Do
 Image Generation
 ----------------
 
-* Generate images using a number of popular model architectures such as: SD, SDXL, SD3, Flux, Flux.2, Z-Image, Qwen-Image, and Kolors
+* Generate images with SD 1.5 / 2.x, SDXL, SD3 / SD3.5, Stable Cascade, DeepFloyd IF, Kolors, Flux (with Fill and Kontext), Flux.2 (dev and Klein), Z-Image (with Omni), Qwen-Image (with Edit and Layered), Qwen-Image 2.1, Krea 2, and Kandinsky 5
+* Edit images with InstructPix2Pix for SD 1.5, SDXL, and SD3
 * Batch process multiple parameter combinations combinatorially to generate variations
 * Run large models on limited hardware with inference optimizations and quantization
+* Load pre-quantized GGUF and ComfyUI FP8 / INT8 / NVFP4 checkpoints, with hardware accelerated quantized matmuls where supported
 * Utilize models from HuggingFace and CivitAI for generation
 * Advanced prompt weighting (LPW), SD-WebUI (Common syntax), InvokeAI syntax, and ``llm4gen`` (SD1.5 only)
 * Control Nets, T2I Adapters, IP Adapters, LoRA, and Textual Inversion (embeddings)

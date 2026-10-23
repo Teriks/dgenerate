@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# ComfyUI's all-in-one SD3.5 Medium checkpoint as the model. One file holds
+# the transformer, CLIP-L, CLIP-G, a scaled FP8 T5-XXL, and the VAE. The T5
+# weights are dequantized with their scales as the text encoder loads.
+
+# The config comes from the gated stabilityai/stable-diffusion-3.5-medium
+# repository. Request access, then set HF_TOKEN or pass --auth-token.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors
+--model-type sd3
+--dtype float16
+--model-cpu-offload
+--inference-steps 40
+--guidance-scales 4.5
+--gen-seeds 1
+--output-path sd3-comfy-quant-35-medium-single-file
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

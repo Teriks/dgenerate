@@ -1,5 +1,5 @@
 title: LTX-Video
-order: 19
+order: 36
 
 # Earlier LTX-Video (2B) with the published transformer. No audio.
 # LTX-2.5 options such as latent upscale, STG, and audio guidance are not

@@ -1,0 +1,34 @@
+title: Qwen-Image Edit (ComfyUI Quant)
+order: 75
+
+# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
+# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
+
+# The image seed is required. A mask selects edit-inpaint.
+# Strength applies only to inpaint.
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Qwen/Qwen-Image-Edit-2509", "optional":false, "file-types":["models"]}]
+--model-type qwen-image-edit
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
+@switch[{"id": "sp", "label":"Use Spectrum", "arg":"--spectrum"}]
+@switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["tc", "sada", "sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
+@dype[{"exclude":["cd", "sp"],"divider-after":true}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@quantizer[{"divider-after":true}]
+@submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_edit_2509_int8_convrot.safetensors", "divider-after":true}]
+@imageseed[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "float-label":"Inpaint Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":""}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
+@float[{"label":"True CFG Scale", "arg":"--guidance-scales", "default":4, "min":0}]
+@float[{"label":"Distilled Guidance Scale", "arg":"--qwen-guidance-scale", "min":0}]
+@int[{"label":"Max Sequence Length", "arg":"--max-sequence-length", "min":1, "max":1024}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@imageformat[{}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here"

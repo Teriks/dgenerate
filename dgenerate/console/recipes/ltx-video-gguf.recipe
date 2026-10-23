@@ -1,5 +1,5 @@
 title: LTX-Video (GGUF)
-order: 19
+order: 37
 
 # Earlier LTX-Video (2B) with a city96 GGUF transformer. No audio.
 # LTX-2.5 options such as latent upscale, STG, and audio guidance are not
