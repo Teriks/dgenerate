@@ -874,7 +874,7 @@ class DiffusionArguments(_types.SetFromMixin):
     Cache-DiT supports image, video, and audio transformer pipelines such as Flux,
     Wan, Wan-Animate, Wan-Animate-2, Stable Diffusion 3, and Qwen-Image. The
     package's default cache settings are used. This cannot be combined with
-    TeaCache, Spectrum, SADA, or DyPE.
+    TeaCache, Spectrum, SADA, RAS, or DyPE.
 
     See: https://cache-dit.readthedocs.io/en/latest/
     """

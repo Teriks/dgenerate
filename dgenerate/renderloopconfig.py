@@ -1308,7 +1308,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     Cache-DiT supports image, video, and audio transformer pipelines such as Flux,
     Wan, Stable Diffusion 3, and Qwen-Image. The package's default cache settings
-    are used. This cannot be combined with TeaCache, Spectrum, SADA, or DyPE.
+    are used. This cannot be combined with TeaCache, Spectrum, SADA, RAS, or DyPE.
 
     See: https://cache-dit.readthedocs.io/en/latest/
     """
@@ -2685,6 +2685,9 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.cache_dit and sada_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("cache_dit")} cannot be used with {a_namer("sada")}.')
+        if self.cache_dit and ras_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("cache_dit")} cannot be used with {a_namer("ras")}.')
 
     def _check_second_model_compatibility(self, a_namer: typing.Callable[[str], str]):
         """Check compatibility of second model arguments with the primary model type."""

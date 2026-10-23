@@ -3032,7 +3032,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help=f"""Enable Cache-DiT's default training-free cache acceleration for supported Diffusers DiT pipelines.
 
                      Cache-DiT's default cache settings are used.
-                     This option cannot be combined with --tea-cache, --spectrum, --sada, or --dype.
+                     This option cannot be combined with --tea-cache, --spectrum, --sada, --ras, or --dype.
 
                      This is supported for: --model-type {_textprocessing.oxford_comma(_pipelinewrapper.CACHE_DIT_MODEL_TYPES, "and")}.
 
