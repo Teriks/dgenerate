@@ -1131,9 +1131,9 @@ def _weight_row_scales(module: 'ComfyQuantLinear') -> torch.Tensor:
 def _quantize_int8_rows(x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """Dynamic per row INT8 activations and their float32 ``(rows, 1)`` scales."""
     x_scale = _row_absmax(x, dim=-1, keepdim=True).float().clamp_(min=1e-6) / 127
-    # float16 holds the scaled values (|v| <= 127) to 1/16, which is enough to round,
-    # in half the memory traffic of float32.
-    quantized = (x.to(torch.float16) * (1 / x_scale).to(torch.float16)).round_().to(torch.int8)
+    # Scale in float32: casting small bfloat16 activations (|x| < 6e-5) to float16
+    # first makes them float16 subnormals, which lose most of their bits.
+    quantized = (x.float() * (1 / x_scale)).round_().to(torch.int8)
     return quantized, x_scale
 
 
