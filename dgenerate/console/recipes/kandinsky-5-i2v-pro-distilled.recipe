@@ -1,5 +1,5 @@
 title: Kandinsky 5 Video Pro Distilled Image to Video
-order: 45
+order: 105
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"kandinskylab/Kandinsky-5.0-I2V-Pro-distilled-5s-Diffusers", "optional":false, "file-types":["models"]}]
 --model-type kandinsky5-video

@@ -1,0 +1,37 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Flux.2 Klein 4B with Black Forest Labs' official NVFP4 transformer.
+# Blackwell GPUs run NVFP4 matmuls, and MPS uses MLX's NVFP4 Metal kernel;
+# other devices decode the 4-bit weights per layer. The repository supplies
+# the Qwen3 text encoder, quantized here like the GGUF example.
+
+# Distilled Klein ignores guidance above 1. Four steps is the short schedule.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 12 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 12 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% endif %}
+
+black-forest-labs/FLUX.2-klein-4B
+--model-type flux2 {{ te_quant }}
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-nvfp4/blob/main/flux-2-klein-4b-nvfp4.safetensors
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 4
+--guidance-scales 1
+--gen-seeds 1
+--output-path flux2-comfy-quant-klein-4b-nvfp4
+--output-size 1024
+--prompts "A cat holding a sign that says hello world"

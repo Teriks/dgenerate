@@ -1,5 +1,5 @@
-title: Stable Diffusion XL (LCM LoRA)
-order: 8
+title: Stable Diffusion XL LCM LoRA
+order: 11
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]

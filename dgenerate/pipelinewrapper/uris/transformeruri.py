@@ -27,6 +27,7 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.ggufcompat as _ggufcompat
+import dgenerate.pipelinewrapper.safetensorscompat as _safetensorscompat
 import dgenerate.pipelinewrapper.sdnqload as _sdnqload
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
@@ -172,6 +173,7 @@ class TransformerUri:
              device_map: str | None = None,
              config: _types.OptionalString = None,
              config_subfolder: _types.OptionalString = None,
+             dequantize: bool = False,
              transformer_class:
              type[diffusers.SD3Transformer2DModel] |
              type[
@@ -189,6 +191,8 @@ class TransformerUri:
             when the model path is a huggingface slug or blob link
         :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
         :param device_map: device placement strategy for quantized models, defaults to ``None``
+        :param dequantize: Load a ComfyUI pre-quantized ``.safetensors`` checkpoint
+            with dense weights instead of keeping them packed, for example so LoRAs can be fused.
 
         :param transformer_class: Transformer class type.
 
@@ -235,6 +239,7 @@ class TransformerUri:
               device_map: str | None = None,
               config: _types.OptionalString = None,
               config_subfolder: _types.OptionalString = None,
+              dequantize: bool = False,
               transformer_class:
               type[diffusers.SD3Transformer2DModel] |
               type[
@@ -315,6 +320,18 @@ class TransformerUri:
 
             single_file_source = model_path
             already_converted = False
+            comfy_quant = None
+            if not gguf_file and _safetensorscompat.is_comfy_quantized(model_path):
+                # Another quantizer, or LoRA fusion, needs dense weights.
+                try:
+                    comfy_quant = _safetensorscompat.load_checkpoint(
+                        model_path, torch_dtype, dequantize=dequantize or quant_config is not None)
+                except _safetensorscompat.ComfyQuantError as e:
+                    raise _exceptions.TransformerUriLoadError(str(e)) from e
+                single_file_source = comfy_quant.checkpoint
+                _ggufcompat.register_single_file_classes()
+                if quant_config is None:
+                    quant_config = comfy_quant.quantization_config
             if gguf_file:
                 checkpoint, config, config_subfolder, already_converted = _ggufcompat.plan_gguf_load(
                     model_path, config, config_subfolder,
@@ -330,7 +347,8 @@ class TransformerUri:
                 local_files_only=local_files_only,
                 quantization_config=quant_config,
                 device_map=device_map)
-            if gguf_file and config:
+            if (gguf_file or comfy_quant) and config:
+                # Packed shapes can mislead Diffusers' config detection.
                 single_file_kwargs['config'] = config
                 if config_subfolder:
                     single_file_kwargs['subfolder'] = config_subfolder
@@ -341,6 +359,9 @@ class TransformerUri:
                     transformer_class, transformer_class)
             if already_converted:
                 with _ggufcompat.skip_diffusers_reconvert():
+                    transformer = from_single_file(single_file_source, **single_file_kwargs)
+            elif comfy_quant is not None:
+                with comfy_quant.conversion_guard(transformer_class):
                     transformer = from_single_file(single_file_source, **single_file_kwargs)
             else:
                 transformer = from_single_file(single_file_source, **single_file_kwargs)

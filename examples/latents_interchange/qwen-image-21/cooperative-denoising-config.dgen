@@ -1,0 +1,33 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Split Qwen-Image 2.1 denoising between two calls using saved spatial latents.
+
+\set split 0.8
+\set prompt "A red fox standing in a snowy pine forest at sunrise, detailed photography"
+
+Qwen/Qwen-Image-2.1
+--model-type qwen-image-21
+--dtype bfloat16
+--model-sequential-offload
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 40
+--gen-seeds 1
+--output-path cooperative
+--image-format pt
+--output-size 1024
+--denoising-end {{ split }}
+--prompts {{ quote(prompt) }}
+
+Qwen/Qwen-Image-2.1
+--model-type qwen-image-21
+--dtype bfloat16
+--model-sequential-offload
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 40
+--gen-seeds 1
+--output-path cooperative
+--image-seeds "latents: {{ quote(last_images) }}"
+--output-size 1024
+--denoising-start {{ split }}
+--prompts "A red fox standing in a snowy pine forest at sunrise, crisp detailed photography"

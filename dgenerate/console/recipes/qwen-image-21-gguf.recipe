@@ -1,5 +1,5 @@
-title: Qwen-Image 2.1 GGUF
-order: 39
+title: Qwen-Image 2.1 (GGUF)
+order: 79
 
 # Select a GGUF transformer compatible with the chosen Qwen-Image 2.1 checkpoint.
 

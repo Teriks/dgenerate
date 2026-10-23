@@ -1,5 +1,5 @@
 title: Z-Image Turbo (SDNQ)
-order: 32
+order: 60
 
 # This checkpoint is already uint4 SVDQuant. Do not add --quantizer sdnq.
 

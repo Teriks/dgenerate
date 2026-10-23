@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Krea 2 Raw with ComfyUI's INT8 ConvRot transformer. The quantized linears
+# stay packed. On CUDA (sm75+), ROCm, and XPU, large layers run as INT8
+# matmuls; elsewhere the weights are decoded per layer. The repository still
+# supplies the text encoder and VAE.
+
+krea/Krea-2-Raw
+--model-type krea2
+--transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_raw_int8_convrot.safetensors
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 28
+--guidance-scales 4.5
+--gen-seeds 1
+--output-path krea2-comfy-quant-raw-int8
+--output-size 1024
+--prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"

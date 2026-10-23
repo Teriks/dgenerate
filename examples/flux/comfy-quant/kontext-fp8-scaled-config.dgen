@@ -1,0 +1,32 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Flux Kontext with ComfyUI's scaled FP8 transformer, and ComfyUI's scaled
+# FP8 T5-XXL as a single file. The fused qkv and linear1 weights are split
+# on load and stay packed. The T5 linears stay packed too, except the
+# feed-forward output projection, which T5 runs in float32.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token to run this example.
+    \exit
+{% endif %}
+
+\set clip_l https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/clip_l.safetensors
+\set t5_xxl https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp8_e4m3fn_scaled.safetensors
+
+black-forest-labs/FLUX.1-Kontext-dev
+--model-type flux-kontext
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/flux1-kontext-dev_ComfyUI/blob/main/split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors
+--text-encoders CLIPTextModel;model={{ clip_l }};mode=clip-l \
+                T5EncoderModel;model={{ t5_xxl }};mode=t5-xxl
+--image-seeds "../../media/monalisa.png"
+--inference-steps 30
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path flux-comfy-quant-kontext
+--output-size 1024
+--prompts "The monalisa wearing a red top hat"

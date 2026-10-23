@@ -1,5 +1,5 @@
-title: Flux (Krea Dev) GGUF
-order: 16
+title: Flux Krea Dev (GGUF)
+order: 25
 
 # Flux Krea requires a huggingface auth token to access
 # you must request access to the repository

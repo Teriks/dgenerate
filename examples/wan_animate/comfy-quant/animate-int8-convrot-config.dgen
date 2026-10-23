@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan-Animate transformer from ComfyUI's INT8 ConvRot file (simplified).
+# Official Wan2.2 animate demo assets. --wan-animate-preprocess derives pose
+# and face from wan-driving=.
+
+\setp image "https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/examples/wan_animate/animate/image.jpeg"
+\setp driving "https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/examples/wan_animate/animate/video.mp4"
+
+Wan-AI/Wan2.2-Animate-14B-Diffusers
+--model-type wan-animate
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_animate_14B_int8_convrot.safetensors
+--wan-animate-preprocess
+--inference-steps 20
+--guidance-scales 1
+--video-fps 30
+--gen-seeds 1
+--output-size 832x480
+--animation-format mp4
+--output-path wan-animate-comfy-quant
+--image-seeds "{{ image }};wan-driving={{ driving }};frame-end=48"
+--prompts "A fantasy woman with pale lavender skin, glowing yellow eyes, pointed ears, and long dark hair, wearing dark ornate armor with gold accents. She performs the motion from the driving video. Cinematic lighting, ultrarealistic detail."

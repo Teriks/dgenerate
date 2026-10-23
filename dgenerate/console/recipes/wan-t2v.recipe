@@ -1,5 +1,5 @@
 title: Wan Text to Video
-order: 21
+order: 38
 
 # Wan 2.1 / 2.2 text to video. --video-lengths is seconds, snapped to
 # temporal*k+1 frames at --video-fps (16 by default). Omit length and

@@ -1,5 +1,5 @@
-title: LTX-2.5 (Distilled) GGUF
-order: 19
+title: LTX-2.5 Distilled (GGUF)
+order: 31
 
 # Omitting Scheduler keeps the published
 # 8-value sigma table. Inference Steps is ignored on that path.

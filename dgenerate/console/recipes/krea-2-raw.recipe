@@ -1,5 +1,5 @@
 title: Krea 2 Raw
-order: 40
+order: 84
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"krea/Krea-2-Raw", "optional":false, "file-types":["models"]}]
 --model-type krea2

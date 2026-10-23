@@ -1,5 +1,5 @@
 title: Wan VACE
-order: 24
+order: 42
 
 # Wan VACE control. control= is the control clip, mask= is optional,
 # reference= is a still. --wan-conditioning-scales is a scalar or

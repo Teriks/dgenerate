@@ -1,0 +1,28 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image Edit 2509 with ComfyUI's INT8 ConvRot transformer. Edit-plus:
+# images: passes every file in one call. No strength. The repository still
+# supplies the text encoder and VAE.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 16 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 16 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% endif %}
+
+Qwen/Qwen-Image-Edit-2509
+--model-type qwen-image-edit {{ te_quant }}
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_edit_2509_int8_convrot.safetensors
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 40
+--guidance-scales 4
+--image-seeds "images: ../../media/beach.jpg, ../../media/horse1.jpg"
+--gen-seeds 1
+--output-path qwen-image-comfy-quant-edit-plus
+--output-size 1024
+--prompts "Put the horse on the beach"

@@ -1,5 +1,5 @@
 title: Motif-Video Image to Video
-order: 43
+order: 97
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"Motif-Technologies/Motif-Video-2B", "optional":false, "file-types":["models"]}]
 --model-type motif-video

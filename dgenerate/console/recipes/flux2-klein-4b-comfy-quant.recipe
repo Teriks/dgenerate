@@ -1,0 +1,40 @@
+title: Flux.2 Klein 4B (ComfyUI Quant)
+order: 66
+
+# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
+# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
+# Black Forest Labs FP8 transformer, and ComfyUI FP4 Qwen3 text encoder file.
+# Clear Text Encoder File to use the repository text encoder.
+
+# Four steps is the short schedule. Distilled Klein ignores guidance above 1.
+
+\setp text_encoder "@string[{"label": "Text Encoder File (Qwen3)", "default":"https://huggingface.co/Comfy-Org/flux2-klein-4B/blob/main/split_files/text_encoders/qwen_3_4b_fp4_flux2.safetensors", "optional":true}]"
+
+\set text_encoder {{ '--text-encoders ' + quote('Qwen3ForCausalLM;model=' + text_encoder) if text_encoder else '' }}
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "black-forest-labs/FLUX.2-klein-4B", "optional":false, "file-types":["models"]}]
+--model-type flux2 {{ text_encoder }}
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
+@switch[{"id": "sp", "label":"Use Spectrum", "arg":"--spectrum"}]
+@switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["tc", "sada", "sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
+@dype[{"exclude":["cd", "sp"],"divider-after":true}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@quantizer[{"divider-after":true}]
+@submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/blob/main/flux-2-klein-4b-fp8.safetensors", "divider-after":true}]
+@imageseed[{"label":"Inpaint Image Seed", "arg":"--image-seeds", "file-types":["images-in"], "float-label":"Image Seed Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":"0.8"}]
+@imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor", "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":4, "min":0}]
+@string[{"label":"Text Encoder Out Layers", "arg":"--flux2-text-encoder-out-layers"}]
+@int[{"label":"Max Sequence Length", "arg":"--max-sequence-length", "min":1, "max":512}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@imageformat[{}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here"

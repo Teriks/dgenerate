@@ -1,5 +1,5 @@
 title: Deep Floyd
-order: 12
+order: 15
 
 # DeepFloyd requires a multistage generation process involving 
 # multiple models and more advanced use of dgenerate

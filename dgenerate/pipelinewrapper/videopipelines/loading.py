@@ -187,6 +187,8 @@ def _load_replacement_transformer(model_type, transformer_uri, dtype, variant,
             device, offload, parsed.quantizer) if parsed.quantizer else None,
         config=config_repo,
         config_subfolder=component_name,
+        # LoRAs are fused into this copy, which packed ComfyUI weights cannot take.
+        dequantize=force_unquantized,
         transformer_class=_video_transformer_class(model_type, family))
 
 

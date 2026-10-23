@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# HunyuanVideo 1.5 480p T2V with ComfyUI's CFG distilled scaled FP8
+# transformer, on the matching distilled repository. Distilled guidance is
+# 1, as in the repository's guider config. The fused attention qkv weights
+# are split on load and stay packed.
+
+hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v_distilled
+--model-type hunyuan-video-15
+--transformer https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/diffusion_models/hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 1
+--video-lengths 4
+--video-fps 15
+--animation-format mp4
+--gen-seeds 1
+--output-path hunyuan-video-15-comfy-quant
+--output-size 848x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"

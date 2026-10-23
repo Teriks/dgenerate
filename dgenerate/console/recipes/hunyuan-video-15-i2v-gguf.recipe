@@ -1,5 +1,5 @@
-title: HunyuanVideo 1.5 Image to Video GGUF
-order: 42
+title: HunyuanVideo 1.5 Image to Video (GGUF)
+order: 93
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v", "optional":false, "file-types":["models"]}]
 --model-type hunyuan-video-15

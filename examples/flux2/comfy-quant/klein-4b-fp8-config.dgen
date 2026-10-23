@@ -1,0 +1,32 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Flux.2 Klein 4B with Black Forest Labs' official FP8 transformer, and
+# ComfyUI's FP4 Qwen3 text encoder as a single file. Both stay quantized:
+# the transformer's fused qkv weights are split on load and stay packed,
+# and the text encoder keeps its NVFP4 and FP8 linears packed.
+
+# Distilled Klein ignores guidance above 1. Four steps is the short schedule.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+\set text_encoder https://huggingface.co/Comfy-Org/flux2-klein-4B/blob/main/split_files/text_encoders/qwen_3_4b_fp4_flux2.safetensors
+
+black-forest-labs/FLUX.2-klein-4B
+--model-type flux2
+--dtype bfloat16
+--model-cpu-offload
+--transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/blob/main/flux-2-klein-4b-fp8.safetensors
+--text-encoders Qwen3ForCausalLM;model={{ text_encoder }}
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 4
+--guidance-scales 1
+--gen-seeds 1
+--output-path flux2-comfy-quant-klein-4b-fp8
+--output-size 1024
+--prompts "A cat holding a sign that says hello world"

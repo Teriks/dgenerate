@@ -1,5 +1,5 @@
 title: Krea 2 Turbo
-order: 40
+order: 87
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"krea/Krea-2-Turbo", "optional":false, "file-types":["models"]}]
 --model-type krea2

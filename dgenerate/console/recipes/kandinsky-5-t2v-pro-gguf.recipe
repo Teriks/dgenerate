@@ -1,5 +1,5 @@
-title: Kandinsky 5 Video Pro GGUF
-order: 46
+title: Kandinsky 5 Video Pro (GGUF)
+order: 107
 
 # Community Q4_K_S GGUF of the T2V Pro sft transformer (~14 GB). A Q8_0 file is
 # also available: https://huggingface.co/Ada321/Kandinsky-5.0-T2V-Pro-sft-5s-Q8.gguf

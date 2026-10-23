@@ -1,5 +1,5 @@
 title: Kolors
-order: 10
+order: 13
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Kwai-Kolors/Kolors-diffusers", "optional":false, "file-types":["models"]}]
 --model-type kolors
