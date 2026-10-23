@@ -328,6 +328,24 @@ def _target_shapes(config_repo: str, subfolder: str, model_class, token, local_f
     return {name: _shape(param.shape) for name, param in model.state_dict().items()}
 
 
+def _rename_ltx25_prompt_adaln(checkpoint: dict) -> dict:
+    # LTX 2.5 checkpoints keep the original ``*_adaln_single`` prefix. Diffusers
+    # drops ``_single`` for the prompt embeddings and maps the main ones itself,
+    # but its converter (as of 0.41) does not know the prompt ones.
+    renamed = {}
+    for key, value in checkpoint.items():
+        new_key = key.replace('audio_prompt_adaln_single.', 'audio_prompt_adaln.')
+        new_key = new_key.replace('prompt_adaln_single.', 'prompt_adaln.')
+        renamed[new_key] = value
+    return renamed
+
+
+def convert_ltx2_transformer_checkpoint(checkpoint: dict, **kwargs) -> dict:
+    """Diffusers' LTX 2 conversion, plus the LTX 2.5 prompt modulation names."""
+    from diffusers.loaders.single_file_utils import convert_ltx2_transformer_to_diffusers
+    return convert_ltx2_transformer_to_diffusers(_rename_ltx25_prompt_adaln(checkpoint), **kwargs)
+
+
 def adapt_ltx25_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
                            token=None, local_files_only: bool = False) -> dict:
     """Rename an LTX 2.5 Comfy/original GGUF and fix transposed tensors."""
@@ -335,14 +353,7 @@ def adapt_ltx25_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
     from diffusers.loaders.single_file_utils import convert_ltx2_transformer_to_diffusers
 
     checkpoint = _strip_comfy_prefix(checkpoint)
-    # Comfy keeps the original ``*_adaln_single`` prefix. Diffusers drops
-    # ``_single`` for the prompt embeddings and maps the main ones itself.
-    renamed = {}
-    for key, value in checkpoint.items():
-        new_key = key.replace('audio_prompt_adaln_single.', 'audio_prompt_adaln.')
-        new_key = new_key.replace('prompt_adaln_single.', 'prompt_adaln.')
-        renamed[new_key] = value
-    converted = convert_ltx2_transformer_to_diffusers(renamed)
+    converted = convert_ltx2_transformer_to_diffusers(_rename_ltx25_prompt_adaln(checkpoint))
     targets = _target_shapes(
         config_repo, subfolder, diffusers.LTX2VideoTransformer3DModel,
         token, local_files_only)
@@ -656,6 +667,12 @@ def register_single_file_classes() -> None:
                 'checkpoint_mapping_fn': lambda checkpoint, **kwargs: checkpoint,
                 'default_subfolder': 'transformer',
             })
+
+    # LTX 2.5 adds prompt modulation tensors Diffusers' LTX 2 conversion
+    # leaves unrenamed, so they would stay on the meta device.
+    ltx2 = single_file_model.SINGLE_FILE_LOADABLE_CLASSES.get('LTX2VideoTransformer3DModel')
+    if ltx2 is not None:
+        ltx2['checkpoint_mapping_fn'] = convert_ltx2_transformer_checkpoint
 
 
 def install_gguf_patches() -> None:
