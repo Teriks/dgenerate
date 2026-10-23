@@ -1570,6 +1570,10 @@ def _quantizer_classes():
 
         def _process_model_before_weight_loading(self, model, state_dict=None, **kwargs):
             config = self.quantization_config
+            # Models cast activations to the dtype of these modules' parameters
+            # (Wan casts the timestep to time_embedder's), which packed integer
+            # storage would turn into a cast to uint8. Keep them dense.
+            keep_dense = set(getattr(model, '_keep_in_fp32_modules', None) or [])
             for key, value in list(state_dict.items()):
                 segments = config.checkpoint.segments_for(key, value)
                 if segments is None:
@@ -1577,7 +1581,8 @@ def _quantizer_classes():
                 module_name = key[:-len('.weight')] if key.endswith('.weight') else None
                 module = _get_submodule(model, module_name) if module_name else None
                 layer = None
-                if isinstance(module, torch.nn.Linear):
+                if (isinstance(module, torch.nn.Linear)
+                        and keep_dense.isdisjoint(module_name.split('.'))):
                     layer = _assemble_layer(module_name, segments, value)
                 if layer is None or not layer.fits(module.out_features, module.in_features):
                     _messages.debug_log(
