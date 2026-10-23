@@ -139,6 +139,13 @@ class TestSafetensorsCompat(unittest.TestCase):
         decoded = decoded[:self.x.shape[0]]
         self.assertLess(((decoded - self.x).norm() / self.x.norm()).item(), 0.15)
 
+    def test_int8_activation_quantize_small_bfloat16(self):
+        # Rows below the float16 normal range, like LTX audio to video attention inputs.
+        x = (torch.randn(8, 256) * 1e-5).to(torch.bfloat16)
+        quantized, x_scale = _safetensorscompat._quantize_int8_rows(x)
+        decoded = quantized.float() * x_scale
+        self.assertLess(((decoded - x.float()).norm() / x.float().norm()).item(), 0.02)
+
     def _module(self, fmt, device='cpu'):
         if fmt == 'int8':
             weight, scale = _quantize_int8_convrot(self.weight, 64)
