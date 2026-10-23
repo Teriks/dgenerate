@@ -31,8 +31,10 @@ import os
 import torch
 
 import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper.singlefilecompat as _singlefilecompat
 
-_COMFY_PREFIX = 'model.diffusion_model.'
+_COMFY_PREFIX = _singlefilecompat.COMFY_PREFIX
+_strip_comfy_prefix = _singlefilecompat.strip_comfy_prefix
 
 # img_in / qkv hidden width -> public Diffusers transformer repo.
 # 4B and 9B Klein share Flux.2 key names with dev, so the width is the
@@ -254,16 +256,6 @@ def read_gguf_shapes(path: str) -> dict[str, tuple[int, ...]]:
     return {tensor.name: _shape(tensor.shape) for tensor in reader.tensors}
 
 
-def _strip_comfy_prefix(checkpoint: dict) -> dict:
-    if not any(key.startswith(_COMFY_PREFIX) for key in checkpoint):
-        return checkpoint
-    renamed = {}
-    for key, value in checkpoint.items():
-        new_key = key[len(_COMFY_PREFIX):] if key.startswith(_COMFY_PREFIX) else key
-        renamed[new_key] = value
-    return renamed
-
-
 def _align_tensor(param, target_shape: tuple[int, ...]):
     """
     Make one checkpoint tensor match a Diffusers parameter.
@@ -328,24 +320,6 @@ def _target_shapes(config_repo: str, subfolder: str, model_class, token, local_f
     return {name: _shape(param.shape) for name, param in model.state_dict().items()}
 
 
-def _rename_ltx25_prompt_adaln(checkpoint: dict) -> dict:
-    # LTX 2.5 checkpoints keep the original ``*_adaln_single`` prefix. Diffusers
-    # drops ``_single`` for the prompt embeddings and maps the main ones itself,
-    # but its converter (as of 0.41) does not know the prompt ones.
-    renamed = {}
-    for key, value in checkpoint.items():
-        new_key = key.replace('audio_prompt_adaln_single.', 'audio_prompt_adaln.')
-        new_key = new_key.replace('prompt_adaln_single.', 'prompt_adaln.')
-        renamed[new_key] = value
-    return renamed
-
-
-def convert_ltx2_transformer_checkpoint(checkpoint: dict, **kwargs) -> dict:
-    """Diffusers' LTX 2 conversion, plus the LTX 2.5 prompt modulation names."""
-    from diffusers.loaders.single_file_utils import convert_ltx2_transformer_to_diffusers
-    return convert_ltx2_transformer_to_diffusers(_rename_ltx25_prompt_adaln(checkpoint), **kwargs)
-
-
 def adapt_ltx25_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
                            token=None, local_files_only: bool = False) -> dict:
     """Rename an LTX 2.5 Comfy/original GGUF and fix transposed tensors."""
@@ -353,7 +327,8 @@ def adapt_ltx25_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
     from diffusers.loaders.single_file_utils import convert_ltx2_transformer_to_diffusers
 
     checkpoint = _strip_comfy_prefix(checkpoint)
-    converted = convert_ltx2_transformer_to_diffusers(_rename_ltx25_prompt_adaln(checkpoint))
+    converted = convert_ltx2_transformer_to_diffusers(
+        _singlefilecompat.rename_ltx25_prompt_adaln(checkpoint))
     targets = _target_shapes(
         config_repo, subfolder, diffusers.LTX2VideoTransformer3DModel,
         token, local_files_only)
@@ -467,43 +442,6 @@ def adapt_wan_flf_checkpoint(checkpoint: dict) -> dict:
         'Mapped Wan FLF2V img_emb.emb_pos onto '
         f'{_WAN_FLF_POS_EMBED} {_WAN_FLF_POS_SHAPE}.')
     return checkpoint
-
-
-def convert_hunyuan_video15_transformer_checkpoint(checkpoint: dict, **kwargs) -> dict:
-    """Convert original Hunyuan Video weights to the Diffusers 1.5 names."""
-    from diffusers.loaders.single_file_utils import convert_hunyuan_video_transformer_to_diffusers
-
-    converted = convert_hunyuan_video_transformer_to_diffusers(
-        _strip_comfy_prefix(checkpoint), **kwargs)
-    renamed = {}
-    vision_projection = {
-        'vision_in.proj.0.': 'image_embedder.norm_in.',
-        'vision_in.proj.1.': 'image_embedder.linear_1.',
-        'vision_in.proj.3.': 'image_embedder.linear_2.',
-        'vision_in.proj.4.': 'image_embedder.norm_out.',
-    }
-    byt5_projection = {
-        'byt5_in.net.0.proj.': 'context_embedder_2.linear_1.',
-        'byt5_in.net.2.': 'context_embedder_2.linear_2.',
-        'byt5_in.fc3.': 'context_embedder_2.linear_3.',
-        'byt5_in.layernorm.': 'context_embedder_2.norm.',
-    }
-    for name, value in converted.items():
-        for source, target in byt5_projection.items():
-            if name.startswith(source):
-                name = target + name[len(source):]
-                break
-        if name.startswith('time_text_embed.'):
-            name = 'time_embed.' + name[len('time_text_embed.'):]
-        elif name.startswith('cond_type_embedding.'):
-            name = 'cond_type_embed.' + name[len('cond_type_embedding.'):]
-        else:
-            for source, target in vision_projection.items():
-                if name.startswith(source):
-                    name = target + name[len(source):]
-                    break
-        renamed[name] = value
-    return renamed
 
 
 def adapt_qwen_checkpoint(checkpoint: dict) -> dict:
@@ -640,41 +578,6 @@ def adapt_qwen_layered_checkpoint(checkpoint: dict) -> dict:
     return checkpoint
 
 
-def register_single_file_classes() -> None:
-    """
-    Register transformers Diffusers can build but not load from a single file.
-
-    Used by GGUF and ComfyUI quantized ``.safetensors`` loads alike.
-    """
-    import diffusers
-    import diffusers.loaders.single_file_model as single_file_model
-
-    # Diffusers provides the Hunyuan 1.5 architecture but (as of 0.41) does
-    # not expose it through the single-file loader. Its source checkpoint
-    # converter is reusable once the 1.5-only component names are remapped.
-    if hasattr(diffusers, 'HunyuanVideo15Transformer3DModel'):
-        single_file_model.SINGLE_FILE_LOADABLE_CLASSES.setdefault(
-            'HunyuanVideo15Transformer3DModel', {
-                'checkpoint_mapping_fn': convert_hunyuan_video15_transformer_checkpoint,
-                'default_subfolder': 'transformer',
-            })
-
-    # Kandinsky 5 is likewise not registered. Its checkpoints use the Diffusers
-    # tensor names, so they load unconverted.
-    if hasattr(diffusers, 'Kandinsky5Transformer3DModel'):
-        single_file_model.SINGLE_FILE_LOADABLE_CLASSES.setdefault(
-            'Kandinsky5Transformer3DModel', {
-                'checkpoint_mapping_fn': lambda checkpoint, **kwargs: checkpoint,
-                'default_subfolder': 'transformer',
-            })
-
-    # LTX 2.5 adds prompt modulation tensors Diffusers' LTX 2 conversion
-    # leaves unrenamed, so they would stay on the meta device.
-    ltx2 = single_file_model.SINGLE_FILE_LOADABLE_CLASSES.get('LTX2VideoTransformer3DModel')
-    if ltx2 is not None:
-        ltx2['checkpoint_mapping_fn'] = convert_ltx2_transformer_checkpoint
-
-
 def install_gguf_patches() -> None:
     """
     Let a Comfy quantized linear whose packed shape is transposed load
@@ -696,7 +599,7 @@ def install_gguf_patches() -> None:
     original_new = gguf_utils.GGUFParameter.__new__
     original_torch_function = gguf_utils.GGUFParameter.__torch_function__
 
-    register_single_file_classes()
+    _singlefilecompat.register_single_file_classes()
 
     def should_convert(model_state_dict, checkpoint_state_dict):
         if os.environ.get('DGENERATE_GGUF_SKIP_RECONVERT') == '1':
