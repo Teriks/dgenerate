@@ -13,7 +13,7 @@
 {% endif %}
 
 Lightricks/LTX-Video
---model-type ltx
+--model-type ltx-video
 --dtype bfloat16
 --model-sequential-offload
 --inference-steps 50

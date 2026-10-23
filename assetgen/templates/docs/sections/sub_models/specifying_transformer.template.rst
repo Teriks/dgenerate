@@ -73,5 +73,5 @@ INT8 (ConvRot), or NVFP4, such as the ComfyUI, Black Forest Labs, and Lightricks
 releases. The same rules apply: point ``--transformer`` at the file and do not
 set ``quantizer=``. See :ref:`comfyui-quantized-checkpoints`.
 
-``--model-type ltx`` also accepts ``--transformer``.
+``--model-type ltx2`` and ``ltx-video`` also accept ``--transformer``.
 That argument replaces the diffusion transformer only. See :ref:`video-generation`.

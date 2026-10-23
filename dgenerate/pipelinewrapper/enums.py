@@ -226,8 +226,8 @@ class ModelType(enum.Enum):
     KOLORS = 16
     """Kolors (SDXL + ChatGLM)"""
 
-    LTX = 17
-    """LTX-2 / LTX-2.5 text, image, and keyframe to video."""
+    LTX2 = 17
+    """LTX-2 / LTX-2.5 text, image, and keyframe to video, with audio."""
 
     FLUX2 = 18
     """Flux.2, including Flux.2 Klein. The checkpoint class selects Klein."""
@@ -277,6 +277,9 @@ class ModelType(enum.Enum):
     KANDINSKY5_VIDEO = 33
     """Kandinsky 5.0 text-to-video and image-to-video."""
 
+    LTX_VIDEO = 34
+    """LTX-Video (0.9.x) text, image, and keyframe to video."""
+
 
 def supported_model_type_strings():
     """
@@ -305,7 +308,8 @@ def supported_model_type_strings():
             'qwen-image',
             'qwen-image-edit',
             'qwen-image-layered',
-            'ltx',
+            'ltx2',
+            'ltx-video',
             'wan',
             'wan-animate',
             'wan-animate-2',
@@ -322,6 +326,11 @@ def supported_model_type_enums() -> list[ModelType]:
     Return a list of supported :py:class:`.ModelType` enum values
     """
     return [get_model_type_enum(i) for i in supported_model_type_strings()]
+
+
+_LTX_RENAMED_MESSAGE = (
+    'model type "ltx" was split into "ltx2" (LTX-2 / LTX-2.5) '
+    'and "ltx-video" (LTX-Video 0.9.x), use one of those.')
 
 
 def get_model_type_enum(id_str: ModelType | str) -> ModelType:
@@ -362,7 +371,8 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'qwen-image': ModelType.QWEN_IMAGE,
                 'qwen-image-edit': ModelType.QWEN_IMAGE_EDIT,
                 'qwen-image-layered': ModelType.QWEN_IMAGE_LAYERED,
-                'ltx': ModelType.LTX,
+                'ltx2': ModelType.LTX2,
+                'ltx-video': ModelType.LTX_VIDEO,
                 'wan': ModelType.WAN,
                 'wan-animate': ModelType.WAN_ANIMATE,
                 'wan-animate-2': ModelType.WAN_ANIMATE_2,
@@ -373,6 +383,8 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'hunyuan-video-15': ModelType.HUNYUAN_VIDEO_15,
                 'motif-video': ModelType.MOTIF_VIDEO}[id_str.strip().lower()]
     except KeyError:
+        if id_str.strip().lower() == 'ltx':
+            raise ValueError(_LTX_RENAMED_MESSAGE)
         raise ValueError('invalid ModelType string')
 
 
@@ -410,7 +422,8 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.QWEN_IMAGE: 'qwen-image',
             ModelType.QWEN_IMAGE_EDIT: 'qwen-image-edit',
             ModelType.QWEN_IMAGE_LAYERED: 'qwen-image-layered',
-            ModelType.LTX: 'ltx',
+            ModelType.LTX2: 'ltx2',
+            ModelType.LTX_VIDEO: 'ltx-video',
             ModelType.WAN: 'wan',
             ModelType.WAN_ANIMATE: 'wan-animate',
             ModelType.WAN_ANIMATE_2: 'wan-animate-2',
@@ -690,8 +703,21 @@ def model_type_is_video(model_type: ModelType | str) -> bool:
     model_type = get_model_type_enum(model_type)
 
     return model_type in {
-        ModelType.LTX, ModelType.WAN, ModelType.WAN_ANIMATE, ModelType.WAN_ANIMATE_2,
+        ModelType.LTX2, ModelType.LTX_VIDEO, ModelType.WAN, ModelType.WAN_ANIMATE, ModelType.WAN_ANIMATE_2,
         ModelType.HUNYUAN_VIDEO_15, ModelType.MOTIF_VIDEO, ModelType.KANDINSKY5_VIDEO}
+
+
+def model_type_is_ltx_family(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent
+    LTX-2 / LTX-2.5 or LTX-Video?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    model_type = get_model_type_enum(model_type)
+
+    return model_type in {ModelType.LTX2, ModelType.LTX_VIDEO}
 
 
 def model_type_is_wan_family(model_type: ModelType | str) -> bool:
@@ -788,7 +814,8 @@ CACHE_DIT_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.QWEN_IMAGE_LAYERED,
     ModelType.KREA2,
     ModelType.KANDINSKY5_IMAGE,
-    ModelType.LTX,
+    ModelType.LTX2,
+    ModelType.LTX_VIDEO,
     ModelType.WAN,
     ModelType.WAN_ANIMATE,
     ModelType.WAN_ANIMATE_2,

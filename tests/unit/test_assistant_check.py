@@ -257,7 +257,7 @@ class TestAssistantCheck(unittest.TestCase):
             '--model-type sdxl --prompts "a dog"',
             '',
             'Lightricks/LTX-2.5-Diffusers',
-            '--model-type ltx --dtype bfloat16',
+            '--model-type ltx2 --dtype bfloat16',
             '--image-seeds {{ quote(first(last_animations)) }}',
             '--video-lengths 2',
             '--prompts "the dog wags its tail"',
@@ -271,7 +271,7 @@ class TestAssistantCheck(unittest.TestCase):
             '--model-type sdxl --variant fp16 --dtype float16 --prompts "a dog"',
             '',
             'Lightricks/LTX-2.5-Diffusers',
-            '--model-type ltx --dtype bfloat16',
+            '--model-type ltx2 --dtype bfloat16',
             '--image-seeds {{ quote(first(last_images)) }}',
             '--video-lengths 2',
             '--prompts "the dog wags its tail"',
@@ -480,7 +480,7 @@ class TestAssistantCheck(unittest.TestCase):
     def test_blank_line_names_the_split_invocation(self):
         report = check_config(_cfg(
             'Lightricks/LTX-2.5-Diffusers',
-            '--model-type ltx',
+            '--model-type ltx2',
             '--prompts "a fox"',
             '',
             '--guidance-scales 3',
@@ -503,7 +503,7 @@ class TestAssistantCheck(unittest.TestCase):
     def test_wan_option_on_ltx(self):
         report = check_config(_cfg(
             'Lightricks/LTX-2.5-Diffusers',
-            '--model-type ltx --dtype bfloat16',
+            '--model-type ltx2 --dtype bfloat16',
             '--wan-boundary-ratios 0.9',
             '--prompts "a fox"',
         ))

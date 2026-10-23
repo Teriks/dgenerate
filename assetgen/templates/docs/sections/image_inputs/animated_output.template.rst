@@ -60,5 +60,5 @@ animated file, animated files may be mixed with static images. The animated inpu
 shortest length determines the number of output frames, and any static image components
 are duplicated over that amount of frames.
 
-``--model-type ltx`` writes a whole clip in one generation step.
+``--model-type ltx2`` and ``ltx-video`` write a whole clip in one generation step.
 See :ref:`video-generation`.

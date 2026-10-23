@@ -1,0 +1,302 @@
+{
+  "Lightricks/LTX-2.5-Diffusers": [
+    "Lightricks/LTX-2.5-Diffusers",
+    "4791a1100e0cf97f7ed5c55c12dd71dce13f9dd3",
+    "744ffacdd97c7c00"
+  ],
+  "Lightricks/LTX-Video": [
+    "Lightricks/LTX-Video",
+    "8984fa25007f376c1a299016d0957a37a2f797bb",
+    "744ffacdd97c7c00"
+  ],
+  "Motif-Technologies/Motif-Video-2B": [
+    "Motif-Technologies/Motif-Video-2B",
+    "6748a1f5861a859aca13b30a0c65dd6f9942ca35",
+    "744ffacdd97c7c00"
+  ],
+  "Qwen/Qwen-Image": [
+    "Qwen/Qwen-Image",
+    "75e0b4be04f60ec59a75f475837eced720f823b6",
+    "744ffacdd97c7c00"
+  ],
+  "Qwen/Qwen-Image-2.1": [
+    "Qwen/Qwen-Image-2.1",
+    "d26bb61231c349cf6b7896fa83353113880e1ba3",
+    "744ffacdd97c7c00"
+  ],
+  "Qwen/Qwen-Image-2.1-Turbo": [
+    "Qwen/Qwen-Image-2.1-Turbo",
+    "fc13ba1986fcb905854dc8de2f52eee395f49b5b",
+    "744ffacdd97c7c00"
+  ],
+  "Qwen/Qwen-Image-Edit": [
+    "Qwen/Qwen-Image-Edit",
+    "ac7f9318f633fc4b5778c59367c8128225f1e3de",
+    "744ffacdd97c7c00"
+  ],
+  "Qwen/Qwen-Image-Edit-2509": [
+    "Qwen/Qwen-Image-Edit-2509",
+    "d3968ef930e841f4c73640fb8afa3b306a78167e",
+    "744ffacdd97c7c00"
+  ],
+  "Qwen/Qwen-Image-Layered": [
+    "Qwen/Qwen-Image-Layered",
+    "8f0ca708dfff6ba1dd5f2d85d78f8c108a040bcf",
+    "744ffacdd97c7c00"
+  ],
+  "Tongyi-MAI/Z-Image": [
+    "Tongyi-MAI/Z-Image",
+    "04cc4abb7c5069926f75c9bfde9ef43d49423021",
+    "744ffacdd97c7c00"
+  ],
+  "Tongyi-MAI/Z-Image-Turbo": [
+    "Tongyi-MAI/Z-Image-Turbo",
+    "f332072aa78be7aecdf3ee76d5c247082da564a6",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers": [
+    "Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers",
+    "17c30769b1e0b5dcaa1799b117bf20a9c31f59d7",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.1-I2V-14B-480P-Diffusers": [
+    "Wan-AI/Wan2.1-I2V-14B-480P-Diffusers",
+    "b184e23a8a16b20f108f727c902e769e873ffc73",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.1-I2V-14B-720P-Diffusers": [
+    "Wan-AI/Wan2.1-I2V-14B-720P-Diffusers",
+    "eb849f76dfa246545b65774a9e25943ee69b3fa3",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": [
+    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+    "0fad780a534b6463e45facd96134c9f345acfa5b",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.1-T2V-14B-Diffusers": [
+    "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+    "38ec498cb3208fb688890f8cc7e94ede2cbd7f68",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.1-VACE-1.3B-diffusers": [
+    "Wan-AI/Wan2.1-VACE-1.3B-diffusers",
+    "ec4d2cb062b548996b179d493fdd05340de702a1",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.1-VACE-14B-diffusers": [
+    "Wan-AI/Wan2.1-VACE-14B-diffusers",
+    "db79b90c60bbb45ceec9e41b9d5a4df934538ac4",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.2-Animate-14B-Diffusers": [
+    "Wan-AI/Wan2.2-Animate-14B-Diffusers",
+    "6f4df10861c758af86ac3c979aacc1bf5c03eff0",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.2-Animate-2-14B-Diffusers": [
+    "Wan-AI/Wan2.2-Animate-2-14B-Diffusers",
+    "7d48412d7b903ff3a89f4f5a960d99e1899605a1",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers": [
+    "Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers",
+    "59e4141466bcb1bf9733eca1bc78be6891c9fbdf",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.2-I2V-A14B-Diffusers": [
+    "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+    "596658fd9ca6b7b71d5057529bbf319ecbc61d74",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.2-T2V-A14B-Diffusers": [
+    "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+    "5be7df9619b54f4e2667b2755bc6a756675b5cd7",
+    "744ffacdd97c7c00"
+  ],
+  "Wan-AI/Wan2.2-TI2V-5B-Diffusers": [
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+    "b8fff7315c768468a5333511427288870b2e9635",
+    "744ffacdd97c7c00"
+  ],
+  "black-forest-labs/FLUX.1-Depth-dev": [
+    "black-forest-labs/FLUX.1-Depth-dev",
+    "fb5e9b1bae41b8c8adcea4ea2a87b74dd298f07a",
+    "744ffacdd97c7c00"
+  ],
+  "black-forest-labs/FLUX.1-Fill-dev": [
+    "black-forest-labs/FLUX.1-Fill-dev",
+    "358293da0354175698b67ec8299acf928313a78a",
+    "744ffacdd97c7c00"
+  ],
+  "black-forest-labs/FLUX.1-dev": [
+    "black-forest-labs/FLUX.1-dev",
+    "3de623fc3c33e44ffbe2bad470d0f45bccf2eb21",
+    "744ffacdd97c7c00"
+  ],
+  "black-forest-labs/FLUX.1-schnell": [
+    "black-forest-labs/FLUX.1-schnell",
+    "741f7c3ce8b383c54771c7003378a50191e9efe9",
+    "744ffacdd97c7c00"
+  ],
+  "black-forest-labs/FLUX.2-dev": [
+    "black-forest-labs/FLUX.2-dev",
+    "26afe3a78bb242c0a8bb181dcc8937bb16e5c66c",
+    "744ffacdd97c7c00"
+  ],
+  "black-forest-labs/FLUX.2-klein-4B": [
+    "black-forest-labs/FLUX.2-klein-4B",
+    "e7b7dc27f91deacad38e78976d1f2b499d76a294",
+    "744ffacdd97c7c00"
+  ],
+  "black-forest-labs/FLUX.2-klein-9b-kv": [
+    "black-forest-labs/FLUX.2-klein-9b-kv",
+    "a6dfb36eca3a3906eb2fd460795adfb844e5fcce",
+    "744ffacdd97c7c00"
+  ],
+  "black-forest-labs/FLUX.2-klein-base-9B": [
+    "black-forest-labs/FLUX.2-klein-base-9B",
+    "32773329fbe7e81a90ef971740e8ba4b0364ecf3",
+    "744ffacdd97c7c00"
+  ],
+  "diffusers/controlnet-canny-sdxl-1.0": [
+    "diffusers/controlnet-canny-sdxl-1.0",
+    "eb115a19a10d14909256db740ed109532ab1483c",
+    "744ffacdd97c7c00"
+  ],
+  "diffusers/controlnet-canny-sdxl-1.0-mid": [
+    "diffusers/controlnet-canny-sdxl-1.0-mid",
+    "4d3e948836782759082d16985b139cfcae06109d",
+    "744ffacdd97c7c00"
+  ],
+  "diffusers/controlnet-canny-sdxl-1.0-small": [
+    "diffusers/controlnet-canny-sdxl-1.0-small",
+    "edd85f64c5f87dfb6d73762949d9daca16389518",
+    "744ffacdd97c7c00"
+  ],
+  "diffusers/stable-diffusion-xl-1.0-inpainting-0.1": [
+    "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
+    "115134f363124c53c7d878647567d04daf26e41e",
+    "744ffacdd97c7c00"
+  ],
+  "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v": [
+    "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v",
+    "5a700ee883ff4c1b3d887ec4188755a7a5e2f698",
+    "744ffacdd97c7c00"
+  ],
+  "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v": [
+    "hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v",
+    "286be7ce72277246578a3e3cc2487e95ddae5bcf",
+    "744ffacdd97c7c00"
+  ],
+  "kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers": [
+    "kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers",
+    "e473205cc4b002a7daa5e43720966b0b0297ca05",
+    "744ffacdd97c7c00"
+  ],
+  "kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers": [
+    "kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers",
+    "8d965626ab76734922b00e359ca2d8faab2e0417",
+    "744ffacdd97c7c00"
+  ],
+  "kandinskylab/Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers": [
+    "kandinskylab/Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers",
+    "610fcc95a30f11c4ee41fa2015df39d45dfe856a",
+    "744ffacdd97c7c00"
+  ],
+  "kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers": [
+    "kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers",
+    "c0158b5b20858d1fc02088db7ed4d805a296498b",
+    "744ffacdd97c7c00"
+  ],
+  "kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers": [
+    "kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers",
+    "c792cccbb6417a349699014250f493e5e9f89eb5",
+    "744ffacdd97c7c00"
+  ],
+  "kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers": [
+    "kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers",
+    "7271a43778448e4756a0a822ceb9e46cf52a42b2",
+    "744ffacdd97c7c00"
+  ],
+  "krea/Krea-2-Raw": [
+    "krea/Krea-2-Raw",
+    "6b0ece7fffb640c5e3bcbe0a7f10f66b8e60a603",
+    "744ffacdd97c7c00"
+  ],
+  "krea/Krea-2-Turbo": [
+    "krea/Krea-2-Turbo",
+    "98e0fe118d17c9e3547fbb2e25acdbae2cadf7c7",
+    "744ffacdd97c7c00"
+  ],
+  "lllyasviel/control_v11p_sd15_canny": [
+    "lllyasviel/control_v11p_sd15_canny",
+    "115a470d547982438f70198e353a921996e2e819",
+    "744ffacdd97c7c00"
+  ],
+  "stabilityai/stable-cascade": [
+    "stabilityai/stable-cascade",
+    "a89f66d459ae653e3b4d4f992a7c3789d0dc4d16",
+    "744ffacdd97c7c00"
+  ],
+  "stabilityai/stable-cascade-prior": [
+    "stabilityai/stable-cascade-prior",
+    "7ca32c21c3b4d4e35bbb94fcfedfb4fa2259bd91",
+    "744ffacdd97c7c00"
+  ],
+  "stabilityai/stable-diffusion-2-1": [
+    "sd2-community/stable-diffusion-2-1",
+    "bb2154823665391b4fb29b0b9cf82a198964ee05",
+    "744ffacdd97c7c00"
+  ],
+  "stabilityai/stable-diffusion-2-inpainting": [
+    "sd2-community/stable-diffusion-2-inpainting",
+    "5f74973cbb64c8568780732c17f43eb269d63a0d",
+    "744ffacdd97c7c00"
+  ],
+  "stabilityai/stable-diffusion-3-medium-diffusers": [
+    "stabilityai/stable-diffusion-3-medium-diffusers",
+    "ea42f8cef0f178587cf766dc8129abd379c90671",
+    "744ffacdd97c7c00"
+  ],
+  "stabilityai/stable-diffusion-3.5-large": [
+    "stabilityai/stable-diffusion-3.5-large",
+    "ceddf0a7fdf2064ea28e2213e3b84e4afa170a0f",
+    "744ffacdd97c7c00"
+  ],
+  "stabilityai/stable-diffusion-3.5-medium": [
+    "stabilityai/stable-diffusion-3.5-medium",
+    "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+    "744ffacdd97c7c00"
+  ],
+  "stabilityai/stable-diffusion-x4-upscaler": [
+    "stabilityai/stable-diffusion-x4-upscaler",
+    "572c99286543a273bfd17fac263db5a77be12c4c",
+    "744ffacdd97c7c00"
+  ],
+  "stabilityai/stable-diffusion-xl-base-1.0": [
+    "stabilityai/stable-diffusion-xl-base-1.0",
+    "462165984030d82259a11f4367a4eed129e94a7b",
+    "744ffacdd97c7c00"
+  ],
+  "stabilityai/stable-diffusion-xl-refiner-1.0": [
+    "stabilityai/stable-diffusion-xl-refiner-1.0",
+    "5d4cfe854c9a9a87939ff3653551c2b3c99a4356",
+    "744ffacdd97c7c00"
+  ],
+  "stable-diffusion-v1-5/stable-diffusion-inpainting": [
+    "stable-diffusion-v1-5/stable-diffusion-inpainting",
+    "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+    "744ffacdd97c7c00"
+  ],
+  "stable-diffusion-v1-5/stable-diffusion-v1-5": [
+    "stable-diffusion-v1-5/stable-diffusion-v1-5",
+    "451f4fe16113bff5a5d2269ed5ad43b0592e9a14",
+    "744ffacdd97c7c00"
+  ],
+  "timbrooks/instruct-pix2pix": [
+    "timbrooks/instruct-pix2pix",
+    "31519b5cb02a7fd89b906d88731cd4d6a7bbf88d",
+    "744ffacdd97c7c00"
+  ]
+}

@@ -11,7 +11,7 @@
 {% endif %}
 
 Lightricks/LTX-Video
---model-type ltx
+--model-type ltx-video
 --dtype bfloat16
 --model-cpu-offload
 --transformer https://huggingface.co/city96/LTX-Video-gguf/blob/main/ltx-video-2b-v0.9-Q3_K_S.gguf

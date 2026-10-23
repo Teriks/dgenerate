@@ -116,6 +116,30 @@ def ltx_family_from_index(index: dict | None) -> str:
         f'model_index.json _class_name is {name!r}.')
 
 
+def ltx_family_for_model_type(model_type, index: dict | None) -> str:
+    """
+    Choose the LTX pipeline family from ``--model-type``, and check that the
+    repository's ``model_index.json`` agrees with it.
+
+    :param model_type: ``ltx2`` or ``ltx-video``
+    :param index: ``model_index.json`` dict
+    :raise UnsupportedPipelineConfigError: if the repository is the other LTX family
+    :return: ``ltx2`` or ``ltx``
+    """
+    model_type = _enums.get_model_type_enum(model_type)
+    expected = 'ltx2' if model_type == _enums.ModelType.LTX2 else 'ltx'
+    if index is not None:
+        found = ltx_family_from_index(index)
+        if found != expected:
+            wanted = _enums.get_model_type_string(model_type)
+            actual = 'ltx2' if found == 'ltx2' else 'ltx-video'
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'--model-type {wanted} was given, but this repository is an '
+                f'{actual} pipeline ({(index or {}).get("_class_name")}). '
+                f'Use --model-type {actual}.')
+    return expected
+
+
 def ltx_num_frames(seconds: float, fps: float) -> int:
     """
     Snap a requested duration to the LTX frame count ``8k+1``.
@@ -417,6 +441,10 @@ def _reject_ltx2_only_options(user_args):
         used.append('--ltx-stg-scales')
     if user_args.ltx_modality_scale is not None:
         used.append('--ltx-modality-scales')
+    if user_args.ltx_audio_stg_scale is not None:
+        used.append('--ltx-audio-stg-scales')
+    if user_args.ltx_audio_modality_scale is not None:
+        used.append('--ltx-audio-modality-scales')
     if user_args.ltx_latent_upscale:
         used.append('--ltx-latent-upscale')
     if user_args.ltx_video_decoder == 'diffusion':
@@ -923,7 +951,7 @@ def _preflight_ltx_components(wrapper, user_args) -> None:
         revision=wrapper._revision,
         use_auth_token=wrapper._auth_token,
         local_files_only=bool(wrapper._local_files_only))
-    family = ltx_family_from_index(index)
+    family = ltx_family_for_model_type(wrapper.model_type, index)
 
     # Report unsupported LTX-2-only options before probing for components that
     # cannot be used by an earlier LTX checkpoint. The normal call path checks

@@ -27,7 +27,8 @@ Diffusion Model Feature Support Tables
    * ``--model-type qwen-image-21`` (Qwen-Image 2.1)
    * ``--model-type krea2`` (Krea 2)
    * ``--model-type kandinsky5-image`` (Kandinsky 5.0 Image)
-   * ``--model-type ltx`` (LTX-2.5 and LTX-Video, see `Video Model Feature Support`_)
+   * ``--model-type ltx2`` (LTX-2 / LTX-2.5, see `Video Model Feature Support`_)
+   * ``--model-type ltx-video`` (LTX-Video, see `Video Model Feature Support`_)
    * ``--model-type wan`` (Wan 2.1 / 2.2 - T2V, I2V, FLF2V, V2V, VACE, see `Video Model Feature Support`_)
    * ``--model-type wan-animate`` (Wan-Animate, see `Video Model Feature Support`_)
    * ``--model-type wan-animate-2`` (Wan-Animate-2, see `Video Model Feature Support`_)
@@ -922,21 +923,22 @@ Diffusion Model Feature Support Tables
 Video Model Feature Support
 ---------------------------
 
-Every video model type (``ltx``, ``wan``, ``wan-animate``, ``wan-animate-2``,
+Every video model type (``ltx2``, ``ltx-video``, ``wan``, ``wan-animate``, ``wan-animate-2``,
 ``hunyuan-video-15``, ``motif-video``, and ``kandinsky5-video``) generates a whole
 clip in one pipeline call. Clip length and frame rate are the shared ``--video-lengths``
 and ``--video-fps`` options.
 
-For ``--model-type ltx``, the checkpoint's ``model_index.json`` selects LTX-2.5
-(``LTX2Pipeline``) or the earlier LTX-Video (``LTXPipeline``).
+``--model-type ltx2`` is LTX-2.5 (``LTX2Pipeline``) and ``ltx-video`` is the
+earlier LTX-Video (``LTXPipeline``). The checkpoint's ``model_index.json`` must
+match the model type.
 
 .. list-table:: Features by video model
    :widths: 34 8 8 8 10 10 10 10 10
    :header-rows: 1
 
    * - Feature
-     - LTX-2.5 (``ltx``)
-     - LTX-Video (``ltx``)
+     - LTX-2.5 (``ltx2``)
+     - LTX-Video (``ltx-video``)
      - Wan (``wan``)
      - Wan-Animate (``wan-animate``)
      - Wan-Animate-2 (``wan-animate-2``)

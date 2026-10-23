@@ -400,14 +400,14 @@ mask. For "replace the background" use inpainting with a real mask
 or ``yolo`` / ``sam`` mask processors, not a face detector on the
 whole animal.
 
-flux kontext video ltx wan
+flux kontext video ltx2 ltx-video wan
 --------------------------
 
 Flux Schnell: ``black-forest-labs/FLUX.1-schnell``, 4 steps, guidance
 0. Flux Dev: ``black-forest-labs/FLUX.1-dev``. Flux Kontext edits an
 image: ``--model-type flux-kontext`` and ``--image-seeds`` the photo,
 prompt is an instruction. LTX-2.5
-(``Lightricks/LTX-2.5-Diffusers``, ``--model-type ltx``) makes video
+(``Lightricks/LTX-2.5-Diffusers``, ``--model-type ltx2``) makes video
 and audio. Animate a still with that repo, ``--guidance-scales 1``,
 ``--model-sequential-offload``, ``--animation-format mp4``, and
 ``--image-seeds {{ quote(first(last_images)) }}``.

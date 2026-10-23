@@ -25,7 +25,7 @@
 {% endif %}
 
 Lightricks/LTX-2.5-Diffusers
---model-type ltx
+--model-type ltx2
 --dtype bfloat16
 --model-sequential-offload
 --transformer Lightricks/LTX-2.5-Diffusers;subfolder=transformer_full

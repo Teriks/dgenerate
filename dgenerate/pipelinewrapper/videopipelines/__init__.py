@@ -80,7 +80,7 @@ def classify_video_seed(model_type: _enums.ModelType | str,
         from . import wan
         wan._reject_animate_keywords(parsed, _enums.get_model_type_string(model_type))
 
-    if model_type == _enums.ModelType.LTX:
+    if _enums.model_type_is_ltx_family(model_type):
         from . import ltx
         return ltx._classify_ltx(parsed, ic_lora)
     if model_type == _enums.ModelType.WAN:
@@ -92,7 +92,7 @@ def classify_video_seed(model_type: _enums.ModelType | str,
     if model_type in SINGLE_IMAGE_VIDEO_MODEL_TYPES:
         if ic_lora:
             raise _pipelines.UnsupportedPipelineConfigError(
-                '--ltx-ic-lora is only supported with --model-type ltx.')
+                '--ltx-ic-lora is only supported with --model-type ltx2.')
         return _classify_single_image_video_seed(model_type, parsed)
 
     raise _pipelines.UnsupportedPipelineConfigError(
@@ -130,7 +130,7 @@ def generate(wrapper, user_args) -> tuple[list[PIL.Image.Image], numpy.ndarray |
     """
     model_type = wrapper.model_type
     try:
-        if model_type == _enums.ModelType.LTX:
+        if _enums.model_type_is_ltx_family(model_type):
             from . import ltx
             return ltx._call_ltx(wrapper, user_args)
         if model_type == _enums.ModelType.WAN:

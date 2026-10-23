@@ -1211,7 +1211,7 @@ class ImageSeedParseResult:
     ``None`` means the keyword was omitted. The primary path then starts at
     latent frame 0. An extra condition after `` ++ `` must set this.
 
-    Only ``--model-type ltx`` accepts the keyword.
+    Only ``--model-type ltx2`` and ``ltx-video`` accept the keyword.
     """
 
     ltx_condition_strength: _types.OptionalFloat = None

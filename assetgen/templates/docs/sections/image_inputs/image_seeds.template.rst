@@ -54,7 +54,7 @@ img2img mode with a ControlNet for example, see: `Specifying ControlNets`_ for m
 
 ``strength`` on an image seed overrides ``--image-seed-strengths`` for that seed.
 ``--image-seeds "photo.png;strength=0.4"`` is img2img at strength 0.4.
-On ``--model-type ltx`` the same keyword is the condition weight, and
+On ``--model-type ltx2`` and ``ltx-video`` the same keyword is the condition weight, and
 ``--image-seed-strengths`` fills groups that omit it.
 
 Wan-Animate reads ``wan-pose=``, ``wan-face=``, ``wan-driving=``, and ``wan-background=``

@@ -20,14 +20,17 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import hashlib
+import json
 import shutil
 from pathlib import Path
 from typing import Optional
 
 try:
-    from huggingface_hub import snapshot_download
+    from huggingface_hub import snapshot_download, HfApi
 except ImportError:
     snapshot_download = None
+    HfApi = None
 
 
 class HfConfigsBuilder:
@@ -42,6 +45,13 @@ class HfConfigsBuilder:
         """
         self.project_dir = project_dir or Path.cwd()
         self.output_dir = self.project_dir / 'dgenerate' / 'pipelinewrapper' / 'hub_configs'
+
+        # Maps repository -> [source repository, hub commit sha, download patterns hash]
+        # that was last downloaded. A repository is skipped when all three match
+        # and the files are still present.
+        # This file lives in hub_configs itself, so it is committed and packaged
+        # with the configs it describes and the two always agree.
+        self.revisions_file = self.output_dir / 'revisions.json'
         
         # List of repositories to download from
         # These are the repositories that diffusers actually uses for single file loading
@@ -157,6 +167,16 @@ class HfConfigsBuilder:
             "stabilityai/stable-diffusion-2-inpainting": "sd2-community/stable-diffusion-2-inpainting",
         }
 
+    def _load_revisions(self) -> dict:
+        try:
+            return json.loads(self.revisions_file.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            return {}
+
+    def _save_revisions(self, revisions: dict):
+        self.revisions_file.parent.mkdir(parents=True, exist_ok=True)
+        self.revisions_file.write_text(json.dumps(revisions, indent=2, sort_keys=True), encoding='utf-8')
+
     def build(self):
         """Download essential JSON configuration files from Hugging Face repositories."""
         print("Downloading Hugging Face model configuration files...")
@@ -172,6 +192,43 @@ class HfConfigsBuilder:
         success_count = 0
         failed_repos = []
 
+        if HfApi is None or snapshot_download is None:
+            raise RuntimeError('huggingface_hub is required to build hub configs.')
+
+        # Download only essential .json config files
+        essential_patterns = [
+            "model_index.json",           # Main model configuration
+            "config.json",                # Top-level config (for ControlNets and other models)
+            "*/config.json",              # Component configs (unet, vae, text_encoder, etc.)
+            "*/scheduler_config.json",    # Scheduler configuration
+            "*/tokenizer_config.json",    # Tokenizer configuration
+            "*/special_tokens_map.json",  # Tokenizer special tokens
+            "*/vocab.json",               # Tokenizer vocabulary
+            "*/tokenizer.json",           # Tokenizer data
+            # Ensure BPE/SentencePiece tokenizers are complete
+            "merges.txt",
+            "*/merges.txt",
+            "**/merges.txt",
+            "spiece.model",
+            "*/spiece.model",
+            "**/spiece.model",
+            "*/preprocessor_config.json", # Feature extractor config
+            "*.safetensors.index.json",   # Model weight indices
+            "*.safetensors.index.fp16.json",  # FP16 model weight indices
+            # Diffusers single-file loading requests every json, txt, and
+            # sentencepiece model. Processor and chat-template files live here.
+            "**/*.json",
+            "**/*.txt",
+            "**/*.model",
+        ]
+
+        # Changing the download patterns invalidates every recorded revision
+        patterns_key = hashlib.sha256(
+            json.dumps(essential_patterns).encode('utf-8')).hexdigest()[:16]
+
+        revisions = self._load_revisions()
+        api = HfApi()
+
         # Download .json config files from each repository
         for i, repo in enumerate(self.repositories, 1):
             print(f"[{i}/{len(self.repositories)}] Processing: {repo}")
@@ -180,36 +237,20 @@ class HfConfigsBuilder:
                 # Create a directory structure: models--org--name
                 repo_dir_name = f"models--{repo.replace('/', '--')}"
                 repo_path = self.output_dir / repo_dir_name
-                
-                # Download only essential .json config files
-                essential_patterns = [
-                    "model_index.json",           # Main model configuration
-                    "config.json",                # Top-level config (for ControlNets and other models)
-                    "*/config.json",              # Component configs (unet, vae, text_encoder, etc.)
-                    "*/scheduler_config.json",    # Scheduler configuration
-                    "*/tokenizer_config.json",    # Tokenizer configuration
-                    "*/special_tokens_map.json",  # Tokenizer special tokens
-                    "*/vocab.json",               # Tokenizer vocabulary
-                    "*/tokenizer.json",           # Tokenizer data
-                    # Ensure BPE/SentencePiece tokenizers are complete
-                    "merges.txt",
-                    "*/merges.txt",
-                    "**/merges.txt",
-                    "spiece.model",
-                    "*/spiece.model",
-                    "**/spiece.model",
-                    "*/preprocessor_config.json", # Feature extractor config
-                    "*.safetensors.index.json",   # Model weight indices
-                    "*.safetensors.index.fp16.json",  # FP16 model weight indices
-                    # Diffusers single-file loading requests every json, txt, and
-                    # sentencepiece model. Processor and chat-template files live here.
-                    "**/*.json",
-                    "**/*.txt",
-                    "**/*.model",
-                ]
-                
+                source_repo = self.moved_repositories.get(repo, repo)
+
+                # One cheap metadata request, skip the download if the hub
+                # commit is the one we already have on disk
+                hub_sha = api.repo_info(repo_id=source_repo).sha
+                if (hub_sha and revisions.get(repo) == [source_repo, hub_sha, patterns_key]
+                        and any(repo_path.rglob("*.json"))):
+                    print(f"  ✓ Up to date ({hub_sha[:8]}), skipping")
+                    success_count += 1
+                    print()
+                    continue
+
                 snapshot_download(
-                    repo_id=self.moved_repositories.get(repo, repo),
+                    repo_id=source_repo,
                     allow_patterns=essential_patterns,
                     local_dir=repo_path
                 )
@@ -225,7 +266,11 @@ class HfConfigsBuilder:
                 json_files = list(repo_path.rglob("*.json"))
                 print(f"  ✓ Downloaded {len(json_files)} JSON files")
                 success_count += 1
-                
+
+                if hub_sha:
+                    revisions[repo] = [source_repo, hub_sha, patterns_key]
+                    self._save_revisions(revisions)
+
             except Exception as e:
                 print(f"  ✗ Failed to download from {repo}: {str(e)}")
                 failed_repos.append(repo)
