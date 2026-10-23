@@ -451,16 +451,27 @@ class _RecipesForm(tk.Toplevel):
             spec = entry.config.get('enabled-when') or entry.config.get('visible-when')
             enabled[entry] = self._matches_condition(spec) if spec else True
 
+        # Exclusion is mutual, a recipe only needs to declare it on one
+        # side of a pair, usually on the later entry.
+        exclusions = {entry: [] for entry in self._entries}
+        for entry in self._entries:
+            exclude = entry.config.get('exclude', [])
+            if isinstance(exclude, str):
+                exclude = [exclude]
+            for other_id in exclude:
+                other_entry = self.get_entry_by_id(other_id)
+                if other_entry is not None and other_entry is not entry:
+                    exclusions[entry].append(other_entry)
+                    exclusions[other_entry].append(entry)
+
         # Only entries left enabled by their conditions can exclude others.
+        # Entries are visited in form order, so if two exclusive entries are
+        # somehow both active, the first one wins and the other is grayed
+        # out, rather than both graying each other out.
         for entry in self._entries:
             if enabled[entry] and entry.is_active():
-                exclude = entry.config.get('exclude', [])
-                if isinstance(exclude, str):
-                    exclude = [exclude]
-                for other_id in exclude:
-                    other_entry = self.get_entry_by_id(other_id)
-                    if other_entry is not None:
-                        enabled[other_entry] = False
+                for other_entry in exclusions[entry]:
+                    enabled[other_entry] = False
 
         # Rows only change state when their result differs, so an entry's
         # own widget states are not reset on every refresh.

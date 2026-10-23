@@ -5440,6 +5440,9 @@ class DiffusionPipelineWrapper:
                 (_diffusion_option_enabled(args, 'tea_cache'), 'TeaCache'),
                 (_diffusion_option_enabled(args, 'spectrum'), 'Spectrum'),
                 (_diffusion_option_enabled(args, 'sada'), 'SADA'),
+                # RAS replaces the SD3 transformer forward, which leaves
+                # Cache-DiT's hooks unused, so Cache-DiT silently does nothing.
+                (_diffusion_option_enabled(args, 'ras'), 'RAS'),
                 (args.dype, 'DyPE')):
             if enabled:
                 raise _pipelines.UnsupportedPipelineConfigError(
