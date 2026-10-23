@@ -55,6 +55,7 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.safetensorscompat as _safetensorscompat
+import dgenerate.pipelinewrapper.singlefilecompat as _singlefilecompat
 import dgenerate.pipelinewrapper.sdnqload as _sdnqload
 import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.uris as _uris
@@ -70,6 +71,9 @@ import dgenerate.pipelinewrapper.models as _models
 # Text encoders, VAEs, and UNets read from a ComfyUI quantized single file
 # are dequantized as Diffusers loads them.
 _safetensorscompat.install_single_file_patch()
+
+# Single file conversions Diffusers lacks or gets wrong.
+_singlefilecompat.register_single_file_classes()
 
 
 class UnsupportedPipelineConfigError(Exception):

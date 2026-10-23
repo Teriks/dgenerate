@@ -29,6 +29,7 @@ import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.ggufcompat as _ggufcompat
 import dgenerate.pipelinewrapper.safetensorscompat as _safetensorscompat
 import dgenerate.pipelinewrapper.sdnqload as _sdnqload
+import dgenerate.pipelinewrapper.singlefilecompat as _singlefilecompat
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -318,6 +319,8 @@ class TransformerUri:
 
             self._enforce_cache_size(estimated_memory_use)
 
+            _singlefilecompat.register_single_file_classes()
+
             single_file_source = model_path
             already_converted = False
             comfy_quant = None
@@ -329,7 +332,6 @@ class TransformerUri:
                 except _safetensorscompat.ComfyQuantError as e:
                     raise _exceptions.TransformerUriLoadError(str(e)) from e
                 single_file_source = comfy_quant.checkpoint
-                _ggufcompat.register_single_file_classes()
                 if quant_config is None:
                     quant_config = comfy_quant.quantization_config
             if gguf_file:

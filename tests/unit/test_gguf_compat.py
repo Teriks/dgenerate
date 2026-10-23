@@ -4,6 +4,7 @@ from unittest import mock
 import torch
 
 import dgenerate.pipelinewrapper.ggufcompat as _ggufcompat
+import dgenerate.pipelinewrapper.singlefilecompat as _singlefilecompat
 
 
 class TestGGUFCompat(unittest.TestCase):
@@ -194,12 +195,33 @@ class TestGGUFCompat(unittest.TestCase):
         with mock.patch(
                 'diffusers.loaders.single_file_utils.convert_hunyuan_video_transformer_to_diffusers',
                 side_effect=lambda checkpoint, **kwargs: checkpoint):
-            converted = _ggufcompat.convert_hunyuan_video15_transformer_checkpoint(source)
+            converted = _singlefilecompat.convert_hunyuan_video15_transformer_checkpoint(source)
         self.assertIn('time_embed.timestep_embedder.linear_1.weight', converted)
         self.assertIn('cond_type_embed.weight', converted)
         self.assertIn('image_embedder.norm_in.weight', converted)
         self.assertIn('context_embedder_2.linear_1.weight', converted)
         self.assertIn('transformer_blocks.0.norm1.weight', converted)
+
+    def test_ltx25_converter_maps_prompt_adaln(self):
+        import diffusers.loaders.single_file_model as single_file_model
+
+        source = {
+            'model.diffusion_model.adaln_single.linear.weight': torch.zeros(2, 2),
+            'model.diffusion_model.prompt_adaln_single.linear.weight': torch.zeros(2, 2),
+            'model.diffusion_model.audio_prompt_adaln_single.emb.timestep_embedder.linear_1.bias':
+                torch.zeros(2),
+        }
+        converted = _singlefilecompat.convert_ltx2_transformer_checkpoint(source)
+        self.assertEqual(set(converted), {
+            'time_embed.linear.weight',
+            'prompt_adaln.linear.weight',
+            'audio_prompt_adaln.emb.timestep_embedder.linear_1.bias',
+        })
+
+        _singlefilecompat.register_single_file_classes()
+        entry = single_file_model.SINGLE_FILE_LOADABLE_CLASSES['LTX2VideoTransformer3DModel']
+        self.assertIs(entry['checkpoint_mapping_fn'],
+                      _singlefilecompat.convert_ltx2_transformer_checkpoint)
 
     def test_wan_layout_from_patch_embedding(self):
         t2v_small = _ggufcompat.detect_gguf_layout({
