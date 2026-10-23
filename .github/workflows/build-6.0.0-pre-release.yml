@@ -275,6 +275,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Move 'pre-release' tag to the built commit
+        run: |
+          # Update the tag in place (deleting it would turn the release into a draft)
+          sha=$(git rev-parse HEAD)
+          echo "Moving 'pre-release' tag to $sha"
+          gh api -X PATCH "repos/${{ github.repository }}/git/refs/tags/pre-release" \
+            -f sha="$sha" -F force=true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Delete existing assets from release
         run: |
           # Get list of existing assets and delete them
