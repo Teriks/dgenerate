@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# FLUX.1 Krea dev with ComfyUI's scaled FP8 transformer. The repository
+# still supplies the CLIP-L and T5-XXL text encoders and the VAE. Krea dev
+# is tuned for 28 steps at guidance 4.5.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token to run this example.
+    \exit
+{% endif %}
+
+black-forest-labs/FLUX.1-Krea-dev
+--model-type flux
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/FLUX.1-Krea-dev_ComfyUI/blob/main/split_files/diffusion_models/flux1-krea-dev_fp8_scaled.safetensors
+--inference-steps 28
+--guidance-scales 4.5
+--gen-seeds 1
+--output-path flux-comfy-quant-krea-dev
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"
