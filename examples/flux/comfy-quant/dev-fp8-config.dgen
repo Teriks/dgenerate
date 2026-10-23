@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# FLUX.1 dev with Black Forest Labs' FP8 transformer file. The repository
+# still supplies the CLIP-L and T5-XXL text encoders and the VAE.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token to run this example.
+    \exit
+{% endif %}
+
+black-forest-labs/FLUX.1-dev
+--model-type flux
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/black-forest-labs/FLUX.1-dev-FP8/blob/main/flux1-dev-fp8.safetensors
+--inference-steps 30
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path flux-comfy-quant-dev
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

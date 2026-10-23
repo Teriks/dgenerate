@@ -45,7 +45,7 @@ order: 32
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @quantizer[{"divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
-@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-nvfp4.safetensors"}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors"}]
 @submodelbuilder[{"label":"IC-LoRA", "arg":"--ltx-ic-lora", "model": "IC-LoRA"}]
 @imageprocessor[{"arg":"--control-image-processors", "label":"IC-LoRA Control Clip Processor", "divider-after":true}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]
