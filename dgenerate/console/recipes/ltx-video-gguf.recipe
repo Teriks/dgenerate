@@ -5,11 +5,7 @@ order: 37
 # LTX-2.5 options such as latent upscale, STG, and audio guidance are not
 # accepted by this checkpoint.
 # Parent repo still supplies the VAE and text encoders.
-# First frame and last frame (last-frame=) are optional, each can be a still or a
-# video. A video first frame is an opening clip the output continues from,
-# a video last frame is a closing clip the output leads into.
-# Condition Strength fills image-seed groups that omit strength=. last-frame= stays at 1.
-# --scheduler accepts FlowMatchEulerDiscreteScheduler and its URI arguments.
+# First frame and last frame are optional, each can be a still or a video clip.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 
