@@ -19,7 +19,7 @@
 {% endif %}
 
 Lightricks/LTX-2.5-Diffusers
---model-type ltx
+--model-type ltx2
 --dtype bfloat16
 --model-sequential-offload
 --transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF/blob/main/dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf

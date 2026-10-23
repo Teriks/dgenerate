@@ -24,6 +24,44 @@ import tkinter as tk
 import inspect
 
 
+def select_whitespace_delimited_token(event):
+    """
+    Double click handler for ``tk.Text`` widgets, selects the entire
+    run of non-whitespace characters under the mouse cursor.
+
+    Useful for selecting URLs and paths.
+
+    :param event: tkinter mouse event
+    :return: ``'break'``, to suppress the default word selection
+    """
+    text = event.widget
+
+    # works even if the widget is disabled
+    index = text.index(f'@{event.x},{event.y}')
+    line, col = map(int, index.split('.'))
+    line_text = text.get(f'{line}.0', f'{line}.end')
+
+    # clicks past the end of a line map to the end index
+    if col >= len(line_text) or line_text[col].isspace():
+        if col == 0 or col > len(line_text) or line_text[col - 1].isspace():
+            return 'break'
+        col -= 1
+
+    start = col
+    while start > 0 and not line_text[start - 1].isspace():
+        start -= 1
+
+    end = col
+    while end < len(line_text) and not line_text[end].isspace():
+        end += 1
+
+    text.focus_set()
+    text.tag_remove(tk.SEL, '1.0', tk.END)
+    text.tag_add(tk.SEL, f'{line}.{start}', f'{line}.{end}')
+    text.mark_set(tk.INSERT, f'{line}.{end}')
+    return 'break'
+
+
 def position_toplevel(master,
                       toplevel: tk.Toplevel,
                       size: tuple[int, int] | None = None,

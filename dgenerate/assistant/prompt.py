@@ -235,7 +235,7 @@ PROMPT_GUIDES = {
     'wan-animate-2': ('A short description of how the character looks and the background. '
                       'The motion comes from wan-driving=, not from the prompt. '
                       'No --video-lengths. --video-fps defaults to 24.'),
-    'ltx': ('One paragraph of three to six plain sentences in the order things happen: the main action '
+    'ltx2': ('One paragraph of three to six plain sentences in the order things happen: the main action '
             'first, then specific movements and gestures, how the people and objects look, the setting, '
             'the camera angle and movement, and the lighting and color. Describe only what fits in the '
             'clip\'s length. --video-lengths is that length in seconds and snaps to 8k+1 frames. '
@@ -244,6 +244,12 @@ PROMPT_GUIDES = {
             'about what is heard, like the rain, footsteps, or music, and put spoken words in single quotes. '
             'A negative prompt is optional, like "worst quality, inconsistent motion, blurry, jittery, '
             'distorted".'),
+    'ltx-video': ('One paragraph of three to six plain sentences in the order things happen: the main action '
+                  'first, then specific movements, how the people and objects look, the setting, the camera '
+                  'angle and movement, and the lighting. Describe only what fits in the clip\'s length. '
+                  '--video-lengths is that length in seconds and snaps to 8k+1 frames. --video-fps defaults '
+                  'to 24. Width and height must be divisible by 32. No audio. A negative prompt is optional, '
+                  'like "worst quality, inconsistent motion, blurry, jittery, distorted".'),
     'upscaler-x2': 'A short description of what the image shows.',
     'upscaler-x4': 'A short description of what the image shows.',
 }
@@ -319,7 +325,7 @@ GGUF: --transformer https://huggingface.co/unsloth/Qwen-Image-Layered-GGUF/blob/
 The extra addition embedding selects the layered config.
 - Kolors: Kwai-Kolors/Kolors-diffusers, --model-type kolors --variant fp16. Public, no HF_TOKEN.
 - DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
-- Animate a still or make a clip: Lightricks/LTX-2.5-Diffusers, --model-type ltx, \
+- Animate a still or make a clip: Lightricks/LTX-2.5-Diffusers, --model-type ltx2, \
 --guidance-scales 1, --video-fps 24, --model-sequential-offload, --animation-format mp4. \
 Gated, needs HF_TOKEN. Clip length and frame rate are --video-lengths (seconds) and --video-fps. \
 --video-lengths snaps to 8k+1 frames. Width and height must be divisible by 32. \

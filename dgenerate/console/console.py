@@ -55,6 +55,7 @@ import dgenerate.console.resources as _resources
 import dgenerate.console.showindirectory as _showindirectory
 import dgenerate.console.submodelselect as _submodelselect
 import dgenerate.console.themetext as _themetext
+import dgenerate.console.util as _util
 import dgenerate.textprocessing as _textprocessing
 from dgenerate.console.codeview import DgenerateCodeView
 from dgenerate.console.procmon import ProcessMonitor
@@ -305,6 +306,7 @@ class DgenerateConsole(tk.Tk):
                                    lambda e:
                                    None if self._multi_line_input_check_var.get()
                                    else self._run_input_text())
+        self._input_text.text.bind('<Double-Button-1>', _util.select_whitespace_delimited_token)
         self._input_text.text.bind('<Up>', self._show_previous_command)
         self._input_text.text.bind('<Down>', self._show_next_command)
         self._input_text.text.bind('<Button-3>',
@@ -382,6 +384,7 @@ class DgenerateConsole(tk.Tk):
         # window on Windows, Linux, and macOS; a pane child cannot be managed on Aqua.
         self._output_text = ScrolledText(self)
 
+        self._output_text.text.bind('<Double-Button-1>', _util.select_whitespace_delimited_token)
         self._output_text.text.bind('<Button-3>',
                                     lambda e: self._output_text_context.tk_popup(
                                         self.winfo_pointerx(), self.winfo_pointery()))

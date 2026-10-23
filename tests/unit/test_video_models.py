@@ -210,7 +210,7 @@ class TestVideoModels(unittest.TestCase):
     def test_wan_vae_model_types(self):
         for model_type in ('wan', 'wan-animate', 'wan-animate-2', 'motif-video'):
             self.assertTrue(_pipelinewrapper.model_type_uses_wan_vae(model_type), model_type)
-        for model_type in ('ltx', 'hunyuan-video-15', 'kandinsky5-video', 'sdxl'):
+        for model_type in ('ltx2', 'ltx-video', 'hunyuan-video-15', 'kandinsky5-video', 'sdxl'):
             self.assertFalse(_pipelinewrapper.model_type_uses_wan_vae(model_type), model_type)
 
     def test_motif_vae_encode_runs_in_vae_dtype(self):
@@ -241,7 +241,7 @@ class TestVideoModels(unittest.TestCase):
                 'examples/media/earth.jpg;last-frame=examples/media/missing-end.jpg')
 
     def test_ltx_check_defaults(self):
-        config = _config(model_path='org/ltx', model_type=_pipelinewrapper.ModelType.LTX)
+        config = _config(model_path='org/ltx', model_type=_pipelinewrapper.ModelType.LTX2)
         config.check()
         self.assertEqual(config.video_fps, [24.0])
         self.assertEqual(
@@ -250,10 +250,31 @@ class TestVideoModels(unittest.TestCase):
 
         listed = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             sigmas=[[1.0, 0.5, 0.25]])
         listed.check()
         self.assertEqual(listed.inference_steps, [3])
+
+    def test_ltx_video_rejects_ltx2_only_options(self):
+        config = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX_VIDEO,
+            ltx_stg_scales=[1.0])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            config.check()
+        self.assertIn('ltx2', str(raised.exception))
+
+        _config(model_path='org/ltx', model_type=_pipelinewrapper.ModelType.LTX_VIDEO).check()
+
+    def test_ltx_family_follows_model_type(self):
+        ltx2 = _pipelinewrapper.ModelType.LTX2
+        video = _pipelinewrapper.ModelType.LTX_VIDEO
+        self.assertEqual(_videopipelines.ltx.ltx_family_for_model_type(ltx2, {'_class_name': 'LTX2Pipeline'}), 'ltx2')
+        self.assertEqual(_videopipelines.ltx.ltx_family_for_model_type(video, {'_class_name': 'LTXPipeline'}), 'ltx')
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines.ltx.ltx_family_for_model_type(video, {'_class_name': 'LTX2Pipeline'})
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines.ltx.ltx_family_for_model_type(ltx2, {'_class_name': 'LTXPipeline'})
 
     def test_distilled_steps_warning_shows_passed_value(self):
         default = _pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS
@@ -476,7 +497,7 @@ class TestVideoModels(unittest.TestCase):
     def test_ltx_scheduler_uri(self):
         rejected = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             scheduler_uri='EulerDiscreteScheduler')
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             rejected.check()
@@ -490,7 +511,7 @@ class TestVideoModels(unittest.TestCase):
         ):
             allowed = _config(
                 model_path='org/ltx',
-                model_type=_pipelinewrapper.ModelType.LTX,
+                model_type=_pipelinewrapper.ModelType.LTX2,
                 scheduler_uri=uri)
             allowed.check()
 
@@ -537,7 +558,7 @@ class TestVideoModels(unittest.TestCase):
 
         class Wrapper:
             device = 'cpu'
-            model_type = _pipelinewrapper.ModelType.LTX
+            model_type = _pipelinewrapper.ModelType.LTX2
             model_cpu_offload = False
             model_sequential_offload = False
             model_path = 'org/ltx'
@@ -575,7 +596,7 @@ class TestVideoModels(unittest.TestCase):
 
     def test_ltx_control_seed(self):
         gif = 'examples/media/rickroll-roll.gif'
-        ltx = _pipelinewrapper.ModelType.LTX
+        ltx = _pipelinewrapper.ModelType.LTX2
         with_first = _mediainput.parse_image_seed_uri(f'examples/media/earth.jpg;control={gif}')
         plain = _mediainput.parse_image_seed_uri(gif)
 
@@ -652,14 +673,14 @@ class TestVideoModels(unittest.TestCase):
         for processors in (['flip', '+', 'mirror'], ['+', 'mirror'], ['flip', '+']):
             config = _config(
                 model_path='org/ltx',
-                model_type=_pipelinewrapper.ModelType.LTX,
+                model_type=_pipelinewrapper.ModelType.LTX2,
                 image_seeds=['examples/media/earth.jpg;last-frame=examples/media/beach.jpg'],
                 seed_image_processors=processors)
             config.check()
 
         config = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             image_seeds=['examples/media/earth.jpg;last-frame=examples/media/beach.jpg'],
             seed_image_processors=['flip', '+', 'mirror', '+', 'grayscale'])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
@@ -667,14 +688,14 @@ class TestVideoModels(unittest.TestCase):
 
         config = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             image_seeds=['examples/media/earth.jpg;last-frame=examples/media/beach.jpg'],
             last_frame_image_processors=['flip'])
         config.check()
 
         config = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             image_seeds=['examples/media/earth.jpg;last-frame=examples/media/beach.jpg'],
             last_frame_image_processors=['flip', '+', 'mirror'])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
@@ -682,7 +703,7 @@ class TestVideoModels(unittest.TestCase):
 
         config = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             image_seeds=['examples/media/earth.jpg'],
             last_frame_image_processors=['flip'])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
@@ -817,7 +838,7 @@ class TestVideoModels(unittest.TestCase):
 
         class Wrapper:
             device = 'cpu'
-            model_type = _pipelinewrapper.ModelType.LTX
+            model_type = _pipelinewrapper.ModelType.LTX2
             model_cpu_offload = False
             model_sequential_offload = False
             model_path = 'org/ltx'
@@ -898,35 +919,35 @@ class TestVideoModels(unittest.TestCase):
     def test_video_rejects_batch_size_and_accepts_seed_strength(self):
         config = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             batch_size=2)
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             config.check()
 
         config = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             image_seeds=['examples/media/earth.jpg'],
             image_seed_strengths=[0.4])
         config.check()
         self.assertEqual(config.image_seed_strengths, [0.4])
 
     def test_model_path_is_required(self):
-        config = _config(model_type=_pipelinewrapper.ModelType.LTX)
+        config = _config(model_type=_pipelinewrapper.ModelType.LTX2)
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             config.check()
 
     def test_length_product(self):
         config = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             prompts=[_prompt.Prompt(), _prompt.Prompt()],
             video_lengths=[5.0, 2.0])
         self.assertEqual(config.calculate_generation_steps(), 4)
 
         audio = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             prompts=[_prompt.Prompt(), _prompt.Prompt()],
             ltx_audio_guidance_scales=[1.0, 7.0],
             ltx_audio_guidance_rescales=[0.5, 0.7])
@@ -935,7 +956,7 @@ class TestVideoModels(unittest.TestCase):
     def test_ltx_fps_default(self):
         config = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             video_fps=[12.0])
         config.check()
         self.assertEqual(config.video_fps, [12.0])
@@ -943,13 +964,13 @@ class TestVideoModels(unittest.TestCase):
     def test_canvas_alignment_is_forced_at_runtime(self):
         aligned = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             output_size=(512, 512))
         aligned.check()
 
         misaligned = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             output_size=(520, 512))
         misaligned.check()
 
@@ -1011,39 +1032,39 @@ class TestVideoModels(unittest.TestCase):
     def test_submodel_arguments(self):
         allowed = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             transformer_uri='Lightricks/LTX-2.5-Diffusers;subfolder=transformer_full',
             lora_uris=['org/lora;scale=0.8'])
         allowed.check()
 
         quantized = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             quantizer_uri='bnb;bits=4')
         quantized.check()
 
         with_vae = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             vae_uri='AutoencoderKLLTX2Video;model=org/vae')
         with_vae.check()
 
         with_text_encoders = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             text_encoder_uris=[
                 'Gemma4UnifiedForConditionalGeneration;model=org/te'])
         with_text_encoders.check()
 
         with_text_encoder_default = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             text_encoder_uris=['+'])
         with_text_encoder_default.check()
 
         rejected_second_text_encoders = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             second_model_text_encoder_uris=[
                 'Gemma4UnifiedForConditionalGeneration;model=org/te'])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
@@ -1067,7 +1088,7 @@ class TestVideoModels(unittest.TestCase):
 
         mapped = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             quantizer_uri='bnb;bits=4',
             quantizer_map=['text_encoder_2'])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
@@ -1075,20 +1096,20 @@ class TestVideoModels(unittest.TestCase):
 
         encoder_map = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             quantizer_uri='bnb;bits=4',
             quantizer_map=['transformer', 'text_encoder', 'connectors'])
         encoder_map.check()
 
         rescale = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             guidance_rescales=[0.7])
         rescale.check()
 
         audio = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             ltx_audio_guidance_scales=[7.0],
             ltx_audio_guidance_rescales=[0.5])
         audio.check()
@@ -1127,21 +1148,21 @@ class TestVideoModels(unittest.TestCase):
 
         sequence = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             max_sequence_length=1024,
             vae_slicing=True)
         sequence.check()
 
         too_long = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             max_sequence_length=1025)
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             too_long.check()
 
         tiled = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             vae_tiling=True)
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             tiled.check()
@@ -1179,7 +1200,7 @@ class TestVideoModels(unittest.TestCase):
                     kwargs['image_seeds'] = ['examples/media/earth.jpg']
                 config = _config(
                     model_path='org/ltx',
-                    model_type=_pipelinewrapper.ModelType.LTX,
+                    model_type=_pipelinewrapper.ModelType.LTX2,
                     **kwargs)
                 with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
                     config.check()
@@ -1864,7 +1885,7 @@ class TestVideoModels(unittest.TestCase):
     def test_cache_kwargs_omits_mode(self):
         class Wrapper:
             model_path = 'org/ltx'
-            model_type = _pipelinewrapper.ModelType.LTX
+            model_type = _pipelinewrapper.ModelType.LTX2
             _revision = None
             _variant = None
             _subfolder = None
@@ -2013,7 +2034,7 @@ class TestVideoModels(unittest.TestCase):
     def test_ltx_allows_frame_slice(self):
         config = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             frame_start=3,
             frame_end=10)
         config.check()
@@ -2161,7 +2182,7 @@ class TestVideoModels(unittest.TestCase):
         self.assertEqual(parsed.ltx_extra_conditions[0].images, [beach])
         self.assertEqual(parsed.ltx_extra_conditions[0].ltx_condition_index, 8)
         self.assertFalse(parsed.is_single_spec)
-        ltx = _pipelinewrapper.ModelType.LTX
+        ltx = _pipelinewrapper.ModelType.LTX2
         self.assertEqual(
             _videopipelines.classify_video_seed(ltx, parsed), 'ltx-condition')
 
@@ -2179,28 +2200,28 @@ class TestVideoModels(unittest.TestCase):
     def test_latent_upscale_size_check(self):
         missing = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             ltx_latent_upscale=True)
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             missing.check()
 
         odd = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             ltx_latent_upscale=True,
             output_size=(640, 352))
         odd.check()
 
         aligned = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             ltx_latent_upscale=True,
             output_size=(768, 512))
         aligned.check()
 
         bounds = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             prompts=[_prompt.Prompt('a')],
             ltx_video_min_seconds=[2.0, 4.0],
             ltx_video_max_seconds=[6.0, 8.0])
@@ -2309,7 +2330,7 @@ class TestVideoModels(unittest.TestCase):
 
         class Wrapper:
             device = 'cpu'
-            model_type = _pipelinewrapper.ModelType.LTX
+            model_type = _pipelinewrapper.ModelType.LTX2
             model_cpu_offload = False
             model_sequential_offload = False
             model_path = 'org/ltx'
@@ -3147,7 +3168,7 @@ class TestWanModels(unittest.TestCase):
 
         parsed = _arguments.parse_args([
             'org/ltx',
-            '--model-type', 'ltx',
+            '--model-type', 'ltx2',
             '--dtype', 'bfloat16',
             '--image-seeds',
             'examples/media/earth.jpg;last-frame=examples/media/beach.jpg',
@@ -3180,7 +3201,7 @@ class TestWanModels(unittest.TestCase):
     def test_ltx_rejects_wan_options(self):
         config = _config(
             model_path='org/ltx',
-            model_type=_pipelinewrapper.ModelType.LTX,
+            model_type=_pipelinewrapper.ModelType.LTX2,
             wan_boundary_ratios=[0.9])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             config.check()

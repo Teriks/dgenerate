@@ -325,7 +325,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     For Stable Diffusion 3 and Flux this is the T5 encoder. Those models default
     to 256 and 512 respectively, and the allowed range is 1 to 512.
     
-    For ``--model-type ltx`` this is Gemma. Omitting it leaves the pipeline
+    For ``--model-type ltx2`` this is Gemma. Omitting it leaves the pipeline
     default of 1024. The allowed range is 1 to 1024.
     
     High values result in more resource usage and processing time.
@@ -458,7 +458,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     ltx_audio_guidance_scales: _types.OptionalFloats = None
     """
-    Audio CFG scales for ``--model-type ltx``. Each value is a factor in the
+    Audio CFG scales for ``--model-type ltx2``. Each value is a factor in the
     generation step product. ``None`` copies the video guidance that will be
     sent, except the unused default ``5`` on a full scheduler, which uses
     audio ``7``.
@@ -469,7 +469,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     ltx_audio_guidance_rescales: _types.OptionalFloats = None
     """
-    Audio guidance rescale factors for ``--model-type ltx``. Each value is a
+    Audio guidance rescale factors for ``--model-type ltx2``. Each value is a
     factor in the generation step product. ``None`` copies ``--guidance-rescales``
     when that is set, otherwise the pipeline default ``0.7`` is left in place.
 
@@ -3147,14 +3147,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("video_fps")} is only supported for video model types.')
             for name in _ltx_arguments_in_use(self):
                 raise RenderLoopConfigError(
-                    f'{a_namer(name)} is only supported for the ltx video model type.')
+                    f'{a_namer(name)} is only supported for the ltx2 and ltx-video model types.')
             for name in _wan_arguments_in_use(self):
                 raise RenderLoopConfigError(
                     f'{a_namer(name)} is only supported for the wan, wan-animate, and '
                     f'wan-animate-2 video model types.')
             return
 
-        if self.model_type == _pipelinewrapper.ModelType.LTX:
+        if _pipelinewrapper.model_type_is_ltx_family(self.model_type):
             for name in _wan_arguments_in_use(self):
                 raise RenderLoopConfigError(
                     f'{a_namer(name)} is only supported for the wan, wan-animate, and '
@@ -3163,7 +3163,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif self.model_type == _pipelinewrapper.ModelType.WAN:
             for name in _ltx_arguments_in_use(self):
                 raise RenderLoopConfigError(
-                    f'{a_namer(name)} is only supported for the ltx video model type.')
+                    f'{a_namer(name)} is only supported for the ltx2 and ltx-video model types.')
             for name in _wan_arguments_in_use(self):
                 if name in _WAN_ANIMATE_ONLY_FIELDS:
                     raise RenderLoopConfigError(
@@ -3172,7 +3172,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE:
             for name in _ltx_arguments_in_use(self):
                 raise RenderLoopConfigError(
-                    f'{a_namer(name)} is only supported for the ltx video model type.')
+                    f'{a_namer(name)} is only supported for the ltx2 and ltx-video model types.')
             for name in _wan_arguments_in_use(self):
                 if name in _WAN_PLAIN_ONLY_FIELDS:
                     raise RenderLoopConfigError(
@@ -3181,7 +3181,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE_2:
             for name in _ltx_arguments_in_use(self):
                 raise RenderLoopConfigError(
-                    f'{a_namer(name)} is only supported for the ltx video model type.')
+                    f'{a_namer(name)} is only supported for the ltx2 and ltx-video model types.')
             for name in _wan_arguments_in_use(self):
                 if name in _WAN_PLAIN_ONLY_FIELDS or name in _WAN_NOT_ANIMATE_2_FIELDS:
                     raise RenderLoopConfigError(
@@ -3190,7 +3190,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         else:
             for name in _ltx_arguments_in_use(self):
                 raise RenderLoopConfigError(
-                    f'{a_namer(name)} is only supported for the ltx video model type.')
+                    f'{a_namer(name)} is only supported for the ltx2 and ltx-video model types.')
             for name in _wan_arguments_in_use(self):
                 raise RenderLoopConfigError(
                     f'{a_namer(name)} is only supported for wan video model types.')
@@ -3222,6 +3222,33 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("timesteps")} is not supported for this model type.')
 
     def _check_ltx_requirements(self, a_namer: typing.Callable[[str], str]):
+        if self.model_type == _pipelinewrapper.ModelType.LTX_VIDEO:
+            ltx2_only = (
+                ('sigmas', self.sigmas),
+                ('timesteps', self.timesteps),
+                ('ltx_ic_lora_uri', self.ltx_ic_lora_uri),
+                ('ltx_audio_guidance_scales', self.ltx_audio_guidance_scales),
+                ('ltx_audio_guidance_rescales', self.ltx_audio_guidance_rescales),
+                ('ltx_audio_stg_scales', self.ltx_audio_stg_scales),
+                ('ltx_audio_modality_scales', self.ltx_audio_modality_scales),
+                ('ltx_stg_scales', self.ltx_stg_scales),
+                ('ltx_stg_blocks', self.ltx_stg_blocks),
+                ('ltx_modality_scales', self.ltx_modality_scales),
+                ('ltx_latent_upscale', self.ltx_latent_upscale),
+                ('ltx_video_decoder', self.ltx_video_decoder == 'diffusion'),
+                ('ltx_diffusion_decoder', self.ltx_diffusion_decoder),
+                ('ltx_diffusion_decode_tile', self.ltx_diffusion_decode_tile),
+                ('ltx_prompt_enhancer', self.ltx_prompt_enhancer),
+                ('ltx_image_crfs', self.ltx_image_crfs),
+                ('ltx_use_cross_timestep', self.ltx_use_cross_timestep is False),
+                ('ltx_video_min_seconds', self.ltx_video_min_seconds),
+                ('ltx_video_max_seconds', self.ltx_video_max_seconds),
+            )
+            for name, value in ltx2_only:
+                if value:
+                    raise RenderLoopConfigError(
+                        f'{a_namer(name)} is only supported for --model-type ltx2.')
+
         if self.ltx_ic_lora_uri:
             try:
                 _pipelinewrapper.uris.ICLoRAUri.parse(self.ltx_ic_lora_uri)
@@ -3232,7 +3259,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("ltx_ic_lora_uri")} needs a control clip in {a_namer("image_seeds")}, '
                     f'for example {a_namer("image_seeds")} "control.mp4".')
 
-        if self.model_type == _pipelinewrapper.ModelType.LTX:
+        if _pipelinewrapper.model_type_is_ltx_family(self.model_type):
             if self.sigmas:
                 first = self.sigmas[0]
                 if (self.inference_steps == [_pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS]
@@ -3240,10 +3267,15 @@ class RenderLoopConfig(_types.SetFromMixin):
                     self.inference_steps = [len(first)]
 
             if self.max_sequence_length is not None:
-                if self.max_sequence_length < 1 or self.max_sequence_length > 1024:
+                # LTX-2 encodes prompts with Gemma, LTX-Video with T5
+                if self.model_type == _pipelinewrapper.ModelType.LTX2:
+                    limit, name = 1024, 'ltx2'
+                else:
+                    limit, name = 512, 'ltx-video'
+                if self.max_sequence_length < 1 or self.max_sequence_length > limit:
                     raise RenderLoopConfigError(
                         f'{a_namer("max_sequence_length")} must be greater than or equal '
-                        f'to 1 and less than or equal to 1024 for ltx.')
+                        f'to 1 and less than or equal to {limit} for {name}.')
 
         if self.ltx_latent_upscale and self.output_size is None:
             raise RenderLoopConfigError(
@@ -3347,7 +3379,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.mask_image_processors:
             raise RenderLoopConfigError(
-                f'{a_namer("mask_image_processors")} cannot be used with --model-type ltx.')
+                f'{a_namer("mask_image_processors")} cannot be used with --model-type ltx2 or ltx-video.')
 
     def _check_wan_requirements(self, a_namer: typing.Callable[[str], str]):
         self._check_wan_common(a_namer, max_sequence=512)
@@ -3431,7 +3463,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_video_shared_requirements(self, a_namer: typing.Callable[[str], str]):
         if self.video_fps is None:
-            if self.model_type == _pipelinewrapper.ModelType.LTX:
+            if _pipelinewrapper.model_type_is_ltx_family(self.model_type):
                 self.video_fps = [24.0]
             elif self.model_type == _pipelinewrapper.ModelType.WAN:
                 self.video_fps = [16.0]
@@ -3480,7 +3512,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'video model types. Use {allowed}.')
 
         if self.model_type not in (
-                _pipelinewrapper.ModelType.LTX,
+                _pipelinewrapper.ModelType.LTX2,
                 _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15) and self.sigmas:
             raise RenderLoopConfigError(
                 f'{a_namer("sigmas")} is not supported for --model-type '
@@ -4190,10 +4222,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("last_frame_image_processors")} is only supported for video model types.')
 
         if (parsed.ltx_condition_index is not None or parsed.ltx_extra_conditions) and (
-                self.model_type != _pipelinewrapper.ModelType.LTX):
+                not _pipelinewrapper.model_type_is_ltx_family(self.model_type)):
             raise RenderLoopConfigError(
                 'Image seed ltx-index and " ++ " conditions are only supported '
-                'for --model-type ltx.')
+                'for --model-type ltx2 or ltx-video.')
 
         if parsed.ltx_condition_strength is not None and (
                 _pipelinewrapper.model_type_is_upscaler(self.model_type) or
@@ -4214,7 +4246,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(str(e)) from e
             _, _, control = _videopipelines.video_seed_slots(parsed, ic_lora)
             if self.control_image_processors and control is None:
-                if self.model_type == _pipelinewrapper.ModelType.LTX:
+                if _pipelinewrapper.model_type_is_ltx_family(self.model_type):
                     raise RenderLoopConfigError(
                         f'{a_namer("control_image_processors")} runs on the IC-LoRA control clip, '
                         f'and {a_namer("image_seeds")} "{uri}" has none. '
@@ -4791,7 +4823,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 if n.startswith('qwen_layered_'):
                     return None
 
-            if self.model_type != _pipelinewrapper.ModelType.LTX:
+            if not _pipelinewrapper.model_type_is_ltx_family(self.model_type):
                 if n.startswith('ltx_'):
                     return None
 

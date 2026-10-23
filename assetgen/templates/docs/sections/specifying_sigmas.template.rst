@@ -56,7 +56,7 @@ For SDXL and other models, the expression receives the scheduler's
 ``set_timesteps`` schedule. That is useful when the initial schedule is not a
 simple line.
 
-``--model-type ltx`` accepts the same CSV lists and ``expr:`` forms.
+``--model-type ltx2`` and ``ltx-video`` accept the same CSV lists and ``expr:`` forms.
 When the loaded scheduler has no dynamic shifting, ``sigmas`` in the expression
 is the distilled 8-value table, not a schedule from ``set_timesteps``.
 When the scheduler uses dynamic shifting, ``sigmas`` comes from

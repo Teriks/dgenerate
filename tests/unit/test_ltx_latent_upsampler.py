@@ -37,6 +37,7 @@ class TestLTXLatentUpsampler(unittest.TestCase):
         args.ltx_latent_upscale = True
 
         class Wrapper:
+            model_type = 'ltx-video'
             model_path = 'org/ltx-video'
             _subfolder = None
             _revision = None
@@ -60,6 +61,7 @@ class TestLTXLatentUpsampler(unittest.TestCase):
         args.ltx_latent_upscale = 'org/ltx;subfolder=temporal_latent_upsampler'
 
         class Wrapper:
+            model_type = 'ltx2'
             model_path = 'org/ltx'
             _local_files_only = True
             _auth_token = None

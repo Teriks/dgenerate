@@ -452,6 +452,11 @@ def _has_mask(image_seeds: list[str] | None) -> bool:
     return False
 
 
+def _video_model_types() -> list[str]:
+    import dgenerate.pipelinewrapper.enums as _enums
+    return [name for name in _enums.supported_model_type_strings() if _enums.model_type_is_video(name)]
+
+
 def _model_type_str(config) -> str:
     import dgenerate.pipelinewrapper.enums as _enums
     try:
@@ -633,7 +638,7 @@ def check_config(text: str) -> dict:
     errors.extend(_runaway_comments(text))
     errors.extend(_print_says_example(text))
     if _LAST_ANIM_SEED.search(text) and not re.search(
-            r'--model-type\s+(ltx|wan|wan-animate|wan-animate-2)\b', text):
+            r'--model-type\s+(' + '|'.join(map(re.escape, _video_model_types())) + r')(?![\w-])', text):
         errors.append({
             'line': None,
             'message': '--image-seeds uses last_animations, but this config has no video '
@@ -929,7 +934,7 @@ def check_config(text: str) -> dict:
                                        f'or the user photo as --image-seeds, not last_animations.',
                         })
                         break
-            if mt in ('ltx', 'wan') and not prev_was_video:
+            if mt in ('ltx2', 'ltx-video', 'wan') and not prev_was_video:
                 for seed in seeds:
                     if 'last_animations' in seed or (
                             prev_animation and prev_animation.replace('\\', '/')
@@ -996,7 +1001,7 @@ def check_config(text: str) -> dict:
                 except _schedulers.SchedulerLoadError as e:
                     errors.append({'line': line, 'message': str(e).strip()})
             prev_image_format = config.image_format
-            prev_was_video = mt in ('ltx', 'wan', 'wan-animate', 'wan-animate-2')
+            prev_was_video = mt in _video_model_types()
             _img, prev_animation = _placeholder_outputs(list(argv))
         except SystemExit:
             errors.append({'line': line, 'message': 'dgenerate exited while parsing the invocation.'})

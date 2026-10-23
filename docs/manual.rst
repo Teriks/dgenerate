@@ -263,9 +263,9 @@ Help Output
             Use when loading different model types. Currently supported: sd, pix2pix, sdxl, sdxl-pix2pix,
             kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, sd3-pix2pix, flux,
             flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
-            qwen-image-layered, ltx, wan, wan-animate, wan-animate-2, qwen-image-21, krea2, kandinsky5-image,
-            kandinsky5-video, hunyuan-video-15, or motif-video. (default: sd)
-            -----------------------------------------------------------------
+            qwen-image-layered, ltx2, ltx-video, wan, wan-animate, wan-animate-2, qwen-image-21, krea2,
+            kandinsky5-image, kandinsky5-video, hunyuan-video-15, or motif-video. (default: sd)
+            -----------------------------------------------------------------------------------
       -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -646,8 +646,8 @@ Help Output
       -tf, --transformer TRANSFORMER_URI
             Specify a Stable Diffusion 3, Flux, Flux.2, Flux.2 Klein KV, Z-Image, Z-Image Omni, Qwen-Image,
             Qwen-Image edit, Qwen-Image layered, LTX, Wan, or Wan-Animate Transformer model using a URI.
-            ``--model-type ltx``, ``wan``, ``wan-animate``, and ``wan-animate-2`` accept one replacement
-            diffusion transformer. Wan 2.2 MoE checkpoints can load the low-noise expert with
+            ``--model-type ltx2``, ``ltx-video``, ``wan``, ``wan-animate``, and ``wan-animate-2`` accept one
+            replacement diffusion transformer. Wan 2.2 MoE checkpoints can load the low-noise expert with
             --wan-second-transformer.
             
             Examples:
@@ -773,8 +773,8 @@ Help Output
       -lra, --loras LORA_URI [LORA_URI ...]
             Specify one or more LoRA models using URIs. These should be a Hugging Face repository slug / blob
             link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or
-            model folder containing model files. ``ltx`` accepts LoRAs in diffusers format and fuses them into
-            the transformer. IC-LoRAs for ``ltx`` are loaded with --ltx-ic-lora instead.
+            model folder containing model files. ``ltx2`` and ``ltx-video`` accept LoRAs in diffusers format and
+            fuse them into the transformer. IC-LoRAs for ``ltx2`` are loaded with --ltx-ic-lora instead.
             
             If a LoRA model file exists at a URL which serves the file as a raw download, you may provide an
             http/https link to it and it will be downloaded to dgenerate's web cache.
@@ -807,7 +807,7 @@ Help Output
             they are fused into the main model at this scale value. (default: 1.0).
             -----------------------------------------------------------------------
       -icl, --ltx-ic-lora IC_LORA_URI
-            Specify an IC-LoRA (in-context LoRA) for --model-type ltx with an LTX-2 checkpoint, for example a
+            Specify an IC-LoRA (in-context LoRA) for --model-type ltx2 with an LTX-2 checkpoint, for example a
             canny, depth, or pose control LoRA. It uses the same URI syntax as --loras, and is fused into the
             transformer together with any --loras.
             
@@ -1158,9 +1158,9 @@ Help Output
             Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI
             arguments.
             
-            For --model-type ltx the only accepted scheduler is FlowMatchEulerDiscreteScheduler. URI arguments
-            overlay the checkpoint scheduler config. Other scheduler names are rejected. Omitting this option
-            keeps the checkpoint scheduler.
+            For --model-type ltx2 and ltx-video the only accepted scheduler is FlowMatchEulerDiscreteScheduler.
+            URI arguments overlay the checkpoint scheduler config. Other scheduler names are rejected. Omitting
+            this option keeps the checkpoint scheduler.
             
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
@@ -1511,7 +1511,8 @@ Help Output
             
             This is supported for: --model-type sd3, sd3-pix2pix, flux, flux-fill, flux-kontext, flux2,
             flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, krea2,
-            kandinsky5-image, ltx, wan, wan-animate, wan-animate-2, hunyuan-video-15, and kandinsky5-video.
+            kandinsky5-image, ltx2, ltx-video, wan, wan-animate, wan-animate-2, hunyuan-video-15, and
+            kandinsky5-video.
             
             See: https://cache-dit.readthedocs.io/en/latest/
             ------------------------------------------------
@@ -1580,8 +1581,8 @@ Help Output
             The file uses Cache-DiT's native YAML sections. Layerwise offload is configured as a mapping from
             pipeline component names to Cache-DiT layerwise_offload options. Supported --model-type values: sd3,
             sd3-pix2pix, flux, flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni,
-            qwen-image, qwen-image-edit, qwen-image-layered, krea2, kandinsky5-image, ltx, wan, wan-animate,
-            wan-animate-2, hunyuan-video-15, and kandinsky5-video. See:
+            qwen-image, qwen-image-edit, qwen-image-layered, krea2, kandinsky5-image, ltx2, ltx-video, wan,
+            wan-animate, wan-animate-2, hunyuan-video-15, and kandinsky5-video. See:
             https://cache-dit.readthedocs.io/en/latest/user_guide/LOAD_CONFIGS/ Layerwise offload:
             https://cache-dit.readthedocs.io/en/latest/user_guide/OFFLOAD/
             --------------------------------------------------------------
@@ -2382,9 +2383,10 @@ Help Output
       --max-sequence-length INTEGER
             The maximum amount of prompt tokens sent to the text encoder. For Stable Diffusion 3 and Flux this
             is the T5 encoder, an integer between 1 and 512 inclusive (default: 256 for SD3, 512 for Flux). For
-            --model-type ltx this is Gemma, an integer between 1 and 1024 inclusive. Omitting it on LTX leaves
-            the pipeline default of 1024. Higher values use more resources and time.
-            ------------------------------------------------------------------------
+            --model-type ltx2 this is Gemma, an integer between 1 and 1024 inclusive. Omitting it on ltx2 leaves
+            the pipeline default of 1024. For --model-type ltx-video this is T5, an integer between 1 and 512
+            inclusive (pipeline default: 128). Higher values use more resources and time.
+            -----------------------------------------------------------------------------
       -cs, --clip-skips INTEGER [INTEGER ...]
             One or more clip skip values to try. Clip skip is the number of layers to be skipped from CLIP while
             computing the prompt embeddings, it must be a value greater than or equal to zero. A value of 1
@@ -2424,13 +2426,14 @@ Help Output
             -----------------------------------------------------------
       -fs, --frame-start FRAME_NUMBER
             Starting frame slice point for animated files (zero-indexed), the specified frame will be included.
-            For --model-type ltx this slices a video or animated conditioning clip in --image-seeds. (default:
-            0)
-            --
+            For --model-type ltx2 and ltx-video this slices a video or animated conditioning clip in
+            --image-seeds. (default: 0)
+            ---------------------------
       -fe, --frame-end FRAME_NUMBER
             Ending frame slice point for animated files (zero-indexed), the specified frame will be included.
-            For --model-type ltx this slices a video or animated conditioning clip in --image-seeds.
-            ----------------------------------------------------------------------------------------
+            For --model-type ltx2 and ltx-video this slices a video or animated conditioning clip in
+            --image-seeds.
+            --------------
       -is, --image-seeds SEED [SEED ...]
             One or more image seed URIs to process, these may consist of URLs or file paths. Videos / GIFs /
             WEBP files will result in frames being rendered as well as an animated output file being generated
@@ -2578,7 +2581,7 @@ Help Output
             
             would indicate that the first control guidance image is not to be processed, only the second.
             
-            For --model-type ltx, one chain runs on every frame of the --ltx-ic-lora reference clip, for
+            For --model-type ltx2, one chain runs on every frame of the --ltx-ic-lora reference clip, for
             example: --ltx-ic-lora ... --image-seeds "video.mp4" --control-image-processors canny.
             
             To obtain more information about what image processors are available and how to use them, see:
@@ -2635,11 +2638,11 @@ Help Output
             and less than or equal to 1. Each value is tried in turn. An image seed keyword strength= overrides
             this option for that seed. (default: [0.8])
             
-            For --model-type ltx, these values are the condition strength of image-seed groups that omit
-            strength=. 1 keeps the conditioning frame. A lower value lets the generated frames leave it. Several
-            values are tried in turn. last-frame= stays at strength 1. LTX does not use the img2img default 0.8;
-            omit this option and an omitted strength= stays at 1.
-            -----------------------------------------------------
+            For --model-type ltx2 and ltx-video, these values are the condition strength of image-seed groups
+            that omit strength=. 1 keeps the conditioning frame. A lower value lets the generated frames leave
+            it. Several values are tried in turn. last-frame= stays at strength 1. LTX does not use the img2img
+            default 0.8; omit this option and an omitted strength= stays at 1.
+            ------------------------------------------------------------------
       -uns, --upscaler-noise-levels INTEGER [INTEGER ...]
             One or more upscaler noise level values to try when using the super resolution upscaler --model-type
             upscaler-x4 or ifs. Specifying this option for --model-type upscaler-x2 will produce an error
@@ -2701,7 +2704,9 @@ Help Output
             One or more guidance scale values to try. Guidance scale effects how much your text prompt is
             considered. Low values draw more data from images unrelated to text prompt.
             
-            For --model-type ltx, a value you set is used as written. The unused image default 5 is rewritten:
+            For --model-type ltx-video, the value is passed to the pipeline as written, including the default 5.
+            
+            For --model-type ltx2, a value you set is used as written. The unused image default 5 is rewritten:
             to 1 when the scheduler has no dynamic shifting, or to video 3 and audio 7 when it does. --sigmas
             skips that rewrite and uses the value you passed, including leftover 5. Video and audio guidance are
             the same number except for that 3 / 7 case. Use --ltx-audio-guidance-scales to set audio CFG
@@ -2732,8 +2737,8 @@ Help Output
             
             Each provided value (each quoted string in the example above) will be tried in turn.
             
-            For --model-type ltx, --sigmas replaces the automatic schedule. The step count becomes the length of
-            the list. In expr: form, sigmas is the distilled 8-value table when the scheduler has no dynamic
+            For --model-type ltx2, --sigmas replaces the automatic schedule. The step count becomes the length
+            of the list. In expr: form, sigmas is the distilled 8-value table when the scheduler has no dynamic
             shifting, or the scheduler set_timesteps schedule otherwise. Guidance is used as written; see
             --guidance-scales.
             
@@ -2763,8 +2768,8 @@ Help Output
             basic text to image generation when using --model-type "sd" but not inpainting, img2img, or
             --control-nets. When using --model-type "sdxl" it is supported for basic generation, inpainting, and
             img2img, unless --control-nets is specified in which case only inpainting is supported. It is
-            supported for --model-type "sdxl-pix2pix" but not --model-type "pix2pix". For --model-type ltx it is
-            sent as video guidance rescale, and as audio rescale unless --ltx-audio-guidance-rescales is set.
+            supported for --model-type "sdxl-pix2pix" but not --model-type "pix2pix". For --model-type ltx2 it
+            is sent as video guidance rescale, and as audio rescale unless --ltx-audio-guidance-rescales is set.
             Omitting it on LTX leaves the pipeline default of 0.7.
             
             (default: [0.0])
@@ -2775,7 +2780,9 @@ Help Output
             content of the image. Values between 30-40 produce good results, higher values may improve image
             quality and or change image content.
             
-            For --model-type ltx, this value is used only when the scheduler has dynamic shifting and --sigmas
+            For --model-type ltx-video, this value is passed to the pipeline as written.
+            
+            For --model-type ltx2, this value is used only when the scheduler has dynamic shifting and --sigmas
             is not set. Without dynamic shifting, the distilled 8-value sigma table is used and this option is
             ignored. A warning names the ignored value, including the default 30. --sigmas overwrites the step
             count to the length of the sigma list.
@@ -2798,8 +2805,8 @@ Help Output
       --video-fps FPS [FPS ...]
             One or more output frame rates for video model types. Each value will be tried in turn.
             
-            Defaults to 24 for --model-type ltx, motif-video, and 15 for hunyuan-video-15; 16 for wan; 30 for
-            wan-animate; and 24 for wan-animate-2.
+            Defaults to 24 for --model-type ltx2 and ltx-video, motif-video, and 15 for hunyuan-video-15; 16 for
+            wan; 30 for wan-animate; and 24 for wan-animate-2.
             
             (default: model type default)
             -----------------------------
@@ -2813,7 +2820,7 @@ Help Output
             Disable the Qwen-Image 2.1 key/value attention cache.
             -----------------------------------------------------
       --ltx-audio-guidance-scales FLOAT [FLOAT ...]
-            One or more audio CFG scales to try, for --model-type ltx. Each value will be tried in turn.
+            One or more audio CFG scales to try, for --model-type ltx2. Each value will be tried in turn.
             
             LTX encodes one prompt for both picture and soundtrack, then applies a separate audio guidance
             scale. The authors suggest keeping this higher than --guidance-scales (for example video 3 and audio
@@ -2825,8 +2832,8 @@ Help Output
             (default: copy video guidance)
             ------------------------------
       --ltx-audio-guidance-rescales FLOAT [FLOAT ...]
-            One or more audio guidance rescale factors to try, for --model-type ltx. Each value will be tried in
-            turn.
+            One or more audio guidance rescale factors to try, for --model-type ltx2. Each value will be tried
+            in turn.
             
             Omit this option and audio copies --guidance-rescales when that is set, otherwise the pipeline
             default of 0.7 is left in place.
@@ -2834,26 +2841,26 @@ Help Output
             (default: copy --guidance-rescales)
             -----------------------------------
       --ltx-stg-scales FLOAT [FLOAT ...]
-            One or more video spatio-temporal guidance scales for --model-type ltx. Each value will be tried in
+            One or more video spatio-temporal guidance scales for --model-type ltx2. Each value will be tried in
             turn. 0 disables STG. LTX-2.5 full-transformer runs use 1, on transformer block 28
             (--ltx-stg-blocks).
             
             (default: pipeline default, STG off)
             ------------------------------------
       --ltx-audio-stg-scales FLOAT [FLOAT ...]
-            Audio spatio-temporal guidance scales for --model-type ltx. Each value will be tried in turn. Omit
+            Audio spatio-temporal guidance scales for --model-type ltx2. Each value will be tried in turn. Omit
             this option and audio copies --ltx-stg-scales.
             
             (default: copy --ltx-stg-scales)
             --------------------------------
       --ltx-modality-scales FLOAT [FLOAT ...]
-            Video modality-isolation guidance scales for --model-type ltx. Each value will be tried in turn. 1
+            Video modality-isolation guidance scales for --model-type ltx2. Each value will be tried in turn. 1
             disables it. LTX-2.5 full-transformer runs use 3.
             
             (default: pipeline default, modality guidance off)
             --------------------------------------------------
       --ltx-audio-modality-scales FLOAT [FLOAT ...]
-            Audio modality-isolation guidance scales for --model-type ltx. Each value will be tried in turn.
+            Audio modality-isolation guidance scales for --model-type ltx2. Each value will be tried in turn.
             Omit this option and audio copies --ltx-modality-scales.
             
             (default: copy --ltx-modality-scales)
@@ -4098,7 +4105,7 @@ img2img mode with a ControlNet for example, see: `Specifying ControlNets`_ for m
 
 ``strength`` on an image seed overrides ``--image-seed-strengths`` for that seed.
 ``--image-seeds "photo.png;strength=0.4"`` is img2img at strength 0.4.
-On ``--model-type ltx`` the same keyword is the condition weight, and
+On ``--model-type ltx2`` and ``ltx-video`` the same keyword is the condition weight, and
 ``--image-seed-strengths`` fills groups that omit it.
 
 Wan-Animate reads ``wan-pose=``, ``wan-face=``, ``wan-driving=``, and ``wan-background=``
@@ -4531,7 +4538,7 @@ animated file, animated files may be mixed with static images. The animated inpu
 shortest length determines the number of output frames, and any static image components
 are duplicated over that amount of frames.
 
-``--model-type ltx`` writes a whole clip in one generation step.
+``--model-type ltx2`` and ``ltx-video`` write a whole clip in one generation step.
 See :ref:`video-generation`.
 
 .. _video-generation:
@@ -4539,7 +4546,7 @@ See :ref:`video-generation`.
 Video Generation
 ================
 
-``--model-type ltx`` generates a clip in one pipeline call.
+``--model-type ltx2`` and ``ltx-video`` generate a clip in one pipeline call.
 One combination of prompt, seed, guidance, steps, image seed, ``--video-lengths``,
 ``--video-fps``, ``--ltx-audio-guidance-scales``, and ``--ltx-audio-guidance-rescales``
 writes one animation file. LTX does not run once per input frame.
@@ -4662,8 +4669,8 @@ family-specific text components. These models do not support video batching
 with ``--batch-size`` greater than 1. The Console UI provides separate T2V and
 I2V recipes where the corresponding checkpoints are available.
 
-LTX-2.5 (``ltx``)
------------------
+LTX-2.5 (``ltx2``)
+------------------
 
 Repository: ``Lightricks/LTX-2.5-Diffusers``.
 
@@ -4753,19 +4760,19 @@ single frame is treated as a still.
 .. code-block:: bash
 
     # continue an existing clip
-    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx2 \
     --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds "input.gif" \
     --prompts "The singer keeps swaying, then points at the camera."
 
     # lead into an existing clip
-    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx2 \
     --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds ";last-frame=input.gif" \
     --prompts "A singer walks in and starts to sway at the microphone."
 
     # frames 16 through 40 of a clip, then a still last frame
-    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx2 \
     --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds "input.gif;frame-start=16;frame-end=40;last-frame=last.png" \
     --prompts "The scene fades into a pencil sketch of mountains."
@@ -4803,7 +4810,7 @@ seed chain when both are set.
 .. code-block:: bash
 
     # grayscale first frame, original last frame
-    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx2 \
     --video-lengths 3 --output-size 512x512 \
     --image-seeds "painting.png;last-frame=painting.png" \
     --seed-image-processors grayscale + \
@@ -4836,7 +4843,7 @@ frame, put the reference in ``control=``:
 .. code-block:: bash
 
     # reference clip only
-    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx2 \
     --ltx-ic-lora "Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control;weight-name=ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors" \
     --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds "input.gif" \
@@ -5457,7 +5464,7 @@ If your slice only results in the processing of a single frame, an animated file
 not be generated, only a single image output will be generated for that image seed during the
 generation step.
 
-For ``--model-type ltx`` the slice picks the frames of a conditioning clip instead,
+For ``--model-type ltx2`` and ``ltx-video`` the slice picks the frames of a conditioning clip instead,
 and the output is always one clip. See `Video conditioning`_.
 
 
@@ -6764,7 +6771,7 @@ For SDXL and other models, the expression receives the scheduler's
 ``set_timesteps`` schedule. That is useful when the initial schedule is not a
 simple line.
 
-``--model-type ltx`` accepts the same CSV lists and ``expr:`` forms.
+``--model-type ltx2`` and ``ltx-video`` accept the same CSV lists and ``expr:`` forms.
 When the loaded scheduler has no dynamic shifting, ``sigmas`` in the expression
 is the distilled 8-value table, not a schedule from ``set_timesteps``.
 When the scheduler uses dynamic shifting, ``sigmas`` comes from
@@ -6787,7 +6794,7 @@ value as written. See :ref:`video-generation`.
     {% endif %}
     
     Lightricks/LTX-2.5-Diffusers
-    --model-type ltx
+    --model-type ltx2
     --dtype bfloat16
     --model-sequential-offload
     --guidance-scales 1
@@ -6818,7 +6825,8 @@ VAEs are supported for these model types:
     * ``--model-type flux2``
     * ``--model-type qwen-image`` / ``qwen-image-edit`` / ``qwen-image-layered``
     * ``--model-type z-image``
-    * ``--model-type ltx``
+    * ``--model-type ltx2``
+    * ``--model-type ltx-video``
     * ``--model-type wan``
     * ``--model-type wan-animate``
     * ``--model-type wan-animate-2``
@@ -7146,7 +7154,7 @@ INT8 (ConvRot), or NVFP4, such as the ComfyUI, Black Forest Labs, and Lightricks
 releases. The same rules apply: point ``--transformer`` at the file and do not
 set ``quantizer=``. See :ref:`comfyui-quantized-checkpoints`.
 
-``--model-type ltx`` also accepts ``--transformer``.
+``--model-type ltx2`` and ``ltx-video`` also accept ``--transformer``.
 That argument replaces the diffusion transformer only. See :ref:`video-generation`.
 
 .. _comfyui-quantized-checkpoints:
@@ -7625,7 +7633,8 @@ LoRAs are supported for these model types:
     * ``--model-type sd3``
     * ``--model-type flux``
     * ``--model-type flux-fill``
-    * ``--model-type ltx``
+    * ``--model-type ltx2``
+    * ``--model-type ltx-video``
 
 When multiple specifications are given, all mentioned models will be fused together
 into one set of weights at their individual scale, and then those weights will be
@@ -13688,7 +13697,7 @@ do not all apply to every pipeline.
 The Cache-DiT 1.5.2 cache adapters cover these dgenerate ``--model-type`` values:
 ``sd3``, ``sd3-pix2pix``, ``flux``, ``flux-fill``, ``flux-kontext``, ``flux2``,
 ``flux2-klein-kv``, ``z-image``, ``z-image-omni``, ``qwen-image``,
-``qwen-image-edit``, ``qwen-image-layered``, ``ltx``, and ``wan``. dgenerate
+``qwen-image-edit``, ``qwen-image-layered``, ``ltx2``, ``ltx-video``, and ``wan``. dgenerate
 also supplies custom Cache-DiT block adapters for ``wan-animate`` and
 ``wan-animate-2`` (including the distilled Wan-Animate-2 family). These use the
 transformers' ``blocks`` lists with Cache-DiT's ``Pattern_2`` and ``Pattern_3``

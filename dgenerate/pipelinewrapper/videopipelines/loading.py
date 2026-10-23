@@ -144,7 +144,7 @@ def _apply_video_offload(pipe, device, model_cpu_offload, sequential_cpu_offload
 
 def _video_transformer_class(model_type, family: str = 'ltx2'):
     model_type = _enums.get_model_type_enum(model_type)
-    if model_type == _enums.ModelType.LTX:
+    if _enums.model_type_is_ltx_family(model_type):
         if family == 'ltx':
             from diffusers import LTXVideoTransformer3DModel
             return LTXVideoTransformer3DModel
@@ -296,7 +296,7 @@ def _resolve_video_load(model_type, index, ltx_ic_lora_uri):
     if model_type in SINGLE_IMAGE_VIDEO_MODEL_TYPES:
         return _resolve_single_image_video_load(model_type, index)
     from . import ltx
-    family = ltx.ltx_family_from_index(index)
+    family = ltx.ltx_family_for_model_type(model_type, index)
     mode = 'ltx-control' if ltx_ic_lora_uri else 'ltx-txt'
     return family, _vp._ltx_pipeline_class(mode, family), False
 

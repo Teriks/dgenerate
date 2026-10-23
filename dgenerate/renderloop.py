@@ -1704,7 +1704,7 @@ class RenderLoop:
                     and not self._c_config.wan_animate_preprocess):
                 diffusion_arguments.wan_face_video_frames = self._process_copied_frames(
                     driving_frames, processors['wan_face'], owned_images)
-        if model_type == _pipelinewrapper.ModelType.LTX:
+        if _pipelinewrapper.model_type_is_ltx_family(model_type):
             diffusion_arguments.ltx_condition_index = parsed.ltx_condition_index
             diffusion_arguments.ltx_condition_strength = parsed.ltx_condition_strength
             extras = []

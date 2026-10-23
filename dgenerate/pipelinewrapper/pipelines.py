@@ -3124,7 +3124,7 @@ def get_pipeline_class(
             raise UnsupportedPipelineConfigError(
                 '--transformer is only supported for --model-type sd3, sd3-pix2pix, flux, flux-fill, '
                 'flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, '
-                'qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, ltx, wan, wan-animate, '
+                'qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, ltx2, ltx-video, wan, wan-animate, '
                 'wan-animate-2, hunyuan-video-15, motif-video, and kandinsky5-video.')
 
     # Incompatible combinations

@@ -3,7 +3,7 @@
 Video Generation
 ================
 
-``--model-type ltx`` generates a clip in one pipeline call.
+``--model-type ltx2`` and ``ltx-video`` generate a clip in one pipeline call.
 One combination of prompt, seed, guidance, steps, image seed, ``--video-lengths``,
 ``--video-fps``, ``--ltx-audio-guidance-scales``, and ``--ltx-audio-guidance-rescales``
 writes one animation file. LTX does not run once per input frame.
@@ -126,8 +126,8 @@ family-specific text components. These models do not support video batching
 with ``--batch-size`` greater than 1. The Console UI provides separate T2V and
 I2V recipes where the corresponding checkpoints are available.
 
-LTX-2.5 (``ltx``)
------------------
+LTX-2.5 (``ltx2``)
+------------------
 
 Repository: ``Lightricks/LTX-2.5-Diffusers``.
 
@@ -217,19 +217,19 @@ single frame is treated as a still.
 .. code-block:: bash
 
     # continue an existing clip
-    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx2 \
     --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds "input.gif" \
     --prompts "The singer keeps swaying, then points at the camera."
 
     # lead into an existing clip
-    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx2 \
     --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds ";last-frame=input.gif" \
     --prompts "A singer walks in and starts to sway at the microphone."
 
     # frames 16 through 40 of a clip, then a still last frame
-    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx2 \
     --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds "input.gif;frame-start=16;frame-end=40;last-frame=last.png" \
     --prompts "The scene fades into a pencil sketch of mountains."
@@ -267,7 +267,7 @@ seed chain when both are set.
 .. code-block:: bash
 
     # grayscale first frame, original last frame
-    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx2 \
     --video-lengths 3 --output-size 512x512 \
     --image-seeds "painting.png;last-frame=painting.png" \
     --seed-image-processors grayscale + \
@@ -300,7 +300,7 @@ frame, put the reference in ``control=``:
 .. code-block:: bash
 
     # reference clip only
-    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx2 \
     --ltx-ic-lora "Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control;weight-name=ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors" \
     --video-fps 25 --video-lengths 4 --output-size 512x512 \
     --image-seeds "input.gif" \

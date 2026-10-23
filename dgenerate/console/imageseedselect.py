@@ -254,7 +254,7 @@ last frame. They are rejected when the only input is latents.
 
 _LTX_HELP = f"""\
 Last frame, latent-frame index, strength, and extra conditions.
-Only --model-type ltx reads ltx-index. A last frame can stand alone.
+Only --model-type ltx2 and ltx-video read ltx-index. A last frame can stand alone.
 Index, strength, and extra conditions need a seed image. The last
 frame stays at full strength. strength= does not apply to it, and
 neither does --image-seed-strengths.

@@ -12,7 +12,7 @@
 {% endif %}
 
 Lightricks/LTX-2.5-Diffusers
---model-type ltx
+--model-type ltx2
 --dtype bfloat16
 --model-sequential-offload
 --guidance-scales 1

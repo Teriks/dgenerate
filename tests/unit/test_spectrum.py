@@ -182,7 +182,7 @@ class TestSpectrum(unittest.TestCase):
                            'hunyuan-video-15', 'motif-video'):
             self.assertTrue(_pipelinewrapper.model_type_supports_spectrum(model_type))
         self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('sd'))
-        self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('ltx'))
+        self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('ltx2'))
         self.assertIsInstance(_pipelinewrapper.SPECTRUM_MODEL_TYPES, tuple)
         self.assertTrue(_pipelinewrapper.model_type_supports_tea_cache('flux-fill'))
         self.assertFalse(_pipelinewrapper.model_type_supports_tea_cache('flux2'))
@@ -199,7 +199,7 @@ class TestSpectrum(unittest.TestCase):
         self.assertTrue(_pipelinewrapper.model_type_supports_pag('sd3'))
         self.assertFalse(_pipelinewrapper.model_type_supports_pag('flux'))
 
-        for model_type in ('sd', 'ltx'):
+        for model_type in ('sd', 'ltx2', 'ltx-video'):
             config = _renderloopconfig.RenderLoopConfig()
             config.model_type = model_type
             config.spectrum = True

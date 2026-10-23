@@ -14,7 +14,8 @@ LoRAs are supported for these model types:
     * ``--model-type sd3``
     * ``--model-type flux``
     * ``--model-type flux-fill``
-    * ``--model-type ltx``
+    * ``--model-type ltx2``
+    * ``--model-type ltx-video``
 
 When multiple specifications are given, all mentioned models will be fused together
 into one set of weights at their individual scale, and then those weights will be

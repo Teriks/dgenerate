@@ -18,7 +18,7 @@
 {% endif %}
 
 Lightricks/LTX-2.5-Diffusers
---model-type ltx
+--model-type ltx2
 --dtype bfloat16
 --model-sequential-offload
 --loras "Lightricks/LTX-2.5-22b-LoRA-Cinemagraph;scale=1.1;weight-name=ltx-2.5-22b-lora-cinemagraph-0.9.safetensors"

@@ -1237,7 +1237,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
     ltx_audio_guidance_scale: _types.OptionalFloat = None
     """
-    Audio CFG scale for ``--model-type ltx``.
+    Audio CFG scale for ``--model-type ltx2``.
 
     ``None`` copies :py:attr:`.DiffusionArguments.guidance_scale` after LTX
     rewrites the unused default ``5``, except a full scheduler which uses
@@ -1246,7 +1246,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
     ltx_audio_guidance_rescale: _types.OptionalFloat = None
     """
-    Audio guidance rescale for ``--model-type ltx``.
+    Audio guidance rescale for ``--model-type ltx2``.
 
     ``None`` copies :py:attr:`.DiffusionArguments.guidance_rescale` when that
     is set, otherwise the pipeline default ``0.7`` is left in place.

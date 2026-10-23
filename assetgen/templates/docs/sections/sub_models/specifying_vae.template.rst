@@ -17,7 +17,8 @@ VAEs are supported for these model types:
     * ``--model-type flux2``
     * ``--model-type qwen-image`` / ``qwen-image-edit`` / ``qwen-image-layered``
     * ``--model-type z-image``
-    * ``--model-type ltx``
+    * ``--model-type ltx2``
+    * ``--model-type ltx-video``
     * ``--model-type wan``
     * ``--model-type wan-animate``
     * ``--model-type wan-animate-2``

@@ -71,6 +71,10 @@ class DgenerateHelpException(Exception):
 
 def _model_type(val):
     val = val.lower()
+    if val == 'ltx':
+        raise argparse.ArgumentTypeError(
+            'Model type "ltx" was split into "ltx2" (LTX-2 / LTX-2.5) '
+            'and "ltx-video" (LTX-Video 0.9.x), use one of those.')
     if val not in _pipelinewrapper.supported_model_type_strings():
         raise argparse.ArgumentTypeError(
             f'Must be one of: {_SUPPORTED_MODEL_TYPES_PRETTY}. Unknown value: {val}')
@@ -1846,7 +1850,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help=f"""Specify a Stable Diffusion 3, Flux, Flux.2, Flux.2 Klein KV, Z-Image,
                     Z-Image Omni, Qwen-Image, Qwen-Image edit, Qwen-Image layered, LTX,
                     Wan, or Wan-Animate Transformer model using a URI.
-                    ``--model-type ltx``, ``wan``, ``wan-animate``, and ``wan-animate-2`` accept one
+                    ``--model-type ltx2``, ``ltx-video``, ``wan``, ``wan-animate``, and ``wan-animate-2`` accept one
                     replacement diffusion transformer. Wan 2.2 MoE checkpoints can
                     load the low-noise expert with --wan-second-transformer.
                     
@@ -1997,8 +2001,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Specify one or more LoRA models using URIs. These should be a
                     Hugging Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
                     .ckpt, or .safetensors file), or model folder containing model files.
-                    ``ltx`` accepts LoRAs in diffusers format and fuses them into the transformer.
-                    IC-LoRAs for ``ltx`` are loaded with --ltx-ic-lora instead.
+                    ``ltx2`` and ``ltx-video`` accept LoRAs in diffusers format and fuse them into the transformer.
+                    IC-LoRAs for ``ltx2`` are loaded with --ltx-ic-lora instead.
                     
                     If a LoRA model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
@@ -2042,7 +2046,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-icl', '--ltx-ic-lora', action='store', default=None, metavar="IC_LORA_URI",
             dest='ltx_ic_lora_uri',
-            help="""Specify an IC-LoRA (in-context LoRA) for --model-type ltx with an LTX-2 checkpoint,
+            help="""Specify an IC-LoRA (in-context LoRA) for --model-type ltx2 with an LTX-2 checkpoint,
                     for example a canny, depth, or pose control LoRA. It uses the same URI syntax as --loras,
                     and is fused into the transformer together with any --loras.
 
@@ -2490,7 +2494,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments.
                     
-                    For --model-type ltx the only accepted scheduler is FlowMatchEulerDiscreteScheduler.
+                    For --model-type ltx2 and ltx-video the only accepted scheduler is FlowMatchEulerDiscreteScheduler.
                     URI arguments overlay the checkpoint scheduler config. Other scheduler names are rejected.
                     Omitting this option keeps the checkpoint scheduler.
                     
@@ -4516,8 +4520,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""The maximum amount of prompt tokens sent to the text encoder.
                     For Stable Diffusion 3 and Flux this is the T5 encoder, an integer
                     between 1 and 512 inclusive (default: 256 for SD3, 512 for Flux).
-                    For --model-type ltx this is Gemma, an integer between 1 and 1024
-                    inclusive. Omitting it on LTX leaves the pipeline default of 1024.
+                    For --model-type ltx2 this is Gemma, an integer between 1 and 1024
+                    inclusive. Omitting it on ltx2 leaves the pipeline default of 1024.
+                    For --model-type ltx-video this is T5, an integer between 1 and 512
+                    inclusive (pipeline default: 128).
                     Higher values use more resources and time."""
         )
     )
@@ -4592,7 +4598,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-fs', '--frame-start', default=0, type=_type_frame_start, metavar="FRAME_NUMBER",
             help="""Starting frame slice point for animated files (zero-indexed), the specified frame
-                    will be included. For --model-type ltx this slices a video or animated
+                    will be included. For --model-type ltx2 and ltx-video this slices a video or animated
                     conditioning clip in --image-seeds. (default: 0)"""
         )
     )
@@ -4601,7 +4607,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-fe', '--frame-end', default=None, type=_type_frame_end, metavar="FRAME_NUMBER",
             help="""Ending frame slice point for animated files (zero-indexed), the specified frame
-                    will be included. For --model-type ltx this slices a video or animated
+                    will be included. For --model-type ltx2 and ltx-video this slices a video or animated
                     conditioning clip in --image-seeds."""
         )
     )
@@ -4802,7 +4808,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     would indicate that
                     the first control guidance image is not to be processed, only the second.
 
-                    For --model-type ltx, one chain runs on every frame of the --ltx-ic-lora reference clip,
+                    For --model-type ltx2, one chain runs on every frame of the --ltx-ic-lora reference clip,
                     for example: --ltx-ic-lora ... --image-seeds "video.mp4" --control-image-processors canny.
 
                     To obtain more information about what image processors
@@ -4932,7 +4938,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     An image seed keyword strength= overrides this option for that seed.
                     (default: [0.8])
 
-                    For --model-type ltx, these values are the condition strength of image-seed
+                    For --model-type ltx2 and ltx-video, these values are the condition strength of image-seed
                     groups that omit strength=. 1 keeps the conditioning frame. A lower value
                     lets the generated frames leave it. Several values are tried in turn.
                     last-frame= stays at strength 1. LTX does not use the img2img default 0.8;
@@ -5035,7 +5041,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     text prompt is considered. Low values draw more data from images unrelated
                     to text prompt.
                     
-                    For --model-type ltx, a value you set is used as written. The unused
+                    For --model-type ltx-video, the value is passed to the pipeline as written,
+                    including the default 5.
+                    
+                    For --model-type ltx2, a value you set is used as written. The unused
                     image default 5 is rewritten: to 1 when the scheduler has no dynamic
                     shifting, or to video 3 and audio 7 when it does. --sigmas skips that
                     rewrite and uses the value you passed, including leftover 5.
@@ -5080,7 +5089,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     Each provided value (each quoted string in the example above) will be tried in turn.
                     
-                    For --model-type ltx, --sigmas replaces the automatic schedule. The
+                    For --model-type ltx2, --sigmas replaces the automatic schedule. The
                     step count becomes the length of the list. In expr: form, sigmas is
                     the distilled 8-value table when the scheduler has no dynamic shifting,
                     or the scheduler set_timesteps schedule otherwise. Guidance is used
@@ -5129,7 +5138,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     When using --model-type "sdxl" it is supported for basic generation, inpainting,
                     and img2img, unless --control-nets is specified in which case only inpainting is supported.
                     It is supported for --model-type "sdxl-pix2pix" but not --model-type "pix2pix".
-                    For --model-type ltx it is sent as video guidance rescale, and as audio
+                    For --model-type ltx2 it is sent as video guidance rescale, and as audio
                     rescale unless --ltx-audio-guidance-rescales is set. Omitting it on LTX
                     leaves the pipeline default of 0.7.
                     
@@ -5149,7 +5158,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     produce good results, higher values may improve image quality and or
                     change image content.
                     
-                    For --model-type ltx, this value is used only when the scheduler has
+                    For --model-type ltx-video, this value is passed to the pipeline as written.
+                    
+                    For --model-type ltx2, this value is used only when the scheduler has
                     dynamic shifting and --sigmas is not set. Without dynamic shifting,
                     the distilled 8-value sigma table is used and this option is ignored.
                     A warning names the ignored value, including the default 30.
@@ -5189,7 +5200,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""One or more output frame rates for video model types.
                     Each value will be tried in turn.
 
-                    Defaults to 24 for --model-type ltx, motif-video, and 15 for
+                    Defaults to 24 for --model-type ltx2 and ltx-video, motif-video, and 15 for
                     hunyuan-video-15; 16 for wan;
                     30 for wan-animate; and 24 for wan-animate-2.
 
@@ -5216,7 +5227,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--ltx-audio-guidance-scales', action='store', nargs='+', default=None,
             dest='ltx_audio_guidance_scales', metavar="FLOAT", type=_type_guidance_scale,
-            help="""One or more audio CFG scales to try, for --model-type ltx.
+            help="""One or more audio CFG scales to try, for --model-type ltx2.
                     Each value will be tried in turn.
 
                     LTX encodes one prompt for both picture and soundtrack, then
@@ -5238,7 +5249,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--ltx-audio-guidance-rescales', action='store', nargs='+', default=None,
             dest='ltx_audio_guidance_rescales', metavar="FLOAT", type=_type_guidance_scale,
             help="""One or more audio guidance rescale factors to try, for
-                    --model-type ltx. Each value will be tried in turn.
+                    --model-type ltx2. Each value will be tried in turn.
 
                     Omit this option and audio copies --guidance-rescales when
                     that is set, otherwise the pipeline default of 0.7 is left
@@ -5254,7 +5265,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--ltx-stg-scales', action='store', nargs='+', default=None,
             dest='ltx_stg_scales', metavar="FLOAT", type=_type_guidance_scale,
             help="""One or more video spatio-temporal guidance scales for
-                    --model-type ltx. Each value will be tried in turn.
+                    --model-type ltx2. Each value will be tried in turn.
                     0 disables STG. LTX-2.5 full-transformer runs use 1, on
                     transformer block 28 (--ltx-stg-blocks).
 
@@ -5267,7 +5278,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--ltx-audio-stg-scales', action='store', nargs='+', default=None,
             dest='ltx_audio_stg_scales', metavar="FLOAT", type=_type_guidance_scale,
-            help="""Audio spatio-temporal guidance scales for --model-type ltx.
+            help="""Audio spatio-temporal guidance scales for --model-type ltx2.
                     Each value will be tried in turn. Omit this option and
                     audio copies --ltx-stg-scales.
 
@@ -5280,7 +5291,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--ltx-modality-scales', action='store', nargs='+', default=None,
             dest='ltx_modality_scales', metavar="FLOAT", type=_type_guidance_scale,
-            help="""Video modality-isolation guidance scales for --model-type ltx.
+            help="""Video modality-isolation guidance scales for --model-type ltx2.
                     Each value will be tried in turn. 1 disables it.
                     LTX-2.5 full-transformer runs use 3.
 
@@ -5293,7 +5304,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--ltx-audio-modality-scales', action='store', nargs='+', default=None,
             dest='ltx_audio_modality_scales', metavar="FLOAT", type=_type_guidance_scale,
-            help="""Audio modality-isolation guidance scales for --model-type ltx.
+            help="""Audio modality-isolation guidance scales for --model-type ltx2.
                     Each value will be tried in turn. Omit this option and
                     audio copies --ltx-modality-scales.
 

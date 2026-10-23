@@ -29,33 +29,21 @@ What You Can Do
 Image Generation
 ----------------
 
-* Generate images with SD 1.5 / 2.x, SDXL, SD3 / SD3.5, Stable Cascade, DeepFloyd IF, Kolors, Flux (with Fill and Kontext), Flux.2 (dev and Klein), Z-Image (with Omni), Qwen-Image (with Edit and Layered), Qwen-Image 2.1, Krea 2, and Kandinsky 5
-* Edit images with InstructPix2Pix for SD 1.5, SDXL, and SD3
-* Batch process multiple parameter combinations combinatorially to generate variations
-* Run large models on limited hardware with inference optimizations and quantization
-* Load pre-quantized GGUF and ComfyUI FP8 / INT8 / NVFP4 checkpoints, with hardware accelerated quantized matmuls where supported
-* Utilize models from HuggingFace and CivitAI for generation
+* Text to image, image to image, inpainting, and diffusion-based upscaling with SD 1.5 / 2.x, SDXL, SD3 / SD3.5, Stable Cascade, DeepFloyd IF, Kolors, Flux, Flux.2 (dev and Klein), Z-Image, Qwen-Image, Qwen-Image 2.1, Krea 2, and Kandinsky 5
+* Edit images with instruction or reference based pipelines: Flux Fill and Kontext, Flux.2, Z-Image Omni, Qwen-Image Edit and Layered, and InstructPix2Pix (SD 1.5, SDXL, SD3)
+* Control Nets, T2I Adapters, IP Adapters, LoRA, and Textual Inversion (embeddings), with models from HuggingFace and CivitAI
 * Advanced prompt weighting (LPW), SD-WebUI (Common syntax), InvokeAI syntax, and ``llm4gen`` (SD1.5 only)
-* Control Nets, T2I Adapters, IP Adapters, LoRA, and Textual Inversion (embeddings)
-* Text to image, image to image, and inpainting
-* Diffusion-based image upscaling
+* Run large models on limited hardware with inference optimizations, quantization, and pre-quantized GGUF and ComfyUI FP8 / INT8 / NVFP4 checkpoints, with hardware accelerated quantized matmuls where supported
+* Batch process parameter combinations combinatorially to generate variations
 
 Video Generation
 ----------------
 
-* Generate a whole clip in one pipeline call with ``--model-type ltx`` (`Lightricks LTX-2.5 <https://huggingface.co/Lightricks/LTX-2.5-Diffusers>`_ and the earlier `LTX-Video <https://huggingface.co/Lightricks/LTX-Video>`_ checkpoints)
-* Text-to-video, or condition with ``--image-seeds``: a still or clip as the opening frames, ``last-frame=`` as the closing frame, or both together
-* Use a video, GIF, or other animated file as conditioning to extend existing footage or generate a lead-in; slice with ``--frame-start`` / ``--frame-end``
-* Process the opening and closing conditioning separately, for example ``--seed-image-processors grayscale + canny``
-* Guide LTX-2.5 with an IC-LoRA from ``--ltx-ic-lora``, such as canny, depth, or pose control, from a reference clip processed by ``--control-image-processors``
-* Load style or effect LoRAs with ``--loras``, on their own or together with an IC-LoRA
-* Set clip length and frame rate with ``--video-lengths`` and ``--video-fps``; LTX-2.5 can predict duration from the prompt when length is omitted
-* LTX-2.5 muxes generated audio into mp4 output; the earlier LTX-Video model accepts a GGUF diffusion transformer
-* Generate Wan 2.1 / 2.2 clips with ``--model-type wan`` (`Wan-AI <https://huggingface.co/Wan-AI>`_): text-to-video, image-to-video, first-last-frame, video-to-video, and VACE
-* Generate clips with Hunyuan Video 1.5, Kandinsky 5 Video, or Motif Video via ``--model-type hunyuan-video-15``, ``--model-type kandinsky5-video`` and ``--model-type motif-video`` respectively
-* Animate a character still with ``--model-type wan-animate`` using ``wan-pose=`` and ``wan-face=``, or ``wan-driving=`` with ``--wan-animate-preprocess`` (the existing ``openpose`` and ``yolo`` processors) or ``--wan-pose-image-processors`` / ``--wan-face-image-processors``
-* Animate a character still with ``--model-type wan-animate-2`` using ``wan-driving=`` as the motion clip
-* Compile denoiser, ControlNet, and VAE blocks with ``--torch-compile``
+* Generate whole clips in one pipeline call: LTX-2.5 (``--model-type ltx2``) and LTX-Video (``--model-type ltx-video``), Wan 2.1 / 2.2 (``--model-type wan``), Hunyuan Video 1.5 (``hunyuan-video-15``), Kandinsky 5 Video (``kandinsky5-video``), and Motif Video (``motif-video``)
+* Text-to-video, or image-to-video with a still in ``--image-seeds`` as the opening frame. With LTX, use a clip as the opening, ``last-frame=`` as the closing frame (a still or clip), or both, to extend existing footage or generate a lead-in; slice with ``--frame-start`` / ``--frame-end``
+* Wan modes: image-to-video, first-last-frame, video-to-video, and VACE;``--model-type wan-animate`` and ``wan-animate-2`` animate a character still from a driving clip (``wan-driving=``, ``wan-pose=``, ``wan-face=``, ``--wan-animate-preprocess``)
+* LTX-2.5 guided by an IC-LoRA from ``--ltx-ic-lora`` (canny, depth, pose, etc.) using a reference clip processed by ``--control-image-processors``, and style or effect LoRAs from ``--loras``
+* Set clip length and frame rate with ``--video-lengths`` and ``--video-fps`` (LTX-2.5 can predict duration from the prompt, and muxes generated audio into mp4 output); compile blocks with ``--torch-compile``
 * Example configs under ``examples/ltx2``, ``examples/ltx_video``, ``examples/wan``, ``examples/wan_animate``, and ``examples/wan_animate_2``; see the `video generation manual <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#video-generation>`_
 
 Image Processing

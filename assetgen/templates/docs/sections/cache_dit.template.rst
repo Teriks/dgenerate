@@ -11,7 +11,7 @@ do not all apply to every pipeline.
 The Cache-DiT 1.5.2 cache adapters cover these dgenerate ``--model-type`` values:
 ``sd3``, ``sd3-pix2pix``, ``flux``, ``flux-fill``, ``flux-kontext``, ``flux2``,
 ``flux2-klein-kv``, ``z-image``, ``z-image-omni``, ``qwen-image``,
-``qwen-image-edit``, ``qwen-image-layered``, ``ltx``, and ``wan``. dgenerate
+``qwen-image-edit``, ``qwen-image-layered``, ``ltx2``, ``ltx-video``, and ``wan``. dgenerate
 also supplies custom Cache-DiT block adapters for ``wan-animate`` and
 ``wan-animate-2`` (including the distilled Wan-Animate-2 family). These use the
 transformers' ``blocks`` lists with Cache-DiT's ``Pattern_2`` and ``Pattern_3``
