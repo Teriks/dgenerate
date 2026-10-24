@@ -132,6 +132,40 @@ def _enable_vae_tiling(pipe):
         vae.enable_tiling()
 
 
+def _disable_rope_double_precision_on_mps(pipe, device):
+    """
+    Make LTX2 rotary embeddings build their frequencies in float32 on MPS.
+
+    The LTX2 checkpoints ship ``rope_double_precision: true``, and diffusers
+    then calls ``torch.linspace(..., dtype=torch.float64, device=device)`` in
+    the connectors and the transformer. MPS has no float64 support, so that
+    raises ``TypeError: Cannot convert a MPS Tensor to float64 dtype``.
+
+    The frequencies are cast to float32 right after they are built, so this
+    only drops the float64 intermediate. ``double_precision`` is a plain
+    attribute read inside ``forward``, so it can be switched off after loading.
+
+    :param pipe: freshly loaded video pipeline
+    :param device: execution device (string or ``torch.device``)
+    """
+    if str(device).split(':')[0] != 'mps':
+        return
+    patched = 0
+    for component_name in ('connectors', 'transformer'):
+        component = getattr(pipe, component_name, None)
+        if component is None or not hasattr(component, 'modules'):
+            continue
+        for module in component.modules():
+            if ('RotaryPosEmbed' in type(module).__name__
+                    and getattr(module, 'double_precision', False)):
+                module.double_precision = False
+                patched += 1
+    if patched:
+        _messages.debug_log(
+            f'MPS has no float64 support, disabled rope_double_precision '
+            f'on {patched} rotary embedding module(s).')
+
+
 def _apply_video_offload(pipe, device, model_cpu_offload, sequential_cpu_offload,
                          model_group_offload=False):
     if sequential_cpu_offload:
@@ -520,6 +554,7 @@ def _create_cached_video_pipeline(model_path,
     if not fused_lora_components:
         _vp._apply_video_loras(
             pipe, model_type, all_lora_uris, lora_fuse_scale, auth_token, local_files_only)
+    _disable_rope_double_precision_on_mps(pipe, device)
     # The Wan VAE (also used by Motif-Video) defaults to float32. Cast before
     # offload so streamed group offload snapshots float32 weights. Skip when
     # --vae already chose a dtype (including the float32 fallback above), or

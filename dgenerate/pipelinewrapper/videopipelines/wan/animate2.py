@@ -23,6 +23,8 @@
 
 from __future__ import annotations
 
+import sys
+
 import torch
 
 import dgenerate.messages as _messages
@@ -256,6 +258,99 @@ def load_wan_animate_2_pipeline(pipeline_class, model_path, load_kwargs, injecte
     return pipe
 
 
+def _wan_animate_2_rope_params_real(max_seq_len, dim, theta=10000, offset=0):
+    """
+    Real-valued replacement for diffusers' Wan-Animate-2 ``rope_params``.
+
+    diffusers builds a complex128 table, which MPS cannot hold. The angles are
+    still computed in float64 on the CPU, then stored as a float32 tensor of
+    shape ``[max_seq_len, dim // 2, 2]`` holding ``(cos, sin)``.
+    """
+    assert dim % 2 == 0
+    angles = torch.outer(
+        torch.arange(max_seq_len, device='cpu') + offset,
+        1.0 / torch.pow(theta, torch.arange(0, dim, 2, device='cpu').to(torch.float64).div(dim)),
+    )
+    return torch.stack([angles.cos(), angles.sin()], dim=-1).float()
+
+
+def _wan_animate_2_rope_apply_real(complex_rope_apply):
+    """
+    Build a real-valued replacement for diffusers' Wan-Animate-2 ``rope_apply``.
+
+    The original casts activations to float64 and multiplies by a complex
+    table, neither of which MPS supports. This version rotates each
+    ``(even, odd)`` pair with ``cos`` / ``sin`` in float32 and returns float32,
+    like the original. A complex table, from a pipeline built before the swap,
+    is passed to ``complex_rope_apply`` unchanged.
+    """
+
+    def rope_apply(x, grid_sizes, freqs, time_stride=1):
+        if freqs.is_complex():
+            return complex_rope_apply(x, grid_sizes, freqs, time_stride)
+
+        n, c = x.size(2), x.size(3) // 2
+
+        # split freqs, [seq, c, 2] -> three tables along the channel axis
+        freqs = freqs.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
+
+        output = []
+        for i, (f, h, w) in enumerate(grid_sizes.tolist()):
+            seq_len = f * h * w
+
+            x_i = x[i, :seq_len].float().reshape(seq_len, n, -1, 2)
+            freqs_i = torch.cat(
+                [
+                    freqs[0][: f * time_stride: time_stride].reshape(f, 1, 1, -1, 2).expand(f, h, w, -1, 2),
+                    freqs[1][:h].reshape(1, h, 1, -1, 2).expand(f, h, w, -1, 2),
+                    freqs[2][:w].reshape(1, 1, w, -1, 2).expand(f, h, w, -1, 2),
+                ],
+                dim=-2,
+            ).reshape(seq_len, 1, -1, 2)
+
+            cos, sin = freqs_i[..., 0], freqs_i[..., 1]
+            real, imag = x_i[..., 0], x_i[..., 1]
+            x_i = torch.stack([real * cos - imag * sin, real * sin + imag * cos], dim=-1).flatten(2)
+            output.append(torch.cat([x_i, x[i, seq_len:].float()]))
+        return torch.stack(output).float()
+
+    return rope_apply
+
+
+def _make_wan_animate_2_rope_mps_safe(transformer) -> None:
+    """
+    Swap Wan-Animate-2's float64 / complex128 RoPE helpers for float32 ones.
+
+    diffusers' ``transformer_wan_animate_2`` builds a complex128 frequency
+    table and casts query / key to float64 in ``rope_apply``. MPS supports
+    neither dtype, so denoising fails there. The helpers are module-level
+    functions looked up by name when the transformer runs, so replacing them on
+    the module is enough. The swap applies process-wide, and it is safe on
+    every device because the replacement ``rope_apply`` still accepts the
+    original complex tables.
+
+    :param transformer: loaded Wan-Animate-2 transformer, or ``None``
+    """
+    if transformer is None:
+        return
+    module = sys.modules.get(type(transformer).__module__)
+    if (module is None
+            or not hasattr(module, 'rope_params')
+            or not hasattr(module, 'rope_apply')):
+        return
+    if not getattr(module, '_dgenerate_mps_safe_rope', False):
+        module.rope_params = _wan_animate_2_rope_params_real
+        module.rope_apply = _wan_animate_2_rope_apply_real(module.rope_apply)
+        module._dgenerate_mps_safe_rope = True
+        _messages.debug_log(
+            'MPS has no float64 or complex128 support, replaced the '
+            'Wan-Animate-2 rotary embedding helpers with float32 versions.')
+    cache = getattr(transformer, 'rope_freqs_cache', None)
+    if cache:
+        # Tables built before the swap are complex128.
+        cache.clear()
+
+
 def _flex_attention_can_compile(device) -> bool:
     """Wan-Animate-2 uses the same Inductor check as ``--torch-compile``."""
     return _pipelines.inductor_can_compile(device)
@@ -343,6 +438,8 @@ def place_wan_animate_2(pipe, device, model_cpu_offload, sequential_cpu_offload,
             'to the GPU only for their forward pass, and leaves the VAE on '
             'the GPU.')
     transformer = getattr(pipe, 'transformer', None)
+    if str(device).split(':')[0] == 'mps':
+        _make_wan_animate_2_rope_mps_safe(transformer)
     # Compile before the offload hooks wrap ``forward``. The compiled function
     # is what those hooks call. The VAE stays resident, and its decoder blocks
     # compile on the same load so the one cached pipeline is always compiled.
