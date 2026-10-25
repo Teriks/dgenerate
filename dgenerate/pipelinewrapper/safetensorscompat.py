@@ -1429,6 +1429,18 @@ def _verify(candidate: str, module, x: torch.Tensor, output: torch.Tensor, softw
         _messages.warning(
             f'{candidate} hardware matmul on "{x.device}" differs from the dequantized '
             f'result (relative error {error:.3f}), not using it.')
+        _messages.debug_log(
+            f'{candidate} verification failed on "{x.device}": '
+            f'format={module.quant_format}, '
+            f'weight_dtype={module.weight.dtype}, '
+            f'weight_shape={tuple(module.weight.shape)}, '
+            f'scale_shape={tuple(module.weight_scale.shape)}, '
+            f'input_dtype={x.dtype}, '
+            f'output_norm={output.float().norm().item():.6g}, '
+            f'reference_norm={reference.float().norm().item():.6g}, '
+            f'max_abs_error={(output.float() - reference.float()).abs().max().item():.6g}, '
+            f'relative_error={error:.6f}'
+        )
         return False
     # Both paths have run once, so neither timing includes first call setup.
     kernel = _HARDWARE_MATMULS[candidate]
