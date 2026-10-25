@@ -70,6 +70,7 @@ class PromptUpscaler(_plugin.Plugin, abc.ABC):
                  loaded_by_name: str,
                  device: str | None = None,
                  local_files_only: bool = False,
+                 auth_token: str | None = None,
                  **kwargs):
         """
         :param loaded_by_name: The name the prompt upscaler was loaded by
@@ -78,6 +79,8 @@ class PromptUpscaler(_plugin.Plugin, abc.ABC):
         :param local_files_only: if ``True``, the plugin should never try to download
             models from the internet automatically, and instead only look
             for them in cache / on disk.
+        :param auth_token: Hugging Face token for model downloads. A ``token`` argument
+            on the upscaler URI overrides this when the upscaler defines one.
         :param kwargs: child class forwarded arguments
         """
         super().__init__(loaded_by_name=loaded_by_name,
@@ -91,6 +94,7 @@ class PromptUpscaler(_plugin.Plugin, abc.ABC):
 
         self.__device = device if device else 'cpu'
         self.__local_files_only = local_files_only
+        self.__auth_token = auth_token.strip() if isinstance(auth_token, str) and auth_token.strip() else None
         self.__size_estimate = 0
 
     def memory_guard_device(self, device: str | torch.device, memory_required: int):
@@ -205,6 +209,13 @@ class PromptUpscaler(_plugin.Plugin, abc.ABC):
         Is this prompt upscaler only going to look for resources such as models in cache / on disk?
         """
         return self.__local_files_only
+
+    @property
+    def auth_token(self) -> str | None:
+        """
+        Hugging Face token supplied by the loader, usually ``--auth-token``.
+        """
+        return self.__auth_token
 
     @property
     def size_estimate(self) -> int:

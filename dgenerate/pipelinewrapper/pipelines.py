@@ -1064,7 +1064,7 @@ def estimate_pipeline_cache_footprint(
         extra_args = dict()
 
     usage = _util.estimate_model_memory_use(
-        repo_id=_hfhub.download_non_hf_slug_model(model_path),
+        repo_id=_hfhub.download_non_hf_slug_model(model_path, local_files_only=local_files_only, auth_token=auth_token),
         revision=revision,
         variant=variant,
         subfolder=subfolder,
@@ -1075,7 +1075,7 @@ def estimate_pipeline_cache_footprint(
         include_text_encoder_2=include_text_encoders,
         include_text_encoder_3=include_text_encoders,
         include_directories=include_directories,
-        use_auth_token=auth_token,
+        auth_token=auth_token,
         local_files_only=local_files_only,
         sentencepiece=_enums.model_type_is_floyd(model_type)
     )
@@ -1083,10 +1083,10 @@ def estimate_pipeline_cache_footprint(
     if image_encoder_uri:
         parsed = _uris.ImageEncoderUri.parse(image_encoder_uri)
         usage += _util.estimate_model_memory_use(
-            repo_id=_hfhub.download_non_hf_slug_model(parsed.model),
+            repo_id=_hfhub.download_non_hf_slug_model(parsed.model, local_files_only=local_files_only, auth_token=auth_token),
             revision=parsed.revision,
             subfolder=parsed.subfolder,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only
         )
 
@@ -1095,11 +1095,11 @@ def estimate_pipeline_cache_footprint(
             parsed = _uris.LoRAUri.parse(lora_uri)
 
             usage += _util.estimate_model_memory_use(
-                repo_id=_hfhub.download_non_hf_slug_model(parsed.model),
+                repo_id=_hfhub.download_non_hf_slug_model(parsed.model, local_files_only=local_files_only, auth_token=auth_token),
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
-                use_auth_token=auth_token,
+                auth_token=auth_token,
                 local_files_only=local_files_only
             )
 
@@ -1108,11 +1108,11 @@ def estimate_pipeline_cache_footprint(
             parsed = _uris.IPAdapterUri.parse(ip_adapter_uri)
 
             usage += _util.estimate_model_memory_use(
-                repo_id=_hfhub.download_non_hf_slug_model(parsed.model),
+                repo_id=_hfhub.download_non_hf_slug_model(parsed.model, local_files_only=local_files_only, auth_token=auth_token),
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
-                use_auth_token=auth_token,
+                auth_token=auth_token,
                 local_files_only=local_files_only
             )
 
@@ -1121,11 +1121,11 @@ def estimate_pipeline_cache_footprint(
             parsed = _uris.TextualInversionUri.parse(textual_inversion_uri)
 
             usage += _util.estimate_model_memory_use(
-                repo_id=_hfhub.download_non_hf_slug_model(parsed.model),
+                repo_id=_hfhub.download_non_hf_slug_model(parsed.model, local_files_only=local_files_only, auth_token=auth_token),
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
-                use_auth_token=auth_token,
+                auth_token=auth_token,
                 local_files_only=local_files_only
             )
 
@@ -3680,16 +3680,16 @@ def _create_diffusion_pipeline(
         # only instance where it really makes sense to raise config not found
         # everything else is indicative of a missing model
         with _hfhub.with_hf_errors_as_config_not_found():
-            original_config = _hfhub.download_non_hf_slug_config(original_config)
+            original_config = _hfhub.download_non_hf_slug_config(original_config, local_files_only=local_files_only, auth_token=auth_token)
 
-    model_path = _hfhub.download_non_hf_slug_model(model_path)
+    model_path = _hfhub.download_non_hf_slug_model(model_path, local_files_only=local_files_only, auth_token=auth_token)
 
     if dtype is _enums.DataType.AUTO:
         detected_dtype = _util.auto_dtype(
             model_path,
             revision=revision,
             subfolder=subfolder,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only)
         if detected_dtype is not None:
             _messages.debug_log(f'--dtype auto selected: {_enums.get_data_type_string(detected_dtype)}')
@@ -3706,7 +3706,7 @@ def _create_diffusion_pipeline(
         model_path,
         subfolder=subfolder,
         revision=revision,
-        use_auth_token=auth_token,
+        auth_token=auth_token,
         local_files_only=local_files_only
     )
 
@@ -3836,11 +3836,11 @@ def _create_diffusion_pipeline(
         for controlnet_uri in controlnet_uris:
             parsed_controlnet = _uris.ControlNetUri.parse(controlnet_uri, model_type=model_type)
             estimated_memory_usage += _util.estimate_model_memory_use(
-                repo_id=_hfhub.download_non_hf_slug_model(parsed_controlnet.model),
+                repo_id=_hfhub.download_non_hf_slug_model(parsed_controlnet.model, local_files_only=local_files_only, auth_token=auth_token),
                 revision=parsed_controlnet.revision,
                 variant=parsed_controlnet.variant,
                 subfolder=parsed_controlnet.subfolder,
-                use_auth_token=auth_token,
+                auth_token=auth_token,
                 local_files_only=local_files_only
             )
 
@@ -4066,7 +4066,7 @@ def _create_diffusion_pipeline(
             variant_fallback=variant,
             dtype_fallback=dtype,
             original_config=original_config,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only,
             no_cache=bool(lora_uris) or submodules_on_pipeline,
             missing_ok=missing_submodules_ok,
@@ -4077,7 +4077,7 @@ def _create_diffusion_pipeline(
         vae_model = uri.load(
             dtype_fallback=dtype,
             original_config=original_config,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only,
             no_cache=submodules_on_pipeline,
             missing_ok=missing_submodules_ok
@@ -4147,7 +4147,7 @@ def _create_diffusion_pipeline(
             variant_fallback=variant,
             dtype_fallback=dtype,
             original_config=original_config,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only,
             no_cache=bool(lora_uris) or
                      bool(ip_adapter_uris) or
@@ -4173,7 +4173,7 @@ def _create_diffusion_pipeline(
             variant_fallback=variant,
             dtype_fallback=dtype,
             original_config=original_config,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only,
             no_cache=bool(lora_uris) or submodules_on_pipeline,
             device_map=get_device_map_for_quantizer(uri.quantizer),
@@ -4454,7 +4454,7 @@ def _create_diffusion_pipeline(
 
         loaded_image_encoder = parsed_image_encoder_uri.load(
             dtype_fallback=dtype,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only,
             no_cache=no_cache_image_encoder,
             image_encoder_class=
@@ -4483,7 +4483,7 @@ def _create_diffusion_pipeline(
             parsed_t2i_adapter_uris.append(parsed_t2i_adapter_uri)
 
             new_adapter = parsed_t2i_adapter_uri.load(
-                use_auth_token=auth_token,
+                auth_token=auth_token,
                 dtype_fallback=dtype,
                 local_files_only=local_files_only,
                 no_cache=submodules_on_pipeline
@@ -4540,7 +4540,7 @@ def _create_diffusion_pipeline(
                 )
 
             new_net = controlnet_uri_to_load.load(
-                use_auth_token=auth_token,
+                auth_token=auth_token,
                 dtype_fallback=dtype,
                 local_files_only=local_files_only,
                 no_cache=controlnet_is_owned_by_pipeline(
@@ -4689,7 +4689,7 @@ def _create_diffusion_pipeline(
         _uris.TextualInversionUri.load_on_pipeline(
             pipeline=pipeline,
             uris=parsed_textual_inversion_uris,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only)
 
     if lora_uris and not quantizer_uri:
@@ -4704,7 +4704,7 @@ def _create_diffusion_pipeline(
             pipeline=pipeline,
             uris=parsed_lora_uris,
             fuse_scale=lora_fuse_scale if lora_fuse_scale is not None else 1.0,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only)
 
     if ip_adapter_uris:
@@ -4715,7 +4715,7 @@ def _create_diffusion_pipeline(
         _uris.IPAdapterUri.load_on_pipeline(
             pipeline=pipeline,
             uris=parsed_ip_adapter_uris,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only)
 
     if ip_adapter_uris and (not hasattr(pipeline, 'image_encoder') or pipeline.image_encoder is None):
@@ -5015,7 +5015,7 @@ def _create_minimal_pipeline_for_component_extraction(
                 variant_fallback=variant,
                 dtype_fallback=dtype,
                 original_config=original_config,
-                use_auth_token=auth_token,
+                auth_token=auth_token,
                 local_files_only=False,
                 no_cache=True,
                 missing_ok=False
@@ -5046,7 +5046,7 @@ def _create_minimal_pipeline_for_component_extraction(
                             model_path,
                             revision=revision,
                             subfolder=subfolder,
-                            use_auth_token=auth_token)
+                            auth_token=auth_token)
                         flow_entry = flow_index.get(encoder_param)
                         if flow_entry and flow_entry[1]:
                             flow_encoder_name = flow_entry[1]
@@ -5091,7 +5091,7 @@ def _create_minimal_pipeline_for_component_extraction(
                     variant_fallback=variant,
                     dtype_fallback=dtype,
                     original_config=original_config,
-                    use_auth_token=auth_token,
+                    auth_token=auth_token,
                     local_files_only=False,
                     no_cache=True,
                     missing_ok=True  # Allow missing for optional encoders
@@ -5126,7 +5126,7 @@ def _create_minimal_pipeline_for_component_extraction(
                         variant_fallback=variant,
                         dtype_fallback=dtype,
                         original_config=original_config,
-                        use_auth_token=auth_token,
+                        auth_token=auth_token,
                         local_files_only=False,
                         no_cache=True,
                         unet_class=unet_class
@@ -5156,7 +5156,7 @@ def _create_minimal_pipeline_for_component_extraction(
                         variant_fallback=variant,
                         dtype_fallback=dtype,
                         original_config=original_config,
-                        use_auth_token=auth_token,
+                        auth_token=auth_token,
                         local_files_only=False,
                         no_cache=True,
                         config=None if _hfhub.is_single_file_model_load(model_path) else model_path,
@@ -5170,7 +5170,7 @@ def _create_minimal_pipeline_for_component_extraction(
         creation_kwargs['vae'] = parsed_vae_uri.load(
             dtype_fallback=dtype,
             original_config=original_config,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=False,
             no_cache=True,
             missing_ok=False
@@ -5217,7 +5217,7 @@ def _create_minimal_pipeline_for_component_extraction(
             pipeline=pipeline,
             uris=parsed_lora_uris,
             fuse_scale=lora_fuse_scale if lora_fuse_scale is not None else 1.0,
-            use_auth_token=auth_token
+            auth_token=auth_token
         )
 
     return pipeline, manual_quantizers

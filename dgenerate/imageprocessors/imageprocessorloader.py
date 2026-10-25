@@ -43,7 +43,8 @@ class ImageProcessorLoader(_plugin.PluginLoader):
                                         _Pa('output-overwrite', type=bool, default=False),
                                         _Pa('device', type=str, default='cpu'),
                                         _Pa('model-offload', type=bool, default=False),
-                                        _Pa('local-files-only', type=bool, default=False)],
+                                        _Pa('local-files-only', type=bool, default=False),
+                                        _Pa('auth-token', type=str, default=None)],
                          argument_error_type=_exceptions.ImageProcessorArgumentError,
                          not_found_error_type=_exceptions.ImageProcessorNotFoundError)
 
@@ -53,6 +54,7 @@ class ImageProcessorLoader(_plugin.PluginLoader):
              uri: _types.Uri | collections.abc.Iterable[_types.Uri],
              device: str = 'cpu',
              local_files_only: bool = False,
+             auth_token: str | None = None,
              **kwargs) -> _imageprocessor.ImageProcessor | _imageprocessorchain.ImageProcessorChain | None:
         """
         Load an image processor or multiple image processors. They are loaded by URI, which
@@ -69,6 +71,8 @@ class ImageProcessorLoader(_plugin.PluginLoader):
         :param device: Request a specific rendering device, default is CPU
         :param local_files_only: Should the image processor(s) avoid downloading
             files from Hugging Face hub and only check the cache or local directories?
+        :param auth_token: Hugging Face token for processor model downloads.
+            A ``token`` argument on the processor URI overrides this.
         :param kwargs: Default argument values, will be overridden by arguments specified in the URI
         :return: :py:class:`dgenerate.imageprocessors.ImageProcessor` or
             :py:class:`dgenerate.imageprocessors.ImageProcessorChain`
@@ -81,7 +85,8 @@ class ImageProcessorLoader(_plugin.PluginLoader):
         if isinstance(uri, str):
             return typing.cast(
                 _imageprocessor.ImageProcessor,
-                s.load(uri, device=device, local_files_only=local_files_only, **kwargs))
+                s.load(uri, device=device, local_files_only=local_files_only,
+                       auth_token=auth_token, **kwargs))
 
         paths = list(uri)
 
@@ -91,12 +96,14 @@ class ImageProcessorLoader(_plugin.PluginLoader):
         if len(paths) == 1:
             return typing.cast(
                 _imageprocessor.ImageProcessor,
-                s.load(paths[0], device=device, local_files_only=local_files_only, **kwargs))
+                s.load(paths[0], device=device, local_files_only=local_files_only,
+                       auth_token=auth_token, **kwargs))
 
         return _imageprocessorchain.ImageProcessorChain(
             typing.cast(
                 _imageprocessor.ImageProcessor,
-                s.load(i, device=device, local_files_only=local_files_only, **kwargs)) for i in paths)
+                s.load(i, device=device, local_files_only=local_files_only,
+                       auth_token=auth_token, **kwargs)) for i in paths)
 
 
 __all__ = _types.module_all()

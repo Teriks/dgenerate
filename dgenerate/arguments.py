@@ -6226,6 +6226,32 @@ def parse_offline_mode(
     return parsed.offline_mode, unknown
 
 
+def parse_auth_token(
+        args: collections.abc.Sequence[str] | None = None) -> tuple[str | None, list[str]]:
+    """
+    Retrieve the ``-atk/--auth-token`` argument value.
+
+    An empty value is treated as no token, so it does not override ``HF_TOKEN``
+    or a saved Hugging Face login.
+
+    :param args: command line arguments
+
+    :raise DgenerateUsageError: If no argument value was provided.
+
+    :return: (value | ``None``, unknown_args_list)
+    """
+
+    try:
+        parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+        parser.add_argument('-atk', '--auth-token', action='store', default=None)
+        parsed, unknown = parser.parse_known_args(args)
+    except argparse.ArgumentError as e:
+        raise DgenerateUsageError(e) from e
+
+    token = parsed.auth_token.strip() if isinstance(parsed.auth_token, str) else None
+    return (token or None), unknown
+
+
 def parse_sub_command_help(
         args: collections.abc.Sequence[str] | None = None,
         throw_unknown: bool = False,

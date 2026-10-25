@@ -90,6 +90,34 @@ def _append_tokens_to_url(url: str) -> str:
     return url
 
 
+def _is_huggingface_url(url: str) -> bool:
+    host = (urllib.parse.urlparse(url).hostname or '').lower()
+    return (
+        host == 'hf.co' or host.endswith('.hf.co') or
+        host == 'huggingface.co' or host.endswith('.huggingface.co')
+    )
+
+
+def huggingface_authorization_header(url: str, auth_token: str | None = None) -> dict[str, str]:
+    """
+    ``Authorization`` header for a Hugging Face URL, when a token is available.
+
+    The token is not added to the URL. The web cache keeps using the URL as its key.
+
+    :param url: download URL
+    :param auth_token: explicit token, or ``None`` to use :py:func:`dgenerate.hfhub.resolve_auth_token`
+    :return: a one-entry header dict, or an empty dict
+    """
+    if not _is_huggingface_url(url):
+        return {}
+    # Imported lazily: hfhub imports this module.
+    import dgenerate.hfhub as _hfhub
+    token = _hfhub.resolve_auth_token(auth_token)
+    if not token:
+        return {}
+    return {'Authorization': f'Bearer {token}'}
+
+
 def is_offline_mode() -> bool:
     """
     Check if the web cache is in offline mode.
@@ -143,7 +171,8 @@ def create_web_cache_file(url,
                           unknown_mimetype_exception: type[Exception] = ValueError,
                           overwrite: bool = False,
                           tqdm_pbar=tqdm.tqdm,
-                          local_files_only: bool = False) \
+                          local_files_only: bool = False,
+                          auth_token: str | None = None) \
         -> tuple[str, str]:
     """
     Download a file from a url and add it to dgenerate's temporary web cache that is
@@ -166,6 +195,7 @@ def create_web_cache_file(url,
     :param overwrite: Always overwrite any previously cached file?
     :param tqdm_pbar: tqdm progress bar type, if set to `None` no progress bar will be used. Defaults to `tqdm.tqdm`
     :param local_files_only: If ``True``, do not attempt to download files, only check cache.
+    :param auth_token: Hugging Face token for a gated ``huggingface.co`` URL.
     :return: tuple(mimetype_str, filepath)
     """
 
@@ -180,12 +210,13 @@ def create_web_cache_file(url,
         unknown_mimetype_exception,
         overwrite,
         tqdm_pbar,
-        local_files_only)
+        local_files_only,
+        extra_headers=huggingface_authorization_header(url, auth_token))
 
     return cached_file.metadata['mime-type'], cached_file.path
 
 
-def request_mimetype(url, local_files_only: bool = False) -> str:
+def request_mimetype(url, local_files_only: bool = False, auth_token: str | None = None) -> str:
     """
     Request the mimetype of a file at a URL, if the file exists in the cache, a known mimetype
     is returned without connecting to the internet. Otherwise, connect to the internet
@@ -193,6 +224,7 @@ def request_mimetype(url, local_files_only: bool = False) -> str:
 
     :param url: The url
     :param local_files_only: If ``True``, do not make a request, only check the cache.
+    :param auth_token: Hugging Face token for a gated ``huggingface.co`` URL.
 
     :raise WebFileCacheOfflineModeException:
         If the web cache is in offline mode and the file data is not found in the cache.
@@ -202,7 +234,10 @@ def request_mimetype(url, local_files_only: bool = False) -> str:
 
     global cache
 
-    return cache.request_mimetype(_append_tokens_to_url(url), local_files_only)
+    url = _append_tokens_to_url(url)
+    return cache.request_mimetype(
+        url, local_files_only,
+        extra_headers=huggingface_authorization_header(url, auth_token))
 
 
 def is_downloadable_url(string) -> bool:

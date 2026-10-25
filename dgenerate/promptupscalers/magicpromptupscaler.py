@@ -574,7 +574,8 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                 config = transformers.AutoConfig.from_pretrained(
                     model_name,
                     trust_remote_code=True,
-                    local_files_only=self.local_files_only
+                    local_files_only=self.local_files_only,
+                    token=self.auth_token
                 )
             except Exception as e:
                 raise self.argument_error(
@@ -586,6 +587,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             quantization_config=quantization_config,
             device_map=self.device if quantization_config else None,
             local_files_only=self.local_files_only,
+            token=self.auth_token,
             config=config,
         )
         attn_implementation = _attn_implementation_for_config(config)
@@ -606,7 +608,8 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             tokenizer = transformers.AutoTokenizer.from_pretrained(
                 model_name,
                 trust_remote_code=True,
-                local_files_only=self.local_files_only
+                local_files_only=self.local_files_only,
+                token=self.auth_token
             )
         except Exception as e:
             raise self.argument_error(f'Could not load tokenizer for "{model_name}": {e}')
@@ -627,6 +630,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                 model_name,
                 trust_remote_code=True,
                 local_files_only=self.local_files_only,
+                token=self.auth_token,
             )
         except Exception as e:
             raise self.argument_error(
@@ -638,6 +642,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             quantization_config=quantization_config,
             device_map=self.device if quantization_config else None,
             local_files_only=self.local_files_only,
+            token=self.auth_token,
             config=config,
         )
         attn_implementation = _attn_implementation_for_config(config)
@@ -658,6 +663,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                 model_name,
                 trust_remote_code=True,
                 local_files_only=self.local_files_only,
+                token=self.auth_token,
             )
         except Exception as e:
             raise self.argument_error(

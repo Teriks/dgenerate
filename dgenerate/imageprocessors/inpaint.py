@@ -226,7 +226,9 @@ class InpaintProcessor(_imageprocessor.ImageProcessor):
             # Any mimetype
             try:
                 model_path = _hfhub.webcache_or_hf_blob_download(
-                    model_path, local_files_only=self.local_files_only
+                    model_path,
+                    local_files_only=self.local_files_only,
+                    auth_token=self.auth_token
                 )
             except Exception as e:
                 raise self.argument_error(

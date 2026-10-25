@@ -733,7 +733,7 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
                 pipeline=pipe,
                 uris=user_args.ltx_stage_lora_uris,
                 fuse_scale=1.0 if wrapper.lora_fuse_scale is None else wrapper.lora_fuse_scale,
-                use_auth_token=wrapper._auth_token,
+                auth_token=wrapper._auth_token,
                 local_files_only=bool(wrapper._local_files_only),
                 fuse=False)
             loaded_stage_lora = True
@@ -949,7 +949,7 @@ def _preflight_ltx_components(wrapper, user_args) -> None:
         wrapper.model_path,
         subfolder=wrapper._subfolder,
         revision=wrapper._revision,
-        use_auth_token=wrapper._auth_token,
+        auth_token=wrapper._auth_token,
         local_files_only=bool(wrapper._local_files_only))
     family = ltx_family_for_model_type(wrapper.model_type, index)
 

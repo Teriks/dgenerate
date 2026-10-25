@@ -254,6 +254,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         self._directory_stack = []
 
+    def run_file(self, stream):
+        import dgenerate.hfhub as _hfhub
+        with _hfhub.auth_token_context(_arguments.parse_auth_token(self.injected_args)[0]):
+            return super().run_file(stream)
+
     def _import_plugins_directive(self, plugin_paths: collections.abc.Sequence[str]):
         """
         Imports plugins from within a config, this imports config plugins as well as image processor plugins.

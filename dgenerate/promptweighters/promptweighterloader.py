@@ -40,7 +40,8 @@ class PromptWeighterLoader(_plugin.PluginLoader):
                          reserved_args=[_Pa('model-type', type=_enums.ModelType),
                                         _Pa('dtype', type=_enums.DataType),
                                         _Pa('device', type=str, default=None),
-                                        _Pa('local-files-only', type=bool, default=False)],
+                                        _Pa('local-files-only', type=bool, default=False),
+                                        _Pa('auth-token', type=str, default=None)],
                          argument_error_type=_exceptions.PromptWeighterArgumentError,
                          not_found_error_type=_exceptions.PromptWeighterNotFoundError)
 
@@ -50,14 +51,17 @@ class PromptWeighterLoader(_plugin.PluginLoader):
              uri: _types.Uri,
              device: str | None = None,
              local_files_only: bool = False,
+             auth_token: str | None = None,
              **kwargs) -> _promptweighter.PromptWeighter:
         """
         :param uri: prompt weighter URI
         :param device: The device the prompt weighter should operate on
         :param local_files_only: Should the prompt weighter avoid downloading
             files from Hugging Face hub and only check the cache or local directories?
+        :param auth_token: Hugging Face token for model downloads.
         :param kwargs: Additional plugin arguments
         :return: :py:class:`dgenerate.promptweighters.PromptWeighter`
         """
         return typing.cast(_promptweighter.PromptWeighter, super().load(
-            uri, device=device, local_files_only=local_files_only, **kwargs))
+            uri, device=device, local_files_only=local_files_only,
+            auth_token=auth_token, **kwargs))

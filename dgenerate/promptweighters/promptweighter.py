@@ -67,6 +67,7 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
                  dtype: _enums.DataType,
                  device: str | None = None,
                  local_files_only: bool = False,
+                 auth_token: str | None = None,
                  **kwargs):
         """
         :param loaded_by_name: The name the prompt weighter was loaded by
@@ -76,6 +77,8 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
         :param local_files_only: if ``True``, the plugin should never try to download
             models from the internet automatically, and instead only look
             for them in cache / on disk.
+        :param auth_token: Hugging Face token for model downloads. A ``token`` argument
+            on the weighter URI overrides this when the weighter defines one.
         :param kwargs: child class forwarded arguments
         """
         super().__init__(loaded_by_name=loaded_by_name,
@@ -97,6 +100,7 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
                 f'{_enums.get_model_type_string(model_type)}. '
                 f'These models encode a chat template, not CLIP or T5 tokens.')
         self.__local_files_only = local_files_only
+        self.__auth_token = auth_token.strip() if isinstance(auth_token, str) and auth_token.strip() else None
         self.__size_estimate = 0
 
     @property
@@ -126,6 +130,13 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
         Is this prompt weighter only going to look for resources such as model files in cache / on disk?
         """
         return self.__local_files_only
+
+    @property
+    def auth_token(self) -> str | None:
+        """
+        Hugging Face token supplied by the loader, usually ``--auth-token``.
+        """
+        return self.__auth_token
 
     @property
     def size_estimate(self) -> int:

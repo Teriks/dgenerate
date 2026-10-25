@@ -326,7 +326,9 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
         if _webcache.is_downloadable_url(value):
             try:
                 return _hfhub.webcache_or_hf_blob_download(
-                    value, local_files_only=self.local_files_only)
+                    value,
+                    local_files_only=self.local_files_only,
+                    auth_token=self.auth_token)
             except Exception as e:
                 raise self.argument_error(
                     f'Could not download argument "{argument}": "{value}", error: {e}') from e

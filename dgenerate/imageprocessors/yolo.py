@@ -443,14 +443,17 @@ class YOLOProcessor(_imageprocessor.ImageProcessor):
                     return model
                 else:
                     # Handle URL downloads
-                    return _hfhub.webcache_or_hf_blob_download(model, local_files_only=self.local_files_only)
+                    return _hfhub.webcache_or_hf_blob_download(
+                        model,
+                        local_files_only=self.local_files_only,
+                        auth_token=self._token or self.auth_token)
             else:
                 # Handle HuggingFace repository
                 return huggingface_hub.hf_hub_download(
                     model,
                     filename=self._weight_name,
                     subfolder=self._subfolder,
-                    token=self._token,
+                    token=self._token or self.auth_token,
                     revision=self._revision,
                     local_files_only=self.local_files_only)
         except Exception as e:

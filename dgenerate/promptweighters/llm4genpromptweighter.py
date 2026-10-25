@@ -64,7 +64,7 @@ class RankGenEncoder:
                  model_size: str | None = None,
                  cache_dir: str | None = None,
                  local_files_only: bool = False,
-                 use_auth_token: str | None = None,
+                 auth_token: str | None = None,
                  torch_dtype: torch.dtype = torch.float32,
                  quantization_config = None,
                  device_map: str | None = None):
@@ -89,7 +89,7 @@ class RankGenEncoder:
             f"google/t5-v1_1-{self.model_size}",
             cache_dir=cache_dir,
             local_files_only=local_files_only,
-            token=use_auth_token
+            token=auth_token
         )
 
         self._quantized = quantization_config is not None
@@ -97,7 +97,7 @@ class RankGenEncoder:
             model_path,
             trust_remote_code=True,
             local_files_only=local_files_only,
-            token=use_auth_token,
+            token=auth_token,
             dtype=torch_dtype,
             quantization_config=quantization_config,
             device_map=device_map
@@ -315,6 +315,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                  token: str | None = None,
                  **kwargs):
         super().__init__(**kwargs)
+        token = token or self.auth_token
         import dgenerate.promptweighters as _promptweighters
 
         supported = {
@@ -375,7 +376,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             subfolder=projector_subfolder,
             revision=projector_revision,
             local_files_only=self.local_files_only,
-            use_auth_token=token
+            auth_token=token
         )
 
         self._llm_dtype = _enums.get_torch_dtype(llm_dtype)
@@ -405,7 +406,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             method=lambda: RankGenEncoder(
                 encoder_model_path,
                 local_files_only=self.local_files_only,
-                use_auth_token=token,
+                auth_token=token,
                 torch_dtype=self._llm_dtype,
                 quantization_config=self._llm_quantization_config,
                 device_map=self.device if self._llm_quantization_config else None
@@ -477,19 +478,19 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                             subfolder,
                             revision,
                             local_files_only: bool = False,
-                            use_auth_token: str | None = None):
+                            auth_token: str | None = None):
         try:
             if _hfhub.is_single_file_model_load(model):
                 if os.path.exists(model):
                     return model
                 else:
-                    return _hfhub.download_non_hf_slug_model(model)
+                    return _hfhub.download_non_hf_slug_model(model, local_files_only=local_files_only, auth_token=auth_token)
             else:
                 return huggingface_hub.hf_hub_download(
                     model,
                     filename=weight_name,
                     subfolder=subfolder,
-                    token=use_auth_token,
+                    token=auth_token,
                     revision=revision,
                     local_files_only=local_files_only)
         except Exception as e:

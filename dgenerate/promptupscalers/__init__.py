@@ -114,7 +114,10 @@ def prompt_upscaler_exists(uri: _types.Uri):
     return prompt_upscaler_name_from_uri(uri) in prompt_upscaler_names()
 
 
-def create_prompt_upscaler(uri: _types.Uri, device: str = 'cpu', local_files_only: bool = False) -> PromptUpscaler:
+def create_prompt_upscaler(uri: _types.Uri,
+                           device: str = 'cpu',
+                           local_files_only: bool = False,
+                           auth_token: str | None = None) -> PromptUpscaler:
     """
     Create a prompt upscaler implementation using the default :py:class:`PromptUpscalerLoader` instance.
 
@@ -122,16 +125,19 @@ def create_prompt_upscaler(uri: _types.Uri, device: str = 'cpu', local_files_onl
     :param device: Device used for any text processing models.
     :param local_files_only: Should the prompt upscaler avoid downloading
         files from Hugging Face hub and only check the cache or local directories?
+    :param auth_token: Hugging Face token for model downloads.
     :return: A :py:class:`PromptUpscaler` implementation
     """
-    return PromptUpscalerLoader().load(uri, device=device, local_files_only=local_files_only)
+    return PromptUpscalerLoader().load(
+        uri, device=device, local_files_only=local_files_only, auth_token=auth_token)
 
 
 def upscale_prompts(
         prompts: _prompt.Prompts,
         default_upscaler_uri: _types.OptionalUriOrUris = None,
         device: str = 'cpu',
-        local_files_only: bool = False
+        local_files_only: bool = False,
+        auth_token: str | None = None
 ):
     """
     Apply prompt upscaling to a list of prompts and return a possibly expanded list of prompts.
@@ -141,6 +147,7 @@ def upscale_prompts(
     :param device: Execution device for upscalers that can utilize hardware acceleration
     :param local_files_only: Should all prompt upscalers involved avoid downloading
         files only check the cache or locally specified files?
+    :param auth_token: Hugging Face token for model downloads.
     :return: Altered prompts list
     """
 
@@ -164,7 +171,8 @@ def upscale_prompts(
                 continue
 
             upscaler = create_prompt_upscaler(
-                upscaler_uri, device=device, local_files_only=local_files_only
+                upscaler_uri, device=device, local_files_only=local_files_only,
+                auth_token=auth_token
             )
 
             next_prompts = []

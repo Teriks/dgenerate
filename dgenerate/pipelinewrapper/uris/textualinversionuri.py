@@ -182,7 +182,7 @@ class TextualInversionUri:
     @staticmethod
     def load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
                          uris: typing.Iterable[typing.Union["TextualInversionUri", str]],
-                         use_auth_token: _types.OptionalString = None,
+                         auth_token: _types.OptionalString = None,
                          local_files_only: bool = False):
         """
         Load Textual Inversion weights on to a pipeline using on or more URIs
@@ -190,7 +190,7 @@ class TextualInversionUri:
         :param pipeline: :py:class:`diffusers.DiffusionPipeline`
         :param uris: Iterable of :py:class:`TextualInversionUri` or ``str``
             Textual Inversion URIs to load
-        :param use_auth_token: optional huggingface auth token.
+        :param auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug
 
@@ -209,13 +209,13 @@ class TextualInversionUri:
             TextualInversionUri._load_on_pipeline(
                 uris=uris,
                 pipeline=pipeline,
-                use_auth_token=use_auth_token,
+                auth_token=auth_token,
                 local_files_only=local_files_only)
 
     @staticmethod
     def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
                           uris: typing.Iterable[typing.Union["TextualInversionUri", str]],
-                          use_auth_token: _types.OptionalString = None,
+                          auth_token: _types.OptionalString = None,
                           local_files_only: bool = False):
 
         if hasattr(pipeline, 'load_textual_inversion'):
@@ -224,7 +224,7 @@ class TextualInversionUri:
                 if not isinstance(textual_inversion_uri, TextualInversionUri):
                     textual_inversion_uri = TextualInversionUri.parse(textual_inversion_uri)
 
-                model_path = _hfhub.download_non_hf_slug_model(textual_inversion_uri.model)
+                model_path = _hfhub.download_non_hf_slug_model(textual_inversion_uri.model, local_files_only=local_files_only, auth_token=auth_token)
 
                 is_sdxl = pipeline.__class__.__name__.startswith('StableDiffusionXL')
                 is_flux = pipeline.__class__.__name__.startswith('Flux')
@@ -236,7 +236,7 @@ class TextualInversionUri:
                         subfolder=textual_inversion_uri.subfolder,
                         weight_name=textual_inversion_uri.weight_name,
                         local_files_only=local_files_only,
-                        token=use_auth_token
+                        token=auth_token
                     )
 
                     if is_sdxl:
@@ -263,21 +263,21 @@ class TextualInversionUri:
                                                     token=token,
                                                     text_encoder=pipeline.text_encoder,
                                                     tokenizer=pipeline.tokenizer,
-                                                    hf_token=use_auth_token)
+                                                    hf_token=auth_token)
 
                     if is_sdxl:
                         pipeline.load_textual_inversion(dicts['clip_g'],
                                                         token=token,
                                                         text_encoder=pipeline.text_encoder_2,
                                                         tokenizer=pipeline.tokenizer_2,
-                                                        hf_token=use_auth_token)
+                                                        hf_token=auth_token)
 
                     if is_flux and 't5' in dicts:
                         pipeline.load_textual_inversion(dicts['t5'],
                                                         token=token,
                                                         text_encoder=pipeline.text_encoder_2,
                                                         tokenizer=pipeline.tokenizer_2,
-                                                        hf_token=use_auth_token)
+                                                        hf_token=auth_token)
                 else:
                     pipeline.load_textual_inversion(model_path,
                                                     token=textual_inversion_uri.token,
@@ -285,7 +285,7 @@ class TextualInversionUri:
                                                     subfolder=textual_inversion_uri.subfolder,
                                                     weight_name=textual_inversion_uri.weight_name,
                                                     local_files_only=local_files_only,
-                                                    hf_token=use_auth_token)
+                                                    hf_token=auth_token)
 
                 _messages.debug_log(f'Added Textual Inversion: "{textual_inversion_uri}" '
                                     f'to pipeline: "{pipeline.__class__.__name__}"')

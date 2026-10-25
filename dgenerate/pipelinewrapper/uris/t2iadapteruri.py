@@ -142,7 +142,7 @@ class T2IAdapterUri:
 
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
-             use_auth_token: _types.OptionalString = None,
+             auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              no_cache: bool = False) -> diffusers.T2IAdapter:
         """
@@ -151,7 +151,7 @@ class T2IAdapterUri:
 
         :param dtype_fallback: Fallback datatype if ``dtype`` was not specified in the URI.
 
-        :param use_auth_token: Optional huggingface API auth token, used for downloading
+        :param auth_token: Optional huggingface API auth token, used for downloading
             restricted repos that your account has access to.
 
         :param local_files_only: Avoid connecting to huggingface to download models and
@@ -189,11 +189,11 @@ class T2IAdapterUri:
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch T2IAdapter", key, new))
     def _load(self,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
-              use_auth_token: _types.OptionalString = None,
+              auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               no_cache: bool = False) -> diffusers.T2IAdapter:
 
-        model_path = _hfhub.download_non_hf_slug_model(self.model)
+        model_path = _hfhub.download_non_hf_slug_model(self.model, local_files_only=local_files_only, auth_token=auth_token)
 
         single_file_load_path = _hfhub.is_single_file_model_load(model_path)
 
@@ -205,7 +205,7 @@ class T2IAdapterUri:
             estimated_memory_usage = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
-                use_auth_token=use_auth_token,
+                auth_token=auth_token,
                 local_files_only=local_files_only
             )
 
@@ -215,7 +215,7 @@ class T2IAdapterUri:
                 model_path,
                 revision=self.revision,
                 torch_dtype=torch_dtype,
-                token=use_auth_token,
+                token=auth_token,
                 local_files_only=local_files_only)
         else:
 
@@ -224,7 +224,7 @@ class T2IAdapterUri:
                 revision=self.revision,
                 variant=self.variant,
                 subfolder=self.subfolder,
-                use_auth_token=use_auth_token,
+                auth_token=auth_token,
                 local_files_only=local_files_only
             )
 
@@ -236,7 +236,7 @@ class T2IAdapterUri:
                 variant=self.variant,
                 subfolder=self.subfolder,
                 torch_dtype=torch_dtype,
-                token=use_auth_token,
+                token=auth_token,
                 local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Torch T2IAdapter Memory Use:',

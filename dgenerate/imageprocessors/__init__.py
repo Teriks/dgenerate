@@ -171,7 +171,8 @@ def create_image_processor(uri: _types.Uri | collections.abc.Iterable[_types.Uri
                            output_overwrite: bool = True,
                            device: str = 'cpu',
                            model_offload: bool = False,
-                           local_files_only: bool = False) -> ImageProcessor:
+                           local_files_only: bool = False,
+                           auth_token: str | None = None) -> ImageProcessor:
     """
     Create an image processor implementation using the default :py:class:`ImageProcessorLoader` instance.
 
@@ -184,6 +185,7 @@ def create_image_processor(uri: _types.Uri | collections.abc.Iterable[_types.Uri
     :param model_offload: enable cpu model offloading?
     :param local_files_only: Should the processor avoid downloading
         files from Hugging Face hub and only check the cache or local directories?
+    :param auth_token: Hugging Face token for processor model downloads.
     :return: A :py:class:`ImageProcessor` implementation
     """
     return ImageProcessorLoader().load(
@@ -192,7 +194,8 @@ def create_image_processor(uri: _types.Uri | collections.abc.Iterable[_types.Uri
         output_overwrite=output_overwrite,
         device=device,
         model_offload=model_offload,
-        local_files_only=local_files_only
+        local_files_only=local_files_only,
+        auth_token=auth_token
     )
 
 

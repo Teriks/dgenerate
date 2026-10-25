@@ -311,7 +311,7 @@ def _lora_file_metadata(uri, auth_token, local_files_only) -> dict | None:
     from diffusers.utils import _get_model_file
 
     lora = uri if isinstance(uri, _uris.LoRAUri) else _uris.LoRAUri.parse(uri)
-    path = _hfhub.download_non_hf_slug_model(lora.model)
+    path = _hfhub.download_non_hf_slug_model(lora.model, local_files_only=local_files_only, auth_token=auth_token)
 
     if os.path.isfile(path):
         model_file = path

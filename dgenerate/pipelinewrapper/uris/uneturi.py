@@ -160,7 +160,7 @@ class UNetUri:
              variant_fallback: _types.OptionalString = None,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              original_config: _types.OptionalPath = None,
-             use_auth_token: _types.OptionalString = None,
+             auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              no_cache: bool = False,
              device_map: str | None = None,
@@ -171,7 +171,7 @@ class UNetUri:
         :param variant_fallback: If the URI does not specify a variant, use this variant.
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
         :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
-        :param use_auth_token: optional huggingface auth token.
+        :param auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
         :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
@@ -216,7 +216,7 @@ class UNetUri:
               variant_fallback: _types.OptionalString = None,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               original_config: _types.OptionalPath = None,
-              use_auth_token: _types.OptionalString = None,
+              auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               no_cache: bool = False,
               device_map: str | None = None,
@@ -234,7 +234,7 @@ class UNetUri:
         else:
             variant = self.variant
 
-        model_path = _hfhub.download_non_hf_slug_model(self.model)
+        model_path = _hfhub.download_non_hf_slug_model(self.model, local_files_only=local_files_only, auth_token=auth_token)
 
         if self.quantizer:
             quant_config = _util.get_quantizer_uri_class(
@@ -247,7 +247,7 @@ class UNetUri:
         if _hfhub.is_single_file_model_load(model_path):
             try:
                 original_config = _hfhub.download_non_hf_slug_config(
-                    original_config) if original_config else None
+                    original_config, local_files_only=local_files_only, auth_token=auth_token) if original_config else None
             except _hfhub.NonHFConfigDownloadError as e:
                 raise _exceptions.UNetUriLoadError(
                     f'original config file "{original_config}" for UNet could not be downloaded: {e}'
@@ -257,7 +257,7 @@ class UNetUri:
                 repo_id=model_path,
                 revision=self.revision,
                 local_files_only=local_files_only,
-                use_auth_token=use_auth_token
+                auth_token=auth_token
             )
 
             self._enforce_cache_size(estimated_memory_use)
@@ -268,7 +268,7 @@ class UNetUri:
                     class_name=unet_class.__name__,
                     library_name='diffusers',
                     name=self.subfolder if self.subfolder else 'unet',
-                    use_auth_token=use_auth_token,
+                    auth_token=auth_token,
                     original_config=original_config,
                     local_files_only=local_files_only,
                     revision=self.revision,
@@ -295,7 +295,7 @@ class UNetUri:
                 variant=variant,
                 subfolder=self.subfolder,
                 local_files_only=local_files_only,
-                use_auth_token=use_auth_token
+                auth_token=auth_token
             )
 
             self._enforce_cache_size(estimated_memory_use)
@@ -306,7 +306,7 @@ class UNetUri:
                 variant=variant,
                 torch_dtype=torch_dtype,
                 subfolder=self.subfolder,
-                token=use_auth_token,
+                token=auth_token,
                 original_config=original_config,
                 local_files_only=local_files_only,
                 quantization_config=quant_config,

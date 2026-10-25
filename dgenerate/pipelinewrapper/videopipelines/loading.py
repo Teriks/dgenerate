@@ -215,7 +215,7 @@ def _load_replacement_transformer(model_type, transformer_uri, dtype, variant,
     return parsed.load(
         variant_fallback=variant,
         dtype_fallback=dtype,
-        use_auth_token=auth_token,
+        auth_token=auth_token,
         local_files_only=local_files_only,
         device_map=_quantized_device_map(
             device, offload, parsed.quantizer) if parsed.quantizer else None,
@@ -263,7 +263,7 @@ def _ltx_extra_weight_directories(model_path, revision, subfolder, auth_token, l
             model_path,
             subfolder=subfolder,
             revision=revision,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only)
     except Exception:
         return list(_LTX_FALLBACK_EXTRA_DIRS)
@@ -392,7 +392,7 @@ def _inject_video_text_encoders(index,
             if parsed.quantizer else None)
         injected[name] = parsed.load(
             dtype_fallback=dtype,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only,
             device_map=device_map)
         _messages.debug_log(f'Video pipeline using --text-encoders for "{name}": "{uri}".')
@@ -433,7 +433,7 @@ def _create_cached_video_pipeline(model_path,
         model_path,
         subfolder=subfolder,
         revision=revision,
-        use_auth_token=auth_token,
+        auth_token=auth_token,
         local_files_only=local_files_only)
     extra_dirs = extra_weight_directories_from_index(index)
     family, pipeline_class, moe = _resolve_video_load(model_type, index, ltx_ic_lora_uri)
@@ -444,7 +444,7 @@ def _create_cached_video_pipeline(model_path,
             model_path,
             revision=revision,
             subfolder=subfolder,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only,
             model_index=index)
         if detected_dtype is not None:
@@ -511,7 +511,7 @@ def _create_cached_video_pipeline(model_path,
             vae_dtype_fallback = _constants.DEFAULT_WAN_VAE_DTYPE
         injected['vae'] = parsed_vae.load(
             dtype_fallback=vae_dtype_fallback,
-            use_auth_token=auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only)
         load_kwargs['vae'] = injected['vae']
         _messages.debug_log(f'Video pipeline using --vae "{vae_uri}".')

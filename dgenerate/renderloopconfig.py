@@ -4753,30 +4753,32 @@ class RenderLoopConfig(_types.SetFromMixin):
                 prompts=prompts,
                 default_upscaler_uri=default_upscaler_uri,
                 device=self.device,
-                local_files_only=self.offline_mode
+                local_files_only=self.offline_mode,
+                auth_token=self.auth_token
             )
 
-        self.prompts = upscale_prompts(self.prompts, self.prompt_upscaler_uri)
+        with _hfhub.auth_token_context(self.auth_token):
+            self.prompts = upscale_prompts(self.prompts, self.prompt_upscaler_uri)
 
-        if self.second_prompts:
-            self.second_prompts = upscale_prompts(
-                self.second_prompts, _types.default(
-                    self.second_prompt_upscaler_uri, self.prompt_upscaler_uri))
+            if self.second_prompts:
+                self.second_prompts = upscale_prompts(
+                    self.second_prompts, _types.default(
+                        self.second_prompt_upscaler_uri, self.prompt_upscaler_uri))
 
-        if self.third_prompts:
-            self.third_prompts = upscale_prompts(
-                self.third_prompts, _types.default(
-                    self.third_prompt_upscaler_uri, self.prompt_upscaler_uri))
+            if self.third_prompts:
+                self.third_prompts = upscale_prompts(
+                    self.third_prompts, _types.default(
+                        self.third_prompt_upscaler_uri, self.prompt_upscaler_uri))
 
-        if self.second_model_prompts:
-            self.second_model_prompts = upscale_prompts(
-                self.second_model_prompts, _types.default(
-                    self.second_model_prompt_upscaler_uri, self.prompt_upscaler_uri))
+            if self.second_model_prompts:
+                self.second_model_prompts = upscale_prompts(
+                    self.second_model_prompts, _types.default(
+                        self.second_model_prompt_upscaler_uri, self.prompt_upscaler_uri))
 
-        if self.second_model_second_prompts:
-            self.second_model_second_prompts = upscale_prompts(
-                self.second_model_second_prompts, _types.default(
-                    self.second_model_second_prompt_upscaler_uri, self.prompt_upscaler_uri))
+            if self.second_model_second_prompts:
+                self.second_model_second_prompts = upscale_prompts(
+                    self.second_model_second_prompts, _types.default(
+                        self.second_model_second_prompt_upscaler_uri, self.prompt_upscaler_uri))
 
     def iterate_diffusion_args(self, **overrides) -> collections.abc.Iterator[_pipelinewrapper.DiffusionArguments]:
         """

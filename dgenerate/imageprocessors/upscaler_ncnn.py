@@ -260,7 +260,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         if _webcache.is_downloadable_url(model):
             try:
                 self._model_path = _hfhub.webcache_or_hf_blob_download(
-                    model, local_files_only=self.local_files_only
+                    model,
+                    local_files_only=self.local_files_only,
+                    auth_token=self.auth_token
                 )
             except Exception as e:
                 raise self.argument_error(
@@ -271,7 +273,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         if _webcache.is_downloadable_url(param):
             try:
                 self._param_path = _hfhub.webcache_or_hf_blob_download(
-                    param, local_files_only=self.local_files_only
+                    param,
+                    local_files_only=self.local_files_only,
+                    auth_token=self.auth_token
                 )
             except Exception as e:
                 raise self.argument_error(

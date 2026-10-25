@@ -138,7 +138,7 @@ class ImageEncoderUri:
 
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
-             use_auth_token: _types.OptionalString = None,
+             auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              no_cache: bool = False,
              image_encoder_class:
@@ -149,7 +149,7 @@ class ImageEncoderUri:
         Load an Image Encoder Model of type :py:class:`transformers.CLIPVisionModelWithProjection`
 
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
-        :param use_auth_token: optional huggingface auth token.
+        :param auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
 
@@ -185,7 +185,7 @@ class ImageEncoderUri:
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("ImageEncoder", key, new))
     def _load(self,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
-              use_auth_token: _types.OptionalString = None,
+              auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               no_cache: bool = False,
               image_encoder_class:
@@ -206,7 +206,7 @@ class ImageEncoderUri:
             variant=self.variant,
             subfolder=self.subfolder,
             local_files_only=local_files_only,
-            use_auth_token=use_auth_token
+            auth_token=auth_token
         )
 
         self._enforce_cache_size(estimated_memory_use)
@@ -223,7 +223,7 @@ class ImageEncoderUri:
             revision=self.revision,
             variant=self.variant,
             dtype=torch_dtype,
-            token=use_auth_token,
+            token=auth_token,
             local_files_only=local_files_only,
             **extra_args)
 

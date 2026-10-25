@@ -56,7 +56,7 @@ def _apply_video_loras(pipe, model_type, lora_uris, fuse_scale, auth_token, loca
         pipeline=pipe,
         uris=lora_uris,
         fuse_scale=1.0 if fuse_scale is None else fuse_scale,
-        use_auth_token=auth_token,
+        auth_token=auth_token,
         local_files_only=local_files_only,
         fuse=True)
 

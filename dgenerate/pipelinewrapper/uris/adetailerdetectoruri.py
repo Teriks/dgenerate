@@ -315,20 +315,21 @@ class AdetailerDetectorUri:
 
     def get_model_path(self,
                        local_files_only: bool = False,
-                       use_auth_token: _types.OptionalString = None):
+                       auth_token: _types.OptionalString = None):
         try:
             if _hfhub.is_single_file_model_load(self.model):
                 if os.path.exists(self.model):
                     return self.model
                 else:
                     # any mimetype
-                    return _hfhub.webcache_or_hf_blob_download(self.model, local_files_only=local_files_only)
+                    return _hfhub.webcache_or_hf_blob_download(
+                        self.model, local_files_only=local_files_only, auth_token=auth_token)
             else:
                 return huggingface_hub.hf_hub_download(
                     self.model,
                     filename=self.weight_name,
                     subfolder=self.subfolder,
-                    token=use_auth_token,
+                    token=auth_token,
                     revision=self.revision,
                     local_files_only=local_files_only)
         except Exception as e:

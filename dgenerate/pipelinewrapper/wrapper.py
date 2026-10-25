@@ -3552,7 +3552,7 @@ class DiffusionPipelineWrapper:
                     asdff_output = asdff_pipe(
                         pipeline_args=pipeline_args,
                         model_path=detector_uri.get_model_path(
-                            local_files_only=self._local_files_only, use_auth_token=self._auth_token),
+                            local_files_only=self._local_files_only, auth_token=self._auth_token),
                         images=input_images,
                         device=self._device,
                         detector_device=_types.default(detector_uri.device, self._device),
@@ -4698,7 +4698,8 @@ class DiffusionPipelineWrapper:
             model_type=model_type,
             dtype=dtype,
             device=device,
-            local_files_only=self.local_files_only
+            local_files_only=self.local_files_only,
+            auth_token=self._auth_token
         )
 
     def _default_prompt_weighter(self, *sources):
@@ -4751,7 +4752,8 @@ class DiffusionPipelineWrapper:
             self._latents_processor_loader.load(
                 p, device=self._device,
                 model_type=self._model_type,
-                local_files_only=self._local_files_only) for p in processor_chain
+                local_files_only=self._local_files_only,
+                auth_token=self._auth_token) for p in processor_chain
         ]
 
     def _process_input_latents(self,
@@ -4810,7 +4812,8 @@ class DiffusionPipelineWrapper:
             processor_uris,
             model_type=self.model_type,
             device=self.device,
-            local_files_only=self.local_files_only
+            local_files_only=self.local_files_only,
+            auth_token=self._auth_token
         )
 
         # Ensure proper batch dimension for processing, also always output with a batch dimension
@@ -4843,7 +4846,8 @@ class DiffusionPipelineWrapper:
         processor = self._decoded_latents_image_processor_loader.load(
             processor_uris,
             device=self.device,
-            local_files_only=self.local_files_only
+            local_files_only=self.local_files_only,
+            auth_token=self._auth_token
         )
 
         _messages.debug_log(

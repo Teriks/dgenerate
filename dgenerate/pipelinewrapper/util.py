@@ -46,7 +46,7 @@ def fetch_model_index_dict(
         path: str,
         revision=None,
         subfolder=None,
-        use_auth_token=None,
+        auth_token=None,
         local_files_only=False
 ) -> dict:
     """
@@ -56,7 +56,7 @@ def fetch_model_index_dict(
     :param path: Hugging Face repo, or directory, or file path
     :param revision: repo revision
     :param subfolder: repo subfolder
-    :param use_auth_token: Use this HF auth token?
+    :param auth_token: Use this HF auth token?
     :param local_files_only: Only look through the cache?
 
     :raises ConfigNotFoundError: If ``model_index.json`` could not be found.
@@ -68,7 +68,7 @@ def fetch_model_index_dict(
     if single_file_load:
         checkpoint = _single_file.load_single_file_checkpoint(
             path,
-            token=use_auth_token,
+            token=auth_token,
             local_files_only=local_files_only,
             revision=revision,
         )
@@ -86,7 +86,7 @@ def fetch_model_index_dict(
                 subfolder=subfolder,
                 revision=revision,
                 local_files_only=local_files_only,
-                token=use_auth_token
+                token=auth_token
             )
     else:
         cached_model_config_path = default_pretrained_model_config_name
@@ -127,7 +127,7 @@ class _HeaderTensor:
 
 def _single_file_dtype(path: str,
                        revision=None,
-                       use_auth_token=None,
+                       auth_token=None,
                        local_files_only=False) -> _enums.DataType | None:
     """
     ``--dtype auto`` for a single file ``.safetensors`` checkpoint, only its header is read.
@@ -141,7 +141,8 @@ def _single_file_dtype(path: str,
         return None
     try:
         if not os.path.isfile(path):
-            path = _hfhub.webcache_or_hf_blob_download(path, local_files_only=local_files_only)
+            path = _hfhub.webcache_or_hf_blob_download(
+                path, local_files_only=local_files_only, auth_token=auth_token)
         with open(path, 'rb') as file:
             header_size = struct.unpack('<Q', file.read(8))[0]
             header = json.loads(file.read(header_size))
@@ -172,7 +173,7 @@ def _single_file_dtype(path: str,
             config['pretrained_model_name_or_path'],
             revision=revision,
             subfolder=config.get('subfolder'),
-            use_auth_token=use_auth_token,
+            auth_token=auth_token,
             local_files_only=local_files_only)
         if config_dtype is not None:
             return config_dtype
@@ -186,7 +187,7 @@ def _module_config_dtype(path: str,
                          name: str,
                          revision=None,
                          subfolder=None,
-                         use_auth_token=None,
+                         auth_token=None,
                          local_files_only=False) -> _enums.DataType | None:
     folder = f'{subfolder}/{name}' if subfolder else name
     try:
@@ -199,7 +200,7 @@ def _module_config_dtype(path: str,
                 subfolder=folder,
                 revision=revision,
                 local_files_only=local_files_only,
-                token=use_auth_token
+                token=auth_token
             )
         with open(config_path) as config_file:
             config = json.load(config_file)
@@ -217,7 +218,7 @@ def _module_config_dtype(path: str,
 def auto_dtype(path: str,
                revision=None,
                subfolder=None,
-               use_auth_token=None,
+               auth_token=None,
                local_files_only=False,
                model_index: dict | None = None) -> _enums.DataType | None:
     """
@@ -236,7 +237,7 @@ def auto_dtype(path: str,
     :param path: Hugging Face repo, or directory, or file path
     :param revision: repo revision
     :param subfolder: repo subfolder
-    :param use_auth_token: Use this HF auth token?
+    :param auth_token: Use this HF auth token?
     :param local_files_only: Only look through the cache?
     :param model_index: ``model_index.json`` dict if it was already fetched.
 
@@ -245,7 +246,7 @@ def auto_dtype(path: str,
     if _hfhub.is_single_file_model_load(path):
         return _single_file_dtype(path,
                                   revision=revision,
-                                  use_auth_token=use_auth_token,
+                                  auth_token=auth_token,
                                   local_files_only=local_files_only)
 
     if model_index is None:
@@ -254,7 +255,7 @@ def auto_dtype(path: str,
                 path,
                 revision=revision,
                 subfolder=subfolder,
-                use_auth_token=use_auth_token,
+                auth_token=auth_token,
                 local_files_only=local_files_only)
         except _d_exceptions.ConfigNotFoundError:
             return None
@@ -266,7 +267,7 @@ def auto_dtype(path: str,
         module_class = getattr(transformers, value[1], None)
         if not (isinstance(module_class, type) and issubclass(module_class, transformers.PreTrainedModel)):
             continue
-        dtype = _module_config_dtype(path, name, revision, subfolder, use_auth_token, local_files_only)
+        dtype = _module_config_dtype(path, name, revision, subfolder, auth_token, local_files_only)
         if dtype is not None:
             found.append(dtype)
 
@@ -278,7 +279,7 @@ def single_file_load_sub_module(
         class_name: str,
         library_name: str,
         name: str,
-        use_auth_token: str | None = None,
+        auth_token: str | None = None,
         local_files_only: bool = False,
         revision: str | None = None,
         dtype: torch.dtype | None = None,
@@ -292,7 +293,7 @@ def single_file_load_sub_module(
     :param class_name: submodule class name
     :param library_name: python module where the class exists
     :param name: submodule name, i.e. vae, unet, text_encoder, text_encoder_2, etc.
-    :param use_auth_token: Hugging Face auth token for downloading configs?
+    :param auth_token: Hugging Face auth token for downloading configs?
     :param local_files_only: Do not attempt to download files, only use cache?
     :param revision: Repo revision for detected config repo
     :param dtype: torch dtype for the module
@@ -311,7 +312,7 @@ def single_file_load_sub_module(
 
     checkpoint = _single_file.load_single_file_checkpoint(
         path,
-        token=use_auth_token,
+        token=auth_token,
         local_files_only=local_files_only,
         revision=revision,
     )
@@ -328,7 +329,7 @@ def single_file_load_sub_module(
             default_pretrained_model_config_name,
             revision=revision,
             local_files_only=local_files_only,
-            token=use_auth_token,
+            token=auth_token,
             subfolder=name,
             filename='config.json'
         )
@@ -426,7 +427,7 @@ def fetch_model_files_with_size(repo_id: str,
                                 variant: str | None = None,
                                 subfolder: str | None = None,
                                 weight_name: str | None = None,
-                                use_auth_token: str | None = None,
+                                auth_token: str | None = None,
                                 extensions: collections.abc.Iterable | None = None,
                                 local_files_only: bool = False,
                                 sentencepiece: bool = False,
@@ -443,7 +444,7 @@ def fetch_model_files_with_size(repo_id: str,
     :param variant: files variant, IE: fp16
     :param subfolder: subfolder in the repo where the models exist
     :param weight_name: look for a specific model file name
-    :param use_auth_token: optional huggingface auth token
+    :param auth_token: optional huggingface auth token
     :param extensions: if specified, only search for extensions in this iterable
     :param local_files_only: utilize the huggingface API if necessary?
         if this is ``True``, and it is necessary to fetch info from the API, this function
@@ -628,7 +629,7 @@ def fetch_model_files_with_size(repo_id: str,
                                 'api.list_files_info(' +
                                 str({'repo_id': repo_id, 'revision': revision, 'paths': subfolder}) + ')')
 
-            api = huggingface_hub.HfApi(token=use_auth_token)
+            api = huggingface_hub.HfApi(token=auth_token)
 
             with _hfhub.with_hf_errors_as_model_not_found():
                 info_entries = list(
@@ -679,7 +680,7 @@ def estimate_model_memory_use(repo_id: str,
                               safetensors: bool = True,
                               sentencepiece: bool = False,
                               watermarker: bool = False,
-                              use_auth_token: str | None = None,
+                              auth_token: str | None = None,
                               local_files_only: bool = False) -> int:
     """
     Attempt to estimate the CPU side memory consumption of a model before it is loaded into memory.
@@ -706,7 +707,7 @@ def estimate_model_memory_use(repo_id: str,
     :param safetensors: Use safetensors if available?
     :param sentencepiece: Forcibly include tokenizer/spiece.model for models with a unet?
     :param watermarker: Forcibly include watermarker/diffusion_pytorch_model.bin for models with a unet?
-    :param use_auth_token: optional huggingface auth token
+    :param auth_token: optional huggingface auth token
     :param local_files_only: should we only look for files cached on disk and never hit the API?
     :return: estimated size in bytes
     """
@@ -728,7 +729,7 @@ def estimate_model_memory_use(repo_id: str,
                                                   variant=variant,
                                                   subfolder=subfolder,
                                                   weight_name=weight_name,
-                                                  use_auth_token=use_auth_token,
+                                                  auth_token=auth_token,
                                                   local_files_only=local_files_only,
                                                   extensions={'.safetensors',
                                                               '.bin'},

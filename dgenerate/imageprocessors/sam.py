@@ -124,7 +124,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
         else:
             model_path = huggingface_hub.hf_hub_download(
                 pretrained_model_or_path, filename, subfolder=subfolder,
-                cache_dir=cache_dir)
+                cache_dir=cache_dir, token=self.auth_token)
 
         sam = _cna.segment_anything.build_sam.sam_model_registry[model_type](checkpoint=model_path)
 

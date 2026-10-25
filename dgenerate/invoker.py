@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
+import functools
 import os.path
 import traceback
 import typing
@@ -133,6 +134,17 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
     return 0
 
 
+def _auth_token_from_cli_args(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        cli_args = kwargs['args'] if 'args' in kwargs else (args[0] if args else None)
+        with _hfhub.auth_token_context(_arguments.parse_auth_token(cli_args)[0]):
+            yield from func(*args, **kwargs)
+
+    return wrapper
+
+
+@_auth_token_from_cli_args
 def invoke_dgenerate_events(
         args: collections.abc.Sequence[str],
         render_loop: _renderloop.RenderLoop | None = None,

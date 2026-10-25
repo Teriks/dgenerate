@@ -110,6 +110,7 @@ def create_prompt_weighter(uri: _types.Uri,
                            dtype: _enums.DataType,
                            device: str | None = None,
                            local_files_only: bool = False,
+                           auth_token: str | None = None,
                            ) -> PromptWeighter:
     """
     Create a prompt weighter implementation using the default :py:class:`PromptWeighterLoader` instance.
@@ -120,6 +121,7 @@ def create_prompt_weighter(uri: _types.Uri,
     :param device: The device the prompt weighter should operate on
     :param local_files_only: Should the prompt weighter avoid downloading
         files from Hugging Face hub and only check the cache or local directories?
+    :param auth_token: Hugging Face token for model downloads.
     :return: A :py:class:`PromptWeighter` implementation
     """
     return PromptWeighterLoader().load(
@@ -127,7 +129,8 @@ def create_prompt_weighter(uri: _types.Uri,
         model_type=model_type,
         dtype=dtype,
         device=device,
-        local_files_only=local_files_only
+        local_files_only=local_files_only,
+        auth_token=auth_token
     )
 
 

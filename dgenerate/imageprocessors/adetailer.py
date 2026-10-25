@@ -414,7 +414,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                 negative_prompt=self._negative_prompt,
                 device=self._detector_device
             ).get_model_path(
-                use_auth_token=token,
+                auth_token=token or self.auth_token,
                 local_files_only=self.local_files_only)
         except Exception as e:
             raise self.argument_error(str(e)) from e
@@ -539,7 +539,8 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                     model_type=model_type,
                     dtype=encoder_dtype,
                     local_files_only=self.local_files_only,
-                    device=self.device
+                    device=self.device,
+                    auth_token=self.auth_token
                 )
             except Exception as e:
                 raise self.argument_error(str(e)) from e

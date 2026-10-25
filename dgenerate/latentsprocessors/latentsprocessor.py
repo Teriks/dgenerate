@@ -93,6 +93,7 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
                  device: str = 'cpu',
                  model_offload: bool = False,
                  local_files_only: bool = False,
+                 auth_token: str | None = None,
                  **kwargs):
         """
         Initialize the latents processor.
@@ -106,6 +107,7 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
         :param local_files_only: if ``True``, the plugin should never try to download
             models from the internet automatically, and instead only look
             for them in cache / on disk.
+        :param auth_token: Hugging Face token for model downloads.
         :param kwargs: child class forwarded arguments
         """
         super().__init__(loaded_by_name=loaded_by_name,
@@ -115,6 +117,7 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
         self.__model_type = model_type
         self.__device = device
         self.__local_files_only = local_files_only
+        self.__auth_token = auth_token.strip() if isinstance(auth_token, str) and auth_token.strip() else None
         self.__size_estimate = 0
         self.__model_offload = model_offload
         self.__modules = []
@@ -153,6 +156,13 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
         Is this processor only going to look for files in cache / on disk?
         """
         return self.__local_files_only
+
+    @property
+    def auth_token(self) -> str | None:
+        """
+        Hugging Face token supplied by the loader, usually ``--auth-token``.
+        """
+        return self.__auth_token
 
     @property
     def modules_device(self) -> torch.device:

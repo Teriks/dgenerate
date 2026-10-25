@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import contextlib
+import contextvars
 import os
 import re
 import typing
@@ -29,6 +30,58 @@ import dgenerate.types as _types
 import dgenerate.webcache as _webcache
 
 __doc__ = """Hugging Face Hub utilities for supporting Hugging Face downloads."""
+
+# Explicit ``--auth-token`` for the current render or config run.
+# ``HF_TOKEN`` is set alongside this so libraries that only read the environment see it.
+_AUTH_TOKEN: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    'dgenerate_auth_token', default=None)
+
+
+def resolve_auth_token(auth_token: str | None = None) -> str | None:
+    """
+    Resolve the Hugging Face token to use for a download.
+
+    An explicit token wins. Otherwise the token set by :py:func:`auth_token_context`
+    is used, then :py:func:`huggingface_hub.get_token` (``HF_TOKEN`` or a saved login).
+
+    :param auth_token: token passed by the caller, such as ``--auth-token``
+    :return: token string, or ``None`` when no token is available
+    """
+    if isinstance(auth_token, str) and auth_token.strip():
+        return auth_token.strip()
+    current = _AUTH_TOKEN.get()
+    if current:
+        return current
+    return huggingface_hub.get_token()
+
+
+@contextlib.contextmanager
+def auth_token_context(auth_token: str | None):
+    """
+    Use ``auth_token`` as the Hugging Face token until the block exits.
+
+    Sets ``HF_TOKEN`` for libraries that read the environment, and a context
+    variable for dgenerate's own download helpers. An empty token leaves both
+    unchanged. The previous environment value is restored on exit.
+
+    :param auth_token: token from ``--auth-token`` or a library caller
+    """
+    token = auth_token.strip() if isinstance(auth_token, str) else ''
+    if not token:
+        yield
+        return
+
+    reset = _AUTH_TOKEN.set(token)
+    previous = os.environ.get('HF_TOKEN')
+    os.environ['HF_TOKEN'] = token
+    try:
+        yield
+    finally:
+        _AUTH_TOKEN.reset(reset)
+        if previous is None:
+            os.environ.pop('HF_TOKEN', None)
+        else:
+            os.environ['HF_TOKEN'] = previous
 
 
 class NonHFDownloadError(Exception):
@@ -140,7 +193,8 @@ def webcache_or_hf_blob_download(url: str,
                                  mime_acceptable_desc: str | None = None,
                                  mimetype_is_supported: typing.Callable[[str], bool] | None = None,
                                  unknown_mimetype_exception: type[Exception] = NonHFDownloadError,
-                                 local_files_only: bool = False) -> str:
+                                 local_files_only: bool = False,
+                                 auth_token: str | None = None) -> str:
     """
     Download to ``dgenerate`` web cache or Hugging Face cache, depending on the model path.
 
@@ -157,6 +211,9 @@ def webcache_or_hf_blob_download(url: str,
     :param mimetype_is_supported: A function that determines if a mimetype is supported for downloading. (dgenerate webcache)
     :param unknown_mimetype_exception: The exception type to raise when an unknown mimetype is encountered. (dgenerate webcache)
     :param local_files_only: If ``True``, do not attempt to download files, only check cache.
+    :param auth_token: Hugging Face token for a gated blob link or resolve URL.
+        When omitted, :py:func:`resolve_auth_token` supplies ``--auth-token``, ``HF_TOKEN``,
+        or a saved login.
 
     :raise NonHFDownloadError: If the download mimetype unsupported.
 
@@ -184,7 +241,8 @@ def webcache_or_hf_blob_download(url: str,
             mime_acceptable_desc=mime_acceptable_desc,
             mimetype_is_supported=mimetype_is_supported,
             unknown_mimetype_exception=unknown_mimetype_exception,
-            local_files_only=local_files_only
+            local_files_only=local_files_only,
+            auth_token=auth_token
         )
     else:
         model_path = huggingface_hub.hf_hub_download(
@@ -192,12 +250,15 @@ def webcache_or_hf_blob_download(url: str,
             revision=blob_link.revision,
             subfolder=blob_link.subfolder,
             filename=blob_link.weight_name,
-            local_files_only=local_files_only
+            local_files_only=local_files_only,
+            token=resolve_auth_token(auth_token)
         )
     return model_path
 
 
-def download_non_hf_slug_model(model_path: str, local_files_only: bool = False):
+def download_non_hf_slug_model(model_path: str,
+                               local_files_only: bool = False,
+                               auth_token: str | None = None):
     """
     Check for a non hugging face slug or reference to a model that is possibly downloadable as a single file.
 
@@ -227,6 +288,7 @@ def download_non_hf_slug_model(model_path: str, local_files_only: bool = False):
 
     :param model_path: proposed model path
     :param local_files_only: If ``True``, do not attempt to download files, only check cache.
+    :param auth_token: Hugging Face token for a gated file URL or blob link.
     :return: path to downloaded file or unchanged model path.
     """
     if _webcache.is_downloadable_url(model_path):
@@ -235,13 +297,16 @@ def download_non_hf_slug_model(model_path: str, local_files_only: bool = False):
             mime_acceptable_desc='not text',
             mimetype_is_supported=lambda m: m is not None and not m.startswith('text/'),
             unknown_mimetype_exception=NonHFModelDownloadError,
-            local_files_only=local_files_only
+            local_files_only=local_files_only,
+            auth_token=auth_token
         )
 
     return model_path
 
 
-def download_non_hf_slug_config(path: str, local_files_only: bool = False):
+def download_non_hf_slug_config(path: str,
+                                local_files_only: bool = False,
+                                auth_token: str | None = None):
     """
     Check for a non hugging face slug or reference to a config
     file that is possibly downloadable as a single file.
@@ -274,6 +339,7 @@ def download_non_hf_slug_config(path: str, local_files_only: bool = False):
 
     :param path: proposed model path
     :param local_files_only: If ``True``, do not attempt to download files, only check cache.
+    :param auth_token: Hugging Face token for a gated file URL or blob link.
     :return: path to downloaded file or unchanged model path.
 
     """
@@ -283,7 +349,8 @@ def download_non_hf_slug_config(path: str, local_files_only: bool = False):
             mime_acceptable_desc='text / yaml / json',
             mimetype_is_supported=lambda m: m.startswith('text/') or m.startswith('application/'),
             unknown_mimetype_exception=NonHFConfigDownloadError,
-            local_files_only=local_files_only
+            local_files_only=local_files_only,
+            auth_token=auth_token
         )
 
     return path

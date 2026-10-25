@@ -34,6 +34,7 @@ import PIL.PngImagePlugin
 import torch
 
 import dgenerate.filelock as _filelock
+import dgenerate.hfhub as _hfhub
 import dgenerate.files as _files
 import dgenerate.image as _image
 import dgenerate.imageprocessors as _imageprocessors
@@ -1020,8 +1021,9 @@ class RenderLoop:
 
         """
         try:
-            for _ in self._run():
-                continue
+            with _hfhub.auth_token_context(self.config.auth_token):
+                for _ in self._run():
+                    continue
         except _pipelinewrapper.DiffusionArgumentsHelpException as e:
             _messages.log(e)
             pass
@@ -1044,7 +1046,8 @@ class RenderLoop:
         :return: :py:data:`.RenderLoopEventStream`
         """
         try:
-            yield from self._run()
+            with _hfhub.auth_token_context(self.config.auth_token):
+                yield from self._run()
         except _pipelinewrapper.DiffusionArgumentsHelpException as e:
             _messages.log(e)
             pass
@@ -1172,7 +1175,8 @@ class RenderLoop:
             self._post_processor = self.image_processor_loader.load(
                 self._c_config.post_processors,
                 device=self._c_config.device,
-                local_files_only=self._c_config.offline_mode
+                local_files_only=self._c_config.offline_mode,
+                auth_token=self._c_config.auth_token
             )
             _messages.debug_log('Loaded Post Processor:', self._post_processor)
 
@@ -1211,11 +1215,13 @@ class RenderLoop:
             r = self.image_processor_loader.load(
                 processor_chain[0],
                 device=self._c_config.device,
-                local_files_only=self._c_config.offline_mode)
+                local_files_only=self._c_config.offline_mode,
+                auth_token=self._c_config.auth_token)
         else:
             r = [self.image_processor_loader.load(p,
                                                   device=self._c_config.device,
-                                                  local_files_only=self._c_config.offline_mode)
+                                                  local_files_only=self._c_config.offline_mode,
+                                                  auth_token=self._c_config.auth_token)
                  for p in processor_chain]
 
         return r

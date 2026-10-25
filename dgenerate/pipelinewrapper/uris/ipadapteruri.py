@@ -108,14 +108,14 @@ class IPAdapterUri:
     @staticmethod
     def load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
                          uris: typing.Iterable[typing.Union["IPAdapterUri", str]],
-                         use_auth_token: _types.OptionalString = None,
+                         auth_token: _types.OptionalString = None,
                          local_files_only: bool = False):
         """
         Load IP Adapter weights on to a pipeline using this URI
 
         :param pipeline: :py:class:`diffusers.DiffusionPipeline`
         :param uris: IP Adapter URIs to load on to the pipeline
-        :param use_auth_token: optional huggingface auth token.
+        :param auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug
 
@@ -139,13 +139,13 @@ class IPAdapterUri:
         with _hfhub.with_hf_errors_as_model_not_found(cache_all):
             IPAdapterUri._load_on_pipeline(uris=uris,
                                            pipeline=pipeline,
-                                           use_auth_token=use_auth_token,
+                                           auth_token=auth_token,
                                            local_files_only=local_files_only)
 
     @staticmethod
     def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
                           uris: typing.Iterable[typing.Union["IPAdapterUri", str]],
-                          use_auth_token: _types.OptionalString = None,
+                          auth_token: _types.OptionalString = None,
                           local_files_only: bool = False):
 
         if hasattr(pipeline, 'load_ip_adapter'):
@@ -176,7 +176,7 @@ class IPAdapterUri:
                     if isinstance(ip_adapter_uri, str):
                         ip_adapter_uri = IPAdapterUri.parse(ip_adapter_uri)
 
-                    models.append(_hfhub.download_non_hf_slug_model(ip_adapter_uri.model))
+                    models.append(_hfhub.download_non_hf_slug_model(ip_adapter_uri.model, local_files_only=local_files_only, auth_token=auth_token))
                     if ip_adapter_uri.subfolder is None:
                         subfolders.append('.')
                     else:
@@ -197,7 +197,7 @@ class IPAdapterUri:
                                          weight_name=weight_names,
                                          local_files_only=local_files_only,
                                          use_safetensors=True,
-                                         token=use_auth_token)
+                                         token=auth_token)
             except EnvironmentError:
                 # brute force, try for .bin files
                 pipeline.load_ip_adapter(models,
@@ -205,7 +205,7 @@ class IPAdapterUri:
                                          revision=revision,
                                          weight_name=weight_names,
                                          local_files_only=local_files_only,
-                                         token=use_auth_token)
+                                         token=auth_token)
 
             _messages.debug_log(f'Added IP Adapters {list(uris)} to pipeline: "{pipeline.__class__.__name__}"')
         else:

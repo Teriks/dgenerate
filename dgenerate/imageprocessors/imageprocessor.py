@@ -125,6 +125,11 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
                 'after each image. Enabling this may help save VRAM when using an image processor '
                 'as a preprocessor or postprocessor for diffusion with dgenerate but will impact '
                 'rendering speed when generating many images.'
+            ),
+            'auth-token': (
+                'The "auth-token" argument is a Hugging Face token used when this processor '
+                'downloads a model. It defaults to --auth-token. A processor "token" argument, '
+                'when that processor has one, overrides it.'
             )
         }
         return help_messages
@@ -136,6 +141,7 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
                  output_overwrite: bool = False,
                  model_offload: bool = False,
                  local_files_only: bool = False,
+                 auth_token: str | None = None,
                  **kwargs):
         """
         :param loaded_by_name: The name the processor was loaded by
@@ -149,6 +155,8 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
         :param local_files_only: if ``True``, the plugin should never try to download
             models from the internet automatically, and instead only look
             for them in cache / on disk.
+        :param auth_token: Hugging Face token for model downloads. A processor-specific
+            ``token`` argument overrides this when that processor defines one.
         :param kwargs: child class forwarded arguments
         """
 
@@ -169,6 +177,7 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
         self.__model_offload = model_offload
         self.__size_estimate = 0
         self.__local_files_only = local_files_only
+        self.__auth_token = auth_token.strip() if isinstance(auth_token, str) and auth_token.strip() else None
 
     # noinspection PyMethodMayBeStatic
     @property
@@ -318,6 +327,13 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
         Is this image processor only going to look for resources such as models in cache / on disk?
         """
         return self.__local_files_only
+
+    @property
+    def auth_token(self) -> str | None:
+        """
+        Hugging Face token supplied by the loader, usually ``--auth-token``.
+        """
+        return self.__auth_token
 
     @property
     def modules_device(self) -> torch.device:

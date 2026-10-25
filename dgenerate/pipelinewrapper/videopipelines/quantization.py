@@ -149,7 +149,7 @@ def _quantized_classic_modules(model_path, revision, variant, subfolder, dtype,
         model_path,
         subfolder=subfolder,
         revision=revision,
-        use_auth_token=auth_token,
+        auth_token=auth_token,
         local_files_only=local_files_only)
     device_map = _quantized_device_map(device, offload, quantizer_uri)
     modules = {}

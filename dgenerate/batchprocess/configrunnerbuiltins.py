@@ -368,9 +368,12 @@ def download(url: str,
 
         try:
             try:
+                download_url = _webcache._append_tokens_to_url(url)
+                headers = {'User-Agent': fake_useragent.UserAgent().chrome}
+                headers.update(_webcache.huggingface_authorization_header(download_url))
                 _filecache.download_url_to_file(
-                    _webcache._append_tokens_to_url(url),
-                    headers={'User-Agent': fake_useragent.UserAgent().chrome},
+                    download_url,
+                    headers=headers,
                     resolve_path=resolve_path)
             except _UseExisting as existing:
                 _messages.log(f'Downloaded file already exists, using: '

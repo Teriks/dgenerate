@@ -155,7 +155,7 @@ class LoRAUri:
     def load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
                          uris: typing.Iterable[typing.Union["LoRAUri", str]],
                          fuse_scale: float = 1.0,
-                         use_auth_token: _types.OptionalString = None,
+                         auth_token: _types.OptionalString = None,
                          local_files_only: bool = False,
                          fuse: bool = True):
         """
@@ -166,7 +166,7 @@ class LoRAUri:
         :param uris: Iterable of :py:class:`LoRAUri` or ``str`` LoRA URIs to load
         :param fuse_scale: Global scale for the fused LoRAs, all LoRAs are fused together
             using their individual scale value, and then fused into the main model using this scale.
-        :param use_auth_token: optional huggingface auth token.
+        :param auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug
         :param fuse: Merge the loaded adapters into the pipeline weights.
@@ -187,7 +187,7 @@ class LoRAUri:
             LoRAUri._load_on_pipeline(pipeline,
                                       uris=uris,
                                       fuse_scale=fuse_scale,
-                                      use_auth_token=use_auth_token,
+                                      auth_token=auth_token,
                                       local_files_only=local_files_only,
                                       fuse=fuse)
 
@@ -195,7 +195,7 @@ class LoRAUri:
     def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
                           uris: typing.Iterable[typing.Union["LoRAUri", str]],
                           fuse_scale: float = 1.0,
-                          use_auth_token: _types.OptionalString = None,
+                          auth_token: _types.OptionalString = None,
                           local_files_only: bool = False,
                           fuse: bool = True):
 
@@ -207,7 +207,7 @@ class LoRAUri:
                 if not isinstance(lora_uri, LoRAUri):
                     lora_uri = LoRAUri.parse(lora_uri)
 
-                model_path = _hfhub.download_non_hf_slug_model(lora_uri.model)
+                model_path = _hfhub.download_non_hf_slug_model(lora_uri.model, local_files_only=local_files_only, auth_token=auth_token)
 
                 weight_name = lora_uri.weight_name
 
@@ -251,7 +251,7 @@ class LoRAUri:
                     subfolder=lora_uri.subfolder,
                     weight_name=weight_name,
                     local_files_only=local_files_only,
-                    token=use_auth_token,
+                    token=auth_token,
                 )
                 try:
                     _load_one_lora(

@@ -784,7 +784,8 @@ class WebFileCache(FileCache):
                 pass
         self._clear_old_partials()
 
-    def request_mimetype(self, url, local_files_only: bool = False) -> str:
+    def request_mimetype(self, url, local_files_only: bool = False,
+                         extra_headers: dict | None = None) -> str:
         """
         Requests the mimetype of a file at a URL. If the file exists in the cache, a known mimetype
         is returned without connecting to the internet. Otherwise, it connects to the internet
@@ -795,6 +796,7 @@ class WebFileCache(FileCache):
 
         :param url: The URL of the file.
         :param local_files_only: If ``True``, do not make a request, only check the cache.
+        :param extra_headers: Extra request headers, such as Hugging Face authorization.
         :return: The mimetype of the file.
         """
         with self:
@@ -810,6 +812,8 @@ class WebFileCache(FileCache):
             )
 
         headers = {'User-Agent': fake_useragent.UserAgent().chrome}
+        if extra_headers:
+            headers.update(extra_headers)
 
         with requests.get(url, headers=headers, stream=True,
                           timeout=_DOWNLOAD_TIMEOUT) as req:
@@ -834,7 +838,8 @@ class WebFileCache(FileCache):
                  unknown_mimetype_exception=ValueError,
                  overwrite: bool = False,
                  tqdm_pbar=tqdm.tqdm,
-                 local_files_only: bool = False) -> CachedFile:
+                 local_files_only: bool = False,
+                 extra_headers: dict | None = None) -> CachedFile:
         """
         Downloads a file and/or returns a file path from the cache. If the mimetype
         of the file is not supported, it raises an exception.
@@ -853,6 +858,8 @@ class WebFileCache(FileCache):
         :param overwrite: Always overwrite any previously cached file?
         :param tqdm_pbar: tqdm progress bar type, if set to `None` no progress bar will be used. Defaults to `tqdm.tqdm`
         :param local_files_only: If ``True``, do not attempt to download files, only check cache.
+        :param extra_headers: Extra request headers, such as Hugging Face authorization.
+            These are not part of the cache key.
         :return: The path to the downloaded file.
         """
 
@@ -902,10 +909,14 @@ class WebFileCache(FileCache):
         if tqdm_pbar is not None:
             _messages.log(f'Downloading: "{url}"', underline=True)
 
+        headers = {'User-Agent': fake_useragent.UserAgent().chrome}
+        if extra_headers:
+            headers.update(extra_headers)
+
         download_url_to_file(
             url,
             partial_path,
-            headers={'User-Agent': fake_useragent.UserAgent().chrome},
+            headers=headers,
             on_response=on_response,
             tqdm_pbar=tqdm_pbar)
 

@@ -127,7 +127,8 @@ def latents_processor_exists(uri: _types.Uri):
 def create_latents_processor(uri: _types.Uri,
                              model_type: _enums.ModelType,
                              device: str = 'cpu',
-                             local_files_only: bool = False) -> LatentsProcessor:
+                             local_files_only: bool = False,
+                             auth_token: str | None = None) -> LatentsProcessor:
     """
     Create a latents processor implementation using the default :py:class:`LatentsProcessorLoader` instance.
 
@@ -136,13 +137,15 @@ def create_latents_processor(uri: _types.Uri,
     :param device: Device to run processing on
     :param local_files_only: Should the processor avoid downloading
         files from Hugging Face hub and only check the cache or local directories?
+    :param auth_token: Hugging Face token for model downloads.
     :return: A :py:class:`LatentsProcessor` implementation
     """
     return LatentsProcessorLoader().load(
         uri,
         model_type=model_type,
         device=device,
-        local_files_only=local_files_only
+        local_files_only=local_files_only,
+        auth_token=auth_token
     )
 
 

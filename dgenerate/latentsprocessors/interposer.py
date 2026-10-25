@@ -168,7 +168,8 @@ class InterposerProcessor(_latentsprocessor.LatentsProcessor):
                     repo_id="city96/SD-Latent-Interposer",
                     subfolder=f"v{self._version}",
                     filename=fname,
-                    local_files_only=self.local_files_only
+                    local_files_only=self.local_files_only,
+                    token=self.auth_token
                 )
             except huggingface_hub.errors.LocalEntryNotFoundError:
                 raise self.argument_error(
