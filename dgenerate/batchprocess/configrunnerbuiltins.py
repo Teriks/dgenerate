@@ -34,6 +34,7 @@ import torch
 
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.filecache as _filecache
+import dgenerate.hfhub as _hfhub
 import dgenerate.image as _image
 import dgenerate.memory
 import dgenerate.memory as _memory
@@ -340,6 +341,16 @@ def download(url: str,
         class _UseExisting(Exception):
             def __init__(self, path):
                 self.path = path
+
+        blob_link = _hfhub.HFBlobLink.parse(url)
+        if blob_link is not None:
+            # /blob/ pages are not the file. Download the resolve URL straight to output.
+            import huggingface_hub
+            url = huggingface_hub.hf_hub_url(
+                repo_id=blob_link.repo_id,
+                filename=blob_link.weight_name,
+                subfolder=blob_link.subfolder or None,
+                revision=blob_link.revision)
 
         state = {}
 
