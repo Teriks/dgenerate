@@ -102,6 +102,8 @@ Help Output
 
 @INCLUDE[sections/image_processing/upscaling_images.template.rst]
 
+@INCLUDE[sections/image_processing/face_restore.template.rst]
+
 @INCLUDE[sections/image_processing/adetailer_yolo_based_inpainting.template.rst]
 
 @INCLUDE[sections/image_processing/sam_mask_generation.template.rst]

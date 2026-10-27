@@ -656,7 +656,7 @@ Diffusion Model Feature Support Tables
      - ❌
 
 .. list-table:: Generation features by ``--model-type``
-   :widths: 25 12 16 22 18 28 24 12 24 24 24
+   :widths: 25 12 16 22 18 28 24 12 24 24 24 20
    :header-rows: 1
 
    * - Model Type
@@ -670,6 +670,7 @@ Diffusion Model Feature Support Tables
      - SADA
      - TeaCache
      - Spectrum
+     - RegionE
 
    * - ``sd``
      - ❌
@@ -682,6 +683,7 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ❌
+     - ❌
 
    * - ``pix2pix``
      - ❌
@@ -690,6 +692,7 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -706,6 +709,7 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ✅
+     - ❌
 
    * - ``kolors``
      - ❌
@@ -718,8 +722,10 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ✅
+     - ❌
 
    * - ``if``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -742,8 +748,10 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``ifs-img2img``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -766,12 +774,14 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``upscaler-x2``
      - ❌
      - ❌
      - ❌
      - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -790,8 +800,10 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``s-cascade``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -814,6 +826,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``sd3-pix2pix``
      - ❌
@@ -826,6 +839,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``flux``
      - ✅
@@ -838,6 +852,7 @@ Diffusion Model Feature Support Tables
      - ✅
      - ✅
      - ✅
+     - ❌
 
    * - ``flux-fill``
      - ✅
@@ -850,6 +865,7 @@ Diffusion Model Feature Support Tables
      - ✅
      - ✅
      - ✅
+     - ❌
 
    * - ``flux-kontext``
      - ✅
@@ -859,6 +875,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -874,6 +891,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``flux2-klein-kv``
      - ✅
@@ -886,6 +904,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``z-image``
      - ✅
@@ -898,6 +917,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``z-image-omni``
      - ✅
@@ -910,6 +930,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``qwen-image``
      - ✅
@@ -922,6 +943,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``qwen-image-edit``
      - ✅
@@ -933,6 +955,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ✅
      - ✅
 
    * - ``qwen-image-layered``
@@ -946,6 +969,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``qwen-image-21``
      - ❌
@@ -958,8 +982,10 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``hydit``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -982,6 +1008,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``hyimage-21-refiner``
      - ❌
@@ -994,6 +1021,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``krea2``
      - ✅
@@ -1006,6 +1034,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+     - ❌
 
    * - ``kandinsky5-image``
      - ❌
@@ -1018,7 +1047,7 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
-
+     - ❌
 Video Model Feature Support
 ---------------------------
 
@@ -1331,6 +1360,10 @@ strength.
 ``qwen-image-edit`` inpainting is the edit pipeline with a mask. Edit-Plus has
 no inpaint pipeline.
 
+RegionE is supported on ``flux-kontext`` and ``qwen-image-edit`` (including Edit-Plus)
+when the loaded pipeline is not an inpaint class. See ``examples/flux/regione`` and
+``examples/qwen-image/regione``.
+
 ``qwen-image-21`` accepts optional reference images but has no img2img or inpaint
 pipeline. ``hyimage-21`` is text-to-image only. ``hyimage-21-refiner`` requires
 ``--image-seeds`` as the image to refine; that is not img2img strength. ``krea2`` is
@@ -1380,7 +1413,7 @@ FreeU parameters differ by model type and can be specified using the ``--freeu-p
 
 ``--torch-compile`` compiles repeated denoiser, ControlNet, and VAE decoder blocks. The first use of each waits while the graph builds. A later change of resolution or frame count compiles once more, then reuses that graph. CUDA and XPU need Triton. On macOS, PyTorch 2.13 and newer compile these blocks to a Metal kernel. CPU and quantized weights stay eager, and dgenerate warns. Text encoders, image encoders, and the LTX diffusion decoder stay eager. Wan-Animate-2 compiles its transformer and VAE blocks on every load. ``DGENERATE_TORCH_COMPILE=0`` leaves every model eager, including Wan-Animate-2.
 
-Faster generation speeds can be achieved by using Cache-DiT, DyPE, DeepCache, Microsoft RAS, SADA, TeaCache, or Spectrum, but may lead to reduced image quality. The default values for each of these features are conservative, providing some speed increases without major impacts on quality.
+Faster generation speeds can be achieved by using Cache-DiT, DyPE, DeepCache, Microsoft RAS, SADA, TeaCache, Spectrum, or RegionE, but may lead to reduced image quality. The default values for each of these features are conservative, providing some speed increases without major impacts on quality.
 
 The DeepCache branch ID and interval can be specified with the ``--deep-cache-branch-ids`` and ``--deep-cache-intervals`` options. Benchmarks for different parameters can be reviewed `here <https://huggingface.co/docs/diffusers/main/en/optimization/deepcache#benchmark>`__.
 
@@ -1391,5 +1424,9 @@ The TeaCache threshold can be specified with the ``--tea-cache-rel-l1-thresholds
 SADA cannot be combined with Hi-Diffusion, DeepCache, or TeaCache.
 
 DyPE (``--dype``) adapts spatial RoPE frequencies during denoising. Use ``--dype-methods`` to try ``yarn`` (default), ``ntk``, or the ``base`` RoPE baseline as combinatoric values. The Flux.1 and Qwen-Image adapters follow the upstream architecture; Flux.1 Fill / Kontext, Qwen-Image Edit / Layered, Flux.2, Z-Image, Wan, Krea 2, HunyuanVideo 1.5, and Motif-Video are experimental adapters. Reference long-side defaults are 1024 pixels for Flux.1, Flux.2, and Z-Image, 1328 for Qwen-Image, and 832 for Wan. ``--dype-mscales`` controls the ``yarn`` method's attention magnitude scale: ``constant`` (default), ``decay``, or ``off``. Use ``decay`` or ``off`` if ``yarn`` produces a fine repeating texture, as it does with FLUX.1-dev. ``--dype-axis-scalings`` controls non-square images: ``shared`` (default) applies the long side's scaling to both axes, as ComfyUI-DyPE does; ``independent`` scales each axis separately, as upstream DyPE does. DyPE cannot be combined with Cache-DiT, TeaCache, Spectrum, or SADA, because those features reuse or skip denoiser work from an earlier step. See the `DyPE source <https://github.com/guyyariv/DyPE>`__ and the vendored adapter notes under ``dgenerate/extras/dype``.
+
+
+
+RegionE (``--regione``) accelerates instruction-based image editing on ``--model-type flux-kontext`` and ``qwen-image-edit`` by partitioning edited and unchanged regions. It requires an input image in ``--image-seeds``, exactly 28 ``--inference-steps``, and a non-inpaint pipeline (Kontext inpaint and Qwen-Image-Edit inpaint are rejected). Omitting inference steps, or leaving the global default of 30, uses 28. Pipeline-specific defaults apply to ``--regione-warmup-steps``, ``--regione-post-steps``, ``--regione-refresh-steps``, ``--regione-thresholds``, ``--regione-cache-thresholds``, and ``--regione-erosion-dilation``. RegionE cannot be combined with Cache-DiT, DyPE, TeaCache, Spectrum, SADA, Microsoft RAS, or ADetailer, and it does not support model CPU offloading or group offloading. Examples are under ``examples/flux/regione`` and ``examples/qwen-image/regione``. See `RegionE <https://github.com/Peyton-Chen/RegionE>`__.
 
 Spectrum (``--spectrum``) forecasts denoiser block outputs and skips those blocks on later steps. Transformers skip their blocks. SDXL and Kolors skip the UNet down, mid, and up blocks and still run the output convolution. It is supported on SD3, SDXL, Kolors, Flux.1, Flux.2, Z-Image, Qwen-Image (including 2.1), HunyuanImage 2.1 (base and refiner), Krea 2, Kandinsky 5.0 Image, Wan, HunyuanVideo 1.5, and Motif-Video. The moderate schedule is the default (window ``2``, flex ``0.75``). ``--spectrum-flex-windows 3`` is the paper's aggressive schedule. Details are at `Spectrum <https://github.com/hanjq17/Spectrum>`__.

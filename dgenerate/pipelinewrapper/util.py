@@ -48,7 +48,8 @@ def fetch_model_index_dict(
         revision=None,
         subfolder=None,
         auth_token=None,
-        local_files_only=False
+        local_files_only=False,
+        model_type=None,
 ) -> dict:
     """
     Fetch ``model_index.json` as a dict for a given model path, this may be a Hugging Face repo,
@@ -59,6 +60,9 @@ def fetch_model_index_dict(
     :param subfolder: repo subfolder
     :param auth_token: Use this HF auth token?
     :param local_files_only: Only look through the cache?
+    :param model_type: ``--model-type`` hint, used for single-file loads.
+        When a transformer-only file matches more than one pipeline, this
+        picks an edit or Klein KV sibling. Ignored for a repository or directory.
 
     :raises ConfigNotFoundError: If ``model_index.json`` could not be found.
 
@@ -68,7 +72,10 @@ def fetch_model_index_dict(
 
     if single_file_load:
         override = _singlefilecompat.single_file_pretrained_repo_for_model_path(
-            path, auth_token=auth_token, local_files_only=local_files_only)
+            path,
+            auth_token=auth_token,
+            local_files_only=local_files_only,
+            model_type=model_type)
         if override:
             default_pretrained_model_config_name = override
         else:
@@ -81,7 +88,8 @@ def fetch_model_index_dict(
 
             config = _single_file.fetch_diffusers_config(checkpoint)
             default_pretrained_model_config_name = (
-                _singlefilecompat.single_file_pretrained_repo_for_checkpoint(checkpoint)
+                _singlefilecompat.single_file_pretrained_repo_for_checkpoint(
+                    checkpoint, hint=path, model_type=model_type)
                 or config['pretrained_model_name_or_path'])
     else:
         default_pretrained_model_config_name = path
@@ -136,7 +144,8 @@ class _HeaderTensor:
 def _single_file_dtype(path: str,
                        revision=None,
                        auth_token=None,
-                       local_files_only=False) -> _enums.DataType | None:
+                       local_files_only=False,
+                       model_type=None) -> _enums.DataType | None:
     """
     ``--dtype auto`` for a single file ``.safetensors`` checkpoint, only its header is read.
 
@@ -178,7 +187,8 @@ def _single_file_dtype(path: str,
         header_checkpoint = {key: _HeaderTensor(info['shape']) for key, info in header.items()}
         config = _single_file.fetch_diffusers_config(header_checkpoint)
         config_repo = (
-            _singlefilecompat.single_file_pretrained_repo_for_checkpoint(header_checkpoint)
+            _singlefilecompat.single_file_pretrained_repo_for_checkpoint(
+                header_checkpoint, hint=path, model_type=model_type)
             or config['pretrained_model_name_or_path'])
         config_dtype = auto_dtype(
             config_repo,
@@ -231,7 +241,8 @@ def auto_dtype(path: str,
                subfolder=None,
                auth_token=None,
                local_files_only=False,
-               model_index: dict | None = None) -> _enums.DataType | None:
+               model_index: dict | None = None,
+               model_type=None) -> _enums.DataType | None:
     """
     Choose the dtype to load a whole pipeline in for ``--dtype auto``, before loading it.
 
@@ -251,6 +262,9 @@ def auto_dtype(path: str,
     :param auth_token: Use this HF auth token?
     :param local_files_only: Only look through the cache?
     :param model_index: ``model_index.json`` dict if it was already fetched.
+    :param model_type: ``--model-type`` hint for single-file loads. When the
+        file has no text encoders, dtype is read from the edit or Klein KV
+        sibling this hint selects. Ignored for a repository or directory.
 
     :return: :py:class:`dgenerate.pipelinewrapper.enums.DataType` or ``None``
     """
@@ -258,7 +272,8 @@ def auto_dtype(path: str,
         return _single_file_dtype(path,
                                   revision=revision,
                                   auth_token=auth_token,
-                                  local_files_only=local_files_only)
+                                  local_files_only=local_files_only,
+                                  model_type=model_type)
 
     if model_index is None:
         try:
@@ -267,7 +282,8 @@ def auto_dtype(path: str,
                 revision=revision,
                 subfolder=subfolder,
                 auth_token=auth_token,
-                local_files_only=local_files_only)
+                local_files_only=local_files_only,
+                model_type=model_type)
         except _d_exceptions.ConfigNotFoundError:
             return None
 
@@ -331,7 +347,8 @@ def single_file_load_sub_module(
     if config is None:
         detected = _single_file.fetch_diffusers_config(checkpoint)
         default_pretrained_model_config_name = (
-            _singlefilecompat.single_file_pretrained_repo_for_checkpoint(checkpoint)
+            _singlefilecompat.single_file_pretrained_repo_for_checkpoint(
+                checkpoint, hint=path)
             or detected['pretrained_model_name_or_path'])
     else:
         default_pretrained_model_config_name = config

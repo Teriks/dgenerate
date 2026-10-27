@@ -110,7 +110,7 @@ from .sdxlrefineruri import SDXLRefinerUri
 from .t2iadapteruri import T2IAdapterUri
 from .textencoderuri import TextEncoderUri
 from .textualinversionuri import TextualInversionUri
-from .transformeruri import TransformerUri
+from .transformeruri import TransformerModel, TransformerUri
 from .uneturi import UNetUri
 from .util import (
     uri_hash_with_parser,

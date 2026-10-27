@@ -12,8 +12,9 @@ from dgenerate.pipelinewrapper.singlefilecompat import (
 
 
 class TestSingleFileAuxRepo(unittest.TestCase):
-    def repo(self, hint=None, **shapes):
-        return single_file_pretrained_repo_for_shapes(shapes, hint=hint)
+    def repo(self, hint=None, model_type=None, **shapes):
+        return single_file_pretrained_repo_for_shapes(
+            shapes, hint=hint, model_type=model_type)
 
     def test_flux_dev_and_schnell(self):
         dev = {
@@ -100,6 +101,60 @@ class TestSingleFileAuxRepo(unittest.TestCase):
             'single_stream_modulation.lin.weight': (1,),
             'img_in.weight': (3072, 128),
         }), 'black-forest-labs/FLUX.2-klein-4B')
+
+    def test_model_type_selects_shared_layout_siblings(self):
+        qwen = {'time_text_embed.timestep_embedder.linear_1.weight': (1,)}
+        self.assertEqual(self.repo(**qwen), 'Qwen/Qwen-Image')
+        self.assertEqual(
+            self.repo(model_type='qwen-image-edit', **qwen),
+            'Qwen/Qwen-Image-Edit')
+        self.assertEqual(
+            self.repo(
+                hint='qwen_image_edit_2509_fp8.safetensors',
+                model_type='qwen-image-edit',
+                **qwen),
+            'Qwen/Qwen-Image-Edit-2509')
+        self.assertEqual(
+            self.repo(
+                hint='qwen_image_edit_25090.safetensors',
+                model_type='qwen-image-edit',
+                **qwen),
+            'Qwen/Qwen-Image-Edit')
+        qwen21 = {'txt_in.text_norm.weight': (1,)}
+        self.assertEqual(
+            self.repo(model_type='qwen-image-edit', **qwen21),
+            'Qwen/Qwen-Image-2.1')
+
+        flux_dev = {
+            'double_blocks.0.img_attn.norm.key_norm.scale': (128,),
+            'guidance_in.in_layer.bias': (3072,),
+            'img_in.weight': (3072, 64),
+        }
+        self.assertEqual(
+            self.repo(model_type='flux-kontext', **flux_dev),
+            'black-forest-labs/FLUX.1-Kontext-dev')
+        self.assertEqual(
+            self.repo(model_type='flux', **flux_dev),
+            'black-forest-labs/FLUX.1-dev')
+        schnell = dict(flux_dev)
+        schnell.pop('guidance_in.in_layer.bias')
+        self.assertEqual(
+            self.repo(model_type='flux-kontext', **schnell),
+            'black-forest-labs/FLUX.1-schnell')
+
+        klein9 = {
+            'single_stream_modulation.lin.weight': (1,),
+            'img_in.weight': (4096, 128),
+        }
+        self.assertEqual(
+            self.repo(**klein9),
+            'black-forest-labs/FLUX.2-klein-base-9B')
+        self.assertEqual(
+            self.repo(model_type='flux2-klein-kv', **klein9),
+            'black-forest-labs/FLUX.2-klein-9b-kv')
+        self.assertEqual(
+            self.repo(model_type='flux2', **klein9),
+            'black-forest-labs/FLUX.2-klein-base-9B')
 
     def test_wan_i2v_720p_filename(self):
         shapes = {

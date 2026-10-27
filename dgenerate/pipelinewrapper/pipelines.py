@@ -3833,7 +3833,8 @@ def _create_diffusion_pipeline(
             revision=revision,
             subfolder=subfolder,
             auth_token=auth_token,
-            local_files_only=local_files_only)
+            local_files_only=local_files_only,
+            model_type=model_type)
         if detected_dtype is not None:
             _messages.debug_log(f'--dtype auto selected: {_enums.get_data_type_string(detected_dtype)}')
             dtype = detected_dtype
@@ -3850,7 +3851,8 @@ def _create_diffusion_pipeline(
         subfolder=subfolder,
         revision=revision,
         auth_token=auth_token,
-        local_files_only=local_files_only
+        local_files_only=local_files_only,
+        model_type=model_type,
     )
 
     model_class_name = model_index.get('_class_name') if isinstance(model_index, dict) else None
@@ -3863,6 +3865,7 @@ def _create_diffusion_pipeline(
             model_path,
             auth_token=auth_token,
             local_files_only=local_files_only,
+            model_type=model_type,
         )
 
     pipeline_class = get_pipeline_class(
@@ -4331,6 +4334,7 @@ def _create_diffusion_pipeline(
             device_map=get_device_map_for_quantizer(uri.quantizer),
             config=transformer_config,
             config_subfolder='transformer' if transformer_config else None,
+            model_type=model_type,
             transformer_class=transformer_class
         )
         if sdnq_cast_hack or _sdnqload.module_is_sdnq(transformer_model):
@@ -5205,7 +5209,10 @@ def _create_minimal_pipeline_for_component_extraction(
     single_file_pipeline_repo = None
     if _hfhub.is_single_file_model_load(model_path):
         single_file_pipeline_repo = _singlefilecompat.single_file_pretrained_repo_for_model_path(
-            model_path, auth_token=auth_token, local_files_only=False)
+            model_path,
+            auth_token=auth_token,
+            local_files_only=False,
+            model_type=model_type)
     component_repo = single_file_pipeline_repo or model_path
     encoder_index = None
     if single_file_pipeline_repo or not _hfhub.is_single_file_model_load(model_path):
@@ -5214,7 +5221,8 @@ def _create_minimal_pipeline_for_component_extraction(
                 component_repo,
                 revision=revision,
                 subfolder=None if single_file_pipeline_repo else subfolder,
-                auth_token=auth_token)
+                auth_token=auth_token,
+                model_type=None if single_file_pipeline_repo else model_type)
         except Exception as encoder_index_error:
             _messages.debug_log(
                 f'Could not read model_index for text encoders: {encoder_index_error}')
@@ -5391,6 +5399,7 @@ def _create_minimal_pipeline_for_component_extraction(
                         no_cache=True,
                         config=None if _hfhub.is_single_file_model_load(model_path) else model_path,
                         config_subfolder='transformer' if not _hfhub.is_single_file_model_load(model_path) else None,
+                        model_type=model_type,
                         transformer_class=transformer_class
                     )
 

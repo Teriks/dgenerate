@@ -38,6 +38,29 @@ from dgenerate.pipelinewrapper import constants as _constants
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 from dgenerate.pipelinewrapper.uris import util as _util
 
+# Classes ``load`` is called with. Image pipelines use
+# ``diffusion_transformer_class``; video pipelines use their own family class.
+TransformerModel = (
+    diffusers.SD3Transformer2DModel
+    | diffusers.FluxTransformer2DModel
+    | diffusers.Flux2Transformer2DModel
+    | diffusers.ZImageTransformer2DModel
+    | diffusers.QwenImageTransformer2DModel
+    | diffusers.QwenImage21Transformer2DModel
+    | diffusers.Krea2Transformer2DModel
+    | diffusers.HunyuanDiT2DModel
+    | diffusers.HunyuanImageTransformer2DModel
+    | diffusers.Kandinsky5Transformer3DModel
+    | diffusers.LTXVideoTransformer3DModel
+    | diffusers.LTX2VideoTransformer3DModel
+    | diffusers.WanTransformer3DModel
+    | diffusers.WanVACETransformer3DModel
+    | diffusers.WanAnimateTransformer3DModel
+    | diffusers.WanAnimate2Transformer3DModel
+    | diffusers.HunyuanVideo15Transformer3DModel
+    | diffusers.MotifVideoTransformer3DModel
+)
+
 _transformer_uri_parser = _textprocessing.ConceptUriParser(
     'Transformer', [
         'model',
@@ -175,14 +198,11 @@ class TransformerUri:
              config: _types.OptionalString = None,
              config_subfolder: _types.OptionalString = None,
              dequantize: bool = False,
-             transformer_class:
-             type[diffusers.SD3Transformer2DModel] |
-             type[
-                 diffusers.FluxTransformer2DModel] = diffusers.SD3Transformer2DModel) \
-            -> diffusers.SD3Transformer2DModel | diffusers.FluxTransformer2DModel:
+             model_type: _enums.ModelType | str | None = None,
+             transformer_class: type[TransformerModel] = diffusers.SD3Transformer2DModel,
+             ) -> TransformerModel:
         """
-        Load a torch :py:class:`diffusers.SD3Transformer2DModel` or
-        :py:class:`diffusers.FluxTransformer2DModel` from a URI.
+        Load a Diffusers transformer from a URI.
 
         :param variant_fallback: If the URI does not specify a variant, use this variant.
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
@@ -194,12 +214,19 @@ class TransformerUri:
         :param device_map: device placement strategy for quantized models, defaults to ``None``
         :param dequantize: Load a ComfyUI pre-quantized ``.safetensors`` checkpoint
             with dense weights instead of keeping them packed, for example so LoRAs can be fused.
+        :param model_type: ``--model-type`` hint, mostly for single-file loads.
+            When no pipeline config is given and the file's tensors match both
+            a base repo and an edit or Klein KV sibling, this picks the sibling.
+            A repository plus ``--transformer`` already names the pipeline, so
+            the hint is unused.
 
-        :param transformer_class: Transformer class type.
+        :param transformer_class: Diffusers transformer class to construct.
+            Image pipelines pass :func:`dgenerate.pipelinewrapper.pipelines.diffusion_transformer_class`.
+            Video pipelines pass the class for that family.
 
         :raises ModelNotFoundError: If the model could not be found.
 
-        :return: :py:class:`diffusers.SD3Transformer2DModel` or :py:class:`diffusers.FluxTransformer2DModel`
+        :return: an instance of ``transformer_class``
         """
         def cache_all(e):
             raise _exceptions.TransformerUriLoadError(
@@ -227,7 +254,14 @@ class TransformerUri:
 
     @_memoize(_transformer_cache,
               exceptions={'local_files_only'},
-              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.property_hasher}),
+              # The same file can build a base repo or an edit / Klein KV
+              # sibling. Hash the canonical --model-type string so the enum
+              # and the string form share one entry.
+              hasher=lambda args: _d_memoize.args_cache_key(args, {
+                  'self': _d_memoize.property_hasher,
+                  'model_type': lambda model_type: (
+                      None if model_type is None else _enums.get_model_type_string(model_type)),
+              }),
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch Transformer", key, hit),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch Transformer", key, new))
     def _load(self,
@@ -241,11 +275,9 @@ class TransformerUri:
               config: _types.OptionalString = None,
               config_subfolder: _types.OptionalString = None,
               dequantize: bool = False,
-              transformer_class:
-              type[diffusers.SD3Transformer2DModel] |
-              type[
-                  diffusers.FluxTransformer2DModel] = diffusers.SD3Transformer2DModel) \
-            -> diffusers.SD3Transformer2DModel | diffusers.FluxTransformer2DModel:
+              model_type: _enums.ModelType | str | None = None,
+              transformer_class: type[TransformerModel] = diffusers.SD3Transformer2DModel,
+              ) -> TransformerModel:
 
         if self.dtype is None:
             torch_dtype = _enums.get_torch_dtype(dtype_fallback)
@@ -351,11 +383,14 @@ class TransformerUri:
                 quantization_config=quant_config,
                 device_map=device_map)
             # An explicit config is the pipeline the user named (repository
-            # plus --transformer). Autodetection, including the file-name
-            # variant, runs only when that pipeline was not supplied.
+            # plus --transformer). ``model_type`` is only a hint for the
+            # single-file case where that pipeline was not supplied.
             if explicit_config is None:
                 detected = _singlefilecompat.single_file_pretrained_repo_for_model_path(
-                    model_path, auth_token=auth_token, local_files_only=local_files_only)
+                    model_path,
+                    auth_token=auth_token,
+                    local_files_only=local_files_only,
+                    model_type=model_type)
                 if detected:
                     config = detected
                     config_subfolder = config_subfolder or self.subfolder or 'transformer'

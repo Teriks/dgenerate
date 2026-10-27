@@ -714,8 +714,15 @@ _SD_FAMILY_SD2_CROSS_ATTENTION_KEY = (
 
 _ZIMAGE_TURBO = 'Tongyi-MAI/Z-Image-Turbo'
 _KREA2_RAW = 'krea/Krea-2-Raw'
+_QWEN_IMAGE = 'Qwen/Qwen-Image'
+_QWEN_IMAGE_EDIT = 'Qwen/Qwen-Image-Edit'
+_QWEN_IMAGE_EDIT_2509 = 'Qwen/Qwen-Image-Edit-2509'
 _QWEN21 = 'Qwen/Qwen-Image-2.1'
 _QWEN21_TURBO = 'Qwen/Qwen-Image-2.1-Turbo'
+_FLUX_DEV = 'black-forest-labs/FLUX.1-dev'
+_FLUX_KONTEXT = 'black-forest-labs/FLUX.1-Kontext-dev'
+_FLUX2_KLEIN_9B = 'black-forest-labs/FLUX.2-klein-base-9B'
+_FLUX2_KLEIN_KV = 'black-forest-labs/FLUX.2-klein-9b-kv'
 _WAN_I2V_480 = 'Wan-AI/Wan2.1-I2V-14B-480P-Diffusers'
 _WAN_I2V_720 = 'Wan-AI/Wan2.1-I2V-14B-720P-Diffusers'
 _WAN_T2V_14 = 'Wan-AI/Wan2.1-T2V-14B-Diffusers'
@@ -997,6 +1004,38 @@ def _refine_aux_repo(repo: str, hint: str | None) -> str:
     return repo
 
 
+def _name_marks_qwen_edit_2509(name: str) -> bool:
+    """True for the 2509 edit-plus release. ``25090`` does not count."""
+    return re.search(r'(?<![0-9])2509(?![0-9])', name) is not None
+
+
+def _refine_aux_repo_for_model_type(repo: str, model_type, hint: str | None) -> str:
+    """
+    Apply ``--model-type`` as a hint when a single-file fingerprint matches
+    more than one pipeline.
+
+    Shape detection cannot tell Qwen-Image from Qwen-Image-Edit, Flux dev
+    from Kontext, or Flux.2 Klein 9B from Klein KV. Other detected repos
+    are left alone, including a Qwen-Image 2.1 checkpoint asked for as
+    ``qwen-image-edit``.
+    """
+    if model_type is None:
+        return repo
+    import dgenerate.pipelinewrapper.enums as _enums
+
+    if repo == _QWEN_IMAGE and _enums.model_type_is_qwen_image_edit(model_type):
+        name = os.path.basename(hint or '').lower()
+        if _name_marks_qwen_edit_2509(name):
+            return _QWEN_IMAGE_EDIT_2509
+        return _QWEN_IMAGE_EDIT
+    if (repo == _FLUX_DEV
+            and _enums.get_model_type_enum(model_type) == _enums.ModelType.FLUX_KONTEXT):
+        return _FLUX_KONTEXT
+    if repo == _FLUX2_KLEIN_9B and _enums.model_type_is_flux2_klein_kv(model_type):
+        return _FLUX2_KLEIN_KV
+    return repo
+
+
 def _diffusers_aux_repo(shapes: dict[str, tuple[int, ...]]) -> str | None:
     from diffusers.loaders.single_file_utils import (
         DIFFUSERS_DEFAULT_PIPELINE_PATHS,
@@ -1018,13 +1057,19 @@ def _diffusers_aux_repo(shapes: dict[str, tuple[int, ...]]) -> str | None:
 
 def single_file_pretrained_repo_for_shapes(
         shapes: dict[str, tuple[int, ...]],
-        hint: str | None = None) -> str | None:
+        hint: str | None = None,
+        model_type=None) -> str | None:
     """
     Hugging Face pipeline repo for a transformer-only checkpoint.
 
     Checkpoints that already ship text encoders return ``None`` so
     ``from_single_file`` keeps extracting them. ``--text-encoders`` ``+`` and
     ``null`` still apply on top of the repo chosen here.
+
+    ``model_type`` is an optional ``--model-type`` hint for that single-file
+    case. It picks an edit or Klein KV sibling when the fingerprint only
+    identifies the shared transformer. ``None`` keeps the fingerprint repo.
+    A full pipeline repository does not come through here.
     """
     if not shapes or _checkpoint_has_text_encoder(shapes):
         return None
@@ -1036,12 +1081,16 @@ def single_file_pretrained_repo_for_shapes(
     repo = layout.config_repo if layout is not None else _diffusers_aux_repo(shapes)
     if repo is None:
         return None
-    return _refine_aux_repo(repo, hint)
+    return _refine_aux_repo_for_model_type(_refine_aux_repo(repo, hint), model_type, hint)
 
 
-def single_file_pretrained_repo_for_checkpoint(checkpoint: dict) -> str | None:
+def single_file_pretrained_repo_for_checkpoint(
+        checkpoint: dict,
+        hint: str | None = None,
+        model_type=None) -> str | None:
     """Override Diffusers' inferred config repo when dgenerate recognizes the layout."""
-    return single_file_pretrained_repo_for_shapes(_shapes_from_checkpoint(checkpoint))
+    return single_file_pretrained_repo_for_shapes(
+        _shapes_from_checkpoint(checkpoint), hint=hint, model_type=model_type)
 
 
 def load_hunyuan_dit_transformer_single_file(
@@ -1120,7 +1169,8 @@ def _safetensors_weight_shapes(path: str) -> dict[str, tuple[int, ...]]:
 def single_file_pretrained_repo_for_model_path(
         path: str,
         auth_token: str | None = None,
-        local_files_only: bool = False) -> str | None:
+        local_files_only: bool = False,
+        model_type=None) -> str | None:
     """
     Hugging Face repo for pipeline parts not stored in a single-file checkpoint.
 
@@ -1128,6 +1178,10 @@ def single_file_pretrained_repo_for_model_path(
     same layouts Diffusers already fingerprints) load text encoders and the VAE
     from that repo. Checkpoints that already contain text encoders return
     ``None`` and keep the ``from_single_file`` path.
+
+    ``model_type`` is an optional ``--model-type`` hint for this single-file
+    path. It picks an edit or Klein KV sibling when the tensors match more
+    than one pipeline. It is ignored for a pipeline repository.
     """
     if not _hfhub.is_single_file_model_load(path):
         return None
@@ -1152,8 +1206,11 @@ def single_file_pretrained_repo_for_model_path(
             local_files_only=local_files_only,
         )
         return single_file_pretrained_repo_for_shapes(
-            _shapes_from_checkpoint(checkpoint), hint=_download_name_hint(path, hint))
-    return single_file_pretrained_repo_for_shapes(shapes, hint=_download_name_hint(path, hint))
+            _shapes_from_checkpoint(checkpoint),
+            hint=_download_name_hint(path, hint),
+            model_type=model_type)
+    return single_file_pretrained_repo_for_shapes(
+        shapes, hint=_download_name_hint(path, hint), model_type=model_type)
 
 
 def _download_name_hint(path: str, fallback: str) -> str:

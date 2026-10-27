@@ -60,13 +60,16 @@ Help Output
                      [--cache-dit-config FILE] [-tcr [FLOAT ...]] [--spectrum] [--spectrum-weights [FLOAT ...]]
                      [--spectrum-orders [INT ...]] [--spectrum-lambdas [FLOAT ...]]
                      [--spectrum-warmup-steps [INT ...]] [--spectrum-window-sizes [FLOAT ...]]
-                     [--spectrum-flex-windows [FLOAT ...]] [-ra] [-rif] [-rsr FLOAT [FLOAT ...]]
-                     [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]] [-rer CSV_INT [CSV_INT ...]]
-                     [-rme RAS_METRIC [RAS_METRIC ...]] [-rst INTEGER [INTEGER ...]]
-                     [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]] [-rsl INTEGER [INTEGER ...]]
-                     [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-pagl LAYERS [LAYERS ...]]
-                     [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-rpagl LAYERS [LAYERS ...]]
-                     [-mqo | -mco | -mgo] [--torch-compile] [-mqo2 | -mco2 | -mgo2]
+                     [--spectrum-flex-windows [FLOAT ...]] [--regione] [--regione-warmup-steps [INT ...]]
+                     [--regione-post-steps [INT ...]] [--regione-refresh-steps [INT ...]]
+                     [--regione-thresholds [FLOAT ...]] [--regione-cache-thresholds [FLOAT ...]]
+                     [--regione-erosion-dilation] [--regione-no-erosion-dilation] [-ra] [-rif]
+                     [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
+                     [-rer CSV_INT [CSV_INT ...]] [-rme RAS_METRIC [RAS_METRIC ...]]
+                     [-rst INTEGER [INTEGER ...]] [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]]
+                     [-rsl INTEGER [INTEGER ...]] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]]
+                     [-pagl LAYERS [LAYERS ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
+                     [-rpagl LAYERS [LAYERS ...]] [-mqo | -mco | -mgo] [--torch-compile] [-mqo2 | -mco2 | -mgo2]
                      [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
                      [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-sizes SIZE [SIZE ...]]
@@ -264,8 +267,9 @@ Help Output
             kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, sd3-pix2pix, flux,
             flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
             qwen-image-layered, ltx2, ltx-video, wan, wan-animate, wan-animate-2, qwen-image-21, krea2,
-            kandinsky5-image, kandinsky5-video, hunyuan-video-15, or motif-video. (default: sd)
-            -----------------------------------------------------------------------------------
+            kandinsky5-image, kandinsky5-video, hyvideo-15, motif-video, hydit, hyimage-21, or
+            hyimage-21-refiner. (default: sd)
+            ---------------------------------
       -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -715,6 +719,11 @@ Help Output
             Other encoders can only accept Hugging Face repository slugs/blob links, or a path to a folder on
             disk with the model configuration and model file(s).
             
+            For SD, SD2, and SDXL, when --vae is omitted the checkpoint VAE is used when present; otherwise a
+            matching default Hugging Face VAE is fetched unless --local-files-only is set. SD 1.x uses
+            stabilityai/sd-vae-ft-mse, SD2 uses the Stable Diffusion 2.1 VAE, and SDXL uses
+            madebyollin/sdxl-vae-fp16-fix.
+            
             Wan pipelines default the checkpoint VAE to float32 (AutoencoderKLWan is fragile in bfloat16). Use
             --vae with AutoencoderKLWan and dtype= to override.
             
@@ -775,12 +784,14 @@ Help Output
             link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or
             model folder containing model files. ``ltx2`` and ``ltx-video`` accept LoRAs in diffusers format and
             fuse them into the transformer. IC-LoRAs for ``ltx2`` are loaded with --ltx-ic-lora instead.
+            ``hyvideo-15`` accepts HunyuanVideo 1.5 LoRAs, including original module names and Musubi
+            ``lora_unet_`` files. ``motif-video`` accepts Diffusers-format and Musubi Motif-Video LoRAs.
             
             If a LoRA model file exists at a URL which serves the file as a raw download, you may provide an
             http/https link to it and it will be downloaded to dgenerate's web cache.
             
             Optional arguments can be provided after a LoRA model specification, these are: "scale", "revision",
-            "subfolder", and "weight-name".
+            "subfolder", "weight-name", and "component".
             
             They can be specified as so in any order, they are not positional:
             
@@ -796,6 +807,10 @@ Help Output
             
             The "weight-name" argument indicates the name of the weights file to be loaded when loading from a
             Hugging Face repository or folder on disk.
+            
+            The "component" argument selects which module receives the LoRA. "transformer" is the default.
+            "transformer_2" loads a Wan 2.2 LoRA onto the low-noise expert, which is how a high-noise and
+            low-noise pair is applied.
             
             If you wish to load a weights file directly from disk, the simplest way is: --loras
             "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0", all other loading arguments
@@ -1137,9 +1152,8 @@ Help Output
             "text_encoder_3", "image_encoder", "controlnet", "connectors".
             
             Video models also accept the subset that applies to their checkpoint (for example Wan MoE
-            ``transformer_2`` and I2V ``image_encoder``, or LTX-2 ``connectors``). Wan rejects ``vae``
-            separately because AutoencoderKLWan stays float32.
-            --------------------------------------------------
+            "transformer_2" and I2V "image_encoder", or LTX-2 "connectors"). The VAE is never quantized.
+            --------------------------------------------------------------------------------------------
       -q2, --second-model-quantizer QUANTIZER_URI
             Global quantization configuration via URI for the secondary model, such as the SDXL Refiner or
             Stable Cascade decoder. See: --quantizer for syntax examples.
@@ -1507,11 +1521,11 @@ Help Output
             Enable Cache-DiT's default training-free cache acceleration for supported Diffusers DiT pipelines.
             
             Cache-DiT's default cache settings are used. This option cannot be combined with --tea-cache,
-            --spectrum, --sada, or --dype.
+            --spectrum, --sada, --ras, or --dype.
             
             This is supported for: --model-type sd3, sd3-pix2pix, flux, flux-fill, flux-kontext, flux2,
             flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, krea2,
-            kandinsky5-image, ltx2, ltx-video, wan, wan-animate, wan-animate-2, hunyuan-video-15, and
+            kandinsky5-image, ltx2, ltx-video, wan, wan-animate, wan-animate-2, hyvideo-15, and
             kandinsky5-video.
             
             See: https://cache-dit.readthedocs.io/en/latest/
@@ -1529,7 +1543,7 @@ Help Output
             
             This is supported for: --model-type flux, flux-fill, flux-kontext, flux2, flux2-klein-kv,
             qwen-image, qwen-image-edit, qwen-image-layered, krea2, z-image, z-image-omni, wan, wan-animate,
-            wan-animate-2, hunyuan-video-15, and motif-video.
+            wan-animate-2, hyvideo-15, and motif-video.
             
             See: https://github.com/guyyariv/DyPE
             -------------------------------------
@@ -1582,7 +1596,7 @@ Help Output
             pipeline component names to Cache-DiT layerwise_offload options. Supported --model-type values: sd3,
             sd3-pix2pix, flux, flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni,
             qwen-image, qwen-image-edit, qwen-image-layered, krea2, kandinsky5-image, ltx2, ltx-video, wan,
-            wan-animate, wan-animate-2, hunyuan-video-15, and kandinsky5-video. See:
+            wan-animate, wan-animate-2, hyvideo-15, and kandinsky5-video. See:
             https://cache-dit.readthedocs.io/en/latest/user_guide/LOAD_CONFIGS/ Layerwise offload:
             https://cache-dit.readthedocs.io/en/latest/user_guide/OFFLOAD/
             --------------------------------------------------------------
@@ -1620,8 +1634,8 @@ Help Output
             This is supported for: --model-type sd3, sd3-pix2pix, sdxl, sdxl-pix2pix, kolors, flux, flux-fill,
             flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
             qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, wan, wan-animate, wan-animate-2,
-            hunyuan-video-15, and motif-video.
-            ----------------------------------
+            hyvideo-15, motif-video, hyimage-21, and hyimage-21-refiner.
+            ------------------------------------------------------------
       --spectrum-weights [FLOAT ...]
             Spectrum Chebyshev blend weights to try when --spectrum is enabled.
             
@@ -1679,6 +1693,56 @@ Help Output
             
             (default: 0.75)
             ---------------
+      --regione
+            Enable RegionE region-aware acceleration for instruction editing?
+            
+            RegionE skips redundant denoising on unchanged image regions. Omitting --inference-steps, or leaving
+            the global default of 30, uses 28. Any other step count is rejected. Provide --image-seeds.
+            
+            See: https://github.com/Peyton-Chen/RegionE
+            
+            This is supported for: --model-type flux-kontext and qwen-image-edit. Not supported with inpaint
+            masks, TeaCache, Cache-DiT, Spectrum, DyPE, SADA, RAS, model CPU offload, or group offload.
+            -------------------------------------------------------------------------------------------
+      --regione-warmup-steps [INT ...]
+            RegionE warmup steps to try when --regione is enabled.
+            
+            Each value is tried in turn. Unset values use pipeline presets.
+            
+            Supplying any values implies --regione.
+            ---------------------------------------
+      --regione-post-steps [INT ...]
+            RegionE trailing full denoising steps to try when --regione is enabled.
+            
+            Supplying any values implies --regione.
+            ---------------------------------------
+      --regione-refresh-steps [INT ...]
+            RegionE mask refresh steps to try when --regione is enabled.
+            
+            Supplying any values implies --regione.
+            ---------------------------------------
+      --regione-thresholds [FLOAT ...]
+            RegionE region partition thresholds to try when --regione is enabled.
+            
+            Each value is tried in turn and should be between 0 and 1.
+            
+            Supplying any values implies --regione.
+            ---------------------------------------
+      --regione-cache-thresholds [FLOAT ...]
+            RegionE velocity-decay cache thresholds to try when --regione is enabled.
+            
+            Supplying any values implies --regione.
+            ---------------------------------------
+      --regione-erosion-dilation
+            Morphologically erode/dilate the RegionE region mask.
+            
+            Supplying this flag implies --regione.
+            --------------------------------------
+      --regione-no-erosion-dilation
+            Disable RegionE mask erosion/dilation.
+            
+            Supplying this flag implies --regione.
+            --------------------------------------
       -ra, --ras
             Activate RAS (Region-Adaptive Sampling) for the primary model?
             
@@ -2805,8 +2869,8 @@ Help Output
       --video-fps FPS [FPS ...]
             One or more output frame rates for video model types. Each value will be tried in turn.
             
-            Defaults to 24 for --model-type ltx2 and ltx-video, motif-video, and 15 for hunyuan-video-15; 16 for
-            wan; 30 for wan-animate; and 24 for wan-animate-2.
+            Defaults to 24 for --model-type ltx2 and ltx-video, motif-video, and 15 for hyvideo-15; 16 for wan;
+            30 for wan-animate; and 24 for wan-animate-2.
             
             (default: model type default)
             -----------------------------
@@ -9408,6 +9472,7 @@ prompt variations using a special prompting syntax.
             seed: int | None = None
             variations: int | None = None
             wildcards: str | None = None
+            auth-token: str | None = None
     
         Upscale prompts with the dynamicprompts library.
     
@@ -9476,6 +9541,7 @@ Which is a GPT2 finetune focused specifically on prompt generation.
             smart-truncate: bool = False
             cleanup-config: str | None = None
             device: str | None = None
+            auth-token: str | None = None
     
         Upscale prompts using magicprompt or other LLMs via transformers.
     
@@ -9630,6 +9696,7 @@ Older NVIDIA, Windows AMD, and Intel Arc:
             context-tokens: int = 2048
             smart-truncate: bool = False
             cleanup-config: str | None = None
+            auth-token: str | None = None
     
         Upscale prompts with a GGUF model through llama.cpp.
     
@@ -9714,6 +9781,7 @@ This is supported for multiple languages, though, CLIP usually really only under
             seed: int | None = None
             lang: str = "en"
             syntax: str = "sd-embed"
+            auth-token: str | None = None
     
         Add random attention values to your prompt tokens.
     
@@ -9773,6 +9841,7 @@ This can be used to translate between any language supported by ``argostranslate
             batch: bool = True
             max-batch: int | None = 50
             device: str | None = None
+            auth-token: str | None = None
     
         Local language translation using argostranslate or Helsinki-NLP opus (mariana).
     
@@ -10790,6 +10859,12 @@ these are the arguments that are available for use:
     spectrum-warmup-steps: int
     spectrum-window-size: float
     spectrum-flex-window: float
+    regione-warmup-step: int
+    regione-post-step: int
+    regione-refresh-step: int
+    regione-threshold: float
+    regione-cache-threshold: float
+    regione-erosion-dilation: bool
     ras-index-fusion: bool
     ras-sample-ratio: float
     ras-high-ratio: float
@@ -11064,6 +11139,7 @@ Output:
         "crop"
         "crop-to-mask"
         "dilate"
+        "face-restore"
         "flip"
         "gaussian-blur"
         "grayscale"
@@ -11430,6 +11506,7 @@ The ``interposer`` supports several conversions, described in its help output:
             target: str
             device: str = "cpu"
             model-offload: bool = False
+            auth-token: str | None = None
     
         Converts latents between different diffusion model latent spaces.
     
@@ -12445,6 +12522,174 @@ When they are not specified, optimal defaults from ncnn for your platform are us
 
 For more information see: ``dgenerate --image-processor-help upscaler-ncnn``
 
+Face restoration
+================
+
+The ``face-restore`` image processor detects faces with facexlib (RetinaFace),
+aligns each face crop, runs a restoration model, and pastes the results back
+into the image. It requires the ``facexlib`` package (included in a normal
+dgenerate install).
+
+Restoration weights are Spandrel ``FaceSR`` models. GFPGAN (v1.2 through v1.4),
+CodeFormer (with the ``spandrel_extra_arches`` extra), and RestoreFormer are
+supported. Pass a local path or HTTP/HTTPS URL to the ``model`` argument.
+
+Use ``face-restore`` in ``--post-processors`` or any ``--*-image-processors``
+option, or run it on files with ``--sub-command image-process`` or the
+``\image_process`` directive. See `Image Processors`_, `Upscaling Images`_, and
+`Sub Command: image-process`_.
+
+Use ``--image-processor-help face-restore`` for the full argument list:
+
+.. code-block:: text
+
+    face-restore:
+        arguments:
+            model: str
+            fidelity: float = 0.5
+            face-size: int = 512
+            detector: str = "retinaface_resnet50"
+            detector-device: str | None = None
+            eye-dist-threshold: float = 5.0
+            only-center-face: bool = False
+            dtype: str = "float32"
+            pre-resize: bool = False
+            device: str | None = None
+            output-file: str | None = None
+            output-overwrite: bool = False
+            model-offload: bool = False
+            auth-token: str | None = None
+    
+        Restore detected faces using Spandrel-supported face restoration models.
+    
+        This processor detects faces with facexlib (RetinaFace), aligns each face, runs a restoration model on the
+        crop, and pastes the results back into the image.
+    
+        Supported model families include GFPGAN (v1.2 through v1.4), CodeFormer (via spandrel_extra_arches), and
+        RestoreFormer. The "model" argument is a local path or HTTP/HTTPS URL to a compatible .pth or .safetensors
+        file.
+    
+        For example:
+        "face-restore;model=https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth"
+    
+        Chain after Real-ESRGAN in "--post-processors", for example:
+        "upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth,face-restore;model=https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth"
+    
+        The "fidelity" argument controls CodeFormer from 0 (quality) to 1 (fidelity to the original face). It is
+        ignored for GFPGAN and RestoreFormer.
+    
+        Face restoration models often do not support half precision; when "dtype" is "float16" and the
+        architecture rejects it, "float32" is used instead.
+    
+        The "detector-device" argument may run RetinaFace on a different device than the restoration model
+        ("device").
+    
+        The "detector" argument selects the facexlib RetinaFace variant, either "retinaface_resnet50" (default) or
+        "retinaface_mobile0.25".
+    
+        The "face-size" argument sets the aligned crop size in pixels (default 512). GFPGAN and CodeFormer require
+        512. Other sizes must be at least 128 and divisible by 32.
+    
+        The "eye-dist-threshold" argument filters out small or distant faces (default 5).
+    
+        The "only-center-face" argument, when true, restores only the face nearest the center of the image.
+    
+        The "pre-resize" argument controls whether restoration runs before or after dgenerate resizes the image
+        (default: after).
+    
+        Example: "face-restore;model=GFPGANv1.4.pth;fidelity=0.7;detector=retinaface_resnet50;dtype=float32"
+    
+        The "device" argument can be used to set the device the processor will run on, for example: cpu, cuda,
+        cuda:1. If you are using this image processor as a preprocess or postprocess step for dgenerate, or with
+        the image-process subcommand, or \image_process directive, this argument will default to the value of
+        --device.
+    
+        The "output-file" argument can be used to set the output path for a processor debug image, this will save
+        the processed image to a path of your choosing.
+    
+        The "output-overwrite" argument can be used to enable overwrite for a processor debug image. If this is
+        not enabled, new images written by the processor while it is being used will be written with a numbered
+        suffix instead of being overwritten.
+    
+        The "model-offload" argument can be used to enable cpu model offloading for a processor. If this is
+        disabled, any torch tensors or modules placed on the GPU will remain there until the processor is done
+        being used, instead of them being moved back to the CPU after each image. Enabling this may help save VRAM
+        when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
+        impact rendering speed when generating many images.
+    
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
+    
+    ==============================================================================================================
+
+The ``fidelity`` argument applies to CodeFormer only (0 favors a cleaner
+reconstruction, 1 stays closer to the input face). GFPGAN and RestoreFormer
+ignore it.
+
+Face restoration models often reject half precision. When ``dtype=float16`` or
+``bfloat16`` is unsupported, dgenerate falls back to ``float32``.
+
+``detector-device`` can run RetinaFace on a different device than the
+restoration model (``device``). ``face-size`` defaults to 512 and must stay 512
+for GFPGAN and CodeFormer.
+
+To upscale first and then restore faces in one generation call, list
+``upscaler`` before ``face-restore`` in the same ``--post-processors``
+specification.
+
+GFPGAN
+------
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    \set device_switch {{ '--device '+injected_device if injected_device else '' }}
+    \set gfpgan_model https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth
+    
+    \image_process "../media/monalisa.png" {{ device_switch }}
+    --output monalisa-gfpgan.png
+    --processors face-restore;model={{ gfpgan_model }}
+    
+    \print {{ quote(last_images) }}
+
+CodeFormer
+----------
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    \set device_switch {{ '--device '+injected_device if injected_device else '' }}
+    \set codeformer_model https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth
+    
+    # fidelity: 0 favors a clean reconstruction, 1 stays closer to the original face
+    
+    \image_process "../media/monalisa.png" {{ device_switch }}
+    --output monalisa-codeformer.png
+    --processors face-restore;model={{ codeformer_model }};fidelity=0.5
+    
+    \print {{ quote(last_images) }}
+
+RestoreFormer
+-------------
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    \set device_switch {{ '--device '+injected_device if injected_device else '' }}
+    \set restoreformer_model https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/RestoreFormer.pth
+    
+    \image_process "../media/monalisa.png" {{ device_switch }}
+    --output monalisa-restoreformer.png
+    --processors face-restore;model={{ restoreformer_model }}
+    
+    \print {{ quote(last_images) }}
+
 Adetailer (YOLO based inpainting)
 =================================
 
@@ -12632,6 +12877,7 @@ adetailer processor help output below.
             device: str | None = None
             output-file: str | None = None
             output-overwrite: bool = False
+            auth-token: str | None = None
     
         adetailer, diffusion based post processor for SD1.5, SDXL, Kolors, SD3, and Flux
     
@@ -12823,6 +13069,9 @@ adetailer processor help output below.
         not enabled, new images written by the processor while it is being used will be written with a numbered
         suffix instead of being overwritten.
     
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
+    
     ==============================================================================================================
 
 Adetailer Pipeline
@@ -12984,6 +13233,7 @@ processor chaining if desired.
             output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
+            auth-token: str | None = None
     
         Process the input image with Ultralytics YOLO object detection.
     
@@ -13160,6 +13410,9 @@ processor chaining if desired.
         when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
         impact rendering speed when generating many images.
     
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
+    
     ==============================================================================================================
 
 Segment Anything Mask Generation
@@ -13199,6 +13452,7 @@ provided in the image preview pane context menu.
             output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
+            auth-token: str | None = None
     
         Process the input image with Ultralytics SAM (Segment Anything Model) using point or bounding box prompts.
     
@@ -13335,6 +13589,9 @@ provided in the image preview pane context menu.
         when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
         impact rendering speed when generating many images.
     
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
+    
     ==============================================================================================================
 
 You can combine this processor with the ``crop`` and ``paste`` processor to perform
@@ -13429,6 +13686,7 @@ The ``yolo-sam`` processor is especially valuable for:
             output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
+            auth-token: str | None = None
     
         Process the input image with YOLO object detection followed by SAM (Segment Anything Model) segmentation.
     
@@ -13581,6 +13839,9 @@ The ``yolo-sam`` processor is especially valuable for:
         being used, instead of them being moved back to the CPU after each image. Enabling this may help save VRAM
         when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
         impact rendering speed when generating many images.
+    
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
     
     ==============================================================================================================
 
@@ -14640,6 +14901,27 @@ The ``\templates_help`` output from the above example is:
         Name: "last_reference_image_processors"
             Type: collections.abc.Sequence[str] | None
             Value: []
+        Name: "last_regione"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_regione_cache_thresholds"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_regione_erosion_dilation"
+            Type: bool | None
+            Value: None
+        Name: "last_regione_post_steps"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_regione_refresh_steps"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_regione_thresholds"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_regione_warmup_steps"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
         Name: "last_revision"
             Type: <class 'str'>
             Value: 'main'
@@ -14834,7 +15116,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [47682387755830]
+            Value: [88871904329656]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

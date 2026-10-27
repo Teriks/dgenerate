@@ -228,6 +228,7 @@ def _load_replacement_transformer(model_type, transformer_uri, dtype, variant,
             device, offload, parsed.quantizer) if parsed.quantizer else None,
         config=config_repo,
         config_subfolder=component_name,
+        model_type=model_type,
         # LoRAs are fused into this copy, which packed ComfyUI weights cannot take.
         dequantize=force_unquantized,
         transformer_class=_video_transformer_class(model_type, family))
@@ -439,7 +440,10 @@ def _create_cached_video_pipeline(model_path,
     aux_repo = None
     if _hfhub.is_single_file_model_load(model_path):
         aux_repo = _singlefilecompat.single_file_pretrained_repo_for_model_path(
-            model_path, auth_token=auth_token, local_files_only=local_files_only)
+            model_path,
+            auth_token=auth_token,
+            local_files_only=local_files_only,
+            model_type=model_type)
     if aux_repo and subfolder:
         raise _pipelines.UnsupportedPipelineConfigError(
             'Single file model loads do not support the subfolder option.')
@@ -457,7 +461,8 @@ def _create_cached_video_pipeline(model_path,
         subfolder=load_subfolder,
         revision=revision,
         auth_token=auth_token,
-        local_files_only=local_files_only)
+        local_files_only=local_files_only,
+        model_type=model_type)
     extra_dirs = extra_weight_directories_from_index(index)
     family, pipeline_class, moe = _resolve_video_load(model_type, index, ltx_ic_lora_uri)
     if transformer_uri and wan_second_transformer_uri is None and index.get('transformer_2'):
@@ -469,7 +474,8 @@ def _create_cached_video_pipeline(model_path,
             subfolder=subfolder,
             auth_token=auth_token,
             local_files_only=local_files_only,
-            model_index=index)
+            model_index=index,
+            model_type=model_type)
         if detected_dtype is not None:
             _messages.debug_log(f'--dtype auto selected: {_enums.get_data_type_string(detected_dtype)}')
             dtype = detected_dtype
