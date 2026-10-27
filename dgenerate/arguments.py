@@ -1927,6 +1927,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     Other encoders can only accept Hugging Face repository slugs/blob links, or a path to
                     a folder on disk with the model configuration and model file(s).
                     
+                    For SD, SD2, and SDXL, when --vae is omitted the checkpoint VAE is used when
+                    present; otherwise a matching default Hugging Face VAE is fetched unless
+                    --local-files-only is set. SD 1.x uses stabilityai/sd-vae-ft-mse, SD2 uses
+                    the Stable Diffusion 2.1 VAE, and SDXL uses madebyollin/sdxl-vae-fp16-fix.
+                    
                     Wan pipelines default the checkpoint VAE to float32 (AutoencoderKLWan is
                     fragile in bfloat16). Use --vae with AutoencoderKLWan and dtype= to override.
                     

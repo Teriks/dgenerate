@@ -2675,6 +2675,41 @@ def _text_encoder_null(uri):
     return uri and uri.strip().lower() == 'null'
 
 
+def _load_sd_family_embedded_or_builtin_vae(
+        load_vae,
+        *,
+        vae_uri: _types.OptionalUri,
+        model_type: _enums.ModelType,
+        local_files_only: bool,
+        dtype: _enums.DataType,
+        model_path: str,
+        load_embedded: typing.Callable[[], typing.Any],
+) -> tuple[typing.Any, _uris.VAEUri | None]:
+    """
+    Load an SD-family VAE from the checkpoint or model repo, or the built-in
+    Hugging Face VAE for SD 1.x / SD 2 / SDXL when none is embedded (#62).
+    """
+    parsed_vae_uri = None
+    try:
+        return load_embedded(), parsed_vae_uri
+    except (_d_exceptions.ModelNotFoundError, _uris.VAEUriLoadError) as e:
+        if not _singlefilecompat._sd_family_should_load_builtin_vae(
+                vae_uri, model_type, local_files_only):
+            raise UnsupportedPipelineConfigError(
+                _singlefilecompat._sd_family_missing_embedded_vae_message(
+                    local_files_only, model_type, model_path)
+            ) from e
+        parsed_vae_uri = _singlefilecompat._sd_family_builtin_vae_uri(
+            model_type, dtype, model_path, local_files_only=local_files_only)
+        _messages.warning(
+            f'SD-family checkpoint has no embedded VAE; loading built-in from '
+            f'"{parsed_vae_uri.model}"'
+            + (f' subfolder "{parsed_vae_uri.subfolder}"'
+               if parsed_vae_uri.subfolder else '')
+            + '.')
+        return load_vae(parsed_vae_uri), parsed_vae_uri
+
+
 def _pipeline_args_hasher(args):
     def text_encoder_uri_parse(uri):
         if _text_encoder_default(uri):
@@ -4436,31 +4471,38 @@ def _create_diffusion_pipeline(
                 else:
                     vae_model = model_path
                     vae_extract_from_checkpoint = _hfhub.is_single_file_model_load(model_path)
-                try:
-                    creation_kwargs['vae'] = \
-                        load_vae(_uris.VAEUri(
+                def _load_embedded_vae():
+                    try:
+                        return load_vae(_uris.VAEUri(
                             encoder=vae_encoder_name,
                             model=vae_model,
                             variant=variant,
                             revision=revision,
                             subfolder=vae_subfolder,
                             extract=vae_extract_from_checkpoint,
-                            dtype=dtype
-                        ))
-                except _d_exceptions.ModelNotFoundError:
-                    if vae_extract_from_checkpoint or not variant:
-                        raise
-                    _messages.debug_log(
-                        f'VAE variant {variant!r} is not published for "{vae_model}"; '
-                        'loading the default VAE weights.')
-                    creation_kwargs['vae'] = \
-                        load_vae(_uris.VAEUri(
+                            dtype=dtype))
+                    except _d_exceptions.ModelNotFoundError:
+                        if vae_extract_from_checkpoint or not variant:
+                            raise
+                        _messages.debug_log(
+                            f'VAE variant {variant!r} is not published for "{vae_model}"; '
+                            'loading the default VAE weights.')
+                        return load_vae(_uris.VAEUri(
                             encoder=vae_encoder_name,
                             model=vae_model,
                             revision=revision,
                             subfolder=vae_subfolder,
-                            dtype=dtype
-                        ))
+                            dtype=dtype))
+
+                creation_kwargs['vae'], parsed_vae_uri = _load_sd_family_embedded_or_builtin_vae(
+                    load_vae,
+                    vae_uri=vae_uri,
+                    model_type=model_type,
+                    local_files_only=local_files_only,
+                    dtype=dtype,
+                    model_path=model_path,
+                    load_embedded=_load_embedded_vae,
+                )
 
     # Load UNet
     if not unet_override:

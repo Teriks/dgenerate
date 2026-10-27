@@ -692,6 +692,26 @@ _EMBEDDED_TEXT_ENCODER_PREFIXES = (
     'text_encoders.',
 )
 
+# Diffusers ``LDM_VAE_KEYS``; CivitAI / A1111 single-file checkpoints use these prefixes.
+_EMBEDDED_VAE_PREFIXES = (
+    'first_stage_model.',
+    'vae.',
+)
+
+# Built-in VAE repos for SD 1.x / SD 2 / SDXL checkpoints with no embedded VAE
+# (issue #62). Not used for Flux, SD3, or transformer-only aux-repo loads.
+_SD_FAMILY_BUILTIN_SD15_VAE_REPO = 'stabilityai/sd-vae-ft-mse'
+_SD_FAMILY_BUILTIN_SD2_VAE_REPO = 'sd2-community/stable-diffusion-2-1'
+_SD_FAMILY_BUILTIN_SD2_VAE_SUBFOLDER = 'vae'
+_SD_FAMILY_BUILTIN_SDXL_VAE_REPO = 'madebyollin/sdxl-vae-fp16-fix'
+
+# Diffusers' SD2 fingerprint: OpenCLIP cross-attention width is 1024.
+# SD 1.5 uses the same key with width 768.
+_SD_FAMILY_SD2_CROSS_ATTENTION_KEY = (
+    'model.diffusion_model.input_blocks.2.1.'
+    'transformer_blocks.0.attn2.to_k.weight'
+)
+
 _ZIMAGE_TURBO = 'Tongyi-MAI/Z-Image-Turbo'
 _KREA2_RAW = 'krea/Krea-2-Raw'
 _QWEN21 = 'Qwen/Qwen-Image-2.1'
@@ -711,6 +731,208 @@ class _ShapeTensor:
 
 def _checkpoint_has_text_encoder(keys) -> bool:
     return any(key.startswith(_EMBEDDED_TEXT_ENCODER_PREFIXES) for key in keys)
+
+
+def _sd_family_checkpoint_has_embedded_vae(keys) -> bool:
+    """True when an SD-family single-file checkpoint embeds an LDM VAE."""
+    return any(
+        key.startswith(prefix) for key in keys for prefix in _EMBEDDED_VAE_PREFIXES
+    )
+
+
+def _sd_family_model_type_supports_builtin_vae(model_type) -> bool:
+    """SD 1.x, SD 2, and SDXL --model-type values (issue #62)."""
+    import dgenerate.pipelinewrapper.enums as _enums
+
+    return (
+        _enums.model_type_is_sd15(model_type)
+        or _enums.model_type_is_sd2(model_type)
+        or _enums.model_type_is_sdxl(model_type)
+    )
+
+
+def _sd_family_checkpoint_shapes_are_sd2(shapes: dict) -> bool:
+    """True for an SD 2.x UNet (cross-attention width 1024)."""
+    shape = shapes.get(_SD_FAMILY_SD2_CROSS_ATTENTION_KEY)
+    return bool(shape) and int(shape[-1]) == 1024
+
+
+def _sd_family_unet_config_is_sd2(config: dict) -> bool:
+    dim = config.get('cross_attention_dim')
+    if isinstance(dim, (list, tuple)):
+        return False
+    return dim == 1024
+
+
+def _sd_family_checkpoint_path_is_sd2(model_path: str, *, local_files_only: bool) -> bool:
+    """
+    True when a ``--model-type sd`` checkpoint is SD 2.x rather than SD 1.x.
+
+    Single-file safetensors are classified from the header. Other single-file
+    checkpoints are classified from their tensor shapes. Diffusers folders and
+    repository ids are classified from ``unet/config.json``.
+    """
+    import dgenerate.hfhub as _hfhub
+
+    if _hfhub.is_single_file_model_load(model_path):
+        path = model_path
+        if not os.path.isfile(path):
+            try:
+                path = _hfhub.webcache_or_hf_blob_download(
+                    path, local_files_only=local_files_only)
+            except Exception:
+                return False
+        lower = path.lower()
+        try:
+            if lower.endswith('.safetensors'):
+                shapes = _safetensors_weight_shapes(path)
+            elif lower.endswith('.gguf'):
+                return False
+            else:
+                import diffusers.loaders.single_file as _single_file
+                checkpoint = _single_file.load_single_file_checkpoint(
+                    path, local_files_only=local_files_only)
+                shapes = _shapes_from_checkpoint(checkpoint)
+        except Exception:
+            return False
+        return _sd_family_checkpoint_shapes_are_sd2(shapes)
+
+    config_path = os.path.join(model_path, 'unet', 'config.json')
+    if os.path.isfile(config_path):
+        try:
+            with open(config_path, encoding='utf-8') as file:
+                return _sd_family_unet_config_is_sd2(json.load(file))
+        except (OSError, json.JSONDecodeError):
+            return False
+
+    if os.path.isdir(model_path) or os.path.isfile(model_path):
+        return False
+
+    try:
+        import huggingface_hub
+        downloaded = huggingface_hub.hf_hub_download(
+            model_path,
+            'config.json',
+            subfolder='unet',
+            local_files_only=local_files_only,
+        )
+        with open(downloaded, encoding='utf-8') as file:
+            return _sd_family_unet_config_is_sd2(json.load(file))
+    except Exception:
+        return False
+
+
+def _sd_family_use_sd2_builtin_vae(
+        model_type,
+        model_path: str | None,
+        *,
+        local_files_only: bool) -> bool:
+    """SD 2.x checkpoints need the SD 2.1 VAE, not the SD 1.5 fine-tune."""
+    import dgenerate.pipelinewrapper.enums as _enums
+
+    if _enums.model_type_is_sdxl(model_type):
+        return False
+    sd15 = _enums.model_type_is_sd15(model_type)
+    sd2 = _enums.model_type_is_sd2(model_type)
+    if sd2 and not sd15:
+        return True
+    if not (sd15 and sd2) or not model_path:
+        return False
+    return _sd_family_checkpoint_path_is_sd2(
+        model_path, local_files_only=local_files_only)
+
+
+def _sd_family_builtin_vae_source(
+        model_type,
+        model_path: str | None = None,
+        *,
+        local_files_only: bool = False) -> tuple[str, str | None] | None:
+    """``(repo, subfolder)`` for the SD-family built-in VAE, or ``None``."""
+    import dgenerate.pipelinewrapper.enums as _enums
+
+    if _enums.model_type_is_sdxl(model_type):
+        return _SD_FAMILY_BUILTIN_SDXL_VAE_REPO, None
+    if not (
+            _enums.model_type_is_sd15(model_type)
+            or _enums.model_type_is_sd2(model_type)):
+        return None
+    if _sd_family_use_sd2_builtin_vae(
+            model_type, model_path, local_files_only=local_files_only):
+        return (
+            _SD_FAMILY_BUILTIN_SD2_VAE_REPO,
+            _SD_FAMILY_BUILTIN_SD2_VAE_SUBFOLDER)
+    return _SD_FAMILY_BUILTIN_SD15_VAE_REPO, None
+
+
+def _sd_family_should_load_builtin_vae(
+        vae_uri: str | None,
+        model_type,
+        local_files_only: bool) -> bool:
+    """When no ``--vae`` was given, load the SD-family built-in VAE if online."""
+    if vae_uri is not None or local_files_only:
+        return False
+    return _sd_family_model_type_supports_builtin_vae(model_type)
+
+
+def _sd_family_builtin_vae_uri(
+        model_type,
+        dtype,
+        model_path: str | None = None,
+        *,
+        local_files_only: bool = False):
+    """
+    :class:`~dgenerate.pipelinewrapper.uris.VAEUri` for the SD-family built-in VAE.
+
+    :raises ValueError: if ``model_type`` is outside SD 1.x / SD 2 / SDXL.
+    """
+    import dgenerate.pipelinewrapper.uris as _uris
+
+    source = _sd_family_builtin_vae_source(
+        model_type, model_path, local_files_only=local_files_only)
+    if source is None:
+        raise ValueError(
+            f'no SD-family built-in VAE for model type {model_type!r}')
+    repo, subfolder = source
+    return _uris.VAEUri(
+        encoder='AutoencoderKL',
+        model=repo,
+        subfolder=subfolder,
+        dtype=dtype)
+
+
+def _sd_family_missing_embedded_vae_message(
+        local_files_only: bool,
+        model_type,
+        model_path: str | None = None) -> str:
+    """Error text when an SD-family checkpoint has no embedded VAE."""
+    import dgenerate.pipelinewrapper.enums as _enums
+
+    model_type_name = _enums.get_model_type_string(model_type)
+    source = _sd_family_builtin_vae_source(
+        model_type, model_path, local_files_only=local_files_only)
+    repo, subfolder = (None, None) if source is None else source
+    if repo and subfolder:
+        repo = f'{repo};subfolder={subfolder}'
+    if local_files_only:
+        hint = (
+            f'Download a VAE manually with --vae "AutoencoderKL;model={repo}" '
+            if repo else
+            'Specify a VAE with --vae.'
+        )
+        return (
+            f'The checkpoint has no embedded VAE and --local-files-only is set, '
+            f'so the default VAE cannot be fetched for --model-type {model_type_name}. '
+            f'{hint}'
+        )
+    if repo:
+        return (
+            f'The checkpoint has no embedded VAE for --model-type {model_type_name}. '
+            f'Specify one with --vae "AutoencoderKL;model={repo}" or another Hugging Face VAE.'
+        )
+    return (
+        f'The checkpoint has no embedded VAE for --model-type {model_type_name}. '
+        'Specify one with --vae.'
+    )
 
 
 def _shapes_from_checkpoint(checkpoint: dict) -> dict[str, tuple[int, ...]]:
