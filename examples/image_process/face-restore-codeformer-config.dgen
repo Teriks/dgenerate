@@ -1,0 +1,13 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+\set device_switch {{ '--device '+injected_device if injected_device else '' }}
+\set codeformer_model https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth
+
+# fidelity: 0 favors a clean reconstruction, 1 stays closer to the original face
+
+\image_process "../media/monalisa.png" {{ device_switch }}
+--output monalisa-codeformer.png
+--processors face-restore;model={{ codeformer_model }};fidelity=0.5
+
+\print {{ quote(last_images) }}

@@ -1,0 +1,11 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+\set device_switch {{ '--device '+injected_device if injected_device else '' }}
+\set restoreformer_model https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/RestoreFormer.pth
+
+\image_process "../media/monalisa.png" {{ device_switch }}
+--output monalisa-restoreformer.png
+--processors face-restore;model={{ restoreformer_model }}
+
+\print {{ quote(last_images) }}

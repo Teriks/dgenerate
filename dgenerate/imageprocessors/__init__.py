@@ -81,6 +81,7 @@ from .pidi import PidiNetProcessor
 from .sam import SegmentAnythingProcessor
 from .u_sam import USAMProcessor
 from .teed import TEEDProcessor
+from .face_restore import FaceRestoreProcessor
 from .upscaler import UpscalerProcessor
 from .yolo import YOLOProcessor
 from .yolo_sam import YOLOSAMProcessor
