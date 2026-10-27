@@ -8,7 +8,7 @@ title: Hunyuan-DiT
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"hydit", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @submodelbuilder[{"label":"Control Net", "arg":"--control-nets", "model":"Control Net"}]
 @submodelbuilder[{"label":"IP Adapter", "arg":"--ip-adapters", "model":"IP Adapter"}]

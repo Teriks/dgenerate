@@ -1018,6 +1018,69 @@ class DiffusionArguments(_types.SetFromMixin):
     Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
     """
 
+    regione: bool = False
+    """
+    Enable RegionE region-aware acceleration for instruction-based image editing.
+
+    RegionE partitions edited and unchanged regions to skip redundant denoising.
+    The implementation is vendored under :mod:`dgenerate.extras.regione`.
+    Omitting inference steps, or leaving the global default of 30, uses 28.
+    Any other step count is rejected.
+    An input image is required.
+
+    See: https://github.com/Peyton-Chen/RegionE
+
+    This is supported for: ``--model-type flux-kontext`` and ``qwen-image-edit``.
+    Inpaint pipeline variants are not supported. Cannot be combined with TeaCache,
+    Cache-DiT, Spectrum, DyPE, SADA, RAS, model CPU offload, or group offload.
+    """
+
+    regione_warmup_step: _types.OptionalInteger = None
+    """
+    RegionE warmup steps before region partitioning.
+
+    Defaults depend on the loaded pipeline (see RegionE upstream presets).
+
+    Supplying a value implies that :py:attr:`DiffusionArguments.regione` is enabled.
+    """
+
+    regione_post_step: _types.OptionalInteger = None
+    """
+    RegionE trailing full denoising steps.
+
+    Supplying a value implies that :py:attr:`DiffusionArguments.regione` is enabled.
+    """
+
+    regione_refresh_step: _types.OptionalInteger = None
+    """
+    RegionE step at which the edit mask is refreshed.
+
+    Supplying a value implies that :py:attr:`DiffusionArguments.regione` is enabled.
+    """
+
+    regione_threshold: _types.OptionalFloat = None
+    """
+    RegionE partition threshold for separating edited and unchanged regions.
+
+    Supplying a value implies that :py:attr:`DiffusionArguments.regione` is enabled.
+    """
+
+    regione_cache_threshold: _types.OptionalFloat = None
+    """
+    RegionE adaptive velocity-decay cache threshold for edited regions.
+
+    Supplying a value implies that :py:attr:`DiffusionArguments.regione` is enabled.
+    """
+
+    regione_erosion_dilation: _types.OptionalBoolean = None
+    """
+    Whether RegionE morphologically erodes/dilates the region mask.
+
+    Defaults to true when :py:attr:`DiffusionArguments.regione` is enabled.
+
+    Supplying a value implies that :py:attr:`DiffusionArguments.regione` is enabled.
+    """
+
     ras: bool = False
     """
     Activate RAS (Region-Adaptive Sampling) for the primary model? 
@@ -1970,6 +2033,12 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.spectrum_warmup_steps, "Spectrum Warmup Steps:"),
             (self.spectrum_window_size, "Spectrum Window Size:"),
             (self.spectrum_flex_window, "Spectrum Flex Window:"),
+            (self.regione_warmup_step, "RegionE Warmup Steps:"),
+            (self.regione_post_step, "RegionE Post Steps:"),
+            (self.regione_refresh_step, "RegionE Refresh Step:"),
+            (self.regione_threshold, "RegionE Threshold:"),
+            (self.regione_cache_threshold, "RegionE Cache Threshold:"),
+            (self.regione_erosion_dilation, "RegionE Erosion/Dilation:"),
             (self.image_guidance_scale, "Image Guidance Scale:"),
             (self.guidance_rescale, "Guidance Rescale:"),
             (self.inference_steps, "Inference Steps:"),

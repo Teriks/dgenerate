@@ -21,7 +21,7 @@ title: Flux Krea Dev (GGUF)
 @dype[{"exclude":["cd", "tc", "sada", "sp"],"divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":0}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"flux", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]

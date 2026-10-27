@@ -50,5 +50,6 @@ from .submodelentry import _SubModelEntry
 from .submodelbuilderentry import  _SubModelBuilderEntry
 from .submodelbuilderswitchentry import _SubModelBuilderSwitchEntry
 from .dypeentry import _DyPEEntry
+from .regioneentry import _RegionEEntry
 
 from .entry import DIVIDER_YPAD, ROW_XPAD

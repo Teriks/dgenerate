@@ -16,7 +16,7 @@ title: Wan 2.1 Text to Video (GGUF)
 @dype[{"exclude":["cd", "sp"],"divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"wan", "divider-after":true, "map-default":"text_encoder"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]

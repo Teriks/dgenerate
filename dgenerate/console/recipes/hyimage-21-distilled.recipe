@@ -9,7 +9,7 @@ title: HunyuanImage 2.1 Distilled
 @switch[{"id":"sp", "label":"Use Spectrum", "arg":"--spectrum", "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"hyimage-21", "divider-after":true}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
 @float[{"label":"Distilled Guidance Scale", "arg":"--guidance-scales", "default":3.25, "min":0}]

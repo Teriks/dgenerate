@@ -11,7 +11,7 @@ title: Qwen-Image Layered (GGUF)
 @dype[{"exclude":["cd", "sp"],"divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"qwen-image-layered", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/unsloth/Qwen-Image-Layered-GGUF/blob/main/qwen-image-layered-Q4_K_S.gguf", "divider-after":true}]
 @imageseed[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in"], "default":"", "float":""}]
 @int[{"label":"Layers", "arg":"--qwen-layered-layers", "default":4, "min":1}]

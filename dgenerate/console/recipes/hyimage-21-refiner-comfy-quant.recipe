@@ -9,7 +9,7 @@ title: HunyuanImage 2.1 Refiner (ComfyUI Quant)
 @switch[{"id":"sp", "label":"Use Spectrum", "arg":"--spectrum", "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"hyimage-21-refiner", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/resolve/main/split_files/diffusion_models/hunyuanimage2.1_refiner_fp8_e4m3fn.safetensors", "divider-after":true}]
 @imageseed[{"label":"Input Image", "arg":"--image-seeds", "file-types":["images-in"], "hide-float":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4, "min":1}]

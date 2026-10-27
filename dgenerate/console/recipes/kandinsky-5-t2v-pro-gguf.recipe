@@ -10,7 +10,7 @@ title: Kandinsky 5 Video Pro (GGUF)
 @switchfile[{"label":"Use Cache-DiT", "arg":"--cache-dit", "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"kandinsky5-video", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @submodelbuilder[{"label":"Transformer GGUF", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Ada321/Kandinsky-5.0-T2V-Pro-sft-5s-Q4_K_S.gguf/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf", "divider-after":true}]
 @int[{"id":"is","label":"Inference Steps","arg":"--inference-steps","default":50,"min":1,"exclude":["ts"]}]

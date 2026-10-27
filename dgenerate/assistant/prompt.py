@@ -352,7 +352,7 @@ A Wan 2.1 I2V repo only embeds the first frame. \
 A video seed path is video-to-video and rejects --video-lengths; trim with frame-end=. \
 control=, mask=, and reference= are VACE on Wan-AI/Wan2.1-VACE-1.3B-diffusers. \
 Wan 2.2 MoE is Wan-AI/Wan2.2-T2V-A14B-Diffusers with --wan-low-noise-guidance-scales. \
-The VAE stays float32. Do not put vae in --quantizer-map. \
+The VAE stays float32 and is not a --quantizer-map target. \
 GGUF: --transformer https://huggingface.co/city96/Wan2.1-T2V-14B-gguf/blob/main/wan2.1-t2v-14b-Q4_K_S.gguf \
 with parent Wan-AI/Wan2.1-T2V-14B-Diffusers. \
 Wan-Animate is --model-type wan-animate, Wan-AI/Wan2.2-Animate-14B-Diffusers, a character still plus \

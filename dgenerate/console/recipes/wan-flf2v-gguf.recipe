@@ -23,7 +23,7 @@ title: Wan 2.1 First-Last Frame (GGUF)
 @dype[{"exclude":["cd", "sp"],"divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"wan", "divider-after":true, "map-default":"text_encoder"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/city96/Wan2.1-FLF2V-14B-720P-gguf/blob/main/wan2.1-flf2v-14b-720p-Q4_K_S.gguf"}]

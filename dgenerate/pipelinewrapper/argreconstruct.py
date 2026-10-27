@@ -506,6 +506,36 @@ def reconstruct_dgenerate_opts(
             args.spectrum_flex_window != _constants.DEFAULT_SPECTRUM_FLEX_WINDOW:
         opts.append(('--spectrum-flex-windows', args.spectrum_flex_window))
 
+    if args.regione:
+        opts.append(('--regione',))
+
+    if args.regione_warmup_step is not None and \
+            args.regione_warmup_step != _constants.DEFAULT_REGIONE_WARMUP_STEP:
+        opts.append(('--regione-warmup-steps', args.regione_warmup_step))
+
+    if args.regione_post_step is not None and \
+            args.regione_post_step != _constants.DEFAULT_REGIONE_POST_STEP:
+        opts.append(('--regione-post-steps', args.regione_post_step))
+
+    if args.regione_refresh_step is not None and \
+            args.regione_refresh_step != _constants.DEFAULT_REGIONE_REFRESH_STEP:
+        opts.append(('--regione-refresh-steps', args.regione_refresh_step))
+
+    if args.regione_threshold is not None and \
+            args.regione_threshold != _constants.DEFAULT_REGIONE_THRESHOLD:
+        opts.append(('--regione-thresholds', args.regione_threshold))
+
+    if args.regione_cache_threshold is not None and \
+            args.regione_cache_threshold != _constants.DEFAULT_REGIONE_CACHE_THRESHOLD:
+        opts.append(('--regione-cache-thresholds', args.regione_cache_threshold))
+
+    if args.regione_erosion_dilation is not None and \
+            args.regione_erosion_dilation != _constants.DEFAULT_REGIONE_EROSION_DILATION:
+        if args.regione_erosion_dilation:
+            opts.append(('--regione-erosion-dilation',))
+        else:
+            opts.append(('--regione-no-erosion-dilation',))
+
     if args.ras:
         opts.append(('--ras',))
 

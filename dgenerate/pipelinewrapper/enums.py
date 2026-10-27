@@ -830,6 +830,23 @@ def model_type_supports_tea_cache(model_type: ModelType | str) -> bool:
     return _model_type_supported(model_type, TEA_CACHE_MODEL_TYPES)
 
 
+REGIONE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.FLUX_KONTEXT,
+    ModelType.QWEN_IMAGE_EDIT,
+)
+"""``--model-type`` values that accept RegionE."""
+
+
+def model_type_supports_regione(model_type: ModelType | str) -> bool:
+    """
+    RegionE can accelerate instruction-based image editing on this model type.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return _model_type_supported(model_type, REGIONE_MODEL_TYPES)
+
+
 DEEP_CACHE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.SD,
     ModelType.PIX2PIX,

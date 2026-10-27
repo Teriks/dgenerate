@@ -255,6 +255,24 @@ DEFAULT_TEA_CACHE_REL_L1_THRESHOLD: float = 0.6
 Default relative L1 threshold for TeaCache (Timestep Embedding Aware Cache) for Flux.
 """
 
+DEFAULT_REGIONE_WARMUP_STEP: int = 6
+"""Default RegionE warmup steps (Flux Kontext preset)."""
+
+DEFAULT_REGIONE_POST_STEP: int = 2
+"""Default RegionE post steps (Flux Kontext preset)."""
+
+DEFAULT_REGIONE_REFRESH_STEP: int = 16
+"""Default RegionE mask refresh step (Flux Kontext preset)."""
+
+DEFAULT_REGIONE_THRESHOLD: float = 0.93
+"""Default RegionE region partition threshold (Flux Kontext preset)."""
+
+DEFAULT_REGIONE_CACHE_THRESHOLD: float = 0.04
+"""Default RegionE velocity-decay cache threshold (Flux Kontext preset)."""
+
+DEFAULT_REGIONE_EROSION_DILATION: bool = True
+"""Default RegionE mask erosion/dilation flag."""
+
 DEFAULT_SPECTRUM_WEIGHT: float = 0.5
 """
 Default Spectrum blend weight. ``1`` is the Chebyshev forecast and ``0`` is a

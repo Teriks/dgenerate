@@ -1,0 +1,29 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# RegionE on Qwen-Image-Edit with a ComfyUI FP8 transformer. Repo and weights
+# must both be the original edit model (not 2509). Requires 28 inference steps.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 16 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 16 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% else %}
+    \set te_quant --model-sequential-offload
+{% endif %}
+
+Qwen/Qwen-Image-Edit
+--model-type qwen-image-edit {{ te_quant }}
+--dtype bfloat16
+--transformer https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors
+--scheduler FlowMatchEulerDiscreteScheduler
+--guidance-scales 4
+--image-seeds https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/yarn-art-pikachu.png
+--gen-seeds 1
+--output-path qwen-image-edit-regione-comfy-quant
+--output-size 1024
+--regione-thresholds 0.80
+--regione-cache-thresholds 0.03
+--prompts "Make Pikachu hold a sign that says 'Qwen Edit is awesome', yarn art style, detailed, vibrant colors"

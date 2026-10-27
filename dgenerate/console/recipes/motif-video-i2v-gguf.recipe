@@ -9,7 +9,7 @@ title: Motif-Video Image to Video (GGUF)
 @dype[{"exclude":["sp"], "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"motif-video", "divider-after":true, "map-default":"text_encoder"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @submodelbuilder[{"label":"Transformer GGUF", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Motif-Technologies/Motif-Video-2B-GGUF/blob/main/motifv-2b-dev-Q4_K_M.gguf", "divider-after":true}]

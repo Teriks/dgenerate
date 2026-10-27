@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image Edit with ComfyUI's FP8 transformer for the original edit model.
+# Use Qwen/Qwen-Image-Edit-2509 and qwen_image_edit_2509_* weights for edit-plus.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 16 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 16 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% endif %}
+
+Qwen/Qwen-Image-Edit
+--model-type qwen-image-edit {{ te_quant }}
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 50
+--guidance-scales 4
+--image-seeds https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/yarn-art-pikachu.png
+--gen-seeds 1
+--output-path qwen-image-comfy-quant-edit
+--output-size 1024
+--prompts "Make Pikachu hold a sign that says 'Qwen Edit is awesome', yarn art style, detailed, vibrant colors"

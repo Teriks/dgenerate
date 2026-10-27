@@ -9,7 +9,7 @@ title: HunyuanVideo 1.5 Text to Video
 @dype[{"exclude":["cd", "sp"], "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"hyvideo-15", "divider-after":true}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "divider-after":true}]

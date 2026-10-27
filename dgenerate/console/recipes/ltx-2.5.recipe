@@ -33,7 +33,7 @@ title: LTX-2.5 Non-distilled
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"ltx2", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @submodelbuilder[{"label":"Stage LoRA", "arg":"--ltx-stage-loras", "model": "LoRA"}]
 @submodelbuilder[{"label":"IC-LoRA", "arg":"--ltx-ic-lora", "model": "IC-LoRA"}]

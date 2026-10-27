@@ -33,7 +33,7 @@ title: LTX-2.5 Distilled (GGUF)
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"ltx2", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/realrebelai/LTX-2.5_GGUFs/blob/main/LTX-2.5-Distilled-Q4_K_S.gguf"}]
 @submodelbuilder[{"label":"IC-LoRA", "arg":"--ltx-ic-lora", "model": "IC-LoRA"}]

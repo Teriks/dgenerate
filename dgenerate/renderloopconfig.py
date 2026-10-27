@@ -23,6 +23,7 @@ import pathlib
 import random
 import typing
 
+import dgenerate.extras.regione as _regione
 import dgenerate.hfhub as _hfhub
 import dgenerate.image as _image
 import dgenerate.mediainput as _mediainput
@@ -1448,6 +1449,62 @@ class RenderLoopConfig(_types.SetFromMixin):
     Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
     """
 
+    regione: bool = False
+    """
+    Enable RegionE region-aware acceleration for instruction-based image editing.
+
+    See: https://github.com/Peyton-Chen/RegionE
+
+    Omitting inference steps, or leaving the global default of 30, uses 28.
+    Any other step count is rejected.
+    An input image is required. Supported for
+    ``--model-type flux-kontext`` and ``qwen-image-edit`` (not inpaint variants).
+    """
+
+    regione_warmup_steps: _types.OptionalIntegers = None
+    """
+    RegionE warmup steps to try when :py:attr:`RenderLoopConfig.regione` is enabled.
+
+    Each value is tried in turn. Pipeline-specific defaults apply when unset.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.regione` is enabled.
+    """
+
+    regione_post_steps: _types.OptionalIntegers = None
+    """
+    RegionE trailing full denoising steps to try.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.regione` is enabled.
+    """
+
+    regione_refresh_steps: _types.OptionalIntegers = None
+    """
+    RegionE mask refresh steps to try.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.regione` is enabled.
+    """
+
+    regione_thresholds: _types.OptionalFloats = None
+    """
+    RegionE region partition thresholds to try.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.regione` is enabled.
+    """
+
+    regione_cache_thresholds: _types.OptionalFloats = None
+    """
+    RegionE velocity-decay cache thresholds to try.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.regione` is enabled.
+    """
+
+    regione_erosion_dilation: _types.OptionalBoolean = None
+    """
+    Whether RegionE morphologically erodes/dilates the region mask.
+
+    Supplying any value implies that :py:attr:`RenderLoopConfig.regione` is enabled.
+    """
+
     deep_cache: bool = False
     """
     Activate DeepCache for the main model?
@@ -2448,6 +2505,25 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'with {a_namer("tea_cache")} and related arguments.'
             )
 
+        regione_enabled = (self.regione or any(self._non_null_attr_that_start_with('regione_')))
+        if regione_enabled and not _pipelinewrapper.model_type_supports_regione(self.model_type):
+            raise RenderLoopConfigError(
+                f'{a_namer("regione")} and related arguments are only supported for '
+                f'--model-type {_textprocessing.oxford_comma(_pipelinewrapper.REGIONE_MODEL_TYPES, "and")}.'
+            )
+        if regione_enabled and not self.image_seeds:
+            raise RenderLoopConfigError(
+                f'{a_namer("regione")} requires at least one input image in {a_namer("image_seeds")}.'
+            )
+        if regione_enabled:
+            self.inference_steps = _regione.resolve_regione_inference_steps_list(
+                self.inference_steps)
+            bad_steps = [s for s in self.inference_steps if s != _regione.REGIONE_INFERENCE_STEPS]
+            if bad_steps:
+                raise RenderLoopConfigError(
+                    f'{a_namer("regione")} requires {a_namer("inference_steps")} to be '
+                    f'{_regione.REGIONE_INFERENCE_STEPS} (got {bad_steps}).')
+
         spectrum_enabled = (self.spectrum or any(self._non_null_attr_that_start_with('spectrum_')))
         if spectrum_enabled and not _pipelinewrapper.model_type_supports_spectrum(self.model_type):
             raise RenderLoopConfigError(
@@ -2534,6 +2610,33 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         # Check SADA compatibility
         sada_enabled = (self.sada or any(self._non_null_attr_that_start_with('sada_')))
+        if regione_enabled and tea_cache_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("regione")} cannot be used with {a_namer("tea_cache")}.')
+        if regione_enabled and spectrum_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("regione")} cannot be used with {a_namer("spectrum")}.')
+        if regione_enabled and sada_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("regione")} cannot be used with {a_namer("sada")}.')
+        if regione_enabled and ras_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("regione")} cannot be used with {a_namer("ras")}.')
+        if regione_enabled and self.cache_dit:
+            raise RenderLoopConfigError(
+                f'{a_namer("regione")} cannot be used with {a_namer("cache_dit")}.')
+        if regione_enabled and self.dype:
+            raise RenderLoopConfigError(
+                f'{a_namer("regione")} cannot be used with {a_namer("dype")}.')
+        if regione_enabled and self.adetailer_detector_uris:
+            raise RenderLoopConfigError(
+                f'{a_namer("regione")} cannot be used with {a_namer("adetailer_detector_uris")}.')
+        if regione_enabled and self.model_cpu_offload:
+            raise RenderLoopConfigError(
+                f'{a_namer("model_cpu_offload")} is not compatible with {a_namer("regione")}.')
+        if regione_enabled and self.model_group_offload:
+            raise RenderLoopConfigError(
+                f'{a_namer("model_group_offload")} is not compatible with {a_namer("regione")}.')
         if sada_enabled and not _pipelinewrapper.model_type_supports_sada(self.model_type):
             raise RenderLoopConfigError(
                 f'SADA arguments are only supported for '
@@ -2672,6 +2775,9 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.dype and spectrum_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("dype")} cannot be used with {a_namer("spectrum")}.')
+        if self.dype and regione_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("dype")} cannot be used with {a_namer("regione")}.')
         if self.dype and sada_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("dype")} cannot be used with {a_namer("sada")}.')
@@ -2679,6 +2785,9 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.cache_dit and tea_cache_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("cache_dit")} cannot be used with {a_namer("tea_cache")}.')
+        if self.cache_dit and regione_enabled:
+            raise RenderLoopConfigError(
+                f'{a_namer("cache_dit")} cannot be used with {a_namer("regione")}.')
         if self.cache_dit and spectrum_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("cache_dit")} cannot be used with {a_namer("spectrum")}.')
@@ -4014,6 +4123,15 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         # Store parsed image seeds
         self.parsed_image_seeds = parsed_image_seeds
+        self._check_regione_image_seeds(parsed_image_seeds, a_namer)
+
+    def _check_regione_image_seeds(self, parsed_image_seeds, a_namer):
+        regione_enabled = self.regione or any(self._non_null_attr_that_start_with('regione_'))
+        if not regione_enabled:
+            return
+        if any(seed.mask_images for seed in parsed_image_seeds):
+            raise RenderLoopConfigError(
+                f'{a_namer("regione")} does not support inpaint masks in {a_namer("image_seeds")}.')
 
     def _verify_pipeline_compatibility(self,
                                        parsed_image_seeds: typing.List[_mediainput.ImageSeedParseResult],
@@ -4674,6 +4792,11 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.spectrum_warmup_steps,
             self.spectrum_window_sizes,
             self.spectrum_flex_windows,
+            self.regione_warmup_steps,
+            self.regione_post_steps,
+            self.regione_refresh_steps,
+            self.regione_thresholds,
+            self.regione_cache_thresholds,
             self.ras_error_reset_steps,
             self.ras_high_ratios,
             self.ras_sample_ratios,
@@ -4955,6 +5078,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                 spectrum_warmup_steps=ov('spectrum_warmup_steps', self.spectrum_warmup_steps),
                 spectrum_window_size=ov('spectrum_window_size', self.spectrum_window_sizes),
                 spectrum_flex_window=ov('spectrum_flex_window', self.spectrum_flex_windows),
+                regione=ov('regione', [self.regione]),
+                regione_warmup_step=ov('regione_warmup_step', self.regione_warmup_steps),
+                regione_post_step=ov('regione_post_step', self.regione_post_steps),
+                regione_refresh_step=ov('regione_refresh_step', self.regione_refresh_steps),
+                regione_threshold=ov('regione_threshold', self.regione_thresholds),
+                regione_cache_threshold=ov('regione_cache_threshold', self.regione_cache_thresholds),
+                regione_erosion_dilation=ov(
+                    'regione_erosion_dilation', [self.regione_erosion_dilation]),
                 ras=ov('ras', [self.ras]),
                 ras_index_fusion=ov('ras_index_fusion', [self.ras_index_fusion]),
                 ras_sample_ratio=ov('ras_sample_ratio', self.ras_sample_ratios),

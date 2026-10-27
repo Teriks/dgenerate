@@ -1,0 +1,36 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# RegionE on FLUX.1 Kontext. Requires exactly 28 inference steps and an input image.
+# Do not combine with TeaCache, Cache-DiT, Spectrum, DyPE, SADA, or RAS.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token to run this example.
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 16 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 16 %}
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+black-forest-labs/FLUX.1-Kontext-dev
+--model-type flux-kontext {{ optimization }}
+--image-seeds "../../media/monalisa.png"
+--dtype bfloat16
+--inference-steps 28
+--guidance-scales 2.5
+--gen-seeds 1
+--output-path flux-kontext-regione
+--output-size 1024
+--regione-thresholds 0.93
+--regione-cache-thresholds 0.04 0.01
+--prompts "The monalisa wearing a red top hat"

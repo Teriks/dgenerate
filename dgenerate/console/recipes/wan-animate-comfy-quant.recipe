@@ -29,7 +29,7 @@ title: Wan-Animate (ComfyUI Quant)
 @dype[{"exclude":["cd", "sp"],"divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"wan-animate", "divider-after":true, "map-default":"text_encoder"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_animate_14B_int8_convrot.safetensors", "divider-after":true}]
 @dropdown[{"label":"Animate Mode", "arg":"--wan-animate-mode", "options":["animate", "replace"], "default":"animate"}]

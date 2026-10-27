@@ -37,6 +37,7 @@ import dgenerate.eval as _eval
 import dgenerate.extras.asdff.base as _asdff_base
 import dgenerate.extras.hidiffusion as _hidiffusion
 import dgenerate.extras.sada.patch as _sada
+import dgenerate.extras.regione as _regione
 import dgenerate.extras.spectrum as _spectrum
 import dgenerate.extras.teacache.teacache_flux as _teacache_flux
 import dgenerate.hfhub as _hfhub
@@ -559,10 +560,10 @@ class DiffusionPipelineWrapper:
         :param quantizer_uri: Global --quantizer URI value
         :param quantizer_map: Collection of pipeline submodule names to which quantization should be applied when
             ``quantizer_uri`` is provided. Valid values are ``unet``, ``transformer``, ``transformer_2``,
-            ``text_encoder``, ``text_encoder_2``, ``text_encoder_3``, ``image_encoder``, ``vae``,
+            ``text_encoder``, ``text_encoder_2``, ``text_encoder_3``, ``image_encoder``,
             ``controlnet``, and ``connectors``. If ``None``, the UNet or transformer and every text encoder
             are quantized. Video models also quantize ``transformer_2``, ``image_encoder``, and ``connectors``.
-            ControlNet and the VAE stay full precision unless named here.
+            ControlNet stays full precision unless named here. The VAE is never quantized.
         :param second_model_quantizer_uri: Global --second-model-quantizer URI value
         :param second_model_quantizer_map: Collection of pipeline submodule names to which quantization should be
             applied when ``second_model_quantizer_uri`` is provided. Accepts the same names as ``quantizer_map``.
@@ -755,7 +756,6 @@ class DiffusionPipelineWrapper:
             'text_encoder_2',
             'text_encoder_3',
             'image_encoder',
-            'vae',
             'controlnet',
             'connectors'
         ]
@@ -3109,7 +3109,7 @@ class DiffusionPipelineWrapper:
                     _constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD
                 ),
                 enable=_types.default(user_args.tea_cache, False),
-        ), _sada_context(
+        ), self._regione_call_context(self._pipeline, user_args), _sada_context(
             self._pipeline,
             width=self._inference_width,
             height=self._inference_height,
@@ -3370,7 +3370,7 @@ class DiffusionPipelineWrapper:
             self._pipeline,
             user_args.denoising_start,
             user_args.denoising_end
-        ):
+        ), self._regione_call_context(self._pipeline, user_args):
             if self._parsed_adetailer_detector_uris:
                 if 'image' not in pipeline_args:
                     raise _pipelines.UnsupportedPipelineConfigError(
@@ -5391,6 +5391,11 @@ class DiffusionPipelineWrapper:
                     'SADA cannot be used simultaneously with TeaCache'
                 )
 
+            if _diffusion_option_enabled(args, 'regione'):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'SADA cannot be used simultaneously with RegionE'
+                )
+
             if args.spectrum:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'SADA cannot be used simultaneously with Spectrum'
@@ -5455,7 +5460,8 @@ class DiffusionPipelineWrapper:
         for name, label in (
                 ('tea_cache', 'TeaCache'),
                 ('spectrum', 'Spectrum'),
-                ('sada', 'SADA')):
+                ('sada', 'SADA'),
+                ('regione', 'RegionE')):
             if _diffusion_option_enabled(args, name):
                 conflicts.append(label)
         if conflicts:
@@ -5475,6 +5481,10 @@ class DiffusionPipelineWrapper:
             if args.spectrum:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'TeaCache cannot be used simultaneously with Spectrum.'
+                )
+            if _diffusion_option_enabled(args, 'regione'):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'TeaCache cannot be used simultaneously with RegionE.'
                 )
             if not _enums.model_type_supports_tea_cache(self.model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -5505,6 +5515,7 @@ class DiffusionPipelineWrapper:
                 (_diffusion_option_enabled(args, 'tea_cache'), 'TeaCache'),
                 (_diffusion_option_enabled(args, 'spectrum'), 'Spectrum'),
                 (_diffusion_option_enabled(args, 'sada'), 'SADA'),
+                (_diffusion_option_enabled(args, 'regione'), 'RegionE'),
                 # RAS replaces the SD3 transformer forward, which leaves
                 # Cache-DiT's hooks unused, so Cache-DiT silently does nothing.
                 (_diffusion_option_enabled(args, 'ras'), 'RAS'),
@@ -5513,6 +5524,97 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     f'Cache-DiT cannot be used simultaneously with {name}.'
                 )
+
+    @contextlib.contextmanager
+    def _regione_call_context(self, pipeline, user_args: DiffusionArguments):
+        try:
+            with _regione.regione_context(
+                    pipeline, self._regione_settings(user_args, pipeline)):
+                yield
+        except ValueError as e:
+            raise _pipelines.UnsupportedPipelineConfigError(str(e)) from e
+
+    def _regione_settings(self,
+                          args: DiffusionArguments,
+                          pipeline) -> _regione.RegionESettings | None:
+        if not _diffusion_option_enabled(args, 'regione'):
+            return None
+        return _regione.build_settings(
+            pipeline.__class__.__name__,
+            warmup_step=args.regione_warmup_step,
+            post_step=args.regione_post_step,
+            refresh_step=args.regione_refresh_step,
+            threshold=args.regione_threshold,
+            cache_threshold=args.regione_cache_threshold,
+            erosion_dilation=args.regione_erosion_dilation,
+        )
+
+    def _auto_regione_check(self, args: DiffusionArguments):
+        for prop in args.__dict__.keys():
+            if prop.startswith('regione_'):
+                value = getattr(args, prop)
+                if value is not None or (isinstance(value, bool) and value is True):
+                    args.regione = True
+                    break
+
+        if not _diffusion_option_enabled(args, 'regione'):
+            return
+
+        if not _enums.model_type_supports_regione(self.model_type):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'RegionE is only supported for '
+                f'--model-type {_textprocessing.oxford_comma(_enums.REGIONE_MODEL_TYPES, "and")}.')
+
+        if self._parsed_adetailer_detector_uris:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'RegionE cannot be used with ADetailer.')
+
+        if args.mask_images:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'RegionE does not support inpaint masks.')
+
+        if self.model_cpu_offload:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'RegionE does not support model CPU offloading.')
+
+        if self.model_group_offload:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'RegionE does not support group offloading.')
+
+        args.inference_steps = _regione.resolve_regione_inference_step_count(
+            args.inference_steps)
+        steps = args.inference_steps
+        if steps != _regione.REGIONE_INFERENCE_STEPS:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'RegionE requires --inference-steps {_regione.REGIONE_INFERENCE_STEPS} '
+                f'(got {steps}).')
+
+        if not args.images and not args.reference_images:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'RegionE requires an input image in --image-seeds.')
+
+        class_name = self._pipeline.__class__.__name__
+        if not _regione.pipeline_class_supports_regione(class_name):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'RegionE does not support {class_name}. Use a non-inpaint Kontext or '
+                f'Qwen-Image-Edit checkpoint.')
+
+        conflicts = []
+        for name, label in (
+                ('tea_cache', 'TeaCache'),
+                ('spectrum', 'Spectrum'),
+                ('sada', 'SADA'),
+                ('ras', 'RAS')):
+            if _diffusion_option_enabled(args, name):
+                conflicts.append(label)
+        if args.cache_dit:
+            conflicts.append('Cache-DiT')
+        if args.dype:
+            conflicts.append('DyPE')
+        if conflicts:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'RegionE cannot be used simultaneously with '
+                f'{_textprocessing.oxford_comma(conflicts, "or")}.')
 
     def _spectrum_settings(self, args: DiffusionArguments) -> _spectrum.SpectrumSettings | None:
         if not args.spectrum:
@@ -5566,6 +5668,10 @@ class DiffusionPipelineWrapper:
         if args.ras:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'Spectrum cannot be used simultaneously with RAS.'
+            )
+        if _diffusion_option_enabled(args, 'regione'):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Spectrum cannot be used simultaneously with RegionE.'
             )
         if args.spectrum_weight is not None and not 0.0 <= args.spectrum_weight <= 1.0:
             raise _pipelines.UnsupportedPipelineConfigError(
@@ -5848,6 +5954,7 @@ class DiffusionPipelineWrapper:
                                     copy_args.get_pipeline_wrapper_kwargs()))
 
             self._lazy_init_pipeline(copy_args)
+            self._auto_regione_check(copy_args)
             self._apply_pag_applied_layers(self._pipeline, copy_args.pag_applied_layers)
             self._apply_pag_applied_layers(
                 self._sdxl_refiner_pipeline,

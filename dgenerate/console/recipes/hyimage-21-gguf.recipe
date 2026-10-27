@@ -9,7 +9,7 @@ title: HunyuanImage 2.1 (GGUF)
 @switch[{"id":"sp", "label":"Use Spectrum", "arg":"--spectrum", "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"hyimage-21", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-q4_k_m.gguf", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":3.5, "min":0}]

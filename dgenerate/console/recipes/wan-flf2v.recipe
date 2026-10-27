@@ -24,7 +24,7 @@ title: Wan 2.1 First-Last Frame
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"wan", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer"}]
 @submodelbuilder[{"label":"Second Transformer (MoE)", "arg":"--wan-second-transformer", "model": "Transformer", "divider-after":true}]

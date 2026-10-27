@@ -2460,9 +2460,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             "controlnet", "connectors".
             
             Video models also accept the subset that applies to their checkpoint
-            (for example Wan MoE ``transformer_2`` and I2V ``image_encoder``,
-            or LTX-2 ``connectors``). Wan rejects ``vae`` separately because
-            AutoencoderKLWan stays float32.
+            (for example Wan MoE "transformer_2" and I2V "image_encoder",
+            or LTX-2 "connectors"). The VAE is never quantized.
             """
         )
     )
@@ -3315,6 +3314,108 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
                      (default: {_pipelinewrapper.constants.DEFAULT_SPECTRUM_FLEX_WINDOW:g})
                      """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--regione',
+            action='store_true', default=False, dest='regione',
+            help=f"""Enable RegionE region-aware acceleration for instruction editing?
+
+            RegionE skips redundant denoising on unchanged image regions.
+            Omitting --inference-steps, or leaving the global default of 30,
+            uses 28. Any other step count is rejected.
+            Provide --image-seeds.
+
+            NOWRAP!
+            See: https://github.com/Peyton-Chen/RegionE
+
+            This is supported for: --model-type {_textprocessing.oxford_comma(_pipelinewrapper.REGIONE_MODEL_TYPES, "and")}.
+            Not supported with inpaint masks, TeaCache, Cache-DiT,
+            Spectrum, DyPE, SADA, RAS, model CPU offload, or group offload.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--regione-warmup-steps', metavar='INT',
+            nargs='*', type=_type_non_negative_integer, default=None, dest='regione_warmup_steps',
+            help="""RegionE warmup steps to try when --regione is enabled.
+
+            Each value is tried in turn. Unset values use pipeline presets.
+
+            Supplying any values implies --regione.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--regione-post-steps', metavar='INT',
+            nargs='*', type=_type_non_negative_integer, default=None, dest='regione_post_steps',
+            help="""RegionE trailing full denoising steps to try when --regione is enabled.
+
+            Supplying any values implies --regione.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--regione-refresh-steps', metavar='INT',
+            nargs='*', type=_type_non_negative_integer, default=None, dest='regione_refresh_steps',
+            help="""RegionE mask refresh steps to try when --regione is enabled.
+
+            Supplying any values implies --regione.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--regione-thresholds', metavar='FLOAT',
+            nargs='*', type=_type_unit_float, default=None, dest='regione_thresholds',
+            help="""RegionE region partition thresholds to try when --regione is enabled.
+
+            Each value is tried in turn and should be between 0 and 1.
+
+            Supplying any values implies --regione.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--regione-cache-thresholds', metavar='FLOAT',
+            nargs='*', type=_type_non_negative_float, default=None, dest='regione_cache_thresholds',
+            help="""RegionE velocity-decay cache thresholds to try when --regione is enabled.
+
+            Supplying any values implies --regione.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--regione-erosion-dilation',
+            action='store_true', dest='regione_erosion_dilation', default=None,
+            help="""Morphologically erode/dilate the RegionE region mask.
+
+            Supplying this flag implies --regione.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--regione-no-erosion-dilation',
+            action='store_false', dest='regione_erosion_dilation',
+            help="""Disable RegionE mask erosion/dilation.
+
+            Supplying this flag implies --regione.
+            """
         )
     )
 

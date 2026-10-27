@@ -81,6 +81,8 @@ from .enums import (
     model_type_uses_wan_vae,
     model_type_supports_tea_cache,
     TEA_CACHE_MODEL_TYPES,
+    model_type_supports_regione,
+    REGIONE_MODEL_TYPES,
     model_type_supports_deep_cache,
     DEEP_CACHE_MODEL_TYPES,
     CACHE_DIT_MODEL_TYPES,

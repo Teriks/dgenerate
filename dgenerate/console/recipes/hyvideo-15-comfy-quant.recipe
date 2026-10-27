@@ -13,7 +13,7 @@ title: HunyuanVideo 1.5 Text to Video (ComfyUI Quant)
 @dype[{"exclude":["sp"], "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"hyvideo-15", "divider-after":true, "map-default":"text_encoder"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/diffusion_models/hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors", "divider-after":true}]

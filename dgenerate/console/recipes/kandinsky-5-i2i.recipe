@@ -9,7 +9,7 @@ title: Kandinsky 5 Image Edit
 @switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"kandinsky5-image", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "divider-after":true}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Condition Image Processor"}]

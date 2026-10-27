@@ -29,7 +29,7 @@ title: Wan-Animate
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"wan-animate", "divider-after":true}]
 @dropdown[{"label":"Animate Mode", "arg":"--wan-animate-mode", "options":["animate", "replace"], "default":"animate"}]
 @switch[{"label":"Preprocess wan-driving=", "arg":"--wan-animate-preprocess"}]
 @int[{"label":"Segment Frame Length", "arg":"--wan-segment-frame-lengths", "default":77, "min":1}]

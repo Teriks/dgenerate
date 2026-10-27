@@ -11,7 +11,7 @@ title: Qwen-Image Layered
 @dype[{"exclude":["cd", "sp"],"divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"qwen-image-layered", "divider-after":true}]
 @imageseed[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in"], "default":"", "float":""}]
 @int[{"label":"Layers", "arg":"--qwen-layered-layers", "default":4, "min":1}]
 @dropdown[{"label":"Resolution", "arg":"--qwen-layered-resolution", "options":["640", "1024"], "default":"640"}]

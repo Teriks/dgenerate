@@ -13,7 +13,7 @@ title: HunyuanVideo 1.5 Text to Video (4-step LoRA)
 @dype[{"exclude":["cd", "sp"], "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"hyvideo-15", "divider-after":true}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA", "default":"https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/loras/hunyuanvideo1.5_t2v_480p_lightx2v_4step_lora_rank_32_bf16.safetensors"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "divider-after":true}]

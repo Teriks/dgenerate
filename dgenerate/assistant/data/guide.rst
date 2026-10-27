@@ -452,8 +452,8 @@ rejects ``--video-lengths``; trim with ``frame-end=``.
 Wan 2.2 MoE is ``Wan-AI/Wan2.2-T2V-A14B-Diffusers`` with
 ``--wan-low-noise-guidance-scales``.
 The Wan VAE defaults to ``float32``; override with ``--vae`` and
-``AutoencoderKLWan`` plus ``dtype=``. Do not put ``vae`` in
-``--quantizer-map``.
+``AutoencoderKLWan`` plus ``dtype=``. The VAE is not a
+``--quantizer-map`` target.
 Wan-Animate is ``--model-type wan-animate`` with a character still plus
 ``wan-pose=`` and ``wan-face=``, or ``wan-driving=`` with ``--wan-animate-preprocess``
 (openpose and yolo ``crops=True`` face crop) or ``--wan-pose-image-processors`` and

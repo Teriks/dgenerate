@@ -1,0 +1,8 @@
+Vendored from https://github.com/Peyton-Chen/RegionE
+Commit: df66d2e60710f66ce801e8b7c151d22c3239d114
+
+Vendored adapters: FluxKontext, QwenImageEdit, QwenImageEditPlus, Step1XEdit,
+and Step1XEditV1P2 (Step1X pipelines are not exposed in dgenerate yet).
+
+Paper: RegionE: Adaptive Region-Aware Generation for Efficient Image Editing
+https://arxiv.org/abs/2510.25590

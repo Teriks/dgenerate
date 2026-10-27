@@ -10,7 +10,7 @@ title: Krea 2 Raw (GGUF)
 @dype[{"exclude":["sp"], "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"krea2", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/realrebelai/KREA-2_GGUFs/blob/main/BASE/Krea-2-Base-Q4_K_M.gguf", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":28, "min":1}]

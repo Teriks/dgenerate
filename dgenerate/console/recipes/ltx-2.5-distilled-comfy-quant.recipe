@@ -36,7 +36,7 @@ title: LTX-2.5 Distilled (ComfyUI Quant)
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"ltx2", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors"}]
 @submodelbuilder[{"label":"IC-LoRA", "arg":"--ltx-ic-lora", "model": "IC-LoRA"}]

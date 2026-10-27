@@ -26,7 +26,7 @@ title: Wan 2.1 VACE
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
-@quantizer[{"divider-after":true}]
+@quantizer[{"model-type":"wan", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA", "divider-after":true}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
