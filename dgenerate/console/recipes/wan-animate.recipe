@@ -1,5 +1,4 @@
 title: Wan-Animate
-order: 43
 
 # Wan-Animate character animation. The seed is the character still.
 # wan-pose= and wan-face= are required, or wan-driving= with --wan-animate-preprocess.

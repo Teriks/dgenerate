@@ -334,6 +334,7 @@ class TransformerUri:
                 single_file_source = comfy_quant.checkpoint
                 if quant_config is None:
                     quant_config = comfy_quant.quantization_config
+            explicit_config = config
             if gguf_file:
                 checkpoint, config, config_subfolder, already_converted = _ggufcompat.plan_gguf_load(
                     model_path, config, config_subfolder,
@@ -349,8 +350,16 @@ class TransformerUri:
                 local_files_only=local_files_only,
                 quantization_config=quant_config,
                 device_map=device_map)
-            if (gguf_file or comfy_quant) and config:
-                # Packed shapes can mislead Diffusers' config detection.
+            # An explicit config is the pipeline the user named (repository
+            # plus --transformer). Autodetection, including the file-name
+            # variant, runs only when that pipeline was not supplied.
+            if explicit_config is None:
+                detected = _singlefilecompat.single_file_pretrained_repo_for_model_path(
+                    model_path, auth_token=auth_token, local_files_only=local_files_only)
+                if detected:
+                    config = detected
+                    config_subfolder = config_subfolder or self.subfolder or 'transformer'
+            if config:
                 single_file_kwargs['config'] = config
                 if config_subfolder:
                     single_file_kwargs['subfolder'] = config_subfolder

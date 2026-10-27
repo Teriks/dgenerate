@@ -103,6 +103,26 @@ DEFAULT_KOLORS_OUTPUT_HEIGHT: int = 1024
 Default output height for Kolors txt2img.
 """
 
+DEFAULT_HYDIT_OUTPUT_WIDTH: int = 1024
+"""
+Default output width for Hunyuan-DiT txt2img.
+"""
+
+DEFAULT_HYDIT_OUTPUT_HEIGHT: int = 1024
+"""
+Default output height for Hunyuan-DiT txt2img.
+"""
+
+DEFAULT_HYIMAGE21_OUTPUT_WIDTH: int = 2048
+"""
+Default output width for HunyuanImage 2.1 txt2img.
+"""
+
+DEFAULT_HYIMAGE21_OUTPUT_HEIGHT: int = 2048
+"""
+Default output height for HunyuanImage 2.1 txt2img.
+"""
+
 DEFAULT_FLOYD_IF_OUTPUT_WIDTH: int = 64
 """
 Default output width for Deep Floyd IF txt2img first stage.

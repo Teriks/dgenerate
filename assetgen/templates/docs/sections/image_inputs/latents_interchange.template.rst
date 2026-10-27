@@ -163,6 +163,18 @@ Z-Image Cooperative Denoising:
 
 @EXAMPLE[@PROJECT_DIR/examples/latents_interchange/z-image/cooperative-denoising-config.dgen]
 
+Hunyuan-DiT Cooperative Denoising:
+
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/hydit/cooperative-denoising-config.dgen]
+
+HunyuanImage 2.1 Cooperative Denoising:
+
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/hyimage-21/cooperative-denoising-config.dgen]
+
+HunyuanImage 2.1 Refiner Cooperative Denoising:
+
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/hyimage-21-refiner/cooperative-denoising-config.dgen]
+
 SDXL and Kolors models handle latents interchange differently than other model families.
 For SDXL or Kolors cooperative denoising, latents are passed directly as img2img input without
 the special ``latents:`` syntax, these latents will not be decoded by the receiving VAE

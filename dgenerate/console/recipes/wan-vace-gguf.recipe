@@ -1,5 +1,4 @@
-title: Wan VACE (GGUF)
-order: 49
+title: Wan 2.1 VACE (GGUF)
 
 # Wan VACE with a GGUF transformer. control= is the control clip.
 # The repository still supplies the VAE and text encoder.

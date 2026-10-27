@@ -1,0 +1,28 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Same autodetection as sd3-medium-as-model-config.dgen, with T5 left unloaded.
+# "+" keeps the detected CLIP encoders. "null" skips text_encoder_3.
+# A checkpoint that already contains its encoders, such as
+# sd3_medium_incl_clips.safetensors in without-t5-config.dgen, still extracts
+# them itself; "null" skips T5 there too.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+https://huggingface.co/city96/stable-diffusion-3-medium-gguf/blob/main/sd3_medium-Q4_K_S.gguf
+--model-type sd3
+--variant fp16
+--dtype float16
+--model-sequential-offload
+--text-encoders + + null
+--inference-steps 30
+--guidance-scales 5
+--gen-seeds 2
+--output-path sd3-gguf-without-t5
+--output-size 1024
+--prompts "a horse outside a barn"

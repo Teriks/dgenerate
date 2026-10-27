@@ -20,8 +20,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Detect Flux.2, Qwen-Image, Z-Image, LTX 2.5, Kandinsky 5, and Wan GGUF checkpoints and
-adapt ComfyUI layouts so Diffusers can load them without a manual config.
+Detect Flux.2, Qwen-Image, Z-Image, LTX 2.5, Kandinsky 5, HunyuanImage 2.1, and Wan GGUF
+checkpoints and adapt ComfyUI layouts so Diffusers can load them without a manual config.
 """
 
 import contextlib
@@ -112,6 +112,23 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
         return GGUFLayout(
             'ltx-2.5', 'Lightricks/LTX-2.5-Diffusers', comfy=comfy, adapt=True)
 
+    # Motif single-stream blocks carry a text cross-attention Flux does not.
+    if _has(shapes, 'single_transformer_blocks.0.cross_attn.to_q.weight',
+            _COMFY_PREFIX + 'single_transformer_blocks.0.cross_attn.to_q.weight'):
+        return GGUFLayout(
+            'motif-video', 'Motif-Technologies/Motif-Video-2B',
+            comfy=comfy, adapt=False)
+
+    # HunyuanVideo 1.5 shares HunyuanImage embedder names. The condition-type
+    # embedding is 1.5-only, so it has to win before the HunyuanImage check.
+    if _has(shapes, 'cond_type_embedding.weight', 'cond_type_embed.weight',
+            _COMFY_PREFIX + 'cond_type_embedding.weight',
+            _COMFY_PREFIX + 'cond_type_embed.weight'):
+        return GGUFLayout(
+            'hyvideo-15',
+            'hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v',
+            comfy=comfy, adapt=False)
+
     if _has(shapes, 'cap_embedder.0.weight', 'layers.0.adaLN_modulation.0.weight',
             _COMFY_PREFIX + 'cap_embedder.0.weight',
             _COMFY_PREFIX + 'layers.0.adaLN_modulation.0.weight'):
@@ -123,6 +140,16 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
             'first.weight', _COMFY_PREFIX + 'first.weight'):
         return GGUFLayout(
             'krea2', 'krea/Krea-2-Raw', comfy=comfy, adapt=True)
+
+    # Flux also has double_blocks img_attn qkv. Require a HunyuanImage-only embedder.
+    if _has(shapes, 'txt_in.input_embedder.weight', 'img_in.proj.weight',
+            _COMFY_PREFIX + 'txt_in.input_embedder.weight',
+            _COMFY_PREFIX + 'img_in.proj.weight',
+            'model.model.txt_in.input_embedder.weight',
+            'model.model.img_in.proj.weight'):
+        from . import singlefilecompat as _singlefilecompat
+        config_repo = _singlefilecompat.hunyuanimage_gguf_config_repo(shapes)
+        return GGUFLayout('hyimage21', config_repo, comfy=comfy, adapt=True)
 
     if _has(shapes, 'single_stream_modulation.lin.weight',
             _COMFY_PREFIX + 'single_stream_modulation.lin.weight'):
@@ -137,6 +164,11 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
         else:
             kind = 'flux2-dev'
         return GGUFLayout(kind, repo, comfy=comfy, adapt=False)
+
+    if _has(shapes, 'txt_in.text_norm.weight',
+            _COMFY_PREFIX + 'txt_in.text_norm.weight'):
+        return GGUFLayout(
+            'qwen-image-21', 'Qwen/Qwen-Image-2.1', comfy=comfy, adapt=False)
 
     if _has(shapes, 'time_text_embed.timestep_embedder.linear_1.weight',
             _COMFY_PREFIX + 'time_text_embed.timestep_embedder.linear_1.weight'):
@@ -230,14 +262,32 @@ def _detect_wan_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
             'wan-ti2v-5B', 'Wan-AI/Wan2.2-TI2V-5B-Diffusers',
             comfy=comfy, adapt=False)
     if width == 5120 and channels == 36:
+        # Wan 2.1 I2V keeps a CLIP image embedder (``img_emb``). Wan 2.2 I2V
+        # A14B uses the same 5120 x 36 patch and drops that embedder. FLF2V
+        # also has ``img_emb`` and was returned above via ``emb_pos``.
+        if _has_wan_image_embedder(shapes):
+            return GGUFLayout(
+                'wan-i2v-14B', 'Wan-AI/Wan2.1-I2V-14B-480P-Diffusers',
+                comfy=comfy, adapt=False)
         return GGUFLayout(
-            'wan-i2v-14B', 'Wan-AI/Wan2.1-I2V-14B-480P-Diffusers',
+            'wan-i2v-a14b', 'Wan-AI/Wan2.2-I2V-A14B-Diffusers',
             comfy=comfy, adapt=False)
     if width == 5120:
         return GGUFLayout(
             'wan-t2v-14B', 'Wan-AI/Wan2.1-T2V-14B-Diffusers',
             comfy=comfy, adapt=False)
     return None
+
+
+def _has_wan_image_embedder(shapes: dict) -> bool:
+    """True when a Wan file still has the Wan 2.1 CLIP image embedder."""
+    for name in shapes:
+        key = name[len(_COMFY_PREFIX):] if name.startswith(_COMFY_PREFIX) else name
+        if key.startswith('diffusion_model.'):
+            key = key[len('diffusion_model.'):]
+        if 'img_emb.' in key or 'image_embedder.' in key:
+            return True
+    return False
 
 
 def _has_wan_animate_2_nested_block(shapes: dict) -> bool:
@@ -749,6 +799,10 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
         return checkpoint, config, subfolder, False
     if layout.kind == 'qwen-image-layered':
         return adapt_qwen_layered_checkpoint(checkpoint), config, subfolder, False
+    if layout.kind == 'hyimage21':
+        from . import singlefilecompat as _singlefilecompat
+        converted = _singlefilecompat.convert_hunyuanimage_transformer_for_single_file(checkpoint)
+        return converted, config, subfolder, True
     if layout.kind == 'wan-animate-14B':
         return adapt_wan_animate_checkpoint(checkpoint), config, subfolder, False
     if layout.kind == 'wan-flf2v-14B':

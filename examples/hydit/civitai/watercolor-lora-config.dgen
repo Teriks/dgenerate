@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Fantasy Vision DiT with the Hunyuan-DiT watercolor LoRA.
+# https://civitai.com/models/638641/fantasy-vision-dit
+# https://civitai.com/models/604852/hunyuan-dit-lora-watercolor
+# Encoders and the VAE still come from Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers.
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if not civit_ai_token.strip() %}
+    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+    \exit
+{% endif %}
+
+https://civitai.com/api/download/models/714161?fileId=628851
+--model-type hydit
+--dtype float16
+--inference-steps 50
+--guidance-scales 5
+--gen-seeds 1
+--output-path hydit-civitai-watercolor
+--output-size 1024
+--loras https://civitai.com/api/download/models/676120?fileId=591364
+--prompts "watercolor painting of a house beside a pond"

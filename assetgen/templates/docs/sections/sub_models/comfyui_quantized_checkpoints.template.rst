@@ -50,7 +50,9 @@ are dequantized as they load.
 
 @EXAMPLE[@PROJECT_DIR/examples/stablediffusion3/comfy-quant/sd3.5-medium-single-file-config.dgen]
 
-A file holding only the transformer needs ``--text-encoders`` and ``--vae``.
+A file holding only the transformer loads its text encoders and VAE from the
+matching Diffusers repository. ``--text-encoders`` and ``--vae`` still override
+that, and ``null`` still skips an encoder.
 
 @EXAMPLE[@PROJECT_DIR/examples/z-image/comfy-quant/single-file-config.dgen]
 

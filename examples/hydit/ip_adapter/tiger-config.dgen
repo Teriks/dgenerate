@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Parity run for Tencent HunyuanDiT ipadapter/README.md quick start:
+#   sample_ipadapter.py --ref-image-path ipadapter/asset/input/tiger.png
+#   --i-scale 1.0 --infer-steps 100 --load-key distill (or module)
+#   --prompt "A tiger swimming in the ocean, with the ocean in the background. The composition is centered, in an anime style, creating a calm atmosphere."
+#
+# dgenerate uses HunyuanDiT-v1.2-Diffusers (not Tencent's module/distill .pt base), so
+# outputs will not match pixel-for-pixel. guidance_scale=3 matches sample_ipadapter.py.
+# Use --seeds for a fixed seed (Tencent sample uses 3333). --gen-seeds is only a COUNT
+# of random seeds to generate (e.g. --gen-seeds 1), not a seed value.
+
+Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers
+--model-type hydit
+--dtype float16
+--inference-steps 100
+--guidance-scales 3
+--seeds 3333
+--output-path hydit-ip-adapter-tencent-tiger
+--output-size 1024
+--image-seeds "adapter: https://raw.githubusercontent.com/Tencent-Hunyuan/HunyuanDiT/main/ipadapter/asset/input/tiger.png"
+--ip-adapters Tencent-Hunyuan/IP-Adapter;weight-name=ipa.pt;scale=1.0
+--prompts "A tiger swimming in the ocean, with the ocean in the background. The composition is centered, in an anime style, creating a calm atmosphere.; wrong eyes, bad faces, disfigured, bad art, deformed, extra limbs, blurry colors, blurry, repeated, morbid, mutilated"

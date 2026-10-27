@@ -1,0 +1,29 @@
+title: Hunyuan-DiT
+
+# Hunyuan-DiT 1.x text-to-image with optional LoRA, ControlNet, and IP-Adapter.
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default":"Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers", "optional":false, "file-types":["models"]}]
+--model-type hydit
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@quantizer[{"divider-after":true}]
+@submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
+@submodelbuilder[{"label":"Control Net", "arg":"--control-nets", "model":"Control Net"}]
+@submodelbuilder[{"label":"IP Adapter", "arg":"--ip-adapters", "model":"IP Adapter"}]
+@submodelbuilder[{"label":"Image Encoder", "arg":"--image-encoder", "model":"Image Encoder"}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "divider-after":true}]
+@imageseed[{"label":"Control / IP Adapter Image", "arg":"--image-seeds", "file-types":["images-in"], "float-label":"Image Seed Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":""}]
+@imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor"}]
+@imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor", "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@imageformat[{}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here"

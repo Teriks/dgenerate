@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image GGUF as the model. The text encoder and VAE load from Qwen/Qwen-Image.
+# config.dgen keeps the repository as the model and passes the file to --transformer.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 16 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 16 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% endif %}
+
+https://huggingface.co/QuantStack/Qwen-Image-GGUF/blob/main/Qwen_Image-Q4_K_S.gguf
+--model-type qwen-image {{ te_quant }}
+--dtype bfloat16
+--model-sequential-offload
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 20
+--guidance-scales 4
+--gen-seeds 1
+--output-path qwen-image-gguf-as-model
+--output-size 1024
+--prompts "A cat holding a sign that says hello world"

@@ -39,6 +39,7 @@ import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.pipelinewrapper.singlefilecompat as _singlefilecompat
 import dgenerate.types as _types
 
 
@@ -66,15 +67,22 @@ def fetch_model_index_dict(
     single_file_load = _hfhub.is_single_file_model_load(path)
 
     if single_file_load:
-        checkpoint = _single_file.load_single_file_checkpoint(
-            path,
-            token=auth_token,
-            local_files_only=local_files_only,
-            revision=revision,
-        )
+        override = _singlefilecompat.single_file_pretrained_repo_for_model_path(
+            path, auth_token=auth_token, local_files_only=local_files_only)
+        if override:
+            default_pretrained_model_config_name = override
+        else:
+            checkpoint = _single_file.load_single_file_checkpoint(
+                path,
+                token=auth_token,
+                local_files_only=local_files_only,
+                revision=revision,
+            )
 
-        config = _single_file.fetch_diffusers_config(checkpoint)
-        default_pretrained_model_config_name = config["pretrained_model_name_or_path"]
+            config = _single_file.fetch_diffusers_config(checkpoint)
+            default_pretrained_model_config_name = (
+                _singlefilecompat.single_file_pretrained_repo_for_checkpoint(checkpoint)
+                or config['pretrained_model_name_or_path'])
     else:
         default_pretrained_model_config_name = path
 
@@ -167,10 +175,13 @@ def _single_file_dtype(path: str,
         return text_encoder_bytes.most_common(1)[0][0]
 
     try:
-        config = _single_file.fetch_diffusers_config(
-            {key: _HeaderTensor(info['shape']) for key, info in header.items()})
+        header_checkpoint = {key: _HeaderTensor(info['shape']) for key, info in header.items()}
+        config = _single_file.fetch_diffusers_config(header_checkpoint)
+        config_repo = (
+            _singlefilecompat.single_file_pretrained_repo_for_checkpoint(header_checkpoint)
+            or config['pretrained_model_name_or_path'])
         config_dtype = auto_dtype(
-            config['pretrained_model_name_or_path'],
+            config_repo,
             revision=revision,
             subfolder=config.get('subfolder'),
             auth_token=auth_token,
@@ -318,9 +329,10 @@ def single_file_load_sub_module(
     )
 
     if config is None:
-        config = _single_file.fetch_diffusers_config(checkpoint)
-
-        default_pretrained_model_config_name = config["pretrained_model_name_or_path"]
+        detected = _single_file.fetch_diffusers_config(checkpoint)
+        default_pretrained_model_config_name = (
+            _singlefilecompat.single_file_pretrained_repo_for_checkpoint(checkpoint)
+            or detected['pretrained_model_name_or_path'])
     else:
         default_pretrained_model_config_name = config
 
@@ -665,6 +677,127 @@ def fetch_model_files_with_size(repo_id: str,
             yield from ()
 
 
+_SHARD_WEIGHT_NAME = re.compile(
+    r'^(?P<prefix>.+)-(?P<index>\d+)-of-(?P<total>\d+)\.(?P<ext>safetensors|bin)$')
+
+_WEIGHT_INDEX_NAMES = (
+    'diffusion_pytorch_model.safetensors.index.json',
+    'model.safetensors.index.json',
+    'pytorch_model.safetensors.index.json',
+    'diffusion_pytorch_model.bin.index.json',
+    'pytorch_model.bin.index.json',
+)
+
+
+def _variant_index_names(variant):
+    """Index filenames Diffusers and Transformers try, variant-specific first."""
+    names = []
+    for base in _WEIGHT_INDEX_NAMES:
+        if variant:
+            parts = base.split('.')
+            names.append('.'.join(parts[:-1] + [variant] + parts[-1:]))
+            for marker in ('.safetensors.', '.bin.'):
+                if marker in base:
+                    names.append(base.replace(marker, f'.{variant}{marker}', 1))
+        names.append(base)
+    ordered = []
+    seen = set()
+    for name in names:
+        if name not in seen:
+            seen.add(name)
+            ordered.append(name)
+    return ordered
+
+
+def _shard_groups(files):
+    """Split weight files into a single-file map and complete shard groups."""
+    plain = {}
+    grouped = {}
+    for name, size in files.items():
+        if os.path.splitext(name)[1] not in ('.safetensors', '.bin'):
+            continue
+        match = _SHARD_WEIGHT_NAME.match(name)
+        if match is None:
+            plain[name] = size
+            continue
+        key = (match.group('prefix'), int(match.group('total')), match.group('ext'))
+        grouped.setdefault(key, {})[name] = size
+    complete = []
+    for (prefix, total, ext), members in grouped.items():
+        indexes = []
+        for name in members:
+            match = _SHARD_WEIGHT_NAME.match(name)
+            indexes.append(int(match.group('index')))
+        if len(members) == total and set(indexes) == set(range(1, total + 1)):
+            complete.append(members)
+    return plain, complete
+
+
+def component_files_for_estimate(files, weight_map=None):
+    """
+    Weight files a component directory actually loads.
+
+    A safetensors index names one shard layout. Folders such as LTX-2.5's
+    ``transformer`` also contain a second layout, and ``connectors`` also
+    contains a single file that duplicates the shards. Those extras are not
+    loaded. With no index, Diffusers loads the single weights file when one
+    exists, and otherwise one complete shard group.
+    """
+    plain, complete = _shard_groups(files)
+    if weight_map:
+        named = {os.path.basename(str(path)) for path in weight_map.values()}
+        selected = {}
+        for name, size in list(plain.items()) + [
+                item for group in complete for item in group.items()]:
+            if name in named:
+                selected[name] = size
+        if selected:
+            return selected
+    if plain and not complete:
+        return plain
+    if plain and complete and not weight_map:
+        return plain
+    if complete:
+        return max(complete, key=lambda group: sum(group.values()))
+    return plain
+
+
+def _load_weight_map(repo_id, revision, directory, variant, auth_token, local_files_only):
+    """Return a component ``weight_map``, or ``None`` when no index can be read."""
+    for name in _variant_index_names(variant):
+        relative = name if directory in (None, '', '.') else os.path.join(directory, name)
+        relative = relative.replace('\\', '/')
+        path = None
+        if os.path.isdir(repo_id):
+            candidate = os.path.join(repo_id, *relative.split('/'))
+            if os.path.isfile(candidate):
+                path = candidate
+        else:
+            cached = _hf_try_to_load_from_cache(
+                repo_id, relative, revision=revision)
+            if isinstance(cached, str) and os.path.isfile(cached):
+                path = cached
+            elif not local_files_only:
+                try:
+                    path = huggingface_hub.hf_hub_download(
+                        repo_id, relative, revision=revision, token=auth_token)
+                except (OSError, huggingface_hub.errors.HfHubHTTPError,
+                        huggingface_hub.errors.LocalEntryNotFoundError,
+                        huggingface_hub.errors.EntryNotFoundError):
+                    path = None
+        if not path:
+            continue
+        try:
+            with open(path, encoding='utf-8') as handle:
+                payload = json.load(handle)
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            continue
+        weight_map = payload.get('weight_map') if isinstance(payload, dict) else None
+        if isinstance(weight_map, dict) and weight_map:
+            return weight_map
+    return None
+
+
 def estimate_model_memory_use(repo_id: str,
                               revision: str | None = 'main',
                               variant: str | None = None,
@@ -686,6 +819,10 @@ def estimate_model_memory_use(repo_id: str,
     Attempt to estimate the CPU side memory consumption of a model before it is loaded into memory.
 
     Either from huggingface disk cache or through the huggingface API if not on disk and ``local_files_only`` is ``False``.
+
+    A component that publishes a weight index contributes only the files named
+    there. An extra shard layout, or a single file that duplicates those shards,
+    is not counted.
 
     This function also works on blob links, paths to folders, or singular files on disk.
 
@@ -798,8 +935,16 @@ def estimate_model_memory_use(repo_id: str,
                 if directory not in important_directories:
                     continue
 
+                plain, complete = _shard_groups(files)
+                weight_map = None
+                if len(complete) > 1 or (plain and complete):
+                    weight_map = _load_weight_map(
+                        repo_id, revision, directory, variant, auth_token, local_files_only)
+                counted = None if forced_only else set(
+                    component_files_for_estimate(files, weight_map))
+
                 for file, size in files.items():
-                    base, ext = os.path.splitext(file)
+                    ext = os.path.splitext(file)[1]
 
                     forced_include = sentencepiece and (
                             directory == 'tokenizer' and os.path.basename(file) == 'spiece.model')
@@ -811,6 +956,9 @@ def estimate_model_memory_use(repo_id: str,
                         continue
 
                     if not forced_only and ext not in extensions:
+                        continue
+
+                    if counted is not None and file not in counted and not forced_include:
                         continue
 
                     size_sum += size
@@ -827,9 +975,16 @@ def estimate_model_memory_use(repo_id: str,
             if not directory_entry:
                 return 0
 
+            plain, complete = _shard_groups(directory_entry)
+            weight_map = None
+            if len(complete) > 1 or (plain and complete):
+                weight_map = _load_weight_map(
+                    repo_id, revision, directory, variant, auth_token, local_files_only)
+            counted = set(component_files_for_estimate(directory_entry, weight_map))
+
             for file, size in directory_entry.items():
                 _, ext = os.path.splitext(file)
-                if ext not in extensions:
+                if ext not in extensions or file not in counted:
                     continue
                 _messages.debug_log('Estimate Considering:',
                                     os.path.join(directory if directory != '.' else '', file) +

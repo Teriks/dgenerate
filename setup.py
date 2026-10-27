@@ -378,7 +378,7 @@ if __name__ != 'setup_as_library':
               'dgenerate': ['icon.ico', 'config_icon.ico', '*.json'],
               'dgenerate.console.themes': ['*.toml'],
               'dgenerate.console.schemas': ['*.json'],
-              'dgenerate.console.recipes': ['*.recipe'],
+              'dgenerate.console.recipes': ['*.recipe', 'index.json'],
               'dgenerate.translators.data': ['*.json'],
               'dgenerate.assistant': ['data/*.npz'],
               'dgenerate.pipelinewrapper.hub_configs': ['**/*.json', '**/*.txt', '**/*.model'],

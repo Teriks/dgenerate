@@ -44,11 +44,12 @@ class _TensorBlock(torch.nn.Module):
 
 
 class _Denoiser(torch.nn.Module):
-    def __init__(self, mismatch=False):
+    def __init__(self, mismatch=False, block_attr='transformer_blocks'):
         super().__init__()
         self.early = _PairBlock()
         self.cache_block = _TensorBlock() if mismatch else _PairBlock()
-        self.transformer_blocks = torch.nn.ModuleList([self.early, self.cache_block])
+        blocks = torch.nn.ModuleList([self.early, self.cache_block])
+        setattr(self, block_attr, blocks)
         self.mismatch = mismatch
         self.last_early = None
 
@@ -62,9 +63,9 @@ class _Denoiser(torch.nn.Module):
 
 
 class _Pipeline(torch.nn.Module):
-    def __init__(self, mismatch=False):
+    def __init__(self, mismatch=False, block_attr='transformer_blocks'):
         super().__init__()
-        self.transformer = _Denoiser(mismatch=mismatch)
+        self.transformer = _Denoiser(mismatch=mismatch, block_attr=block_attr)
 
 
 class TestSpectrum(unittest.TestCase):
@@ -94,6 +95,15 @@ class TestSpectrum(unittest.TestCase):
         pipe.transformer(hidden, timestep=torch.tensor(0.1), encoder_hidden_states=encoder)
         self.assertEqual(pipe.transformer.cache_block.calls, restored + 1)
         self.assertEqual(pipe.transformer.early.calls, 5)
+
+    def test_hydit_blocks_module_list(self):
+        pipe = _Pipeline(block_attr='blocks')
+        hidden = torch.zeros(1, 2, 4)
+        encoder = torch.zeros(1, 1, 3)
+        with _spectrum.apply(pipe, 4, _settings(warmup_steps=0, window_size=2.0)):
+            for timestep in torch.linspace(1, 0, 4):
+                pipe.transformer(hidden, timestep=timestep, encoder_hidden_states=encoder)
+        self.assertGreater(pipe.transformer.cache_block.calls, 0)
 
     def test_shape_mismatch_identity_pass(self):
         pipe = _Pipeline(mismatch=True)
@@ -179,10 +189,12 @@ class TestSpectrum(unittest.TestCase):
         self.assertTrue(_pipelinewrapper.model_type_supports_spectrum('kolors'))
         self.assertTrue(_pipelinewrapper.model_type_supports_dype('krea2'))
         for model_type in ('qwen-image-21', 'krea2', 'kandinsky5-image',
-                           'hunyuan-video-15', 'motif-video'):
+                           'hyvideo-15', 'motif-video', 'hyimage-21',
+                           'hyimage-21-refiner'):
             self.assertTrue(_pipelinewrapper.model_type_supports_spectrum(model_type))
         self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('sd'))
         self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('ltx2'))
+        self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('hydit'))
         self.assertIsInstance(_pipelinewrapper.SPECTRUM_MODEL_TYPES, tuple)
         self.assertTrue(_pipelinewrapper.model_type_supports_tea_cache('flux-fill'))
         self.assertFalse(_pipelinewrapper.model_type_supports_tea_cache('flux2'))

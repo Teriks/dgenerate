@@ -1,5 +1,4 @@
 title: Flux.2 Klein KV (GGUF)
-order: 69
 
 # The repo is gated. Reference images have no mask and no strength.
 # There is no guidance scale.

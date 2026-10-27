@@ -1,5 +1,4 @@
 title: LTX-2.5 Non-distilled (GGUF)
-order: 34
 
 # Latent Upscale runs stage 1 at half of Output Size, so Output Size must be
 # divisible by 64. Temporal mode needs guidance/audio guidance 1, no rescale or

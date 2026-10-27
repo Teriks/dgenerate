@@ -1,5 +1,4 @@
 title: Stable Diffusion 1.5
-order: 0
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stable-diffusion-v1-5/stable-diffusion-v1-5", "optional":false, "file-types":["models"]}]
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]

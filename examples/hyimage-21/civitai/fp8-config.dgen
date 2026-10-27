@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# HunyuanImage 2.1 FP8 diffusion model from CivitAI.
+# https://civitai.com/models/1944745/hunyuanimage-21-fp8-e4m3fn
+# Text encoders and the VAE load from
+# hunyuanvideo-community/HunyuanImage-2.1-Diffusers.
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if not civit_ai_token.strip() %}
+    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+    \exit
+{% endif %}
+
+https://civitai.com/api/download/models/2206738?fileId=2100004
+--model-type hyimage-21
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path hyimage21-civitai-fp8
+--output-size 2048
+--prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"

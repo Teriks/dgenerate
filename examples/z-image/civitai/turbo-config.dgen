@@ -1,0 +1,31 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Z-Image Turbo diffusion model from CivitAI. The version also publishes a
+# separate VAE; this file is the transformer, so the Qwen3 encoder and VAE
+# load from Tongyi-MAI/Z-Image-Turbo.
+# https://civitai.com/models/2168935/z-image-turbo
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if not civit_ai_token.strip() %}
+    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if not have_cuda() or gpu_memory_gib <= 16 %}
+    \set offload --model-sequential-offload
+{% endif %}
+
+https://civitai.com/api/download/models/2442439?fileId=2333412
+--model-type z-image {{ offload }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 9
+--guidance-scales 0
+--gen-seeds 1
+--output-path z-image-civitai-turbo
+--output-size 1024
+--prompts "A red fox sitting in a snowy forest, photograph"

@@ -210,7 +210,7 @@ class TestVideoModels(unittest.TestCase):
     def test_wan_vae_model_types(self):
         for model_type in ('wan', 'wan-animate', 'wan-animate-2', 'motif-video'):
             self.assertTrue(_pipelinewrapper.model_type_uses_wan_vae(model_type), model_type)
-        for model_type in ('ltx2', 'ltx-video', 'hunyuan-video-15', 'kandinsky5-video', 'sdxl'):
+        for model_type in ('ltx2', 'ltx-video', 'hyvideo-15', 'kandinsky5-video', 'sdxl'):
             self.assertFalse(_pipelinewrapper.model_type_uses_wan_vae(model_type), model_type)
 
     def test_motif_vae_encode_runs_in_vae_dtype(self):
@@ -308,18 +308,18 @@ class TestVideoModels(unittest.TestCase):
             MotifVideoPipeline,
         )
 
-        self.assertTrue(_pipelinewrapper.model_type_is_video('hunyuan-video-15'))
+        self.assertTrue(_pipelinewrapper.model_type_is_video('hyvideo-15'))
         self.assertTrue(_pipelinewrapper.model_type_is_video('motif-video'))
         self.assertEqual(
             _videopipelines._resolve_video_load(
                 _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15,
                 {'_class_name': 'HunyuanVideo15Pipeline'}, None)[:2],
-            ('hunyuan-video-15', HunyuanVideo15Pipeline))
+            ('hyvideo-15', HunyuanVideo15Pipeline))
         self.assertEqual(
             _videopipelines._resolve_video_load(
                 _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15,
                 {'_class_name': 'HunyuanVideo15ImageToVideoPipeline'}, None)[:2],
-            ('hunyuan-video-15', HunyuanVideo15ImageToVideoPipeline))
+            ('hyvideo-15', HunyuanVideo15ImageToVideoPipeline))
         self.assertEqual(
             _videopipelines._resolve_video_load(
                 _pipelinewrapper.ModelType.MOTIF_VIDEO,
@@ -327,7 +327,7 @@ class TestVideoModels(unittest.TestCase):
             ('motif-video', MotifVideoPipeline))
         self.assertIs(
             _videopipelines._single_image_video_pipeline_class(
-                'hunyuan-video-15', 'image-to-video'),
+                'hyvideo-15', 'image-to-video'),
             HunyuanVideo15ImageToVideoPipeline)
         self.assertIs(
             _videopipelines._single_image_video_pipeline_class('motif-video', 'image-to-video'),
@@ -1882,6 +1882,36 @@ class TestVideoModels(unittest.TestCase):
         self.assertNotIn('ltx_prompt_enhancer', modules)
         self.assertIs(loaded['connectors'], LTX2TextConnectors)
 
+    def test_quantized_classic_modules_skips_null_index_slots(self):
+        loaded = {}
+
+        def fake_load(component_class, model_path, subfolder, *args, **kwargs):
+            loaded[subfolder] = component_class
+            return object()
+
+        index = {
+            '_class_name': 'WanImageToVideoPipeline',
+            'boundary_ratio': 0.9,
+            'image_encoder': [None, None],
+            'image_processor': [None, None],
+            'text_encoder': ['transformers', 'UMT5EncoderModel'],
+            'transformer': ['diffusers', 'WanTransformer3DModel'],
+        }
+        with unittest.mock.patch.object(
+                _videopipelines.loading._util, 'fetch_model_index_dict', return_value=index), \
+                unittest.mock.patch.object(
+                    _videopipelines, '_load_quantized_module', side_effect=fake_load):
+            modules = _videopipelines._quantized_classic_modules(
+                'Wan-AI/Wan2.2-I2V-A14B-Diffusers', None, None, None,
+                _pipelinewrapper.DataType.BFLOAT16,
+                'sdnq', None, None, True, 'cpu', False,
+                skip_names=frozenset({'transformer'}))
+        self.assertNotIn('image_encoder', modules)
+        self.assertNotIn('image_processor', modules)
+        self.assertNotIn('transformer', modules)
+        self.assertIn('text_encoder', modules)
+        self.assertIn('text_encoder', loaded)
+
     def test_cache_kwargs_omits_mode(self):
         class Wrapper:
             model_path = 'org/ltx'
@@ -3057,6 +3087,12 @@ class TestWanModels(unittest.TestCase):
             model_type=_pipelinewrapper.ModelType.WAN,
             scheduler_uri='FlowMatchEulerDiscreteScheduler;shift=5.0')
         allowed.check()
+
+        checkpoint = _config(
+            model_path='org/wan',
+            model_type=_pipelinewrapper.ModelType.WAN,
+            scheduler_uri='UniPCMultistepScheduler;flow-shift=5')
+        checkpoint.check()
 
         animate_rejected = _config(
             model_path='org/wan-animate',

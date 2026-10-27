@@ -39,7 +39,7 @@ Image Generation
 Video Generation
 ----------------
 
-* Generate whole clips in one pipeline call: LTX-2.5 (``--model-type ltx2``) and LTX-Video (``--model-type ltx-video``), Wan 2.1 / 2.2 (``--model-type wan``), Hunyuan Video 1.5 (``hunyuan-video-15``), Kandinsky 5 Video (``kandinsky5-video``), and Motif Video (``motif-video``)
+* Generate whole clips in one pipeline call: LTX-2.5 (``--model-type ltx2``) and LTX-Video (``--model-type ltx-video``), Wan 2.1 / 2.2 (``--model-type wan``), Hunyuan Video 1.5 (``hyvideo-15``), Kandinsky 5 Video (``kandinsky5-video``), and Motif Video (``motif-video``)
 * Text-to-video, or image-to-video with a still in ``--image-seeds`` as the opening frame. With LTX, use a clip as the opening, ``last-frame=`` as the closing frame (a still or clip), or both, to extend existing footage or generate a lead-in; slice with ``--frame-start`` / ``--frame-end``
 * Wan modes: image-to-video, first-last-frame, video-to-video, and VACE;``--model-type wan-animate`` and ``wan-animate-2`` animate a character still from a driving clip (``wan-driving=``, ``wan-pose=``, ``wan-face=``, ``--wan-animate-preprocess``)
 * LTX-2.5 guided by an IC-LoRA from ``--ltx-ic-lora`` (canny, depth, pose, etc.) using a reference clip processed by ``--control-image-processors``, and style or effect LoRAs from ``--loras``

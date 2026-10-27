@@ -1,5 +1,4 @@
-title: Wan Image to Video (GGUF)
-order: 47
+title: Wan 2.1 Image to Video (GGUF)
 
 # Wan image to video with a GGUF transformer. The repository still
 # supplies the VAE, text encoder, and image encoder.

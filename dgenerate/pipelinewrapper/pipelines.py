@@ -45,6 +45,7 @@ import transformers
 
 import dgenerate.devicecache as _devicecache
 import dgenerate.exceptions as _d_exceptions
+import dgenerate.extras.hydit as _hydit
 import dgenerate.extras.kolors as _kolors
 import dgenerate.extras.spectrum as _spectrum
 import dgenerate.extras.ultraedit
@@ -1024,7 +1025,8 @@ def estimate_pipeline_cache_footprint(
         auth_token: str | None = None,
         extra_args: dict[str, typing.Any] | None = None,
         local_files_only: bool = False,
-        include_directories: collections.abc.Sequence[str] | None = None) -> int:
+        include_directories: collections.abc.Sequence[str] | None = None,
+        component_repo: str | None = None) -> int:
     """
     Estimate the CPU side cache memory use of a pipeline.
 
@@ -1057,28 +1059,61 @@ def estimate_pipeline_cache_footprint(
         API will be contacted when necessary.
     :param include_directories: extra repo folder names to count with the main estimate,
         for example LTX ``audio_vae`` and ``vocoder``.
+    :param component_repo: Hugging Face repo that supplies the VAE and text encoders
+        when ``model_path`` is only a transformer file. The file is counted only when
+        ``include_unet_or_transformer`` is set, because that is when the transformer
+        stays in the pipeline cache instead of the transformer cache. The repository's
+        own transformer is not counted.
     :return: size estimate in bytes.
     """
 
     if extra_args is None:
         extra_args = dict()
 
-    usage = _util.estimate_model_memory_use(
-        repo_id=_hfhub.download_non_hf_slug_model(model_path, local_files_only=local_files_only, auth_token=auth_token),
-        revision=revision,
-        variant=variant,
-        subfolder=subfolder,
-        include_unet_or_transformer=include_unet_or_transformer,
-        include_vae=include_vae,
-        safety_checker=safety_checker and 'safety_checker' not in extra_args,
-        include_text_encoder=include_text_encoders,
-        include_text_encoder_2=include_text_encoders,
-        include_text_encoder_3=include_text_encoders,
-        include_directories=include_directories,
-        auth_token=auth_token,
-        local_files_only=local_files_only,
-        sentencepiece=_enums.model_type_is_floyd(model_type)
-    )
+    if component_repo:
+        usage = 0
+        if include_unet_or_transformer and os.path.isfile(model_path):
+            usage += os.path.getsize(model_path)
+            _messages.debug_log(
+                'Estimate Considering:',
+                os.path.basename(model_path) + f', Size: {usage} Bytes')
+
+        def _kept(name: str) -> bool:
+            return not (name in extra_args and extra_args[name] is None)
+
+        usage += _util.estimate_model_memory_use(
+            repo_id=component_repo,
+            revision=revision,
+            variant=variant,
+            subfolder=subfolder,
+            include_unet_or_transformer=False,
+            include_vae=include_vae and _kept('vae'),
+            safety_checker=safety_checker and 'safety_checker' not in extra_args,
+            include_text_encoder=include_text_encoders and _kept('text_encoder'),
+            include_text_encoder_2=include_text_encoders and _kept('text_encoder_2'),
+            include_text_encoder_3=include_text_encoders and _kept('text_encoder_3'),
+            include_directories=include_directories,
+            auth_token=auth_token,
+            local_files_only=local_files_only,
+            sentencepiece=_enums.model_type_is_floyd(model_type)
+        )
+    else:
+        usage = _util.estimate_model_memory_use(
+            repo_id=_hfhub.download_non_hf_slug_model(model_path, local_files_only=local_files_only, auth_token=auth_token),
+            revision=revision,
+            variant=variant,
+            subfolder=subfolder,
+            include_unet_or_transformer=include_unet_or_transformer,
+            include_vae=include_vae,
+            safety_checker=safety_checker and 'safety_checker' not in extra_args,
+            include_text_encoder=include_text_encoders,
+            include_text_encoder_2=include_text_encoders,
+            include_text_encoder_3=include_text_encoders,
+            include_directories=include_directories,
+            auth_token=auth_token,
+            local_files_only=local_files_only,
+            sentencepiece=_enums.model_type_is_floyd(model_type)
+        )
 
     if image_encoder_uri:
         parsed = _uris.ImageEncoderUri.parse(image_encoder_uri)
@@ -1197,7 +1232,12 @@ def get_pipeline_modules(pipeline: diffusers.DiffusionPipeline):
     :param pipeline: the pipeline
     :return: dictionary of modules by name
     """
-    return {k: v for k, v in pipeline.components.items() if isinstance(v, torch.nn.Module)}
+    modules = {k: v for k, v in pipeline.components.items() if isinstance(v, torch.nn.Module)}
+    # Hunyuan-DiT IP-Adapter attaches CLIP outside the diffusers component list.
+    image_encoder = getattr(pipeline, 'image_encoder', None)
+    if image_encoder is not None and isinstance(image_encoder, torch.nn.Module):
+        modules.setdefault('image_encoder', image_encoder)
+    return modules
 
 
 def _set_sequential_cpu_offload_flag(module: diffusers.DiffusionPipeline | torch.nn.Module, value: bool):
@@ -1307,16 +1347,26 @@ def _promote_bare_parameter_tensors(module: torch.nn.Module) -> None:
                 value, requires_grad=bool(value.requires_grad))
 
 
+def _offload_as_one_unit(module: torch.nn.Module) -> bool:
+    """
+    This module reads child weights without calling those children.
+
+    ``torch.nn.MultiheadAttention`` reads ``out_proj.weight`` directly.
+    Hunyuan-DiT's text pooler reads ``q_proj`` / ``k_proj`` / ``v_proj`` /
+    ``c_proj`` weights inside ``F.multi_head_attention_forward``. Leaf offload
+    hooks on those linears never run, so the weights stay on the meta device.
+    """
+    return isinstance(module, torch.nn.MultiheadAttention) or \
+        type(module).__name__ == 'HunyuanDiTAttentionPool'
+
+
 def _sequential_offload_preload_classes(module: torch.nn.Module) -> list[str] | None:
     """
     Class names whose submodule weights accelerate must load as one unit.
 
-    ``torch.nn.MultiheadAttention`` reads ``out_proj.weight`` directly instead of
-    calling ``out_proj``, so the per-leaf offload hook on ``out_proj`` never runs
-    and the weight stays on the meta device (SigLIP pooling head, for example).
+    See :func:`_offload_as_one_unit`.
     """
-    names = {type(m).__name__ for m in module.modules()
-             if isinstance(m, torch.nn.MultiheadAttention)}
+    names = {type(m).__name__ for m in module.modules() if _offload_as_one_unit(m)}
     return sorted(names) if names else None
 
 
@@ -1495,12 +1545,12 @@ def _clear_group_offload_hooks(module: torch.nn.Module):
 
 def _group_multihead_attention(module: torch.nn.Module):
     """
-    Regroup each ``torch.nn.MultiheadAttention`` under ``module`` as one offload group.
+    Regroup modules that read child weights directly as one offload group.
 
-    Leaf-level group offload hooks ``out_proj`` as its own group, but
-    ``MultiheadAttention`` reads ``out_proj.weight`` without calling ``out_proj``,
-    so that group is never onloaded. Run this after ``apply_group_offloading``
-    and before the first forward, which traces the prefetch order.
+    Leaf-level group offload hooks those children as their own groups, but the
+    parent never calls them, so those groups are never onloaded. Run this after
+    ``apply_group_offloading`` and before the first forward, which traces the
+    prefetch order.
     """
     from diffusers.hooks.group_offloading import (
         _GROUP_OFFLOADING,
@@ -1509,7 +1559,7 @@ def _group_multihead_attention(module: torch.nn.Module):
     )
 
     for mha in module.modules():
-        if not isinstance(mha, torch.nn.MultiheadAttention):
+        if not _offload_as_one_unit(mha):
             continue
 
         hooks = [m._diffusers_hook.get_hook(_GROUP_OFFLOADING)
@@ -1717,20 +1767,20 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
                     f'({_memory.bytes_best_human_unit(cache_metadata.size)}) '
                     f'is leaving CPU side memory, '
                     f'cache size is now '
-                    f'{cache_metadata.size} Bytes '
-                    f'({_memory.bytes_best_human_unit(cache_metadata.size)})')
+                    f'{_pipeline_cache.size} Bytes '
+                    f'({_memory.bytes_best_human_unit(_pipeline_cache.size)})')
 
             else:
+                _pipeline_cache.size += cache_metadata.size
+
                 _messages.debug_log(
                     f'Cached {_types.class_and_id_string(pipeline)} Size = '
                     f'{cache_metadata.size} Bytes '
                     f'({_memory.bytes_best_human_unit(cache_metadata.size)}) '
                     f'is entering CPU side memory, '
                     f'cache size is now '
-                    f'{cache_metadata.size} Bytes '
-                    f'({_memory.bytes_best_human_unit(cache_metadata.size)})')
-
-                _pipeline_cache.size += cache_metadata.size
+                    f'{_pipeline_cache.size} Bytes '
+                    f'({_memory.bytes_best_human_unit(_pipeline_cache.size)})')
         except _d_memoize.ObjectCacheKeyError:
             # does not exist in the cache
             pass
@@ -2739,6 +2789,10 @@ def diffusion_transformer_class(model_type: _enums.ModelType):
         return diffusers.QwenImage21Transformer2DModel
     if model_type == _enums.ModelType.KREA2:
         return diffusers.Krea2Transformer2DModel
+    if _enums.model_type_is_hydit(model_type):
+        return diffusers.HunyuanDiT2DModel
+    if _enums.model_type_is_hyimage_21_family(model_type):
+        return diffusers.HunyuanImageTransformer2DModel
     if model_type in {
             _enums.ModelType.KANDINSKY5_IMAGE,
             _enums.ModelType.KANDINSKY5_VIDEO}:
@@ -2828,6 +2882,25 @@ def _flow_image_pipeline_class(
         if pipeline_type != _enums.PipelineType.TXT2IMG and not help_mode:
             raise UnsupportedPipelineConfigError('--model-type krea2 supports text-to-image only.')
         return diffusers.Krea2Pipeline
+
+    if model_type == _enums.ModelType.HYIMAGE_21_REFINER:
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type hyimage-21-refiner does not support --control-nets.')
+        if pipeline_type != _enums.PipelineType.TXT2IMG and not help_mode:
+            raise UnsupportedPipelineConfigError(
+                '--model-type hyimage-21-refiner supports text-to-image with a required input image '
+                'via --image-seeds (no img2img strength).')
+        return diffusers.HunyuanImageRefinerPipeline
+
+    if model_type == _enums.ModelType.HYIMAGE_21:
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type hyimage-21 does not support --control-nets.')
+        if pipeline_type != _enums.PipelineType.TXT2IMG and not help_mode:
+            raise UnsupportedPipelineConfigError(
+                '--model-type hyimage-21 supports text-to-image only.')
+        return diffusers.HunyuanImagePipeline
 
     if model_type == _enums.ModelType.KANDINSKY5_IMAGE:
         if controlnet_uris:
@@ -2948,6 +3021,9 @@ _MODEL_INDEX_CHECKS = [
     (_enums.model_type_is_qwen_image, ('^QwenImage', 'Qwen-Image')),
     (_enums.model_type_is_qwen_image_21, ('^QwenImage21', 'Qwen-Image 2.1')),
     (_enums.model_type_is_krea2, ('^Krea2', 'Krea 2')),
+    (_enums.model_type_is_hyimage_21_refiner, ('^HunyuanImageRefiner', 'HunyuanImage 2.1 Refiner')),
+    (_enums.model_type_is_hyimage_21, ('^HunyuanImagePipeline', 'HunyuanImage 2.1')),
+    (_enums.model_type_is_hydit, ('^HunyuanDiT', 'Hunyuan-DiT')),
     (_enums.model_type_is_kandinsky5_image, ('^Kandinsky5', 'Kandinsky 5.0 Image')),
     (_enums.model_type_is_flux, ('^Flux(?!2)', 'Flux')),
     (_enums.model_type_is_sd3, ('^StableDiffusion3.*', 'Stable Diffusion 3')),
@@ -2969,6 +3045,7 @@ _REDIRECTED_FLOW_CLASSES = (
     ('QwenImage21', _enums.model_type_is_qwen_image, 'qwen-image-21'),
     ('QwenImageLayered', _enums.model_type_is_qwen_image, 'qwen-image-layered'),
     ('QwenImageEdit', _enums.model_type_is_qwen_image, 'qwen-image-edit'),
+    ('HunyuanImageRefiner', _enums.model_type_is_hyimage_21, 'hyimage-21-refiner'),
 )
 
 
@@ -3111,21 +3188,34 @@ def get_pipeline_class(
                 '--model-type sd3 is not compatible with --unet.')
 
     # Torch Kolors restrictions
-    if _enums.model_type_is_sd3(model_type):
+    if _enums.model_type_is_kolors(model_type):
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type kolors is not compatible with --t2i-adapters.')
+
+    if _enums.model_type_is_hydit(model_type):
+        if unet_uri:
+            raise UnsupportedPipelineConfigError(
+                '--model-type hydit uses a DiT transformer, not a UNet. Use --transformer instead.')
+        if t2i_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type hydit is not compatible with --t2i-adapters.')
+        if pag:
+            raise UnsupportedPipelineConfigError(
+                '--model-type hydit does not support perturbed attention guidance (--pag*).')
 
     if transformer_uri:
         if not _enums.model_type_is_sd3(model_type) \
                 and not _enums.model_type_is_flux(model_type) \
                 and not _enums.model_type_is_flow_image(model_type) \
+                and not _enums.model_type_is_hydit(model_type) \
                 and not _enums.model_type_is_video(model_type):
             raise UnsupportedPipelineConfigError(
                 '--transformer is only supported for --model-type sd3, sd3-pix2pix, flux, flux-fill, '
                 'flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, '
-                'qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, ltx2, ltx-video, wan, wan-animate, '
-                'wan-animate-2, hunyuan-video-15, motif-video, and kandinsky5-video.')
+                'qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, hydit, hyimage-21, '
+                'hyimage-21-refiner, ltx2, ltx-video, wan, wan-animate, '
+                'wan-animate-2, hyvideo-15, motif-video, and kandinsky5-video.')
 
     # Incompatible combinations
     if controlnet_uris and t2i_adapter_uris:
@@ -3273,6 +3363,11 @@ def get_pipeline_class(
                     pipeline_class = diffusers.StableDiffusion3ControlNetPipeline
                 else:
                     pipeline_class = diffusers.StableDiffusion3Pipeline
+            elif _enums.model_type_is_hydit(model_type):
+                if controlnet_uris:
+                    pipeline_class = _hydit.HunyuanDiTControlNetPipeline
+                else:
+                    pipeline_class = _hydit.HunyuanDiTPipeline
             elif model_type == _enums.ModelType.KOLORS:
                 if controlnet_uris:
                     if pag:
@@ -3325,6 +3420,13 @@ def get_pipeline_class(
                         pipeline_class = diffusers.StableDiffusionPipeline
 
         elif pipeline_type == _enums.PipelineType.IMG2IMG:
+            if _enums.model_type_is_hydit(model_type) and not help_mode:
+                raise UnsupportedPipelineConfigError(
+                    '--model-type hydit does not support img2img in this diffusers version.')
+            if _enums.model_type_is_hyimage_21_family(model_type) and not help_mode:
+                raise UnsupportedPipelineConfigError(
+                    f'--model-type {_enums.get_model_type_string(model_type)} does not support img2img.')
+
             if controlnet_uris:
                 if is_pix2pix:
                     raise UnsupportedPipelineConfigError(
@@ -3434,6 +3536,12 @@ def get_pipeline_class(
             if _enums.model_type_is_upscaler(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Diffusion upscaler model types do not support inpainting.')
+            if _enums.model_type_is_hydit(model_type) and not help_mode:
+                raise UnsupportedPipelineConfigError(
+                    '--model-type hydit does not support inpainting.')
+            if _enums.model_type_is_hyimage_21_family(model_type) and not help_mode:
+                raise UnsupportedPipelineConfigError(
+                    f'--model-type {_enums.get_model_type_string(model_type)} does not support inpainting.')
 
             if is_pix2pix:
                 if is_sdxl:
@@ -3714,6 +3822,14 @@ def _create_diffusion_pipeline(
     if model_class_name:
         validate_model_index_class(model_type, model_class_name, model_path)
 
+    single_file_pipeline_repo = None
+    if _hfhub.is_single_file_model_load(model_path):
+        single_file_pipeline_repo = _singlefilecompat.single_file_pretrained_repo_for_model_path(
+            model_path,
+            auth_token=auth_token,
+            local_files_only=local_files_only,
+        )
+
     pipeline_class = get_pipeline_class(
         model_type=model_type,
         pipeline_type=pipeline_type,
@@ -3828,7 +3944,8 @@ def _create_diffusion_pipeline(
         extra_args=extra_modules,
         local_files_only=local_files_only,
         include_directories=extra_pipeline_weight_directories(
-            model_index if isinstance(model_index, dict) else None)
+            model_index if isinstance(model_index, dict) else None),
+        component_repo=single_file_pipeline_repo,
     )
 
     if controlnet_uris and controlnet_is_owned_by_pipeline(
@@ -4210,7 +4327,13 @@ def _create_diffusion_pipeline(
                 )
             )
         else:
-            if _hfhub.is_single_file_model_load(model_path) and should_quantize:
+            if single_file_pipeline_repo:
+                encoder_model = single_file_pipeline_repo
+                encoder_load_subfolder = encoder_name
+            else:
+                encoder_model = model_path
+                encoder_load_subfolder = encoder_subfolder
+            if (_hfhub.is_single_file_model_load(encoder_model) and should_quantize):
                 raise UnsupportedPipelineConfigError(
                     'Cannot use global --quantizer URI when attempting to '
                     f'load default text encoder for "{encoder_name}" from a single file checkpoint. '
@@ -4220,10 +4343,10 @@ def _create_diffusion_pipeline(
             return load_text_encoder(
                 _uris.TextEncoderUri(
                     encoder=encoder,
-                    model=model_path,
+                    model=encoder_model,
                     variant=variant,
                     revision=revision,
-                    subfolder=encoder_subfolder,
+                    subfolder=encoder_load_subfolder,
                     dtype=dtype,
                     quantizer=quantizer_uri if should_quantize else None
                 )
@@ -4301,16 +4424,23 @@ def _create_diffusion_pipeline(
                     raise UnsupportedPipelineConfigError(
                         f'Unsupported VAE encoder type: {vae_encoder_name}'
                     )
+            elif isinstance(vae_param, str):
+                vae_encoder_name = vae_param
             else:
-                vae_encoder_name = vae_param.__name__
+                vae_encoder_name = getattr(vae_param, '__name__', None)
 
             if vae_encoder_name is not None:
-                vae_extract_from_checkpoint = _hfhub.is_single_file_model_load(model_path)
+                if single_file_pipeline_repo:
+                    vae_model = single_file_pipeline_repo
+                    vae_extract_from_checkpoint = False
+                else:
+                    vae_model = model_path
+                    vae_extract_from_checkpoint = _hfhub.is_single_file_model_load(model_path)
                 try:
                     creation_kwargs['vae'] = \
                         load_vae(_uris.VAEUri(
                             encoder=vae_encoder_name,
-                            model=model_path,
+                            model=vae_model,
                             variant=variant,
                             revision=revision,
                             subfolder=vae_subfolder,
@@ -4321,12 +4451,12 @@ def _create_diffusion_pipeline(
                     if vae_extract_from_checkpoint or not variant:
                         raise
                     _messages.debug_log(
-                        f'VAE variant {variant!r} is not published for "{model_path}"; '
+                        f'VAE variant {variant!r} is not published for "{vae_model}"; '
                         'loading the default VAE weights.')
                     creation_kwargs['vae'] = \
                         load_vae(_uris.VAEUri(
                             encoder=vae_encoder_name,
-                            model=model_path,
+                            model=vae_model,
                             revision=revision,
                             subfolder=vae_subfolder,
                             dtype=dtype
@@ -4591,6 +4721,8 @@ def _create_diffusion_pipeline(
                 creation_kwargs['controlnet'] = diffusers.FluxMultiControlNetModel(controlnets)
             elif _enums.model_type_is_qwen_image(model_type):
                 creation_kwargs['controlnet'] = diffusers.QwenImageMultiControlNetModel(controlnets)
+            elif _enums.model_type_is_hydit(model_type):
+                creation_kwargs['controlnet'] = diffusers.HunyuanDiT2DMultiControlNetModel(controlnets)
             else:
                 creation_kwargs['controlnet'] = controlnets
         else:
@@ -4605,6 +4737,12 @@ def _create_diffusion_pipeline(
         creation_kwargs['safety_checker'] = None
 
     creation_kwargs.update(extra_modules)
+
+    hydit_ip_adapter_image_encoder = None
+    if _enums.model_type_is_hydit(model_type):
+        hydit_ip_adapter_image_encoder = creation_kwargs.pop('image_encoder', None)
+        if hydit_ip_adapter_image_encoder is not None:
+            creation_kwargs.pop('feature_extractor', None)
 
     def _handle_generic_pipeline_load_failure(e):
         exc_msg = str(e)
@@ -4632,19 +4770,37 @@ def _create_diffusion_pipeline(
             # dgenerate already supplied it.
             with _safetensorscompat.single_file_components(
                     transformer_loaded='transformer' in creation_kwargs):
-                pipeline = _pipeline_creation_args_debug(
-                    backend='Torch',
-                    cls=pipeline_class,
-                    method=pipeline_class.from_single_file,
-                    original_config=original_config,
-                    model=model_path,
-                    token=auth_token,
-                    revision=revision,
-                    variant=variant,
-                    torch_dtype=torch_dtype,
-                    use_safe_tensors=model_path.endswith('.safetensors'),
-                    local_files_only=local_files_only,
-                    **creation_kwargs)
+                if single_file_pipeline_repo is not None:
+                    # Transformer-only checkpoints: components are loaded above
+                    # from the detected Diffusers repo; the file is the transformer.
+                    _messages.debug_log(
+                        'Single file transformer checkpoint; loading pipeline '
+                        f'components from "{single_file_pipeline_repo}".')
+                    pipeline = _pipeline_creation_args_debug(
+                        backend='Torch',
+                        cls=pipeline_class,
+                        method=pipeline_class.from_pretrained,
+                        model=single_file_pipeline_repo,
+                        token=auth_token,
+                        revision=revision,
+                        variant=_repo_pipeline_variant(variant, model_index, creation_kwargs),
+                        torch_dtype=torch_dtype,
+                        local_files_only=local_files_only,
+                        **creation_kwargs)
+                else:
+                    pipeline = _pipeline_creation_args_debug(
+                        backend='Torch',
+                        cls=pipeline_class,
+                        method=pipeline_class.from_single_file,
+                        original_config=original_config,
+                        model=model_path,
+                        token=auth_token,
+                        revision=revision,
+                        variant=variant,
+                        torch_dtype=torch_dtype,
+                        use_safe_tensors=model_path.endswith('.safetensors'),
+                        local_files_only=local_files_only,
+                        **creation_kwargs)
 
         except diffusers.loaders.single_file.SingleFileComponentError as e:
             _handle_single_file_component_error(e)
@@ -4674,6 +4830,10 @@ def _create_diffusion_pipeline(
             pipeline.vae.quant_conv = lambda x: x
         if pipeline.vae.post_quant_conv is None:
             pipeline.vae.post_quant_conv = lambda x: x
+
+    if hydit_ip_adapter_image_encoder is not None:
+        # Do not register_modules: HunyuanDiT is not an image_encoder pipeline component.
+        pipeline.image_encoder = hydit_ip_adapter_image_encoder
 
     # Textual Inversions, LoRAs, IP Adapters
 
@@ -4738,11 +4898,19 @@ def _create_diffusion_pipeline(
 
     # Model Offloading
 
-    # SD3 image_encoder needs to be excluded to avoid meta tensor errors.
+    # SD3 / Hunyuan-DiT IP-Adapter image_encoder must not use leaf sequential offload
+    # (meta tensor errors when accelerate hooks wrap CLIP).
 
-    if _enums.model_type_is_sd3(model_type) and (
-            sequential_cpu_offload or model_group_offload) and 'image_encoder' in creation_kwargs:
-        pipeline._exclude_from_cpu_offload.append("image_encoder")
+    if (sequential_cpu_offload or model_group_offload) and (
+            (_enums.model_type_is_sd3(model_type) and 'image_encoder' in creation_kwargs)
+            or hydit_ip_adapter_image_encoder is not None
+            or (_enums.model_type_is_hydit(model_type) and ip_adapter_uris)):
+        # The Diffusers list is a class attribute. Append would change every
+        # pipeline of that class and grow on each load. Copy it onto the instance.
+        excluded = list(getattr(pipeline, '_exclude_from_cpu_offload', ()) or ())
+        if 'image_encoder' not in excluded:
+            excluded.append('image_encoder')
+        pipeline._exclude_from_cpu_offload = excluded
 
     if not device.startswith('cpu'):
         if sequential_cpu_offload:
@@ -4751,6 +4919,13 @@ def _create_diffusion_pipeline(
             enable_model_cpu_offload(pipeline, device)
         elif model_group_offload:
             enable_group_offload(pipeline, device)
+
+    if hasattr(pipeline, 'image_encoder') and pipeline.image_encoder is not None:
+        offload_device = getattr(pipeline, '_dgenerate_offload_device', None)
+        if offload_device is not None:
+            from dgenerate.extras.hydit.image_encoder import HunyuanDiTCLIPImageEncoder
+            if not isinstance(pipeline.image_encoder, HunyuanDiTCLIPImageEncoder):
+                pipeline.image_encoder.to(offload_device)
 
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
 
@@ -4985,6 +5160,23 @@ def _create_minimal_pipeline_for_component_extraction(
     creation_kwargs = {}
     manual_quantizers = {}  # Store quantizer info from manual URIs
 
+    single_file_pipeline_repo = None
+    if _hfhub.is_single_file_model_load(model_path):
+        single_file_pipeline_repo = _singlefilecompat.single_file_pretrained_repo_for_model_path(
+            model_path, auth_token=auth_token, local_files_only=False)
+    component_repo = single_file_pipeline_repo or model_path
+    encoder_index = None
+    if single_file_pipeline_repo or not _hfhub.is_single_file_model_load(model_path):
+        try:
+            encoder_index = _util.fetch_model_index_dict(
+                component_repo,
+                revision=revision,
+                subfolder=None if single_file_pipeline_repo else subfolder,
+                auth_token=auth_token)
+        except Exception as encoder_index_error:
+            _messages.debug_log(
+                f'Could not read model_index for text encoders: {encoder_index_error}')
+
     # Get all text encoder parameters that the pipeline expects
     pipe_params = inspect.signature(pipeline_class.__init__).parameters
     text_encoder_params = [name for name in pipe_params.keys() if _is_text_encoder_component(name)]
@@ -5024,35 +5216,31 @@ def _create_minimal_pipeline_for_component_extraction(
             # Load default text encoder for this parameter
             # We need to load it even if we're not caching it to prevent errors
             try:
-                if _hfhub.is_single_file_model_load(model_path):
+                if single_file_pipeline_repo or _hfhub.is_single_file_model_load(model_path):
                     encoder_subfolder = encoder_param
+                    encoder_load_model = single_file_pipeline_repo or model_path
                 else:
                     encoder_subfolder = os.path.join(subfolder, encoder_param) if subfolder else encoder_param
+                    encoder_load_model = model_path
 
                 # Infer encoder class from model_type. Do not trust
                 # model_index.json here — some repos ship incorrect class
                 # names. Flow-image models are the exception: their encoder
                 # layout varies enough that the index is still consulted.
+                # Transformer-only single files use the detected repo index
+                # the same way, so Qwen and Z-Image encoders are not loaded
+                # as CLIP.
                 #
                 # SD3 text_encoder must be CLIPTextModelWithProjection.
                 # Loading it as CLIPTextModel drops text_projection; the
                 # fused cache then reloads with zero matching weights under
                 # bitsandbytes (Parameter without CB).
                 flow_encoder_name = None
-                if (_enums.model_type_is_flow_image(model_type)
-                        and not _hfhub.is_single_file_model_load(model_path)):
-                    try:
-                        flow_index = _util.fetch_model_index_dict(
-                            model_path,
-                            revision=revision,
-                            subfolder=subfolder,
-                            auth_token=auth_token)
-                        flow_entry = flow_index.get(encoder_param)
-                        if flow_entry and flow_entry[1]:
-                            flow_encoder_name = flow_entry[1]
-                    except Exception as flow_encoder_error:
-                        _messages.debug_log(
-                            f'Could not read {encoder_param} class from model_index: {flow_encoder_error}')
+                if encoder_index and (
+                        _enums.model_type_is_flow_image(model_type) or single_file_pipeline_repo):
+                    flow_entry = encoder_index.get(encoder_param)
+                    if flow_entry and flow_entry[1]:
+                        flow_encoder_name = flow_entry[1]
                 if flow_encoder_name:
                     encoder_name = flow_encoder_name
                 elif encoder_param == 'text_encoder':
@@ -5079,7 +5267,7 @@ def _create_minimal_pipeline_for_component_extraction(
 
                 default_encoder_uri = _uris.TextEncoderUri(
                     encoder=encoder_name,
-                    model=model_path,
+                    model=encoder_load_model,
                     variant=variant,
                     revision=revision,
                     subfolder=encoder_subfolder,
@@ -5179,16 +5367,26 @@ def _create_minimal_pipeline_for_component_extraction(
     # Load the pipeline with all required components
     if _hfhub.is_single_file_model_load(model_path):
         try:
-            pipeline = pipeline_class.from_single_file(
-                model_path,
-                original_config=original_config,
-                token=auth_token,
-                revision=revision,
-                variant=variant,
-                torch_dtype=torch_dtype,
-                use_safe_tensors=model_path.endswith('.safetensors'),
-                **creation_kwargs
-            )
+            if single_file_pipeline_repo is not None:
+                pipeline = pipeline_class.from_pretrained(
+                    single_file_pipeline_repo,
+                    token=auth_token,
+                    revision=revision,
+                    variant=_repo_pipeline_variant(variant, model_index, creation_kwargs),
+                    torch_dtype=torch_dtype,
+                    local_files_only=local_files_only,
+                    **creation_kwargs)
+            else:
+                pipeline = pipeline_class.from_single_file(
+                    model_path,
+                    original_config=original_config,
+                    token=auth_token,
+                    revision=revision,
+                    variant=variant,
+                    torch_dtype=torch_dtype,
+                    use_safe_tensors=model_path.endswith('.safetensors'),
+                    **creation_kwargs
+                )
         except diffusers.loaders.single_file.SingleFileComponentError as e:
             _handle_single_file_component_error(e)
         except Exception as e:
@@ -5390,7 +5588,9 @@ def _cache_components_granular(
 
         # Save component
         _messages.debug_log(f"Saving cached {component} to: {cache_path}")
-        component_obj.save_pretrained(cache_path, variant=variant)
+        from .weightsave import save_module_with_progress
+        save_module_with_progress(
+            component_obj, cache_path, variant=variant, desc=f'Writing {component}')
 
         # Store in cache
         with cache_store:

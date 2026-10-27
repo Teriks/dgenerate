@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Comfy-Org fp8 transformer + Diffusers pipeline (text encoders / VAE from the slug).
+
+hunyuanvideo-community/HunyuanImage-2.1-Diffusers
+--model-type hyimage-21
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/resolve/main/split_files/diffusion_models/hunyuanimage2.1_fp8_e4m3fn.safetensors
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path hyimage21-comfy-fp8
+--output-size 2048
+--prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"

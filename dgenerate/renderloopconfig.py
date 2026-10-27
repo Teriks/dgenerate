@@ -2876,6 +2876,12 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'without {a_namer("image_seeds")}.'
                 )
 
+            if self.model_type == _pipelinewrapper.ModelType.HYIMAGE_21_REFINER and not args_help:
+                raise RenderLoopConfigError(
+                    f'you cannot use {a_namer("model_type")} hyimage-21-refiner '
+                    f'without {a_namer("image_seeds")}.'
+                )
+
             # Check arguments that require image seeds
             if self.adetailer_detector_uris:
                 raise RenderLoopConfigError(
@@ -3135,6 +3141,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         self._check_flux_model_requirements(a_namer)
         self._check_prefixed_flow_options(a_namer)
         self._check_flow_image_model_requirements(a_namer)
+        self._check_hydit_model_requirements(a_namer)
         self._check_sd3_model_requirements(a_namer)
         self._check_sdxl_model_requirements(a_namer)
         self._check_floyd_requirements(a_namer)
@@ -3588,8 +3595,9 @@ class RenderLoopConfig(_types.SetFromMixin):
             allowed = _videopipelines.WAN_SCHEDULER_NAMES
             family = 'Wan'
             extra = (
-                ' including URI arguments such as shift and use-dynamic-shifting '
-                '(3.0 for 480p, 5.0 for 720p).'
+                ' including shift and use-dynamic-shifting on '
+                'FlowMatchEulerDiscreteScheduler (3.0 for 480p, 5.0 for 720p), '
+                'and flow-shift on UniPCMultistepScheduler.'
             )
         elif self.model_type == _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15:
             allowed = _videopipelines.HUNYUAN_VIDEO_15_SCHEDULER_NAMES
@@ -3795,6 +3803,18 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.qwen_layered_resolution is not None and self.qwen_layered_resolution not in (640, 1024):
             raise RenderLoopConfigError(
                 f'{a_namer("qwen_layered_resolution")} must be 640 or 1024.')
+
+    def _check_hydit_model_requirements(self, a_namer: typing.Callable[[str], str]):
+        """Validate Hunyuan-DiT specific options."""
+        if not _pipelinewrapper.model_type_is_hydit(self.model_type):
+            return
+        if self.unet_uri:
+            raise RenderLoopConfigError(
+                f'{a_namer("unet_uri")} cannot be used with --model-type hydit. '
+                f'Use {a_namer("transformer_uri")} to replace the DiT.')
+        if self.pag:
+            raise RenderLoopConfigError(
+                f'{a_namer("pag")} is not supported with --model-type hydit.')
 
     def _check_flow_image_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Validate adapter and interchange compatibility for flow-image families."""

@@ -1,5 +1,4 @@
 title: Krea 2 Turbo (ComfyUI Quant)
-order: 89
 
 # The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
 # NVFP4). Quantized layers stay packed and use hardware matmuls where available.

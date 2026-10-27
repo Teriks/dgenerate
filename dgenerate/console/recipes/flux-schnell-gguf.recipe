@@ -1,5 +1,4 @@
 title: Flux Schnell (GGUF)
-order: 19
 
 # Flux requires a huggingface auth token to access
 # you must request access to the repository

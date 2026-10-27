@@ -40,13 +40,16 @@ only; they do not synthesize audio.
 HunyuanVideo 1.5
 ----------------
 
-Use ``--model-type hunyuan-video-15`` with a Diffusers HunyuanVideo 1.5
+Use ``--model-type hyvideo-15`` with a Diffusers HunyuanVideo 1.5
 checkpoint. The published 480p T2V and I2V checkpoints are separate; the
 checkpoint determines which pipeline is loaded. The defaults are 15 fps,
 guidance 6, and 50 inference steps. ``FlowMatchEulerDiscreteScheduler`` is the
 supported scheduler. Hunyuan also accepts ``--sigmas`` when specifying a custom
 FlowMatch schedule; the number of sigmas determines the number of denoising
-steps.
+steps. ``--loras`` loads a HunyuanVideo 1.5 LoRA onto the transformer, including
+original-layout checkpoints and Musubi ``lora_unet_`` files. A ComfyUI quantized
+transformer keeps those adapters active instead of fusing them into the packed
+weights.
 
 The examples use ``bfloat16``, sequential CPU offload, 50 steps, and an
 ``848x480`` canvas. Sequential offload is a useful starting point on consumer
@@ -55,9 +58,10 @@ between CPU and GPU. ``--model-cpu-offload`` and ``--model-group-offload`` are
 also available. ``--torch-compile`` compiles the repeated transformer blocks;
 the first run can take longer while compilation happens.
 
-* `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hunyuan_video_15/text-to-video/config.dgen>`_
-* `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hunyuan_video_15/image-to-video/config.dgen>`_
-* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hunyuan_video_15/gguf/config.dgen>`_
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/text-to-video/config.dgen>`_
+* `4-step LoRA <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/lora/lightx2v-4step-config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/image-to-video/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/gguf/config.dgen>`_
 
 Motif-Video
 -----------
@@ -67,7 +71,8 @@ The same repository supports text-to-video and first-frame image-to-video; the
 mode selects the corresponding pipeline. Defaults are 24 fps, guidance 5, and
 50 inference steps. Motif supports ``FlowMatchEulerDiscreteScheduler`` and
 ``DPMSolverMultistepScheduler``. ``--max-sequence-length`` controls the prompt
-token limit (default 512).
+token limit (default 512). ``--loras`` loads Diffusers-format and Musubi
+Motif-Video LoRAs onto the transformer.
 
 ``--timesteps`` sets an explicit timestep schedule for Motif. Give one or
 more comma-separated integer schedules, such as ``1000,700,300,0``, or
@@ -682,29 +687,39 @@ Wan-Animate uses ``UniPCMultistepScheduler``. Wan-Animate-2 also accepts
 Text to video
 ~~~~~~~~~~~~~
 
-No image seed is text to video. ``Wan-AI/Wan2.1-T2V-1.3B-Diffusers`` is the
-small checkpoint. ``Wan-AI/Wan2.1-T2V-14B-Diffusers`` is the large one.
+No image seed is text to video. ``Wan-AI/Wan2.2-T2V-A14B-Diffusers`` is the
+Wan 2.2 mixture-of-experts checkpoint. The examples use guidance 4 and
+``--wan-low-noise-guidance-scales 3``. ``Wan-AI/Wan2.1-T2V-1.3B-Diffusers`` is
+the small Wan 2.1 checkpoint.
 
 .. code-block:: bash
 
-    Wan-AI/Wan2.1-T2V-1.3B-Diffusers --model-type wan \
+    Wan-AI/Wan2.2-T2V-A14B-Diffusers --model-type wan \
+        --guidance-scales 4 --wan-low-noise-guidance-scales 3 \
         --video-lengths 5 --video-fps 16 --output-size 832x480 \
         --prompts "a red fox riding a horse down a highway;static, blurry"
 
-See `examples/wan/basic/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/basic/text-to-video-config.dgen>`_.
+See `examples/wan/basic/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/basic/text-to-video-config.dgen>`_
+for Wan 2.1 and
+`examples/wan/basic/text-to-video-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/basic/text-to-video-wan22-config.dgen>`_
+for Wan 2.2.
 
 Image to video
 ~~~~~~~~~~~~~~
 
 One still is the first frame. The checkpoint needs an image encoder.
-``Wan-AI/Wan2.1-I2V-14B-480P-Diffusers`` is the 480p I2V model. A Wan 2.1 I2V
-transformer only embeds that opening still.
+``Wan-AI/Wan2.2-I2V-A14B-Diffusers`` is the Wan 2.2 image-to-video model.
+It only embeds the opening still. ``last-frame=`` still needs a first-last-frame
+checkpoint such as ``Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers``.
 
 .. code-block:: bash
 
     --image-seeds first.jpg
 
-See `examples/wan/image_conditioning/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/image_conditioning/image-to-video-config.dgen>`_.
+See `examples/wan/image_conditioning/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/image_conditioning/image-to-video-config.dgen>`_
+for Wan 2.1 and
+`examples/wan/image_conditioning/image-to-video-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/image_conditioning/image-to-video-wan22-config.dgen>`_
+for Wan 2.2.
 
 First and last frame
 ~~~~~~~~~~~~~~~~~~~~
@@ -862,7 +877,17 @@ It may not name ``vae``.
 text encoder. ``--wan-second-transformer`` does the same for the Wan 2.2
 low-noise expert. ``--text-encoders`` replaces UMT5. Use ``+`` to keep the
 checkpoint default, or ``null`` to skip a slot. ``--loras`` loads a Diffusers
-LoRA onto the transformer.
+LoRA onto the transformer. ``component=transformer_2`` loads one LoRA onto the
+Wan 2.2 low-noise expert instead, so a high-noise and low-noise pair can be
+given together.
+
+LightX2V's 4-step Wan LoRAs use the undistilled checkpoint, guidance 1, 4
+steps, and ``UniPCMultistepScheduler`` with ``flow-shift=5``. Wan 2.2 uses one
+LoRA per expert. See
+`examples/wan/lora/lightx2v-4step-t2v-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/lora/lightx2v-4step-t2v-config.dgen>`_,
+`examples/wan/lora/lightx2v-4step-i2v-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/lora/lightx2v-4step-i2v-config.dgen>`_,
+and
+`examples/wan/lora/lightx2v-4step-moe-t2v-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/lora/lightx2v-4step-moe-t2v-config.dgen>`_.
 
 ``--model-sequential-offload``, ``--model-cpu-offload``, and
 ``--model-group-offload`` are available. ``--torch-compile`` compiles repeated

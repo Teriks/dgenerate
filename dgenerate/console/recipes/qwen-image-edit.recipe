@@ -1,5 +1,4 @@
 title: Qwen-Image Edit
-order: 73
 
 # The image seed is required. A mask selects edit-inpaint. Edit-plus is a different repo.
 # Strength applies only to inpaint.

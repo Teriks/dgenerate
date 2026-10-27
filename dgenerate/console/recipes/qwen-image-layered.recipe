@@ -1,5 +1,4 @@
 title: Qwen-Image Layered
-order: 76
 
 # One image in. Each layer is written as its own file.
 

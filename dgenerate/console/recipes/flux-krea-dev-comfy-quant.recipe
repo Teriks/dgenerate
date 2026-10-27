@@ -1,5 +1,4 @@
 title: Flux Krea Dev (ComfyUI Quant)
-order: 26
 
 # Flux Krea requires a huggingface auth token to access
 # you must request access to the repository

@@ -1,5 +1,4 @@
 title: Flux Fill Dev
-order: 27
 
 # Flux requires a huggingface auth token to access
 # you must request access to the repository

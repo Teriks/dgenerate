@@ -1,0 +1,35 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan 2.1 I2V 14B 720p FP8 from CivitAI.
+# https://civitai.com/models/1301957/wan21-i2v14b-720p-fp8
+# patch_embedding width 5120 and 36 input channels is 14B image-to-video.
+# 480p and 720p share that shape. "720" in the download name, including the
+# Content-Disposition name kept for a web-cache file, selects
+# Wan-AI/Wan2.1-I2V-14B-720P-Diffusers. A file whose name does not say 720
+# uses the 480p repository. One --image-seeds path is the first frame.
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if not civit_ai_token.strip() %}
+    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+    \exit
+{% endif %}
+
+\setp image "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg"
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+
+https://civitai.com/api/download/models/1469565?fileId=1370952
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 5
+--animation-format mp4
+--output-path wan-civitai-i2v
+--image-seeds {{ image }}
+--prompts "An astronaut in a white spacesuit stands on the lunar surface, then walks forward. Dust lifts around the boots. Earth hangs in the black sky. The suit matches the first frame. High quality, ultrarealistic detail.;{{ neg }}"

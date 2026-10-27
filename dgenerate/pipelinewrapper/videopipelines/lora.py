@@ -192,7 +192,9 @@ def _preflight_quantized_video_loras_locked(
                 raise _pipelines.UnsupportedPipelineConfigError(
                     f'LoRA adapters remain attached to video component "{name}" after unloading.')
             component_path = temporary_path / name
-            module.save_pretrained(str(component_path))
+            from dgenerate.pipelinewrapper.weightsave import save_module_with_progress
+            save_module_with_progress(
+                module, str(component_path), desc=f'Writing {name}')
             manifest[name] = {
                 'module': type(module).__module__,
                 'class': type(module).__name__,
@@ -309,3 +311,116 @@ def _video_lora_component_uri_cache_key(
             name, parsed.encoder, parsed.model, parsed.revision,
             parsed.variant, parsed.subfolder, parsed.dtype, parsed.mode))
     return tuple(component_uris)
+
+
+# Every pipeline dgenerate loads for a video ``--model-type``.
+_VIDEO_LORA_PIPELINE_CLASSES = (
+    'LTX2Pipeline',
+    'LTX2ImageToVideoPipeline',
+    'LTX2ConditionPipeline',
+    'LTX2InContextPipeline',
+    'LTXPipeline',
+    'LTXImageToVideoPipeline',
+    'LTXConditionPipeline',
+    'WanPipeline',
+    'WanImageToVideoPipeline',
+    'WanVideoToVideoPipeline',
+    'WanVACEPipeline',
+    'WanAnimatePipeline',
+    'WanAnimate2ModularPipeline',
+    'WanAnimate2DistilledModularPipeline',
+    'HunyuanVideo15Pipeline',
+    'HunyuanVideo15ImageToVideoPipeline',
+    'MotifVideoPipeline',
+    'MotifVideoImage2VideoPipeline',
+    'Kandinsky5T2VPipeline',
+    'Kandinsky5I2VPipeline',
+)
+
+
+def _peft_adapter_header(metadata):
+    """The parsed PEFT adapter config, or ``None`` when metadata is not one."""
+    if not isinstance(metadata, dict) or not metadata:
+        return None
+    if any(torch.is_tensor(value) for value in metadata.values()):
+        return None
+    if 'lora_adapter_metadata' in metadata:
+        raw = metadata['lora_adapter_metadata']
+        parsed = json.loads(raw) if isinstance(raw, str) else raw
+        return parsed if isinstance(parsed, dict) else None
+    if any(key in metadata for key in ('peft_type', 'target_modules', 'lora_alpha', 'r')):
+        return metadata
+    return None
+
+
+def _scale_lora_b(state, header):
+    """Fold ``lora_alpha / r`` into ``lora_B``. Rank-equal adapters are unchanged."""
+    alpha = header.get('lora_alpha')
+    rank = header.get('r')
+    alpha_pattern = header.get('alpha_pattern') or {}
+    rank_pattern = header.get('rank_pattern') or {}
+    if not alpha_pattern and not rank_pattern and (
+            alpha is None or not rank or float(alpha) == float(rank)):
+        return state
+    scaled = {}
+    for key, value in state.items():
+        if 'lora_B' in key and getattr(value, 'ndim', 0) > 1:
+            module = key.split('.lora_B', 1)[0].removeprefix('transformer.')
+            module_rank = float(rank_pattern.get(module, rank or value.shape[1]))
+            module_alpha = float(alpha_pattern.get(
+                module, alpha if alpha is not None else module_rank))
+            scale = module_alpha / module_rank if module_rank else 1.0
+            scaled[key] = value * scale if scale != 1.0 else value
+        else:
+            scaled[key] = value
+    return scaled
+
+
+def _guard_video_lora_state_dict(pipeline_class):
+    """Drop PEFT config headers before Diffusers builds ``LoraConfig``.
+
+    Diffusers keeps only metadata keys prefixed with ``transformer.``. A PEFT
+    header (``r``, ``lora_alpha``, ``target_modules``) becomes ``{}``, and PEFT
+    then looks up ``model_type`` on a transformer config that does not have it.
+    """
+    if not callable(getattr(pipeline_class, 'lora_state_dict', None)):
+        return
+    current = getattr(pipeline_class.lora_state_dict, '__func__', None)
+    if getattr(current, '_dgenerate_video_lora_guard', False):
+        return
+    original = pipeline_class.lora_state_dict.__func__
+
+    def lora_state_dict(cls, pretrained_model_name_or_path_or_dict, **kwargs):
+        want_metadata = kwargs.pop('return_lora_metadata', False)
+        kwargs['return_lora_metadata'] = True
+        loaded = original(cls, pretrained_model_name_or_path_or_dict, **kwargs)
+        if isinstance(loaded, tuple):
+            state, metadata = loaded[0], loaded[1] if len(loaded) > 1 else None
+        else:
+            state, metadata = loaded, None
+        header = _peft_adapter_header(metadata)
+        if header is not None:
+            state, metadata = _scale_lora_b(state, header), None
+        if want_metadata:
+            return state, metadata
+        return state
+
+    lora_state_dict._dgenerate_video_lora_guard = True
+    pipeline_class.lora_state_dict = classmethod(lora_state_dict)
+
+
+def install_video_lora_support() -> None:
+    """Install Motif-Video LoRA loading and the shared metadata guard."""
+    from .motif_lora import install_motif_video_lora_loader
+    from .hyvideo_lora import install_hunyuan_video15_lora_loader
+
+    install_hunyuan_video15_lora_loader()
+    install_motif_video_lora_loader()
+    import diffusers
+    for name in _VIDEO_LORA_PIPELINE_CLASSES:
+        pipeline_class = getattr(diffusers, name, None)
+        if pipeline_class is not None:
+            _guard_video_lora_state_dict(pipeline_class)
+
+
+install_video_lora_support()

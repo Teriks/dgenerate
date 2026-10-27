@@ -334,9 +334,209 @@ class TestWebFileCacheDownload(unittest.TestCase):
                 self.assertEqual(handle.read(), payload)
             self.assertEqual(calls[0]['Range'], 'bytes=5-')
             self.assertFalse(partials[0].exists())
+            self.assertEqual(cached.metadata['filename'], 'weights.safetensors')
+            self.assertEqual(cache.filename_for_path(cached.path), 'weights.safetensors')
 
             calls.clear()
             with patch('dgenerate.filecache.requests.get', fake_get):
                 again = cache.download(url, tqdm_pbar=None)
             self.assertEqual(again.path, cached.path)
             self.assertEqual(calls, [])
+
+    def test_cache_hit_backfills_missing_filename_and_retries_after_failure(self):
+        payload = b'weights'
+        url = 'https://civitai.com/api/download/models/9?token=secret-token&fileId=3'
+        attempts = {'n': 0}
+
+        def fake_get(request_url, headers=None, stream=None, timeout=None):
+            attempts['n'] += 1
+            if attempts['n'] == 1:
+                raise requests.ConnectionError('offline')
+            return _Response(
+                200,
+                {
+                    'Content-Type': 'application/octet-stream',
+                    'Content-Disposition': 'attachment; filename="qwen_image_2.1_turbo.safetensors"',
+                },
+                [payload],
+                request_url)
+
+        with tempfile.TemporaryDirectory() as directory:
+            cache = WebFileCache(
+                os.path.join(directory, 'cache.db'),
+                directory,
+                expiry_delta=datetime.timedelta(hours=12))
+            cached = cache.add(
+                url, payload,
+                metadata={'mime-type': 'application/octet-stream'},
+                ext='.safetensors')
+            self.assertNotIn('filename', cached.metadata)
+
+            with patch('dgenerate.filecache.requests.get', fake_get), \
+                    patch('dgenerate.filecache._messages.warning') as warning:
+                first = cache.download(url, tqdm_pbar=None)
+            self.assertEqual(first.path, cached.path)
+            self.assertNotIn('filename', first.metadata)
+            warning.assert_called_once()
+            message = warning.call_args.args[0]
+            self.assertIn('https://civitai.com/api/download/models/9', message)
+            self.assertNotIn('secret-token', message)
+            self.assertIn('offline', message)
+
+            with patch('dgenerate.filecache.requests.get', fake_get), \
+                    patch('dgenerate.filecache._messages.warning') as warning:
+                second = cache.download(url, tqdm_pbar=None)
+            warning.assert_not_called()
+            self.assertEqual(second.metadata['filename'], 'qwen_image_2.1_turbo.safetensors')
+            self.assertEqual(cache.filename_for_path(second.path), 'qwen_image_2.1_turbo.safetensors')
+            self.assertEqual(attempts['n'], 2)
+
+    def test_github_usercontent_filename_comes_from_the_url_path(self):
+        payload = b'gguf'
+        url = (
+            'https://raw.githubusercontent.com/city96/Wan2.1/main/'
+            'wan2.1-i2v-14b-720p-Q4_K_S.gguf')
+
+        def fake_get(request_url, headers=None, stream=None, timeout=None):
+            return _Response(
+                200,
+                {'Content-Type': 'application/octet-stream'},
+                [payload],
+                'https://objects.githubusercontent.com/github-production/deadbeef')
+
+        with tempfile.TemporaryDirectory() as directory:
+            cache = WebFileCache(
+                os.path.join(directory, 'cache.db'),
+                directory,
+                expiry_delta=datetime.timedelta(hours=12))
+            with patch('dgenerate.filecache.requests.get', fake_get), \
+                    patch('dgenerate.filecache._messages.warning') as warning:
+                cached = cache.download(url, tqdm_pbar=None)
+            warning.assert_not_called()
+            self.assertTrue(cached.path.endswith('.gguf'))
+            self.assertEqual(
+                cached.metadata['filename'], 'wan2.1-i2v-14b-720p-Q4_K_S.gguf')
+            self.assertEqual(
+                cache.filename_for_path(cached.path),
+                'wan2.1-i2v-14b-720p-Q4_K_S.gguf')
+
+    def test_github_usercontent_cache_hit_uses_the_url_without_a_request(self):
+        payload = b'weights'
+        url = (
+            'https://raw.githubusercontent.com/example/repo/main/'
+            'dir/My%20Model.safetensors')
+        calls = []
+
+        def fake_get(request_url, headers=None, stream=None, timeout=None):
+            calls.append(request_url)
+            return _Response(200, {}, [payload], request_url)
+
+        with tempfile.TemporaryDirectory() as directory:
+            cache = WebFileCache(
+                os.path.join(directory, 'cache.db'),
+                directory,
+                expiry_delta=datetime.timedelta(hours=12))
+            cached = cache.add(
+                url, payload,
+                metadata={'mime-type': 'application/octet-stream'},
+                ext='.safetensors')
+            with patch('dgenerate.filecache.requests.get', fake_get), \
+                    patch('dgenerate.filecache._messages.warning') as warning:
+                again = cache.download(url, tqdm_pbar=None)
+            warning.assert_not_called()
+            self.assertEqual(calls, [])
+            self.assertEqual(again.path, cached.path)
+            self.assertEqual(again.metadata['filename'], 'My Model.safetensors')
+
+    def test_content_disposition_wins_over_the_github_path(self):
+        payload = b'weights'
+        url = 'https://raw.githubusercontent.com/example/repo/main/other.safetensors'
+
+        def fake_get(request_url, headers=None, stream=None, timeout=None):
+            return _Response(
+                200,
+                {
+                    'Content-Type': 'application/octet-stream',
+                    'Content-Disposition': 'attachment; filename="published.safetensors"',
+                },
+                [payload],
+                request_url)
+
+        with tempfile.TemporaryDirectory() as directory:
+            cache = WebFileCache(
+                os.path.join(directory, 'cache.db'),
+                directory,
+                expiry_delta=datetime.timedelta(hours=12))
+            with patch('dgenerate.filecache.requests.get', fake_get):
+                cached = cache.download(url, tqdm_pbar=None)
+            self.assertEqual(cached.metadata['filename'], 'published.safetensors')
+
+    def test_url_path_filename_used_when_disposition_is_missing(self):
+        payload = b'gguf'
+        url = (
+            'https://huggingface.co/city96/Wan2.1-I2V-14B-720P-gguf/'
+            'resolve/main/wan2.1-i2v-14b-720p-Q4_K_S.gguf')
+
+        def fake_get(request_url, headers=None, stream=None, timeout=None):
+            return _Response(
+                200,
+                {'Content-Type': 'application/octet-stream'},
+                [payload],
+                'https://cdn-lfs.huggingface.co/repos/ab/cd/deadbeef')
+
+        with tempfile.TemporaryDirectory() as directory:
+            cache = WebFileCache(
+                os.path.join(directory, 'cache.db'),
+                directory,
+                expiry_delta=datetime.timedelta(hours=12))
+            with patch('dgenerate.filecache.requests.get', fake_get), \
+                    patch('dgenerate.filecache._messages.warning') as warning:
+                cached = cache.download(url, tqdm_pbar=None)
+            warning.assert_not_called()
+            self.assertTrue(cached.path.endswith('.gguf'))
+            self.assertEqual(
+                cached.metadata['filename'], 'wan2.1-i2v-14b-720p-Q4_K_S.gguf')
+
+    def test_api_download_id_is_not_used_as_a_filename(self):
+        payload = b'weights'
+        url = 'https://civitai.com/api/download/models/714161?fileId=628851'
+
+        def fake_get(request_url, headers=None, stream=None, timeout=None):
+            return _Response(
+                200,
+                {'Content-Type': 'application/octet-stream'},
+                [payload],
+                request_url)
+
+        with tempfile.TemporaryDirectory() as directory:
+            cache = WebFileCache(
+                os.path.join(directory, 'cache.db'),
+                directory,
+                expiry_delta=datetime.timedelta(hours=12))
+            with patch('dgenerate.filecache.requests.get', fake_get), \
+                    patch('dgenerate.filecache._messages.warning') as warning:
+                cached = cache.download(url, tqdm_pbar=None)
+            warning.assert_called_once()
+            self.assertNotIn('filename', cached.metadata)
+
+    def test_version_like_path_segment_is_not_a_filename(self):
+        payload = b'weights'
+        url = 'https://cdn.example/releases/v1.2'
+
+        def fake_get(request_url, headers=None, stream=None, timeout=None):
+            return _Response(
+                200,
+                {'Content-Type': 'application/octet-stream'},
+                [payload],
+                request_url)
+
+        with tempfile.TemporaryDirectory() as directory:
+            cache = WebFileCache(
+                os.path.join(directory, 'cache.db'),
+                directory,
+                expiry_delta=datetime.timedelta(hours=12))
+            with patch('dgenerate.filecache.requests.get', fake_get), \
+                    patch('dgenerate.filecache._messages.warning') as warning:
+                cached = cache.download(url, tqdm_pbar=None)
+            warning.assert_called_once()
+            self.assertNotIn('filename', cached.metadata)

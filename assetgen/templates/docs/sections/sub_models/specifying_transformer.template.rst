@@ -68,6 +68,27 @@ ComfyUI layouts. Quantize the text encoders with ``bnb`` or ``sdnq`` and
 `examples/qwen-image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/qwen-image/gguf>`_,
 and `examples/ltx2/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/gguf>`_.
 
+A transformer-only file can also be the model itself. dgenerate reads the
+checkpoint, picks the matching Diffusers repository, and loads the text
+encoders, tokenizers, and VAE from there. The repository plus ``--transformer``
+form above is unchanged. ``--text-encoders`` and ``--vae`` still replace any
+of those modules. ``+`` keeps a detected encoder and ``null`` skips one, so
+SD3 can run without T5:
+
+.. code-block:: bash
+
+    dgenerate https://huggingface.co/city96/stable-diffusion-3-medium-gguf/blob/main/sd3_medium-Q4_K_S.gguf \
+    --model-type sd3 \
+    --variant fp16 \
+    --text-encoders + + null \
+    --prompts "a horse outside a barn"
+
+A file that already contains text encoders keeps the single-file loader and
+still honors ``null``. See
+`examples/flux/gguf/flux-dev-as-model-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux/gguf/flux-dev-as-model-config.dgen>`_
+and
+`examples/stablediffusion3/text_encoders/without-t5-as-model-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/stablediffusion3/text_encoders/without-t5-as-model-config.dgen>`_.
+
 A transformer can also be a pre-quantized ComfyUI ``.safetensors`` file in FP8,
 INT8 (ConvRot), or NVFP4, such as the ComfyUI, Black Forest Labs, and Lightricks
 releases. The same rules apply: point ``--transformer`` at the file and do not

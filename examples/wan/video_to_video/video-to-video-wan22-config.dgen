@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Matches Diffusers WanVideoToVideoPipeline docstring: hiker.mp4 and
+# robot-on-mountain prompt. A video seed path is video-to-video.
+# --video-lengths is rejected; trim with frame-start= / frame-end=.
+
+\setp video "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/hiker.mp4"
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+
+Wan-AI/Wan2.2-T2V-A14B-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 4
+--wan-low-noise-guidance-scales 3
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--animation-format mp4
+--output-path wan-v2v
+--image-seeds {{ video }}
+--image-seed-strengths 0.7
+--prompts "A robot standing on a mountain top. The sun is setting in the background;{{ neg }}"

@@ -1,5 +1,4 @@
 title: LTX-2.5 Distilled (GGUF)
-order: 31
 
 # Omitting Scheduler keeps the published sigma table.
 # Latent Upscale runs stage 1 at half of Output Size, so Output Size must be

@@ -1,5 +1,4 @@
 title: Qwen-Image
-order: 70
 
 # Guidance here is true CFG. Leave the negative prompt empty and guidance above 1
 # still applies it, using a single space as the negative prompt.

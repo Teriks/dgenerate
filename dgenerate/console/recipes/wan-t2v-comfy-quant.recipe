@@ -1,5 +1,4 @@
-title: Wan Text to Video (ComfyUI Quant)
-order: 45
+title: Wan 2.1 Text to Video (ComfyUI Quant)
 
 # The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
 # NVFP4). Quantized layers stay packed and use hardware matmuls where available.

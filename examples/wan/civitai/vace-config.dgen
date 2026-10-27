@@ -1,0 +1,34 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan 2.1 VACE 14B from CivitAI. The publish is GGUF; a safetensors VACE
+# diffusion model was not on CivitAI. vace_blocks selects
+# Wan-AI/Wan2.1-VACE-14B-diffusers.
+# https://civitai.com/models/1616692/wan21-vace-14b
+# Canny edges of the hiker clip are the motion. The source clip is 8 fps.
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if not civit_ai_token.strip() %}
+    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+    \exit
+{% endif %}
+
+\setp control "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/hiker.mp4"
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+
+https://civitai.com/api/download/models/1829648?fileId=1730029
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--video-fps 8
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 6
+--animation-format mp4
+--output-path wan-civitai-vace
+--control-image-processors canny
+--image-seeds "control={{ control }}"
+--prompts "A traveler in a bright red coat walks a rocky cliff trail above the sea at sunset. Wind pulls the coat, warm light on the rocks, cinematic, the camera follows from behind.;{{ neg }}"

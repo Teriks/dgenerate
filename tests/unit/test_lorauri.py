@@ -19,6 +19,7 @@ class TestLoraUri(unittest.TestCase):
         self.assertEqual(result.subfolder, None)
         self.assertEqual(result.weight_name, None)
         self.assertEqual(result.scale, 1.0)
+        self.assertIsNone(result.component)
 
     def test_full_options_parsing(self):
         # Test parsing with all options
@@ -45,6 +46,64 @@ class TestLoraUri(unittest.TestCase):
         
         # Check that the error message is descriptive
         self.assertIn("must be a floating point number", str(context.exception))
+
+    def test_component_selects_the_wan_low_noise_expert(self):
+        parsed = _lorauri.LoRAUri.parse('org/low;component=transformer_2;scale=1')
+        self.assertEqual(parsed.component, 'transformer_2')
+        with self.assertRaises(InvalidLoRAUriError):
+            _lorauri.LoRAUri.parse('org/low;component=vae')
+
+        class Expert:
+            def __init__(self):
+                self.adapters = None
+                self.fused = None
+
+            def set_adapters(self, names, weights):
+                self.adapters = (list(names), list(weights))
+
+            def fuse_lora(self, lora_scale=1.0, adapter_names=None):
+                self.fused = (lora_scale, list(adapter_names))
+
+        class Pipe:
+            def __init__(self):
+                self.transformer = Expert()
+                self.transformer_2 = Expert()
+                self.components = {
+                    'transformer': self.transformer,
+                    'transformer_2': self.transformer_2,
+                }
+                self.loaded = []
+
+            def load_lora_weights(self, model_path, adapter_name=None, **kwargs):
+                self.loaded.append((adapter_name, kwargs.get('load_into_transformer_2', False)))
+
+            def get_list_adapters(self):
+                listed = {}
+                for name, into_second in self.loaded:
+                    key = 'transformer_2' if into_second else 'transformer'
+                    listed.setdefault(key, []).append(name)
+                return listed
+
+            def set_adapters(self, *args, **kwargs):
+                raise AssertionError('split LoRAs must be activated per component')
+
+            def fuse_lora(self, *args, **kwargs):
+                raise AssertionError('split LoRAs must be fused per component')
+
+        pipeline = Pipe()
+        with unittest.mock.patch.object(
+                _lorauri._hfhub, 'download_non_hf_slug_model',
+                side_effect=lambda model, **kwargs: model):
+            _lorauri.LoRAUri.load_on_pipeline(pipeline, [
+                'org/high;scale=1.0',
+                'org/low;scale=0.5;component=transformer_2',
+            ], fuse_scale=1.0, fuse=True)
+
+        self.assertEqual(pipeline.loaded, [('0', False), ('1', True)])
+        self.assertEqual(pipeline.transformer.adapters, (['0'], [1.0]))
+        self.assertEqual(pipeline.transformer.fused, (1.0, ['0']))
+        self.assertEqual(pipeline.transformer_2.adapters, (['1'], [0.5]))
+        self.assertEqual(pipeline.transformer_2.fused, (1.0, ['1']))
 
     def test_pipeline_has_quantized_modules(self):
         class Pipe:

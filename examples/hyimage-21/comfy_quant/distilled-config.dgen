@@ -1,0 +1,14 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+hunyuanvideo-community/HunyuanImage-2.1-Distilled-Diffusers
+--model-type hyimage-21
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/resolve/main/split_files/diffusion_models/hunyuanimage2.1_distilled_fp8_e4m3fn.safetensors
+--inference-steps 50
+--guidance-scales 3.25
+--gen-seeds 1
+--output-path hyimage21-distilled-comfy-fp8
+--output-size 2048
+--prompts "An astronaut riding a horse on the moon, earthrise in the background, highly detailed"

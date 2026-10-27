@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Distilled HunyuanImage 2.1 checkpoint (guidance embedded in the transformer).
+
+hunyuanvideo-community/HunyuanImage-2.1-Distilled-Diffusers
+--model-type hyimage-21
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 3.25
+--gen-seeds 1
+--output-path hyimage21-distilled
+--output-size 2048
+--prompts "An astronaut riding a horse on the moon, earthrise in the background, highly detailed"

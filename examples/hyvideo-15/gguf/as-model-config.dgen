@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# HunyuanVideo 1.5 480p T2V GGUF as the model. "t2v" in the file name selects
+# hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v. "i2v", "720", and
+# "distilled" select those repositories. config.dgen passes the file to
+# --transformer on a repository you name yourself.
+
+https://huggingface.co/jayn7/HunyuanVideo-1.5_T2V_480p-GGUF/blob/main/480p/hunyuanvideo1.5_480p_t2v-Q4_K_S.gguf
+--model-type hyvideo-15
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 6
+--video-lengths 4
+--video-fps 15
+--animation-format mp4
+--gen-seeds 1
+--output-path hyvideo-15-gguf-as-model
+--output-size 848x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"

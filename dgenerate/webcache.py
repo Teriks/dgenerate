@@ -216,6 +216,22 @@ def create_web_cache_file(url,
     return cached_file.metadata['mime-type'], cached_file.path
 
 
+def cached_content_filename(path: str) -> str | None:
+    """
+    Original download name for a file in the web cache.
+
+    The file on disk is named with a generated id. This is the basename from
+    the server's ``Content-Disposition`` header or, when that header is
+    absent, a file name in the requested URL path. ``None`` when neither
+    was stored.
+
+    :param path: path returned by :py:func:`create_web_cache_file`
+    :return: the server file name, or ``None`` when ``path`` is not a cache file
+        or the name has not been stored yet
+    """
+    return cache.filename_for_path(path)
+
+
 def request_mimetype(url, local_files_only: bool = False, auth_token: str | None = None) -> str:
     """
     Request the mimetype of a file at a URL, if the file exists in the cache, a known mimetype

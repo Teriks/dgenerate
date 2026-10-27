@@ -429,7 +429,7 @@ def _patch_factorized_video_rope(transformer,
     if rope is None or not all(hasattr(rope, name) for name in needed):
         raise DypeError('The loaded video transformer has no compatible factorized 3D RoPE module.')
 
-    default_resolution = 640 if model_family == 'hunyuan-video-15' else _WAN_BASE_RESOLUTION
+    default_resolution = 640 if model_family == 'hyvideo-15' else _WAN_BASE_RESOLUTION
     base_resolution = base_resolution or default_resolution
     base_patches = float(base_resolution) / _WAN_TOKEN_STRIDE
 
@@ -502,7 +502,7 @@ def _patch_transformer(transformer,
     elif model_family == 'wan':
         # Wan already scales both spatial axes by the long side's ratio.
         restore_rope = _patch_wan_rope(transformer, base_resolution, method, mscale)
-    elif model_family in {'hunyuan-video-15', 'motif-video'}:
+    elif model_family in {'hyvideo-15', 'motif-video'}:
         restore_rope = _patch_factorized_video_rope(
             transformer, model_family, base_resolution, method, mscale, axis_scaling)
     else:

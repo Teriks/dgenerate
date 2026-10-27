@@ -270,6 +270,56 @@ def get_available_memory(unit: str = 'b'):
     return psutil.virtual_memory().available / _MEM_FACTORS[unit.strip().lower()]
 
 
+def _windows_available_commit_bytes():
+    """Maximum additional bytes this process can commit, including the page file."""
+    import ctypes
+
+    class MEMORYSTATUSEX(ctypes.Structure):
+        _fields_ = (
+            ('dwLength', ctypes.c_ulong),
+            ('dwMemoryLoad', ctypes.c_ulong),
+            ('ullTotalPhys', ctypes.c_ulonglong),
+            ('ullAvailPhys', ctypes.c_ulonglong),
+            ('ullTotalPageFile', ctypes.c_ulonglong),
+            ('ullAvailPageFile', ctypes.c_ulonglong),
+            ('ullTotalVirtual', ctypes.c_ulonglong),
+            ('ullAvailVirtual', ctypes.c_ulonglong),
+            ('ullAvailExtendedVirtual', ctypes.c_ulonglong),
+        )
+
+    status = MEMORYSTATUSEX()
+    status.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+    if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+        return None
+    return int(status.ullAvailPageFile)
+
+
+def get_available_commit_memory(unit: str = 'b'):
+    """
+    Memory that can still be committed, including the page file.
+
+    On Windows this is the process commit budget (``ullAvailPageFile``).
+    Elsewhere it is available physical memory plus free swap. A load that
+    fits here can page instead of keeping every weight on disk.
+
+    :param unit: one of (case insensitive): b (bytes), kb (kilobytes),
+        mb (megabytes), gb (gigabytes), kib (kibibytes),
+        mib (mebibytes), gib (gibibytes)
+    :return: Requested value.
+    """
+    factor = _MEM_FACTORS[unit.strip().lower()]
+    if os.name == 'nt':
+        commit = _windows_available_commit_bytes()
+        if commit is not None:
+            return commit / factor
+    physical = psutil.virtual_memory().available
+    try:
+        swap_free = psutil.swap_memory().free
+    except (RuntimeError, OSError):
+        swap_free = 0
+    return (physical + max(0, swap_free)) / factor
+
+
 def get_total_memory(unit: str = 'b'):
     """
     Get the total physical memory on the system.

@@ -1,0 +1,32 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan 2.1 T2V 14B scaled FP8 from CivitAI. UMT5 and the VAE load from
+# Wan-AI/Wan2.1-T2V-14B-Diffusers. patch_embedding width 5120 without 36
+# input channels is text-to-video. Image-to-video, video-to-video, and VACE
+# are the other configs in this folder. Video-to-video is this same kind of
+# text-to-video file with a video seed.
+# https://civitai.com/models/1473070/wan21-t2v-14b-fp8-scaled
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if not civit_ai_token.strip() %}
+    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+    \exit
+{% endif %}
+
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+
+https://civitai.com/api/download/models/1666198?fileId=1567048
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 5
+--animation-format mp4
+--output-path wan-civitai-t2v
+--prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"

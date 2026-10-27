@@ -1,0 +1,23 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image 2.1 bf16 diffusion model from CivitAI. The file name does not
+# say "turbo", so the text encoder, VAE, and 40-step schedule load from
+# Qwen/Qwen-Image-2.1.
+# https://civitai.com/models/2954443/qwen-image-21
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if not civit_ai_token.strip() %}
+    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+    \exit
+{% endif %}
+
+https://civitai.com/api/download/models/3352534?fileId=3239845
+--model-type qwen-image-21
+--dtype bfloat16
+--model-sequential-offload
+--qwen21-output-resolution 1024
+--gen-seeds 1
+--output-path qwen-image-21-civitai
+--prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

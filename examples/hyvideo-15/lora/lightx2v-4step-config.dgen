@@ -1,0 +1,23 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LightX2V 4-step LoRA for HunyuanVideo 1.5 480p text-to-video.
+# It is trained for the undistilled transformer. Guidance stays at 1 and the
+# schedule is 4 steps. The file's low-rank matrices and its .diff / .diff_b
+# weight updates are both applied.
+# https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/tree/main/split_files/loras
+
+hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v
+--model-type hyvideo-15
+--dtype bfloat16
+--model-sequential-offload
+--loras "https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/loras/hunyuanvideo1.5_t2v_480p_lightx2v_4step_lora_rank_32_bf16.safetensors;scale=1.0"
+--inference-steps 4
+--guidance-scales 1
+--video-lengths 4
+--video-fps 15
+--animation-format mp4
+--gen-seeds 1
+--output-path hyvideo-15-lightx2v-4step
+--output-size 848x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement; worst quality, blurry, jittery, distorted"

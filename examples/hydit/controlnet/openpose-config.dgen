@@ -1,0 +1,26 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Parity run for Tencent HunyuanDiT controlnet/README.md pose example
+# (OpenPose skeleton; their --control-type is "pose"):
+#   sample_controlnet.py --infer-mode fa --no-enhance --load-key distill
+#   --infer-steps 50 --control-type pose --control-weight 1.0
+#   --condition-image-path controlnet/asset/input/pose.jpg
+#
+# Native defaults used here: --seed 42, --cfg-scale 6.0, no negative prompt.
+# Prompt is the English translation from that README.
+# dgenerate loads the Diffusers ports (HunyuanDiT-v1.2-Diffusers-Distilled and
+# HunyuanDiT-v1.2-ControlNet-Diffusers-Pose), not the native .pt checkpoints,
+# so the image will not match pixel-for-pixel.
+
+Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers-Distilled
+--model-type hydit
+--dtype float16
+--inference-steps 50
+--guidance-scales 6
+--seeds 42
+--output-path hydit-controlnet-openpose
+--output-size 1024
+--control-nets Tencent-Hunyuan/HunyuanDiT-v1.2-ControlNet-Diffusers-Pose;scale=1.0
+--image-seeds "https://raw.githubusercontent.com/Tencent-Hunyuan/HunyuanDiT/main/controlnet/asset/input/pose.jpg"
+--prompts "In the daytime forest, an Asian woman wearing a green shirt stands beside an elephant. The photo uses a medium shot, eye-level, and centered composition to create a realistic effect. This picture embodies the character photography culture and conveys a serene atmosphere."

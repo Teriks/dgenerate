@@ -1,0 +1,26 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LightX2V 4-step LoRA for the undistilled Wan 2.1 14B 480p image-to-video
+# model. Guidance stays at 1. flow-shift=5 with 4 steps is the LightX2V
+# schedule. The still is the Diffusers astronaut photo.
+# https://huggingface.co/lightx2v/Wan2.1-Distill-Loras
+
+\setp image "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg"
+
+Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--scheduler UniPCMultistepScheduler;flow-shift=5
+--loras "lightx2v/Wan2.1-Distill-Loras;scale=1.0;weight-name=wan2.1_i2v_lora_rank64_lightx2v_4step.safetensors"
+--inference-steps 4
+--guidance-scales 1
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 5
+--animation-format mp4
+--output-path wan-lightx2v-4step-i2v
+--image-seeds {{ image }}
+--prompts "An astronaut in a white spacesuit stands on the lunar surface, then walks forward. Dust lifts around the boots. Earth hangs in the black sky. The suit matches the first frame."

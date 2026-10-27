@@ -1,5 +1,4 @@
 title: Krea 2 Raw (GGUF)
-order: 85
 
 # Choose the Raw base checkpoint and a GGUF transformer with matching weights.
 

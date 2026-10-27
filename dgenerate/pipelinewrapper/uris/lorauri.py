@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os.path
+import inspect
 import typing
 
 import diffusers
@@ -33,7 +34,80 @@ import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 _lora_uri_parser = _textprocessing.ConceptUriParser(
-    'LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
+    'LoRA', ['scale', 'revision', 'subfolder', 'weight-name', 'component'])
+_LORA_COMPONENTS = ('transformer', 'transformer_2')
+
+
+def _lora_targets_are_split(listed, adapter_names) -> bool:
+    """True when some adapters are missing from a component that has others.
+
+    Wan 2.2 loads the high-noise LoRA onto ``transformer`` and the low-noise
+    LoRA onto ``transformer_2``. ``set_adapters`` would otherwise require every
+    expert to contain every adapter name.
+    """
+    components = [name for name, adapters in listed.items() if adapters]
+    if len(components) < 2:
+        return False
+    for adapter in adapter_names:
+        homes = [name for name in components if adapter in listed.get(name, ())]
+        if homes and len(homes) != len(components):
+            return True
+    return False
+
+
+def _every_target_accepts_adapters(pipeline, listed, adapter_names) -> bool:
+    """True when each component that holds these adapters implements ``set_adapters``."""
+    saw_target = False
+    for component, present in listed.items():
+        if not any(name in present for name in adapter_names):
+            continue
+        saw_target = True
+        module = getattr(pipeline, component, None)
+        if not callable(getattr(module, 'set_adapters', None)):
+            return False
+    return saw_target
+
+
+def _activate_loaded_loras(pipeline, adapter_names, adapter_weights, fuse, fuse_scale):
+    listed = pipeline.get_list_adapters() or {}
+    if not isinstance(listed, dict):
+        listed = {}
+    # Hunyuan-DiT keeps ``set_adapters`` on the pipeline. Its text encoder is
+    # not a PEFT module, so a per-component listing still fuses from here.
+    if not (_lora_targets_are_split(listed, adapter_names)
+            and _every_target_accepts_adapters(pipeline, listed, adapter_names)):
+        pipeline.set_adapters(adapter_names, adapter_weights=adapter_weights)
+        if fuse:
+            _messages.debug_log(
+                f'Fusing all LoRAs into pipeline with global scale: {fuse_scale}')
+            pipeline.fuse_lora(adapter_names=adapter_names, lora_scale=fuse_scale)
+        else:
+            _commit_unfused_weight_updates(pipeline, fuse_scale)
+        return
+
+    _messages.debug_log(
+        'Activating LoRAs on the components that received them.')
+    for component, present in listed.items():
+        names = [name for name in adapter_names if name in present]
+        if not names:
+            continue
+        module = getattr(pipeline, component, None)
+        if module is None:
+            continue
+        weights = [adapter_weights[adapter_names.index(name)] for name in names]
+        module.set_adapters(names, weights)
+        if fuse and hasattr(module, 'fuse_lora'):
+            module.fuse_lora(lora_scale=fuse_scale, adapter_names=names)
+    if not fuse:
+        _commit_unfused_weight_updates(pipeline, fuse_scale)
+
+
+def _commit_unfused_weight_updates(pipeline, fuse_scale):
+    commit_weight_updates = getattr(pipeline, 'commit_lora_weight_updates', None)
+    if callable(commit_weight_updates):
+        commit_weight_updates(fuse_scale)
+    _messages.debug_log(
+        'Leaving LoRA adapters active without fusing them into the weights.')
 
 
 def _collapse_zimage_lora_prefix(state_dict):
@@ -133,17 +207,29 @@ class LoRAUri:
         """
         return self._scale
 
+    @property
+    def component(self) -> _types.OptionalName:
+        """
+        Pipeline component that receives this LoRA.
+
+        ``transformer_2`` is the Wan 2.2 low-noise expert. ``None`` loads the
+        primary transformer.
+        """
+        return self._component
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
                  weight_name: _types.OptionalName = None,
-                 scale: float = 1.0):
+                 scale: float = 1.0,
+                 component: _types.OptionalName = None):
         self._model = model
         self._scale = scale
         self._revision = revision
         self._subfolder = subfolder
         self._weight_name = weight_name
+        self._component = component
 
     def __str__(self):
         return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'
@@ -256,10 +342,16 @@ class LoRAUri:
                 try:
                     _load_one_lora(
                         pipeline, model_path, adapter_name,
+                        lora_strength=lora_uri.scale,
+                        load_into_transformer_2=lora_uri.component == 'transformer_2',
                         use_safetensors=True, **load_kwargs)
                 except EnvironmentError:
                     # brute force, try for .bin files
-                    _load_one_lora(pipeline, model_path, adapter_name, **load_kwargs)
+                    _load_one_lora(
+                        pipeline, model_path, adapter_name,
+                        lora_strength=lora_uri.scale,
+                        load_into_transformer_2=lora_uri.component == 'transformer_2',
+                        **load_kwargs)
 
                 if not pipeline.get_list_adapters():
                     raise RuntimeError(f'LoRA model "{lora_uri.model}" contained no usable weights.')
@@ -274,18 +366,14 @@ class LoRAUri:
                     f'with global scale: {fuse_scale}')
                 adapter_weights = [weight * fuse_scale for weight in adapter_weights]
                 fuse = False
-            pipeline.set_adapters(adapter_names, adapter_weights=adapter_weights)
-            if fuse:
-                if _pipeline_has_quantized_modules(pipeline):
-                    _messages.warning(
-                        'Fusing LoRA adapters into quantized or GGUF pipeline '
-                        'weights can fail or produce poor results. Prefer '
-                        'full-precision weights, or load LoRAs without fusing '
-                        'when the loader allows it.')
-                _messages.debug_log(f'Fusing all LoRAs into pipeline with global scale: {fuse_scale}')
-                pipeline.fuse_lora(adapter_names=adapter_names, lora_scale=fuse_scale)
-            else:
-                _messages.debug_log('Leaving LoRA adapters active without fusing them into the weights.')
+            if _pipeline_has_quantized_modules(pipeline) and fuse:
+                _messages.warning(
+                    'Fusing LoRA adapters into quantized or GGUF pipeline '
+                    'weights can fail or produce poor results. Prefer '
+                    'full-precision weights, or load LoRAs without fusing '
+                    'when the loader allows it.')
+            _activate_loaded_loras(
+                pipeline, adapter_names, adapter_weights, fuse, fuse_scale)
         else:
             raise RuntimeError(f'Pipeline: {pipeline.__class__.__name__} '
                                f'does not support loading LoRAs.')
@@ -311,16 +399,37 @@ class LoRAUri:
                 raise _exceptions.InvalidLoRAUriError(
                     f'LoRA "scale" must be a floating point number, received: {scale}')
 
+            component = r.args.get('component', None)
+            if component is not None and component not in _LORA_COMPONENTS:
+                raise _exceptions.InvalidLoRAUriError(
+                    'LoRA "component" must be "transformer" or "transformer_2", '
+                    f'received: {component}')
+
             return LoRAUri(model=r.concept,
                            scale=scale,
                            weight_name=r.args.get('weight-name', None),
                            revision=r.args.get('revision', None),
-                           subfolder=r.args.get('subfolder', None))
+                           subfolder=r.args.get('subfolder', None),
+                           component=component)
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidLoRAUriError(e) from e
 
 
-def _load_one_lora(pipeline, model_path, adapter_name, **kwargs):
+def _load_one_lora(
+        pipeline, model_path, adapter_name, lora_strength=1.0,
+        load_into_transformer_2=False, **kwargs):
+    parameters = inspect.signature(pipeline.load_lora_weights).parameters
+    if 'lora_strength' in parameters:
+        kwargs['lora_strength'] = lora_strength
+    if load_into_transformer_2:
+        accepts_target = (
+            'load_into_transformer_2' in parameters
+            or any(parameter.kind == inspect.Parameter.VAR_KEYWORD
+                   for parameter in parameters.values()))
+        if not accepts_target:
+            raise RuntimeError(
+                f'{pipeline.__class__.__name__} cannot load a LoRA onto transformer_2.')
+        kwargs['load_into_transformer_2'] = True
     if not _pipeline_is_z_image(pipeline):
         pipeline.load_lora_weights(model_path, adapter_name=adapter_name, **kwargs)
         return

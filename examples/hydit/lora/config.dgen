@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Official HYDiT-LoRA (jade style) via dgenerate/extras/hydit LoRA mapping.
+
+Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers
+--model-type hydit
+--dtype float16
+--inference-steps 50
+--guidance-scales 5
+--gen-seeds 1
+--output-path hydit-lora-jade
+--output-size 1024
+--loras Tencent-Hunyuan/HYDiT-LoRA;subfolder=jade
+--prompts "jade sculpture of a dragon coiled around a pearl, intricate carvings, museum display"

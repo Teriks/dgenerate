@@ -138,6 +138,10 @@ class ToDiffusersSubCommand(_subcommand.SubCommand):
                 if args.verbose:
                     dgenerate.messages.pop_level()
 
-            pipe.pipeline.save_pretrained(args.output)
+            from dgenerate.pipelinewrapper.weightsave import save_pipeline_with_progress
+            label = 'Writing pipeline'
+            if dtype is not None:
+                label = f'Writing pipeline ({_pipelinewrapper.get_data_type_string(dtype)})'
+            save_pipeline_with_progress(pipe.pipeline, args.output, desc=label)
 
         return 0

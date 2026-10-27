@@ -53,6 +53,11 @@ def _is_krea2_pipeline(pipeline):
     return pipeline.__class__.__name__.startswith('Krea2')
 
 
+def _is_hunyuan_image_pipeline(pipeline):
+    """Check if a pipeline is a HunyuanImage 2.1 pipeline."""
+    return pipeline.__class__.__name__.startswith('HunyuanImage')
+
+
 def _is_kandinsky5_image_pipeline(pipeline):
     """Check if a pipeline is a Kandinsky 5 image pipeline."""
     name = pipeline.__class__.__name__
@@ -151,6 +156,7 @@ def _supports_denoise_range_flow_matching(pipeline):
         or _is_flux_pipeline(pipeline)
         or _is_qwen_image_pipeline(pipeline)
         or _is_krea2_pipeline(pipeline)
+        or _is_hunyuan_image_pipeline(pipeline)
         or _is_kandinsky5_image_pipeline(pipeline)
         or _is_z_image_pipeline(pipeline)
     )

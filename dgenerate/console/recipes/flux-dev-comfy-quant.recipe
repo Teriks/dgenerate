@@ -1,5 +1,4 @@
 title: Flux Dev (ComfyUI Quant)
-order: 23
 
 # Flux requires a huggingface auth token to access
 # you must request access to the repository

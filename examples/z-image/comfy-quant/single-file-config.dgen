@@ -1,10 +1,10 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# The ComfyUI INT8 ConvRot transformer as the model itself, instead of
-# --transformer. The file holds only the transformer, so the text encoder
-# and VAE come from the Tongyi repository. --transformer with the repository
-# as the model (turbo-int8-convrot-config.dgen) is the simpler form.
+# The ComfyUI INT8 ConvRot transformer as the model. The file holds only the
+# transformer, so the Qwen3 text encoder and VAE load from Tongyi-MAI/Z-Image-Turbo.
+# turbo-int8-convrot-config.dgen is the repository plus --transformer form.
+# single-file-explicit-config.dgen names --text-encoders and --vae by hand.
 
 \set model https://huggingface.co/Comfy-Org/z_image_turbo/blob/main/split_files/diffusion_models/z_image_turbo_int8_convrot.safetensors
 
@@ -19,8 +19,6 @@
 {{ model }}
 --model-type z-image {{ offload }}
 --dtype bfloat16
---text-encoders Qwen3Model;model=Tongyi-MAI/Z-Image-Turbo;subfolder=text_encoder
---vae AutoencoderKL;model=Tongyi-MAI/Z-Image-Turbo;subfolder=vae
 --scheduler FlowMatchEulerDiscreteScheduler
 --inference-steps 9
 --guidance-scales 0

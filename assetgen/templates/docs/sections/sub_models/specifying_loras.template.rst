@@ -16,6 +16,8 @@ LoRAs are supported for these model types:
     * ``--model-type flux-fill``
     * ``--model-type ltx2``
     * ``--model-type ltx-video``
+    * ``--model-type hyvideo-15``
+    * ``--model-type motif-video``
 
 When multiple specifications are given, all mentioned models will be fused together
 into one set of weights at their individual scale, and then those weights will be
@@ -33,7 +35,9 @@ When a scale is not specified, 1.0 is assumed.
 Named arguments when loading a LoRA are separated by the ``;`` character and are
 not positional, meaning they can be defined in any order.
 
-Loading arguments available when specifying a LoRA are: ``scale``, ``revision``, ``subfolder``, and ``weight-name``
+Loading arguments available when specifying a LoRA are: ``scale``, ``revision``, ``subfolder``, ``weight-name``, and ``component``.
+
+``component=transformer_2`` loads that LoRA onto the Wan 2.2 low-noise expert. The default is the primary transformer.
 
 The only named argument compatible with loading a .safetensors or other file directly off disk is ``scale``
 

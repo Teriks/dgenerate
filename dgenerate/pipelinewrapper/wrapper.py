@@ -701,12 +701,14 @@ class DiffusionPipelineWrapper:
             if not _enums.model_type_is_sd3(model_type) \
                     and not _enums.model_type_is_flux(model_type) \
                     and not _enums.model_type_is_flow_image(model_type) \
+                    and not _enums.model_type_is_hydit(model_type) \
                     and not _enums.model_type_is_video(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     '--transformer is only supported for --model-type sd3, sd3-pix2pix, flux, flux-fill, '
                     'flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, '
-                    'qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, ltx2, ltx-video, wan, wan-animate, '
-                    'wan-animate-2, hunyuan-video-15, motif-video, and kandinsky5-video.')
+                    'qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, hydit, hyimage-21, '
+                    'hyimage-21-refiner, ltx2, ltx-video, wan, wan-animate, '
+                    'wan-animate-2, hyvideo-15, motif-video, and kandinsky5-video.')
 
         if wan_second_transformer_uri:
             if _enums.get_model_type_enum(model_type) not in (
@@ -1769,7 +1771,9 @@ class DiffusionPipelineWrapper:
                 )
             elif (_enums.model_type_is_flux(self._model_type)
                   or _enums.model_type_is_z_image(self._model_type)
-                  or _enums.model_type_is_qwen_image(self._model_type)):
+                  or _enums.model_type_is_qwen_image(self._model_type)
+                  or _enums.model_type_is_hydit(self._model_type)):
+                # HunyuanDiT ControlNet takes control_image, not image.
                 pipeline_args['control_image'] = control_images
             elif sdxl_cn_union:
                 # controlnet union pipeline does not use "image"
@@ -1926,9 +1930,26 @@ class DiffusionPipelineWrapper:
             return 16
         if self._model_type == _enums.ModelType.QWEN_IMAGE_21:
             return 32
+        if _enums.model_type_is_hyimage_21_family(self._model_type):
+            return 32
+        if _enums.model_type_is_hydit(self._model_type):
+            return 16
         if _enums.model_type_is_flow_image(self._model_type):
             return 16
         return 8
+
+    @staticmethod
+    def _resolve_pipeline_type(args: DiffusionArguments,
+                               model_type: _enums.ModelType,
+                               adetailer_detector_uris: _types.OptionalUris) -> _enums.PipelineType:
+        pipeline_type = args.determine_pipeline_type()
+        if (args.images is not None
+                and args.mask_images is None
+                and not adetailer_detector_uris
+                and _enums.model_type_image_is_condition(model_type)
+                and model_type != _enums.ModelType.KANDINSKY5_IMAGE):
+            return _enums.PipelineType.TXT2IMG
+        return pipeline_type
 
     def _aligned_user_dimensions(
             self,
@@ -2204,6 +2225,12 @@ class DiffusionPipelineWrapper:
         elif _enums.model_type_is_kolors(self._model_type):
             self._inference_height = _types.default(height, _constants.DEFAULT_KOLORS_OUTPUT_HEIGHT)
             self._inference_width = _types.default(width, _constants.DEFAULT_KOLORS_OUTPUT_WIDTH)
+        elif _enums.model_type_is_hydit(self._model_type):
+            self._inference_height = _types.default(height, _constants.DEFAULT_HYDIT_OUTPUT_HEIGHT)
+            self._inference_width = _types.default(width, _constants.DEFAULT_HYDIT_OUTPUT_WIDTH)
+        elif _enums.model_type_is_hyimage_21_family(self._model_type):
+            self._inference_height = _types.default(height, _constants.DEFAULT_HYIMAGE21_OUTPUT_HEIGHT)
+            self._inference_width = _types.default(width, _constants.DEFAULT_HYIMAGE21_OUTPUT_WIDTH)
         elif _enums.model_type_is_floyd_if(self._model_type):
             self._inference_height = _types.default(height, _constants.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
             self._inference_width = _types.default(width, _constants.DEFAULT_FLOYD_IF_OUTPUT_WIDTH)
@@ -2421,7 +2448,13 @@ class DiffusionPipelineWrapper:
         elif self._t2i_adapter_uris:
             self._set_pipeline_t2iadapter_defaults(user_args, pipeline_args)
         elif user_args.images is not None:
-            self._set_pipeline_img2img_defaults(user_args, pipeline_args)
+            if (_enums.model_type_image_is_condition(self._model_type)
+                    and self._model_type != _enums.ModelType.KANDINSKY5_IMAGE
+                    and user_args.mask_images is None
+                    and not self._parsed_adetailer_detector_uris):
+                self._set_pipeline_txt2img_defaults(user_args, pipeline_args)
+            else:
+                self._set_pipeline_img2img_defaults(user_args, pipeline_args)
         else:
             self._set_pipeline_txt2img_defaults(user_args, pipeline_args)
 
@@ -2667,11 +2700,9 @@ class DiffusionPipelineWrapper:
 
         pipeline_kwargs = user_args.get_pipeline_wrapper_kwargs()
 
-        if pipeline.__call__.__wrapped__ is not None:
-            # torch.no_grad()
-            func = pipeline.__call__.__wrapped__
-        else:
-            func = pipeline.__call__
+        call = pipeline.__call__
+        # Diffusers pipelines wrap __call__ with torch.no_grad(); custom overrides may not.
+        func = getattr(call, '__wrapped__', None) or call
 
         if pipeline_arg_name in inspect.getfullargspec(func).args:
             if user_arg_name in pipeline_kwargs:
@@ -3198,6 +3229,34 @@ class DiffusionPipelineWrapper:
                 pipeline_args['num_inference_steps'] = 8 if distilled else 28
             if user_args.guidance_scale is None:
                 pipeline_args['guidance_scale'] = 0.0 if distilled else 4.5
+        elif _enums.model_type_is_hyimage_21_family(self._model_type):
+            call_params = inspect.signature(self._pipeline.__call__).parameters
+            guidance_scale = pipeline_args.pop(
+                'guidance_scale',
+                user_args.guidance_scale if user_args.guidance_scale is not None else None)
+            if user_args.inference_steps is None:
+                if self._model_type == _enums.ModelType.HYIMAGE_21_REFINER:
+                    pipeline_args['num_inference_steps'] = 4
+                else:
+                    pipeline_args['num_inference_steps'] = 50
+            if 'distilled_guidance_scale' in call_params:
+                transformer = getattr(self._pipeline, 'transformer', None)
+                guidance_embeds = bool(
+                    getattr(getattr(transformer, 'config', None), 'guidance_embeds', False))
+                if guidance_embeds or self._model_type == _enums.ModelType.HYIMAGE_21_REFINER:
+                    if guidance_scale is None:
+                        guidance_scale = 3.25
+                    pipeline_args['distilled_guidance_scale'] = float(guidance_scale)
+                elif guidance_scale is not None and getattr(self._pipeline, 'guider', None) is not None:
+                    guider = self._pipeline.guider
+                    if hasattr(guider, 'guidance_scale'):
+                        guider.guidance_scale = float(guidance_scale)
+            if self._model_type == _enums.ModelType.HYIMAGE_21_REFINER:
+                if not user_args.images:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        '--model-type hyimage-21-refiner requires --image-seeds with an input image.')
+                images = user_args.images
+                pipeline_args['image'] = images if len(images) > 1 else images[0]
         elif self._model_type == _enums.ModelType.KANDINSKY5_IMAGE:
             if user_args.inference_steps is None:
                 pipeline_args['num_inference_steps'] = 50
@@ -3394,7 +3453,7 @@ class DiffusionPipelineWrapper:
         elif _enums.model_type_is_wan_family(self.model_type):
             model_family = 'wan'
         elif self.model_type is _enums.ModelType.HUNYUAN_VIDEO_15:
-            model_family = 'hunyuan-video-15'
+            model_family = 'hyvideo-15'
         elif self.model_type is _enums.ModelType.MOTIF_VIDEO:
             model_family = 'motif-video'
         else:
@@ -4450,7 +4509,8 @@ class DiffusionPipelineWrapper:
             args.sdxl_refiner_pag_scale is not None
             or args.sdxl_refiner_pag_adaptive_scale is not None
             or bool(args.sdxl_refiner_pag_applied_layers))
-        pipeline_type = args.determine_pipeline_type()
+        pipeline_type = self._resolve_pipeline_type(
+            args, self._model_type, self._parsed_adetailer_detector_uris)
 
         if self._pipeline is not None:
             if self._pipeline_type == pipeline_type:
@@ -5050,7 +5110,8 @@ class DiffusionPipelineWrapper:
         if scheduler_help or second_model_scheduler_help:
             pipe_class = _pipelines.get_pipeline_class(
                 model_type=self.model_type,
-                pipeline_type=args.determine_pipeline_type(),
+                pipeline_type=self._resolve_pipeline_type(
+                    args, self.model_type, self._parsed_adetailer_detector_uris),
                 unet_uri=self.unet_uri,
                 transformer_uri=self.transformer_uri,
                 vae_uri=self.vae_uri,

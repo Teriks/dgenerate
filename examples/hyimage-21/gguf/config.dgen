@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# calcuis HunyuanImage 2.1 GGUF (~Q4_K_M). Requires the gguf Python package.
+
+hunyuanvideo-community/HunyuanImage-2.1-Diffusers
+--model-type hyimage-21
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/calcuis/hunyuanimage-gguf/resolve/main/hunyuanimage2.1-q4_k_m.gguf
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path hyimage21-gguf
+--output-size 2048
+--prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"

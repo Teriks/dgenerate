@@ -1,0 +1,17 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Refiner pass: condition image from a base HyImage 2.1 render (no img2img strength).
+# Replace image-seeds with a PNG from examples/hyimage21/basic when you have one.
+
+hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers
+--model-type hyimage-21-refiner
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 4
+--guidance-scales 3.25
+--gen-seeds 1
+--output-path hyimage-21-refiner
+--output-size 2048
+--image-seeds "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png"
+--prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"

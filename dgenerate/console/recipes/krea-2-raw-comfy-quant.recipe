@@ -1,5 +1,4 @@
 title: Krea 2 Raw (ComfyUI Quant)
-order: 86
 
 # The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
 # NVFP4). Quantized layers stay packed and use hardware matmuls where available.

@@ -1,0 +1,33 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# The GGUF transformer is the model. Text encoders and the VAE load from
+# black-forest-labs/FLUX.1-dev. The repository plus --transformer form in
+# flux-dev-config.dgen still works, and --text-encoders / --vae still override
+# the detected modules. "+" keeps a detected encoder; "null" skips one.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% endif %}
+
+https://huggingface.co/city96/FLUX.1-dev-gguf/blob/main/flux1-dev-Q4_K_S.gguf
+--model-type flux {{ te_quant }}
+--dtype bfloat16
+--model-cpu-offload
+--inference-steps 20
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path flux-gguf-dev-as-model
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

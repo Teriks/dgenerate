@@ -129,6 +129,13 @@ def get_compatible_schedulers(pipeline_cls: type[diffusers.DiffusionPipeline]) -
         elif param_type is diffusers.schedulers.KarrasDiffusionSchedulers:
             compatible_schedulers.update(_KARRAS_SCHEDULERS_MAP.values())
 
+    # Published Wan 2.1 and 2.2 checkpoints use UniPCMultistepScheduler.
+    # The pipeline annotation only names FlowMatchEulerDiscreteScheduler, so
+    # flow-shift on that checkpoint scheduler would otherwise be rejected.
+    if (pipeline_cls.__name__.startswith('Wan')
+            and not pipeline_cls.__name__.startswith('WanAnimate')):
+        compatible_schedulers.add(diffusers.UniPCMultistepScheduler)
+
     # Expand using _compatibles
     compatibles = _expand_with_compatibles(compatible_schedulers)
 

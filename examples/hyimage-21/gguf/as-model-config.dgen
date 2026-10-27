@@ -1,0 +1,17 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# HunyuanImage 2.1 GGUF as the model. Text encoders and the VAE load from
+# hunyuanvideo-community/HunyuanImage-2.1-Diffusers. A distilled or refiner
+# file selects that repository from its tensors. config.dgen uses --transformer.
+
+https://huggingface.co/calcuis/hunyuanimage-gguf/resolve/main/hunyuanimage2.1-q4_k_m.gguf
+--model-type hyimage-21
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path hyimage21-gguf-as-model
+--output-size 2048
+--prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"

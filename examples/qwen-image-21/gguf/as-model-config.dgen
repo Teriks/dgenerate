@@ -1,0 +1,14 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image 2.1 GGUF as the model. Encoders and the VAE load from
+# Qwen/Qwen-Image-2.1. config.dgen passes the same file to --transformer.
+
+https://huggingface.co/molbal/Qwen-Image-2.1-GGUF/blob/main/qwen_image_2.1_Q4_0.gguf
+--model-type qwen-image-21
+--dtype bfloat16
+--model-sequential-offload
+--qwen21-output-resolution 1024
+--gen-seeds 1
+--output-path qwen-image-21-gguf-as-model
+--prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

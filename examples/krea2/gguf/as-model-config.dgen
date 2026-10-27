@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Krea 2 base GGUF as the model. The file name does not say "turbo", so the
+# text encoder and VAE load from krea/Krea-2-Raw. A file whose name contains
+# "turbo" uses krea/Krea-2-Turbo. config.dgen is the repository plus
+# --transformer form.
+
+https://huggingface.co/realrebelai/KREA-2_GGUFs/blob/main/BASE/Krea-2-Base-Q4_K_M.gguf
+--model-type krea2
+--dtype bfloat16
+--model-sequential-offload
+--gen-seeds 1
+--output-path krea-2-gguf-as-model
+--prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

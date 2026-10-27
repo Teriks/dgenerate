@@ -1,0 +1,14 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Hunyuan-DiT v1.2 text-to-image (1024², ~50 steps).
+
+Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers
+--model-type hydit
+--dtype float16
+--inference-steps 50
+--guidance-scales 5
+--gen-seeds 1
+--output-path hydit-basic
+--output-size 1024
+--prompts "A porcelain vase with blue floral patterns on a wooden table, soft studio lighting, product photography"

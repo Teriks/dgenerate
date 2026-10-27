@@ -1,0 +1,33 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan 2.2 Animate FP8 from CivitAI. motion_encoder.dec.direction selects
+# Wan-AI/Wan2.2-Animate-14B-Diffusers.
+# https://civitai.com/models/1974861/wan22-animate-fp816-and-quants
+# Wan-Animate-2 has workflows on CivitAI and no standalone diffusion-model
+# checkpoint there. wan-driving= is the motion clip.
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if not civit_ai_token.strip() %}
+    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+    \exit
+{% endif %}
+
+\setp image "https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/examples/wan_animate/animate/image.jpeg"
+\setp driving "https://raw.githubusercontent.com/Wan-Video/Wan2.2/main/examples/wan_animate/animate/video.mp4"
+
+https://civitai.com/api/download/models/2235335?fileId=2128323
+--model-type wan-animate
+--dtype bfloat16
+--model-sequential-offload
+--wan-animate-preprocess
+--inference-steps 20
+--guidance-scales 1
+--video-fps 30
+--gen-seeds 1
+--output-size 832x480
+--animation-format mp4
+--output-path wan-animate-civitai
+--image-seeds "{{ image }};wan-driving={{ driving }};frame-end=48"
+--prompts "A fantasy woman with pale lavender skin, glowing yellow eyes, pointed ears, and long dark hair, wearing dark ornate armor with gold accents. She performs the motion from the driving video. Cinematic lighting, ultrarealistic detail."

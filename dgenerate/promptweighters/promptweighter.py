@@ -99,6 +99,11 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
                 f'Prompt weighting is not supported for --model-type '
                 f'{_enums.get_model_type_string(model_type)}. '
                 f'These models encode a chat template, not CLIP or T5 tokens.')
+        if _enums.model_type_is_hydit(model_type):
+            raise _exceptions.PromptWeightingUnsupported(
+                f'Prompt weighting is not supported for --model-type '
+                f'{_enums.get_model_type_string(model_type)}. '
+                f'Hunyuan-DiT uses mT5 and bilingual CLIP encoders, not CLIP token weighting.')
         self.__local_files_only = local_files_only
         self.__auth_token = auth_token.strip() if isinstance(auth_token, str) and auth_token.strip() else None
         self.__size_estimate = 0

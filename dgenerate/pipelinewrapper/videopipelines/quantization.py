@@ -158,9 +158,13 @@ def _quantized_classic_modules(model_path, revision, variant, subfolder, dtype,
             continue
         if not isinstance(spec, (list, tuple)) or len(spec) != 2:
             continue
+        library_name, class_name = spec
+        # Optional slots such as Wan 2.2's image_encoder are [null, null].
+        if not isinstance(library_name, str) or not isinstance(class_name, str):
+            continue
         if not _quantize_component(name, quantizer_uri, quantizer_map):
             continue
-        component_class = _resolve_index_class(spec[0], spec[1])
+        component_class = _resolve_index_class(library_name, class_name)
         folder = f'{subfolder}/{name}' if subfolder else name
         modules[name] = _vp._load_quantized_module(
             component_class, model_path, folder, revision, variant, dtype,

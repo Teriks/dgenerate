@@ -298,6 +298,8 @@ class ControlNetUri:
                     model_class = diffusers.FluxControlNetModel
                 elif _enums.model_type_is_sd3(self.model_type):
                     model_class = diffusers.SD3ControlNetModel
+                elif _enums.model_type_is_hydit(self.model_type):
+                    model_class = diffusers.HunyuanDiT2DControlNetModel
                 elif _enums.model_type_is_sdxl(self.model_type) and self.mode is not None:
                     model_class = diffusers.ControlNetUnionModel
                 else:

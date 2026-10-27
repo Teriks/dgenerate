@@ -60,6 +60,71 @@ def _download_host(url: str) -> str:
     return urllib.parse.urlparse(url).netloc or 'download'
 
 
+def _url_for_warning(url: str) -> str:
+    """Drop credential query parameters before a URL is written to the log."""
+    parsed = urllib.parse.urlparse(url)
+    query = [
+        (key, value)
+        for key, value in urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        if key.lower() not in {'token', 'access_token', 'auth_token'}
+    ]
+    return urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(query)))
+
+
+def _basename_filename(name: str) -> str | None:
+    filename = os.path.basename(str(name).replace('\\', '/')).strip().strip('"')
+    if not filename or filename in {'.', '..'}:
+        return None
+    return filename
+
+
+def _content_disposition_filename(response) -> str | None:
+    """
+    Basename from a ``Content-Disposition`` header.
+
+    ``None`` when the response does not send one.
+    """
+    if not response.headers.get('content-disposition'):
+        return None
+    try:
+        filename = pyrfc6266.requests_response_to_filename(response)
+    except Exception:
+        return None
+    return _basename_filename(filename)
+
+
+def _url_path_filename(url: str) -> str | None:
+    """
+    Last path segment when it is a file name.
+
+    Uses the URL that was requested. A redirect to object storage replaces
+    the name with a hash, so the response URL is not consulted. The segment
+    must end in a suffix that contains a letter, such as ``.gguf`` or
+    ``.7z``. ``/api/download/models/714161`` and ``.../v1.2`` do not qualify.
+    """
+    parsed = urllib.parse.urlparse(url)
+    name = _basename_filename(urllib.parse.unquote(parsed.path).rstrip('/'))
+    if name is None:
+        return None
+    suffix = os.path.splitext(name)[1]
+    if not re.fullmatch(r'\.[A-Za-z0-9]{1,16}', suffix):
+        return None
+    if not any(character.isalpha() for character in suffix):
+        return None
+    return name
+
+
+def _download_filename(url: str, response) -> str | None:
+    """Published file name: the disposition header, or a file name in the URL path."""
+    return _content_disposition_filename(response) or _url_path_filename(url)
+
+
+def _warn_missing_disposition(url: str, reason: str) -> None:
+    _messages.warning(
+        f'Could not read the Content-Disposition filename for "{_url_for_warning(url)}": {reason}. '
+        f'The name will be requested again the next time this file is used.')
+
+
 def _download_error_text(exc: BaseException) -> str:
     text = str(exc).strip().splitlines()
     message = text[0] if text else exc.__class__.__name__
@@ -874,10 +939,15 @@ class WebFileCache(FileCache):
         is_offline = self._local_files_only or local_files_only
 
         if not overwrite:
-            with self:
-                cached_file = self.get(url)
-                if cached_file is not None and os.path.exists(cached_file.path):
-                    return cached_file
+            cached_file = self.get(url)
+            if cached_file is not None and os.path.exists(cached_file.path):
+                # The lookup above locks the cache. The name request is a
+                # network call and must not hold that lock.
+                self._backfill_filename(
+                    url, cached_file,
+                    local_files_only=is_offline,
+                    extra_headers=extra_headers)
+                return cached_file
 
         # If we're in offline mode and the file wasn't found in cache, raise an exception
         if is_offline:
@@ -897,9 +967,19 @@ class WebFileCache(FileCache):
                     f'Unknown mimetype "{mime_type}" from URL "{url}". '
                     f'Expected: {mime_acceptable_desc}')
 
-            filename = pyrfc6266.requests_response_to_filename(response)
-            _, ext = os.path.splitext(filename)
             state['metadata'] = {'mime-type': mime_type}
+            stored_name = _download_filename(url, response)
+            if stored_name:
+                state['metadata']['filename'] = stored_name
+                _, ext = os.path.splitext(stored_name)
+            else:
+                _warn_missing_disposition(
+                    url, 'the response had no Content-Disposition filename')
+                try:
+                    fallback = pyrfc6266.requests_response_to_filename(response)
+                except Exception:
+                    fallback = ''
+                _, ext = os.path.splitext(str(fallback))
             state['ext'] = ext
             self._write_partial_state(partial_path, {
                 'metadata': state['metadata'],
@@ -927,3 +1007,87 @@ class WebFileCache(FileCache):
 
         return self._store_downloaded_file(
             url, partial_path, state['metadata'], state.get('ext'))
+
+    def _remember_filename(self, url: str, cached_file: CachedFile, filename: str) -> None:
+        metadata = dict(cached_file.metadata or {})
+        metadata['filename'] = filename
+        cached_file.metadata = metadata
+        with self.kv_store as kv:
+            raw = kv.get(url)
+            if raw is None:
+                return
+            entry = json.loads(raw)
+            entry['metadata'] = metadata
+            # Keep creation_date. Replacing the row would refresh the expiry.
+            kv.cursor.execute(
+                "UPDATE store SET value=? WHERE key=?",
+                (json.dumps(entry), url))
+
+    def _fetch_disposition_filename(self, url: str,
+                                    extra_headers: dict | None = None) -> tuple[str | None, str | None]:
+        """
+        Read ``Content-Disposition`` without saving the body.
+
+        :return: ``(filename or None, failure reason or None)``
+        """
+        headers = {'User-Agent': fake_useragent.UserAgent().chrome}
+        if extra_headers:
+            headers.update(extra_headers)
+        try:
+            with requests.get(url, headers=headers, stream=True,
+                              timeout=_DOWNLOAD_TIMEOUT) as response:
+                response.raise_for_status()
+                filename = _content_disposition_filename(response)
+        except requests.RequestException as error:
+            return None, _download_error_text(error)
+        if not filename:
+            return None, 'the response had no Content-Disposition filename'
+        return filename, None
+
+    def _backfill_filename(self, url: str, cached_file: CachedFile,
+                           local_files_only: bool = False,
+                           extra_headers: dict | None = None) -> None:
+        """
+        Store a missing ``Content-Disposition`` name on a file already in the cache.
+
+        Nothing is recorded when the name cannot be read, so a later run tries again.
+        """
+        if (cached_file.metadata or {}).get('filename'):
+            return
+        from_url = _url_path_filename(url)
+        if from_url:
+            self._remember_filename(url, cached_file, from_url)
+            return
+        if self._local_files_only or local_files_only:
+            _warn_missing_disposition(url, 'the web cache is offline')
+            return
+        filename, reason = self._fetch_disposition_filename(url, extra_headers)
+        if not filename:
+            _warn_missing_disposition(url, reason or 'the response had no Content-Disposition filename')
+            return
+        self._remember_filename(url, cached_file, filename)
+
+    def filename_for_path(self, path: str) -> str | None:
+        """
+        ``Content-Disposition`` basename stored for a cached file path.
+
+        The on-disk name is a generated id. This is the name the server sent.
+        """
+        try:
+            wanted = os.path.normcase(os.path.abspath(path))
+        except (OSError, ValueError):
+            return None
+        with self.kv_store as kv:
+            kv.cursor.execute("SELECT value FROM store")
+            for (raw,) in kv.cursor:
+                entry = json.loads(raw)
+                stored = entry.get('path')
+                if not stored:
+                    continue
+                try:
+                    candidate = os.path.normcase(os.path.abspath(stored))
+                except (OSError, ValueError):
+                    continue
+                if candidate == wanted:
+                    return (entry.get('metadata') or {}).get('filename') or None
+        return None

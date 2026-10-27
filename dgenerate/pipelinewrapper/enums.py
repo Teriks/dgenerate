@@ -280,6 +280,15 @@ class ModelType(enum.Enum):
     LTX_VIDEO = 34
     """LTX-Video (0.9.x) text, image, and keyframe to video."""
 
+    HYDIT = 35
+    """Hunyuan-DiT 1.x text-to-image with LoRA, ControlNet, and IP-Adapter."""
+
+    HYIMAGE_21 = 36
+    """HunyuanImage 2.1 text-to-image."""
+
+    HYIMAGE_21_REFINER = 37
+    """HunyuanImage 2.1 refiner (requires an input image)."""
+
 
 def supported_model_type_strings():
     """
@@ -317,8 +326,11 @@ def supported_model_type_strings():
             'krea2',
             'kandinsky5-image',
             'kandinsky5-video',
-            'hunyuan-video-15',
-            'motif-video']
+            'hyvideo-15',
+            'motif-video',
+            'hydit',
+            'hyimage-21',
+            'hyimage-21-refiner']
 
 
 def supported_model_type_enums() -> list[ModelType]:
@@ -380,8 +392,11 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'krea2': ModelType.KREA2,
                 'kandinsky5-image': ModelType.KANDINSKY5_IMAGE,
                 'kandinsky5-video': ModelType.KANDINSKY5_VIDEO,
-                'hunyuan-video-15': ModelType.HUNYUAN_VIDEO_15,
-                'motif-video': ModelType.MOTIF_VIDEO}[id_str.strip().lower()]
+                'hyvideo-15': ModelType.HUNYUAN_VIDEO_15,
+                'motif-video': ModelType.MOTIF_VIDEO,
+                'hydit': ModelType.HYDIT,
+                'hyimage-21': ModelType.HYIMAGE_21,
+                'hyimage-21-refiner': ModelType.HYIMAGE_21_REFINER}[id_str.strip().lower()]
     except KeyError:
         if id_str.strip().lower() == 'ltx':
             raise ValueError(_LTX_RENAMED_MESSAGE)
@@ -431,8 +446,11 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.KREA2: 'krea2',
             ModelType.KANDINSKY5_IMAGE: 'kandinsky5-image',
             ModelType.KANDINSKY5_VIDEO: 'kandinsky5-video',
-            ModelType.HUNYUAN_VIDEO_15: 'hunyuan-video-15',
-            ModelType.MOTIF_VIDEO: 'motif-video'}[model_type]
+            ModelType.HUNYUAN_VIDEO_15: 'hyvideo-15',
+            ModelType.MOTIF_VIDEO: 'motif-video',
+            ModelType.HYDIT: 'hydit',
+            ModelType.HYIMAGE_21: 'hyimage-21',
+            ModelType.HYIMAGE_21_REFINER: 'hyimage-21-refiner'}[model_type]
 
 
 def model_type_is_sd15(model_type: ModelType | str) -> bool:
@@ -605,6 +623,27 @@ def model_type_is_krea2(model_type: ModelType | str) -> bool:
     return get_model_type_enum(model_type) == ModelType.KREA2
 
 
+def model_type_is_hydit(model_type: ModelType | str) -> bool:
+    """Hunyuan-DiT 1.x."""
+    return get_model_type_enum(model_type) == ModelType.HYDIT
+
+
+def model_type_is_hyimage_21(model_type: ModelType | str) -> bool:
+    """HunyuanImage 2.1 text-to-image."""
+    return get_model_type_enum(model_type) == ModelType.HYIMAGE_21
+
+
+def model_type_is_hyimage_21_refiner(model_type: ModelType | str) -> bool:
+    """HunyuanImage 2.1 refiner."""
+    return get_model_type_enum(model_type) == ModelType.HYIMAGE_21_REFINER
+
+
+def model_type_is_hyimage_21_family(model_type: ModelType | str) -> bool:
+    """HunyuanImage 2.1 base or refiner."""
+    model_type = get_model_type_enum(model_type)
+    return model_type in {ModelType.HYIMAGE_21, ModelType.HYIMAGE_21_REFINER}
+
+
 def model_type_is_kandinsky5_image(model_type: ModelType | str) -> bool:
     """Kandinsky 5 image-generation and editing pipelines."""
     return get_model_type_enum(model_type) == ModelType.KANDINSKY5_IMAGE
@@ -648,6 +687,7 @@ def model_type_image_is_condition(model_type: ModelType | str) -> bool:
         ModelType.QWEN_IMAGE_LAYERED,
         ModelType.QWEN_IMAGE_21,
         ModelType.KANDINSKY5_IMAGE,
+        ModelType.HYIMAGE_21_REFINER,
     }
 
 
@@ -689,6 +729,8 @@ def model_type_is_flow_image(model_type: ModelType | str) -> bool:
         ModelType.QWEN_IMAGE_21,
         ModelType.KREA2,
         ModelType.KANDINSKY5_IMAGE,
+        ModelType.HYIMAGE_21,
+        ModelType.HYIMAGE_21_REFINER,
     }
 
 
@@ -956,6 +998,8 @@ SPECTRUM_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.WAN_ANIMATE_2,
     ModelType.HUNYUAN_VIDEO_15,
     ModelType.MOTIF_VIDEO,
+    ModelType.HYIMAGE_21,
+    ModelType.HYIMAGE_21_REFINER,
 )
 """``--model-type`` values that accept Spectrum."""
 

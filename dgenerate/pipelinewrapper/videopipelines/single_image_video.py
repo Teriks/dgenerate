@@ -37,6 +37,7 @@ import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.types as _types
 import dgenerate.pipelinewrapper.videopipelines as _vp
+from .hyvideo_lora import install_hunyuan_video15_lora_loader as _install_hunyuan_video15_lora_loader
 from .schedules import (
     _default_video_timesteps,
     _eval_sigma_expression,
@@ -46,6 +47,8 @@ from .schedules import (
     _preserved_scheduler_state,
 )
 
+_install_hunyuan_video15_lora_loader()
+
 HUNYUAN_VIDEO_15_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
 MOTIF_VIDEO_SCHEDULER_NAMES = frozenset({
     'FlowMatchEulerDiscreteScheduler', 'DPMSolverMultistepScheduler'})
@@ -53,7 +56,7 @@ KANDINSKY5_VIDEO_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'}
 
 # family: (text-to-video pipeline, image-to-video pipeline, transformer) Diffusers class names
 _FAMILY_CLASSES = {
-    'hunyuan-video-15': (
+    'hyvideo-15': (
         'HunyuanVideo15Pipeline', 'HunyuanVideo15ImageToVideoPipeline',
         'HunyuanVideo15Transformer3DModel'),
     'motif-video': (
@@ -107,7 +110,7 @@ def _classify_single_image_video_seed(model_type, parsed):
 def _resolve_single_image_video_load(model_type, index):
     model_type = _enums.get_model_type_enum(model_type)
     family, prefix = {
-        _enums.ModelType.HUNYUAN_VIDEO_15: ('hunyuan-video-15', 'HunyuanVideo15'),
+        _enums.ModelType.HUNYUAN_VIDEO_15: ('hyvideo-15', 'HunyuanVideo15'),
         _enums.ModelType.MOTIF_VIDEO: ('motif-video', 'MotifVideo'),
         _enums.ModelType.KANDINSKY5_VIDEO: ('kandinsky5-video', 'Kandinsky5'),
     }[model_type]
@@ -235,12 +238,12 @@ def _call_single_image_video(wrapper, user_args):
     call_parameters = inspect.signature(pipe.__call__).parameters
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
-    default_fps = 15.0 if family == 'hunyuan-video-15' else 24.0
+    default_fps = 15.0 if family == 'hyvideo-15' else 24.0
     fps = float(user_args.video_fps or default_fps)
     kwargs = {
         'prompt': positive,
         'generator': _vp._generator(wrapper, user_args),
-        'output_type': 'np' if family == 'hunyuan-video-15' else 'pil',
+        'output_type': 'np' if family == 'hyvideo-15' else 'pil',
     }
     if negative:
         kwargs['negative_prompt'] = negative
@@ -258,7 +261,7 @@ def _call_single_image_video(wrapper, user_args):
         temporal = int(getattr(pipe, 'vae_scale_factor_temporal', 4) or 4)
         kwargs['num_frames'] = _vp.wan_num_frames(user_args.video_length, fps, temporal)
 
-    guidance_default = 6.0 if family == 'hunyuan-video-15' else 5.0
+    guidance_default = 6.0 if family == 'hyvideo-15' else 5.0
     guidance = float(_types.default(user_args.guidance_scale, guidance_default))
     if family == 'kandinsky5-video':
         kwargs['guidance_scale'] = guidance

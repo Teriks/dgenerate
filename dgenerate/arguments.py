@@ -2003,13 +2003,16 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     .ckpt, or .safetensors file), or model folder containing model files.
                     ``ltx2`` and ``ltx-video`` accept LoRAs in diffusers format and fuse them into the transformer.
                     IC-LoRAs for ``ltx2`` are loaded with --ltx-ic-lora instead.
+                    ``hyvideo-15`` accepts HunyuanVideo 1.5 LoRAs, including original module names
+                    and Musubi ``lora_unet_`` files. ``motif-video`` accepts Diffusers-format and
+                    Musubi Motif-Video LoRAs.
                     
                     If a LoRA model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
                     downloaded to dgenerate's web cache.
                     
                     Optional arguments can be provided after a LoRA model specification,
-                    these are: "scale", "revision", "subfolder", and "weight-name".
+                    these are: "scale", "revision", "subfolder", "weight-name", and "component".
                     
                     They can be specified as so in any order, they are not positional:
                     
@@ -2027,6 +2030,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     The "weight-name" argument indicates the name of the weights file to be loaded when
                     loading from a Hugging Face repository or folder on disk.
                     
+                    The "component" argument selects which module receives the LoRA.
+                    "transformer" is the default. "transformer_2" loads a Wan 2.2 LoRA onto
+                    the low-noise expert, which is how a high-noise and low-noise pair is applied.
+
                     If you wish to load a weights file directly from disk, the simplest
                     way is: --loras "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0",
                     all other loading arguments are unused in this case and may produce an error message if used."""
@@ -5201,7 +5208,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     Each value will be tried in turn.
 
                     Defaults to 24 for --model-type ltx2 and ltx-video, motif-video, and 15 for
-                    hunyuan-video-15; 16 for wan;
+                    hyvideo-15; 16 for wan;
                     30 for wan-animate; and 24 for wan-animate-2.
 
                     NOWRAP!

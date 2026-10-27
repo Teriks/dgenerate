@@ -1,0 +1,38 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Split HunyuanImage 2.1 refiner denoising between two calls. The refiner still
+# needs the same conditioning image on both stages; stage two adds saved latents.
+
+\set split 0.5
+\set condition "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png"
+\set prompt "A red fox standing in a snowy pine forest at sunrise, detailed photography"
+
+hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers
+--model-type hyimage-21-refiner
+--dtype bfloat16
+--model-sequential-offload
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 4
+--guidance-scales 3.25
+--gen-seeds 1
+--output-path cooperative
+--image-format pt
+--output-size 1024
+--image-seeds {{ quote(condition) }}
+--denoising-end {{ split }}
+--prompts {{ quote(prompt) }}
+
+hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers
+--model-type hyimage-21-refiner
+--dtype bfloat16
+--model-sequential-offload
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 4
+--guidance-scales 3.25
+--gen-seeds 1
+--output-path cooperative
+--image-seeds "{{ condition }};latents: {{ quote(last_images) }}"
+--output-size 1024
+--denoising-start {{ split }}
+--prompts "A red fox standing in a snowy pine forest at sunrise, crisp detailed photography"

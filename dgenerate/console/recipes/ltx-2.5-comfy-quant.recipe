@@ -1,5 +1,4 @@
 title: LTX-2.5 Non-distilled (ComfyUI Quant)
-order: 35
 
 # The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
 # NVFP4). Quantized layers stay packed and use hardware matmuls where available.

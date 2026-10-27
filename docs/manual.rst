@@ -264,8 +264,9 @@ Help Output
             kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, sd3-pix2pix, flux,
             flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
             qwen-image-layered, ltx2, ltx-video, wan, wan-animate, wan-animate-2, qwen-image-21, krea2,
-            kandinsky5-image, kandinsky5-video, hunyuan-video-15, or motif-video. (default: sd)
-            -----------------------------------------------------------------------------------
+            kandinsky5-image, kandinsky5-video, hyvideo-15, motif-video, hydit, hyimage-21, or
+            hyimage-21-refiner. (default: sd)
+            ---------------------------------
       -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -775,12 +776,14 @@ Help Output
             link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or
             model folder containing model files. ``ltx2`` and ``ltx-video`` accept LoRAs in diffusers format and
             fuse them into the transformer. IC-LoRAs for ``ltx2`` are loaded with --ltx-ic-lora instead.
+            ``hyvideo-15`` accepts HunyuanVideo 1.5 LoRAs, including original module names and Musubi
+            ``lora_unet_`` files. ``motif-video`` accepts Diffusers-format and Musubi Motif-Video LoRAs.
             
             If a LoRA model file exists at a URL which serves the file as a raw download, you may provide an
             http/https link to it and it will be downloaded to dgenerate's web cache.
             
             Optional arguments can be provided after a LoRA model specification, these are: "scale", "revision",
-            "subfolder", and "weight-name".
+            "subfolder", "weight-name", and "component".
             
             They can be specified as so in any order, they are not positional:
             
@@ -797,6 +800,10 @@ Help Output
             The "weight-name" argument indicates the name of the weights file to be loaded when loading from a
             Hugging Face repository or folder on disk.
             
+            The "component" argument selects which module receives the LoRA. "transformer" is the default.
+            "transformer_2" loads a Wan 2.2 LoRA onto the low-noise expert, which is how a high-noise and
+            low-noise pair is applied.
+
             If you wish to load a weights file directly from disk, the simplest way is: --loras
             "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0", all other loading arguments
             are unused in this case and may produce an error message if used.
@@ -1507,11 +1514,11 @@ Help Output
             Enable Cache-DiT's default training-free cache acceleration for supported Diffusers DiT pipelines.
             
             Cache-DiT's default cache settings are used. This option cannot be combined with --tea-cache,
-            --spectrum, --sada, or --dype.
+            --spectrum, --sada, --ras, or --dype.
             
             This is supported for: --model-type sd3, sd3-pix2pix, flux, flux-fill, flux-kontext, flux2,
             flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, krea2,
-            kandinsky5-image, ltx2, ltx-video, wan, wan-animate, wan-animate-2, hunyuan-video-15, and
+            kandinsky5-image, ltx2, ltx-video, wan, wan-animate, wan-animate-2, hyvideo-15, and
             kandinsky5-video.
             
             See: https://cache-dit.readthedocs.io/en/latest/
@@ -1529,7 +1536,7 @@ Help Output
             
             This is supported for: --model-type flux, flux-fill, flux-kontext, flux2, flux2-klein-kv,
             qwen-image, qwen-image-edit, qwen-image-layered, krea2, z-image, z-image-omni, wan, wan-animate,
-            wan-animate-2, hunyuan-video-15, and motif-video.
+            wan-animate-2, hyvideo-15, and motif-video.
             
             See: https://github.com/guyyariv/DyPE
             -------------------------------------
@@ -1582,7 +1589,7 @@ Help Output
             pipeline component names to Cache-DiT layerwise_offload options. Supported --model-type values: sd3,
             sd3-pix2pix, flux, flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni,
             qwen-image, qwen-image-edit, qwen-image-layered, krea2, kandinsky5-image, ltx2, ltx-video, wan,
-            wan-animate, wan-animate-2, hunyuan-video-15, and kandinsky5-video. See:
+            wan-animate, wan-animate-2, hyvideo-15, and kandinsky5-video. See:
             https://cache-dit.readthedocs.io/en/latest/user_guide/LOAD_CONFIGS/ Layerwise offload:
             https://cache-dit.readthedocs.io/en/latest/user_guide/OFFLOAD/
             --------------------------------------------------------------
@@ -1620,8 +1627,8 @@ Help Output
             This is supported for: --model-type sd3, sd3-pix2pix, sdxl, sdxl-pix2pix, kolors, flux, flux-fill,
             flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
             qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, wan, wan-animate, wan-animate-2,
-            hunyuan-video-15, and motif-video.
-            ----------------------------------
+            hyvideo-15, motif-video, hyimage-21, and hyimage-21-refiner.
+            ------------------------------------------------------------
       --spectrum-weights [FLOAT ...]
             Spectrum Chebyshev blend weights to try when --spectrum is enabled.
             
@@ -2805,8 +2812,8 @@ Help Output
       --video-fps FPS [FPS ...]
             One or more output frame rates for video model types. Each value will be tried in turn.
             
-            Defaults to 24 for --model-type ltx2 and ltx-video, motif-video, and 15 for hunyuan-video-15; 16 for
-            wan; 30 for wan-animate; and 24 for wan-animate-2.
+            Defaults to 24 for --model-type ltx2 and ltx-video, motif-video, and 15 for hyvideo-15; 16 for wan;
+            30 for wan-animate; and 24 for wan-animate-2.
             
             (default: model type default)
             -----------------------------
@@ -4583,13 +4590,16 @@ only; they do not synthesize audio.
 HunyuanVideo 1.5
 ----------------
 
-Use ``--model-type hunyuan-video-15`` with a Diffusers HunyuanVideo 1.5
+Use ``--model-type hyvideo-15`` with a Diffusers HunyuanVideo 1.5
 checkpoint. The published 480p T2V and I2V checkpoints are separate; the
 checkpoint determines which pipeline is loaded. The defaults are 15 fps,
 guidance 6, and 50 inference steps. ``FlowMatchEulerDiscreteScheduler`` is the
 supported scheduler. Hunyuan also accepts ``--sigmas`` when specifying a custom
 FlowMatch schedule; the number of sigmas determines the number of denoising
-steps.
+steps. ``--loras`` loads a HunyuanVideo 1.5 LoRA onto the transformer, including
+original-layout checkpoints and Musubi ``lora_unet_`` files. A ComfyUI quantized
+transformer keeps those adapters active instead of fusing them into the packed
+weights.
 
 The examples use ``bfloat16``, sequential CPU offload, 50 steps, and an
 ``848x480`` canvas. Sequential offload is a useful starting point on consumer
@@ -4598,9 +4608,10 @@ between CPU and GPU. ``--model-cpu-offload`` and ``--model-group-offload`` are
 also available. ``--torch-compile`` compiles the repeated transformer blocks;
 the first run can take longer while compilation happens.
 
-* `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hunyuan_video_15/text-to-video/config.dgen>`_
-* `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hunyuan_video_15/image-to-video/config.dgen>`_
-* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hunyuan_video_15/gguf/config.dgen>`_
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/text-to-video/config.dgen>`_
+* `4-step LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/lora/lightx2v-4step-config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/image-to-video/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/gguf/config.dgen>`_
 
 Motif-Video
 -----------
@@ -4610,7 +4621,8 @@ The same repository supports text-to-video and first-frame image-to-video; the
 mode selects the corresponding pipeline. Defaults are 24 fps, guidance 5, and
 50 inference steps. Motif supports ``FlowMatchEulerDiscreteScheduler`` and
 ``DPMSolverMultistepScheduler``. ``--max-sequence-length`` controls the prompt
-token limit (default 512).
+token limit (default 512). ``--loras`` loads Diffusers-format and Musubi
+Motif-Video LoRAs onto the transformer.
 
 ``--timesteps`` sets an explicit timestep schedule for Motif. Give one or
 more comma-separated integer schedules, such as ``1000,700,300,0``, or
@@ -5225,29 +5237,39 @@ Wan-Animate uses ``UniPCMultistepScheduler``. Wan-Animate-2 also accepts
 Text to video
 ~~~~~~~~~~~~~
 
-No image seed is text to video. ``Wan-AI/Wan2.1-T2V-1.3B-Diffusers`` is the
-small checkpoint. ``Wan-AI/Wan2.1-T2V-14B-Diffusers`` is the large one.
+No image seed is text to video. ``Wan-AI/Wan2.2-T2V-A14B-Diffusers`` is the
+Wan 2.2 mixture-of-experts checkpoint. The examples use guidance 4 and
+``--wan-low-noise-guidance-scales 3``. ``Wan-AI/Wan2.1-T2V-1.3B-Diffusers`` is
+the small Wan 2.1 checkpoint.
 
 .. code-block:: bash
 
-    Wan-AI/Wan2.1-T2V-1.3B-Diffusers --model-type wan \
+    Wan-AI/Wan2.2-T2V-A14B-Diffusers --model-type wan \
+        --guidance-scales 4 --wan-low-noise-guidance-scales 3 \
         --video-lengths 5 --video-fps 16 --output-size 832x480 \
         --prompts "a red fox riding a horse down a highway;static, blurry"
 
-See `examples/wan/basic/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/basic/text-to-video-config.dgen>`_.
+See `examples/wan/basic/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/basic/text-to-video-config.dgen>`_
+for Wan 2.1 and
+`examples/wan/basic/text-to-video-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/basic/text-to-video-wan22-config.dgen>`_
+for Wan 2.2.
 
 Image to video
 ~~~~~~~~~~~~~~
 
 One still is the first frame. The checkpoint needs an image encoder.
-``Wan-AI/Wan2.1-I2V-14B-480P-Diffusers`` is the 480p I2V model. A Wan 2.1 I2V
-transformer only embeds that opening still.
+``Wan-AI/Wan2.2-I2V-A14B-Diffusers`` is the Wan 2.2 image-to-video model.
+It only embeds the opening still. ``last-frame=`` still needs a first-last-frame
+checkpoint such as ``Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers``.
 
 .. code-block:: bash
 
     --image-seeds first.jpg
 
-See `examples/wan/image_conditioning/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/image_conditioning/image-to-video-config.dgen>`_.
+See `examples/wan/image_conditioning/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/image_conditioning/image-to-video-config.dgen>`_
+for Wan 2.1 and
+`examples/wan/image_conditioning/image-to-video-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/image_conditioning/image-to-video-wan22-config.dgen>`_
+for Wan 2.2.
 
 First and last frame
 ~~~~~~~~~~~~~~~~~~~~
@@ -5405,7 +5427,17 @@ It may not name ``vae``.
 text encoder. ``--wan-second-transformer`` does the same for the Wan 2.2
 low-noise expert. ``--text-encoders`` replaces UMT5. Use ``+`` to keep the
 checkpoint default, or ``null`` to skip a slot. ``--loras`` loads a Diffusers
-LoRA onto the transformer.
+LoRA onto the transformer. ``component=transformer_2`` loads one LoRA onto the
+Wan 2.2 low-noise expert instead, so a high-noise and low-noise pair can be
+given together.
+
+LightX2V's 4-step Wan LoRAs use the undistilled checkpoint, guidance 1, 4
+steps, and ``UniPCMultistepScheduler`` with ``flow-shift=5``. Wan 2.2 uses one
+LoRA per expert. See
+`examples/wan/lora/lightx2v-4step-t2v-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/lora/lightx2v-4step-t2v-config.dgen>`_,
+`examples/wan/lora/lightx2v-4step-i2v-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/lora/lightx2v-4step-i2v-config.dgen>`_,
+and
+`examples/wan/lora/lightx2v-4step-moe-t2v-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/lora/lightx2v-4step-moe-t2v-config.dgen>`_.
 
 ``--model-sequential-offload``, ``--model-cpu-offload``, and
 ``--model-group-offload`` are available. ``--torch-compile`` compiles repeated
@@ -6208,6 +6240,128 @@ Z-Image Cooperative Denoising:
     --denoising-start {{ high_noise_fraction }}
     --output-size 1024
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+Hunyuan-DiT Cooperative Denoising:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+
+    # Split Hunyuan-DiT denoising between two calls using saved spatial latents.
+    # Uses the default DDPM scheduler; denoise-range slicing is supported for DDPM.
+
+    \set split 0.8
+    \set prompt "A red fox standing in a snowy pine forest at sunrise, detailed photography"
+
+    Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers
+    --model-type hydit
+    --dtype float16
+    --model-sequential-offload
+    --inference-steps 50
+    --guidance-scales 5
+    --gen-seeds 1
+    --output-path cooperative
+    --image-format pt
+    --output-size 1024
+    --denoising-end {{ split }}
+    --prompts {{ quote(prompt) }}
+
+    Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers
+    --model-type hydit
+    --dtype float16
+    --model-sequential-offload
+    --inference-steps 50
+    --guidance-scales 5
+    --gen-seeds 1
+    --output-path cooperative
+    --image-seeds "latents: {{ quote(last_images) }}"
+    --output-size 1024
+    --denoising-start {{ split }}
+    --prompts "A red fox standing in a snowy pine forest at sunrise, crisp detailed photography"
+
+HunyuanImage 2.1 Cooperative Denoising:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+
+    # Split HunyuanImage 2.1 base denoising between two calls using saved spatial latents.
+
+    \set split 0.8
+    \set prompt "A red fox standing in a snowy pine forest at sunrise, detailed photography"
+
+    hunyuanvideo-community/HunyuanImage-2.1-Diffusers
+    --model-type hyimage-21
+    --dtype bfloat16
+    --model-sequential-offload
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 50
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path cooperative
+    --image-format pt
+    --output-size 1024
+    --denoising-end {{ split }}
+    --prompts {{ quote(prompt) }}
+
+    hunyuanvideo-community/HunyuanImage-2.1-Diffusers
+    --model-type hyimage-21
+    --dtype bfloat16
+    --model-sequential-offload
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 50
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path cooperative
+    --image-seeds "latents: {{ quote(last_images) }}"
+    --output-size 1024
+    --denoising-start {{ split }}
+    --prompts "A red fox standing in a snowy pine forest at sunrise, crisp detailed photography"
+
+HunyuanImage 2.1 Refiner Cooperative Denoising:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+
+    # Split HunyuanImage 2.1 refiner denoising between two calls. The refiner still
+    # needs the same conditioning image on both stages; stage two adds saved latents.
+
+    \set split 0.5
+    \set condition "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png"
+    \set prompt "A red fox standing in a snowy pine forest at sunrise, detailed photography"
+
+    hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers
+    --model-type hyimage-21-refiner
+    --dtype bfloat16
+    --model-sequential-offload
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 4
+    --guidance-scales 3.25
+    --gen-seeds 1
+    --output-path cooperative
+    --image-format pt
+    --output-size 1024
+    --image-seeds {{ quote(condition) }}
+    --denoising-end {{ split }}
+    --prompts {{ quote(prompt) }}
+
+    hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers
+    --model-type hyimage-21-refiner
+    --dtype bfloat16
+    --model-sequential-offload
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 4
+    --guidance-scales 3.25
+    --gen-seeds 1
+    --output-path cooperative
+    --image-seeds "{{ condition }};latents: {{ quote(last_images) }}"
+    --output-size 1024
+    --denoising-start {{ split }}
+    --prompts "A red fox standing in a snowy pine forest at sunrise, crisp detailed photography"
 
 SDXL and Kolors models handle latents interchange differently than other model families.
 For SDXL or Kolors cooperative denoising, latents are passed directly as img2img input without
@@ -7149,6 +7303,27 @@ ComfyUI layouts. Quantize the text encoders with ``bnb`` or ``sdnq`` and
 `examples/qwen-image/gguf <examples/qwen-image/gguf_>`_,
 and `examples/ltx2/gguf <examples/ltx2/gguf_>`_.
 
+A transformer-only file can also be the model itself. dgenerate reads the
+checkpoint, picks the matching Diffusers repository, and loads the text
+encoders, tokenizers, and VAE from there. The repository plus ``--transformer``
+form above is unchanged. ``--text-encoders`` and ``--vae`` still replace any
+of those modules. ``+`` keeps a detected encoder and ``null`` skips one, so
+SD3 can run without T5:
+
+.. code-block:: bash
+
+    dgenerate https://huggingface.co/city96/stable-diffusion-3-medium-gguf/blob/main/sd3_medium-Q4_K_S.gguf \
+    --model-type sd3 \
+    --variant fp16 \
+    --text-encoders + + null \
+    --prompts "a horse outside a barn"
+
+A file that already contains text encoders keeps the single-file loader and
+still honors ``null``. See
+`examples/flux/gguf/flux-dev-as-model-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux/gguf/flux-dev-as-model-config.dgen>`_
+and
+`examples/stablediffusion3/text_encoders/without-t5-as-model-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/stablediffusion3/text_encoders/without-t5-as-model-config.dgen>`_.
+
 A transformer can also be a pre-quantized ComfyUI ``.safetensors`` file in FP8,
 INT8 (ConvRot), or NVFP4, such as the ComfyUI, Black Forest Labs, and Lightricks
 releases. The same rules apply: point ``--transformer`` at the file and do not
@@ -7285,17 +7460,19 @@ are dequantized as they load.
     --output-size 1024
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
 
-A file holding only the transformer needs ``--text-encoders`` and ``--vae``.
+A file holding only the transformer loads its text encoders and VAE from the
+matching Diffusers repository. ``--text-encoders`` and ``--vae`` still override
+that, and ``null`` still skips an encoder.
 
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 6.0.0
     
-    # The ComfyUI INT8 ConvRot transformer as the model itself, instead of
-    # --transformer. The file holds only the transformer, so the text encoder
-    # and VAE come from the Tongyi repository. --transformer with the repository
-    # as the model (turbo-int8-convrot-config.dgen) is the simpler form.
+    # The ComfyUI INT8 ConvRot transformer as the model. The file holds only the
+    # transformer, so the Qwen3 text encoder and VAE load from Tongyi-MAI/Z-Image-Turbo.
+    # turbo-int8-convrot-config.dgen is the repository plus --transformer form.
+    # single-file-explicit-config.dgen names --text-encoders and --vae by hand.
     
     \set model https://huggingface.co/Comfy-Org/z_image_turbo/blob/main/split_files/diffusion_models/z_image_turbo_int8_convrot.safetensors
     
@@ -7310,8 +7487,6 @@ A file holding only the transformer needs ``--text-encoders`` and ``--vae``.
     {{ model }}
     --model-type z-image {{ offload }}
     --dtype bfloat16
-    --text-encoders Qwen3Model;model=Tongyi-MAI/Z-Image-Turbo;subfolder=text_encoder
-    --vae AutoencoderKL;model=Tongyi-MAI/Z-Image-Turbo;subfolder=vae
     --scheduler FlowMatchEulerDiscreteScheduler
     --inference-steps 9
     --guidance-scales 0
@@ -7635,6 +7810,8 @@ LoRAs are supported for these model types:
     * ``--model-type flux-fill``
     * ``--model-type ltx2``
     * ``--model-type ltx-video``
+    * ``--model-type hyvideo-15``
+    * ``--model-type motif-video``
 
 When multiple specifications are given, all mentioned models will be fused together
 into one set of weights at their individual scale, and then those weights will be
@@ -7652,7 +7829,9 @@ When a scale is not specified, 1.0 is assumed.
 Named arguments when loading a LoRA are separated by the ``;`` character and are
 not positional, meaning they can be defined in any order.
 
-Loading arguments available when specifying a LoRA are: ``scale``, ``revision``, ``subfolder``, and ``weight-name``
+Loading arguments available when specifying a LoRA are: ``scale``, ``revision``, ``subfolder``, ``weight-name``, and ``component``.
+
+``component=transformer_2`` loads that LoRA onto the Wan 2.2 low-noise expert. The default is the primary transformer.
 
 The only named argument compatible with loading a .safetensors or other file directly off disk is ``scale``
 
@@ -9236,6 +9415,7 @@ prompt variations using a special prompting syntax.
             seed: int | None = None
             variations: int | None = None
             wildcards: str | None = None
+            auth-token: str | None = None
     
         Upscale prompts with the dynamicprompts library.
     
@@ -9304,6 +9484,7 @@ Which is a GPT2 finetune focused specifically on prompt generation.
             smart-truncate: bool = False
             cleanup-config: str | None = None
             device: str | None = None
+            auth-token: str | None = None
     
         Upscale prompts using magicprompt or other LLMs via transformers.
     
@@ -9458,6 +9639,7 @@ Older NVIDIA, Windows AMD, and Intel Arc:
             context-tokens: int = 2048
             smart-truncate: bool = False
             cleanup-config: str | None = None
+            auth-token: str | None = None
     
         Upscale prompts with a GGUF model through llama.cpp.
     
@@ -9542,6 +9724,7 @@ This is supported for multiple languages, though, CLIP usually really only under
             seed: int | None = None
             lang: str = "en"
             syntax: str = "sd-embed"
+            auth-token: str | None = None
     
         Add random attention values to your prompt tokens.
     
@@ -9601,6 +9784,7 @@ This can be used to translate between any language supported by ``argostranslate
             batch: bool = True
             max-batch: int | None = 50
             device: str | None = None
+            auth-token: str | None = None
     
         Local language translation using argostranslate or Helsinki-NLP opus (mariana).
     
@@ -11258,6 +11442,7 @@ The ``interposer`` supports several conversions, described in its help output:
             target: str
             device: str = "cpu"
             model-offload: bool = False
+            auth-token: str | None = None
     
         Converts latents between different diffusion model latent spaces.
     
@@ -12460,6 +12645,7 @@ adetailer processor help output below.
             device: str | None = None
             output-file: str | None = None
             output-overwrite: bool = False
+            auth-token: str | None = None
     
         adetailer, diffusion based post processor for SD1.5, SDXL, Kolors, SD3, and Flux
     
@@ -12651,6 +12837,9 @@ adetailer processor help output below.
         not enabled, new images written by the processor while it is being used will be written with a numbered
         suffix instead of being overwritten.
     
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
+
     ==============================================================================================================
 
 Adetailer Pipeline
@@ -12812,6 +13001,7 @@ processor chaining if desired.
             output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
+            auth-token: str | None = None
     
         Process the input image with Ultralytics YOLO object detection.
     
@@ -12988,6 +13178,9 @@ processor chaining if desired.
         when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
         impact rendering speed when generating many images.
     
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
+
     ==============================================================================================================
 
 Segment Anything Mask Generation
@@ -13027,6 +13220,7 @@ provided in the image preview pane context menu.
             output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
+            auth-token: str | None = None
     
         Process the input image with Ultralytics SAM (Segment Anything Model) using point or bounding box prompts.
     
@@ -13163,6 +13357,9 @@ provided in the image preview pane context menu.
         when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
         impact rendering speed when generating many images.
     
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
+
     ==============================================================================================================
 
 You can combine this processor with the ``crop`` and ``paste`` processor to perform
@@ -13257,6 +13454,7 @@ The ``yolo-sam`` processor is especially valuable for:
             output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
+            auth-token: str | None = None
     
         Process the input image with YOLO object detection followed by SAM (Segment Anything Model) segmentation.
     
@@ -13410,6 +13608,9 @@ The ``yolo-sam`` processor is especially valuable for:
         when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
         impact rendering speed when generating many images.
     
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
+
     ==============================================================================================================
 
 Quantization
@@ -13710,7 +13911,7 @@ parallelism, attention, quantization, and offload support.
 
 ``--cache-dit`` enables Cache-DiT with its defaults. Use ``--cache-dit-config``
 to supply Cache-DiT's YAML configuration; that option also enables Cache-DiT.
-Cache-DiT cannot be combined with TeaCache, Spectrum, SADA, or DyPE.
+Cache-DiT cannot be combined with TeaCache, Spectrum, SADA, RAS, or DyPE.
 The native ``cache_config``, ``calibrator_config``, ``parallelism_config``,
 ``quantize_config``, and ``attention_backend`` sections pass through Cache-DiT's
 config loader. Advanced per-block cache overrides can be supplied through the
@@ -14662,7 +14863,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [47682387755830]
+            Value: [28710021079176]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -17174,6 +17375,8 @@ Auth Tokens
 dgenerate will automatically append your CivitAI token to CivitAI API links if you set the environmental variable ``CIVIT_AI_TOKEN``
 
 For Hugging Face hub downloads setting ``HF_TOKEN`` is sufficient if you wish to avoid using ``--auth-token`` or related ``token`` URI arguments.
+
+``--auth-token`` also applies to single-file, blob, and resolve downloads, including the config ``download()`` function. It does not replace a saved login when the option is omitted or empty.
 
 File Cache Control
 ==================

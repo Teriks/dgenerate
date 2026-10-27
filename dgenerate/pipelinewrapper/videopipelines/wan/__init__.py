@@ -54,7 +54,10 @@ from .animate2 import (
 from .common import _set_wan_vae_dtype
 
 
-WAN_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
+WAN_SCHEDULER_NAMES = frozenset({
+    'FlowMatchEulerDiscreteScheduler',
+    'UniPCMultistepScheduler',
+})
 WAN_ANIMATE_SCHEDULER_NAMES = frozenset({'UniPCMultistepScheduler'})
 WAN_ANIMATE_2_SCHEDULER_NAMES = frozenset({
     'FlowMatchEulerDiscreteScheduler',

@@ -1,0 +1,23 @@
+title: HunyuanImage 2.1 (GGUF)
+
+# GGUF diffusion transformer (calcuis/hunyuanimage-gguf or similar). Match the base / distilled / refiner Diffusers slug.
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default":"hunyuanvideo-community/HunyuanImage-2.1-Diffusers", "optional":false, "file-types":["models"]}]
+--model-type hyimage-21
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter":["FlowMatchEulerDiscreteScheduler"]}]
+@switch[{"id":"sp", "label":"Use Spectrum", "arg":"--spectrum", "divider-after":true}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@quantizer[{"divider-after":true}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-q4_k_m.gguf", "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":3.5, "min":0}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@imageformat[{}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"2048x2048"}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here"

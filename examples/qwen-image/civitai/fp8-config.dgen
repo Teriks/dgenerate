@@ -1,0 +1,33 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image FP8 diffusion model from CivitAI.
+# https://civitai.com/models/1864281/qwen-image
+# The text encoder and VAE load from Qwen/Qwen-Image.
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if not civit_ai_token.strip() %}
+    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 16 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 16 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% endif %}
+
+https://civitai.com/api/download/models/2110043?fileId=2004779
+--model-type qwen-image {{ te_quant }}
+--dtype bfloat16
+--model-sequential-offload
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 20
+--guidance-scales 4
+--gen-seeds 1
+--output-path qwen-image-civitai-fp8
+--output-size 1024
+--prompts "A cat holding a sign that says hello world"

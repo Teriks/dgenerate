@@ -1,5 +1,4 @@
 title: Flux.2 Klein 4B (GGUF)
-order: 65
 
 # Four steps is the short schedule. Distilled Klein ignores guidance above 1.
 

@@ -21,7 +21,7 @@ class TestDyPE(unittest.TestCase):
     def test_new_video_model_types_advertise_dype(self):
         from dgenerate.pipelinewrapper.enums import model_type_supports_dype
 
-        self.assertTrue(model_type_supports_dype('hunyuan-video-15'))
+        self.assertTrue(model_type_supports_dype('hyvideo-15'))
         self.assertTrue(model_type_supports_dype('motif-video'))
 
     def test_config_rejects_step_reuse_features(self):
@@ -359,7 +359,7 @@ class TestDyPE(unittest.TestCase):
                 super().__init__()
                 self.rope = _FactorizedRope()
 
-        for family in ('hunyuan-video-15', 'motif-video'):
+        for family in ('hyvideo-15', 'motif-video'):
             with self.subTest(family=family):
                 holder = _Holder()
                 hidden = torch.zeros(1, 4, 2, 32, 48)

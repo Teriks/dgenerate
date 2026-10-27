@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import bisect
 import importlib.resources
 import importlib.util
 import io
@@ -72,17 +71,48 @@ def get_recipes():
     if _RECIPES:
         return _RECIPES
 
-    recipes = []
+    recipes_dir = importlib.resources.files('dgenerate.console').joinpath('recipes')
+    index_path = recipes_dir.joinpath('index.json')
+    try:
+        index = json.loads(index_path.read_text(encoding='utf-8'))
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f'recipes/index.json is not valid JSON: {e}') from e
+    if not isinstance(index, list) or not all(isinstance(name, str) for name in index):
+        raise RuntimeError('recipes/index.json must be a list of recipe filenames.')
 
-    for file in importlib.resources.files('dgenerate.console').joinpath('recipes').iterdir():
-        text = file.read_text()
-        title, order, rest = text.split('\n', 2)
+    duplicates = sorted({name for name in index if index.count(name) > 1})
+    if duplicates:
+        raise RuntimeError(
+            'recipes/index.json lists the same file more than once: '
+            + ', '.join(duplicates))
+
+    on_disk = {
+        entry.name for entry in recipes_dir.iterdir()
+        if entry.is_file() and entry.name.endswith('.recipe')}
+    indexed = set(index)
+    missing = [name for name in index if name not in on_disk]
+    unlisted = sorted(on_disk - indexed)
+    if missing or unlisted:
+        parts = []
+        if missing:
+            parts.append(
+                'recipes/index.json names files that are not in recipes/: '
+                + ', '.join(missing))
+        if unlisted:
+            parts.append(
+                'recipe files missing from recipes/index.json: '
+                + ', '.join(unlisted))
+        raise RuntimeError('; '.join(parts) + '.')
+
+    for name in index:
+        text = recipes_dir.joinpath(name).read_text(encoding='utf-8')
+        title, rest = text.split('\n', 1)
+        if not title.startswith('title:'):
+            raise RuntimeError(f'{name} must start with a title: line.')
         title = title.split(':', 1)[1].strip()
-        order = int(order.split(':', 1)[1].strip())
-        bisect.insort(recipes, (order, title, rest), key=lambda x: (x[0], x[1]))
-
-    for recipe in recipes:
-        _RECIPES[recipe[1]] = recipe[2]
+        if title in _RECIPES:
+            raise RuntimeError(f'recipe title {title!r} is used by more than one file.')
+        _RECIPES[title] = rest
 
     return _RECIPES
 

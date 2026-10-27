@@ -122,6 +122,27 @@ class TestGGUFCompat(unittest.TestCase):
             'double_blocks.0.img_attn.qkv.weight': (3072, 9216),
         }))
 
+    def test_hyimage21_gguf_layout(self):
+        layout = _ggufcompat.detect_gguf_layout({
+            'txt_in.input_embedder.weight': (3584, 3584),
+            'img_in.proj.weight': (3584, 64),
+            'double_blocks.0.img_attn_qkv.weight': (3584, 10752),
+            'byt5_in.fc1.weight': (2048, 1472),
+        })
+        self.assertEqual(layout.kind, 'hyimage21')
+        self.assertEqual(
+            layout.config_repo, 'hunyuanvideo-community/HunyuanImage-2.1-Diffusers')
+        self.assertTrue(layout.adapt)
+
+        refiner = _ggufcompat.detect_gguf_layout({
+            'txt_in.input_embedder.weight': (3584, 3584),
+            'img_in.proj.weight': (3328, 128),
+            'double_blocks.0.img_attn_qkv.weight': (3328, 9984),
+            'guidance_in.mlp.0.weight': (3328, 256),
+        })
+        self.assertEqual(refiner.config_repo,
+                         'hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers')
+
     def test_qwen_zimage_and_ltx(self):
         qwen = _ggufcompat.detect_gguf_layout({
             'img_in.weight': (64, 3072),
@@ -242,10 +263,18 @@ class TestGGUFCompat(unittest.TestCase):
         i2v = _ggufcompat.detect_gguf_layout({
             'model.diffusion_model.head.modulation': (5120,),
             'model.diffusion_model.patch_embedding.weight': (5120, 36, 2, 2),
+            'model.diffusion_model.img_emb.proj.0.weight': (5120, 1280),
         })
         self.assertEqual(i2v.kind, 'wan-i2v-14B')
         self.assertTrue(i2v.comfy)
         self.assertEqual(i2v.config_repo, 'Wan-AI/Wan2.1-I2V-14B-480P-Diffusers')
+
+        i2v22 = _ggufcompat.detect_gguf_layout({
+            'head.modulation': (5120,),
+            'patch_embedding.weight': (5120, 36, 1, 2, 2),
+        })
+        self.assertEqual(i2v22.kind, 'wan-i2v-a14b')
+        self.assertEqual(i2v22.config_repo, 'Wan-AI/Wan2.2-I2V-A14B-Diffusers')
 
         t2v = _ggufcompat.detect_gguf_layout({
             'head.modulation': (5120,),
@@ -289,6 +318,7 @@ class TestGGUFCompat(unittest.TestCase):
         i2v_with_attn = _ggufcompat.detect_gguf_layout({
             'head.modulation': (5120,),
             'patch_embedding.weight': (5120, 36, 2, 2),
+            'img_emb.proj.0.weight': (5120, 1280),
             'blocks.0.self_attn.to_q.weight': (5120, 5120),
         })
         self.assertEqual(i2v_with_attn.kind, 'wan-i2v-14B')

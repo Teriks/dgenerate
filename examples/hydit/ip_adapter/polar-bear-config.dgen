@@ -1,0 +1,17 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Hunyuan-DiT IP-Adapter (Tencent-Hunyuan/IP-Adapter). clip_img_encoder.pt is loaded
+# from the IP-Adapter repo automatically.
+
+Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers
+--model-type hydit
+--dtype float16
+--inference-steps 50
+--guidance-scales 5
+--gen-seeds 1
+--output-path hydit-ip-adapter
+--output-size 1024
+--image-seeds "adapter: https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png"
+--ip-adapters Tencent-Hunyuan/IP-Adapter;weight-name=ipa.pt
+--prompts "a polar bear sitting in a chair drinking a milkshake; deformed, ugly, wrong proportion, low res, bad anatomy, worst quality, low quality"

@@ -1,5 +1,4 @@
 title: Qwen-Image Layered (GGUF)
-order: 77
 
 # One image in. Each layer is written as its own file.
 
