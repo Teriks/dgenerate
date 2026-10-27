@@ -22,4 +22,4 @@ title: Motif-Video Text to Video (GGUF)
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"832x480"}]
 @device[{}]
---prompts "add your prompt here; worst quality, inconsistent motion, blurry, jittery, distorted"
+--prompts "add your prompt here"

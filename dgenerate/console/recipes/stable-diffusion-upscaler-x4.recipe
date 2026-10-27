@@ -31,4 +31,4 @@ title: Upscaling (Stable Diffusion x4)
 @promptweighter[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "filter":["compel", "sd-embed"]}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "your prompt here"
+--prompts "add your prompt here"

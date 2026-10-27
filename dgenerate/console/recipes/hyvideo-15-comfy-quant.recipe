@@ -27,4 +27,4 @@ title: HunyuanVideo 1.5 Text to Video (ComfyUI Quant)
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"848x480"}]
 @device[{}]
---prompts "add your prompt here; worst quality, blurry, jittery, distorted"
+--prompts "add your prompt here"

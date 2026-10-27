@@ -39,4 +39,4 @@ title: Wan 2.2 Text to Video (4-step LoRA)
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window."
+--prompts "add your prompt here"

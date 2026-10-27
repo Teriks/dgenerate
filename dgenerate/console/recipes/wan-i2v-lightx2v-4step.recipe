@@ -40,4 +40,4 @@ title: Wan 2.1 Image to Video (4-step LoRA)
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "An astronaut in a white spacesuit stands on the lunar surface, then walks forward. Dust lifts around the boots. Earth hangs in the black sky. The suit matches the first frame."
+--prompts "add your prompt here"

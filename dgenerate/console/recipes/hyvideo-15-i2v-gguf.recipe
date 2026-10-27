@@ -26,4 +26,4 @@ title: HunyuanVideo 1.5 Image to Video (GGUF)
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"848x480"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "add your prompt here; worst quality, blurry, jittery, distorted"
+--prompts "add your prompt here"

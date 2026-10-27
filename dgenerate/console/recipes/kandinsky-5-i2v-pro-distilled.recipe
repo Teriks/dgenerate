@@ -26,4 +26,4 @@ title: Kandinsky 5 Video Pro Distilled Image to Video
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "add your prompt here; Static, 2D cartoon, cartoon, 2d animation, paintings, images, worst quality, low quality, ugly, deformed, walking backwards"
+--prompts "add your prompt here"

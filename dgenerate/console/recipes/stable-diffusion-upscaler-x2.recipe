@@ -28,4 +28,4 @@ title: Upscaling (Stable Diffusion x2)
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "your prompt here"
+--prompts "add your prompt here"

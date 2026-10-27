@@ -24,4 +24,4 @@ title: Kandinsky 5 Video
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "add your prompt here; worst quality, blurry, jittery, distorted"
+--prompts "add your prompt here"
