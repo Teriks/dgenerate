@@ -20,10 +20,19 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import contextlib
 import os
+import re
 import sys
 import typing
 
 import dgenerate.textprocessing as _textprocessing
+
+_SENSITIVE_ENV_VARS = ('HF_TOKEN', 'CIVIT_AI_TOKEN')
+_CENSORED = '***'
+_MIN_SECRET_LEN = 4
+_ENV_ASSIGNMENT_RE = re.compile(
+    r'(?P<name>HF_TOKEN|CIVIT_AI_TOKEN)=(?P<value>[^\s"\']+)',
+    re.IGNORECASE)
+_CIVITAI_QUERY_TOKEN_RE = re.compile(r'([?&]token=)([^&\s"\']+)')
 
 __doc__ = """
 Library logging / informational output.
@@ -195,6 +204,50 @@ def add_logging_handler(callback: typing.Callable[[typing.ParamSpecArgs, int, bo
     _handlers.append(callback)
 
 
+def censor_secrets(text: str) -> str:
+    """
+    Redact Hugging Face and CivitAI API tokens that may appear in log text.
+
+    Values are taken from ``HF_TOKEN`` and ``CIVIT_AI_TOKEN``, from the active
+    ``--auth-token`` session when applicable, and from common ``name=value`` and
+    CivitAI download URL patterns.
+
+    :param text: message text
+    :return: text with secrets replaced by ``***``
+    """
+    if not text:
+        return text
+
+    secrets: list[str] = []
+    seen: set[str] = set()
+
+    def add_secret(value: str | None) -> None:
+        if not isinstance(value, str):
+            return
+        value = value.strip()
+        if len(value) < _MIN_SECRET_LEN or value in seen:
+            return
+        seen.add(value)
+        secrets.append(value)
+
+    for name in _SENSITIVE_ENV_VARS:
+        add_secret(os.environ.get(name))
+
+    import dgenerate.hfhub as _hfhub
+    add_secret(_hfhub.resolve_auth_token())
+
+    for secret in sorted(secrets, key=len, reverse=True):
+        text = text.replace(secret, _CENSORED)
+
+    text = _ENV_ASSIGNMENT_RE.sub(
+        lambda match: f'{match.group("name")}={_CENSORED}', text)
+
+    if 'civitai.com' in text.lower():
+        text = _CIVITAI_QUERY_TOKEN_RE.sub(rf'\1{_CENSORED}', text)
+
+    return text
+
+
 def remove_logging_handler(callback: typing.Callable[[typing.ParamSpecArgs, int, bool, str], None]):
     """
     Remove a logging handler callback by reference.
@@ -238,14 +291,17 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
     if level == WARNING:
         prefix = 'WARNING: '
 
+    message = censor_secrets(' '.join(str(a) for a in args))
+
     if underline:
-        print(_textprocessing.underline(prefix + ' '.join(str(a) for a in args),
+        print(_textprocessing.underline(prefix + message,
                                         underline_char=underline_char), file=file, flush=AUTO_FLUSH_MESSAGES)
     else:
-        print(prefix + ' '.join(str(a) for a in args), file=file, flush=AUTO_FLUSH_MESSAGES)
+        print(prefix + message, file=file, flush=AUTO_FLUSH_MESSAGES)
 
+    censored_args = tuple(censor_secrets(str(a)) for a in args)
     for handler in _handlers:
-        handler(*args,
+        handler(*censored_args,
                 level=level,
                 underline=underline,
                 underline_char=underline_char)
