@@ -1,6 +1,7 @@
 title: LTX-2.5 Distilled (GGUF)
 
-# Omitting Scheduler keeps the published sigma table.
+# Omitting Scheduler keeps the published 8-value sigma table; do not set
+# --inference-steps.
 # Latent Upscale runs stage 1 at half of Output Size, so Output Size must be
 # divisible by 64. Temporal mode needs guidance/audio guidance 1, no rescale or
 # STG/modality guidance, and no IC-LoRA control clip.
@@ -40,8 +41,7 @@ title: LTX-2.5 Distilled (GGUF)
 @submodelbuilder[{"label":"IC-LoRA", "arg":"--ltx-ic-lora", "model": "IC-LoRA"}]
 @imageprocessor[{"arg":"--control-image-processors", "label":"IC-LoRA Control Clip Processor", "divider-after":true}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]
-@int[{"id":"is","label":"Inference Steps","arg":"--inference-steps","default":30,"min":1,"exclude":["ts"]}]
-@string[{"id":"ts","label":"Timesteps (override)","arg":"--timesteps","default":"","exclude":["is"]}]
+@string[{"label":"Timesteps (override)","arg":"--timesteps","default":""}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]
 @float[{"label":"Guidance Rescale", "arg":"--guidance-rescales", "min":0}]
 @float[{"label":"Audio Guidance Scale", "arg":"--ltx-audio-guidance-scales", "default":1, "min":0}]
