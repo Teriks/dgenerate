@@ -19,6 +19,11 @@ existing installation. ``--version`` and ``--branch`` cannot be used together.
 detected GPU, including ``console_ui_vulkan`` when the downloaded source
 defines that extra.
 
+After the package is installed, the installer runs
+``dgenerate --sub-command kernel-warmup`` with the new binary. That caches
+the GGUF and ComfyUI quant kernels for this computer. A dgenerate version
+that does not provide the subcommand skips the step.
+
 .. code-block::
 
     # Windows

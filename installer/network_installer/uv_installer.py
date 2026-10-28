@@ -38,6 +38,8 @@ from network_installer.uv_platform_handlers import (
 from network_installer.setup_analyzer import SetupAnalyzer
 from network_installer.common_types import InstallationResult, InstallationInfo, ExistingInstallation
 
+_KERNEL_WARMUP = 'kernel-warmup'
+
 
 class UvInstaller:
     """
@@ -214,6 +216,11 @@ class UvInstaller:
                 self.log_callback("Warning: Bytecode compilation failed, but installation is still functional")
             else:
                 self.log_callback("✓ Python bytecode compilation completed")
+
+            # Step 7.7: Cache quant kernels with the installed dgenerate.
+            # Releases from before this subcommand exist simply skip the step.
+            self.log_callback("Caching quant kernels for this device...")
+            self.warmup_quant_kernels()
 
             # Step 8: Add dgenerate Scripts to PATH (without activating venv)
             self.log_callback("Adding dgenerate to system PATH...")
@@ -674,3 +681,54 @@ class UvInstaller:
         :return: True if successful, False otherwise
         """
         return self.platform_handler.compile_bytecode_external(uv_exe)
+
+    def warmup_quant_kernels(self) -> bool:
+        """
+        Download quant kernels with the installed dgenerate binary.
+
+        Older releases have no ``kernel-warmup`` subcommand. That case is
+        reported and skipped. A download failure is reported and does not
+        undo the install.
+
+        :return: ``True``. The install continues either way.
+        """
+        try:
+            from network_installer.subprocess_utils import run_silent
+
+            exe = Path(self.get_installation_info().dgenerate_exe)
+            if not exe.is_file():
+                self.log_callback(
+                    'Warning: dgenerate executable not found, skipping quant kernel download.')
+                return True
+
+            help_result = run_silent(
+                [str(exe), '--no-stdin', '--sub-command-help'],
+                capture_output=True, text=True, timeout=300)
+            help_text = f'{help_result.stdout or ""}\n{help_result.stderr or ""}'
+            if help_result.returncode != 0 or not re.search(
+                    rf'(?<![\w-]){re.escape(_KERNEL_WARMUP)}(?![\w-])', help_text):
+                self.log_callback(
+                    'This dgenerate version has no kernel-warmup subcommand. '
+                    'Skipping quant kernel download.')
+                return True
+
+            self.log_callback('Downloading platform specific quant kernels...')
+            result = run_silent(
+                [str(exe), '--no-stdin', '--sub-command', _KERNEL_WARMUP],
+                capture_output=True, text=True, timeout=600)
+            output = '\n'.join(
+                part for part in (result.stdout, result.stderr) if part)
+            for line in output.splitlines():
+                if line.strip():
+                    self.log_callback(line.rstrip())
+            if result.returncode != 0:
+                self.log_callback(
+                    'Warning: quant kernel download did not complete. '
+                    'dgenerate is installed.')
+            else:
+                self.log_callback('Quant kernel download finished.')
+            return True
+        except Exception as exc:
+            self.log_callback(
+                f'Warning: could not run quant kernel download: {exc}')
+            return True

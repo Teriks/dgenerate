@@ -69,6 +69,7 @@ import time
 import torch
 
 import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper.quantkernels as _quantkernels
 
 FLOAT8_FORMATS = ('float8_e4m3fn', 'float8_e5m2')
 SUPPORTED_FORMATS = FLOAT8_FORMATS + (
@@ -1463,10 +1464,7 @@ def install_single_file_patch() -> None:
 SOFTWARE_MATMUL_ENVVAR = 'DGENERATE_COMFY_QUANT_SOFTWARE'
 """Set to ``1`` to always use the dequantized matmul."""
 
-_HUB_KERNELS = {
-    'mlx': ('kernels-community/mlx-quantization-metal-kernels', 2),
-    'aiter': ('kernels-community/aiter-kernels', 2),
-}
+_HUB_KERNELS = _quantkernels.COMFY_HUB_KERNELS
 
 _hub_kernel_cache = {}
 
