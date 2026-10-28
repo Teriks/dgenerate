@@ -24,9 +24,13 @@ Load ComfyUI pre-quantized ``.safetensors`` checkpoints with Diffusers.
 
 ComfyUI stores each quantized linear as packed ``weight`` storage plus
 ``weight_scale`` (and per format ``weight_scale_2``, ``input_scale``,
-``pre_quant_scale``), described by a ``comfy_quant`` JSON marker. Diffusers
-knows none of this: it drops the scales as unexpected keys and casts the raw
-packed values to the model dtype, which renders noise.
+``pre_quant_scale``), described by a ``comfy_quant`` JSON marker. The ComfyUI
+Kitchen converter instead writes that description once, in
+``__metadata__["_quantization_metadata"]``, and drops the ``model.diffusion_model.``
+prefix from the layer names. Diffusers knows none of this: it drops the scales
+as unexpected keys and casts the raw packed values to the model dtype, which
+renders noise. A Kitchen ConvRot file loaded without that metadata is plain
+INT8 over rotated weights, which is also noise.
 
 Supported formats: ``float8_e4m3fn`` and ``float8_e5m2`` (per tensor or per
 row scale, including legacy ``scaled_fp8`` files with no marker),
@@ -79,6 +83,11 @@ _AUX_SUFFIXES = (
 
 # Marker tensor of legacy (pre comfy_quant) scaled fp8 files.
 _LEGACY_MARKER = 'scaled_fp8'
+
+# ComfyUI Kitchen writes one JSON map instead of a ``comfy_quant`` tensor per layer.
+# Layer names there omit a leading ``model.diffusion_model.`` when the file has one.
+_KITCHEN_METADATA_KEY = '_quantization_metadata'
+_KITCHEN_DIFFUSION_PREFIX = 'model.diffusion_model.'
 
 # Legacy scaled fp8 files name the scales ``<layer>.scale_weight`` and
 # ``<layer>.scale_input``.
@@ -146,6 +155,9 @@ def is_comfy_quantized(path: str) -> bool:
     header = _read_header(path)
     if not header:
         return False
+    metadata = header.get('__metadata__')
+    if isinstance(metadata, dict) and metadata.get(_KITCHEN_METADATA_KEY):
+        return True
     header.pop('__metadata__', None)
     if _LEGACY_MARKER in header:
         return True
@@ -360,6 +372,69 @@ def _unswizzle_block_scales(blocked: torch.Tensor, rows: int, cols: int) -> torc
     return tiles.reshape(row_tiles * 128, col_tiles * 4)[:rows, :cols].contiguous()
 
 
+def _kitchen_layer_name(meta_name: str, layer_names: set[str]) -> str | None:
+    """
+    Tensor layer name for one Kitchen metadata key.
+
+    Kitchen stores ``model.diffusion_model.blocks.0.attn.q`` as ``blocks.0.attn.q``.
+    Other architectures keep the full name. A single extra prefix still matches.
+    """
+    if meta_name in layer_names:
+        return meta_name
+    prefixed = _KITCHEN_DIFFUSION_PREFIX + meta_name
+    if prefixed in layer_names:
+        return prefixed
+    suffix = '.' + meta_name
+    matches = [name for name in layer_names if name.endswith(suffix)]
+    if len(matches) == 1:
+        return matches[0]
+    return None
+
+
+def _kitchen_layer_configs(path: str, tensor_names) -> dict[str, dict]:
+    """
+    Per-layer quant config from ComfyUI Kitchen ``_quantization_metadata``.
+
+    Keys are tensor layer names (the ``.weight`` stem). Layers that already
+    have a ``comfy_quant`` marker are omitted so that marker stays authoritative.
+    The map is architecture-agnostic: only the stored tensor names are matched.
+    """
+    header = _read_header(path) or {}
+    metadata = header.get('__metadata__')
+    if not isinstance(metadata, dict):
+        return {}
+    raw_meta = metadata.get(_KITCHEN_METADATA_KEY)
+    if not raw_meta:
+        return {}
+    try:
+        parsed = json.loads(raw_meta)
+    except (TypeError, ValueError) as e:
+        _messages.debug_log(f'Ignoring invalid ComfyUI Kitchen quantization metadata: {e}')
+        return {}
+    layers = parsed.get('layers') if isinstance(parsed, dict) else None
+    if not isinstance(layers, dict):
+        return {}
+
+    names = set(tensor_names)
+    layer_names = {key[:-len('.weight')] for key in names if key.endswith('.weight')}
+    configs = {}
+    unmatched = 0
+    for meta_name, config in layers.items():
+        if not isinstance(meta_name, str) or not isinstance(config, dict):
+            continue
+        layer_name = _kitchen_layer_name(meta_name, layer_names)
+        if layer_name is None or layer_name + '.comfy_quant' in names:
+            if layer_name is None:
+                unmatched += 1
+            continue
+        configs[layer_name] = config
+    if configs or unmatched:
+        _messages.debug_log(
+            f'ComfyUI Kitchen quantization metadata: {len(configs)} layers'
+            + (f', {unmatched} unmatched' if unmatched else '') + '.')
+    return configs
+
+
 def _layer_config(checkpoint: dict, name: str) -> dict:
     marker = checkpoint.get(name + '.comfy_quant')
     if marker is None:
@@ -384,8 +459,11 @@ def _infer_format(checkpoint: dict, name: str) -> str | None:
     return None
 
 
-def _extract_layer(checkpoint: dict, name: str) -> _QuantLayer:
+def _extract_layer(checkpoint: dict, name: str,
+                   kitchen_config: dict | None = None) -> _QuantLayer:
     config = _layer_config(checkpoint, name)
+    if not config and kitchen_config:
+        config = kitchen_config
     weight = checkpoint[name + '.weight']
     scale = checkpoint.get(name + '.weight_scale')
     fmt = config.get('format') or _infer_format(checkpoint, name)
@@ -851,9 +929,10 @@ def load_checkpoint(path: str, dtype: torch.dtype | None,
     raw = _rename_legacy_scales(raw)
 
     names = _quantized_layer_names(raw)
+    kitchen = _kitchen_layer_configs(path, raw.keys())
     sources = {}
     for name in names:
-        layer = _extract_layer(raw, name)
+        layer = _extract_layer(raw, name, kitchen.get(name))
         sources[name + '.weight'] = layer
         raw[name + '.weight'] = layer.weight
 

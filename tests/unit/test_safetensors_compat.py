@@ -57,12 +57,22 @@ class TestSafetensorsCompat(unittest.TestCase):
         self.x = torch.randn(3, 256)
         self.reference = self.x @ self.weight.T
 
-    def _write(self, tensors):
+    def _write(self, tensors, metadata=None):
         handle, path = tempfile.mkstemp(suffix='.safetensors')
         os.close(handle)
         self.addCleanup(os.remove, path)
-        safetensors.torch.save_file(tensors, path)
+        safetensors.torch.save_file(tensors, path, metadata=metadata)
         return path
+
+    def _kitchen_metadata(self, layers):
+        return {
+            '_quantization_metadata': json.dumps({
+                'format_version': '1.0',
+                'layers': layers,
+            }),
+            'converted_by': 'ComfyUI Kitchen NVFP4 Converter',
+            'quant_format': 'INT8_CONVROT',
+        }
 
     def _layer(self, tensors):
         path = self._write(tensors)
@@ -106,6 +116,42 @@ class TestSafetensorsCompat(unittest.TestCase):
         self.assertLess(self._relative_error(module(self.x)), 0.02)
         dense = module.dequantize(torch.float32)
         self.assertLess(((dense - self.weight).norm() / self.weight.norm()).item(), 0.02)
+
+    def test_kitchen_metadata_supplies_convrot_for_any_prefix(self):
+        # Kitchen omits per-layer comfy_quant and strips model.diffusion_model.
+        # The same metadata key must match a bare name, that prefix, and any
+        # other single stored prefix.
+        weight, scale = _quantize_int8_convrot(self.weight, 64)
+        config = {'format': 'int8_tensorwise', 'convrot': True, 'convrot_groupsize': 64}
+        cases = (
+            ('layer', 'layer'),
+            ('blocks.0.attn.q', 'model.diffusion_model.blocks.0.attn.q'),
+            ('blocks.0.attn.q', 'transformer.blocks.0.attn.q'),
+        )
+        for meta_name, tensor_name in cases:
+            with self.subTest(tensor_name=tensor_name):
+                path = self._write(
+                    {tensor_name + '.weight': weight,
+                     tensor_name + '.weight_scale': scale},
+                    metadata=self._kitchen_metadata({meta_name: config}))
+                self.assertTrue(_safetensorscompat.is_comfy_quantized(path))
+                loaded = _safetensorscompat.load_checkpoint(path, torch.float32)
+                layer = loaded.sources[tensor_name + '.weight']
+                self.assertEqual(layer.convrot_group_size, 64)
+                dense = layer.dequantize(torch.float32)
+                self.assertLess(((dense - self.weight).norm() / self.weight.norm()).item(), 0.02)
+
+    def test_comfy_quant_marker_overrides_kitchen_metadata(self):
+        weight, scale = _quantize_int8_convrot(self.weight, 64)
+        path = self._write({
+            'layer.weight': weight, 'layer.weight_scale': scale,
+            'layer.comfy_quant': _marker(
+                {'format': 'int8_tensorwise', 'convrot': True, 'convrot_groupsize': 64}),
+        }, metadata=self._kitchen_metadata({
+            'layer': {'format': 'int8_tensorwise'},
+        }))
+        layer = next(iter(_safetensorscompat.load_checkpoint(path, torch.float32).sources.values()))
+        self.assertEqual(layer.convrot_group_size, 64)
 
     def test_nvfp4(self):
         weight, block_scale, tensor_scale = _quantize_nvfp4(self.weight)
