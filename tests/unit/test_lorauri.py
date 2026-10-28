@@ -117,9 +117,7 @@ class TestLoraUri(unittest.TestCase):
         quantized.quantization_config = {'quant_method': 'sdnq'}
         self.assertTrue(_lorauri._pipeline_has_quantized_modules(Pipe(quantized)))
 
-    def test_fuse_warns_when_pipeline_quantized(self):
-        warnings = []
-
+    def test_quantized_weights_are_not_fused(self):
         class Pipe:
             def __init__(self):
                 transformer = torch.nn.Linear(2, 2)
@@ -142,7 +140,7 @@ class TestLoraUri(unittest.TestCase):
 
         pipe = Pipe()
         with unittest.mock.patch.object(
-                _messages, 'warning', side_effect=lambda msg: warnings.append(msg)), \
+                _messages, 'warning') as warning, \
                 unittest.mock.patch.object(
                     _lorauri, '_load_one_lora', return_value=None), \
                 unittest.mock.patch.object(
@@ -151,8 +149,10 @@ class TestLoraUri(unittest.TestCase):
             _lorauri.LoRAUri.load_on_pipeline(
                 pipe, ['org/lora;scale=0.5'], fuse_scale=2.0, fuse=True)
 
-        self.assertTrue(any('quantized or GGUF' in msg for msg in warnings))
-        self.assertTrue(any('transformer' in msg for msg in warnings))
+        warning.assert_called_once()
+        message = warning.call_args.args[0]
+        self.assertIn('transformer', message)
+        self.assertIn('Quality is affected', message)
         self.assertEqual(pipe.adapter_weights, [1.0])
         self.assertIsNone(pipe.fused)
 
@@ -206,6 +206,86 @@ class TestLoraUri(unittest.TestCase):
         self.assertEqual(pipeline.transformer.fused, (2.0, ['0']))
         self.assertEqual(pipeline.text_encoder.adapters, (['0'], [1.0]))
         self.assertIsNone(pipeline.text_encoder.fused)
+
+    def test_comfy_quant_weights_are_not_fused(self):
+        import dgenerate.pipelinewrapper.safetensorscompat as _safetensorscompat
+
+        weight = torch.zeros(4, 8, dtype=torch.int8)
+        scale = _safetensorscompat._float_bits(torch.ones(4))
+        layer = _safetensorscompat._QuantLayer('linear', 'int8_tensorwise', weight, scale)
+        packed = _safetensorscompat.ComfyQuantLinear(8, 4, layer)
+
+        class Transformer(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = packed
+
+        class Pipe:
+            def __init__(self):
+                self.transformer = Transformer()
+                self.components = {'transformer': self.transformer}
+                self.adapter_weights = None
+                self.fused = None
+
+            def load_lora_weights(self, *args, **kwargs):
+                pass
+
+            def get_list_adapters(self):
+                return {'transformer': ['0']}
+
+            def set_adapters(self, names, adapter_weights=None, **kwargs):
+                self.adapter_weights = list(adapter_weights)
+
+            def fuse_lora(self, *args, **kwargs):
+                self.fused = True
+
+        pipe = Pipe()
+        with unittest.mock.patch.object(
+                _messages, 'warning') as warning, \
+                unittest.mock.patch.object(
+                    _lorauri, '_load_one_lora', return_value=None), \
+                unittest.mock.patch.object(
+                    _lorauri._hfhub, 'download_non_hf_slug_model',
+                    return_value='lora.safetensors'):
+            _lorauri.LoRAUri.load_on_pipeline(
+                pipe, ['org/lora;scale=0.5'], fuse_scale=2.0, fuse=True)
+
+        warning.assert_called_once()
+        message = warning.call_args.args[0]
+        self.assertIn('transformer', message)
+        self.assertIn('Quality is affected', message)
+        self.assertEqual(pipe.adapter_weights, [1.0])
+        self.assertIsNone(pipe.fused)
+
+    def test_unfused_lora_runs_on_comfy_quant_linear(self):
+        import dgenerate.pipelinewrapper.safetensorscompat as _safetensorscompat
+        from peft import LoraConfig
+        from peft.tuners.lora.layer import Linear as LoraLinear
+
+        torch.manual_seed(0)
+        dense = torch.randn(4, 8) * 0.02
+        scale = dense.abs().amax(dim=-1, keepdim=True).clamp(min=1e-6) / 127
+        packed_weight = torch.round(dense / scale).clamp(-128, 127).to(torch.int8)
+        layer = _safetensorscompat._QuantLayer(
+            'linear', 'int8_tensorwise', packed_weight,
+            _safetensorscompat._float_bits(scale.reshape(4)))
+        module = _safetensorscompat.ComfyQuantLinear(8, 4, layer)
+        module.load_state_dict(
+            {'weight': layer.weight, 'weight_scale': layer.scale}, assign=True)
+        config = LoraConfig(r=2, lora_alpha=2, target_modules=['linear'])
+        wrapped = LoraLinear(module, 'default', config, r=2, lora_alpha=2)
+        with torch.no_grad():
+            wrapped.lora_A['default'].weight.normal_()
+            wrapped.lora_B['default'].weight.normal_()
+        x = torch.randn(2, 8)
+        with torch.no_grad():
+            got = wrapped(x)
+            bare = module(x)
+        self.assertEqual(got.shape, bare.shape)
+        self.assertEqual(got.dtype, x.dtype)
+        self.assertFalse(torch.allclose(got, bare))
+        with self.assertRaises(RuntimeError):
+            wrapped.merge()
 
 
 if __name__ == '__main__':

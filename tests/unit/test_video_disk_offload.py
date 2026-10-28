@@ -71,6 +71,91 @@ class TestCpuMemoryFit(unittest.TestCase):
             estimate, available_bytes=available))
 
 
+class TestDeferredLoraFusion(unittest.TestCase):
+    def test_no_disk_fuse_keeps_the_lora_target_resident(self):
+        transformer = _Net()
+        vae = _Net()
+        fused = []
+        offloaded = []
+
+        class Pipe:
+            @staticmethod
+            def download(repo, **kwargs):
+                return tempfile.gettempdir()
+
+            @classmethod
+            def from_pretrained(cls, repo, **kwargs):
+                return mock.Mock()
+
+        index = {
+            'transformer': ['diffusers', 'WanTransformer3DModel'],
+            'vae': ['diffusers', 'AutoencoderKLWan'],
+        }
+
+        def offload(module, *args, **kwargs):
+            offloaded.append(module)
+
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.object(diskoffload, '_offload_directory', return_value=folder), \
+                mock.patch.object(
+                    diskoffload, '_fuse_loras',
+                    side_effect=lambda *args, **kwargs: fused.append(True)), \
+                mock.patch.object(
+                    diskoffload, 'offload_module_weights', side_effect=offload), \
+                mock.patch(
+                    'diffusers.pipelines.pipeline_loading_utils._identify_model_variants',
+                    return_value={}):
+            held = diskoffload.load_video_pipeline_low_ram(
+                Pipe, 'org/model',
+                {
+                    'transformer': transformer,
+                    'vae': vae,
+                    'torch_dtype': torch.float32,
+                },
+                index, 1, 'cpu',
+                ['org/lora;scale=1'], 1.0,
+                defer_lora_fusion=True)
+            self.assertIsNotNone(held)
+
+        self.assertEqual(fused, [])
+        self.assertIn(vae, offloaded)
+        self.assertNotIn(transformer, offloaded)
+
+    def test_default_low_ram_load_still_fuses_before_release(self):
+        transformer = _Net()
+        fused = []
+
+        class Pipe:
+            @staticmethod
+            def download(repo, **kwargs):
+                return tempfile.gettempdir()
+
+            @classmethod
+            def from_pretrained(cls, repo, **kwargs):
+                return mock.Mock()
+
+            @staticmethod
+            def load_lora_into_transformer(*args, **kwargs):
+                return None
+
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.object(diskoffload, '_offload_directory', return_value=folder), \
+                mock.patch.object(
+                    diskoffload, '_fuse_loras',
+                    side_effect=lambda *args, **kwargs: fused.append(args[1])), \
+                mock.patch.object(diskoffload, 'offload_module_weights'), \
+                mock.patch(
+                    'diffusers.pipelines.pipeline_loading_utils._identify_model_variants',
+                    return_value={}):
+            diskoffload.load_video_pipeline_low_ram(
+                Pipe, 'org/model',
+                {'transformer': transformer, 'torch_dtype': torch.float32},
+                {'transformer': ['diffusers', 'WanTransformer3DModel']},
+                1, 'cpu', ['org/lora;scale=1'], 1.0)
+
+        self.assertEqual(fused, [transformer])
+
+
 class TestComponentLoraSelection(unittest.TestCase):
     def test_default_lora_targets_the_high_noise_expert(self):
         uris = [

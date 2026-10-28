@@ -2039,6 +2039,16 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     "transformer" is the default. "transformer_2" loads a Wan 2.2 LoRA onto
                     the low-noise expert, which is how a high-noise and low-noise pair is applied.
 
+                    Full-precision weights are fused into the model. With --quantizer, the LoRA is
+                    fused into a full-precision copy and cached on disk before quantization.
+                    --lora-no-disk-fuse skips that copy and keeps the LoRA active on the
+                    quantized weights. That path is faster and uses no fused cache, and it is
+                    lower quality at low bit widths. A low-memory video load keeps those
+                    LoRA targets in memory instead of merging them onto disk. Weights that
+                    are already packed (GGUF,
+                    ComfyUI, bitsandbytes, or SDNQ) keep the LoRA active, and --lora-fuse-scale
+                    is folded into those adapter weights.
+
                     If you wish to load a weights file directly from disk, the simplest
                     way is: --loras "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0",
                     all other loading arguments are unused in this case and may produce an error message if used."""
@@ -2048,9 +2058,26 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-lrfs', '--lora-fuse-scale', default=None, type=float, metavar="LORA_FUSE_SCALE",
-            help="""LoRA weights are merged into the main model at this scale. When specifying multiple
-                    LoRA models, they are fused together into one set of weights using their individual scale values,
-                    after which they are fused into the main model at this scale value. (default: 1.0)."""
+            help="""Scale applied to every --loras entry after that entry's own scale. The default is 1.0.
+
+                    Full-precision modules are fused at this scale. With --quantizer, the fused
+                    weights are written to disk before quantization. --lora-no-disk-fuse keeps
+                    the LoRA active and folds this scale into the adapter weights. Weights that
+                    are already packed (GGUF, ComfyUI, bitsandbytes, or SDNQ) do the same."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-lrnf', '--lora-no-disk-fuse', action='store_true', default=False,
+            help="""With --quantizer, keep --loras and Flux --control-loras active on the
+                    quantized model instead of fusing them into a full-precision copy on disk
+                    first. This is faster and does not write a fused cache. A low-memory video
+                    load keeps the LoRA targets in memory. The result is lower quality at low
+                    bit widths, because the LoRA was trained against the unquantized weights.
+                    The default fuses before quantization. Packed weights
+                    (GGUF, ComfyUI, bitsandbytes, or SDNQ) already keep the LoRA active.
+                    SD and SDXL --control-loras still build their ControlNet clone."""
         )
     )
 
@@ -2244,11 +2271,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     is included in --quantizer-map. A checkpoint that is already packed (GGUF, Comfy,
                     bitsandbytes, SDNQ) cannot be cloned.
 
-                    Flux control LoRAs on an already quantized transformer (GGUF or Comfy weights, or a
-                    transformer quantized before the LoRA is attached) stay active as adapters instead
-                    of being written into the packed weights. --quantizer on a full-precision Flux
-                    checkpoint still fuses the control LoRA before quantization, the same way --loras
-                    does, and caches that fused transformer.
+                    Flux control LoRAs follow the same rule as --loras. A full-precision transformer
+                    is fused. With --quantizer, that fuse is written to disk first unless
+                    --lora-no-disk-fuse is set, in which case the quantized transformer keeps
+                    the control LoRA active and --control-lora-fuse-scale is folded into the
+                    adapter weights. SD and SDXL always fuse into the ControlNet clone.
 
                     One control image from --image-seeds is required, the same way a plain path is the
                     control image for --control-nets. Use --control-image-processors to build the signal
@@ -2261,7 +2288,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     "stabilityai/control-lora;subfolder=control-LoRAs-rank128;weight-name=control-lora-canny-rank128.safetensors;scale=1.0"
 
                     The "scale" argument is the LoRA weight scale. The default is 1.0. It is combined
-                    with --control-lora-fuse-scale when the weights are fused.
+                    with --control-lora-fuse-scale.
 
                     "revision", "subfolder", and "weight-name" work the same way they do for --loras."""
         )
@@ -2276,9 +2303,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     --control-loras are given, each is applied at its own scale, then the result is
                     fused at this scale. The default is 1.0.
 
-                    Flux fuses into the transformer before any --loras. SD and SDXL fuse into the
-                    ControlNet cloned from the UNet. Already quantized Flux weights keep the adapters
-                    active and fold this scale into the adapter weights instead of fusing."""
+                    Flux fuses into a full-precision transformer before any --loras. With
+                    --quantizer, that fuse is cached on disk unless --lora-no-disk-fuse is set.
+                    That option keeps the control LoRA active and folds this scale into the
+                    adapter weights. SD and SDXL fuse into the ControlNet cloned from the UNet."""
         )
     )
 

@@ -552,7 +552,8 @@ def load_video_pipeline_low_ram(pipeline_class,
                                 lora_uris,
                                 lora_fuse_scale,
                                 prepare_module=None,
-                                weight_sources=None):
+                                weight_sources=None,
+                                defer_lora_fusion: bool = False):
     """
     Load ``pipeline_class`` without holding every component in RAM at once.
 
@@ -560,11 +561,16 @@ def load_video_pipeline_low_ram(pipeline_class,
     before that component's weights leave RAM. The returned pipeline reads
     those weights from disk during its forward pass.
 
+    ``defer_lora_fusion`` is ``--lora-no-disk-fuse``. LoRA targets stay in
+    memory and are not merged into a cached copy. The caller attaches those
+    adapters after the pipeline exists.
+
     :param prepare_module: called with ``(name, module)`` after LoRAs are
         fused and before the weights are released. Used for the Wan VAE cast.
     :param weight_sources: component name to the checkpoint that supplied its
         weights. Replacement URIs belong here. Components omitted from the
         map are identified by the pipeline repository, revision, and variant.
+    :param defer_lora_fusion: Keep LoRA targets resident instead of fusing them.
     """
     available = int(_memory.get_available_commit_memory('b'))
     notice = (
@@ -573,13 +579,19 @@ def load_video_pipeline_low_ram(pipeline_class,
         'Each component is loaded, then its weights stay on disk and are '
         'copied to the device one layer at a time.'
     )
-    if lora_uris:
+    if lora_uris and defer_lora_fusion:
+        notice += (
+            ' --lora-no-disk-fuse keeps LoRA targets in memory instead of '
+            'writing a fused copy.'
+        )
+    elif lora_uris:
         notice += (
             ' LoRAs are merged into a component before it is released, and '
             'the merged weights are written to the dgenerate cache.'
         )
     _messages.warning(notice)
-    if lora_uris and not hasattr(pipeline_class, 'load_lora_into_transformer'):
+    if (lora_uris and not defer_lora_fusion
+            and not hasattr(pipeline_class, 'load_lora_into_transformer')):
         raise _pipelines.UnsupportedPipelineConfigError(
             'This pipeline does not fit in CPU memory, and its LoRAs cannot be '
             'merged one component at a time. Free some memory, or load a smaller checkpoint.')
@@ -604,11 +616,20 @@ def load_video_pipeline_low_ram(pipeline_class,
         def finish(name, module, reuse_folder, injected):
             if not isinstance(module, torch.nn.Module):
                 return
+            loras = _loras_for_component(name, lora_uris)
+            if defer_lora_fusion and loras:
+                # Packed weights cannot take a fused write, and a full-precision
+                # fuse would be the cached copy --lora-no-disk-fuse skips.
+                # The caller attaches the adapter after the pipeline is built.
+                if prepare_module is not None:
+                    prepare_module(name, module)
+                _messages.debug_log(
+                    f'Leaving "{name}" in memory so its LoRA stays active.')
+                return
             if _pipelines.module_skips_group_offload(module):
                 _messages.debug_log(
                     f'Leaving "{name}" in memory because its weights are packed.')
                 return
-            loras = _loras_for_component(name, lora_uris)
             if loras:
                 _fuse_loras(
                     pipeline_class, module, loras, lora_fuse_scale,

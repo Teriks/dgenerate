@@ -319,6 +319,7 @@ def _cache_kwargs(wrapper) -> dict:
         'auth_token': wrapper._auth_token,
         'quantizer_uri': wrapper.quantizer_uri,
         'quantizer_map': tuple(quantizer_map) if quantizer_map else None,
+        'lora_no_disk_fuse': bool(getattr(wrapper, 'lora_no_disk_fuse', False)),
     }
 
 
@@ -407,6 +408,20 @@ def _inject_video_text_encoders(index,
     return injected
 
 
+def _preflight_video_loras(lora_uris, component_quantizers, lora_no_disk_fuse) -> bool:
+    """True when quantized LoRA targets are fused to disk before quantization."""
+    return bool(lora_uris and component_quantizers and not lora_no_disk_fuse)
+
+
+def _attach_video_loras_after_load(fused_components, stream_from_disk, lora_no_disk_fuse) -> bool:
+    """True when LoRAs were not already baked into a fused component cache.
+
+    A low-memory stream normally fuses before releasing weights. ``--lora-no-disk-fuse``
+    leaves those targets resident, so the adapters are attached after the pipeline exists.
+    """
+    return not fused_components and (lora_no_disk_fuse or not stream_from_disk)
+
+
 @_memoize(_pipelines._pipeline_cache,
           exceptions={'local_files_only'},
           hasher=_d_memoize.args_cache_key,
@@ -435,7 +450,8 @@ def _create_cached_video_pipeline(model_path,
                                   ic_lora_downscale=None,
                                   wan_second_transformer_uri=None,
                                   vae_uri=None,
-                                  text_encoder_uris=None):
+                                  text_encoder_uris=None,
+                                  lora_no_disk_fuse=False):
     all_lora_uris = list(lora_uris or ()) + ([ltx_ic_lora_uri] if ltx_ic_lora_uri else [])
     aux_repo = None
     if _hfhub.is_single_file_model_load(model_path):
@@ -484,7 +500,8 @@ def _create_cached_video_pipeline(model_path,
     lora_components, lora_component_quantizers = _video_lora_component_quantizers(
         pipeline_class, quantizer_uri, quantizer_map, transformer_uri,
         wan_second_transformer_uri, te_slots, te_uris)
-    preflight_loras = bool(all_lora_uris and lora_component_quantizers)
+    preflight_loras = _preflight_video_loras(
+        all_lora_uris, lora_component_quantizers, lora_no_disk_fuse)
     all_text_encoders_replaced = bool(
         te_slots
         and len(te_uris) >= len(te_slots)
@@ -644,10 +661,12 @@ def _create_cached_video_pipeline(model_path,
             pipe = _diskoffload.load_video_pipeline_low_ram(
                 pipeline_class, pretrained_repo, load_kwargs, index, footprint, device,
                 all_lora_uris, lora_fuse_scale, prepare_module=prepare_module,
-                weight_sources=weight_sources)
+                weight_sources=weight_sources,
+                defer_lora_fusion=lora_no_disk_fuse)
         else:
             pipe = pipeline_class.from_pretrained(pretrained_repo, **load_kwargs)
-    if not fused_lora_components and not stream_from_disk:
+    if _attach_video_loras_after_load(
+            fused_lora_components, stream_from_disk, lora_no_disk_fuse):
         _vp._apply_video_loras(
             pipe, model_type, all_lora_uris, lora_fuse_scale, auth_token, local_files_only)
     _disable_rope_double_precision_on_mps(pipe, device)

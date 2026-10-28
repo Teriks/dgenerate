@@ -478,6 +478,7 @@ class DiffusionPipelineWrapper:
                  vae_uri: _types.OptionalUri = None,
                  lora_uris: _types.OptionalUris = None,
                  lora_fuse_scale: _types.OptionalFloat = None,
+                 lora_no_disk_fuse: bool = False,
                  ltx_ic_lora_uri: _types.OptionalUri = None,
                  image_encoder_uri: _types.OptionalUri = None,
                  ip_adapter_uris: _types.OptionalUris = None,
@@ -544,6 +545,7 @@ class DiffusionPipelineWrapper:
         :param lora_fuse_scale: Optional global LoRA fuse scale value. Once all LoRAs are merged with
             their individual scales, the merged weights will be fused into the pipeline at this scale.
             The default value is 1.0.
+        :param lora_no_disk_fuse: When true, do not fuse LoRAs to disk before ``--quantizer``.
         :param ltx_ic_lora_uri: Optional ``--ltx-ic-lora`` URI string, an LTX-2 in-context LoRA
             that reads the image seed control clip as its reference video.
         :param image_encoder_uri: One or more Image Encoder URI strings,
@@ -811,6 +813,7 @@ class DiffusionPipelineWrapper:
 
         self._lora_uris = lora_uris
         self._lora_fuse_scale = lora_fuse_scale
+        self._lora_no_disk_fuse = lora_no_disk_fuse
         self._ic_lora_uri = ltx_ic_lora_uri
         self._ip_adapter_uris = ip_adapter_uris
         self._textual_inversion_uris = textual_inversion_uris
@@ -1131,6 +1134,13 @@ class DiffusionPipelineWrapper:
         Supplied ``--lora-fuse-scale`` value.
         """
         return self._lora_fuse_scale
+
+    @property
+    def lora_no_disk_fuse(self) -> bool:
+        """
+        Supplied ``--lora-no-disk-fuse`` value.
+        """
+        return self._lora_no_disk_fuse
 
     @property
     def ltx_ic_lora_uri(self) -> _types.OptionalUri:
@@ -4637,6 +4647,7 @@ class DiffusionPipelineWrapper:
                 vae_uri=self._vae_uri,
                 lora_uris=self._lora_uris,
                 lora_fuse_scale=self._lora_fuse_scale,
+                lora_no_disk_fuse=self._lora_no_disk_fuse,
                 quantizer_uri=self._quantizer_uri,
                 quantizer_map=self._quantizer_map,
                 safety_checker=self._safety_checker,
@@ -4698,6 +4709,7 @@ class DiffusionPipelineWrapper:
                 vae_uri=self._vae_uri,
                 lora_uris=self._lora_uris,
                 lora_fuse_scale=self._lora_fuse_scale,
+                lora_no_disk_fuse=self._lora_no_disk_fuse,
                 image_encoder_uri=self._image_encoder_uri,
                 ip_adapter_uris=self._ip_adapter_uris,
                 textual_inversion_uris=self._textual_inversion_uris,
@@ -4788,6 +4800,7 @@ class DiffusionPipelineWrapper:
                 vae_uri=self._vae_uri,
                 lora_uris=self._lora_uris,
                 lora_fuse_scale=self._lora_fuse_scale,
+                lora_no_disk_fuse=self._lora_no_disk_fuse,
                 image_encoder_uri=self._image_encoder_uri,
                 ip_adapter_uris=self._ip_adapter_uris,
                 textual_inversion_uris=self._textual_inversion_uris,

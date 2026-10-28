@@ -144,8 +144,9 @@ class ControlLoRAUri:
         is included in ``--quantizer-map``.
         """
         from dgenerate.pipelinewrapper.pipelines import module_skips_group_offload
+        from dgenerate.pipelinewrapper.safetensorscompat import module_has_comfy_quant
 
-        if module_skips_group_offload(unet):
+        if module_skips_group_offload(unet) or module_has_comfy_quant(unet):
             raise _exceptions.ControlLoRAUriLoadError(
                 'SD and SDXL control LoRAs are fused into a ControlNet cloned from '
                 'the UNet before quantization. This UNet is already quantized or '

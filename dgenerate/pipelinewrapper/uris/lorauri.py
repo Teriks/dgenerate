@@ -75,10 +75,11 @@ def _activate_loaded_loras(pipeline, adapter_names, adapter_weights, fuse, fuse_
     quantized = _quantized_adapter_components(pipeline, listed, adapter_names) if fuse else []
     if quantized:
         _messages.warning(
-            'Leaving LoRA adapters active on quantized or GGUF weights '
-            f'({", ".join(quantized)}). Packed, bitsandbytes, and SDNQ weights '
-            'cannot take a fused write. The fuse scale is folded into those '
-            'adapter weights.')
+            'Leaving LoRA adapters active on packed weights '
+            f'({", ".join(quantized)}). ComfyUI, GGUF, bitsandbytes, and SDNQ '
+            'checkpoints cannot take a fused write, so the LoRA is applied on top '
+            'of already quantized weights. Quality is affected. The fuse scale is '
+            'folded into those adapter weights.')
     # Hunyuan-DiT keeps ``set_adapters`` on the pipeline. Its text encoder is
     # not a PEFT module, so a per-component listing still fuses from here.
     if not (_lora_targets_are_split(listed, adapter_names)
@@ -143,6 +144,7 @@ def _collapse_zimage_lora_prefix(state_dict):
 def _quantized_adapter_components(pipeline, listed, adapter_names) -> list[str]:
     """Components that received these adapters and cannot take a fused write."""
     from dgenerate.pipelinewrapper import pipelines as _pipelines
+    from dgenerate.pipelinewrapper.safetensorscompat import module_has_comfy_quant
 
     components = getattr(pipeline, 'components', None)
     if not isinstance(components, dict):
@@ -154,7 +156,12 @@ def _quantized_adapter_components(pipeline, listed, adapter_names) -> list[str]:
         module = getattr(pipeline, component, None)
         if module is None:
             module = components.get(component)
-        if isinstance(module, torch.nn.Module) and _pipelines.module_skips_group_offload(module):
+        if not isinstance(module, torch.nn.Module):
+            continue
+        # ComfyUI packed linears are ordinary integer Parameters, so group
+        # offload can move them. A fused write still cannot: PEFT adds a
+        # floating delta into int8 or uint8 storage.
+        if _pipelines.module_skips_group_offload(module) or module_has_comfy_quant(module):
             found.append(component)
     return found
 

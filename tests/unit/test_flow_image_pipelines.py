@@ -58,6 +58,35 @@ def _config(**values):
 
 
 class TestFlowImagePipelines(unittest.TestCase):
+    def test_lora_no_disk_fuse_skips_the_lora_component_cache(self):
+        class Pipeline:
+            _lora_loadable_modules = [
+                'unet', 'text_encoder', 'text_encoder_2', 'lora_only']
+
+        repo, skip, fused, fuse_first = _pipelines._components_cached_before_quantization(
+            Pipeline, _pipelinewrapper.ModelType.SDXL, 'org/sdxl',
+            ['org/lora'], ['org/control'], True, set(), None)
+        self.assertEqual(repo, [])
+        self.assertTrue(skip)
+        self.assertTrue(fused)
+        self.assertFalse(fuse_first)
+
+        single, skip, _, fuse_first = _pipelines._components_cached_before_quantization(
+            Pipeline, _pipelinewrapper.ModelType.SDXL, 'model.safetensors',
+            ['org/lora'], ['org/control'], True, set(), None)
+        self.assertFalse(fuse_first)
+        self.assertFalse(skip)
+        self.assertNotIn('lora_only', single)
+        self.assertEqual(single, _pipelines._get_quantizable_components(
+            _pipelinewrapper.ModelType.SDXL))
+
+        fused_components, _, _, fuse_first = _pipelines._components_cached_before_quantization(
+            Pipeline, _pipelinewrapper.ModelType.SDXL, 'model.safetensors',
+            ['org/lora'], ['org/control'], False, set(), None)
+        self.assertTrue(fuse_first)
+        self.assertIn('lora_only', fused_components)
+        self.assertIn('unet', fused_components)
+
     def test_new_image_models_plan_transformer_lora_quantization_preflight(self):
         for pipeline_class, model_type in (
                 (diffusers.QwenImage21Pipeline, _pipelinewrapper.ModelType.QWEN_IMAGE_21),

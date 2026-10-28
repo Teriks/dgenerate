@@ -2638,12 +2638,29 @@ class TestVideoModels(unittest.TestCase):
         self.assertLess(events.index('enhance'), events.index(('move', 'cpu')))
         self.assertLess(events.index(('move', 'cpu')), events.index('inference'))
 
+    def test_lora_no_disk_fuse_skips_preflight_and_survives_a_disk_stream(self):
+        loading = _videopipelines.loading
+        self.assertFalse(loading._preflight_video_loras(
+            ['org/lora'], {'transformer': 'bnb'}, True))
+        self.assertTrue(loading._preflight_video_loras(
+            ['org/lora'], {'transformer': 'bnb'}, False))
+        self.assertFalse(loading._preflight_video_loras(
+            ['org/lora'], {}, False))
+        self.assertTrue(loading._attach_video_loras_after_load({}, True, True))
+        self.assertFalse(loading._attach_video_loras_after_load({}, True, False))
+        self.assertTrue(loading._attach_video_loras_after_load({}, False, False))
+        self.assertFalse(loading._attach_video_loras_after_load(
+            {'transformer': 'cache'}, True, True))
+
     def test_video_lora_preflight_persists_in_sqlite_and_skips_missing_components(self):
         import hashlib
 
         class Component:
             def __init__(self, lora_attached=False):
                 self.peft_config = {'0': object()} if lora_attached else {}
+
+            def state_dict(self):
+                return {}
 
             def save_pretrained(self, path):
                 os.makedirs(path)
@@ -2710,6 +2727,9 @@ class TestVideoModels(unittest.TestCase):
         class Component:
             def __init__(self):
                 self.peft_config = {'0': object()}
+
+            def state_dict(self):
+                return {}
 
             def save_pretrained(self, path):
                 os.makedirs(path)

@@ -1071,6 +1071,7 @@ class RenderLoop:
             vae_uri=self._c_config.vae_uri,
             lora_uris=self._c_config.lora_uris,
             lora_fuse_scale=self._c_config.lora_fuse_scale,
+            lora_no_disk_fuse=self._c_config.lora_no_disk_fuse,
             control_lora_uris=
             self._c_config.control_lora_uris if self._c_config.image_seeds else [],
             control_lora_fuse_scale=self._c_config.control_lora_fuse_scale,
