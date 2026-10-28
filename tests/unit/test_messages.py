@@ -43,10 +43,13 @@ class TestCensorSecrets(unittest.TestCase):
                 os.environ['HF_TOKEN'] = previous
 
     def test_redacts_civitai_download_query_token(self):
-        url = 'https://civitai.com/api/download/models/1?token=leaked_query_token'
-        censored = messages.censor_secrets(url)
-        self.assertIn('token=***', censored)
-        self.assertNotIn('leaked_query_token', censored)
+        for url in (
+                'https://civitai.com/api/download/models/1?token=leaked_query_token',
+                'https://civitai.red/api/download/models/1?token=leaked_query_token',
+        ):
+            censored = messages.censor_secrets(url)
+            self.assertIn('token=***', censored)
+            self.assertNotIn('leaked_query_token', censored)
 
     def test_log_output_is_censored(self):
         previous = os.environ.get('HF_TOKEN')

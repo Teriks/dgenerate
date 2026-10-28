@@ -1,6 +1,7 @@
 import os
 import unittest
 import unittest.mock
+import urllib.parse
 
 import dgenerate.arguments as arguments
 import dgenerate.hfhub as hfhub
@@ -102,6 +103,65 @@ class TestParseAuthToken(unittest.TestCase):
             arguments.parse_auth_token(['--auth-token'])
         with self.assertRaises(arguments.DgenerateUsageError):
             arguments.parse_auth_token(['-atk'])
+
+
+class TestCivitaiDownloadToken(unittest.TestCase):
+
+    def _with_token(self, token):
+        previous = os.environ.get('CIVIT_AI_TOKEN')
+        if token is None:
+            os.environ.pop('CIVIT_AI_TOKEN', None)
+        else:
+            os.environ['CIVIT_AI_TOKEN'] = token
+        return previous
+
+    def _restore_token(self, previous):
+        if previous is None:
+            os.environ.pop('CIVIT_AI_TOKEN', None)
+        else:
+            os.environ['CIVIT_AI_TOKEN'] = previous
+
+    def test_token_is_appended_for_civitai_com_and_red(self):
+        previous = self._with_token('civit-api-token')
+        try:
+            for url in (
+                    'https://civitai.com/api/download/models/3412871?fileId=3305313',
+                    'https://www.civitai.com/api/download/models/3412871?fileId=3305313',
+                    'https://civitai.red/api/download/models/3412871?fileId=3305313',
+                    'https://www.civitai.red/api/download/models/3412871?fileId=3305313',
+            ):
+                appended = webcache._append_tokens_to_url(url)
+                query = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(appended).query))
+                self.assertEqual(query['fileId'], '3305313')
+                self.assertEqual(query['token'], 'civit-api-token')
+        finally:
+            self._restore_token(previous)
+
+    def test_existing_token_is_kept(self):
+        previous = self._with_token('from-env')
+        try:
+            url = 'https://civitai.red/api/download/models/1?token=already-set'
+            self.assertEqual(webcache._append_tokens_to_url(url), url)
+        finally:
+            self._restore_token(previous)
+
+    def test_non_download_and_other_hosts_are_unchanged(self):
+        previous = self._with_token('civit-api-token')
+        try:
+            page = 'https://civitai.red/models/4384/dreamshaper'
+            other = 'https://example.com/api/download/models/1'
+            self.assertEqual(webcache._append_tokens_to_url(page), page)
+            self.assertEqual(webcache._append_tokens_to_url(other), other)
+        finally:
+            self._restore_token(previous)
+
+    def test_missing_token_leaves_the_url_unchanged(self):
+        previous = self._with_token(None)
+        try:
+            url = 'https://civitai.red/api/download/models/3412871?fileId=3305313'
+            self.assertEqual(webcache._append_tokens_to_url(url), url)
+        finally:
+            self._restore_token(previous)
 
 
 class TestHuggingFaceAuthorizationHeader(unittest.TestCase):

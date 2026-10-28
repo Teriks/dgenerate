@@ -242,7 +242,8 @@ def censor_secrets(text: str) -> str:
     text = _ENV_ASSIGNMENT_RE.sub(
         lambda match: f'{match.group("name")}={_CENSORED}', text)
 
-    if 'civitai.com' in text.lower():
+    lowered = text.lower()
+    if 'civitai.com' in lowered or 'civitai.red' in lowered:
         text = _CIVITAI_QUERY_TOKEN_RE.sub(rf'\1{_CENSORED}', text)
 
     return text

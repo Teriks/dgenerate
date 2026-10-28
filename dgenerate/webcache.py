@@ -70,17 +70,42 @@ except _textprocessing.TimeDeltaParseError as e:
     sys.exit(1)
 
 
+# civitai.red is a reverse proxy of civitai.com. Downloads on either host
+# require the same API token; a request without it is redirected to
+# /login?reason=download-auth.
+_CIVITAI_HOSTS = frozenset({
+    'civitai.com',
+    'www.civitai.com',
+    'civitai.red',
+    'www.civitai.red',
+})
+
+
+def is_civitai_host(url: str) -> bool:
+    """
+    Whether ``url`` is a CivitAI host that accepts ``CIVIT_AI_TOKEN``.
+
+    This is ``civitai.com`` and the ``civitai.red`` mirror, with or without
+    a ``www`` prefix.
+
+    :param url: a URL or host-bearing string
+    :return: ``True`` when the hostname is a recognized CivitAI host
+    """
+    host = (urllib.parse.urlparse(url).hostname or '').lower()
+    return host in _CIVITAI_HOSTS
+
+
 def _append_tokens_to_url(url: str) -> str:
     # append API tokens from environment
 
     parsed_url = urllib.parse.urlparse(url)
 
-    if parsed_url.netloc == "civitai.com" and parsed_url.path.startswith("/api/download"):
+    if is_civitai_host(url) and parsed_url.path.startswith("/api/download"):
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
         if 'CIVIT_AI_TOKEN' in os.environ:
             token_val = os.environ.get('CIVIT_AI_TOKEN')
-            if token_val and not 'token' in query_params:
+            if token_val and 'token' not in query_params:
                 query_params['token'] = token_val
 
         new_query = urllib.parse.urlencode(query_params, doseq=True)

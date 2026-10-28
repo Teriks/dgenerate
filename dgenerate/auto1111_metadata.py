@@ -643,8 +643,8 @@ def _clean_url(url):
 def _extract_civitai_id(url):
     parsed = urllib.parse.urlparse(url)
 
-    # Ensure it's a Civitai download URL
-    if parsed.netloc not in ("civitai.com", "www.civitai.com"):
+    # Ensure it's a Civitai download URL (civitai.com or the civitai.red mirror)
+    if not _webcache.is_civitai_host(url):
         return None
 
     match = re.match(r"^/api/download/models/(\d+)$", parsed.path)

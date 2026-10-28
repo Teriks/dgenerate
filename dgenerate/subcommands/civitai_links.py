@@ -6,6 +6,7 @@ import requests.exceptions
 import dgenerate.batchprocess.util as _b_util
 import dgenerate.messages as _messages
 import dgenerate.subcommands.subcommand as _subcommand
+import dgenerate.webcache as _webcache
 
 
 class CivitAILinksSubCommand(_subcommand.SubCommand):
@@ -26,15 +27,16 @@ class CivitAILinksSubCommand(_subcommand.SubCommand):
     NAMES = ['civitai-links']
 
     @staticmethod
-    def _get_model_data(model_id):
+    def _get_model_data(model_id, host='civitai.com'):
         """
         Fetch model data from the CivitAI API.
 
         :param model_id: ID of the model to fetch data for.
+        :param host: API host, ``civitai.com`` or the ``civitai.red`` mirror.
         :return: JSON response from the API.
         :raises HTTPError: If the API request fails.
         """
-        url = f"https://civitai.com/api/v1/models/{model_id}"
+        url = f"https://{host}/api/v1/models/{model_id}"
         try:
             response = requests.get(url)
             response.raise_for_status()  # Check for request errors
@@ -124,8 +126,9 @@ class CivitAILinksSubCommand(_subcommand.SubCommand):
             _messages.error(f'URL Parsing syntax error: {e}')
             return 1
 
-        if parsed_url.netloc != 'civitai.com':
-            _messages.error(f'Invalid non civitai.com URL given: {args.url}')
+        if not _webcache.is_civitai_host(args.url):
+            _messages.error(
+                f'Invalid non civitai.com / civitai.red URL given: {args.url}')
             return 1
 
         try:
@@ -143,7 +146,7 @@ class CivitAILinksSubCommand(_subcommand.SubCommand):
                                 f"could not extract model id.")
                 return 1
 
-            data = self._get_model_data(model_id)
+            data = self._get_model_data(model_id, host=parsed_url.hostname.lower())
             links = self._extract_links(data, args.token[0] if args.token else None)
 
         except (requests.exceptions.HTTPError,
