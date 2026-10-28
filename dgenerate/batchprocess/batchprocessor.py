@@ -732,11 +732,13 @@ class BatchProcessor:
         """Handle the \\print directive."""
         directive_args = line.split(None, 1)
         if len(directive_args) == 2:
-            _messages.log(self.expand_vars(self.render_template(directive_args[1])))
+            _messages.log(
+                self.expand_vars(self.render_template(directive_args[1])),
+                censor_secrets_output=False)
         elif line != '\\print':
             raise BatchProcessError(f'Unknown directive "{line}".')
         else:
-            _messages.log()
+            _messages.log(censor_secrets_output=False)
         return True
 
     def _handle_echo_directive(self, line: str) -> bool:
@@ -748,14 +750,14 @@ class BatchProcessor:
                     *_textprocessing.shell_parse(
                         self.render_template(directive_args[1]),
                         expand_vars_func=self.expand_vars
-                    )
-                )
+                    ),
+                    censor_secrets_output=False)
             except _textprocessing.ShellParseSyntaxError as e:
                 raise BatchProcessError(e) from e
         elif line != '\\echo':
             raise BatchProcessError(f'Unknown directive "{line}".')
         else:
-            _messages.log()
+            _messages.log(censor_secrets_output=False)
         return True
 
     def _handle_template_continuation(self, line: str) -> bool:

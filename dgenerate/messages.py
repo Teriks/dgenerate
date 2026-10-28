@@ -257,7 +257,8 @@ def remove_logging_handler(callback: typing.Callable[[typing.ParamSpecArgs, int,
     _handlers.remove(callback)
 
 
-def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
+def log(*args: typing.Any, level=INFO, underline=False, underline_char='=',
+        censor_secrets_output=True):
     """
     Write a message to dgenerate's log
 
@@ -266,6 +267,8 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
         :py:attr:`.INFO`, :py:attr:`.WARNING`, :py:attr:`.ERROR`, :py:attr:`.DEBUG`
     :param underline: Underline this message?
     :param underline_char: Underline character
+    :param censor_secrets_output: Redact API tokens in the message? Config
+        ``\\print`` and ``\\echo`` pass ``False`` so deliberate user output is unchanged.
     """
     global _MESSAGE_FILE, _ERROR_FILE
 
@@ -291,7 +294,8 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
     if level == WARNING:
         prefix = 'WARNING: '
 
-    message = censor_secrets(' '.join(str(a) for a in args))
+    raw_message = ' '.join(str(a) for a in args)
+    message = censor_secrets(raw_message) if censor_secrets_output else raw_message
 
     if underline:
         print(_textprocessing.underline(prefix + message,
@@ -299,9 +303,10 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
     else:
         print(prefix + message, file=file, flush=AUTO_FLUSH_MESSAGES)
 
-    censored_args = tuple(censor_secrets(str(a)) for a in args)
+    handler_args = tuple(
+        censor_secrets(str(a)) if censor_secrets_output else str(a) for a in args)
     for handler in _handlers:
-        handler(*censored_args,
+        handler(*handler_args,
                 level=level,
                 underline=underline,
                 underline_char=underline_char)
