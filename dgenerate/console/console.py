@@ -55,6 +55,7 @@ import dgenerate.console.resources as _resources
 import dgenerate.console.showindirectory as _showindirectory
 import dgenerate.console.submodelselect as _submodelselect
 import dgenerate.console.themetext as _themetext
+import dgenerate.console.initdgeneditor as _initdgeneditor
 import dgenerate.console.util as _util
 import dgenerate.textprocessing as _textprocessing
 from dgenerate.console.codeview import DgenerateCodeView
@@ -209,6 +210,9 @@ class DgenerateConsole(tk.Tk):
             multiline_check_trace)
 
         self._options_menu = tk.Menu(self._menu_bar, tearoff=0)
+        self._appearance_menu = tk.Menu(self._menu_bar, tearoff=0)
+        self._console_modes_menu = tk.Menu(self._menu_bar, tearoff=0)
+        self._startup_menu = tk.Menu(self._menu_bar, tearoff=0)
         self._theme_menu = tk.Menu(self._menu_bar, tearoff=0)
         self._theme_menu_var = tk.StringVar(value='dgenerate')
 
@@ -223,10 +227,13 @@ class DgenerateConsole(tk.Tk):
             self._theme_menu.add_radiobutton(label=theme_name, value=theme_name,
                                              variable=self._theme_menu_var)
 
-        self._options_menu.add_cascade(label='Theme', menu=self._theme_menu)
+        self._appearance_menu.add_cascade(label='Theme', menu=self._theme_menu)
+        self._appearance_menu.add_command(
+            label='Window Sash Size',
+            command=self._open_sash_width_dialog)
 
-        self._options_menu.add_checkbutton(
-            label='Multiline input',
+        self._console_modes_menu.add_checkbutton(
+            label='Multiline Input',
             accelerator=
             'Command+i' if platform.system() == 'Darwin' else 'Insert Key',
             variable=self._multi_line_input_check_var)
@@ -236,29 +243,34 @@ class DgenerateConsole(tk.Tk):
         self._word_wrap_input_check_var = tk.BooleanVar(value=True)
         self._word_wrap_input_check_var.trace_add('write', self._update_input_wrap)
 
-        self._options_menu.add_checkbutton(label='Word Wrap Input',
-                                           variable=self._word_wrap_input_check_var)
+        self._console_modes_menu.add_checkbutton(label='Word Wrap Input',
+                                                 variable=self._word_wrap_input_check_var)
 
         # Create the word wrap output checkbox
 
         self._word_wrap_output_check_var = tk.BooleanVar(value=True)
         self._word_wrap_output_check_var.trace_add('write', self._update_output_wrap)
 
-        self._options_menu.add_checkbutton(label='Word Wrap Output',
-                                           variable=self._word_wrap_output_check_var)
+        self._console_modes_menu.add_checkbutton(label='Word Wrap Output',
+                                                 variable=self._word_wrap_output_check_var)
 
         # Create the auto scroll checkbox (scroll on input)
         self._auto_scroll_on_run_check_var = tk.BooleanVar(value=True)
-        self._options_menu.add_checkbutton(label='Scroll Output On Run',
-                                           variable=self._auto_scroll_on_run_check_var)
+        self._console_modes_menu.add_checkbutton(label='Scroll Output On Run',
+                                                 variable=self._auto_scroll_on_run_check_var)
 
         # Create the auto scroll checkbox (scroll on output)
         self._auto_scroll_on_output_check_var = tk.BooleanVar(value=False)
-        self._options_menu.add_checkbutton(label='Scroll Output On New Output',
-                                           variable=self._auto_scroll_on_output_check_var)
-        self._options_menu.add_command(
-            label='Window Sash Width',
-            command=self._open_window_sash_width_dialog)
+        self._console_modes_menu.add_checkbutton(label='Scroll Output On New Output',
+                                                 variable=self._auto_scroll_on_output_check_var)
+
+        self._startup_menu.add_command(
+            label='Edit init.dgen',
+            command=self._open_init_dgen_editor)
+
+        self._options_menu.add_cascade(label='Appearance', menu=self._appearance_menu)
+        self._options_menu.add_cascade(label='Console Modes', menu=self._console_modes_menu)
+        self._options_menu.add_cascade(label='Startup', menu=self._startup_menu)
 
         # View Menu
 
@@ -1176,14 +1188,20 @@ class DgenerateConsole(tk.Tk):
         self._paned_window_horizontal.configure(sashwidth=width)
         self._paned_window_vertical.configure(sashwidth=width)
 
-    def _open_window_sash_width_dialog(self):
+    def _open_init_dgen_editor(self):
+        _initdgeneditor.open_init_dgen_editor(
+            self,
+            theme_name=self._theme_menu_var.get(),
+            on_saved=lambda: self.kill_shell_process(restart=True))
+
+    def _open_sash_width_dialog(self):
         if self._settings_dialog is not None and self._settings_dialog.winfo_exists():
             self._settings_dialog.lift()
             return
 
         dialog = tk.Toplevel(self)
         self._settings_dialog = dialog
-        dialog.title('Settings')
+        dialog.title('Window Sash Size')
         dialog.transient(self)
         dialog.resizable(False, False)
         _resources.set_window_icon(dialog)
