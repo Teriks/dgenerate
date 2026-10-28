@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# SD1.5 with a rank-128 depth Control LoRA (MiDaS depth map as control).
+
+runwayml/stable-diffusion-v1-5
+--dtype float16
+--inference-steps 30
+--guidance-scales 7.5
+--output-path depth
+--output-size 512
+--model-cpu-offload
+--prompts "a misty forest path at dawn, cinematic lighting"
+--control-loras "comfyanonymous/ControlNet-v1-1_fp16_safetensors;weight-name=control_lora_rank128_v11f1p_sd15_depth_fp16.safetensors"
+--image-seeds "../../media/monalisa.png"
+--control-image-processors "midas;output-file=depth/depth.png"

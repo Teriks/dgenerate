@@ -184,6 +184,7 @@ class ConsoleSchemaBuilder:
             _pipelinewrapper.uris.VAEUri,
             _pipelinewrapper.uris.ImageEncoderUri,
             _pipelinewrapper.uris.LoRAUri,
+            _pipelinewrapper.uris.ControlLoRAUri,
             _pipelinewrapper.uris.ICLoRAUri,
             _pipelinewrapper.uris.IPAdapterUri,
             _pipelinewrapper.uris.ControlNetUri,

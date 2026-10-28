@@ -194,16 +194,18 @@ Diffusion Model Feature Support Tables
      - ❌
 
 .. list-table:: Guidance by ``--model-type``
-   :widths: 40 10 10 10 10
+   :widths: 28 8 8 10 8 10
    :header-rows: 1
 
    * - Model Type
      - LoRA
      - Textual Inversions
+     - Control LoRA (``--control-loras``)
      - ControlNet
      - Perturbed Attention Guidance (PAG)
 
    * - ``sd``
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -214,8 +216,10 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ❌
+     - ❌
 
    * - ``sdxl``
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -224,10 +228,12 @@ Diffusion Model Feature Support Tables
    * - ``kolors``
      - ✅
      - ❌
+     - ❌
      - ✅
      - ✅
 
    * - ``if``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -238,8 +244,10 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``ifs-img2img``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -250,8 +258,10 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ❌
+     - ❌
 
    * - ``upscaler-x2``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -262,8 +272,10 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ❌
+     - ❌
 
    * - ``s-cascade``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -271,6 +283,7 @@ Diffusion Model Feature Support Tables
 
    * - ``sd3``
      - ✅
+     - ❌
      - ❌
      - ✅
      - ✅
@@ -280,8 +293,10 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``flux``
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -292,15 +307,18 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
      - ❌
+     - ❌
 
    * - ``flux-kontext``
      - ✅
      - ✅
      - ❌
      - ❌
+     - ❌
 
    * - ``flux2``
      - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -310,9 +328,11 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``z-image``
      - ✅
+     - ❌
      - ❌
      - ✅
      - ❌
@@ -322,9 +342,11 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``qwen-image``
      - ✅
+     - ❌
      - ❌
      - ✅
      - ❌
@@ -334,9 +356,11 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``qwen-image-layered``
      - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -346,14 +370,17 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``hydit``
      - ✅
+     - ❌
      - ❌
      - ✅
      - ❌
 
    * - ``hyimage-21``
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -364,15 +391,18 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``krea2``
      - ✅
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``kandinsky5-image``
      - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -1244,6 +1274,16 @@ match the model type.
      - ✅
      - ✅
 
+   * - Control LoRA (``--control-loras``)
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
    * - ControlNet (``--control-nets``)
      - ❌
      - ❌
@@ -1329,7 +1369,7 @@ LTX supports Cache-DiT and ``--torch-compile``, but not Spectrum or DyPE. GGUF t
 are tested with LTX-Video. LTX video conditioning covers first and last frames, reference audio, and IC-LoRA.
 ``--loras`` loads Diffusers-format LoRAs. ``--ltx-ic-lora`` is separate and can be fused with ``--loras``.
 
-No video model accepts ``--control-nets``. ``--loras`` is supported on every video model type.
+No video model accepts ``--control-loras`` or ``--control-nets``. ``--loras`` is supported on every video model type.
 
 Wan video-to-video is the only Wan mode that uses ``--timesteps``. Wan accepts
 ``FlowMatchEulerDiscreteScheduler`` (``shift`` and ``use-dynamic-shifting``) and the checkpoint
@@ -1377,6 +1417,10 @@ examples under ``examples/latents_interchange``.
 (``Tencent-Hunyuan/IP-Adapter``). The IP-Adapter CLIP image encoder is loaded from that
 repo when needed. It does not support img2img, inpainting, prompt weighters, Spectrum,
 Cache-DiT, or DyPE.
+
+``--control-loras`` is supported for ``sd``, ``sdxl``, and ``flux`` only. It is mutually
+exclusive with ``--control-nets`` and ``--t2i-adapters``. Several Control LoRAs share one
+control image from ``--image-seeds``.
 
 ControlNet on ``z-image`` and ``qwen-image`` is text-to-image and inpaint.
 ``z-image`` accepts one union model. ``qwen-image`` can take more than one.

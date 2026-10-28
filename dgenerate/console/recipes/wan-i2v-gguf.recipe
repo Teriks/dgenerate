@@ -27,6 +27,7 @@ title: Wan 2.1 Image to Video (GGUF)
 @quantizer[{"model-type":"wan", "divider-after":true, "map-default":"text_encoder"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/city96/Wan2.1-I2V-14B-480P-gguf/blob/main/wan2.1-i2v-14b-480p-Q4_K_S.gguf"}]
 @submodelbuilder[{"label":"Second Transformer (MoE)", "arg":"--wan-second-transformer", "model": "Transformer", "divider-after":true}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]

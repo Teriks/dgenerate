@@ -101,13 +101,13 @@ of your own creation.
 
     # create the environment
 
-    python3 -m venv dgenerate_venv
+    python3 -m venv .venv
 
     # you must activate this environment
     # every time you want to use dgenerate
     # with this install method
 
-    source dgenerate_venv/bin/activate
+    source .venv/bin/activate
 
     # install dgenerate into an isolated environment
 

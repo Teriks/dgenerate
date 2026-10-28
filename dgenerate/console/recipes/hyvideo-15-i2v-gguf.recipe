@@ -12,6 +12,7 @@ title: HunyuanVideo 1.5 Image to Video (GGUF)
 @quantizer[{"model-type":"hyvideo-15", "divider-after":true, "map-default":"text_encoder"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/jayn7/HunyuanVideo-1.5_I2V_480p-GGUF/blob/main/480p/hunyuanvideo1.5_480p_i2v-Q4_K_S.gguf", "divider-after":true}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"First Frame Processor"}]
 @int[{"id":"is","label":"Inference Steps","arg":"--inference-steps","default":50,"min":1,"exclude":["ts"]}]

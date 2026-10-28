@@ -163,8 +163,8 @@ virtual environment you can do so like this:
     # in the top of the repo make
     # an environment and activate it
 
-    python3 -m venv venv
-    source venv/bin/activate
+    python3 -m venv .venv
+    source .venv/bin/activate
 
     # Install with pip into the environment (editable, for development)
 

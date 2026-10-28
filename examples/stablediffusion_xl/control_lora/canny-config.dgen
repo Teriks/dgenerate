@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# SDXL with Stability's canny Control LoRA.
+# The UNet is cloned into a ControlNet and the LoRA is fused into that clone.
+# --quantizer quantizes the UNet. The clone stays full precision unless
+# --quantizer-map includes controlnet. A checkpoint that is already packed
+# cannot be cloned; use a full-precision checkpoint with --quantizer instead.
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--variant fp16
+--dtype float16
+--vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
+--inference-steps 30
+--guidance-scales 5
+--output-path canny
+--output-size 1024
+--model-cpu-offload
+--vae-tiling
+--vae-slicing
+--prompts "aerial view, a futuristic research complex in a bright foggy jungle, hard lighting"
+--control-loras "stabilityai/control-lora;subfolder=control-LoRAs-rank128;weight-name=control-lora-canny-rank128.safetensors"
+--image-seeds "../../media/man-fighting-pose.jpg"
+--control-image-processors "canny;lower=100;upper=200;output-file=canny/canny.png"

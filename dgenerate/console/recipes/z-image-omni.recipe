@@ -12,6 +12,7 @@ title: Z-Image Omni
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
 @imageseed[{"label":"Condition Image", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "default":"", "float":""}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":8, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":0, "min":0}]

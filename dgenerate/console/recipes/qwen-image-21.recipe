@@ -13,6 +13,7 @@ title: Qwen-Image 2.1
 @switch[{"label":"Disable KV Cache", "arg":"--qwen21-no-kv-cache"}]
 @quantizer[{"model-type":"qwen-image-21", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "divider-after":true}]
 @imageseed[{"label":"Condition Image", "arg":"--image-seeds", "file-types":["images-in"], "hide-float":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":40, "min":1}]

@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# SDXL with Stability's recolor Control LoRA.
+# The control image is the color reference; no control-image-processor is required.
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--variant fp16
+--dtype float16
+--vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
+--inference-steps 30
+--guidance-scales 5
+--output-path recolor
+--output-size 1024
+--model-cpu-offload
+--vae-tiling
+--vae-slicing
+--prompts "the same scene rendered in cool teal and violet tones, stylized illustration"
+--control-loras "stabilityai/control-lora;subfolder=control-LoRAs-rank128;weight-name=control-lora-recolor-rank128.safetensors"
+--image-seeds "../../media/monalisa.png"

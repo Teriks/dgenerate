@@ -43,7 +43,11 @@ When ``--loras`` and ``--quantizer`` are used together, affected static-pipeline
 components are fused without quantization and cached on disk before quantization.
 LTX and Wan cache only the LoRA-loadable components after fusing them without
 quantization. The first run loads the unquantized pipeline once; later runs reuse
-the cached components and quantize them as they load.
+the cached components and quantize them as they load. ``--control-loras`` on Flux
+fuses into the transformer the same way. On SD and SDXL it fuses into a ControlNet
+cloned from the UNet; ``--quantizer`` still quantizes the UNet and the text
+encoders, and the clone stays full precision unless ``controlnet`` is listed in
+``--quantizer-map``.
 
 You can control which sub modules of the diffusion pipeline get quantized
 by using the ``--quantizer-map`` argument, which accepts a list
@@ -98,6 +102,31 @@ argument. To quantize ControlNets, you must either:
 
 1. Add ``controlnet`` to the ``--quantizer-map`` list to apply global quantization
 2. Specify individual quantization settings per ControlNet using the ``quantizer`` URI argument
+
+``--control-loras`` for ``--model-type sd`` and ``sdxl`` builds the ControlNet by cloning
+the UNet and fusing the Control LoRA into that clone. The clone is a second UNet.
+``--quantizer`` quantizes the original UNet and the text encoders only. Add
+``controlnet`` to ``--quantizer-map`` to quantize the clone:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate @VERSION
+
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --quantizer "bnb;bits=8"
+    --quantizer-map unet text_encoder text_encoder_2 controlnet
+    --control-loras "stabilityai/control-lora;subfolder=control-LoRAs-rank128;weight-name=control-lora-canny-rank128.safetensors"
+    --control-image-processors "canny"
+    --image-seeds "control.png"
+    --inference-steps 30
+    --guidance-scales 5
+    --prompts "a cute cat"
+
+Leaving ``controlnet`` out of ``--quantizer-map`` keeps that clone in full precision.
 
 .. code-block:: bash
 

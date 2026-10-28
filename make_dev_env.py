@@ -144,7 +144,7 @@ def install_xllamacpp_for_machine(script_dir: Path, python_exe: Path) -> None:
 
 def main():
     script_dir = Path(__file__).parent.absolute()
-    venv_path = script_dir / "venv"
+    venv_path = script_dir / ".venv"
 
     print("Setting up dgenerate development environment...")
     print(f"Script directory: {script_dir}")

@@ -107,6 +107,25 @@ class _SubModelBuilderEntry(_entry._Entry):
 
         self.uri_entry.bind('<Key>', lambda e: self.valid())
 
+        self._excluded_entries = []
+        exclude = self.config.get('exclude', None)
+        if exclude and hasattr(self.form, 'get_entry_by_id'):
+            for other_id in [exclude] if isinstance(exclude, str) else exclude:
+                other_entry = self.form.get_entry_by_id(other_id)
+                if other_entry is not None:
+                    self._excluded_entries.append(other_entry)
+
+    def is_valid(self) -> bool:
+        if self.is_empty():
+            return True
+        return all(other.is_empty() for other in self._excluded_entries)
+
+    def invalid(self):
+        _entry.invalid_colors(self.uri_entry)
+
+    def valid(self):
+        _entry.valid_colors(self.uri_entry)
+
     def _insert(self, value: str):
         if value is not None and value.strip():
             self.uri_var.set(value)
@@ -123,6 +142,9 @@ class _SubModelBuilderEntry(_entry._Entry):
                 self.form.bind_mousewheel()
 
         dialog.destroy = _destroy
+
+    def is_empty(self) -> bool:
+        return not self.uri_var.get().strip()
 
     def template(self, content):
         text = self.uri_var.get().strip()

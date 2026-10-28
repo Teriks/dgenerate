@@ -2488,6 +2488,8 @@ def create_diffusion_pipeline(
         textual_inversion_uris: _types.OptionalUris = None,
         text_encoder_uris: _types.OptionalUris = None,
         controlnet_uris: _types.OptionalUris = None,
+        control_lora_uris: _types.OptionalUris = None,
+        control_lora_fuse_scale: _types.OptionalFloat = None,
         t2i_adapter_uris: _types.OptionalUris = None,
         quantizer_uri: _types.OptionalUri = None,
         quantizer_map: _types.OptionalStrings = None,
@@ -2529,6 +2531,11 @@ def create_diffusion_pipeline(
         pipeline in order. A uri value of ``+`` or ``None`` indicates use default, a string value of ``null``
         indicates to explicitly not load any encoder all
     :param controlnet_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
+    :param control_lora_uris: Optional ``--control-loras`` URI strings. Flux.1, SDXL, and SD1.5 / SD2.
+    :param control_lora_fuse_scale: Optional ``--control-lora-fuse-scale``. The default is 1.0.
+        Full-precision weights are fused at this scale before ``--quantizer`` runs.
+        ``--quantizer`` quantizes the UNet or transformer. The SD/SDXL ControlNet
+        clone stays full precision unless ``controlnet`` is in ``quantizer_map``.
     :param t2i_adapter_uris: Optional ``--t2i-adapters`` URI strings for specifying T2IAdapter models
     :param quantizer_uri: Optional ``--quantizer`` URI value
     :param quantizer_map: Collection of pipeline submodule names to which quantization should be applied when
@@ -2602,6 +2609,8 @@ class PipelineFactory:
                  ip_adapter_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
                  controlnet_uris: _types.OptionalUris = None,
+                 control_lora_uris: _types.OptionalUris = None,
+                 control_lora_fuse_scale: _types.OptionalFloat = None,
                  t2i_adapter_uris: _types.OptionalUris = None,
                  text_encoder_uris: _types.OptionalUris = None,
                  quantizer_uri: _types.OptionalUri = None,
@@ -2737,6 +2746,7 @@ def _pipeline_args_hasher(args):
         'controlnet_uris': _uris.uri_list_hash_with_parser(
             lambda s: _uris.ControlNetUri.parse(s, model_type=args['model_type']),
             exclude={'scale', 'start', 'end'}),
+        'control_lora_uris': _uris.uri_list_hash_with_parser(_uris.ControlLoRAUri.parse),
         't2i_adapter_uris': _uris.uri_list_hash_with_parser(_uris.T2IAdapterUri.parse,
                                                             exclude={'scale'}),
         'quantizer_uri':
@@ -3129,6 +3139,7 @@ def get_pipeline_class(
         ip_adapter_uris: _types.OptionalUris = None,
         textual_inversion_uris: _types.OptionalUris = None,
         controlnet_uris: _types.OptionalUris = None,
+        control_lora_uris: _types.OptionalUris = None,
         t2i_adapter_uris: _types.OptionalUris = None,
         pag: bool = False,
         help_mode: bool = False
@@ -3256,6 +3267,17 @@ def get_pipeline_class(
     if controlnet_uris and t2i_adapter_uris:
         raise UnsupportedPipelineConfigError(
             '--control-nets and --t2i-adapters cannot be used together.')
+
+    if control_lora_uris:
+        if not _enums.model_type_supports_control_lora(model_type):
+            raise UnsupportedPipelineConfigError(
+                '--control-loras is supported for --model-type sd, sdxl, and flux.')
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                '--control-loras and --control-nets cannot be used together.')
+        if t2i_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                '--control-loras and --t2i-adapters cannot be used together.')
 
     if image_encoder_uri and not ip_adapter_uris and model_type != _enums.ModelType.S_CASCADE:
         raise UnsupportedPipelineConfigError(
@@ -3385,6 +3407,8 @@ def get_pipeline_class(
             elif model_type == _enums.ModelType.FLUX:
                 if controlnet_uris:
                     pipeline_class = diffusers.FluxControlNetPipeline
+                elif control_lora_uris:
+                    pipeline_class = diffusers.FluxControlPipeline
                 else:
                     pipeline_class = diffusers.FluxPipeline
             elif model_type == _enums.ModelType.SD3:
@@ -3424,7 +3448,7 @@ def get_pipeline_class(
                     if is_sdxl
                     else diffusers.StableDiffusionAdapterPipeline
                 )
-            elif controlnet_uris:
+            elif controlnet_uris or control_lora_uris:
                 if is_sdxl:
                     if pag:
                         if sdxl_controlnet_union:
@@ -3496,6 +3520,8 @@ def get_pipeline_class(
             elif model_type == _enums.ModelType.FLUX:
                 if controlnet_uris:
                     pipeline_class = diffusers.FluxControlNetImg2ImgPipeline
+                elif control_lora_uris:
+                    pipeline_class = diffusers.FluxControlImg2ImgPipeline
                 else:
                     pipeline_class = diffusers.FluxImg2ImgPipeline
             elif model_type == _enums.ModelType.FLUX_KONTEXT:
@@ -3529,7 +3555,7 @@ def get_pipeline_class(
             elif t2i_adapter_uris:
                 raise UnsupportedPipelineConfigError(
                     'img2img mode is not supported with --t2i-adapters.')
-            elif controlnet_uris:
+            elif controlnet_uris or control_lora_uris:
                 if is_sdxl:
                     if pag:
                         if sdxl_controlnet_union:
@@ -3591,6 +3617,8 @@ def get_pipeline_class(
             elif model_type == _enums.ModelType.FLUX:
                 if controlnet_uris:
                     pipeline_class = diffusers.FluxControlNetInpaintPipeline
+                elif control_lora_uris:
+                    pipeline_class = diffusers.FluxControlInpaintPipeline
                 else:
                     pipeline_class = diffusers.FluxInpaintPipeline
             elif model_type == _enums.ModelType.FLUX_FILL:
@@ -3632,7 +3660,7 @@ def get_pipeline_class(
             elif t2i_adapter_uris:
                 raise UnsupportedPipelineConfigError(
                     'inpaint mode is not supported with --t2i-adapters.')
-            elif controlnet_uris:
+            elif controlnet_uris or control_lora_uris:
                 if is_sdxl:
                     if pag:
                         raise UnsupportedPipelineConfigError(
@@ -3759,6 +3787,8 @@ def _create_diffusion_pipeline(
         textual_inversion_uris: _types.OptionalUris = None,
         text_encoder_uris: _types.OptionalUris = None,
         controlnet_uris: _types.OptionalUris = None,
+        control_lora_uris: _types.OptionalUris = None,
+        control_lora_fuse_scale: _types.OptionalFloat = None,
         t2i_adapter_uris: _types.OptionalUris = None,
         quantizer_uri: _types.OptionalUri = None,
         quantizer_map: _types.OptionalStrings = None,
@@ -3880,6 +3910,7 @@ def _create_diffusion_pipeline(
         ip_adapter_uris=ip_adapter_uris,
         textual_inversion_uris=textual_inversion_uris,
         controlnet_uris=controlnet_uris,
+        control_lora_uris=control_lora_uris,
         t2i_adapter_uris=t2i_adapter_uris,
         pag=pag
     )
@@ -4120,14 +4151,29 @@ def _create_diffusion_pipeline(
     manual_quantizers = {}
     components_to_cache = []
 
-    # Determine if we need granular caching
-    needs_granular_caching = (quantizer_uri and (_hfhub.is_single_file_model_load(model_path) or lora_uris)) or \
-                             (manual_quantizer_components and lora_uris)
+    # Determine if we need granular caching.
+    # Control LoRAs fuse into full-precision weights before quantization, the
+    # same way style LoRAs do. A single-file checkpoint is converted first.
+    weights_fused_before_quant = bool(lora_uris or control_lora_uris)
+    needs_granular_caching = (
+        quantizer_uri and (
+            _hfhub.is_single_file_model_load(model_path) or weights_fused_before_quant)
+    ) or (manual_quantizer_components and weights_fused_before_quant)
 
     if needs_granular_caching:
 
+        # An SD/SDXL control LoRA changes the ControlNet clone, not the UNet.
+        # A repository UNet is quantized on the normal load path. Caching it
+        # here would write an unmodified copy. A single-file checkpoint still
+        # converts its UNet before quantization, and that copy is reused.
+        sd_control_only = bool(
+            control_lora_uris and not lora_uris
+            and model_type in {_enums.ModelType.SD, _enums.ModelType.SDXL})
+        skip_unmodified_unet_cache = (
+            sd_control_only and not _hfhub.is_single_file_model_load(model_path))
+
         # Determine which components to cache
-        if lora_uris:
+        if weights_fused_before_quant and not skip_unmodified_unet_cache:
             # For LoRA + quantizer: cache only components affected by LoRA
             components_to_cache = _get_affected_components_for_lora(pipeline_class)
 
@@ -4137,9 +4183,11 @@ def _create_diffusion_pipeline(
                 if component in lora_affected_components:
                     if component not in components_to_cache:
                         components_to_cache.append(component)
-        else:
+        elif not skip_unmodified_unet_cache:
             # For single file + quantizer: cache all quantizable components
             components_to_cache = _get_quantizable_components(model_type)
+        else:
+            components_to_cache = []
 
         # Filter based on quantizer_map ONLY for components that would get auto-quantized
         # Components with manual quantizers should always be cached when LoRAs are involved
@@ -4147,7 +4195,7 @@ def _create_diffusion_pipeline(
             # Keep components that either:
             # 1. Have manual quantizers (always cache these when LoRAs are involved)
             # 2. Are in the quantizer_map (for auto-quantization)
-            if lora_uris:
+            if weights_fused_before_quant:
                 # When LoRAs are involved, always cache components with manual quantizers
                 components_to_cache = [c for c in components_to_cache
                                        if c in manual_quantizer_components or c in quantizer_map]
@@ -4157,7 +4205,7 @@ def _create_diffusion_pipeline(
 
         # Collect manual URIs for components that will be cached
         manual_component_uris = {}
-        if unet_uri and 'unet' in components_to_cache:
+        if unet_uri and ('unet' in components_to_cache or sd_control_only):
             manual_component_uris['unet'] = unet_uri
         if transformer_uri and 'transformer' in components_to_cache:
             manual_component_uris['transformer'] = transformer_uri
@@ -4170,8 +4218,9 @@ def _create_diffusion_pipeline(
                     if encoder_name in components_to_cache:
                         manual_component_uris[encoder_name] = encoder_uri
 
-        # Perform granular caching
-        if components_to_cache:
+        # Perform granular caching. SD/SDXL control LoRAs still enter when the
+        # component list is empty so the ControlNet clone can be cached.
+        if components_to_cache or skip_unmodified_unet_cache:
             cached_component_paths, manual_quantizers = _cache_components_granular(
                 model_path=model_path,
                 model_type=model_type,
@@ -4179,6 +4228,8 @@ def _create_diffusion_pipeline(
                 components_to_cache=components_to_cache,
                 lora_uris=lora_uris,
                 lora_fuse_scale=lora_fuse_scale,
+                control_lora_uris=control_lora_uris,
+                control_lora_fuse_scale=control_lora_fuse_scale,
                 revision=revision,
                 variant=variant,
                 subfolder=subfolder,
@@ -4774,6 +4825,41 @@ def _create_diffusion_pipeline(
         else:
             creation_kwargs['controlnet'] = controlnets
 
+    if (control_lora_uris
+            and model_type in {_enums.ModelType.SD, _enums.ModelType.SDXL}
+            and 'controlnet' not in creation_kwargs):
+        if 'controlnet' in cached_component_paths:
+            # --quantizer leaves ControlNet full precision. Pass controlnet in
+            # --quantizer-map to quantize this UNet clone.
+            control_quantizer = quantizer_uri if should_apply_quantizer('controlnet') else None
+            control_dtype = _enums.get_torch_dtype(dtype)
+            quant_config = None
+            if control_quantizer:
+                quant_config = _uris.get_quantizer_uri_class(control_quantizer).parse(
+                    control_quantizer).to_config(control_dtype)
+            creation_kwargs['controlnet'] = diffusers.ControlNetModel.from_pretrained(
+                cached_component_paths['controlnet'],
+                variant=variant,
+                torch_dtype=control_dtype,
+                quantization_config=quant_config,
+                device_map=get_device_map_for_quantizer(control_quantizer))
+            _messages.debug_log(
+                'Loaded cached ControlNet built from the UNet for --control-loras.')
+        else:
+            source_unet = creation_kwargs.get('unet')
+            if source_unet is None and extra_modules:
+                source_unet = extra_modules.get('unet')
+            if source_unet is None:
+                raise UnsupportedPipelineConfigError(
+                    '--control-loras needs the UNet weights so a ControlNet can be cloned. '
+                    'The pipeline did not load a UNet.')
+            creation_kwargs['controlnet'] = _uris.ControlLoRAUri.controlnet_from_unet(
+                source_unet,
+                control_lora_uris,
+                fuse_scale=1.0 if control_lora_fuse_scale is None else control_lora_fuse_scale,
+                auth_token=auth_token,
+                local_files_only=local_files_only)
+
     if _enums.model_type_is_floyd(model_type):
         creation_kwargs['watermarker'] = None
 
@@ -4899,13 +4985,28 @@ def _create_diffusion_pipeline(
             local_files_only=local_files_only)
 
     if lora_uris and not quantizer_uri:
+        for lora_uri in lora_uris:
+            parsed_lora_uris.append(_uris.LoRAUri.parse(lora_uri))
+
+    flux_control_loaded = bool(
+        control_lora_uris
+        and model_type == _enums.ModelType.FLUX
+        and not needs_granular_caching)
+    if flux_control_loaded:
+        # Quantized runs fuse the control LoRA in the pre-quantization cache.
+        # An already packed transformer keeps the adapters active.
+        _load_flux_control_and_style_loras(
+            pipeline,
+            control_lora_uris,
+            control_lora_fuse_scale,
+            parsed_lora_uris,
+            lora_fuse_scale,
+            auth_token=auth_token,
+            local_files_only=local_files_only)
+
+    if lora_uris and not quantizer_uri and not flux_control_loaded:
         # LoRAs are fused into the model and cached
         # to disk in the case that quantization is requested
-
-        for lora_uri in lora_uris:
-            parsed = _uris.LoRAUri.parse(lora_uri)
-            parsed_lora_uris.append(parsed)
-
         _uris.LoRAUri.load_on_pipeline(
             pipeline=pipeline,
             uris=parsed_lora_uris,
@@ -5050,6 +5151,7 @@ _component_cache_stores = {
     'text_encoder_3': _get_component_cache_store('text_encoder_3'),
     'transformer': _get_component_cache_store('transformer'),
     'unet': _get_component_cache_store('unet'),
+    'controlnet': _get_component_cache_store('controlnet'),
 }
 
 # Records LoRA-to-component relationships as individual SQLite key/value
@@ -5057,6 +5159,79 @@ _component_cache_stores = {
 # the legacy component lookup below.
 _lora_component_cache_store = _filecache.KeyValueStore(
     os.path.join(_to_diffusers_cache_dir, 'lora_components', 'cache.db'))
+
+
+def _load_flux_control_and_style_loras(pipeline,
+                                       control_lora_uris,
+                                       control_lora_fuse_scale,
+                                       parsed_lora_uris,
+                                       lora_fuse_scale,
+                                       auth_token=None,
+                                       local_files_only=False) -> None:
+    """
+    Load Flux control LoRAs, then style LoRAs, as one adapter set.
+
+    Separate loads would reuse the same adapter names, and the second load
+    would replace or reactivate the first set. Each group's fuse scale is
+    folded into its adapter weights so the whole set fuses at 1.0.
+    """
+    control_scale = 1.0 if control_lora_fuse_scale is None else control_lora_fuse_scale
+    style_scale = 1.0 if lora_fuse_scale is None else lora_fuse_scale
+    combined = []
+    for uri in control_lora_uris:
+        parsed = uri if isinstance(uri, _uris.ControlLoRAUri) else _uris.ControlLoRAUri.parse(uri)
+        lora = parsed.as_lora_uri()
+        combined.append(_uris.LoRAUri(
+            model=lora.model, revision=lora.revision, subfolder=lora.subfolder,
+            weight_name=lora.weight_name, scale=lora.scale * control_scale))
+    for lora in parsed_lora_uris or ():
+        combined.append(_uris.LoRAUri(
+            model=lora.model, revision=lora.revision, subfolder=lora.subfolder,
+            weight_name=lora.weight_name, scale=lora.scale * style_scale,
+            component=lora.component))
+    try:
+        _uris.LoRAUri.load_on_pipeline(
+            pipeline, combined, fuse_scale=1.0,
+            auth_token=auth_token, local_files_only=local_files_only)
+    except _uris.LoRAUriLoadError as e:
+        if parsed_lora_uris:
+            raise
+        raise _uris.ControlLoRAUriLoadError(str(e)) from e
+
+
+def _keep_fused_norm_layers(pipeline) -> None:
+    """
+    Stop ``unload_lora_weights`` from restoring the base Flux norm weights.
+
+    Flux control LoRAs write their norm layers directly into the transformer
+    and record the originals for unloading. Once the LoRA is fused, those
+    written norms are part of the result that gets cached.
+    """
+    for name in ('transformer', 'transformer_2'):
+        module = getattr(pipeline, name, None)
+        if module is not None and getattr(module, '_transformer_norm_layers', None):
+            module._transformer_norm_layers = None
+
+
+def _apply_flux_control_embedder_config(module) -> None:
+    """
+    Copy a widened Flux control embedding into the module config.
+
+    Flux control LoRAs expand ``x_embedder``. The cached config has to match
+    that weight or a later load rebuilds the base channel count.
+    """
+    embedder = getattr(module, 'x_embedder', None)
+    config = getattr(module, 'config', None)
+    if embedder is None or config is None or not hasattr(embedder, 'in_features'):
+        return
+    if getattr(config, 'in_channels', None) != embedder.in_features:
+        config.in_channels = embedder.in_features
+    proj_out = getattr(module, 'proj_out', None)
+    patch = getattr(config, 'patch_size', 1) or 1
+    if proj_out is not None and hasattr(proj_out, 'out_features'):
+        out_channels = proj_out.out_features // (patch * patch)
+        if getattr(config, 'out_channels', None) != out_channels:
+            config.out_channels = out_channels
 
 
 def _get_component_cache_key(
@@ -5070,7 +5245,9 @@ def _get_component_cache_key(
         subfolder: str | None,
         dtype: _enums.DataType,
         original_config: str | None,
-        manual_component_uris: dict[str, str] | None = None
+        manual_component_uris: dict[str, str] | None = None,
+        control_lora_uris: _types.OptionalUris = None,
+        control_lora_fuse_scale: float | None = None
 ) -> str:
     manual_uri_part = ""
     if manual_component_uris and component_name in manual_component_uris:
@@ -5120,15 +5297,38 @@ def _get_component_cache_key(
     # LoRA order consideration: LoRA fusion order can affect the final result since
     # LoRA operations are not necessarily commutative. We preserve the original order
     # to ensure mathematical correctness and respect user intent.
-    # 
+    #
     # If you want to optimize cache efficiency by normalizing LoRA order (at the cost
     # of potentially different results), you could sort the URIs like this:
     # lora_uris_for_cache = sorted(lora_uris) if lora_uris else lora_uris
     lora_uris_for_cache = lora_uris
+    lora_scale_for_cache = lora_fuse_scale
+
+    # The SD/SDXL ControlNet clone is built before style LoRAs are applied, so
+    # those LoRAs do not change it. Leaving them out lets every style LoRA share
+    # one cached clone. The replacement --unet does change the clone.
+    sd_control_clone = (
+        component_name == 'controlnet'
+        and model_type in {_enums.ModelType.SD, _enums.ModelType.SDXL})
+    if sd_control_clone:
+        lora_uris_for_cache = None
+        lora_scale_for_cache = None
+        unet_uri = (manual_component_uris or {}).get('unet')
+        if unet_uri and '|manual:' not in manual_uri_part:
+            manual_uri_part += f'|manual-unet:{unet_uri}'
 
     # Note: quantizer_uri is NOT included in the cache key because components are saved
     # in original precision. The quantizer is only applied when loading from cache.
-    return f"{component_name}|{model_path}|{str(lora_uris_for_cache)}|{str(lora_fuse_scale)}|" \
+    # Control LoRA identity is included only for the component it changes. Leaving
+    # it off the UNet and text-encoder keys preserves caches from runs that do not
+    # use --control-loras.
+    control_part = ''
+    if control_lora_uris and (
+            sd_control_clone
+            or (component_name == 'transformer' and model_type == _enums.ModelType.FLUX)):
+        control_part = f'{control_lora_uris}|{control_lora_fuse_scale}|'
+    return f"{component_name}|{model_path}|{str(lora_uris_for_cache)}|{str(lora_scale_for_cache)}|" \
+           f"{control_part}" \
            f"{str(model_type)}|{str(revision)}|{str(variant)}|{str(subfolder)}|" \
            f"{str(dtype)}|{str(original_config)}{manual_uri_part}"
 
@@ -5151,12 +5351,15 @@ def _get_lora_component_cache_identity(
         dtype: _enums.DataType,
         original_config: str | None,
         manual_component_uris: dict[str, str] | None,
-        components: list[str]
+        components: list[str],
+        control_lora_uris: _types.OptionalUris = None,
+        control_lora_fuse_scale: float | None = None
 ) -> str:
     """Build a database identity for a LoRA and its candidate components."""
     return repr((
         model_path, str(model_type), str(pipeline_type), tuple(lora_uris or ()),
-        lora_fuse_scale, revision, variant, subfolder, str(dtype), original_config,
+        lora_fuse_scale, tuple(control_lora_uris or ()), control_lora_fuse_scale,
+        revision, variant, subfolder, str(dtype), original_config,
         tuple(sorted((manual_component_uris or {}).items())), tuple(components)))
 
 
@@ -5194,11 +5397,17 @@ def _create_minimal_pipeline_for_component_extraction(
         lora_uris: _types.OptionalUris,
         lora_fuse_scale: float | None,
         manual_component_uris: dict[str, str] | None = None,
-        vae_uri: _types.OptionalUri = None
+        vae_uri: _types.OptionalUri = None,
+        control_lora_uris: _types.OptionalUris = None,
+        control_lora_fuse_scale: float | None = None
 ):
     pipeline_class = get_pipeline_class(
         model_type=model_type,
         pipeline_type=pipeline_type,
+        # FluxControlPipeline loads the dev weights and accepts the control LoRA.
+        # SD/SDXL stay on the base pipeline here so the UNet can be cloned before
+        # the ControlNet pipeline, which requires that clone, is constructed.
+        control_lora_uris=control_lora_uris if model_type == _enums.ModelType.FLUX else None,
         help_mode=True  # Allow creation even if pipeline_type doesn't match
     )
 
@@ -5338,9 +5547,18 @@ def _create_minimal_pipeline_for_component_extraction(
                 _messages.debug_log(f"Failed to load default {encoder_param}: {e}")
                 # Continue without this encoder - some may be optional
 
-    # Load manual components that are not text encoders
+    # Load manual components that are not text encoders.
+    # The SD/SDXL control clone needs a replacement --unet even when that UNet
+    # is not one of the components being written to the cache.
+    manual_load_names = list(components_needed)
+    if (control_lora_uris
+            and model_type in {_enums.ModelType.SD, _enums.ModelType.SDXL}
+            and manual_component_uris
+            and 'unet' in manual_component_uris
+            and 'unet' not in manual_load_names):
+        manual_load_names.append('unet')
     if manual_component_uris:
-        for component in components_needed:
+        for component in manual_load_names:
             if component in manual_component_uris and not _is_text_encoder_component(component):
                 if component == 'unet':
                     unet_class = diffusers.UNet2DConditionModel
@@ -5458,8 +5676,28 @@ def _create_minimal_pipeline_for_component_extraction(
             _messages.debug_log(f"Failed to create minimal pipeline from pretrained: {e}")
             raise
 
-    # Apply LoRAs if specified
-    if lora_uris:
+    # Control LoRAs fuse before style LoRAs. SD/SDXL clones the UNet first,
+    # while it is still the base checkpoint. Flux fuses into the transformer.
+    held_controlnet = None
+    flux_control_loaded = False
+    if control_lora_uris and _enums.model_type_supports_control_lora(model_type):
+        fuse_scale = 1.0 if control_lora_fuse_scale is None else control_lora_fuse_scale
+        if model_type == _enums.ModelType.FLUX:
+            _load_flux_control_and_style_loras(
+                pipeline,
+                control_lora_uris,
+                control_lora_fuse_scale,
+                [_uris.LoRAUri.parse(uri) for uri in lora_uris or ()],
+                lora_fuse_scale,
+                auth_token=auth_token)
+            flux_control_loaded = True
+        elif hasattr(pipeline, 'unet') and pipeline.unet is not None:
+            held_controlnet = _uris.ControlLoRAUri.controlnet_from_unet(
+                pipeline.unet, control_lora_uris, fuse_scale=fuse_scale, auth_token=auth_token)
+
+    # Apply style LoRAs if specified. They land on the UNet or transformer,
+    # not on the ControlNet cloned above.
+    if lora_uris and not flux_control_loaded:
         parsed_lora_uris = [_uris.LoRAUri.parse(uri) for uri in lora_uris]
 
         _uris.LoRAUri.load_on_pipeline(
@@ -5469,7 +5707,7 @@ def _create_minimal_pipeline_for_component_extraction(
             auth_token=auth_token
         )
 
-    return pipeline, manual_quantizers
+    return pipeline, manual_quantizers, held_controlnet
 
 
 def _cache_components_granular(
@@ -5486,18 +5724,22 @@ def _cache_components_granular(
         original_config: str | None,
         auth_token: str | None,
         manual_component_uris: dict[str, str] | None = None,
-        vae_uri: _types.OptionalUri = None
+        vae_uri: _types.OptionalUri = None,
+        control_lora_uris: _types.OptionalUris = None,
+        control_lora_fuse_scale: float | None = None
 ) -> tuple[dict[str, str], dict[str, str]]:
     cached_component_paths = {}
     components_to_load = []
 
     lora_cache_identity = None
     component_mapping_known = False
-    if lora_uris:
+    if lora_uris or control_lora_uris:
         lora_cache_identity = _get_lora_component_cache_identity(
             model_path, model_type, pipeline_type, lora_uris, lora_fuse_scale,
             revision, variant, subfolder, dtype, original_config,
-            manual_component_uris, components_to_cache)
+            manual_component_uris, components_to_cache,
+            control_lora_uris=control_lora_uris,
+            control_lora_fuse_scale=control_lora_fuse_scale)
         known_key = f'{lora_cache_identity}|complete'
         known_value = _lora_component_cache_store.get(known_key)
         if known_value == '1':
@@ -5512,7 +5754,9 @@ def _cache_components_granular(
         cache_key = _get_component_cache_key(
             component, model_path, model_type, lora_uris, lora_fuse_scale,
             revision, variant, subfolder, dtype, original_config,
-            manual_component_uris
+            manual_component_uris,
+            control_lora_uris=control_lora_uris,
+            control_lora_fuse_scale=control_lora_fuse_scale
         )
 
         cache_store = _component_cache_stores[component]
@@ -5552,17 +5796,45 @@ def _cache_components_granular(
                 except Exception as e:
                     _messages.debug_log(f"Error extracting quantizer from {component} URI: {e}")
 
+    sd_control_lora = bool(
+        control_lora_uris and model_type in {_enums.ModelType.SD, _enums.ModelType.SDXL})
+    if sd_control_lora:
+        controlnet_key = _get_component_cache_key(
+            'controlnet', model_path, model_type, lora_uris, lora_fuse_scale,
+            revision, variant, subfolder, dtype, original_config,
+            manual_component_uris,
+            control_lora_uris=control_lora_uris,
+            control_lora_fuse_scale=control_lora_fuse_scale)
+        with _component_cache_stores['controlnet']:
+            cached_controlnet = _component_cache_stores['controlnet'].get(controlnet_key)
+        if cached_controlnet and os.path.exists(cached_controlnet):
+            cached_component_paths['controlnet'] = cached_controlnet
+            _messages.debug_log(f'Using cached controlnet from: {cached_controlnet}')
+        elif 'controlnet' not in components_to_load:
+            components_to_load.append('controlnet')
+
     # If all components are cached, return early
     if not components_to_load:
         return cached_component_paths, manual_quantizers
 
     # Create pipeline and extract needed components
-    if lora_uris:
+    if lora_uris or (control_lora_uris and model_type == _enums.ModelType.FLUX):
         _messages.warning(
             f'Model "{model_path}" is having LoRAs '
             f'fused into specific components, that will then be cached on disk '
             f'prior to quantization. This is a one time task per LoRA scale value, '
             f'please be patient...'
+        )
+    elif sd_control_lora:
+        extra = ''
+        if any(component != 'controlnet' for component in components_to_load):
+            extra = (' Checkpoint components needed for quantization are '
+                     'converted and cached as well.')
+        _messages.warning(
+            f'Model "{model_path}" is cloning its UNet into a ControlNet and fusing '
+            f'--control-loras into that clone. The ControlNet is cached before '
+            f'quantization. This is a one time task per Control LoRA scale, '
+            f'please be patient...{extra}'
         )
     else:
         _messages.warning(
@@ -5572,7 +5844,7 @@ def _cache_components_granular(
         )
 
     with _d_memoize.disable_memoization_context():
-        pipeline, manual_quantizers = _create_minimal_pipeline_for_component_extraction(
+        pipeline, manual_quantizers, held_controlnet = _create_minimal_pipeline_for_component_extraction(
             model_path=model_path,
             model_type=model_type,
             pipeline_type=pipeline_type,
@@ -5586,21 +5858,26 @@ def _cache_components_granular(
             lora_uris=lora_uris,
             lora_fuse_scale=lora_fuse_scale,
             manual_component_uris=manual_component_uris,
-            vae_uri=vae_uri
+            vae_uri=vae_uri,
+            control_lora_uris=control_lora_uris,
+            control_lora_fuse_scale=control_lora_fuse_scale
         )
 
-    if lora_uris:
+    if lora_uris or (control_lora_uris and model_type == _enums.ModelType.FLUX):
         affected_components = tuple(dict.fromkeys((
             *cached_component_paths,
             *(component for component in components_to_load
               if hasattr(pipeline, component)
               and getattr(getattr(pipeline, component), 'peft_config', None)))))
+        _keep_fused_norm_layers(pipeline)
         pipeline.unload_lora_weights()
     else:
         affected_components = tuple(components_to_load)
 
     # Cache each component individually
     for component in components_to_load:
+        if component == 'controlnet':
+            continue
         if component not in affected_components:
             continue
         if not hasattr(pipeline, component):
@@ -5621,7 +5898,9 @@ def _cache_components_granular(
         cache_key = _get_component_cache_key(
             component, model_path, model_type, lora_uris, lora_fuse_scale,
             revision, variant, subfolder, dtype, original_config,
-            manual_component_uris
+            manual_component_uris,
+            control_lora_uris=control_lora_uris,
+            control_lora_fuse_scale=control_lora_fuse_scale
         )
 
         # Generate cache path with component/uuid structure
@@ -5637,6 +5916,10 @@ def _cache_components_granular(
                 cache_uuid = hashlib.sha256((cache_key + str(random.random())).encode('utf-8')).hexdigest()
                 cache_path = os.path.join(component_dir, cache_uuid)
 
+        # Flux control LoRAs widen x_embedder. The live config has to match
+        # that weight or the cached transformer reloads as the base shape.
+        _apply_flux_control_embedder_config(component_obj)
+
         # Save component
         _messages.debug_log(f"Saving cached {component} to: {cache_path}")
         from .weightsave import save_module_with_progress
@@ -5649,7 +5932,34 @@ def _cache_components_granular(
 
         cached_component_paths[component] = cache_path
 
-    if lora_uris and lora_cache_identity is not None:
+    if sd_control_lora and 'controlnet' not in cached_component_paths:
+        if held_controlnet is None:
+            raise UnsupportedPipelineConfigError(
+                'Could not build a ControlNet from the UNet for --control-loras.')
+        controlnet_key = _get_component_cache_key(
+            'controlnet', model_path, model_type, lora_uris, lora_fuse_scale,
+            revision, variant, subfolder, dtype, original_config,
+            manual_component_uris,
+            control_lora_uris=control_lora_uris,
+            control_lora_fuse_scale=control_lora_fuse_scale)
+        component_dir = os.path.join(_to_diffusers_cache_dir, 'controlnet')
+        pathlib.Path(component_dir).mkdir(parents=True, exist_ok=True)
+        cache_store = _component_cache_stores['controlnet']
+        with cache_store:
+            cache_uuid = hashlib.sha256(controlnet_key.encode('utf-8')).hexdigest()
+            cache_path = os.path.join(component_dir, cache_uuid)
+            while os.path.exists(cache_path):
+                cache_uuid = hashlib.sha256(
+                    (controlnet_key + str(random.random())).encode('utf-8')).hexdigest()
+                cache_path = os.path.join(component_dir, cache_uuid)
+        from .weightsave import save_module_with_progress
+        save_module_with_progress(
+            held_controlnet, cache_path, variant=variant, desc='Writing controlnet')
+        with cache_store:
+            cache_store[controlnet_key] = cache_path
+        cached_component_paths['controlnet'] = cache_path
+
+    if (lora_uris or control_lora_uris) and lora_cache_identity is not None:
         with _lora_component_cache_store:
             for component in affected_components:
                 _lora_component_cache_store[

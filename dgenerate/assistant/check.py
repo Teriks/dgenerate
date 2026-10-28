@@ -329,7 +329,8 @@ _MODEL_URI_OPTIONS = (
     'sdxl_refiner_uri', 's_cascade_decoder_uri', 'unet_uri', 'second_model_unet_uri', 'transformer_uri',
     'vae_uri', 'lora_uris', 'ltx_ic_lora_uri', 'wan_second_transformer_uri', 'image_encoder_uri',
     'ip_adapter_uris', 'textual_inversion_uris',
-    'text_encoder_uris', 'second_model_text_encoder_uris', 'controlnet_uris', 't2i_adapter_uris',
+    'text_encoder_uris', 'second_model_text_encoder_uris', 'controlnet_uris', 'control_lora_uris',
+    't2i_adapter_uris',
 )
 
 

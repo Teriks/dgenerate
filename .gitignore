@@ -33,6 +33,7 @@ nosetests.xml
 coverage.xml
 
 # environment
+.venv/
 venv/
 
 # ide

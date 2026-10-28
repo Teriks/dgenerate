@@ -1,0 +1,38 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Flux.1 Dev with the Black Forest Labs canny Control LoRA.
+# The LoRA is fused into the transformer. --quantizer, when set, fuses it
+# before quantization and caches that transformer. A GGUF or Comfy transformer
+# keeps the Control LoRA active as an adapter instead of writing into packed weights.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+black-forest-labs/FLUX.1-dev
+--model-type flux {{ optimization }}
+--dtype bfloat16
+--inference-steps 28
+--guidance-scales 30
+--output-path canny
+--output-size 1024
+--vae-tiling
+--vae-slicing
+--prompts "A robot made of exotic candies and chocolates of different kinds. The background is filled with confetti and celebratory gifts."
+--control-loras "black-forest-labs/FLUX.1-Canny-dev-lora"
+--image-seeds "../../media/man-fighting-pose.jpg"
+--control-image-processors "canny;lower=50;upper=200;output-file=canny/canny.png"

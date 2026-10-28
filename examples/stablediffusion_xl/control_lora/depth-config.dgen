@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# SDXL with Stability's depth Control LoRA (MiDaS depth map as control).
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--variant fp16
+--dtype float16
+--vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
+--inference-steps 30
+--guidance-scales 5
+--output-path depth
+--output-size 1024
+--model-cpu-offload
+--vae-tiling
+--vae-slicing
+--prompts "aerial view of a mountain lake at sunset, dramatic clouds"
+--control-loras "stabilityai/control-lora;subfolder=control-LoRAs-rank128;weight-name=control-lora-depth-rank128.safetensors"
+--image-seeds "../../media/monalisa.png"
+--control-image-processors "midas;output-file=depth/depth.png"

@@ -485,6 +485,8 @@ class DiffusionPipelineWrapper:
                  text_encoder_uris: _types.OptionalUris = None,
                  second_model_text_encoder_uris: _types.OptionalUris = None,
                  controlnet_uris: _types.OptionalUris = None,
+                 control_lora_uris: _types.OptionalUris = None,
+                 control_lora_fuse_scale: _types.OptionalFloat = None,
                  t2i_adapter_uris: _types.OptionalUris = None,
                  sdxl_refiner_uri: _types.OptionalUri = None,
                  s_cascade_decoder_uri: _types.OptionalUri = None,
@@ -554,6 +556,10 @@ class DiffusionPipelineWrapper:
             ("+", or None for default. Or "null" indicating do not load) for the secondary
             model (SDXL Refiner or Stable Cascade decoder)
         :param controlnet_uris: One or more ControlNet URI strings
+        :param control_lora_uris: One or more ``--control-loras`` URI strings
+        :param control_lora_fuse_scale: Optional ``--control-lora-fuse-scale``. The default is 1.0.
+            The SD/SDXL ControlNet clone stays full precision unless ``controlnet`` is in
+            ``--quantizer-map``.
         :param t2i_adapter_uris: One or more T2IAdapter URI strings
         :param sdxl_refiner_uri: SDXL Refiner model URI string
         :param s_cascade_decoder_uri: Stable Cascade decoder URI string
@@ -811,6 +817,8 @@ class DiffusionPipelineWrapper:
         self._text_encoder_uris = text_encoder_uris
         self._second_model_text_encoder_uris = second_model_text_encoder_uris
         self._controlnet_uris = controlnet_uris
+        self._control_lora_uris = control_lora_uris
+        self._control_lora_fuse_scale = control_lora_fuse_scale
         self._t2i_adapter_uris = t2i_adapter_uris
         self._parsed_controlnet_uris = []
         self._parsed_t2i_adapter_uris = []
@@ -958,6 +966,20 @@ class DiffusionPipelineWrapper:
         List of supplied ``--control-nets`` URI strings or an empty list.
         """
         return list(self._controlnet_uris) if self._controlnet_uris else []
+
+    @property
+    def control_lora_uris(self) -> _types.OptionalUris:
+        """
+        List of supplied ``--control-loras`` URI strings or an empty list.
+        """
+        return list(self._control_lora_uris) if self._control_lora_uris else []
+
+    @property
+    def control_lora_fuse_scale(self) -> _types.OptionalFloat:
+        """
+        ``--control-lora-fuse-scale`` or ``None`` when the default 1.0 is used.
+        """
+        return self._control_lora_fuse_scale
 
     @property
     def t2i_adapter_uris(self) -> _types.OptionalUris:
@@ -1695,6 +1717,49 @@ class DiffusionPipelineWrapper:
             )
 
         pipeline_args['strength'] = strength
+
+    def _set_pipeline_control_lora_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
+        control_images = user_args.control_images
+        if not control_images:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Must provide a control image when using --control-loras.')
+        if len(control_images) != 1:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Control LoRAs use one control image. Several --control-loras share that image.')
+
+        self._validate_images_all_same_size('control guidance images', control_images)
+        control_images = self._resize_images_to_user_dimensions(control_images, user_args)
+        image_arg_inputs = self._get_pipeline_img2img_inputs(user_args)
+
+        if image_arg_inputs is not None:
+            non_latent_input = not _torchutil.is_tensor(image_arg_inputs[0])
+            if non_latent_input:
+                if image_arg_inputs[0].size != control_images[0].size:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'Img2Img images and the Control LoRA image must be equal in dimension.')
+            elif self.get_decoded_latents_size(image_arg_inputs[0]) != control_images[0].size:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Img2Img latents must decode to the same dimension as the Control LoRA image.')
+
+        self._set_pipe_dimensions(
+            None, None, control_images[0].width, control_images[0].height, pipeline_args)
+
+        flux_control = self._model_type == _enums.ModelType.FLUX
+        if self._pipeline_type == _enums.PipelineType.TXT2IMG:
+            if flux_control:
+                pipeline_args['control_image'] = control_images[0]
+            else:
+                pipeline_args['image'] = control_images
+        elif self._pipeline_type in {_enums.PipelineType.IMG2IMG, _enums.PipelineType.INPAINT}:
+            pipeline_args['image'] = image_arg_inputs
+            pipeline_args['control_image'] = control_images[0] if flux_control else control_images
+            self._set_pipeline_strength(user_args, pipeline_args)
+
+        mask_images = user_args.mask_images
+        if mask_images is not None:
+            self._validate_images_all_same_size('inpaint mask images', mask_images)
+            mask_images = self._resize_images_to_user_dimensions(mask_images, user_args)
+            pipeline_args['mask_image'] = mask_images
 
     def _set_pipeline_controlnet_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
         control_images = user_args.control_images
@@ -2443,7 +2508,9 @@ class DiffusionPipelineWrapper:
         pipeline_args['generator'] = torch.Generator(device=self._device).manual_seed(
             _types.default(user_args.seed, _constants.DEFAULT_SEED))
 
-        if self._controlnet_uris:
+        if self._control_lora_uris:
+            self._set_pipeline_control_lora_defaults(user_args, pipeline_args)
+        elif self._controlnet_uris:
             self._set_pipeline_controlnet_defaults(user_args, pipeline_args)
         elif self._t2i_adapter_uris:
             self._set_pipeline_t2iadapter_defaults(user_args, pipeline_args)
@@ -4636,6 +4703,8 @@ class DiffusionPipelineWrapper:
                 textual_inversion_uris=self._textual_inversion_uris,
                 text_encoder_uris=self._text_encoder_uris,
                 controlnet_uris=self._controlnet_uris,
+                control_lora_uris=self._control_lora_uris,
+                control_lora_fuse_scale=self._control_lora_fuse_scale,
                 t2i_adapter_uris=self._t2i_adapter_uris,
                 quantizer_uri=self._quantizer_uri,
                 quantizer_map=self._quantizer_map,
@@ -4726,6 +4795,8 @@ class DiffusionPipelineWrapper:
                 quantizer_uri=self._quantizer_uri,
                 quantizer_map=self._quantizer_map,
                 controlnet_uris=self._controlnet_uris,
+                control_lora_uris=self._control_lora_uris,
+                control_lora_fuse_scale=self._control_lora_fuse_scale,
                 t2i_adapter_uris=self._t2i_adapter_uris,
                 pag=pag,
                 safety_checker=self._safety_checker,
@@ -5120,6 +5191,7 @@ class DiffusionPipelineWrapper:
                 ip_adapter_uris=self.ip_adapter_uris,
                 textual_inversion_uris=self.textual_inversion_uris,
                 controlnet_uris=self.controlnet_uris,
+                control_lora_uris=self.control_lora_uris,
                 t2i_adapter_uris=self.t2i_adapter_uris,
                 pag=args.pag_scale is not None or args.pag_adaptive_scale is not None,
                 help_mode=True

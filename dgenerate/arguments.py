@@ -2223,6 +2223,67 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         image_guidance_group.add_argument(
+            '-cl', '--control-loras', nargs='+', action='store', default=None, metavar="CONTROL_LORA_URI",
+            dest='control_lora_uris',
+            help="""Specify one or more Control LoRA models using URIs. These should be a Hugging Face
+                    repository slug / blob link, path to a model file on disk (for example a .safetensors
+                    file), or a folder containing model files.
+
+                    Control LoRAs are a lightweight alternative to --control-nets for --model-type sd
+                    (SD1.5 and SD2), sdxl, and flux. They cannot be combined with --control-nets or
+                    --t2i-adapters.
+
+                    Flux.1 loads the LoRA onto the transformer and runs FluxControlPipeline. The control
+                    image is passed as the pipeline control image. Black Forest Labs canny and depth
+                    LoRAs are this kind, for example black-forest-labs/FLUX.1-Canny-dev-lora.
+
+                    SD1.5 and SDXL clone the UNet into a ControlNet, then load a Stability-style control
+                    LoRA onto that clone (stabilityai/control-lora, or an SD1.5 control_lora rank file).
+                    The clone is built from full-precision UNet weights. --quantizer quantizes the UNet
+                    and the text encoders. The ControlNet clone stays full precision unless controlnet
+                    is included in --quantizer-map. A checkpoint that is already packed (GGUF, Comfy,
+                    bitsandbytes, SDNQ) cannot be cloned.
+
+                    Flux control LoRAs on an already quantized transformer (GGUF or Comfy weights, or a
+                    transformer quantized before the LoRA is attached) stay active as adapters instead
+                    of being written into the packed weights. --quantizer on a full-precision Flux
+                    checkpoint still fuses the control LoRA before quantization, the same way --loras
+                    does, and caches that fused transformer.
+
+                    One control image from --image-seeds is required, the same way a plain path is the
+                    control image for --control-nets. Use --control-image-processors to build the signal
+                    the LoRA expects, for example "canny". Several Control LoRAs share that one image.
+                    Style LoRAs still use --loras and are applied after the control LoRA.
+
+                    Optional arguments are "scale", "revision", "subfolder", and "weight-name":
+
+                    NOWRAP!
+                    "stabilityai/control-lora;subfolder=control-LoRAs-rank128;weight-name=control-lora-canny-rank128.safetensors;scale=1.0"
+
+                    The "scale" argument is the LoRA weight scale. The default is 1.0. It is combined
+                    with --control-lora-fuse-scale when the weights are fused.
+
+                    "revision", "subfolder", and "weight-name" work the same way they do for --loras."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-clfs', '--control-lora-fuse-scale', default=None, type=float,
+            metavar="CONTROL_LORA_FUSE_SCALE",
+            dest='control_lora_fuse_scale',
+            help="""Scale used when Control LoRA weights are merged into the model. When several
+                    --control-loras are given, each is applied at its own scale, then the result is
+                    fused at this scale. The default is 1.0.
+
+                    Flux fuses into the transformer before any --loras. SD and SDXL fuse into the
+                    ControlNet cloned from the UNet. Already quantized Flux weights keep the adapters
+                    active and fold this scale into the adapter weights instead of fusing."""
+        )
+    )
+
+    actions.append(
+        image_guidance_group.add_argument(
             '-cn', '--control-nets', nargs='+', action='store', default=None, metavar="CONTROLNET_URI",
             dest='controlnet_uris',
             help=f"""Specify one or more ControlNet models using URIs. This should be a

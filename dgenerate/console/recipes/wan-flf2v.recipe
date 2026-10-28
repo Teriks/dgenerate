@@ -26,6 +26,7 @@ title: Wan 2.1 First-Last Frame
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @quantizer[{"model-type":"wan", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer"}]
 @submodelbuilder[{"label":"Second Transformer (MoE)", "arg":"--wan-second-transformer", "model": "Transformer", "divider-after":true}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]

@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# SD1.5 with a rank-128 OpenPose Control LoRA.
+
+runwayml/stable-diffusion-v1-5
+--dtype float16
+--inference-steps 30
+--guidance-scales 7.5
+--output-path pose
+--output-size 512
+--model-cpu-offload
+--prompts "a boxer throwing a punch in the ring, dynamic action photo"
+--control-loras "comfyanonymous/ControlNet-v1-1_fp16_safetensors;weight-name=control_lora_rank128_v11p_sd15_openpose_fp16.safetensors"
+--image-seeds "../../media/man-fighting-pose.jpg"
+--control-image-processors "openpose;include-hand=true;include-face=true;output-file=pose/openpose.png"

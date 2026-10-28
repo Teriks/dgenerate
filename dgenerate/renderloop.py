@@ -1071,6 +1071,9 @@ class RenderLoop:
             vae_uri=self._c_config.vae_uri,
             lora_uris=self._c_config.lora_uris,
             lora_fuse_scale=self._c_config.lora_fuse_scale,
+            control_lora_uris=
+            self._c_config.control_lora_uris if self._c_config.image_seeds else [],
+            control_lora_fuse_scale=self._c_config.control_lora_fuse_scale,
             ltx_ic_lora_uri=self._c_config.ltx_ic_lora_uri,
             image_encoder_uri=self._c_config.image_encoder_uri,
             ip_adapter_uris=self._c_config.ip_adapter_uris,
@@ -1338,8 +1341,11 @@ class RenderLoop:
 
         for image_seed_uri, parsed_image_seed, seed_to_image in list(iterate_image_seeds()):
 
-            is_control_guidance_spec = (self._c_config.controlnet_uris or self._c_config.t2i_adapter_uris) \
-                                       and parsed_image_seed.is_single_spec
+            is_control_guidance_spec = (
+                self._c_config.controlnet_uris
+                or self._c_config.control_lora_uris
+                or self._c_config.t2i_adapter_uris
+            ) and parsed_image_seed.is_single_spec
 
             if is_control_guidance_spec:
                 _messages.log(f'Processing Control Image: "{image_seed_uri}"', underline=True)

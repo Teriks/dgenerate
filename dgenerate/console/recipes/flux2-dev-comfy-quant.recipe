@@ -23,6 +23,7 @@ title: Flux.2 Dev (ComfyUI Quant)
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/diffusion_models/flux2_dev_fp8mixed.safetensors", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":4, "min":0}]

@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# SD1.5 with a rank-128 canny Control LoRA.
+# The UNet is cloned into a ControlNet and the LoRA is fused into that clone.
+# --quantizer quantizes the UNet. The clone stays full precision unless
+# --quantizer-map includes controlnet.
+
+runwayml/stable-diffusion-v1-5
+--dtype float16
+--inference-steps 30
+--guidance-scales 7.5
+--output-path canny
+--output-size 512
+--model-cpu-offload
+--prompts "a futuristic-looking woman"
+--control-loras "comfyanonymous/ControlNet-v1-1_fp16_safetensors;weight-name=control_lora_rank128_v11p_sd15_canny_fp16.safetensors"
+--image-seeds "../../media/man-fighting-pose.jpg"
+--control-image-processors "canny;lower=100;upper=200;output-file=canny/canny.png"

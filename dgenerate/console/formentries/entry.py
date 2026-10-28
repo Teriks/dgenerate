@@ -20,6 +20,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tkinter
 import tkinter.ttk as ttk
+
+import dgenerate.console.helpdialog as _helpdialog
+import dgenerate.console.resources as _resources
 import dgenerate.textprocessing as _textprocessing
 import typing
 
@@ -93,6 +96,7 @@ class _Entry:
             raise RuntimeError('Recipe used optional = str instead of bool.')
 
         self.arg = config.get('arg', None)
+        self.help_arg = config.get('help-arg', None)
         self.before = config.get('before', None)
         self.after = config.get('after', None)
         self._row_inactive = False
@@ -171,3 +175,104 @@ class _Entry:
 
     def on_form_scroll(self):
         pass
+
+    def argument_help_targets(self) -> list[tuple[tkinter.Widget, str]]:
+        """
+        Labels that should offer help for a command line option.
+
+        The first item is the label, the second is the option name.
+        """
+        targets = []
+        seen = set()
+
+        def add(widget, option):
+            if widget is None or not isinstance(option, str) or not option.startswith('-'):
+                return
+            identity = id(widget)
+            if identity in seen:
+                return
+            seen.add(identity)
+            targets.append((widget, option))
+
+        primary = self.arg or self.help_arg
+        add(getattr(self, 'label_widget', None), primary)
+        add(getattr(self, 'uri_label', None), primary)
+        add(getattr(self, 'dropdown_label', None), primary)
+        add(getattr(self, 'switch_label', None), primary)
+        add(getattr(self, 'float_label', None), getattr(self, 'float_arg', None))
+        add(getattr(self, 'int1_label', None), getattr(self, 'int1_arg', None))
+        add(getattr(self, 'int2_label', None), getattr(self, 'int2_arg', None))
+        add(getattr(self, '_map_label', None), getattr(self, '_map_arg', None))
+
+        labels = getattr(self, 'label_widgets', None)
+        options = getattr(self, 'args', None)
+        if labels and options and len(labels) == len(options):
+            for label, option in zip(labels, options):
+                add(label, option)
+        return targets
+
+    def install_argument_help(self) -> None:
+        """Bind right-click help on labels that correspond to a command line option."""
+        arguments = _resources.get_dgenerate_arguments()
+        for label, option in self.argument_help_targets():
+            help_text = arguments.get(option)
+            if not help_text:
+                continue
+            _bind_argument_help(label, option, help_text, self.form)
+
+
+_HELP_TIP = None
+
+
+def _bind_argument_help(label, option: str, help_text: str, form) -> None:
+    label.configure(cursor='question_arrow')
+
+    menu = tkinter.Menu(label, tearoff=0)
+
+    def show_help():
+        _hide_help_tip()
+        _helpdialog.show_help_dialog(
+            form,
+            title=option,
+            help_text=help_text,
+            position_widget=form)
+
+    menu.add_command(label=f'Help for {option}', command=show_help)
+
+    def popup(event):
+        _hide_help_tip()
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+
+    label.bind('<Button-3>', popup, add='+')
+    label.bind('<Enter>', lambda _event: _show_help_tip(label, 'Right-click for help'), add='+')
+    label.bind('<Leave>', lambda _event: _hide_help_tip(), add='+')
+    label.bind('<Destroy>', lambda _event: _hide_help_tip(), add='+')
+
+
+def _show_help_tip(widget, text: str) -> None:
+    global _HELP_TIP
+    _hide_help_tip()
+    tip = tkinter.Toplevel(widget)
+    tip.wm_overrideredirect(True)
+    tip.wm_attributes('-topmost', True)
+    body = ttk.Label(tip, text=text, relief='solid', borderwidth=1, padding=(6, 3))
+    body.pack()
+    tip.update_idletasks()
+    x = widget.winfo_rootx() + widget.winfo_width() - tip.winfo_reqwidth()
+    y = widget.winfo_rooty() + widget.winfo_height() + 2
+    tip.geometry(f'+{x}+{y}')
+    _HELP_TIP = tip
+
+
+def _hide_help_tip() -> None:
+    global _HELP_TIP
+    tip = _HELP_TIP
+    _HELP_TIP = None
+    if tip is not None:
+        try:
+            tip.destroy()
+        except tkinter.TclError:
+            pass

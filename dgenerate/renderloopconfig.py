@@ -971,6 +971,16 @@ class RenderLoopConfig(_types.SetFromMixin):
     of the dgenerate command line tool.
     """
 
+    control_lora_uris: _types.OptionalUris = None
+    """
+    Optional Control LoRA URIs, corresponding to ``--control-loras``.
+    """
+
+    control_lora_fuse_scale: _types.OptionalFloat = None
+    """
+    Optional ``--control-lora-fuse-scale``. ``None`` uses 1.0.
+    """
+
     t2i_adapter_uris: _types.OptionalUris = None
     """
     Optional user specified T2IAdapter URIs, this corresponds to the ``--t2i-adapters`` argument
@@ -3013,6 +3023,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'you cannot specify {a_namer("controlnet_uris")} '
                     f'without {a_namer("image_seeds")}.')
 
+            if self.control_lora_uris:
+                raise RenderLoopConfigError(
+                    f'you cannot specify {a_namer("control_lora_uris")} '
+                    f'without {a_namer("image_seeds")}.')
+
             if self.t2i_adapter_uris:
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("t2i_adapter_uris")} '
@@ -3053,6 +3068,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                         ip_adapter_uris=self.ip_adapter_uris,
                         textual_inversion_uris=self.textual_inversion_uris,
                         controlnet_uris=self.controlnet_uris,
+                        control_lora_uris=self.control_lora_uris,
                         t2i_adapter_uris=self.t2i_adapter_uris,
                         pag=self.pag,
                         help_mode=help_mode
@@ -3639,6 +3655,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         blocked = (
             ('controlnet_uris', self.controlnet_uris),
+            ('control_lora_uris', self.control_lora_uris),
             ('t2i_adapter_uris', self.t2i_adapter_uris),
             ('ip_adapter_uris', self.ip_adapter_uris),
             ('textual_inversion_uris', self.textual_inversion_uris),
@@ -3950,6 +3967,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer(name)} cannot be used with --model-type {model_type}.')
 
+        if self.control_lora_uris:
+            raise RenderLoopConfigError(
+                f'{a_namer("control_lora_uris")} cannot be used with --model-type {model_type}.')
+
         if self.controlnet_uris and not (
                 _pipelinewrapper.model_type_is_z_image(self.model_type)
                 or _pipelinewrapper.model_type_is_qwen_image(self.model_type)):
@@ -4143,7 +4164,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         try:
             for image_seed in parsed_image_seeds:
                 is_control_guidance_spec = \
-                    (self.controlnet_uris or self.t2i_adapter_uris) and image_seed.is_single_spec
+                    (self.controlnet_uris or self.control_lora_uris or self.t2i_adapter_uris) and image_seed.is_single_spec
 
                 if (_pipelinewrapper.model_type_image_is_condition(self.model_type)
                         and self.model_type != _pipelinewrapper.ModelType.KANDINSKY5_IMAGE
@@ -4170,6 +4191,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     ip_adapter_uris=self.ip_adapter_uris,
                     textual_inversion_uris=self.textual_inversion_uris,
                     controlnet_uris=self.controlnet_uris,
+                    control_lora_uris=self.control_lora_uris,
                     t2i_adapter_uris=self.t2i_adapter_uris,
                     pag=self.pag,
                     help_mode=help_mode
@@ -4584,6 +4606,25 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'amount of T2I Adapter models must be equal.'
                 )
 
+        elif self.control_lora_uris:
+            if control_image_paths is None:
+                raise RenderLoopConfigError(
+                    f'You must specify one control image in your {a_namer("image_seeds")} '
+                    f'specification "{uri}" when using {a_namer("control_lora_uris")}.'
+                )
+            if num_control_images != 1:
+                raise RenderLoopConfigError(
+                    f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
+                    f'control images. {a_namer("control_lora_uris")} uses one control image, shared by '
+                    f'every Control LoRA.')
+            if not parsed.is_single_spec and parsed.control_images is None:
+                images_str = ', '.join(parsed.images)
+                raise RenderLoopConfigError(
+                    f'You must specify a control image with the control argument '
+                    f'IE: "my-seed.png;control=my-control.png" in your '
+                    f'{a_namer("image_seeds")} "{uri}" when using {a_namer("control_lora_uris")}. '
+                    f'If you want to use the control image alone, use {a_namer("image_seeds")} "{images_str}".')
+
         elif self.controlnet_uris:
             qwen_inpaint_image = (
                 _pipelinewrapper.model_type_is_qwen_image(self.model_type)
@@ -4636,14 +4677,16 @@ class RenderLoopConfig(_types.SetFromMixin):
                                               image_seed_strengths_default_set: bool,
                                               upscaler_noise_levels_default_set: bool):
         """Check control guidance compatibility."""
-        is_control_guidance_spec = (self.controlnet_uris or self.t2i_adapter_uris) and parsed.is_single_spec
+        is_control_guidance_spec = (
+            self.controlnet_uris or self.control_lora_uris or self.t2i_adapter_uris
+        ) and parsed.is_single_spec
         has_additional_control = parsed.control_images and not parsed.is_single_spec
 
-        if has_additional_control and not self.controlnet_uris \
+        if has_additional_control and not self.controlnet_uris and not self.control_lora_uris \
                 and not _pipelinewrapper.model_type_is_video(self.model_type):
             raise RenderLoopConfigError(
                 f'Cannot use the "control" argument in an image seed without '
-                f'specifying {a_namer("controlnet_uris")}.'
+                f'specifying {a_namer("controlnet_uris")} or {a_namer("control_lora_uris")}.'
             )
 
         if is_control_guidance_spec and parsed.ltx_condition_strength is not None:

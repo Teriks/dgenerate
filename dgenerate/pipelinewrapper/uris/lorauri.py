@@ -72,10 +72,21 @@ def _activate_loaded_loras(pipeline, adapter_names, adapter_weights, fuse, fuse_
     listed = pipeline.get_list_adapters() or {}
     if not isinstance(listed, dict):
         listed = {}
+    quantized = _quantized_adapter_components(pipeline, listed, adapter_names) if fuse else []
+    if quantized:
+        _messages.warning(
+            'Leaving LoRA adapters active on quantized or GGUF weights '
+            f'({", ".join(quantized)}). Packed, bitsandbytes, and SDNQ weights '
+            'cannot take a fused write. The fuse scale is folded into those '
+            'adapter weights.')
     # Hunyuan-DiT keeps ``set_adapters`` on the pipeline. Its text encoder is
     # not a PEFT module, so a per-component listing still fuses from here.
     if not (_lora_targets_are_split(listed, adapter_names)
             and _every_target_accepts_adapters(pipeline, listed, adapter_names)):
+        if quantized:
+            _activate_quantized_lora_targets(
+                pipeline, listed, adapter_names, adapter_weights, quantized, fuse_scale)
+            return
         pipeline.set_adapters(adapter_names, adapter_weights=adapter_weights)
         if fuse:
             _messages.debug_log(
@@ -87,6 +98,7 @@ def _activate_loaded_loras(pipeline, adapter_names, adapter_weights, fuse, fuse_
 
     _messages.debug_log(
         'Activating LoRAs on the components that received them.')
+    quantized_names = set(quantized)
     for component, present in listed.items():
         names = [name for name in adapter_names if name in present]
         if not names:
@@ -95,6 +107,9 @@ def _activate_loaded_loras(pipeline, adapter_names, adapter_weights, fuse, fuse_
         if module is None:
             continue
         weights = [adapter_weights[adapter_names.index(name)] for name in names]
+        if component in quantized_names:
+            module.set_adapters(names, [weight * fuse_scale for weight in weights])
+            continue
         module.set_adapters(names, weights)
         if fuse and hasattr(module, 'fuse_lora'):
             module.fuse_lora(lora_scale=fuse_scale, adapter_names=names)
@@ -125,27 +140,84 @@ def _collapse_zimage_lora_prefix(state_dict):
     }
 
 
-def _pipeline_has_quantized_modules(pipeline) -> bool:
-    """True when fusing LoRA would write into BnB, SDNQ, or GGUF weights."""
+def _quantized_adapter_components(pipeline, listed, adapter_names) -> list[str]:
+    """Components that received these adapters and cannot take a fused write."""
     from dgenerate.pipelinewrapper import pipelines as _pipelines
 
     components = getattr(pipeline, 'components', None)
     if not isinstance(components, dict):
-        return False
-    for module in components.values():
+        components = {}
+    found = []
+    for component, present in listed.items():
+        if not any(name in present for name in adapter_names):
+            continue
+        module = getattr(pipeline, component, None)
+        if module is None:
+            module = components.get(component)
         if isinstance(module, torch.nn.Module) and _pipelines.module_skips_group_offload(module):
-            return True
-    return False
+            found.append(component)
+    return found
 
 
-def _pipeline_has_comfy_quant(pipeline) -> bool:
-    """True when a component keeps ComfyUI packed weights, which PEFT cannot merge into."""
-    from dgenerate.pipelinewrapper import safetensorscompat as _safetensorscompat
-
+def _pipeline_has_quantized_modules(pipeline) -> bool:
+    """True when any component keeps BnB, SDNQ, GGUF, or other packed weights."""
     components = getattr(pipeline, 'components', None)
     if not isinstance(components, dict):
         return False
-    return any(_safetensorscompat.module_has_comfy_quant(module) for module in components.values())
+    listed = {name: ['*'] for name in components}
+    return bool(_quantized_adapter_components(pipeline, listed, ['*']))
+
+
+def _activate_quantized_lora_targets(pipeline, listed, adapter_names, adapter_weights,
+                                     quantized, fuse_scale):
+    """
+    Fuse full-precision components and leave packed ones as adapters.
+
+    A quantized text encoder does not block fusion into a full-precision UNet
+    or transformer. The fuse scale is folded into the packed component's
+    adapter weights.
+    """
+    quantized = set(quantized)
+
+    def weights_for(names, scale):
+        return [adapter_weights[adapter_names.index(name)] * scale for name in names]
+
+    if _every_target_accepts_adapters(pipeline, listed, adapter_names):
+        for component, present in listed.items():
+            names = [name for name in adapter_names if name in present]
+            if not names:
+                continue
+            module = getattr(pipeline, component, None)
+            if module is None:
+                continue
+            if component in quantized:
+                module.set_adapters(names, weights_for(names, fuse_scale))
+                continue
+            module.set_adapters(names, weights_for(names, 1.0))
+            if hasattr(module, 'fuse_lora'):
+                module.fuse_lora(lora_scale=fuse_scale, adapter_names=names)
+        return
+
+    plain = []
+    for component, present in listed.items():
+        if component in quantized:
+            continue
+        if any(name in present for name in adapter_names):
+            plain.append(component)
+    pipeline.set_adapters(adapter_names, adapter_weights=adapter_weights)
+    if plain:
+        pipeline.fuse_lora(
+            components=plain, adapter_names=adapter_names, lora_scale=fuse_scale)
+        for component in quantized:
+            module = getattr(pipeline, component, None)
+            present = listed.get(component) or []
+            names = [name for name in adapter_names if name in present]
+            if names and callable(getattr(module, 'set_adapters', None)):
+                module.set_adapters(names, weights_for(names, fuse_scale))
+        return
+    pipeline.set_adapters(
+        adapter_names,
+        adapter_weights=[weight * fuse_scale for weight in adapter_weights])
 
 
 def _pipeline_is_z_image(pipeline) -> bool:
@@ -358,20 +430,6 @@ class LoRAUri:
 
                 _messages.debug_log(f'Added LoRA: "{lora_uri}" to pipeline: "{pipeline.__class__.__name__}"')
 
-            if fuse and _pipeline_has_comfy_quant(pipeline):
-                # Adapter outputs scale linearly, so folding the fuse scale into
-                # the adapter weights matches fusing.
-                _messages.debug_log(
-                    'Leaving LoRA adapters active on ComfyUI quantized weights '
-                    f'with global scale: {fuse_scale}')
-                adapter_weights = [weight * fuse_scale for weight in adapter_weights]
-                fuse = False
-            if _pipeline_has_quantized_modules(pipeline) and fuse:
-                _messages.warning(
-                    'Fusing LoRA adapters into quantized or GGUF pipeline '
-                    'weights can fail or produce poor results. Prefer '
-                    'full-precision weights, or load LoRAs without fusing '
-                    'when the loader allows it.')
             _activate_loaded_loras(
                 pipeline, adapter_names, adapter_weights, fuse, fuse_scale)
         else:

@@ -38,6 +38,7 @@ title: LTX-2.5 Distilled (ComfyUI Quant)
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @quantizer[{"model-type":"ltx2", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors"}]
 @submodelbuilder[{"label":"IC-LoRA", "arg":"--ltx-ic-lora", "model": "IC-LoRA"}]
 @imageprocessor[{"arg":"--control-image-processors", "label":"IC-LoRA Control Clip Processor", "divider-after":true}]

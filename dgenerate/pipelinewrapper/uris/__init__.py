@@ -64,6 +64,10 @@ from .exceptions import (
     LoRAUriLoadError,
     InvalidLoRAUriError,
 
+    # Control LoRA
+    ControlLoRAUriLoadError,
+    InvalidControlLoRAUriError,
+
     # UNet
     UNetUriLoadError,
     InvalidUNetUriError,
@@ -101,6 +105,7 @@ from .exceptions import (
 from .imageencoderuri import ImageEncoderUri
 from .ipadapteruri import IPAdapterUri
 from .lorauri import LoRAUri
+from .controllorauri import ControlLoRAUri
 from .iclorauri import ICLoRAUri
 from .ltxlatentupsampleruri import LTXLatentUpsamplerUri
 from .ltxpromptenhanceruri import LTXPromptEnhancerUri

@@ -42,7 +42,8 @@ Help Output
                      [-tf TRANSFORMER_URI] [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
                      [-lrfs LORA_FUSE_SCALE] [-icl IC_LORA_URI] [-ie IMAGE_ENCODER_URI]
                      [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]] [-ti URI [URI ...]]
-                     [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]]
+                     [-cl CONTROL_LORA_URI [CONTROL_LORA_URI ...] | -cn CONTROLNET_URI [CONTROLNET_URI ...] |
+                     -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]] [-clfs CONTROL_LORA_FUSE_SCALE]
                      [-q QUANTIZER_URI] [--quantizer-help [QUANTIZER_NAME ...]] [-qm SUBMODULE [SUBMODULE ...]]
                      [-q2 QUANTIZER_URI] [-qm2 SUBMODULE [SUBMODULE ...]]
                      [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]]
@@ -956,6 +957,51 @@ Help Output
             "my_ti_model.safetensors", all other loading arguments are unused in this case and may produce an
             error message if used.
             ----------------------
+      -cl, --control-loras CONTROL_LORA_URI [CONTROL_LORA_URI ...]
+            Specify one or more Control LoRA models using URIs. These should be a Hugging Face repository slug /
+            blob link, path to a model file on disk (for example a .safetensors file), or a folder containing
+            model files.
+            
+            Control LoRAs are a lightweight alternative to --control-nets for --model-type sd (SD1.5 and SD2),
+            sdxl, and flux. They cannot be combined with --control-nets or --t2i-adapters.
+            
+            Flux.1 loads the LoRA onto the transformer and runs FluxControlPipeline. The control image is passed
+            as the pipeline control image. Black Forest Labs canny and depth LoRAs are this kind, for example
+            black-forest-labs/FLUX.1-Canny-dev-lora.
+            
+            SD1.5 and SDXL clone the UNet into a ControlNet, then load a Stability-style control LoRA onto that
+            clone (stabilityai/control-lora, or an SD1.5 control_lora rank file). The clone is built from
+            full-precision UNet weights. --quantizer quantizes the UNet and the text encoders. The ControlNet
+            clone stays full precision unless controlnet is included in --quantizer-map. A checkpoint that is
+            already packed (GGUF, Comfy, bitsandbytes, SDNQ) cannot be cloned.
+            
+            Flux control LoRAs on an already quantized transformer (GGUF or Comfy weights, or a transformer
+            quantized before the LoRA is attached) stay active as adapters instead of being written into the
+            packed weights. --quantizer on a full-precision Flux checkpoint still fuses the control LoRA before
+            quantization, the same way --loras does, and caches that fused transformer.
+            
+            One control image from --image-seeds is required, the same way a plain path is the control image for
+            --control-nets. Use --control-image-processors to build the signal the LoRA expects, for example
+            "canny". Several Control LoRAs share that one image. Style LoRAs still use --loras and are applied
+            after the control LoRA.
+            
+            Optional arguments are "scale", "revision", "subfolder", and "weight-name":
+            
+            "stabilityai/control-lora;subfolder=control-LoRAs-rank128;weight-name=control-lora-canny-rank128.safetensors;scale=1.0"
+            
+            The "scale" argument is the LoRA weight scale. The default is 1.0. It is combined with
+            --control-lora-fuse-scale when the weights are fused.
+            
+            "revision", "subfolder", and "weight-name" work the same way they do for --loras.
+            ---------------------------------------------------------------------------------
+      -clfs, --control-lora-fuse-scale CONTROL_LORA_FUSE_SCALE
+            Scale used when Control LoRA weights are merged into the model. When several --control-loras are
+            given, each is applied at its own scale, then the result is fused at this scale. The default is 1.0.
+            
+            Flux fuses into the transformer before any --loras. SD and SDXL fuse into the ControlNet cloned from
+            the UNet. Already quantized Flux weights keep the adapters active and fold this scale into the
+            adapter weights instead of fusing.
+            ----------------------------------
       -cn, --control-nets CONTROLNET_URI [CONTROLNET_URI ...]
             Specify one or more ControlNet models using URIs. This should be a Hugging Face repository slug /
             blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file),
@@ -3342,8 +3388,8 @@ a cloned repository like this:
     # in the top of the repo make
     # an environment and activate it
 
-    python -m venv venv
-    venv\Scripts\activate
+    python -m venv .venv
+    .venv\Scripts\activate
 
     # Install with pip into the environment
 
@@ -3568,8 +3614,8 @@ virtual environment you can do so like this:
     # in the top of the repo make
     # an environment and activate it
 
-    python3 -m venv venv
-    source venv/bin/activate
+    python3 -m venv .venv
+    source .venv/bin/activate
 
     # Install with pip into the environment (editable, for development)
 
@@ -3753,7 +3799,7 @@ then reinstall ``opencv-python-headless``.
 
 .. code-block:: bash
 
-    source venv/bin/activate
+    source .venv/bin/activate
 
     pip uninstall opencv-python-headless opencv-python
 
@@ -3879,13 +3925,13 @@ of your own creation.
 
     # create the environment
 
-    python3 -m venv dgenerate_venv
+    python3 -m venv .venv
 
     # you must activate this environment
     # every time you want to use dgenerate
     # with this install method
 
-    source dgenerate_venv/bin/activate
+    source .venv/bin/activate
 
     # install dgenerate into an isolated environment
 
@@ -3936,7 +3982,7 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
 
 .. code-block:: bash
 
-    !virtualenv venv
+    !virtualenv .venv
 
 3.) Install dgenerate, you must activate the virtual environment in the same cell.
 
@@ -3946,14 +3992,14 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
     # CUDA 13.2+ uses the URL below. CUDA 13.0 through 13.1 uses
     # https://download.pytorch.org/whl/cu130
     # CUDA 12.6 through 12.9 uses https://download.pytorch.org/whl/cu126
-    !source /content/venv/bin/activate; pip install dgenerate==6.0.0 --extra-index-url https://download.pytorch.org/whl/cu132
+    !source /content/.venv/bin/activate; pip install dgenerate==6.0.0 --extra-index-url https://download.pytorch.org/whl/cu132
 
 4.) Finally you can run dgenerate, you must prefix all calls to dgenerate with an activation of the virtual environment, as
 the virtual environment is not preserved between cells.  For brevity, and as an example, just print the help text here.
 
 .. code-block:: bash
 
-    !source /content/venv/bin/activate; dgenerate --help
+    !source /content/.venv/bin/activate; dgenerate --help
 
 Install with XPU support
 ========================
@@ -8236,6 +8282,56 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
     dgenerate Lykon/dreamshaper-8 \
     --prompts "Syntax example" \
     --control-nets "my_cn_model.safetensors"
+
+Specifying Control LoRAs
+========================
+
+``--control-loras`` is a lightweight alternative to ``--control-nets`` for
+``--model-type sd`` (SD1.5 and SD2), ``sdxl``, and ``flux``. It cannot be
+combined with ``--control-nets`` or ``--t2i-adapters``.
+
+One control image is required. A plain ``--image-seeds`` path is that image,
+the same way it is for ``--control-nets``. Several Control LoRAs share the
+one image. Use ``--control-image-processors`` to build the signal the LoRA
+expects, for example ``canny``. Style LoRAs still use ``--loras`` and are
+applied after the Control LoRA.
+
+Flux.1 loads the LoRA onto the transformer and runs ``FluxControlPipeline``.
+``--quantizer`` on a full-precision Flux checkpoint fuses that LoRA before
+quantization and caches the transformer. A transformer that is already packed
+(GGUF, Comfy, bitsandbytes, or SDNQ) keeps the Control LoRA active as an adapter.
+
+SD and SDXL clone the UNet into a ControlNet and fuse a Stability-style control
+LoRA into that clone. The clone is built from full-precision UNet weights, so a
+checkpoint that is already packed cannot be cloned. ``--quantizer`` quantizes
+the UNet and the text encoders. The clone stays full precision unless
+``controlnet`` is included in ``--quantizer-map``. That clone is a second UNet,
+so leaving it out of the map keeps a full-precision copy in memory.
+
+The URI arguments are ``scale``, ``revision``, ``subfolder``, and ``weight-name``.
+``scale`` is the LoRA weight, defaulting to 1.0, and it is combined with
+``--control-lora-fuse-scale`` when the weights are fused.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+
+    # SDXL canny Control LoRA. The ControlNet clone is quantized because
+    # controlnet is listed in --quantizer-map.
+
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --variant fp16
+    --dtype float16
+    --quantizer "bnb;bits=8"
+    --quantizer-map unet text_encoder text_encoder_2 controlnet
+    --control-loras "stabilityai/control-lora;subfolder=control-LoRAs-rank128;weight-name=control-lora-canny-rank128.safetensors"
+    --control-image-processors "canny;lower=100;upper=200"
+    --image-seeds "control.png"
+    --inference-steps 30
+    --guidance-scales 5
+    --prompts "aerial view, a futuristic research complex"
 
 SDXL ControlNet Union Mode
 ---------------------------
@@ -13890,7 +13986,11 @@ When ``--loras`` and ``--quantizer`` are used together, affected static-pipeline
 components are fused without quantization and cached on disk before quantization.
 LTX and Wan cache only the LoRA-loadable components after fusing them without
 quantization. The first run loads the unquantized pipeline once; later runs reuse
-the cached components and quantize them as they load.
+the cached components and quantize them as they load. ``--control-loras`` on Flux
+fuses into the transformer the same way. On SD and SDXL it fuses into a ControlNet
+cloned from the UNet; ``--quantizer`` still quantizes the UNet and the text
+encoders, and the clone stays full precision unless ``controlnet`` is listed in
+``--quantizer-map``.
 
 You can control which sub modules of the diffusion pipeline get quantized
 by using the ``--quantizer-map`` argument, which accepts a list
@@ -13945,6 +14045,31 @@ argument. To quantize ControlNets, you must either:
 
 1. Add ``controlnet`` to the ``--quantizer-map`` list to apply global quantization
 2. Specify individual quantization settings per ControlNet using the ``quantizer`` URI argument
+
+``--control-loras`` for ``--model-type sd`` and ``sdxl`` builds the ControlNet by cloning
+the UNet and fusing the Control LoRA into that clone. The clone is a second UNet.
+``--quantizer`` quantizes the original UNet and the text encoders only. Add
+``controlnet`` to ``--quantizer-map`` to quantize the clone:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --quantizer "bnb;bits=8"
+    --quantizer-map unet text_encoder text_encoder_2 controlnet
+    --control-loras "stabilityai/control-lora;subfolder=control-LoRAs-rank128;weight-name=control-lora-canny-rank128.safetensors"
+    --control-image-processors "canny"
+    --image-seeds "control.png"
+    --inference-steps 30
+    --guidance-scales 5
+    --prompts "a cute cat"
+
+Leaving ``controlnet`` out of ``--quantizer-map`` keeps that clone in full precision.
 
 .. code-block:: bash
 
@@ -14544,6 +14669,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_control_image_processors"
             Type: collections.abc.Sequence[str] | None
             Value: []
+        Name: "last_control_lora_fuse_scale"
+            Type: float | None
+            Value: None
+        Name: "last_control_lora_uris"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
         Name: "last_controlnet_uris"
             Type: collections.abc.Sequence[str] | None
             Value: []
@@ -15116,7 +15247,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [88871904329656]
+            Value: [71780911573688]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

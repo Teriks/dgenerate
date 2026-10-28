@@ -100,6 +100,15 @@ class _DyPEEntry(_entry._Entry):
                 if other_entry is not None:
                     self.exclude(other_entry)
 
+    def argument_help_targets(self):
+        return [
+            (self.label_widget, '--dype'),
+            (self.method_label, '--dype-methods'),
+            (self.resolution_label, '--dype-base-resolutions'),
+            (self.mscale_label, '--dype-mscales'),
+            (self.axis_scaling_label, '--dype-axis-scalings'),
+        ]
+
     def sync_widget_states(self):
         self._update_controls()
 

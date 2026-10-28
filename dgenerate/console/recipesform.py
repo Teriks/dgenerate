@@ -378,6 +378,8 @@ class _RecipesForm(tk.Toplevel):
                     placeholder=template.placeholder
                 )
 
+                entry.install_argument_help()
+
                 entry_id = config.get('id', None)
                 if entry_id is not None:
                     self._id_map[entry_id] = entry

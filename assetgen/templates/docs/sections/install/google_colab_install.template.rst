@@ -16,7 +16,7 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
 
 .. code-block:: bash
 
-    !virtualenv venv
+    !virtualenv .venv
 
 3.) Install dgenerate, you must activate the virtual environment in the same cell.
 
@@ -26,11 +26,11 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
     # CUDA 13.2+ uses the URL below. CUDA 13.0 through 13.1 uses
     # https://download.pytorch.org/whl/cu130
     # CUDA 12.6 through 12.9 uses https://download.pytorch.org/whl/cu126
-    !source /content/venv/bin/activate; pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu132
+    !source /content/.venv/bin/activate; pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu132
 
 4.) Finally you can run dgenerate, you must prefix all calls to dgenerate with an activation of the virtual environment, as
 the virtual environment is not preserved between cells.  For brevity, and as an example, just print the help text here.
 
 .. code-block:: bash
 
-    !source /content/venv/bin/activate; dgenerate --help
+    !source /content/.venv/bin/activate; dgenerate --help

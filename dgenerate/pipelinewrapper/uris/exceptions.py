@@ -122,6 +122,13 @@ class InvalidLoRAUriError(InvalidModelUriError):
     pass
 
 
+class InvalidControlLoRAUriError(InvalidModelUriError):
+    """
+    Error in ``--control-loras`` uri
+    """
+    pass
+
+
 class InvalidIPAdapterUriError(InvalidModelUriError):
     """
     Error in ``--ip-adapters`` uri
@@ -202,6 +209,13 @@ class UNetUriLoadError(ModelUriLoadError):
 class LoRAUriLoadError(ModelUriLoadError):
     """
     Error while loading model file in ``--loras`` uri
+    """
+    pass
+
+
+class ControlLoRAUriLoadError(ModelUriLoadError):
+    """
+    Error while loading model file in ``--control-loras`` uri
     """
     pass
 

@@ -500,6 +500,18 @@ def model_type_is_upscaler(model_type: ModelType | str) -> bool:
     return 'upscaler' in model_type
 
 
+def model_type_supports_control_lora(model_type: ModelType | str) -> bool:
+    """
+    Control LoRAs (``--control-loras``) for this model type.
+
+    SD1.5 / SD2, SDXL, and Flux.1. Flux uses a control LoRA on
+    ``FluxControlPipeline``. SD and SDXL clone the UNet into a ControlNet
+    and load the Stability control LoRA onto that clone.
+    """
+    model_type = get_model_type_enum(model_type)
+    return model_type in {ModelType.SD, ModelType.SDXL, ModelType.FLUX}
+
+
 def model_type_is_sdxl(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an SDXL model?

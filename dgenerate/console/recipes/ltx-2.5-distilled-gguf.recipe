@@ -35,6 +35,7 @@ title: LTX-2.5 Distilled (GGUF)
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @quantizer[{"model-type":"ltx2", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/realrebelai/LTX-2.5_GGUFs/blob/main/LTX-2.5-Distilled-Q4_K_S.gguf"}]
 @submodelbuilder[{"label":"IC-LoRA", "arg":"--ltx-ic-lora", "model": "IC-LoRA"}]
 @imageprocessor[{"arg":"--control-image-processors", "label":"IC-LoRA Control Clip Processor", "divider-after":true}]

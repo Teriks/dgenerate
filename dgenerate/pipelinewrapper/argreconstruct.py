@@ -418,6 +418,12 @@ def reconstruct_dgenerate_opts(
     if wrapper.textual_inversion_uris:
         opts.append(('--textual-inversions', wrapper.textual_inversion_uris))
 
+    if wrapper.control_lora_uris:
+        opts.append(('--control-loras', wrapper.control_lora_uris))
+
+    if wrapper.control_lora_fuse_scale is not None:
+        opts.append(('--control-lora-fuse-scale', wrapper.control_lora_fuse_scale))
+
     if wrapper.controlnet_uris:
         opts.append(('--control-nets', wrapper.controlnet_uris))
 

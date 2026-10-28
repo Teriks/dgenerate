@@ -55,6 +55,7 @@ class _RegionEEntry(_entry._Entry):
         self._int_spin_buttons = []
         self._float_spin_buttons = []
 
+        self._help_labels = []
         self.warmup_var = tk.StringVar(
             value=str(self.config.get('warmup-step', _DEFAULT_WARMUP_STEP)))
         self._add_int_row(
@@ -62,7 +63,8 @@ class _RegionEEntry(_entry._Entry):
             label='Warmup Steps',
             text_var=self.warmup_var,
             from_=0,
-            to=sys.maxsize)
+            to=sys.maxsize,
+            option='--regione-warmup-steps')
 
         self.post_var = tk.StringVar(
             value=str(self.config.get('post-step', _DEFAULT_POST_STEP)))
@@ -71,7 +73,8 @@ class _RegionEEntry(_entry._Entry):
             label='Post Steps',
             text_var=self.post_var,
             from_=0,
-            to=sys.maxsize)
+            to=sys.maxsize,
+            option='--regione-post-steps')
 
         self.refresh_var = tk.StringVar(
             value=str(self.config.get('refresh-step', _DEFAULT_REFRESH_STEP)))
@@ -80,7 +83,8 @@ class _RegionEEntry(_entry._Entry):
             label='Refresh Step',
             text_var=self.refresh_var,
             from_=0,
-            to=sys.maxsize)
+            to=sys.maxsize,
+            option='--regione-refresh-steps')
 
         self.threshold_var = tk.StringVar(
             value=str(self.config.get('threshold', _DEFAULT_THRESHOLD)))
@@ -89,7 +93,8 @@ class _RegionEEntry(_entry._Entry):
             label='Region Threshold',
             text_var=self.threshold_var,
             from_=0.0,
-            to=1.0)
+            to=1.0,
+            option='--regione-thresholds')
 
         self.cache_threshold_var = tk.StringVar(
             value=str(self.config.get('cache-threshold', _DEFAULT_CACHE_THRESHOLD)))
@@ -98,7 +103,8 @@ class _RegionEEntry(_entry._Entry):
             label='Cache Threshold',
             text_var=self.cache_threshold_var,
             from_=0.0,
-            to=sys.maxsize)
+            to=sys.maxsize,
+            option='--regione-cache-thresholds')
 
         self.erosion_var = tk.BooleanVar(
             value=self.config.get('erosion-dilation', _DEFAULT_EROSION_DILATION))
@@ -121,7 +127,7 @@ class _RegionEEntry(_entry._Entry):
                 if other_entry is not None:
                     self.exclude(other_entry)
 
-    def _add_int_row(self, row, label, text_var, from_, to):
+    def _add_int_row(self, row, label, text_var, from_, to, option=None):
         label_widget = ttk.Label(self.master, text=label + ' (int)', anchor='e')
         entry = IntSpinbox(self.master, textvariable=text_var, from_=from_, to=to)
         spin_buttons = entry.create_spin_buttons(self.master)
@@ -131,8 +137,10 @@ class _RegionEEntry(_entry._Entry):
         text_var.trace_add('write', lambda *_args: self.valid())
         self._int_entries.append(entry)
         self._int_spin_buttons.append(spin_buttons)
+        if option:
+            self._help_labels.append((label_widget, option))
 
-    def _add_float_row(self, row, label, text_var, from_, to):
+    def _add_float_row(self, row, label, text_var, from_, to, option=None):
         label_widget = ttk.Label(self.master, text=label + ' (float)', anchor='e')
         entry = FloatSpinbox(
             self.master, from_=from_, to=to, increment=0.01, textvariable=text_var)
@@ -143,6 +151,15 @@ class _RegionEEntry(_entry._Entry):
         text_var.trace_add('write', lambda *_args: self.valid())
         self._float_entries.append(entry)
         self._float_spin_buttons.append(spin_buttons)
+        if option:
+            self._help_labels.append((label_widget, option))
+
+    def argument_help_targets(self):
+        return [
+            (self.label_widget, '--regione'),
+            *self._help_labels,
+            (self.erosion_label, '--regione-erosion-dilation'),
+        ]
 
     def sync_widget_states(self):
         self._update_controls()

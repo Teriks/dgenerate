@@ -125,6 +125,8 @@ class TestLoraUri(unittest.TestCase):
                 transformer = torch.nn.Linear(2, 2)
                 transformer.quantization_config = {'quant_method': 'gguf'}
                 self.components = {'transformer': transformer}
+                self.adapter_weights = None
+                self.fused = None
 
             def load_lora_weights(self, *args, **kwargs):
                 pass
@@ -132,12 +134,13 @@ class TestLoraUri(unittest.TestCase):
             def get_list_adapters(self):
                 return {'transformer': ['0']}
 
-            def set_adapters(self, *args, **kwargs):
-                pass
+            def set_adapters(self, names, adapter_weights=None, **kwargs):
+                self.adapter_weights = list(adapter_weights)
 
             def fuse_lora(self, *args, **kwargs):
-                pass
+                self.fused = True
 
+        pipe = Pipe()
         with unittest.mock.patch.object(
                 _messages, 'warning', side_effect=lambda msg: warnings.append(msg)), \
                 unittest.mock.patch.object(
@@ -146,9 +149,63 @@ class TestLoraUri(unittest.TestCase):
                     _lorauri._hfhub, 'download_non_hf_slug_model',
                     return_value='lora.safetensors'):
             _lorauri.LoRAUri.load_on_pipeline(
-                Pipe(), ['org/lora'], fuse=True)
+                pipe, ['org/lora;scale=0.5'], fuse_scale=2.0, fuse=True)
 
         self.assertTrue(any('quantized or GGUF' in msg for msg in warnings))
+        self.assertTrue(any('transformer' in msg for msg in warnings))
+        self.assertEqual(pipe.adapter_weights, [1.0])
+        self.assertIsNone(pipe.fused)
+
+    def test_quantized_text_encoder_does_not_block_unet_fuse(self):
+        class Expert(torch.nn.Module):
+            def __init__(self, quantized=False):
+                super().__init__()
+                self.linear = torch.nn.Linear(1, 1)
+                if quantized:
+                    self.quantization_config = {'quant_method': 'gguf'}
+                self.adapters = None
+                self.fused = None
+
+            def set_adapters(self, names, weights):
+                self.adapters = (list(names), list(weights))
+
+            def fuse_lora(self, lora_scale=1.0, adapter_names=None):
+                self.fused = (lora_scale, list(adapter_names))
+
+        class Pipe:
+            def __init__(self):
+                self.transformer = Expert()
+                self.text_encoder = Expert(quantized=True)
+                self.components = {
+                    'transformer': self.transformer,
+                    'text_encoder': self.text_encoder,
+                }
+
+            def load_lora_weights(self, *args, **kwargs):
+                pass
+
+            def get_list_adapters(self):
+                return {'transformer': ['0'], 'text_encoder': ['0']}
+
+            def set_adapters(self, *args, **kwargs):
+                raise AssertionError('mixed components are activated separately')
+
+            def fuse_lora(self, *args, **kwargs):
+                raise AssertionError('mixed components are fused separately')
+
+        pipeline = Pipe()
+        with unittest.mock.patch.object(
+                _lorauri, '_load_one_lora', return_value=None), \
+                unittest.mock.patch.object(
+                    _lorauri._hfhub, 'download_non_hf_slug_model',
+                    return_value='lora.safetensors'):
+            _lorauri.LoRAUri.load_on_pipeline(
+                pipeline, ['org/lora;scale=0.5'], fuse_scale=2.0, fuse=True)
+
+        self.assertEqual(pipeline.transformer.adapters, (['0'], [0.5]))
+        self.assertEqual(pipeline.transformer.fused, (2.0, ['0']))
+        self.assertEqual(pipeline.text_encoder.adapters, (['0'], [1.0]))
+        self.assertIsNone(pipeline.text_encoder.fused)
 
 
 if __name__ == '__main__':

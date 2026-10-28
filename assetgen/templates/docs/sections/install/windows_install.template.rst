@@ -142,8 +142,8 @@ a cloned repository like this:
     # in the top of the repo make
     # an environment and activate it
 
-    python -m venv venv
-    venv\Scripts\activate
+    python -m venv .venv
+    .venv\Scripts\activate
 
     # Install with pip into the environment
 

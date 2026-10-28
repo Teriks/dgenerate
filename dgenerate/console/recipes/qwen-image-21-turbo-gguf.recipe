@@ -10,6 +10,7 @@ title: Qwen-Image 2.1 Turbo (GGUF)
 @switch[{"label":"Disable KV Cache", "arg":"--qwen21-no-kv-cache"}]
 @quantizer[{"model-type":"qwen-image-21", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Abiray/Qwen-Image-2.1-Turbo-GGUF/blob/main/qwen_image_2.1_turbo_Q4_K_M.gguf", "divider-after":true}]
 @imageseed[{"label":"Condition Image", "arg":"--image-seeds", "file-types":["images-in"], "hide-float":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":8, "min":1}]

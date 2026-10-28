@@ -65,9 +65,7 @@ jobs:
       - name: Cache Python dependencies
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.cache/pip
-            build_venv
+          path: ~/.cache/pip
           key: ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.13-${{ hashFiles('poetry/pyproject.toml', 'installer/pyproject.toml', 'setup.py') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.13-

@@ -70,6 +70,8 @@ Help Output
 
 @INCLUDE[sections/sub_models/specifying_controlnets.template.rst]
 
+@INCLUDE[sections/sub_models/specifying_control_loras.template.rst]
+
 @INCLUDE[sections/sub_models/sdxl_controlnet_union_mode.template.rst]
 
 @INCLUDE[sections/sub_models/flux_controlnet_union_mode.template.rst]
