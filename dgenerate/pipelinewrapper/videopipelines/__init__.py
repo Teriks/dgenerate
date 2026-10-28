@@ -313,6 +313,7 @@ from .ltx import (
     _stage_sigmas,
     _ltx_pixels_from_output,
     _waveform_from_audio_latents,
+    _ltx_distilled_inference_steps,
     _ltx_ignored_steps_warning,
     _ltx_base_sigmas,
     _ltx_is_distilled,

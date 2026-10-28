@@ -1624,9 +1624,13 @@ class DiffusionArguments(_types.SetFromMixin):
     The number of denoising steps. More denoising steps usually lead to a higher quality image
     at the expense of slower inference.
 
-    For LTX this is used only when the scheduler has dynamic shifting and
-    :py:attr:`.DiffusionArguments.sigmas` is not set. Without dynamic shifting, the
-    distilled 8-value table is used and this value is ignored.
+    For LTX this is sent to the pipeline only when the scheduler has dynamic
+    shifting and neither :py:attr:`.DiffusionArguments.timesteps` nor
+    :py:attr:`.DiffusionArguments.sigmas` is set. Without dynamic shifting, the
+    distilled 8-value table is used and this value is ignored. A warning names
+    the ignored value, including the global default of 30. Passing 8 matches the
+    table and silences the warning. ``timesteps`` and ``sigmas`` overwrite the
+    step count to the length of the resulting list.
     """
 
     clip_skip: _types.OptionalInteger = None

@@ -5334,12 +5334,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     For --model-type ltx-video, this value is passed to the pipeline as written.
                     
-                    For --model-type ltx2, this value is used only when the scheduler has
-                    dynamic shifting and --sigmas is not set. Without dynamic shifting,
-                    the distilled 8-value sigma table is used and this option is ignored.
-                    A warning names the ignored value, including the default 30.
-                    --sigmas
-                    overwrites the step count to the length of the sigma list.
+                    For --model-type ltx2, this value is sent to the pipeline only when
+                    the scheduler has dynamic shifting and neither --timesteps nor
+                    --sigmas is set. Without dynamic shifting, the distilled 8-value
+                    sigma table is used and this option is ignored. A warning names the
+                    ignored value, including the default 30. Pass --inference-steps 8
+                    to match the table and silence the warning. --timesteps and --sigmas
+                    overwrite the step count to the length of the resulting list.
                     
                     NOWRAP!
                     (default: [30])"""

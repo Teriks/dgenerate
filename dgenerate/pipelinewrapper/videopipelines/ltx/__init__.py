@@ -369,10 +369,14 @@ def _call_ltx(wrapper, user_args):
             kwargs['audio_guidance_scale'] = (
                 float(user_audio) if user_audio is not None else guidance)
             scheduled = len(kwargs['sigmas'])
-            ignored = _ltx_ignored_steps_warning(user_args.inference_steps, scheduled)
+            steps, ignored = _ltx_distilled_inference_steps(
+                user_args.inference_steps, scheduled)
             if ignored:
                 _messages.warning(ignored)
-            user_args.inference_steps = scheduled
+            elif steps != user_args.inference_steps:
+                _messages.debug_log(
+                    f'LTX distilled checkpoint uses its {scheduled}-value sigma schedule.')
+            user_args.inference_steps = steps
         else:
             steps = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
             if guidance == _constants.DEFAULT_GUIDANCE_SCALE:
@@ -1002,6 +1006,17 @@ def _waveform_from_audio_latents(pipe, audio_latents):
     return _vp.audio_to_numpy(pipe.vocoder(mel))
 
 
+def _ltx_distilled_inference_steps(requested, scheduled: int) -> tuple[int, str | None]:
+    """
+    Step count for a scheduler that has no dynamic shifting.
+
+    The distilled table length is always used. The global default and any
+    other count except that length are ignored and reported. Passing the
+    table length silences the warning.
+    """
+    return scheduled, _ltx_ignored_steps_warning(requested, scheduled)
+
+
 def _ltx_ignored_steps_warning(requested, scheduled: int) -> str | None:
     if requested is None:
         requested = _constants.DEFAULT_INFERENCE_STEPS
@@ -1014,7 +1029,8 @@ def _ltx_ignored_steps_warning(requested, scheduled: int) -> str | None:
         passed = str(requested)
     return (
         f'The LTX distilled checkpoint uses an {scheduled}-value sigma schedule '
-        f'and ignores --inference-steps {passed}.'
+        f'and ignores --inference-steps {passed}. '
+        f'Pass --inference-steps {scheduled} to silence this warning.'
     )
 
 

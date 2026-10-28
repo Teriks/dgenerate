@@ -361,7 +361,8 @@ they are still unused. A value you set yourself is kept, except as noted below.
 
 * The clip uses Diffusers' distilled 8-value sigma table. ``--inference-steps`` is
   not sent to the pipeline. dgenerate warns with the ignored value, including the
-  default 30, and still uses the table.
+  default 30, and still uses the table. Passing ``--inference-steps 8`` matches
+  the table and silences the warning.
 * If ``--guidance-scales`` is still ``5``, it is replaced with ``1`` (unguided).
   Any other guidance value is used as written.
 * Video guidance and audio guidance receive that same number unless
@@ -371,8 +372,9 @@ they are still unused. A value you set yourself is kept, except as noted below.
 
 **Scheduler with dynamic shifting**
 
-* ``--inference-steps`` is sent as ``num_inference_steps``. The default ``30`` is
-  used if you omit it.
+* ``--inference-steps`` is sent as ``num_inference_steps`` when neither
+  ``--timesteps`` nor ``--sigmas`` is set. The default ``30`` is used if you
+  omit it.
 * If ``--guidance-scales`` is still ``5``, video guidance becomes ``3`` and audio
   guidance becomes ``7``, with a warning, unless ``--ltx-audio-guidance-scales``
   is set. Any other guidance value is used for video, and for audio unless

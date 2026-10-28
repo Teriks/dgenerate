@@ -279,18 +279,24 @@ class TestVideoModels(unittest.TestCase):
     def test_distilled_steps_warning_shows_passed_value(self):
         default = _pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS
         self.assertIsNone(_videopipelines._ltx_ignored_steps_warning(8, 8))
+        suffix = ' Pass --inference-steps 8 to silence this warning.'
         self.assertEqual(
             _videopipelines._ltx_ignored_steps_warning(None, 8),
             'The LTX distilled checkpoint uses an 8-value sigma schedule '
-            f'and ignores --inference-steps {default} (the default).')
+            f'and ignores --inference-steps {default} (the default).{suffix}')
         self.assertEqual(
             _videopipelines._ltx_ignored_steps_warning(default, 8),
             'The LTX distilled checkpoint uses an 8-value sigma schedule '
-            f'and ignores --inference-steps {default} (the default).')
+            f'and ignores --inference-steps {default} (the default).{suffix}')
         self.assertEqual(
             _videopipelines._ltx_ignored_steps_warning(20, 8),
             'The LTX distilled checkpoint uses an 8-value sigma schedule '
-            'and ignores --inference-steps 20.')
+            f'and ignores --inference-steps 20.{suffix}')
+        steps, warning = _videopipelines._ltx_distilled_inference_steps(default, 8)
+        self.assertEqual(steps, 8)
+        self.assertIn('--inference-steps 8', warning)
+        steps, warning = _videopipelines._ltx_distilled_inference_steps(8, 8)
+        self.assertEqual((steps, warning), (8, None))
 
     def test_unknown_video_type_is_rejected(self):
         with self.assertRaises(ValueError):

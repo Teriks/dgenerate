@@ -2892,10 +2892,11 @@ Help Output
             
             For --model-type ltx-video, this value is passed to the pipeline as written.
             
-            For --model-type ltx2, this value is used only when the scheduler has dynamic shifting and --sigmas
-            is not set. Without dynamic shifting, the distilled 8-value sigma table is used and this option is
-            ignored. A warning names the ignored value, including the default 30. --sigmas overwrites the step
-            count to the length of the sigma list.
+            For --model-type ltx2, this value is sent to the pipeline only when the scheduler has dynamic
+            shifting and neither --timesteps nor --sigmas is set. Without dynamic shifting, the distilled
+            8-value sigma table is used and this option is ignored. A warning names the ignored value, including
+            the default 30. Pass --inference-steps 8 to match the table and silence the warning. --timesteps and
+            --sigmas overwrite the step count to the length of the resulting list.
             
             (default: [30])
             ---------------
@@ -5014,7 +5015,8 @@ they are still unused. A value you set yourself is kept, except as noted below.
 
 * The clip uses Diffusers' distilled 8-value sigma table. ``--inference-steps`` is
   not sent to the pipeline. dgenerate warns with the ignored value, including the
-  default 30, and still uses the table.
+  default 30, and still uses the table. Passing ``--inference-steps 8`` matches
+  the table and silences the warning.
 * If ``--guidance-scales`` is still ``5``, it is replaced with ``1`` (unguided).
   Any other guidance value is used as written.
 * Video guidance and audio guidance receive that same number unless
@@ -5024,8 +5026,9 @@ they are still unused. A value you set yourself is kept, except as noted below.
 
 **Scheduler with dynamic shifting**
 
-* ``--inference-steps`` is sent as ``num_inference_steps``. The default ``30`` is
-  used if you omit it.
+* ``--inference-steps`` is sent as ``num_inference_steps`` when neither
+  ``--timesteps`` nor ``--sigmas`` is set. The default ``30`` is used if you
+  omit it.
 * If ``--guidance-scales`` is still ``5``, video guidance becomes ``3`` and audio
   guidance becomes ``7``, with a warning, unless ``--ltx-audio-guidance-scales``
   is set. Any other guidance value is used for video, and for audio unless
@@ -9568,7 +9571,6 @@ prompt variations using a special prompting syntax.
             seed: int | None = None
             variations: int | None = None
             wildcards: str | None = None
-            auth-token: str | None = None
     
         Upscale prompts with the dynamicprompts library.
     
@@ -9637,7 +9639,6 @@ Which is a GPT2 finetune focused specifically on prompt generation.
             smart-truncate: bool = False
             cleanup-config: str | None = None
             device: str | None = None
-            auth-token: str | None = None
     
         Upscale prompts using magicprompt or other LLMs via transformers.
     
@@ -9792,7 +9793,6 @@ Older NVIDIA, Windows AMD, and Intel Arc:
             context-tokens: int = 2048
             smart-truncate: bool = False
             cleanup-config: str | None = None
-            auth-token: str | None = None
     
         Upscale prompts with a GGUF model through llama.cpp.
     
@@ -9877,7 +9877,6 @@ This is supported for multiple languages, though, CLIP usually really only under
             seed: int | None = None
             lang: str = "en"
             syntax: str = "sd-embed"
-            auth-token: str | None = None
     
         Add random attention values to your prompt tokens.
     
@@ -9937,7 +9936,6 @@ This can be used to translate between any language supported by ``argostranslate
             batch: bool = True
             max-batch: int | None = 50
             device: str | None = None
-            auth-token: str | None = None
     
         Local language translation using argostranslate or Helsinki-NLP opus (mariana).
     
@@ -10955,12 +10953,6 @@ these are the arguments that are available for use:
     spectrum-warmup-steps: int
     spectrum-window-size: float
     spectrum-flex-window: float
-    regione-warmup-step: int
-    regione-post-step: int
-    regione-refresh-step: int
-    regione-threshold: float
-    regione-cache-threshold: float
-    regione-erosion-dilation: bool
     ras-index-fusion: bool
     ras-sample-ratio: float
     ras-high-ratio: float
@@ -11235,7 +11227,6 @@ Output:
         "crop"
         "crop-to-mask"
         "dilate"
-        "face-restore"
         "flip"
         "gaussian-blur"
         "grayscale"
@@ -11602,7 +11593,6 @@ The ``interposer`` supports several conversions, described in its help output:
             target: str
             device: str = "cpu"
             model-offload: bool = False
-            auth-token: str | None = None
     
         Converts latents between different diffusion model latent spaces.
     
@@ -12973,7 +12963,6 @@ adetailer processor help output below.
             device: str | None = None
             output-file: str | None = None
             output-overwrite: bool = False
-            auth-token: str | None = None
     
         adetailer, diffusion based post processor for SD1.5, SDXL, Kolors, SD3, and Flux
     
@@ -13165,9 +13154,6 @@ adetailer processor help output below.
         not enabled, new images written by the processor while it is being used will be written with a numbered
         suffix instead of being overwritten.
     
-        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
-        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
-    
     ==============================================================================================================
 
 Adetailer Pipeline
@@ -13329,7 +13315,6 @@ processor chaining if desired.
             output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
-            auth-token: str | None = None
     
         Process the input image with Ultralytics YOLO object detection.
     
@@ -13506,9 +13491,6 @@ processor chaining if desired.
         when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
         impact rendering speed when generating many images.
     
-        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
-        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
-    
     ==============================================================================================================
 
 Segment Anything Mask Generation
@@ -13548,7 +13530,6 @@ provided in the image preview pane context menu.
             output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
-            auth-token: str | None = None
     
         Process the input image with Ultralytics SAM (Segment Anything Model) using point or bounding box prompts.
     
@@ -13685,9 +13666,6 @@ provided in the image preview pane context menu.
         when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
         impact rendering speed when generating many images.
     
-        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
-        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
-    
     ==============================================================================================================
 
 You can combine this processor with the ``crop`` and ``paste`` processor to perform
@@ -13782,7 +13760,6 @@ The ``yolo-sam`` processor is especially valuable for:
             output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
-            auth-token: str | None = None
     
         Process the input image with YOLO object detection followed by SAM (Segment Anything Model) segmentation.
     
@@ -13935,9 +13912,6 @@ The ``yolo-sam`` processor is especially valuable for:
         being used, instead of them being moved back to the CPU after each image. Enabling this may help save VRAM
         when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
         impact rendering speed when generating many images.
-    
-        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
-        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
     
     ==============================================================================================================
 
@@ -14669,12 +14643,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_control_image_processors"
             Type: collections.abc.Sequence[str] | None
             Value: []
-        Name: "last_control_lora_fuse_scale"
-            Type: float | None
-            Value: None
-        Name: "last_control_lora_uris"
-            Type: collections.abc.Sequence[str] | None
-            Value: []
         Name: "last_controlnet_uris"
             Type: collections.abc.Sequence[str] | None
             Value: []
@@ -15032,27 +15000,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_reference_image_processors"
             Type: collections.abc.Sequence[str] | None
             Value: []
-        Name: "last_regione"
-            Type: <class 'bool'>
-            Value: False
-        Name: "last_regione_cache_thresholds"
-            Type: collections.abc.Sequence[float] | None
-            Value: []
-        Name: "last_regione_erosion_dilation"
-            Type: bool | None
-            Value: None
-        Name: "last_regione_post_steps"
-            Type: collections.abc.Sequence[int] | None
-            Value: []
-        Name: "last_regione_refresh_steps"
-            Type: collections.abc.Sequence[int] | None
-            Value: []
-        Name: "last_regione_thresholds"
-            Type: collections.abc.Sequence[float] | None
-            Value: []
-        Name: "last_regione_warmup_steps"
-            Type: collections.abc.Sequence[int] | None
-            Value: []
         Name: "last_revision"
             Type: <class 'str'>
             Value: 'main'
@@ -15247,7 +15194,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [71780911573688]
+            Value: [47682387755830]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
