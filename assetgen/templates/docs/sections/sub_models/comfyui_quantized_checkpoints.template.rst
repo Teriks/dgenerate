@@ -18,10 +18,18 @@ Supported formats:
 * ``int8_tensorwise``, with or without ConvRot (``int8_convrot``)
 * ``nvfp4`` (``fp4``, ``nvfp4``, ``fp4_mixed``), including NVIDIA ModelOpt exports
   without ComfyUI markers, such as the LTX-2 and Flux.2 FP4 files
+* ``mxfp8``, FP8 E4M3 with one E8M0 scale per 32 inputs, swizzled the same way
+  as NVFP4 block scales, padded to a multiple of 32
+* ``convrot_w4a4``, signed INT4 packed two values per byte, with ConvRot
+* ``asym_w4a8_int8``, 4-bit codes with a codebook, a group scale
+  (``weight_s_rel``), a channel scale (``weight_s_channel``), and ConvRot.
+  ``weight_codebook`` and ``weight_correction`` are used when the file has them
+* ``w6a8_int8``, the same group scale, channel scale, and ConvRot, with uniform
+  6-bit codes and no codebook
 * Plain FP8 files with no scales (``fp8_e4m3fn``)
 
-Other ComfyUI formats (``mxfp8``, ``convrot_w4a4``, ``asym_w4a8_int8``, ``w6a8_int8``)
-are reported as unsupported instead of loading.
+The format and group sizes come from each layer's ``comfy_quant`` marker, or
+from the Kitchen ``_quantization_metadata`` entry when the file has no markers.
 
 Quantized linears stay packed in memory, so a model needs roughly the size of
 its file. Diffusers checkpoint conversion often splits fused weights, for
@@ -99,6 +107,11 @@ as ComfyUI does. Layers a file marks ``full_precision_matrix_mult``, and plain F
 files, skip those kernels and decode instead, again as in ComfyUI. The MPS kernels
 decode the weights inside the matmul and keep the activations as they are, so they
 serve those layers too.
+
+MXFP8, INT4 ConvRot, W4A8, and W6A8 are decoded to the activation dtype for the matmul.
+That runs on CUDA, ROCm, XPU, MPS, and CPU. The tensor-core kernels ComfyUI uses
+for them (Blackwell for MXFP8, SM 7.5 and newer for INT4, SM 8 and newer for W4A8)
+are not called.
 
 The AITER (ROCm) and MLX (MPS) kernels are downloaded from the Hugging Face Hub
 through the ``kernels`` package, ``kernels-community/aiter-kernels`` and

@@ -34,10 +34,16 @@ INT8 over rotated weights, which is also noise.
 
 Supported formats: ``float8_e4m3fn`` and ``float8_e5m2`` (per tensor or per
 row scale, including legacy ``scaled_fp8`` files with no marker),
-``int8_tensorwise`` (per row scale, optional ConvRot Hadamard rotation), and
+``int8_tensorwise`` (per row scale, optional ConvRot Hadamard rotation),
 ``nvfp4`` (E2M1 with swizzled FP8 block scales and a tensor scale, including
-unmarked ModelOpt exports such as LTX-2 FP4). Legacy scaled fp8 files name
-their scales ``scale_weight`` and ``scale_input``.
+unmarked ModelOpt exports such as LTX-2 FP4), ``mxfp8`` (E4M3 with swizzled
+E8M0 scales, one per 32 inputs), ``convrot_w4a4`` (signed INT4, two values per
+byte, ConvRot), ``asym_w4a8_int8`` (4-bit codes, a 16-entry codebook, group
+and channel scales, ConvRot), and ``w6a8_int8`` (the same scales and ConvRot,
+with uniform 6-bit codes and no codebook). The format and group sizes come
+from a per-layer
+``comfy_quant`` marker or from Kitchen ``_quantization_metadata``. Legacy
+scaled fp8 files name their scales ``scale_weight`` and ``scale_input``.
 
 Quantized linears stay packed in :py:class:`ComfyQuantLinear`. Where the
 hardware has a matching matmul (INT8 and FP8 on CUDA, ROCm, XPU, and MPS,
@@ -65,7 +71,9 @@ import torch
 import dgenerate.messages as _messages
 
 FLOAT8_FORMATS = ('float8_e4m3fn', 'float8_e5m2')
-SUPPORTED_FORMATS = FLOAT8_FORMATS + ('int8_tensorwise', 'nvfp4')
+SUPPORTED_FORMATS = FLOAT8_FORMATS + (
+    'int8_tensorwise', 'nvfp4', 'mxfp8', 'convrot_w4a4', 'asym_w4a8_int8', 'w6a8_int8')
+_GROUPED_INT8_FORMATS = ('asym_w4a8_int8', 'w6a8_int8')
 
 _FLOAT8_DTYPES = {
     'float8_e4m3fn': torch.float8_e4m3fn,
@@ -79,7 +87,8 @@ _SAFETENSORS_FLOAT8 = {
 
 _AUX_SUFFIXES = (
     '.weight_scale', '.weight_scale_2', '.input_scale',
-    '.pre_quant_scale', '.comfy_quant')
+    '.pre_quant_scale', '.comfy_quant',
+    '.weight_s_rel', '.weight_s_channel', '.weight_codebook', '.weight_correction')
 
 # Marker tensor of legacy (pre comfy_quant) scaled fp8 files.
 _LEGACY_MARKER = 'scaled_fp8'
@@ -117,6 +126,16 @@ def _rename_legacy_scales(checkpoint: dict) -> dict:
     return renamed
 
 _NVFP4_BLOCK = 16
+_MXFP8_BLOCK = 32
+# comfy-kitchen's int4 tensor-core group. ConvRot W4A4 stores one scale per
+# output row; a scale grid of this width, one per group of inputs, is also read.
+_INT4_GROUP = 64
+_W4A8_GROUP = 16
+
+# Lloyd-Max levels comfy-kitchen uses for ConvRot-normalized W4A8 groups.
+_W4A8_CODEBOOK = (
+    -0.980602, -0.794529, -0.638165, -0.500986, -0.377321, -0.263187, -0.155210, -0.050720,
+    0.052541, 0.156985, 0.265284, 0.379533, 0.502636, 0.638953, 0.794876, 0.980671)
 
 # E2M1 code -> value. NVFP4 packs two codes per byte, high nibble first.
 _E2M1_VALUES = (
@@ -162,7 +181,7 @@ def is_comfy_quantized(path: str) -> bool:
     if _LEGACY_MARKER in header:
         return True
     for key, info in header.items():
-        if key.endswith('.comfy_quant'):
+        if key.endswith(('.comfy_quant', '.weight_s_rel')):
             return True
         if (key.endswith('.weight') and info.get('dtype') in _SAFETENSORS_FLOAT8
                 and len(info.get('shape', ())) == 2):
@@ -206,6 +225,126 @@ def _decode_float8(storage: torch.Tensor, fmt: str, dtype: torch.dtype) -> torch
     return torch.nn.functional.embedding(storage.int(), table).view(storage.shape)
 
 
+def _e8m0_to_float(exponents: torch.Tensor) -> torch.Tensor:
+    """E8M0 byte to the power of two it encodes. A stored 0 is 0, not 2^-127."""
+    bits = exponents.to(torch.int32) << 23
+    powers = bits.view(torch.float32)
+    return torch.where(exponents == 0, torch.zeros((), device=exponents.device, dtype=torch.float32), powers)
+
+
+def _unpack_nibbles(packed: torch.Tensor, signed: bool) -> torch.Tensor:
+    """Two 4-bit values per byte, low nibble first, as int32. Signed is two's complement."""
+    raw = packed.view(torch.uint8).to(torch.int32)
+    lo = raw & 0x0F
+    hi = (raw >> 4) & 0x0F
+    if signed:
+        lo = torch.where(lo >= 8, lo - 16, lo)
+        hi = torch.where(hi >= 8, hi - 16, hi)
+    return torch.stack((lo, hi), dim=-1).reshape(*packed.shape[:-1], packed.shape[-1] * 2)
+
+
+def _unpack_int6(packed: torch.Tensor, inputs: int) -> torch.Tensor:
+    """
+    Unsigned 6-bit codes.
+
+    The row is a ``K/2`` byte nibble plane (low nibble first) followed by a
+    ``K/4`` byte plane of the top two bits of each code.
+    """
+    raw = packed.view(torch.uint8).to(torch.int32)
+    low = raw[:, :inputs // 2]
+    codes = torch.empty(packed.shape[0], inputs, dtype=torch.int32, device=packed.device)
+    codes[:, 0::2] = low & 0x0F
+    codes[:, 1::2] = (low >> 4) & 0x0F
+    shifts = torch.tensor((0, 2, 4, 6), dtype=torch.int32, device=packed.device)
+    high = (raw[:, inputs // 2:].unsqueeze(-1) >> shifts) & 0x3
+    codes |= high.reshape(packed.shape[0], inputs) << 4
+    return codes
+
+
+def _grouped_inputs(packed_cols: int, bits: int) -> int:
+    """Unpacked inputs from a 4-bit (``K/2`` bytes) or 6-bit (``3K/4`` bytes) row."""
+    if bits == 4:
+        return packed_cols * 2
+    if packed_cols % 3:
+        raise ComfyQuantError(
+            f'6-bit weight width {packed_cols} is not a multiple of 3.')
+    return packed_cols * 4 // 3
+
+
+def _stored_float(tensor: torch.Tensor) -> torch.Tensor:
+    """A scale stored as float32 bits (int32) or float8 e4m3 bits (uint8)."""
+    if tensor.dtype == torch.uint8:
+        return _decode_float8(tensor, 'float8_e4m3fn', torch.float32)
+    return _bits_float(tensor)
+
+
+def _decode_mxfp8(storage: torch.Tensor, block_scale: torch.Tensor, dtype: torch.dtype) -> torch.Tensor:
+    """FP8 E4M3 blocks of 32, each multiplied by its swizzled E8M0 power of two."""
+    rows, cols = storage.shape
+    blocks = cols // _MXFP8_BLOCK
+    values = _decode_float8(storage, 'float8_e4m3fn', torch.float32)
+    scales = _unswizzle_block_scales(block_scale.view(torch.uint8), rows, blocks)
+    scales = _e8m0_to_float(scales)
+    weight = values.view(rows, blocks, _MXFP8_BLOCK) * scales.unsqueeze(-1)
+    return weight.view(rows, cols).to(dtype)
+
+
+def _decode_int4(storage: torch.Tensor, scale: torch.Tensor, dtype: torch.dtype,
+                 group_size: int) -> torch.Tensor:
+    """Signed INT4 nibbles times a per-row scale, or one scale per group of inputs."""
+    values = _unpack_nibbles(storage, signed=True).to(torch.float32)
+    rows, inputs = values.shape
+    scales = _bits_float(scale).to(torch.float32)
+    group = group_size or _INT4_GROUP
+    grouped = scales.reshape(rows, -1) if scales.numel() == rows * (inputs // group) and inputs % group == 0 else None
+    if scales.numel() == 1 or scales.numel() == rows:
+        values = values * _broadcast_scale(scales.reshape(-1), rows)
+    elif grouped is not None and grouped.shape[1] == inputs // group:
+        values = values.view(rows, inputs // group, group) * grouped.unsqueeze(-1)
+        values = values.view(rows, inputs)
+    else:
+        raise ComfyQuantError(
+            f'INT4 weight_scale of shape {tuple(scale.shape)} does not match '
+            f'{rows} rows of {inputs} inputs.')
+    return values.to(dtype)
+
+
+def _decode_w4a8(storage: torch.Tensor, s_rel: torch.Tensor, s_channel: torch.Tensor,
+                 dtype: torch.dtype, group_size: int,
+                 codebook: torch.Tensor | None, correction: torch.Tensor | None,
+                 bits: int = 4) -> torch.Tensor:
+    """
+    4-bit or 6-bit codes, a per-group scale, and a per-row scale.
+
+    4-bit codes go through a codebook (or ``code - 8`` when there is none).
+    6-bit codes are uniform, ``code - 32``. The group scale is folded in on the
+    integer grid comfy-kitchen multiplies with, then the channel scale and the
+    optional per-group correction.
+    """
+    rows, _packed = storage.shape
+    inputs = _grouped_inputs(_packed, bits)
+    codes = _unpack_nibbles(storage, signed=False) if bits == 4 else _unpack_int6(storage, inputs)
+    if inputs % group_size:
+        raise ComfyQuantError(
+            f'{bits}-bit group size {group_size} does not divide {inputs} inputs.')
+    groups = inputs // group_size
+    if bits == 6:
+        levels = codes.to(torch.float32) - 32
+    elif codebook is None:
+        levels = codes.to(torch.float32) - 8
+    else:
+        table = _bits_float(codebook).reshape(-1)
+        levels = table[codes.long()]
+    rel = _stored_float(s_rel).reshape(rows, groups)
+    values = levels.view(rows, groups, group_size) * rel.unsqueeze(-1)
+    values = values.round().clamp_(-127, 127)
+    channel = _bits_float(s_channel).reshape(rows).to(torch.float32)
+    values = values * channel.view(rows, 1, 1)
+    if correction is not None:
+        values = values + _bits_float(correction).t().unsqueeze(-1).to(torch.float32)
+    return values.view(rows, inputs).to(dtype)
+
+
 def _decode_nvfp4(storage: torch.Tensor, block_scale: torch.Tensor,
                   tensor_scale: torch.Tensor, dtype: torch.dtype) -> torch.Tensor:
     rows, packed = storage.shape
@@ -241,16 +380,24 @@ def _broadcast_scale(scale: torch.Tensor, rows: int) -> torch.Tensor:
 
 
 def _decode(fmt: str, storage: torch.Tensor, scale: torch.Tensor,
-            scale_2: torch.Tensor | None, dtype: torch.dtype) -> torch.Tensor:
+            scale_2: torch.Tensor | None, dtype: torch.dtype, group_size: int = 0,
+            codebook: torch.Tensor | None = None,
+            correction: torch.Tensor | None = None) -> torch.Tensor:
     """
     Packed storage -> weight in ``dtype``, still padded and rotated.
 
-    ``scale`` is the NVFP4 block scale grid as uint8, otherwise float32 bits
-    as int32, like ``scale_2``.
+    ``scale`` is an E8M0 or FP8 byte grid for MXFP8, NVFP4, and FP8 W4A8 group
+    scales, otherwise float32 bits as int32, like ``scale_2``.
     """
-    scale_2 = _bits_float(scale_2)
     if fmt == 'nvfp4':
-        return _decode_nvfp4(storage, scale, scale_2, dtype)
+        return _decode_nvfp4(storage, scale, _bits_float(scale_2), dtype)
+    if fmt == 'mxfp8':
+        return _decode_mxfp8(storage, scale, dtype)
+    if fmt == 'convrot_w4a4':
+        return _decode_int4(storage, scale, dtype, group_size)
+    if fmt in _GROUPED_INT8_FORMATS:
+        return _decode_w4a8(storage, scale, scale_2, dtype, group_size, codebook, correction,
+                            bits=6 if fmt == 'w6a8_int8' else 4)
     if fmt == 'int8_tensorwise':
         weight = storage.to(dtype)
     else:
@@ -303,7 +450,9 @@ class _QuantLayer:
     def __init__(self, name: str, fmt: str, weight: torch.Tensor, scale: torch.Tensor,
                  scale_2: torch.Tensor | None = None,
                  pre_quant_scale: torch.Tensor | None = None,
-                 convrot_group_size: int = 0, full_precision: bool = False):
+                 convrot_group_size: int = 0, full_precision: bool = False,
+                 group_size: int = 0, codebook: torch.Tensor | None = None,
+                 correction: torch.Tensor | None = None):
         self.name = name
         self.format = fmt
         self.weight = weight
@@ -313,10 +462,18 @@ class _QuantLayer:
         self.convrot_group_size = convrot_group_size
         # The file asks for a dequantized matmul instead of a low precision one.
         self.full_precision = full_precision
+        # W4A8 quant group, or the input group of a grouped INT4 scale.
+        self.group_size = group_size
+        self.codebook = codebook
+        self.correction = correction
 
     def logical_shape(self) -> tuple[int, int]:
         rows, cols = self.weight.shape
-        return (rows, cols * 2) if self.format == 'nvfp4' else (rows, cols)
+        if self.format == 'w6a8_int8':
+            return rows, cols * 8 // 6
+        if self.format in ('nvfp4', 'convrot_w4a4', 'asym_w4a8_int8'):
+            return rows, cols * 2
+        return rows, cols
 
     def fits(self, out_features: int, in_features: int) -> bool:
         rows, cols = self.logical_shape()
@@ -324,11 +481,20 @@ class _QuantLayer:
             # NVFP4 pads both dimensions to a multiple of 16.
             return (rows == _round_up(out_features, _NVFP4_BLOCK)
                     and cols == _round_up(in_features, _NVFP4_BLOCK))
+        if self.format == 'mxfp8':
+            # The weight may be padded to a multiple of 32 on either side.
+            return (rows >= out_features and cols >= in_features
+                    and rows in (out_features, _round_up(out_features, _MXFP8_BLOCK))
+                    and cols in (in_features, _round_up(in_features, _MXFP8_BLOCK)))
         return (rows, cols) == (out_features, in_features)
+
+    def _decoded(self, dtype: torch.dtype) -> torch.Tensor:
+        return _decode(self.format, self.weight, self.scale, self.scale_2, dtype,
+                       self.group_size, self.codebook, self.correction)
 
     def dequantize(self, dtype: torch.dtype, shape: tuple[int, int] | None = None) -> torch.Tensor:
         """The dense weight, unrotated and trimmed to ``shape``."""
-        weight = _decode(self.format, self.weight, self.scale, self.scale_2, torch.float32)
+        weight = self._decoded(torch.float32)
         if self.convrot_group_size:
             weight = _rotate(weight, self.convrot_group_size)
         if shape is not None:
@@ -352,6 +518,11 @@ class _QuantLayer:
         """NVFP4 block scales, ``(rows, inputs / 16)`` uint8, row major."""
         rows, packed = self.weight.shape
         return _unswizzle_block_scales(self.scale, rows, packed * 2 // _NVFP4_BLOCK)
+
+    def mxfp8_scales(self) -> torch.Tensor:
+        """MXFP8 E8M0 scales, ``(rows, inputs / 32)`` uint8, row major."""
+        rows, cols = self.weight.shape
+        return _unswizzle_block_scales(self.scale, rows, cols // _MXFP8_BLOCK)
 
 
 def _round_up(value: int, multiple: int) -> int:
@@ -445,9 +616,73 @@ def _layer_config(checkpoint: dict, name: str) -> dict:
         raise ComfyQuantError(f'"{name}.comfy_quant" is not valid JSON: {e}') from e
 
 
+def _config_params(config: dict) -> dict:
+    params = config.get('params')
+    return params if isinstance(params, dict) else {}
+
+
+def _config_int(config: dict, key: str, default: int) -> int:
+    params = _config_params(config)
+    if key in config:
+        return int(config[key])
+    if key in params:
+        return int(params[key])
+    return default
+
+
+def _require_convrot(name: str, inputs: int, group_size: int) -> None:
+    if not _valid_group_size(group_size) or inputs % group_size:
+        raise ComfyQuantError(
+            f'Layer "{name}" has ConvRot group size {group_size}, which does not '
+            f'divide its {inputs} inputs or is not a power of 4.')
+
+
+def _e8m0_bytes(scale: torch.Tensor) -> bool:
+    e8m0 = getattr(torch, 'float8_e8m0fnu', None)
+    return scale.dtype in (torch.uint8, torch.int8) or (e8m0 is not None and scale.dtype == e8m0)
+
+
+def _legal_group(group: int, bits: int) -> bool:
+    if bits == 6:
+        return group >= 16 and group % 16 == 0
+    return group >= 4 and (16 % group == 0 or group % 16 == 0)
+
+
+def _infer_grouped_format(weight: torch.Tensor, s_rel: torch.Tensor) -> str:
+    """W4A8 or W6A8 from the packed width. W4A8 wins when both widths fit."""
+    groups = s_rel.shape[1] if s_rel.ndim == 2 and s_rel.shape[1] else 0
+    cols = weight.shape[-1] if weight.ndim == 2 else 0
+
+    def fits(bits: int) -> bool:
+        if not groups or not cols:
+            return False
+        try:
+            inputs = _grouped_inputs(cols, bits)
+        except ComfyQuantError:
+            return False
+        if inputs % groups or (bits == 6 and inputs % 32):
+            return False
+        return _legal_group(inputs // groups, bits)
+
+    if fits(6) and not fits(4):
+        return 'w6a8_int8'
+    return 'asym_w4a8_int8'
+
+
+def _mxfp8_scale_shape(rows: int, cols: int) -> tuple[int, int]:
+    return _round_up(rows, 128), _round_up(cols // _MXFP8_BLOCK, 4)
+
+
 def _infer_format(checkpoint: dict, name: str) -> str | None:
     """The format of a layer with no ``comfy_quant`` marker, from its storage."""
     weight = checkpoint[name + '.weight']
+    if name + '.weight_s_rel' in checkpoint:
+        return _infer_grouped_format(weight, checkpoint[name + '.weight_s_rel'])
+    scale = checkpoint.get(name + '.weight_scale')
+    if (weight.dtype in (torch.uint8, torch.float8_e4m3fn) and scale is not None
+            and _e8m0_bytes(scale) and weight.ndim == 2 and weight.shape[1] % _MXFP8_BLOCK == 0
+            and tuple(scale.shape) == _mxfp8_scale_shape(*weight.shape)):
+        return 'mxfp8'
     if weight.dtype == torch.int8:
         return 'int8_tensorwise'
     if weight.dtype == torch.uint8 and name + '.weight_scale_2' in checkpoint:
@@ -457,6 +692,22 @@ def _infer_format(checkpoint: dict, name: str) -> str | None:
         if weight.dtype == dtype:
             return fmt
     return None
+
+
+def _float8_storage(name: str, weight: torch.Tensor, fmt: str) -> torch.Tensor:
+    if weight.dtype not in (torch.uint8, _FLOAT8_DTYPES[fmt]):
+        raise ComfyQuantError(f'Layer "{name}" is marked {fmt} but stored as {weight.dtype}.')
+    storage = weight.view(torch.uint8)
+    if fmt == 'float8_e4m3fn':
+        # -0 (0x80) is NaN when the bits are read as float8_e4m3fnuz (ROCm MI300).
+        # +0 decodes to the same value everywhere.
+        storage = storage.masked_fill(storage == 0x80, 0)
+    return storage
+
+
+def _scale_bytes(scale: torch.Tensor) -> torch.Tensor:
+    """FP8 or E8M0 scale bytes, kept as uint8 so a later dtype cast cannot change them."""
+    return scale.view(torch.uint8).contiguous()
 
 
 def _extract_layer(checkpoint: dict, name: str,
@@ -478,35 +729,62 @@ def _extract_layer(checkpoint: dict, name: str,
         # matmul, and so does Diffusers, so keep that numerically: scale 1.
         scale = torch.ones(())
         full_precision = True
-    if scale is None:
-        raise ComfyQuantError(f'Layer "{name}" is missing weight_scale.')
-
     pre_quant_scale = _float_bits(checkpoint.get(name + '.pre_quant_scale'))
     if weight.ndim != 2:
         raise ComfyQuantError(f'Quantized layer "{name}" is not a 2D linear weight.')
 
+    if fmt == 'mxfp8':
+        if scale is None or not _e8m0_bytes(scale):
+            raise ComfyQuantError(f'MXFP8 layer "{name}" needs uint8 E8M0 weight_scale.')
+        rows, cols = weight.shape
+        if cols % _MXFP8_BLOCK:
+            raise ComfyQuantError(
+                f'MXFP8 layer "{name}" has {cols} inputs, which is not a multiple of 32.')
+        tiled = _mxfp8_scale_shape(rows, cols)
+        if tuple(scale.shape) != tiled:
+            raise ComfyQuantError(
+                f'MXFP8 layer "{name}" has block scales of shape {tuple(scale.shape)}, '
+                f'expected the tiled shape {tiled}.')
+        return _QuantLayer(name, fmt, _float8_storage(name, weight, 'float8_e4m3fn'),
+                           _scale_bytes(scale), pre_quant_scale=pre_quant_scale,
+                           full_precision=full_precision)
+
+    if fmt == 'convrot_w4a4':
+        if scale is None:
+            raise ComfyQuantError(f'Layer "{name}" is missing weight_scale.')
+        if weight.dtype not in (torch.int8, torch.uint8):
+            raise ComfyQuantError(
+                f'INT4 ConvRot layer "{name}" is stored as {weight.dtype}, expected int8.')
+        inputs = weight.shape[1] * 2
+        rotation = _config_int(config, 'convrot_groupsize', 256)
+        _require_convrot(name, inputs, rotation)
+        scales = _bits_float(scale)
+        groups = inputs // _INT4_GROUP
+        grouped = (inputs % _INT4_GROUP == 0 and scales.numel() == weight.shape[0] * groups
+                   and scales.numel() != weight.shape[0])
+        return _QuantLayer(name, fmt, weight.view(torch.uint8).view(torch.int8).contiguous(),
+                           _float_bits(scales), pre_quant_scale=pre_quant_scale,
+                           convrot_group_size=rotation, full_precision=full_precision,
+                           group_size=_INT4_GROUP if grouped else 0)
+
+    if fmt in _GROUPED_INT8_FORMATS:
+        return _extract_w4a8(checkpoint, name, weight, config, pre_quant_scale, full_precision, fmt)
+
+    if scale is None:
+        raise ComfyQuantError(f'Layer "{name}" is missing weight_scale.')
+
     if fmt in FLOAT8_FORMATS:
-        if weight.dtype not in (torch.uint8, _FLOAT8_DTYPES[fmt]):
-            raise ComfyQuantError(f'Layer "{name}" is marked {fmt} but stored as {weight.dtype}.')
-        storage = weight.view(torch.uint8)
-        if fmt == 'float8_e4m3fn':
-            # -0 (0x80) is NaN when the bits are read as float8_e4m3fnuz (ROCm MI300).
-            # +0 decodes to the same value everywhere.
-            storage.masked_fill_(storage == 0x80, 0)
-        return _QuantLayer(name, fmt, storage, _float_bits(scale),
+        return _QuantLayer(name, fmt, _float8_storage(name, weight, fmt), _float_bits(scale),
                            pre_quant_scale=pre_quant_scale, full_precision=full_precision)
 
     if fmt == 'int8_tensorwise':
         if weight.dtype != torch.int8:
             raise ComfyQuantError(f'Layer "{name}" is marked int8 but stored as {weight.dtype}.')
-        params = config.get('params') if isinstance(config.get('params'), dict) else {}
+        params = _config_params(config)
         group_size = 0
         if config.get('convrot', params.get('convrot', False)):
-            group_size = int(config.get('convrot_groupsize', params.get('convrot_groupsize', 256)))
-            if not _valid_group_size(group_size) or weight.shape[1] % group_size:
-                raise ComfyQuantError(
-                    f'Layer "{name}" has ConvRot group size {group_size}, which does not '
-                    f'divide its {weight.shape[1]} inputs or is not a power of 4.')
+            group_size = _config_int(config, 'convrot_groupsize', 256)
+            _require_convrot(name, weight.shape[1], group_size)
         return _QuantLayer(name, fmt, weight, _float_bits(scale),
                            pre_quant_scale=pre_quant_scale,
                            convrot_group_size=group_size, full_precision=full_precision)
@@ -529,6 +807,86 @@ def _extract_layer(checkpoint: dict, name: str,
                        pre_quant_scale=pre_quant_scale, full_precision=full_precision)
 
 
+def _extract_w4a8(checkpoint: dict, name: str, weight: torch.Tensor, config: dict,
+                  pre_quant_scale: torch.Tensor | None, full_precision: bool,
+                  fmt: str = 'asym_w4a8_int8') -> _QuantLayer:
+    """Grouped int codes, group scales, and channel scales. W4A8 may add a codebook."""
+    bits = 6 if fmt == 'w6a8_int8' else 4
+    label = 'W6A8' if bits == 6 else 'W4A8'
+    s_rel = checkpoint.get(name + '.weight_s_rel')
+    s_channel = checkpoint.get(name + '.weight_s_channel')
+    if weight.dtype not in (torch.int8, torch.uint8) or s_rel is None or s_channel is None:
+        raise ComfyQuantError(
+            f'{label} layer "{name}" needs int8 weight, weight_s_rel, and weight_s_channel.')
+    try:
+        inputs = _grouped_inputs(weight.shape[1], bits)
+    except ComfyQuantError as e:
+        raise ComfyQuantError(f'{label} layer "{name}": {e}') from e
+    if inputs * bits != weight.shape[1] * 8:
+        raise ComfyQuantError(
+            f'{label} layer "{name}" has packed width {weight.shape[1]} for {inputs} inputs.')
+    group_size = _config_int(config, 'group_size', _W4A8_GROUP)
+    if inputs % group_size or not _legal_group(group_size, bits) or (bits == 6 and inputs % 32):
+        raise ComfyQuantError(
+            f'{label} layer "{name}" has group size {group_size} for {inputs} inputs.')
+    rotation = _config_int(config, 'convrot_groupsize', 256)
+    _require_convrot(name, inputs, rotation)
+    rows, groups = weight.shape[0], inputs // group_size
+    if tuple(s_rel.shape) != (rows, groups):
+        raise ComfyQuantError(
+            f'{label} layer "{name}" has weight_s_rel of shape {tuple(s_rel.shape)}, '
+            f'expected {(rows, groups)}.')
+    if s_channel.reshape(-1).numel() != rows:
+        raise ComfyQuantError(
+            f'{label} layer "{name}" has weight_s_channel of {s_channel.numel()} values, '
+            f'expected {rows}.')
+    if s_rel.dtype == torch.float32:
+        stored_rel = _float_bits(s_rel)
+    elif s_rel.dtype in (torch.uint8, torch.float8_e4m3fn, torch.int8):
+        stored_rel = _scale_bytes(s_rel)
+        stored_rel.masked_fill_(stored_rel == 0x80, 0)
+    else:
+        raise ComfyQuantError(
+            f'{label} layer "{name}" stores weight_s_rel as {s_rel.dtype}, '
+            f'expected float8 e4m3 or float32.')
+    codebook = checkpoint.get(name + '.weight_codebook')
+    correction = checkpoint.get(name + '.weight_correction')
+    if bits == 6 and (codebook is not None or correction is not None):
+        raise ComfyQuantError(
+            f'W6A8 layer "{name}" is uniform and symmetric: no codebook or correction.')
+    if codebook is not None and tuple(codebook.shape) != (16,):
+        raise ComfyQuantError(
+            f'{label} layer "{name}" has a codebook of shape {tuple(codebook.shape)}, expected (16,).')
+    if correction is not None and tuple(correction.shape) != (groups, rows):
+        raise ComfyQuantError(
+            f'{label} layer "{name}" has weight_correction of shape {tuple(correction.shape)}, '
+            f'expected {(groups, rows)}.')
+    return _QuantLayer(
+        name, fmt, weight.view(torch.uint8).view(torch.int8).contiguous(),
+        stored_rel, scale_2=_float_bits(s_channel.reshape(rows)),
+        pre_quant_scale=pre_quant_scale, convrot_group_size=rotation,
+        full_precision=full_precision, group_size=group_size,
+        codebook=_float_bits(codebook), correction=_float_bits(correction))
+
+
+def _layer_parameters(layer: '_QuantLayer'):
+    """Packed parameters other than the weight, for the module state dict."""
+    for name, tensor in (
+            ('weight_scale', layer.scale),
+            ('weight_scale_2', layer.scale_2),
+            ('pre_quant_scale', layer.pre_quant_scale),
+            ('weight_codebook', layer.codebook),
+            ('weight_correction', layer.correction)):
+        if tensor is not None:
+            yield name, tensor
+
+
+def _same_tensor(left: torch.Tensor | None, right: torch.Tensor | None) -> bool:
+    if left is None or right is None:
+        return left is None and right is None
+    return left.shape == right.shape and torch.equal(left, right)
+
+
 def _one_or_per_row(values: torch.Tensor) -> torch.Tensor:
     """A single value when every row has the same one, otherwise one per row."""
     if bool((values == values[0]).all()):
@@ -549,8 +907,11 @@ def _assemble_layer(name: str, segments: list, storage: torch.Tensor) -> _QuantL
     for layer, _, _ in segments:
         if (layer.format != first.format
                 or layer.convrot_group_size != first.convrot_group_size
+                or layer.group_size != first.group_size
                 or layer.pre_quant_scale is not first.pre_quant_scale
-                or layer.weight.shape[1] != first.weight.shape[1]):
+                or layer.weight.shape[1] != first.weight.shape[1]
+                or not _same_tensor(layer.codebook, first.codebook)
+                or (layer.correction is None) != (first.correction is None)):
             return None
     rows = sum(stop - start for _, start, stop in segments)
     if (storage.dtype != first.weight.dtype or storage.ndim != 2
@@ -571,6 +932,32 @@ def _assemble_layer(name: str, segments: list, storage: torch.Tensor) -> _QuantL
         return _QuantLayer(name, 'nvfp4', storage, _to_blocked(blocks).contiguous(),
                            scale_2=_float_bits(_one_or_per_row(tensor)),
                            pre_quant_scale=first.pre_quant_scale, full_precision=full_precision)
+
+    if first.format == 'mxfp8':
+        blocks = torch.cat([layer.mxfp8_scales()[start:stop] for layer, start, stop in segments])
+        return _QuantLayer(name, 'mxfp8', storage, _to_blocked(blocks).contiguous(),
+                           pre_quant_scale=first.pre_quant_scale, full_precision=full_precision)
+
+    if first.format in _GROUPED_INT8_FORMATS:
+        rel = torch.cat([layer.scale[start:stop] for layer, start, stop in segments])
+        channel = torch.cat([
+            _bits_float(layer.scale_2).reshape(-1)[start:stop] for layer, start, stop in segments])
+        correction = None
+        if first.correction is not None:
+            correction = torch.cat([layer.correction[:, start:stop] for layer, start, stop in segments], dim=1)
+        return _QuantLayer(name, first.format, storage, rel.contiguous(),
+                           scale_2=_float_bits(channel),
+                           pre_quant_scale=first.pre_quant_scale,
+                           convrot_group_size=first.convrot_group_size,
+                           full_precision=full_precision, group_size=first.group_size,
+                           codebook=first.codebook, correction=correction)
+
+    if first.format == 'convrot_w4a4' and first.group_size:
+        scales = torch.cat([_bits_float(layer.scale)[start:stop] for layer, start, stop in segments])
+        return _QuantLayer(name, first.format, storage, _float_bits(scales.contiguous()),
+                           pre_quant_scale=first.pre_quant_scale,
+                           convrot_group_size=first.convrot_group_size,
+                           full_precision=full_precision, group_size=first.group_size)
 
     scales = torch.cat([layer.row_scales()[start:stop] for layer, start, stop in segments])
     scale = _one_or_per_row(scales)
@@ -855,14 +1242,15 @@ class ComfyQuantCheckpoint:
             entry['checkpoint_mapping_fn'] = original
 
 
-def _quantized_layer_names(raw: dict) -> list[str]:
+def _quantized_layer_names(raw: dict, kitchen: dict | None = None) -> list[str]:
     """
     Names of the quantized linears in a raw checkpoint.
 
-    A layer is quantized when it has a ``comfy_quant`` marker; or, in files
-    without markers, a scale beside int8 / float8 storage, or uint8 storage
-    with a second scale (NVFP4); or a 2D float8 weight with no scale at all.
-    Other ``weight_scale`` params are left alone.
+    A layer is quantized when it has a ``comfy_quant`` marker or a Kitchen
+    metadata entry; or, in files without either, a scale beside int8 / float8
+    storage, uint8 storage with a second scale (NVFP4), a W4A8 ``weight_s_rel``,
+    or a 2D float8 weight with no scale at all. Other ``weight_scale`` params
+    are left alone.
     """
     packed_dtypes = (torch.int8, *_FLOAT8_DTYPES.values())
     names = {key[:-len('.comfy_quant')] for key in raw if key.endswith('.comfy_quant')}
@@ -872,9 +1260,13 @@ def _quantized_layer_names(raw: dict) -> list[str]:
         and (getattr(raw.get(key[:-len('_scale')]), 'dtype', None) in packed_dtypes
              or key + '_2' in raw))
     names.update(
+        key[:-len('.weight_s_rel')] for key in raw if key.endswith('.weight_s_rel'))
+    names.update(
         key[:-len('.weight')] for key, value in raw.items()
         if key.endswith('.weight') and value.ndim == 2
         and value.dtype in _FLOAT8_DTYPES.values())
+    if kitchen:
+        names.update(kitchen)
     return sorted(name for name in names if name + '.weight' in raw)
 
 
@@ -907,6 +1299,8 @@ _TORCH_DTYPES = {
     'I64': torch.int64, 'I32': torch.int32, 'I16': torch.int16, 'I8': torch.int8,
     'U8': torch.uint8, 'BOOL': torch.bool,
 }
+if hasattr(torch, 'float8_e8m0fnu'):
+    _TORCH_DTYPES['F8_E8M0'] = torch.float8_e8m0fnu
 
 
 def load_checkpoint(path: str, dtype: torch.dtype | None,
@@ -928,8 +1322,8 @@ def load_checkpoint(path: str, dtype: torch.dtype | None,
     raw.pop(_LEGACY_MARKER, None)
     raw = _rename_legacy_scales(raw)
 
-    names = _quantized_layer_names(raw)
     kitchen = _kitchen_layer_configs(path, raw.keys())
+    names = _quantized_layer_names(raw, kitchen)
     sources = {}
     for name in names:
         layer = _extract_layer(raw, name, kitchen.get(name))
@@ -1587,20 +1981,25 @@ class ComfyQuantLinear(torch.nn.Linear):
                 return None
             return torch.nn.Parameter(torch.empty_like(value, device='meta'), requires_grad=False)
 
+        self.quant_group_size = layer.group_size
         self.register_parameter('weight', placeholder(layer.weight))
         self.register_parameter('weight_scale', placeholder(layer.scale))
         self.register_parameter('weight_scale_2', placeholder(layer.scale_2))
         self.register_parameter('pre_quant_scale', placeholder(layer.pre_quant_scale))
+        self.register_parameter('weight_codebook', placeholder(layer.codebook))
+        self.register_parameter('weight_correction', placeholder(layer.correction))
         self.register_parameter('bias', bias)
 
     def extra_repr(self) -> str:
         rotation = f', convrot={self.convrot_group_size}' if self.convrot_group_size else ''
-        return f'{super().extra_repr()}, format={self.quant_format}{rotation}'
+        group = f', group={self.quant_group_size}' if self.quant_group_size else ''
+        return f'{super().extra_repr()}, format={self.quant_format}{rotation}{group}'
 
     def _layer(self) -> _QuantLayer:
         return _QuantLayer('', self.quant_format, self.weight, self.weight_scale,
                            self.weight_scale_2, self.pre_quant_scale, self.convrot_group_size,
-                           self.full_precision_mm)
+                           self.full_precision_mm, self.quant_group_size,
+                           self.weight_codebook, self.weight_correction)
 
     def dequantize(self, dtype: torch.dtype) -> torch.Tensor:
         """The dense ``(out_features, in_features)`` weight."""
@@ -1608,7 +2007,8 @@ class ComfyQuantLinear(torch.nn.Linear):
 
     def _dequantized_matmul(self, input: torch.Tensor) -> torch.Tensor:
         weight = _decode(self.quant_format, self.weight, self.weight_scale,
-                         self.weight_scale_2, input.dtype)
+                         self.weight_scale_2, input.dtype, self.quant_group_size,
+                         self.weight_codebook, self.weight_correction)
         if weight.shape != (self.out_features, self.in_features):
             # NVFP4 padding.
             weight = weight[:self.out_features, :self.in_features]
@@ -1687,11 +2087,8 @@ def _quantizer_classes():
                     module.in_features, module.out_features, layer, bias=module.bias)
                 _set_submodule(model, module_name, replacement)
                 state_dict[key] = layer.weight
-                for name, tensor in (('weight_scale', layer.scale),
-                                     ('weight_scale_2', layer.scale_2),
-                                     ('pre_quant_scale', layer.pre_quant_scale)):
-                    if tensor is not None:
-                        state_dict[f'{module_name}.{name}'] = tensor
+                for name, tensor in _layer_parameters(layer):
+                    state_dict[f'{module_name}.{name}'] = tensor
             return model
 
         def _process_model_after_weight_loading(self, model, **kwargs):
@@ -1787,11 +2184,8 @@ def prepare_text_encoder(model: torch.nn.Module, path: str, dtype: torch.dtype |
                 and layer.fits(module.out_features, module.in_features)):
             replacement = ComfyQuantLinear(
                 module.in_features, module.out_features, layer, bias=module.bias)
-            for name, tensor in (('weight', layer.weight), ('weight_scale', layer.scale),
-                                 ('weight_scale_2', layer.scale_2),
-                                 ('pre_quant_scale', layer.pre_quant_scale)):
-                if tensor is not None:
-                    setattr(replacement, name, torch.nn.Parameter(tensor, requires_grad=False))
+            for name, tensor in (('weight', layer.weight), *_layer_parameters(layer)):
+                setattr(replacement, name, torch.nn.Parameter(tensor, requires_grad=False))
             _set_submodule(model, module_name, replacement)
             del state[key]
             packed += 1

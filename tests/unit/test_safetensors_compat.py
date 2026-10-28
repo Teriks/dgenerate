@@ -36,6 +36,110 @@ def _quantize_int8_convrot(weight, group):
     return torch.round(rotated / scale).clamp(-128, 127).to(torch.int8), scale
 
 
+def _quantize_mxfp8(weight):
+    """FP8 E4M3 with E8M0 block scales, padded to 32 and swizzled like ComfyUI."""
+    rows, cols = weight.shape
+    padded_rows = _safetensorscompat._round_up(rows, 32)
+    padded_cols = _safetensorscompat._round_up(cols, 32)
+    padded = weight.new_zeros(padded_rows, padded_cols)
+    padded[:rows, :cols] = weight
+    blocks = padded.view(padded_rows, padded_cols // 32, 32)
+    max_abs = blocks.abs().amax(-1)
+    need = (max_abs / 448).clamp(min=2.0 ** -127)
+    exponents = (torch.ceil(torch.log2(need)).to(torch.int32) + 127).clamp(0, 254).to(torch.uint8)
+    zero = max_abs == 0
+    scale = (exponents.to(torch.int32) << 23).view(torch.float32)
+    scale = torch.where(zero, torch.ones_like(scale), scale)
+    quant = (blocks / scale.unsqueeze(-1)).reshape(padded_rows, padded_cols).clamp(-448, 448)
+    exponents = torch.where(zero, torch.zeros_like(exponents), exponents)
+    return quant.to(torch.float8_e4m3fn), _to_blocked(exponents).contiguous()
+
+
+def _pack_signed_int4(values):
+    codes = values.to(torch.int32)
+    return ((codes[:, 0::2] & 0x0F) | ((codes[:, 1::2] & 0x0F) << 4)).to(torch.int8)
+
+
+def _quantize_int4_convrot(weight, group, grouped=False):
+    hadamard = _safetensorscompat._hadamard(group, 'cpu', torch.float32)
+    rotated = (weight.view(weight.shape[0], -1, group) @ hadamard.T).reshape_as(weight)
+    if grouped:
+        blocks = rotated.view(rotated.shape[0], -1, 64)
+        scale = blocks.abs().amax(-1).clamp(min=1e-10) / 7
+        quant = torch.round(blocks / scale.unsqueeze(-1)).clamp(-7, 7).reshape_as(rotated)
+        scale = scale.contiguous()
+    else:
+        scale = rotated.abs().amax(-1, keepdim=True).clamp(min=1e-10) / 7
+        quant = torch.round(rotated / scale).clamp(-7, 7)
+    return _pack_signed_int4(quant), scale.to(torch.float32)
+
+
+def _quantize_w4a8(weight, group=16, convrot=256, fp8_scales=False):
+    """Symmetric codebook W4A8, the layout comfy-kitchen writes for ``asym_w4a8_int8``."""
+    hadamard = _safetensorscompat._hadamard(convrot, 'cpu', torch.float32)
+    rotated = (weight.view(weight.shape[0], -1, convrot) @ hadamard.T).reshape_as(weight)
+    rows, inputs = rotated.shape
+    groups = inputs // group
+    grouped = rotated.view(rows, groups, group)
+    codebook = torch.tensor(_safetensorscompat._W4A8_CODEBOOK)
+    group_scale = grouped.abs().amax(-1, keepdim=True).clamp(min=1e-8)
+
+    def assign(normalized):
+        return (normalized.unsqueeze(-1) - codebook).abs().argmin(-1)
+
+    codes = assign(grouped / group_scale)
+    for _ in range(2):
+        levels = codebook[codes]
+        group_scale = ((grouped * levels).sum(-1, keepdim=True)
+                       / levels.square().sum(-1, keepdim=True).clamp(min=1e-8)).clamp(min=1e-8)
+        codes = assign(grouped / group_scale)
+    channel = (codebook[codes] * group_scale).abs().amax(dim=(1, 2)).clamp(min=1e-8) / 127
+    rel = (group_scale.squeeze(-1) / channel.unsqueeze(1)).float()
+    if fp8_scales:
+        rel = rel.to(torch.float8_e4m3fn).float()
+    grid = (codebook.view(1, 1, -1) * rel.unsqueeze(-1)).round().clamp(-127, 127)
+    target = grouped / channel.view(rows, 1, 1)
+    codes = (target.unsqueeze(-1) - grid.unsqueeze(2)).abs().argmin(-1).reshape(rows, inputs)
+    packed = ((codes[:, 0::2] & 0x0F) | ((codes[:, 1::2] & 0x0F) << 4)).to(torch.int8)
+    stored_rel = rel.to(torch.float8_e4m3fn) if fp8_scales else rel
+    return packed, stored_rel.contiguous(), channel.contiguous(), codebook
+
+
+def _pack_int6(codes):
+    """Unsigned 6-bit codes ``(rows, inputs)`` -> int8 ``(rows, inputs * 3 / 4)``."""
+    low = ((codes[:, 0::2] & 0x0F) | ((codes[:, 1::2] & 0x0F) << 4)).to(torch.int32)
+    high = (codes[:, 0::4] >> 4) & 0x3
+    for shift in range(1, 4):
+        high = high | (((codes[:, shift::4] >> 4) & 0x3) << (2 * shift))
+    return torch.cat((low, high), dim=1).to(torch.int8).contiguous()
+
+
+def _quantize_w6a8(weight, group=16, convrot=256):
+    """Uniform 6-bit W6A8: levels -31..31 stored as ``level + 32``."""
+    hadamard = _safetensorscompat._hadamard(convrot, 'cpu', torch.float32)
+    rotated = (weight.view(weight.shape[0], -1, convrot) @ hadamard.T).reshape_as(weight)
+    rows, inputs = rotated.shape
+    groups = inputs // group
+    grouped = rotated.view(rows, groups, group)
+    group_scale = (grouped.abs().amax(-1, keepdim=True) / 31).clamp(min=1e-8)
+
+    def assign(normalized):
+        return normalized.round().clamp(-31, 31)
+
+    signed = assign(grouped / group_scale)
+    for _ in range(2):
+        group_scale = ((grouped * signed).sum(-1, keepdim=True)
+                       / signed.square().sum(-1, keepdim=True).clamp(min=1e-8)).clamp(min=1e-8)
+        signed = assign(grouped / group_scale)
+    channel = (signed * group_scale).abs().amax(dim=(1, 2)).clamp(min=1e-8) / 127
+    rel = (group_scale.squeeze(-1) / channel.unsqueeze(1)).float()
+    level_table = torch.arange(-31, 32)
+    grid = (level_table.view(1, 1, -1) * rel.unsqueeze(-1)).round().clamp(-127, 127)
+    target = grouped / channel.view(rows, 1, 1)
+    index = (target.unsqueeze(-1) - grid.unsqueeze(2)).abs().argmin(-1)
+    return _pack_int6((index + 1).reshape(rows, inputs)), rel.contiguous(), channel.contiguous()
+
+
 def _quantize_nvfp4(weight):
     values = torch.tensor(_safetensorscompat._E2M1_VALUES[:8])
     rows, cols = weight.shape
@@ -82,8 +186,11 @@ class TestSafetensorsCompat(unittest.TestCase):
         layer = next(iter(loaded.sources.values()))
         module = _safetensorscompat.ComfyQuantLinear(256, 128, layer)
         state = {'weight': layer.weight, 'weight_scale': layer.scale}
-        if layer.scale_2 is not None:
-            state['weight_scale_2'] = layer.scale_2
+        for attr, key in (('scale_2', 'weight_scale_2'), ('codebook', 'weight_codebook'),
+                          ('correction', 'weight_correction')):
+            value = getattr(layer, attr)
+            if value is not None:
+                state[key] = value
         module.load_state_dict(state, assign=True)
         for _, param in module.named_parameters():
             self.assertFalse(param.is_floating_point())
@@ -325,11 +432,232 @@ class TestSafetensorsCompat(unittest.TestCase):
         lookup = torch.nn.functional.embedding(storage.int(), table).view(-1)
         self.assertTrue(torch.equal(native.nan_to_num(), lookup.nan_to_num()))
 
+    def _dense_error(self, layer, weight=None):
+        weight = self.weight if weight is None else weight
+        dense = layer.dequantize(torch.float32)[:weight.shape[0], :weight.shape[1]]
+        return ((dense - weight).norm() / weight.norm()).item()
+
+    def _loaded_layer(self, tensors, metadata=None):
+        path = self._write(tensors, metadata=metadata)
+        self.assertTrue(_safetensorscompat.is_comfy_quantized(path))
+        return next(iter(_safetensorscompat.load_checkpoint(path, torch.float32).sources.values()))
+
+    def test_mxfp8_marker_and_kitchen_metadata(self):
+        weight, scale = _quantize_mxfp8(self.weight)
+        tensors = {'layer.weight': weight, 'layer.weight_scale': scale}
+        marker = {'layer.comfy_quant': _marker({'format': 'mxfp8'})}
+        for metadata, extra in (
+                (None, marker),
+                (self._kitchen_metadata({'layer': {'format': 'mxfp8'}}), {})):
+            with self.subTest(kitchen=metadata is not None):
+                layer = self._loaded_layer({**tensors, **extra}, metadata)
+                self.assertEqual(layer.format, 'mxfp8')
+                self.assertLess(self._dense_error(layer), 0.05)
+                module = _safetensorscompat.ComfyQuantLinear(256, 128, layer)
+                module.load_state_dict(
+                    {'weight': layer.weight, 'weight_scale': layer.scale}, assign=True)
+                self.assertLess(self._relative_error(module(self.x)), 0.05)
+
+    def test_mxfp8_padding_trims_to_the_linear(self):
+        weight = torch.randn(100, 200) * 0.02
+        stored, scale = _quantize_mxfp8(weight)
+        self.assertEqual(tuple(stored.shape), (128, 224))
+        layer = self._loaded_layer({
+            'layer.weight': stored, 'layer.weight_scale': scale,
+            'layer.comfy_quant': _marker({'format': 'mxfp8'})})
+        self.assertTrue(layer.fits(100, 200))
+        dense = layer.dequantize(torch.float32, (100, 200))
+        self.assertLess(((dense - weight).norm() / weight.norm()).item(), 0.05)
+
+    def test_mxfp8_without_metadata_is_inferred(self):
+        # No comfy_quant and no Kitchen entry: uint8 E8M0 scales name the format.
+        weight, scale = _quantize_mxfp8(self.weight)
+        layer = self._loaded_layer({'layer.weight': weight, 'layer.weight_scale': scale})
+        self.assertEqual(layer.format, 'mxfp8')
+        self.assertLess(self._dense_error(layer), 0.05)
+
+    def test_e8m0_zero_is_zero_and_bias_is_127(self):
+        exponents = torch.tensor([0, 127, 128], dtype=torch.uint8)
+        self.assertEqual(
+            _safetensorscompat._e8m0_to_float(exponents).tolist(), [0.0, 1.0, 2.0])
+
+    def test_int4_convrot_marker_and_kitchen_metadata(self):
+        packed, scale = _quantize_int4_convrot(self.weight, 64)
+        tensors = {'layer.weight': packed, 'layer.weight_scale': scale}
+        config = {'format': 'convrot_w4a4', 'convrot_groupsize': 64}
+        for metadata, extra in (
+                (None, {'layer.comfy_quant': _marker(config)}),
+                (self._kitchen_metadata({'layer': config}), {})):
+            with self.subTest(kitchen=metadata is not None):
+                layer = self._loaded_layer({**tensors, **extra}, metadata)
+                self.assertEqual(layer.convrot_group_size, 64)
+                self.assertLess(self._dense_error(layer), 0.15)
+                module = _safetensorscompat.ComfyQuantLinear(256, 128, layer)
+                module.load_state_dict(
+                    {'weight': layer.weight, 'weight_scale': layer.scale}, assign=True)
+                self.assertLess(self._relative_error(module(self.x)), 0.15)
+
+    def test_int4_convrot_group_scales(self):
+        # One scale per 64 inputs, rather than the per-row scale kitchen writes.
+        packed, scale = _quantize_int4_convrot(self.weight, 64, grouped=True)
+        self.assertEqual(tuple(scale.shape), (128, 4))
+        layer = self._loaded_layer({
+            'layer.weight': packed, 'layer.weight_scale': scale,
+            'layer.comfy_quant': _marker(
+                {'format': 'convrot_w4a4', 'convrot_groupsize': 64})})
+        self.assertEqual(layer.group_size, 64)
+        self.assertLess(self._dense_error(layer), 0.15)
+
+    def test_w4a8_marker_kitchen_and_inferred(self):
+        packed, rel, channel, codebook = _quantize_w4a8(self.weight, fp8_scales=True)
+        tensors = {
+            'layer.weight': packed, 'layer.weight_s_rel': rel,
+            'layer.weight_s_channel': channel, 'layer.weight_codebook': codebook}
+        config = {'format': 'asym_w4a8_int8', 'group_size': 16, 'convrot_groupsize': 256}
+        cases = (
+            ('marker', None, {'layer.comfy_quant': _marker(config)}),
+            ('kitchen', self._kitchen_metadata({'layer': config}), {}),
+            ('inferred', None, {}),
+        )
+        for name, metadata, extra in cases:
+            with self.subTest(source=name):
+                layer = self._loaded_layer({**tensors, **extra}, metadata)
+                self.assertEqual((layer.format, layer.group_size, layer.convrot_group_size),
+                                 ('asym_w4a8_int8', 16, 256))
+                self.assertLess(self._dense_error(layer), 0.15)
+                module = _safetensorscompat.ComfyQuantLinear(256, 128, layer)
+                state = {'weight': layer.weight, 'weight_scale': layer.scale,
+                         'weight_scale_2': layer.scale_2, 'weight_codebook': layer.codebook}
+                module.load_state_dict(state, assign=True)
+                for _, param in module.named_parameters():
+                    self.assertFalse(param.is_floating_point())
+                self.assertLess(self._relative_error(module(self.x)), 0.15)
+
+    def test_w6a8_marker_kitchen_and_inferred(self):
+        packed, rel, channel = _quantize_w6a8(self.weight)
+        self.assertEqual(packed.shape[1], 192)
+        tensors = {'layer.weight': packed, 'layer.weight_s_rel': rel,
+                   'layer.weight_s_channel': channel}
+        config = {'format': 'w6a8_int8', 'group_size': 16, 'convrot_groupsize': 256}
+        cases = (
+            ('marker', None, {'layer.comfy_quant': _marker(config)}),
+            ('kitchen', self._kitchen_metadata({'layer': config}), {}),
+            ('inferred', None, {}),
+        )
+        for name, metadata, extra in cases:
+            with self.subTest(source=name):
+                layer = self._loaded_layer({**tensors, **extra}, metadata)
+                self.assertEqual((layer.format, layer.group_size, layer.convrot_group_size),
+                                 ('w6a8_int8', 16, 256))
+                self.assertIsNone(layer.codebook)
+                self.assertLess(self._dense_error(layer), 0.1)
+                module = _safetensorscompat.ComfyQuantLinear(256, 128, layer)
+                module.load_state_dict(
+                    {'weight': layer.weight, 'weight_scale': layer.scale,
+                     'weight_scale_2': layer.scale_2}, assign=True)
+                self.assertLess(self._relative_error(module(self.x)), 0.1)
+
+    def test_w6a8_kitchen_group_size_and_exact_codes(self):
+        packed, rel, channel = _quantize_w6a8(self.weight, group=32, convrot=64)
+        layer = self._loaded_layer({
+            'layer.weight': packed, 'layer.weight_s_rel': rel, 'layer.weight_s_channel': channel,
+        }, self._kitchen_metadata({'layer': {
+            'format': 'w6a8_int8', 'group_size': 32, 'convrot_groupsize': 64}}))
+        self.assertEqual((layer.group_size, layer.convrot_group_size), (32, 64))
+        self.assertLess(self._dense_error(layer), 0.1)
+
+        rows, inputs, group, rotation = 4, 32, 16, 16
+        codes = torch.randint(0, 64, (rows, inputs))
+        rel = torch.rand(rows, inputs // group) + 0.05
+        channel = torch.rand(rows) + 0.01
+        levels = (codes.float().view(rows, -1, group) - 32) * rel.unsqueeze(-1)
+        rotated = levels.round().clamp(-127, 127) * channel.view(rows, 1, 1)
+        expected = _safetensorscompat._rotate(rotated.reshape(rows, inputs), rotation)
+        exact = self._loaded_layer({
+            'layer.weight': _pack_int6(codes), 'layer.weight_s_rel': rel,
+            'layer.weight_s_channel': channel,
+            'layer.comfy_quant': _marker(
+                {'format': 'w6a8_int8', 'group_size': group, 'convrot_groupsize': rotation})})
+        self.assertTrue(torch.allclose(exact.dequantize(torch.float32), expected, atol=1e-5))
+
+    def test_w4a8_kitchen_group_size_is_not_the_default(self):
+        # Metadata must supply the group. The default of 16 does not match this grid.
+        packed, rel, channel, codebook = _quantize_w4a8(self.weight, group=32, convrot=64)
+        layer = self._loaded_layer({
+            'layer.weight': packed, 'layer.weight_s_rel': rel,
+            'layer.weight_s_channel': channel, 'layer.weight_codebook': codebook,
+        }, self._kitchen_metadata({'layer': {
+            'format': 'asym_w4a8_int8', 'group_size': 32, 'convrot_groupsize': 64}}))
+        self.assertEqual((layer.group_size, layer.convrot_group_size), (32, 64))
+        self.assertLess(self._dense_error(layer), 0.15)
+
+    def test_w4a8_correction_and_missing_codebook(self):
+        rows, inputs, group, rotation = 8, 64, 16, 64
+        codes = torch.randint(0, 16, (rows, inputs))
+        packed = ((codes[:, 0::2] & 0x0F) | ((codes[:, 1::2] & 0x0F) << 4)).to(torch.int8)
+        rel = torch.rand(rows, inputs // group) + 0.05
+        channel = torch.rand(rows) + 0.01
+        correction = torch.randn(inputs // group, rows) * 0.01
+        codebook = torch.linspace(-1, 1, 16)
+        levels = codebook[codes].view(rows, -1, group) * rel.unsqueeze(-1)
+        rotated = levels.round().clamp(-127, 127) * channel.view(rows, 1, 1)
+        rotated = rotated + correction.t().unsqueeze(-1)
+        expected = _safetensorscompat._rotate(rotated.reshape(rows, inputs), rotation)
+        config = {'format': 'asym_w4a8_int8', 'group_size': group, 'convrot_groupsize': rotation}
+        base = {'layer.weight': packed, 'layer.weight_s_rel': rel,
+                'layer.weight_s_channel': channel, 'layer.weight_correction': correction,
+                'layer.comfy_quant': _marker(config)}
+        with_codebook = self._loaded_layer({**base, 'layer.weight_codebook': codebook})
+        self.assertTrue(torch.allclose(with_codebook.dequantize(torch.float32), expected, atol=1e-5))
+        uniform = codes.float().view(rows, -1, group) - 8
+        uniform = uniform * rel.unsqueeze(-1)
+        uniform = uniform.round().clamp(-127, 127) * channel.view(rows, 1, 1)
+        uniform = uniform + correction.t().unsqueeze(-1)
+        uniform = _safetensorscompat._rotate(uniform.reshape(rows, inputs), rotation)
+        without = self._loaded_layer(base)
+        self.assertIsNone(without.codebook)
+        self.assertTrue(torch.allclose(without.dequantize(torch.float32), uniform, atol=1e-5))
+
+    def test_packed_formats_split_by_rows(self):
+        # Fused projections are split while the storage is still packed.
+        weight = torch.randn(128, 256) * 0.02
+        mx_weight, mx_scale = _quantize_mxfp8(weight)
+        int4, int4_scale = _quantize_int4_convrot(weight, 64)
+        w4, rel, channel, codebook = _quantize_w4a8(weight, convrot=64)
+        w6, w6_rel, w6_channel = _quantize_w6a8(weight, convrot=64)
+        cases = {
+            'mxfp8': {'weight': mx_weight, 'weight_scale': mx_scale,
+                      'comfy_quant': _marker({'format': 'mxfp8'})},
+            'int4': {'weight': int4, 'weight_scale': int4_scale,
+                     'comfy_quant': _marker(
+                         {'format': 'convrot_w4a4', 'convrot_groupsize': 64})},
+            'w4a8': {'weight': w4, 'weight_s_rel': rel, 'weight_s_channel': channel,
+                     'weight_codebook': codebook,
+                     'comfy_quant': _marker(
+                         {'format': 'asym_w4a8_int8', 'group_size': 16,
+                          'convrot_groupsize': 64})},
+            'w6a8': {'weight': w6, 'weight_s_rel': w6_rel, 'weight_s_channel': w6_channel,
+                     'comfy_quant': _marker(
+                         {'format': 'w6a8_int8', 'group_size': 16, 'convrot_groupsize': 64})},
+        }
+        for fmt, tensors in cases.items():
+            with self.subTest(fmt=fmt):
+                loaded, converted = self._convert(
+                    {f'qkv.{name}': value for name, value in tensors.items()},
+                    lambda checkpoint, **kwargs: dict(zip(
+                        ('a.weight', 'b.weight'),
+                        torch.chunk(checkpoint.pop('qkv.weight'), 2, dim=0))))
+                for index, key in enumerate(('a.weight', 'b.weight')):
+                    layer = self._assembled(loaded, converted, key)
+                    expected = weight[index * 64:(index + 1) * 64]
+                    error = (layer.dequantize(torch.float32, (64, 256)) - expected).norm() / expected.norm()
+                    self.assertLess(error.item(), 0.15)
+
     def test_unsupported_format_is_an_error(self):
         path = self._write({
             'layer.weight': torch.zeros(128, 256, dtype=torch.int8),
             'layer.weight_scale': torch.ones(128, 1),
-            'layer.comfy_quant': _marker({'format': 'convrot_w4a4'})})
+            'layer.comfy_quant': _marker({'format': 'not_a_format'})})
         with self.assertRaises(_safetensorscompat.ComfyQuantError):
             _safetensorscompat.load_checkpoint(path, torch.float32)
 
