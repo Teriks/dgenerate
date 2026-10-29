@@ -307,6 +307,10 @@ loras
 
 ``--loras org/repo`` or
 ``--loras org/repo;weight-name=file.safetensors;scale=0.8``.
+The only URI arguments are ``scale``, ``revision``, ``subfolder``,
+``weight-name``, and ``component``. A trigger word goes in
+``--prompts``. ``token=`` is not a LoRA argument; it is only valid
+on ``--textual-inversions``.
 Only use LoRA repos and ``weight-name`` files that appear in the
 examples. Known SDXL files in ``goofyai/SDXL-Lora-Collection`` include
 ``leonardo_illustration.safetensors``. If the request names a style

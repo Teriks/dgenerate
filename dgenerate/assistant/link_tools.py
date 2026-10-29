@@ -577,7 +577,12 @@ def _format_civitai(url: str, model: dict, version: dict, *, version_was_request
         lines.append('Other versions on this page (not selected, do not use):')
         lines.extend(f'  - {_version_line(v)}' for v in others[:8])
     if trained:
-        lines.append(f'trainedWords: {", ".join(str(w) for w in trained[:20])}')
+        lines.append(
+            'trainedWords (write these in --prompts, not as a URI argument): '
+            + ', '.join(str(word) for word in trained[:20]))
+        lines.append(
+            '--loras accepts only scale, revision, subfolder, weight-name, and component. '
+            'token= is not a LoRA argument. It is only valid on --textual-inversions.')
     downloads = []
     saw_selected = False
     for file in version.get('files') or []:

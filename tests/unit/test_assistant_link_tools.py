@@ -304,7 +304,9 @@ class TestLinkTools(unittest.TestCase):
         self.assertIn('krea/Krea-2-Raw', text)
         self.assertIn('baseModel Pony', text)
         self.assertIn('not selected', text)
-        self.assertNotIn('FLUX.2', text)
+        self.assertIn('3d render of', text)
+        self.assertIn('write these in --prompts', text)
+        self.assertIn('token= is not a LoRA argument', text)
 
     def test_description_mention_does_not_override_the_name(self):
         guessed = link_tools._guess_model_type(

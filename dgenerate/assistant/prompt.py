@@ -151,7 +151,10 @@ environmental variable. \\exit {{% endif %}} once only. No --auth-token check. \
 Do not put token= or {{{{ civit_ai_token }}}} on the download URL. dgenerate \
 appends CIVIT_AI_TOKEN from the environment to a civitai.com or civitai.red \
 /api/download link that does not already have token=. Examples that write \
-?token={{{{ civit_ai_token }}}} are not the pattern to copy.
+?token={{{{ civit_ai_token }}}} are not the pattern to copy. \
+A CivitAI trigger word (trainedWords) goes in --prompts only. It is not a \
+URI argument. --loras accepts only scale, revision, subfolder, weight-name, \
+and component. token= is valid only on --textual-inversions.
 - The Machine section is the memory plan for this computer, one row per model. \
 Copy that row's flags onto the invocation. Do not write a total_memory \
 check or an {{% if %}} block that picks the flags. SD3 full checkpoints use \
@@ -240,7 +243,9 @@ the other versions on that page, not this link. A file marked [selected by fileI
 URL asked for. Copy a download URL with no token= query. dgenerate appends CIVIT_AI_TOKEN from the \
 environment. A Hugging Face repo id is only organization/name. Copy a listed weight as subfolder= \
 and weight-name= inside one quoted value. An unquoted space splits that value into two tokens. \
-Use the trigger word from the note beside that weight.
+Use the trigger word in --prompts. It is not a URI argument. --loras accepts \
+only scale, revision, subfolder, weight-name, and component. token= is valid \
+only on --textual-inversions.
 - Map LoRA and TextualInversion publishes to the suggested base --model-type plus --loras or \
 embeddings, not a checkpoint line alone.
 """
@@ -608,7 +613,8 @@ def first_draft_recipes(request: str, editor: str | None = None,
         'That \\print is exactly: \\print Set CIVIT_AI_TOKEN environmental variable.',
         'Put the CIVIT_AI_TOKEN \\set and that single early-exit only once at the top of the config.',
         'Do not put token= or {{ civit_ai_token }} on the download URL. dgenerate appends '
-        'CIVIT_AI_TOKEN from the environment. Copy the download URL without a token query.',
+        'CIVIT_AI_TOKEN from the environment. Copy the download URL without a token query. '
+        'A trigger word goes in --prompts, never as token= on --loras.',
         'Neither token \\print contains the word "example".',
     ]
     if re.search(r'\b(animat\w*|video|ltx|wan|clip)\b', request, re.IGNORECASE):

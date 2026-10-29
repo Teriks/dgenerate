@@ -119,6 +119,8 @@ class TestAssistantPrompt(unittest.TestCase):
         civit = first_draft_recipes('download the sdxl checkpoint from civitai')
         self.assertIn('Include one CIVIT_AI_TOKEN early-exit at the top of the config only', civit)
         self.assertIn('Do not put token=', civit)
+        self.assertIn('trigger word goes in --prompts', first_draft_recipes(
+            'https://civitai.com/models/1/style'))
         red = first_draft_recipes('https://civitai.red/models/1/style')
         self.assertIn('Include one CIVIT_AI_TOKEN early-exit at the top of the config only', red)
         hugging_face = first_draft_recipes('sdxl photo of a horse')

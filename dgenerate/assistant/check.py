@@ -356,6 +356,34 @@ _MODEL_URI_OPTIONS = (
 )
 
 
+def _model_uri_syntax(config) -> list[str]:
+    """Reject URI arguments the loader would reject, before any model is loaded."""
+    import dgenerate.pipelinewrapper.uris as _uris
+
+    problems = []
+
+    def one(flag: str, values, parse) -> None:
+        if not values:
+            return
+        if isinstance(values, str):
+            values = [values]
+        for uri in values:
+            if not isinstance(uri, str) or not uri.strip():
+                continue
+            try:
+                parse(uri)
+            except Exception as error:
+                problems.append(f'{flag}: {error}')
+
+    one('--loras', getattr(config, 'lora_uris', None), _uris.LoRAUri.parse)
+    one('--control-loras', getattr(config, 'control_lora_uris', None), _uris.ControlLoRAUri.parse)
+    one('--ltx-ic-lora', getattr(config, 'ltx_ic_lora_uri', None), _uris.ICLoRAUri.parse)
+    one('--textual-inversions', getattr(config, 'textual_inversion_uris', None),
+        _uris.TextualInversionUri.parse)
+    one('--ip-adapters', getattr(config, 'ip_adapter_uris', None), _uris.IPAdapterUri.parse)
+    return problems
+
+
 def _uri_repos(config) -> list[tuple[str, str | None, str | None]]:
     """
     (repo, weight-name, subfolder) for every Hugging Face repo named in a model URI option.
@@ -892,6 +920,8 @@ def check_config(text: str, memory: tuple | None = None) -> dict:
             if config.plugin_module_paths:
                 uri_checker.load_plugin_modules(config.plugin_module_paths)
             for problem in uri_checker.invocation(config):
+                errors.append({'line': line, 'message': problem})
+            for problem in _model_uri_syntax(config):
                 errors.append({'line': line, 'message': problem})
             for repo, weight_name, subfolder in _uri_repos(config):
                 uri_problem = _repo_problem(repo, repo_problems) or \

@@ -558,6 +558,26 @@ class TestAssistantCheck(unittest.TestCase):
         self.assertIn('--quantizer bnb;bits=4', _messages(report))
         self.assertNotIn('sequential-offload', _messages(report))
 
+    def test_lora_trigger_word_is_not_a_uri_argument(self):
+        report = check_config(_cfg(
+            'krea/Krea-2-Raw',
+            '--model-type krea2 --dtype bfloat16',
+            '--model-sequential-offload',
+            '--loras "https://civitai.com/api/download/models/3262678?fileId=3146115;token=vap0rglitch"',
+            '--prompts "vap0rglitch, a fox"',
+        ), memory=(True, 24.0, True, False))
+        text = _messages(report)
+        self.assertIn('Unknown path argument "token"', text)
+        self.assertIn('weight-name', text)
+        plain = check_config(_cfg(
+            'krea/Krea-2-Raw',
+            '--model-type krea2 --dtype bfloat16',
+            '--model-sequential-offload',
+            '--loras "https://civitai.com/api/download/models/3262678?fileId=3146115"',
+            '--prompts "vap0rglitch, a fox"',
+        ), memory=(True, 24.0, True, False))
+        self.assertNotIn('Unknown path argument', _messages(plain))
+
     def test_klein_4b_quantizer_is_enough(self):
         report = check_config(_cfg(
             'black-forest-labs/FLUX.2-klein-4B',
