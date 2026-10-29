@@ -35,7 +35,7 @@ title: Stable Diffusion XL LCM UNet (no refiner)
 @latentsprocessor[{"arg":"--latents-processors", "label":"Raw Latents Processor", "divider-after":true}]
 @int[{"id":"is","label":"Inference Steps","arg":"--inference-steps","default":4,"min":1,"exclude":["ts"]}]
 @string[{"id":"ts","label":"Timesteps (override)","arg":"--timesteps","default":"","exclude":["is"]}]
-@float":[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":8, "min":0}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":8, "min":0}]
 @float[{"label":"Guidance Rescale", "arg":"--guidance-rescales", "min":0}]
 @float[{"label":"PAG Scale", "arg":"--pag-scales", "min":0}]
 @float[{"label":"Adaptive PAG Scale", "arg":"--pag-adaptive-scales", "min":0}]
