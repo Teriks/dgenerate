@@ -392,9 +392,12 @@ class DgenerateConsole(tk.Tk):
 
         # Create the output text pane
 
-        # Parent the log to the console. wm manage can then turn it into a real
-        # window on Windows, Linux, and macOS; a pane child cannot be managed on Aqua.
-        self._output_text = ScrolledText(self)
+        # Parent the log to the console for wm_manage float/dock (see _float_output).
+        # Tk on Windows rejects wm_manage on ttk.Frame; ScrolledText stays ttk inside
+        # a classic Frame shell that only exists so the output can become its own window.
+        self._output_pane = tk.Frame(self)
+        self._output_text = ScrolledText(self._output_pane)
+        self._output_text.pack(fill=tk.BOTH, expand=True)
 
         self._output_text.text.bind('<Double-Button-1>', _util.select_whitespace_delimited_token)
         self._output_text.text.bind('<Button-3>',
@@ -448,7 +451,7 @@ class DgenerateConsole(tk.Tk):
                 command=lambda: self._show_selected_image_in_directory(self._output_text.text))
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Make Window', command=self._toggle_output_float)
-        self._output_float_menu_index = self._output_text_context.index(tk.END)
+        self._output_float_menu_index = self._output_text_context.index('end') - 1
 
         # Patch the output text context menu to enable/disable Preview Selected Image
         og_output_popup = self._output_text_context.tk_popup
@@ -468,7 +471,7 @@ class DgenerateConsole(tk.Tk):
 
         self._output_text_context.tk_popup = patch_output_tk_popup
 
-        self._paned_window_vertical.add(self._output_text)
+        self._paned_window_vertical.add(self._output_pane)
         self._output_floated = tk.BooleanVar(value=False)
         self._output_is_floating = False
         self._output_float_geometry = '700x420'
@@ -492,7 +495,7 @@ class DgenerateConsole(tk.Tk):
                                         variable=self._tearoff_image_pane.get_window_visible_var())
         self._view_menu.add_separator()
         self._view_menu.add_command(label='Console Output Window', command=self._toggle_output_float)
-        self._output_view_menu_index = self._view_menu.index(tk.END)
+        self._output_view_menu_index = self._view_menu.index('end') - 1
 
         # Misc Config
 
@@ -921,7 +924,7 @@ class DgenerateConsole(tk.Tk):
     def _float_output(self):
         if self._output_is_floating:
             return
-        output = self._output_text
+        output = self._output_pane
         try:
             self._output_sash = self._paned_window_vertical.sash_coord(0)
         except tk.TclError:
@@ -950,12 +953,12 @@ class DgenerateConsole(tk.Tk):
             return
         self._output_is_floating = True
         self._sync_output_window_labels()
-        output.text.focus_set()
+        self._output_text.text.focus_set()
 
     def _dock_output(self):
         if not self._output_is_floating:
             return
-        output = self._output_text
+        output = self._output_pane
         try:
             self._output_float_geometry = output.tk.call('wm', 'geometry', output._w)
         except tk.TclError:
