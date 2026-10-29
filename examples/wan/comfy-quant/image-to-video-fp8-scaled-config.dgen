@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan I2V 14B with ComfyUI's scaled FP8 transformer. Same prompt as
+# examples/wan/image_conditioning/image-to-video-config.dgen.
+
+\setp image "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg"
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+
+Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_i2v_480p_14B_fp8_scaled.safetensors
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 5
+--animation-format mp4
+--output-path wan-comfy-quant-i2v
+--image-seeds {{ image }}
+--prompts "An astronaut in a white spacesuit stands on the lunar surface, then walks forward. Dust lifts around the boots. Earth hangs in the black sky. The suit matches the first frame. High quality, ultrarealistic detail.;{{ neg }}"

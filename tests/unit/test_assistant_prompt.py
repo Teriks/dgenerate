@@ -100,7 +100,7 @@ class TestAssistantPrompt(unittest.TestCase):
         self.assertIn('Do not copy that sentence', recipes)
         self.assertIn(r'\print Set HF_TOKEN environmental variable or pass --auth-token.', recipes)
         self.assertIn('no negative prompt', recipes)
-        self.assertIn('Include the HF_TOKEN early-exit', recipes)
+        self.assertIn('Include one HF_TOKEN early-exit at the top of the config only', recipes)
         self.assertIn('Do not add CIVIT_AI_TOKEN', recipes)
         self.assertIn('(main subject:1.3)', recipes)
         self.assertNotIn('--prompt-weighter compel', recipes)
@@ -108,16 +108,16 @@ class TestAssistantPrompt(unittest.TestCase):
     def test_public_checkpoint_omits_hf_token(self):
         sdxl = first_draft_recipes('sdxl photo of a horse')
         self.assertIn('Do not add HF_TOKEN', sdxl)
-        self.assertNotIn('Include the HF_TOKEN early-exit', sdxl)
+        self.assertNotIn('Include one HF_TOKEN early-exit', sdxl)
         schnell = first_draft_recipes('flux schnell wallpaper')
         self.assertIn('Do not add HF_TOKEN', schnell)
 
     def test_civitai_token_only_for_civitai_links(self):
         civit = first_draft_recipes('download the sdxl checkpoint from civitai')
-        self.assertIn('Include the CIVIT_AI_TOKEN early-exit', civit)
+        self.assertIn('Include one CIVIT_AI_TOKEN early-exit at the top of the config only', civit)
         hugging_face = first_draft_recipes('sdxl photo of a horse')
         self.assertIn('Do not add CIVIT_AI_TOKEN', hugging_face)
-        self.assertNotIn('Include the CIVIT_AI_TOKEN early-exit', hugging_face)
+        self.assertNotIn('Include one CIVIT_AI_TOKEN early-exit', hugging_face)
 
     def test_first_draft_compel(self):
         recipes = first_draft_recipes('use compel prompt weighting')

@@ -1,0 +1,35 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Replace the Fill DiT with a pre-quantized GGUF file. The Hugging Face
+# repo still supplies the VAE and text encoders. T5 is quantized
+# separately with bitsandbytes, or sdnq if bitsandbytes is not available.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% endif %}
+
+\setp image "https://huggingface.co/datasets/diffusers/diffusers-images-docs/resolve/main/cup.png"
+\setp mask "https://huggingface.co/datasets/diffusers/diffusers-images-docs/resolve/main/cup_mask.png"
+
+black-forest-labs/FLUX.1-Fill-dev
+--model-type flux-fill {{ te_quant }}
+--dtype bfloat16
+--model-cpu-offload
+--transformer https://huggingface.co/YarvixPA/FLUX.1-Fill-dev-GGUF/blob/main/flux1-fill-dev-Q4_K_S.gguf
+--output-size 768
+--inference-steps 50
+--guidance-scales 30
+--image-seeds "{{ image }};{{ mask }}"
+--prompts "a white paper cup"

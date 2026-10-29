@@ -123,8 +123,9 @@ def _template_delayed_expansion(text: str) -> list[dict]:
             errors.append({
                 'line': start,
                 'message': (
-                    'When CIVIT_AI_TOKEN or HF_TOKEN is required, \\set it at the top, then '
-                    '{% if not token.strip() %} \\print ... \\exit {% endif %} once. Do not '
+                    'When CIVIT_AI_TOKEN or HF_TOKEN is required, \\set it at the top of the config, then '
+                    '{% if not token.strip() %} \\print ... \\exit {% endif %} once only. Do not '
+                    'repeat the gating check later in the file or inside {% for %}. Do not '
                     'wrap \\set, \\download, or the generation in {% if token %}. After the '
                     'exit, \\set model and invoke at the top level.'
                 ),

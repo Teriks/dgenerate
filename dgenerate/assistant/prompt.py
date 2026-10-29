@@ -63,10 +63,12 @@ same render. \\set, \\setp, \\sete, \\download, and \\gen_seeds inside \
 the block have not run yet, so {{{{ name }}}} in the same block is \
 empty. last_images inside the block is the list from before the \
 block, including later iterations of a {{% for %}}. When CIVIT_AI_TOKEN \
-or HF_TOKEN is required, \\set it on the first lines, then one early \
-exit: {{% if not token.strip() %}} \\print Set HF_TOKEN environmental \
+or HF_TOKEN is required, run the gating check only once at the top of the \
+config file (after the shebang and version line): \\set the token on the \
+first lines, then one early exit: {{% if not token.strip() %}} \\print Set HF_TOKEN environmental \
 variable or pass --auth-token. \\exit {{% endif %}} (CivitAI: \
-CIVIT_AI_TOKEN, no --auth-token). After that, \\set model and the \
+CIVIT_AI_TOKEN, no --auth-token). Do not repeat that check later in the \
+file, inside {{% for %}}, or per invocation. After that, \\set model and the \
 invocation are at the top level. Never wrap \\set, \\download, or a \
 generation in {{% if token %}}. Official .dgen files say "to run this \
 example" because they are examples; you are writing a config the user \
@@ -101,15 +103,16 @@ Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32, Qwen/Qwen-Image, \
 black-forest-labs/FLUX.2-klein-4B. \
 Gated: FLUX.1-dev, FLUX.1-Krea-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, \
 black-forest-labs/FLUX.2-dev, black-forest-labs/FLUX.2-klein-base-9B, SD3, SD3.5, \
-LTX-2.5, LTX-Video, DeepFloyd IF. For a gated repo, \\set token %HF_TOKEN%, \
+LTX-2.5, LTX-Video, DeepFloyd IF. For a gated repo, \\set token %HF_TOKEN% once at the top, \
 then {{% if not token.strip() and not '--auth-token' in injected_args %}} \
 \\print Set HF_TOKEN environmental variable or pass --auth-token. \
-\\exit {{% endif %}}. Do not wrap the generation. Do not write "example" \
+\\exit {{% endif %}} once only. Do not wrap the generation. Do not duplicate \
+the check in a loop or a second block. Do not write "example" \
 in that \\print. CIVIT_AI_TOKEN is only for a civitai.com download link. \
 Omit it when every model is a Hugging Face repo or a local file. For a \
-CivitAI link: \\set civit_ai_token %CIVIT_AI_TOKEN%, then \
+CivitAI link: \\set civit_ai_token %CIVIT_AI_TOKEN% once at the top, then \
 {{% if not civit_ai_token.strip() %}} \\print Set CIVIT_AI_TOKEN \
-environmental variable. \\exit {{% endif %}}. No --auth-token check.
+environmental variable. \\exit {{% endif %}} once only. No --auth-token check.
 - Paths marked (input file) in the request are inputs, for example for --image-seeds. \
 Copy them exactly. They are never output paths: --output-path is a new directory name \
 for the results. Paths in the examples that start with path/to/ are placeholders. If the request needs an input file it did not name, use a \
@@ -485,8 +488,12 @@ def first_draft_recipes(request: str) -> str:
         'LTX-2.5, LTX-Video, DeepFloyd IF.',
         'For a gated repo the \\print is exactly:',
         r'    \print Set HF_TOKEN environmental variable or pass --auth-token.',
+        'Put the HF_TOKEN \\set and that single {% if %} \\print \\exit {% endif %} block '
+        'only once at the top of the config (after the shebang lines), not inside loops '
+        'or before each invocation.',
         'CIVIT_AI_TOKEN is only for a civitai.com link. A Hugging Face repo or a local file does not use it.',
         'That \\print is exactly: \\print Set CIVIT_AI_TOKEN environmental variable.',
+        'Put the CIVIT_AI_TOKEN \\set and that single early-exit only once at the top of the config.',
         'Neither token \\print contains the word "example".',
     ]
     if re.search(r'\b(animat\w*|video|ltx|wan|clip)\b', request, re.IGNORECASE):
@@ -509,11 +516,13 @@ def first_draft_recipes(request: str) -> str:
             'Image-to-video uses --image-seeds {{ quote(first(last_images)) }} and describes the sound.',
         ]
     if _GATED_HF.search(request):
-        lines.append('This request uses a gated checkpoint. Include the HF_TOKEN early-exit.')
+        lines.append(
+            'This request uses a gated checkpoint. Include one HF_TOKEN early-exit at the top of the config only.')
     elif _PUBLIC_HF.search(request):
         lines.append('This request uses a public checkpoint. Do not add HF_TOKEN.')
     if _CIVITAI_REQUEST.search(request):
-        lines.append('This request downloads from CivitAI. Include the CIVIT_AI_TOKEN early-exit.')
+        lines.append(
+            'This request downloads from CivitAI. Include one CIVIT_AI_TOKEN early-exit at the top of the config only.')
     else:
         lines.append('This request has no CivitAI link. Do not add CIVIT_AI_TOKEN.')
     if _FLUX_REQUEST.search(request):

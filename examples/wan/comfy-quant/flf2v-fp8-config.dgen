@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan FLF2V 720P with ComfyUI's FP8 E4M3 transformer. Same frames and
+# prompt as examples/wan/flf2v/first-last-config.dgen.
+
+\setp first_frame "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/flf2v_input_first_frame.png"
+\setp last_frame "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/flf2v_input_last_frame.png"
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+
+Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 1280x720
+--video-lengths 5
+--animation-format mp4
+--output-path wan-comfy-quant-flf2v
+--image-seeds "{{ first_frame }};last-frame={{ last_frame }}"
+--prompts "CG animation style, a small blue bird takes off from the ground, flapping its wings. The bird's feathers are delicate, with a unique pattern on its chest. The background shows a blue sky with white clouds under bright sunshine. The camera follows the bird upward, capturing its flight and the vastness of the sky from a close-up, low-angle perspective.;{{ neg }}"
