@@ -32,6 +32,7 @@ title: Flux Kontext Dev (ComfyUI Quant)
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
+@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Comfy-Org/flux1-kontext-dev_ComfyUI/blob/main/split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors", "divider-after":true}]
 --image-seeds {{ image_seeds}}
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]

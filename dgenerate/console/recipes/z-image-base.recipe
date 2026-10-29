@@ -12,6 +12,7 @@ title: Z-Image Base (2-step LoRA)
 @quantizer[{"model-type":"z-image", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA", "default": "alibaba-pai/Z-Image-Fun-Lora-Distill;weight-name=Z-Image-Fun-Lora-Distill-2-Steps-2603.safetensors;scale=1.0"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0,"divider-after":true}]
+@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":2, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]
 @switch[{"label":"CFG Normalization", "arg":"--z-image-cfg-normalization"}]

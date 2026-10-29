@@ -519,6 +519,15 @@ class TestAssistantCheck(unittest.TestCase):
         ))
         self.assertTrue(report['ok'], report['errors'])
 
+    def test_z_image_omni_unreleased(self):
+        report = check_config(_cfg(
+            'Tongyi-MAI/Z-Image-Omni-Base',
+            '--model-type z-image-omni --dtype bfloat16',
+            '--prompts "a fox"',
+        ))
+        self.assertFalse(report['ok'], report)
+        self.assertIn('not released', _messages(report).lower())
+
 
 if __name__ == '__main__':
     unittest.main()

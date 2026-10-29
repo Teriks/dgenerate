@@ -11,6 +11,7 @@ title: Kandinsky 5 Video Pro Image to Video
 @quantizer[{"model-type":"kandinsky5-video", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
+@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "divider-after":true}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"First Frame Processor"}]
 @int[{"id":"is","label":"Inference Steps","arg":"--inference-steps","default":50,"min":1,"exclude":["ts"]}]

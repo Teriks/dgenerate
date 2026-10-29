@@ -22,6 +22,7 @@ title: Stable Diffusion 3
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
+@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
 @submodelbuilder[{"label":"Control Net", "arg":"--control-nets", "model": "Control Net"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "divider-after":true}]
 @submodelbuilder[{"label":"IP Adapter", "arg":"--ip-adapters", "model": "IP Adapter"}]

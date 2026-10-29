@@ -11,6 +11,7 @@ title: Hunyuan-DiT
 @quantizer[{"model-type":"hydit", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
+@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
 @submodelbuilder[{"label":"Control Net", "arg":"--control-nets", "model":"Control Net"}]
 @submodelbuilder[{"label":"IP Adapter", "arg":"--ip-adapters", "model":"IP Adapter"}]
 @submodelbuilder[{"label":"Image Encoder", "arg":"--image-encoder", "model":"Image Encoder"}]

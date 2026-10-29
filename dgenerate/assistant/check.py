@@ -887,6 +887,13 @@ def check_config(text: str) -> dict:
             if problem:
                 errors.append({'line': line, 'message': problem})
             mt = _model_type_str(config)
+            if mt == 'z-image-omni':
+                errors.append({
+                    'line': line,
+                    'message': 'Z-Image-Omni-Base is not released on Hugging Face yet. '
+                               'Use --model-type z-image with Tongyi-MAI/Z-Image or '
+                               'Tongyi-MAI/Z-Image-Turbo instead.',
+                })
             seeds = [str(s) for s in (config.image_seeds or [])]
             if _missing_weight_marks(config, config.prompt_weighter_uri,
                                      ('prompts', 'second_prompts', 'third_prompts')) \

@@ -38,6 +38,7 @@ title: LTX-2.5 Non-distilled (ComfyUI Quant)
 @quantizer[{"model-type":"ltx2", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
+@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
 @submodelbuilder[{"label":"Stage LoRA", "arg":"--ltx-stage-loras", "model": "LoRA"}]
 @submodelbuilder[{"label":"IC-LoRA", "arg":"--ltx-ic-lora", "model": "IC-LoRA"}]
 @imageprocessor[{"arg":"--control-image-processors", "label":"IC-LoRA Control Clip Processor"}]

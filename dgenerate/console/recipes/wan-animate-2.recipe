@@ -27,6 +27,7 @@ title: Wan-Animate-2
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
+@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "divider-after":true}]
 @int[{"label":"Segment Frame Length", "arg":"--wan-segment-frame-lengths", "default":81, "min":1}]
 @int[{"label":"Previous Segment Frames", "arg":"--wan-prev-segment-frames", "default":1, "min":1, "divider-after":true}]

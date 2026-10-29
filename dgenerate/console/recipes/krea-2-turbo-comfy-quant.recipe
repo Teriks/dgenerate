@@ -14,6 +14,7 @@ title: Krea 2 Turbo (ComfyUI Quant)
 @quantizer[{"model-type":"krea2", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
+@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_fp8_scaled.safetensors", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":8, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":0, "min":0}]

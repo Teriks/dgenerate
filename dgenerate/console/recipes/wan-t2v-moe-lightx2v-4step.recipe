@@ -22,6 +22,7 @@ title: Wan 2.2 Text to Video (4-step LoRA)
 @quantizer[{"model-type":"wan", "divider-after":true}]
 --loras @submodelbuilder[{"label":"High-noise LoRA", "help-arg":"--loras", "model": "LoRA", "optional":false, "default":"lightx2v/Wan2.2-Distill-Loras;scale=1.0;weight-name=wan2.2_t2v_A14b_high_noise_lora_rank64_lightx2v_4step_1217.safetensors"}] @submodelbuilder[{"label":"Low-noise LoRA", "help-arg":"--loras", "model": "LoRA", "optional":false, "default":"lightx2v/Wan2.2-Distill-Loras;scale=1.0;weight-name=wan2.2_t2v_A14b_low_noise_lora_rank64_lightx2v_4step_1217.safetensors;component=transformer_2"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0,"divider-after":true}]
+@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer"}]
 @submodelbuilder[{"label":"Second Transformer (MoE)", "arg":"--wan-second-transformer", "model": "Transformer", "divider-after":true}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]

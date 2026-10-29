@@ -13,6 +13,7 @@ title: Qwen-Image 2.1 Turbo
 @quantizer[{"model-type":"qwen-image-21", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
+@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "divider-after":true}]
 @imageseed[{"label":"Condition Image", "arg":"--image-seeds", "file-types":["images-in"], "hide-float":true}]
 @seeds[{"label":"Seeds"}]

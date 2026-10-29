@@ -88,7 +88,8 @@ a # comment instead of guessing.
 offloading, and required settings unless the request asks otherwise. Follow the \
 documented constraints on output size, frame counts, and guidance.
 - Copy Hugging Face repo names (org/name) exactly as they appear in the reference material. \
-Never invent a repo or change its organization or name.
+Never invent a repo or change its organization or name. Do not use --model-type z-image-omni; \
+Z-Image-Omni-Base is not released on Hugging Face yet.
 - Inpainting models (repos with "inpainting" in the name) only work with --image-seeds \
 "image.png;mask.png". A step that generates from a prompt alone needs a regular model of the \
 same family, for example stabilityai/stable-diffusion-xl-base-1.0 for SDXL.
@@ -135,7 +136,7 @@ SD3. compel is InvokeAI word+ / word++ syntax. Use a weighter when the \
 user emphasizes a subject or pastes weighted syntax; do not decorate \
 every quality word. Flux, flux-fill, flux-kontext, and flux2 never take a \
 negative prompt: no ; in --prompts. flux2-klein-kv does not either. \
-z-image, z-image-omni, qwen-image, qwen-image-edit, and qwen-image-layered do. \
+z-image, qwen-image, qwen-image-edit, and qwen-image-layered do. \
 --guidance-scales on qwen-image is true CFG, not embedded guidance. \
 --qwen-guidance-scale is that embedded guidance; omit it to leave it unset. \
 --flux2-caption-upsample-temperature is full Flux.2 only. \
@@ -212,8 +213,6 @@ PROMPT_GUIDES = {
                    'still applies classifier-free guidance.'),
     'flux2-klein-kv': ('Natural sentences. No negative prompt and no guidance scale. '
                        '--image-seeds with no mask are reference images.'),
-    'z-image-omni': ('Natural sentences. An image seed is an optional condition image, '
-                     'with no strength. Turbo-style guidance is 0.'),
     'qwen-image-edit': ('An instruction that says what should change. The image seed is '
                         'the picture to edit, with no strength. A mask makes it inpaint. '
                         'images: a.png, b.png is edit-plus.'),
@@ -313,8 +312,6 @@ GGUF: --transformer https://huggingface.co/QuantStack/Qwen-Image-GGUF/blob/main/
 Gated, needs HF_TOKEN. Reference images are --image-seeds with no mask and no strength. No guidance scale. \
 GGUF: --transformer https://huggingface.co/QuantStack/FLUX.2-Klein-9B-KV-GGUF/blob/main/Flux-2-Klein-9B-KV-Q4_K_S.gguf. \
 Width 4096 uses the Klein 9B transformer config, which matches this checkpoint.
-- Z-Image Omni: --model-type z-image-omni. Optional --image-seeds are condition images, no strength. \
-CFG flags are the same --z-image- options.
 - Qwen-Image Edit: Qwen/Qwen-Image-Edit, --model-type qwen-image-edit. The image seed is required. \
 Qwen/Qwen-Image-Edit-2509 is edit-plus. A mask on the edit checkpoint is edit-inpaint. \
 GGUF: --transformer https://huggingface.co/QuantStack/Qwen-Image-Edit-GGUF/blob/main/Qwen_Image_Edit-Q4_K_S.gguf. \

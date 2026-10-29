@@ -8677,8 +8677,11 @@ Z-Image Omni
 
 ``--model-type z-image-omni`` is Z-Image with an optional SigLIP condition
 image. ``--image-seeds`` with no mask is that image. There is no strength,
-no mask, and no ControlNet. The diffusers example uses ``Z-a-o/Z-Image-Turbo``.
-CFG flags are the same ``--z-image-`` options.
+no mask, and no ControlNet. The **Z-Image-Omni-Base** checkpoint is not on
+Hugging Face yet (listed as to be released on the Tongyi-MAI model zoo). Use a
+local ``ZImageOmniPipeline`` directory until ``Tongyi-MAI/Z-Image-Omni-Base`` is
+published. About 50 steps and ``--guidance-scales`` around 4 match the intended
+Omni-Base schedule. CFG flags are the same ``--z-image-`` options.
 
 Qwen-Image
 ----------
@@ -15327,7 +15330,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [72554700416132]
+            Value: [4243403056833]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

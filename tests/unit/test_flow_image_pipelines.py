@@ -652,7 +652,7 @@ class TestFlowImagePipelines(unittest.TestCase):
 
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             _config(
-                model_path='Z-a-o/Z-Image-Turbo',
+                model_path='org/omni',
                 model_type=omni,
                 image_seeds=[beach],
                 image_seed_strengths=[0.5]).check()
@@ -1143,7 +1143,7 @@ class TestFlowImagePipelines(unittest.TestCase):
                 prompts=['a face']).check()
 
         for model_path, model_type in (
-                ('Tongyi-MAI/Z-Image-Turbo', _pipelinewrapper.ModelType.Z_IMAGE_OMNI),
+                ('Tongyi-MAI/Z-Image-Omni-Base', _pipelinewrapper.ModelType.Z_IMAGE_OMNI),
                 ('Qwen/Qwen-Image-Layered', _pipelinewrapper.ModelType.QWEN_IMAGE_LAYERED),
                 ('black-forest-labs/FLUX.2-klein-9b-kv', _pipelinewrapper.ModelType.FLUX2_KLEIN_KV),
         ):
