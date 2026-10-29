@@ -1,0 +1,30 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Z-Image Base 2-step distill LoRA with a GGUF transformer. Tongyi-MAI/Z-Image
+# supplies the text encoder and VAE. Base and Turbo GGUF share one module shape.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 12 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 12 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% endif %}
+
+{% if not have_cuda() or gpu_memory_gib <= 16 %}
+    \set offload --model-sequential-offload
+{% endif %}
+
+Tongyi-MAI/Z-Image
+--model-type z-image {{ te_quant }} {{ offload }}
+--dtype bfloat16
+--transformer https://huggingface.co/jayn7/Z-Image-GGUF/blob/main/z_image-Q4_K_S.gguf
+--scheduler FlowMatchEulerDiscreteScheduler
+--loras "alibaba-pai/Z-Image-Fun-Lora-Distill;weight-name=Z-Image-Fun-Lora-Distill-2-Steps-2603.safetensors;scale=1.0"
+--inference-steps 2
+--guidance-scales 1
+--gen-seeds 1
+--output-path z-image-base-2step-gguf
+--output-size 1024
+--prompts "Young Chinese woman in red Hanfu, intricate embroidery. Impeccable makeup, red floral forehead pattern. Elaborate high bun, golden phoenix headdress, red flowers, beads. Holds round folding fan with lady, trees, bird. Neon lightning-bolt lamp (⚡️), bright yellow glow, above extended left palm. Soft-lit outdoor night background, silhouetted tiered pagoda, blurred colorful distant lights."

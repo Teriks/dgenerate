@@ -1,0 +1,30 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Z-Image Base with ComfyUI's INT8 ConvRot transformer (Comfy-Org/Z-Image).
+# Tongyi-MAI/Z-Image still supplies the Qwen3 text encoder and VAE. Base uses
+# classifier-free guidance; this matches the Tongyi model-card schedule.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 12 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 12 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% endif %}
+
+{% if not have_cuda() or gpu_memory_gib <= 16 %}
+    \set offload --model-sequential-offload
+{% endif %}
+
+Tongyi-MAI/Z-Image
+--model-type z-image {{ te_quant }} {{ offload }}
+--dtype bfloat16
+--transformer https://huggingface.co/Comfy-Org/Z-Image/blob/main/split_files/diffusion_models/z_image_int8_convrot.safetensors
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 50
+--guidance-scales 4
+--gen-seeds 1
+--output-path z-image-comfy-quant-base-int8
+--output-size 1024
+--prompts "Young Chinese woman in red Hanfu, intricate embroidery. Impeccable makeup, red floral forehead pattern. Elaborate high bun, golden phoenix headdress, red flowers, beads. Holds round folding fan with lady, trees, bird. Neon lightning-bolt lamp (⚡️), bright yellow glow, above extended left palm. Soft-lit outdoor night background, silhouetted tiered pagoda, blurred colorful distant lights."
