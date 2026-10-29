@@ -3,7 +3,10 @@ import unittest
 from dgenerate.assistant.corpus import Chunk
 from dgenerate.assistant.models import answer_text, reply_token_limit
 from dgenerate.assistant.prompt import (
+    extract_config,
     first_draft_recipes,
+    lift_comments_between_options,
+    offload_plan,
     prefer_weighting_examples,
     system_message,
     user_message,
@@ -115,6 +118,9 @@ class TestAssistantPrompt(unittest.TestCase):
     def test_civitai_token_only_for_civitai_links(self):
         civit = first_draft_recipes('download the sdxl checkpoint from civitai')
         self.assertIn('Include one CIVIT_AI_TOKEN early-exit at the top of the config only', civit)
+        self.assertIn('Do not put token=', civit)
+        red = first_draft_recipes('https://civitai.red/models/1/style')
+        self.assertIn('Include one CIVIT_AI_TOKEN early-exit at the top of the config only', red)
         hugging_face = first_draft_recipes('sdxl photo of a horse')
         self.assertIn('Do not add CIVIT_AI_TOKEN', hugging_face)
         self.assertNotIn('Include one CIVIT_AI_TOKEN early-exit', hugging_face)
@@ -125,9 +131,180 @@ class TestAssistantPrompt(unittest.TestCase):
         self.assertIn('(main subject)+', recipes)
         self.assertNotIn('no negative prompt', recipes)
 
+    def test_offload_follows_the_family(self):
+        from dgenerate.assistant.prompt import memory_problem
+
+        plan = offload_plan(True, 16, True, True)
+        self.assertIn('krea2, wan', plan)
+        self.assertIn('motif-video', plan)
+        self.assertIn('kandinsky5-image', plan)
+        self.assertIn('qwen-image-21', plan)
+        self.assertIn('ltx-video', plan)
+        self.assertRegex(plan, r'krea2.*--model-sequential-offload\. No quantizer')
+        self.assertIn('flux, flux-fill, flux-kontext, full checkpoint: --quantizer bnb;bits=4.', plan)
+        self.assertIn('flux, flux-fill, flux-kontext, control lora: --model-sequential-offload.', plan)
+        self.assertIn('qwen-image, qwen-image-edit', plan)
+        self.assertIn('flux2 dev, flux2 klein 9b, flux2-klein-kv, full checkpoint: --model-sequential-offload.', plan)
+        self.assertIn('flux2 klein 4b, full checkpoint: --quantizer bnb;bits=4.', plan)
+        self.assertIn('z-image, full checkpoint: --model-sequential-offload.', plan)
+        self.assertIn('sd3, sd3-pix2pix, full checkpoint: --model-sequential-offload.', plan)
+        self.assertIn('--quantizer-map text_encoder', plan)
+        self.assertIn('--quantizer-map text_encoder_3', plan)
+        self.assertIn('kolors: --quantizer bnb;bits=4.', plan)
+        self.assertIn('s-cascade: --model-cpu-offload and --second-model-cpu-offload.', plan)
+        self.assertIn('hydit: no quantizer and no offload.', plan)
+
+        roomy = offload_plan(True, 32, True, True)
+        self.assertIn('sd3, sd3-pix2pix, full checkpoint: --quantizer bnb;bits=8.', roomy)
+        self.assertIn('z-image, full checkpoint: no offload and no quantizer.', roomy)
+        self.assertIn('qwen-image, qwen-image-edit, qwen-image-layered, full checkpoint: --quantizer bnb;bits=4.', roomy)
+        self.assertIn('qwen-image-21', roomy)
+        self.assertIn('--model-sequential-offload. No quantizer, including a GGUF or FP8 file.', roomy)
+
+        tight = offload_plan(True, 10, True, False)
+        self.assertIn('flux, flux-fill, flux-kontext, full checkpoint: --model-sequential-offload.', tight)
+        self.assertIn('flux2 klein 4b, full checkpoint: --model-sequential-offload.', tight)
+        self.assertIn('bits4-quant-type=nf4', tight)
+
+        cpu = offload_plan(False, 64, True, True)
+        self.assertNotIn('--quantizer bnb', cpu)
+        self.assertIn('sd, pix2pix, sdxl, sdxl-pix2pix', cpu)
+        self.assertIn('no quantizer', cpu)
+
+        klein = memory_problem(
+            'flux2', 'black-forest-labs/FLUX.2-klein-4B',
+            cuda=True, gib=16, bitsandbytes=True, sdnq=False)
+        self.assertIn('--quantizer bnb;bits=4', klein)
+        self.assertIsNone(memory_problem(
+            'flux2', 'black-forest-labs/FLUX.2-klein-4B', quantizer='bnb;bits=4',
+            cuda=True, gib=16, bitsandbytes=True, sdnq=False))
+        self.assertIsNone(memory_problem(
+            'flux2', 'black-forest-labs/FLUX.2-dev', sequential=True,
+            cuda=True, gib=16, bitsandbytes=True, sdnq=False))
+        self.assertIn('must not be quantized', memory_problem(
+            'z-image', 'Tongyi-MAI/Z-Image-Turbo', quantizer='bnb;bits=4', sequential=True,
+            cuda=True, gib=16, bitsandbytes=True, sdnq=False))
+        base = memory_problem(
+            'flux2', 'black-forest-labs/FLUX.2-klein-base-4B',
+            cuda=True, gib=16, bitsandbytes=True, sdnq=False)
+        self.assertIn('--quantizer bnb;bits=4', base)
+        self.assertNotIn('sequential-offload', base)
+        self.assertIsNone(memory_problem(
+            'flux2', 'black-forest-labs/FLUX.2-klein-base-4B', quantizer='bnb;bits=4',
+            cuda=True, gib=16, bitsandbytes=True, sdnq=False))
+        self.assertIn('must not be quantized', memory_problem(
+            'hydit', 'Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers', quantizer='bnb;bits=4',
+            cuda=True, gib=16, bitsandbytes=True, sdnq=False))
+        self.assertIn('must not use offload', memory_problem(
+            'hydit', 'Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers', sequential=True,
+            cuda=True, gib=16, bitsandbytes=True, sdnq=False))
+        self.assertIsNone(memory_problem(
+            'hydit', 'Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers',
+            cuda=True, gib=16, bitsandbytes=True, sdnq=False))
+
+    def test_first_draft_states_the_memory_flags(self):
+        machine = (True, 16.0, True, False)
+        klein = first_draft_recipes(
+            'sprite sheet with https://huggingface.co/fal/flux-2-klein-4b-spritesheet-lora',
+            machine=machine)
+        self.assertIn('Flux.2 Klein 4B full checkpoint (--model-type flux2, not flux): write --quantizer bnb;bits=4.', klein)
+        self.assertIn('no {% if have_cuda() %}', klein)
+        self.assertIn('no total_memory', klein)
+        dev = first_draft_recipes('flux.2 dev photo of a horse', machine=machine)
+        self.assertIn('Flux.2 dev, Klein 9B, or Klein KV full checkpoint: write --model-sequential-offload.', dev)
+        self.assertNotIn('Klein 4B full checkpoint', dev)
+
+    def test_a_comment_between_options_is_moved_above_the_model(self):
+        text = extract_config(
+            '```dgen\n'
+            'Tongyi-MAI/Z-Image-Turbo\n'
+            '--model-type z-image\n'
+            '# do not leave this between options\n'
+            '--prompts "a horse"\n'
+            '```',
+            '6.0.0')
+        lines = text.splitlines()
+        self.assertLess(
+            lines.index('# do not leave this between options'),
+            lines.index('Tongyi-MAI/Z-Image-Turbo'))
+        model = lines.index('Tongyi-MAI/Z-Image-Turbo')
+        self.assertEqual(lines[model + 1], '--model-type z-image')
+        self.assertEqual(lines[model + 2], '--prompts "a horse"')
+
+    def test_comments_stay_with_their_own_invocation(self):
+        text = lift_comments_between_options(
+            '#! /usr/bin/env dgenerate --file\n'
+            '#! dgenerate 6.0.0\n'
+            '\n'
+            '# generate\n'
+            'stabilityai/stable-diffusion-xl-base-1.0\n'
+            '--model-type sdxl\n'
+            '# between the first options\n'
+            '--prompts "a fox"\n'
+            '\n'
+            '# upscale the result\n'
+            '{% for image in last_images %}\n'
+            'stabilityai/stable-diffusion-x4-upscaler\n'
+            '--model-type upscaler-x4\n'
+            '# between the second options\n'
+            '--image-seeds {{ quote(image) }}\n'
+            '--prompts "a fox"\n'
+            '{% endfor %}\n')
+        lines = text.splitlines()
+        first_model = lines.index('stabilityai/stable-diffusion-xl-base-1.0')
+        second_model = lines.index('stabilityai/stable-diffusion-x4-upscaler')
+        self.assertLess(lines.index('# between the first options'), first_model)
+        self.assertLess(first_model, second_model)
+        self.assertLess(lines.index('# upscale the result'), second_model)
+        self.assertGreater(lines.index('# upscale the result'), lines.index('--prompts "a fox"'))
+        self.assertLess(lines.index('# between the second options'), second_model)
+        self.assertGreater(lines.index('# between the second options'), lines.index('{% for image in last_images %}'))
+        self.assertEqual(lines[second_model + 1], '--model-type upscaler-x4')
+        self.assertEqual(lines[second_model + 2], '--image-seeds {{ quote(image) }}')
+        self.assertEqual(lines[second_model + 3], '--prompts "a fox"')
+        self.assertEqual(lines[0], '#! /usr/bin/env dgenerate --file')
+        self.assertEqual(lines[1], '#! dgenerate 6.0.0')
+
+    def test_z_image_words_get_the_flag_on_its_own_line(self):
+        text = first_draft_recipes(
+            'can you depict yourself using z image turbo',
+            machine=(True, 16.0, True, False))
+        self.assertIn('Z-Image full checkpoint: write --model-sequential-offload.', text)
+        self.assertIn('Do not pass --quantizer.', text)
+        self.assertIn('no \\setp gpu_memory_gib', text)
+        self.assertIn('no {% if have_cuda() %}', text)
+
+    def test_distilled_klein_9b_requests_the_token(self):
+        text = first_draft_recipes(
+            'https://civitai.com/models/816857/neon-retrowave-by-chronoknight-flux2-klein-9b-flux-and-il')
+        self.assertIn('black-forest-labs/FLUX.2-klein-9B', text)
+        self.assertIn('This request uses a gated checkpoint', text)
+        public = first_draft_recipes('black-forest-labs/FLUX.2-klein-4B')
+        self.assertNotIn('This request uses a gated checkpoint', public)
+        for gated in (
+            'Flux.1 D',
+            'stabilityai/stable-diffusion-3.5-large',
+            'sd 3.5',
+            'ltx2',
+            'deep floyd',
+            'Lightricks/LTX-Video',
+        ):
+            self.assertIn('gated checkpoint', first_draft_recipes(gated), gated)
+        for public_name in (
+            'krea/Krea-2-Raw',
+            'black-forest-labs/FLUX.2-klein-base-4B',
+            'FLUX.1-schnell',
+        ):
+            self.assertNotIn(
+                'This request uses a gated checkpoint', first_draft_recipes(public_name), public_name)
+
     def test_model_is_told_after_the_examples(self):
         system = system_message('6.0.0')
         self.assertIn('you are writing a config the user will run', system)
+        self.assertIn('Machine section', system)
+        self.assertIn('Do not write a total_memory check', system)
+        fitted = system_message('6.0.0', machine='### machine\nFor a large checkpoint on this computer, write --model-sequential-offload and no other offload flag.')
+        self.assertIn('--model-sequential-offload and no other offload flag', fitted)
         msg = user_message('use flux and prompt weighting', 'retrieved examples say this example', [])
         self.assertGreater(msg.index('Do not copy that sentence'), msg.index('this example'))
         self.assertEqual(msg.count('### write the config from these rules'), 1)

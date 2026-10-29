@@ -2638,19 +2638,19 @@ class TestVideoModels(unittest.TestCase):
         self.assertLess(events.index('enhance'), events.index(('move', 'cpu')))
         self.assertLess(events.index(('move', 'cpu')), events.index('inference'))
 
-    def test_lora_no_disk_fuse_skips_preflight_and_survives_a_disk_stream(self):
+    def test_lora_disk_fuse_is_opt_in_for_preflight_and_disk_stream(self):
         loading = _videopipelines.loading
         self.assertFalse(loading._preflight_video_loras(
-            ['org/lora'], {'transformer': 'bnb'}, True))
-        self.assertTrue(loading._preflight_video_loras(
             ['org/lora'], {'transformer': 'bnb'}, False))
+        self.assertTrue(loading._preflight_video_loras(
+            ['org/lora'], {'transformer': 'bnb'}, True))
         self.assertFalse(loading._preflight_video_loras(
-            ['org/lora'], {}, False))
-        self.assertTrue(loading._attach_video_loras_after_load({}, True, True))
-        self.assertFalse(loading._attach_video_loras_after_load({}, True, False))
-        self.assertTrue(loading._attach_video_loras_after_load({}, False, False))
+            ['org/lora'], {}, True))
+        self.assertTrue(loading._attach_video_loras_after_load({}, True, False))
+        self.assertFalse(loading._attach_video_loras_after_load({}, True, True))
+        self.assertTrue(loading._attach_video_loras_after_load({}, False, True))
         self.assertFalse(loading._attach_video_loras_after_load(
-            {'transformer': 'cache'}, True, True))
+            {'transformer': 'cache'}, True, False))
 
     def test_video_lora_preflight_persists_in_sqlite_and_skips_missing_components(self):
         import hashlib

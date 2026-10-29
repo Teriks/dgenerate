@@ -561,9 +561,9 @@ def load_video_pipeline_low_ram(pipeline_class,
     before that component's weights leave RAM. The returned pipeline reads
     those weights from disk during its forward pass.
 
-    ``defer_lora_fusion`` is ``--lora-no-disk-fuse``. LoRA targets stay in
-    memory and are not merged into a cached copy. The caller attaches those
-    adapters after the pipeline exists.
+    ``defer_lora_fusion`` keeps LoRA targets in memory. ``--lora-disk-fuse``
+    merges them into a cached copy before the weights are released. The caller
+    attaches adapters after the pipeline exists when fusion was deferred.
 
     :param prepare_module: called with ``(name, module)`` after LoRAs are
         fused and before the weights are released. Used for the Wan VAE cast.
@@ -581,8 +581,7 @@ def load_video_pipeline_low_ram(pipeline_class,
     )
     if lora_uris and defer_lora_fusion:
         notice += (
-            ' --lora-no-disk-fuse keeps LoRA targets in memory instead of '
-            'writing a fused copy.'
+            ' LoRA targets stay in memory instead of a fused cache.'
         )
     elif lora_uris:
         notice += (
@@ -619,7 +618,7 @@ def load_video_pipeline_low_ram(pipeline_class,
             loras = _loras_for_component(name, lora_uris)
             if defer_lora_fusion and loras:
                 # Packed weights cannot take a fused write, and a full-precision
-                # fuse would be the cached copy --lora-no-disk-fuse skips.
+                # fuse would be the cached copy --lora-disk-fuse writes.
                 # The caller attaches the adapter after the pipeline is built.
                 if prepare_module is not None:
                     prepare_module(name, module)

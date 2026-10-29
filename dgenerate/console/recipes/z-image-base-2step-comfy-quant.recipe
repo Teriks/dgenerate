@@ -18,7 +18,7 @@ title: Z-Image Base 2-step LoRA (ComfyUI Quant)
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA", "default": "alibaba-pai/Z-Image-Fun-Lora-Distill;weight-name=Z-Image-Fun-Lora-Distill-2-Steps-2603.safetensors;scale=1.0"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
-@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Comfy-Org/Z-Image/blob/main/split_files/diffusion_models/z_image_int8_convrot.safetensors", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":2, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]

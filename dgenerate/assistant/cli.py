@@ -1,3 +1,24 @@
+# Copyright (c) 2023, Teriks
+#
+# dgenerate is distributed under the following BSD 3-Clause License
+#
+# Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import argparse
 import json
 import os
@@ -14,6 +35,7 @@ import dgenerate.batchprocess.util as _b_util
 import dgenerate.assistant.catalog as _catalog
 import dgenerate.assistant.models as _models
 import dgenerate.assistant.prompt as _prompt
+import dgenerate.assistant.link_tools as _link_tools
 
 # The directory holding the dgenerate package, so the check subprocess imports the same dgenerate.
 _PACKAGE_PARENT = os.path.dirname(os.path.dirname(os.path.abspath(dgenerate.__file__)))
@@ -197,6 +219,8 @@ def create_parser(prog: str) -> _b_util.DirectiveArgumentParser:
                         help='How many times to ask the model to fix a config dgenerate rejects. Default: %(default)s')
     parser.add_argument('--show-context', action='store_true', help='Print the retrieved context to stderr.')
     parser.add_argument('--offline', action='store_true', help='Only use models already in the Hugging Face cache.')
+    parser.add_argument('--no-link-tools', action='store_true',
+                        help='Do not offer fetch_link; the model cannot request CivitAI or Hugging Face lookups.')
     parser.add_argument('-v', '--verbose', action='store_true', help='Show llama.cpp output.')
     return parser
 
@@ -272,15 +296,33 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
             log(context)
         log(f'Retrieved {len(context)} characters of context')
 
+        link_text = request + ('\n' + editor if editor else '')
+        request_links = _link_tools.find_link_urls(link_text)
+        # Tools replace streaming. The config check is always offered; fetch_link only with a URL.
+        use_link_tools = not args.offline and not args.no_link_tools and bool(request_links)
+        use_check_tool = not args.no_check
+        tools = _link_tools.tool_definitions(fetch=use_link_tools, check=use_check_tool)
+        if use_link_tools:
+            log(f'Link tool enabled ({len(request_links)} URL(s) in the request). The model can call fetch_link.')
+
+        machine = _prompt.machine_report()
+
         log(f'Loading {os.path.basename(args.model)}')
         chat = _models.ChatModel(_models.resolve_gguf(args.model, args.offline), n_ctx=args.ctx,
                                  gpu_layers=args.gpu_layers, think=args.think, effort=args.reasoning_effort,
                                  verbose=args.verbose)
 
         messages = [
-            {'role': 'system', 'content': _prompt.system_message(version)},
+            {'role': 'system', 'content': _prompt.system_message(
+                version, link_tools=use_link_tools, machine=machine, check_tool=use_check_tool)},
             {'role': 'user', 'content': _prompt.user_message(request, context, files, editor=editor)},
         ]
+
+        def log_tool(line: str) -> None:
+            if line.startswith('  ->'):
+                log(line)
+            else:
+                log(f'Tool {line}')
 
         config, report = None, None
         raised_placeholders = set()
@@ -307,7 +349,8 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
             log('Writing the config' if attempt == 0 else f'Fixing the config (attempt {attempt})')
             log('  up to the rest of the context window' if limit < 0 else f'  up to {limit} tokens')
             started = time.time()
-            reply = chat.complete(messages, max_tokens=limit, **sampling)
+            reply = chat.complete(messages, max_tokens=limit, tools=tools or None,
+                                  on_tool=log_tool if tools else None, **sampling)
             log(f'  done in {time.time() - started:.1f}s')
             messages.append({'role': 'assistant', 'content': reply})
             config = _prompt.apply_request_files(_prompt.extract_config(reply, version), files)
@@ -322,7 +365,14 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
                 problems.append(f'{option} is not a dgenerate option{hint}')
                 suggested += matches
 
-            if not problems:
+            if not problems and getattr(chat, 'config_was_submitted', False):
+                report = {
+                    'ok': True,
+                    'errors': [],
+                    'warnings': [],
+                    'invocations': chat.submitted_invocations,
+                }
+            elif not problems:
                 log('Checking the config with dgenerate')
                 report = deep_check(config, run_dir)
                 if report.get('ok') is None:

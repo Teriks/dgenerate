@@ -13,7 +13,7 @@ title: HunyuanVideo 1.5 Text to Video
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
-@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "divider-after":true}]
 @int[{"id":"is","label":"Inference Steps","arg":"--inference-steps","default":50,"min":1,"exclude":["ts"]}]
 @string[{"id":"ts","label":"Timesteps (override)","arg":"--timesteps","default":"","exclude":["is"]}]

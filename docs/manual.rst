@@ -40,7 +40,7 @@ Help Output
                      [-te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
                      [-te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]] [-un UNET_URI] [-un2 UNET_URI]
                      [-tf TRANSFORMER_URI] [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
-                     [-lrfs LORA_FUSE_SCALE] [-lrnf] [-icl IC_LORA_URI] [-ie IMAGE_ENCODER_URI]
+                     [-lrfs LORA_FUSE_SCALE] [-lrdf] [-icl IC_LORA_URI] [-ie IMAGE_ENCODER_URI]
                      [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]] [-ti URI [URI ...]]
                      [-cl CONTROL_LORA_URI [CONTROL_LORA_URI ...] | -cn CONTROLNET_URI [CONTROLNET_URI ...] |
                      -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]] [-clfs CONTROL_LORA_FUSE_SCALE]
@@ -787,6 +787,8 @@ Help Output
             fuse them into the transformer. IC-LoRAs for ``ltx2`` are loaded with --ltx-ic-lora instead.
             ``hyvideo-15`` accepts HunyuanVideo 1.5 LoRAs, including original module names and Musubi
             ``lora_unet_`` files. ``motif-video`` accepts Diffusers-format and Musubi Motif-Video LoRAs.
+            ``krea2`` accepts Diffusers-format LoRAs, the reference ``diffusion_model.`` and AI-Toolkit layouts,
+            and Musubi ``lora_unet_`` files.
             
             If a LoRA model file exists at a URL which serves the file as a raw download, you may provide an
             http/https link to it and it will be downloaded to dgenerate's web cache.
@@ -813,12 +815,13 @@ Help Output
             "transformer_2" loads a Wan 2.2 LoRA onto the low-noise expert, which is how a high-noise and
             low-noise pair is applied.
             
-            Full-precision weights are fused into the model. With --quantizer, the LoRA is fused into a
-            full-precision copy and cached on disk before quantization. --lora-no-disk-fuse skips that copy and
-            keeps the LoRA active on the quantized weights. That path is faster and uses no fused cache, and it
-            is lower quality at low bit widths. A low-memory video load keeps those LoRA targets in memory
-            instead of merging them onto disk. Weights that are already packed (GGUF, ComfyUI, bitsandbytes, or
-            SDNQ) keep the LoRA active, and --lora-fuse-scale is folded into those adapter weights.
+            Full-precision weights are fused into the model. With --quantizer, the LoRA stays active on the
+            quantized weights. That uses no fused cache. Quality can be lower at low bit widths, because the
+            LoRA was trained against the unquantized weights. Pass --lora-disk-fuse to fuse into a
+            full-precision copy and cache that copy before quantization. A low-memory video load keeps those
+            LoRA targets in memory unless --lora-disk-fuse is set. Weights that are already packed (GGUF,
+            ComfyUI, bitsandbytes, or SDNQ) keep the LoRA active, and --lora-fuse-scale is folded into those
+            adapter weights.
             
             If you wish to load a weights file directly from disk, the simplest way is: --loras
             "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0", all other loading arguments
@@ -827,18 +830,20 @@ Help Output
       -lrfs, --lora-fuse-scale LORA_FUSE_SCALE
             Scale applied to every --loras entry after that entry's own scale. The default is 1.0.
             
-            Full-precision modules are fused at this scale. With --quantizer, the fused weights are written to
-            disk before quantization. --lora-no-disk-fuse keeps the LoRA active and folds this scale into the
-            adapter weights. Weights that are already packed (GGUF, ComfyUI, bitsandbytes, or SDNQ) do the same.
-            ----------------------------------------------------------------------------------------------------
-      -lrnf, --lora-no-disk-fuse
-            With --quantizer, keep --loras and Flux --control-loras active on the quantized model instead of
-            fusing them into a full-precision copy on disk first. This is faster and does not write a fused
-            cache. A low-memory video load keeps the LoRA targets in memory. The result is lower quality at low
-            bit widths, because the LoRA was trained against the unquantized weights. The default fuses before
-            quantization. Packed weights (GGUF, ComfyUI, bitsandbytes, or SDNQ) already keep the LoRA active. SD
-            and SDXL --control-loras still build their ControlNet clone.
-            ------------------------------------------------------------
+            Full-precision modules are fused at this scale. With --quantizer, the LoRA stays active and this
+            scale is folded into the adapter weights. --lora-disk-fuse writes the fused weights to disk before
+            quantization. Weights that are already packed (GGUF, ComfyUI, bitsandbytes, or SDNQ) keep the LoRA
+            active either way.
+            ------------------
+      -lrdf, --lora-disk-fuse
+            With --quantizer, fuse --loras and Flux --control-loras into a full-precision copy and cache that
+            copy before quantization. The default keeps those LoRAs active on the quantized weights, which uses
+            no fused cache. Try this if the result looks poor. It is slower, uses more disk space, and can be
+            higher quality at low bit widths, because the LoRA was trained against the unquantized weights. A
+            low-memory video load then merges LoRA targets before releasing them. Packed weights (GGUF, ComfyUI,
+            bitsandbytes, or SDNQ) already keep the LoRA active. SD and SDXL --control-loras still build their
+            ControlNet clone either way.
+            ----------------------------
       -icl, --ltx-ic-lora IC_LORA_URI
             Specify an IC-LoRA (in-context LoRA) for --model-type ltx2 with an LTX-2 checkpoint, for example a
             canny, depth, or pose control LoRA. It uses the same URI syntax as --loras, and is fused into the
@@ -993,9 +998,9 @@ Help Output
             already packed (GGUF, Comfy, bitsandbytes, SDNQ) cannot be cloned.
             
             Flux control LoRAs follow the same rule as --loras. A full-precision transformer is fused. With
-            --quantizer, that fuse is written to disk first unless --lora-no-disk-fuse is set, in which case the
-            quantized transformer keeps the control LoRA active and --control-lora-fuse-scale is folded into the
-            adapter weights. SD and SDXL always fuse into the ControlNet clone.
+            --quantizer, the quantized transformer keeps the control LoRA active and --control-lora-fuse-scale
+            is folded into the adapter weights, unless --lora-disk-fuse writes that fuse to disk first. SD and
+            SDXL always fuse into the ControlNet clone.
             
             One control image from --image-seeds is required, the same way a plain path is the control image for
             --control-nets. Use --control-image-processors to build the signal the LoRA expects, for example
@@ -1015,11 +1020,10 @@ Help Output
             Scale used when Control LoRA weights are merged into the model. When several --control-loras are
             given, each is applied at its own scale, then the result is fused at this scale. The default is 1.0.
             
-            Flux fuses into a full-precision transformer before any --loras. With --quantizer, that fuse is
-            cached on disk unless --lora-no-disk-fuse is set. That option keeps the control LoRA active and
-            folds this scale into the adapter weights. SD and SDXL fuse into the ControlNet cloned from the
-            UNet.
-            -----
+            Flux fuses into a full-precision transformer before any --loras. With --quantizer, the control LoRA
+            stays active and this scale is folded into the adapter weights. --lora-disk-fuse caches that fuse on
+            disk instead. SD and SDXL fuse into the ControlNet cloned from the UNet.
+            ------------------------------------------------------------------------
       -cn, --control-nets CONTROLNET_URI [CONTROLNET_URI ...]
             Specify one or more ControlNet models using URIs. This should be a Hugging Face repository slug /
             blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file),
@@ -9610,6 +9614,7 @@ prompt variations using a special prompting syntax.
             seed: int | None = None
             variations: int | None = None
             wildcards: str | None = None
+            auth-token: str | None = None
     
         Upscale prompts with the dynamicprompts library.
     
@@ -9678,6 +9683,7 @@ Which is a GPT2 finetune focused specifically on prompt generation.
             smart-truncate: bool = False
             cleanup-config: str | None = None
             device: str | None = None
+            auth-token: str | None = None
     
         Upscale prompts using magicprompt or other LLMs via transformers.
     
@@ -9832,6 +9838,7 @@ Older NVIDIA, Windows AMD, and Intel Arc:
             context-tokens: int = 2048
             smart-truncate: bool = False
             cleanup-config: str | None = None
+            auth-token: str | None = None
     
         Upscale prompts with a GGUF model through llama.cpp.
     
@@ -9916,6 +9923,7 @@ This is supported for multiple languages, though, CLIP usually really only under
             seed: int | None = None
             lang: str = "en"
             syntax: str = "sd-embed"
+            auth-token: str | None = None
     
         Add random attention values to your prompt tokens.
     
@@ -9975,6 +9983,7 @@ This can be used to translate between any language supported by ``argostranslate
             batch: bool = True
             max-batch: int | None = 50
             device: str | None = None
+            auth-token: str | None = None
     
         Local language translation using argostranslate or Helsinki-NLP opus (mariana).
     
@@ -10992,6 +11001,12 @@ these are the arguments that are available for use:
     spectrum-warmup-steps: int
     spectrum-window-size: float
     spectrum-flex-window: float
+    regione-warmup-step: int
+    regione-post-step: int
+    regione-refresh-step: int
+    regione-threshold: float
+    regione-cache-threshold: float
+    regione-erosion-dilation: bool
     ras-index-fusion: bool
     ras-sample-ratio: float
     ras-high-ratio: float
@@ -11266,6 +11281,7 @@ Output:
         "crop"
         "crop-to-mask"
         "dilate"
+        "face-restore"
         "flip"
         "gaussian-blur"
         "grayscale"
@@ -11632,6 +11648,7 @@ The ``interposer`` supports several conversions, described in its help output:
             target: str
             device: str = "cpu"
             model-offload: bool = False
+            auth-token: str | None = None
     
         Converts latents between different diffusion model latent spaces.
     
@@ -12315,7 +12332,7 @@ The help output of ``assistant`` is as follows:
                      [--temperature TEMPERATURE] [--top-p TOP_P] [--top-k TOP_K] [--min-p MIN_P]
                      [--presence-penalty PRESENCE_PENALTY] [--repeat-penalty REPEAT_PENALTY]
                      [--max-tokens MAX_TOKENS] [--no-check] [--max-repairs MAX_REPAIRS] [--show-context]
-                     [--offline] [-v]
+                     [--offline] [--no-link-tools] [-v]
                      [request ...]
     
     Write a dgenerate config from a plain language request, using a local Qwen model with retrieval over the
@@ -12422,6 +12439,9 @@ The help output of ``assistant`` is as follows:
       --offline
             Only use models already in the Hugging Face cache.
             --------------------------------------------------
+      --no-link-tools
+            Do not offer fetch_link; the model cannot request CivitAI or Hugging Face lookups.
+            ----------------------------------------------------------------------------------
       -v, --verbose
             Show llama.cpp output.
             ----------------------
@@ -13040,6 +13060,7 @@ adetailer processor help output below.
             device: str | None = None
             output-file: str | None = None
             output-overwrite: bool = False
+            auth-token: str | None = None
     
         adetailer, diffusion based post processor for SD1.5, SDXL, Kolors, SD3, and Flux
     
@@ -13231,6 +13252,9 @@ adetailer processor help output below.
         not enabled, new images written by the processor while it is being used will be written with a numbered
         suffix instead of being overwritten.
     
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
+    
     ==============================================================================================================
 
 Adetailer Pipeline
@@ -13392,6 +13416,7 @@ processor chaining if desired.
             output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
+            auth-token: str | None = None
     
         Process the input image with Ultralytics YOLO object detection.
     
@@ -13568,6 +13593,9 @@ processor chaining if desired.
         when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
         impact rendering speed when generating many images.
     
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
+    
     ==============================================================================================================
 
 Segment Anything Mask Generation
@@ -13607,6 +13635,7 @@ provided in the image preview pane context menu.
             output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
+            auth-token: str | None = None
     
         Process the input image with Ultralytics SAM (Segment Anything Model) using point or bounding box prompts.
     
@@ -13743,6 +13772,9 @@ provided in the image preview pane context menu.
         when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
         impact rendering speed when generating many images.
     
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
+    
     ==============================================================================================================
 
 You can combine this processor with the ``crop`` and ``paste`` processor to perform
@@ -13837,6 +13869,7 @@ The ``yolo-sam`` processor is especially valuable for:
             output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
+            auth-token: str | None = None
     
         Process the input image with YOLO object detection followed by SAM (Segment Anything Model) segmentation.
     
@@ -13989,6 +14022,9 @@ The ``yolo-sam`` processor is especially valuable for:
         being used, instead of them being moved back to the CPU after each image. Enabling this may help save VRAM
         when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
         impact rendering speed when generating many images.
+    
+        The "auth-token" argument is a Hugging Face token used when this processor downloads a model. It defaults
+        to --auth-token. A processor "token" argument, when that processor has one, overrides it.
     
     ==============================================================================================================
 
@@ -14720,6 +14756,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_control_image_processors"
             Type: collections.abc.Sequence[str] | None
             Value: []
+        Name: "last_control_lora_fuse_scale"
+            Type: float | None
+            Value: None
+        Name: "last_control_lora_uris"
+            Type: collections.abc.Sequence[str] | None
+            Value: []
         Name: "last_controlnet_uris"
             Type: collections.abc.Sequence[str] | None
             Value: []
@@ -14843,6 +14885,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_latents_processors"
             Type: collections.abc.Sequence[str] | None
             Value: []
+        Name: "last_lora_disk_fuse"
+            Type: <class 'bool'>
+            Value: False
         Name: "last_lora_fuse_scale"
             Type: float | None
             Value: None
@@ -15077,6 +15122,27 @@ The ``\templates_help`` output from the above example is:
         Name: "last_reference_image_processors"
             Type: collections.abc.Sequence[str] | None
             Value: []
+        Name: "last_regione"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_regione_cache_thresholds"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_regione_erosion_dilation"
+            Type: bool | None
+            Value: None
+        Name: "last_regione_post_steps"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_regione_refresh_steps"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_regione_thresholds"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_regione_warmup_steps"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
         Name: "last_revision"
             Type: <class 'str'>
             Value: 'main'
@@ -15271,7 +15337,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [47682387755830]
+            Value: [40276606729851]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

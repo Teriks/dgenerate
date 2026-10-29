@@ -1,3 +1,24 @@
+# Copyright (c) 2023, Teriks
+#
+# dgenerate is distributed under the following BSD 3-Clause License
+#
+# Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import collections.abc
 import dataclasses
 import difflib
@@ -43,10 +64,12 @@ is a script that runs one or more dgenerate invocations.
 
 Config syntax:
 - The first two lines are "{shebang}" and "#! dgenerate {version}".
-- Lines starting with # are comments.
+- Lines starting with # are comments. Put a comment before the model path or \
+after the last option. A # comment between options ends the invocation. Never \
+put a comment between arguments.
 - An invocation starts with the model path on its own line. Each following line \
-starting with - is an option of that invocation. A blank line or a line that does \
-not start with - ends it.
+starting with - is an option of that invocation. A blank line, a # comment, or \
+any other line that does not start with - ends it.
 - Values containing spaces or ; are quoted: --prompts "a red fox in the snow; blurry, low quality".
 - A prompt is split at its first ; into a positive and a negative prompt. Everything \
 before the ; is what the output should show: subject, action, style, lighting, camera, \
@@ -74,7 +97,8 @@ generation in {{% if token %}}. Official .dgen files say "to run this \
 example" because they are examples; you are writing a config the user \
 will run, so that \\print is a real instruction, never an example. \
 When the repo is gated, write exactly: \\print Set HF_TOKEN environmental \
-variable or pass --auth-token. When the config downloads from civitai.com, \
+variable or pass --auth-token. When the config downloads from civitai.com or \
+civitai.red, \
 write exactly: \\print Set CIVIT_AI_TOKEN environmental variable. \
 A Hugging Face repo does not use CIVIT_AI_TOKEN. Public checkpoints get \
 no HF_TOKEN block. Put a per-item loop variable on the option line \
@@ -87,8 +111,16 @@ Rules:
 reference material. Never invent an option. If something is not supported, say so in \
 a # comment instead of guessing.
 - Base the config on the closest example and keep its model, --model-type, --dtype, \
-offloading, and required settings unless the request asks otherwise. Follow the \
-documented constraints on output size, frame counts, and guidance.
+and required settings unless the request asks otherwise. Copy the memory flags from \
+the Machine section row for that model onto the invocation, even when the closest \
+example omits them or hides them in a total_memory check. A row that is only \
+--quantizer is required. A row that is only --model-sequential-offload is required. \
+Write that flag as its own line. Do not copy the example's \\setp gpu_memory_gib \
+total_memory, {{% if not have_cuda() %}}, \\set offload, \\set optimization, \
+or --model-type model {{{{ optimization }}}}. \
+Klein 4B is not Flux.2 dev and not Klein 9B. A GGUF, FP8, FP4, NVFP4, or INT8 \
+transformer uses the prequantized row. Follow the documented constraints on output \
+size, frame counts, and guidance.
 - Copy Hugging Face repo names (org/name) exactly as they appear in the reference material. \
 Never invent a repo or change its organization or name. Do not use --model-type z-image-omni; \
 Z-Image-Omni-Base is not released on Hugging Face yet.
@@ -102,17 +134,34 @@ pix2pix, Tongyi-MAI/Z-Image, Tongyi-MAI/Z-Image-Turbo, \
 Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32, Qwen/Qwen-Image, \
 black-forest-labs/FLUX.2-klein-4B. \
 Gated: FLUX.1-dev, FLUX.1-Krea-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, \
-black-forest-labs/FLUX.2-dev, black-forest-labs/FLUX.2-klein-base-9B, SD3, SD3.5, \
+black-forest-labs/FLUX.2-dev, black-forest-labs/FLUX.2-klein-9B, \
+black-forest-labs/FLUX.2-klein-base-9B, black-forest-labs/FLUX.2-klein-9b-kv, \
+SD3, SD3.5, \
 LTX-2.5, LTX-Video, DeepFloyd IF. For a gated repo, \\set token %HF_TOKEN% once at the top, \
 then {{% if not token.strip() and not '--auth-token' in injected_args %}} \
 \\print Set HF_TOKEN environmental variable or pass --auth-token. \
 \\exit {{% endif %}} once only. Do not wrap the generation. Do not duplicate \
 the check in a loop or a second block. Do not write "example" \
-in that \\print. CIVIT_AI_TOKEN is only for a civitai.com download link. \
+in that \\print. CIVIT_AI_TOKEN is only for a civitai.com or civitai.red download \
+link. \
 Omit it when every model is a Hugging Face repo or a local file. For a \
 CivitAI link: \\set civit_ai_token %CIVIT_AI_TOKEN% once at the top, then \
 {{% if not civit_ai_token.strip() %}} \\print Set CIVIT_AI_TOKEN \
-environmental variable. \\exit {{% endif %}} once only. No --auth-token check.
+environmental variable. \\exit {{% endif %}} once only. No --auth-token check. \
+Do not put token= or {{{{ civit_ai_token }}}} on the download URL. dgenerate \
+appends CIVIT_AI_TOKEN from the environment to a civitai.com or civitai.red \
+/api/download link that does not already have token=. Examples that write \
+?token={{{{ civit_ai_token }}}} are not the pattern to copy.
+- The Machine section is the memory plan for this computer, one row per model. \
+Copy that row's flags onto the invocation. Do not write a total_memory \
+check or an {{% if %}} block that picks the flags. SD3 full checkpoints use \
+8-bit, not 4-bit. Z-Image full checkpoints are not quantized. Qwen-Image 2.1, \
+Krea 2, Wan, LTX-2.5, HunyuanImage 2.1, HunyuanVideo, Kandinsky 5, and Motif \
+stay on sequential offload with no quantizer. Hunyuan-DiT (--model-type hydit) \
+gets no quantizer and no offload. An SDNQ checkpoint does not get a second --quantizer. \
+A GGUF, FP8, FP4, NVFP4, or INT8 transformer uses the prequantized row. \
+SD 1.5 and SDXL are not quantized: keep --model-cpu-offload when the closest \
+example uses it.
 - Paths marked (input file) in the request are inputs, for example for --image-seeds. \
 Copy them exactly. They are never output paths: --output-path is a new directory name \
 for the results. Paths in the examples that start with path/to/ are placeholders. If the request needs an input file it did not name, use a \
@@ -149,9 +198,9 @@ Z-Image ControlNet takes scale only; start and end other than 0 and 1 are an err
 Do not pass --quantizer sdnq to Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32; \
 that checkpoint is already quantized. --prompt-weighter is not supported \
 on flux2, z-image, or qwen-image.
-- Add short # comments explaining the choices that matter. Never repeat the same \
-comment. If you are unsure how to finish a step, write the invocation anyway; \
-do not stall in a comment loop.
+- Add short # comments explaining the choices that matter, above the model path, \
+never between options. Never repeat the same comment. If you are unsure how to \
+finish a step, write the invocation anyway; do not stall in a comment loop.
 - A .gguf file is only a --transformer (or --unet, or --wan-second-transformer) \
 replacement for Flux, SD3, Flux.2, Z-Image, Qwen-Image, LTX, or Wan. The first \
 line is still the Hugging Face repo that supplies the VAE and text encoders, \
@@ -173,6 +222,38 @@ the refiner repo with --denoising-start. Prefer --sdxl-refiner on the base step.
 shrink a 1024 image to 256 before x4.
 - --schedulers help only prints names. Never use it as a generation.
 - Reply with exactly one ```dgen code block containing the complete config, and nothing after it.
+"""
+
+LINK_TOOLS_SYSTEM = """\
+Link tool:
+- Call fetch_link for CivitAI or Hugging Face URLs in the Request section or the current \
+editor config. After a Hugging Face repo result, you may call it once more on a raw or blob URL \
+for a markdown note listed there. Do not call it for links that appear only in the reference \
+material or examples, and do not call it on a tree page when the file list is already present.
+- Call it on each request URL before writing the config, unless that exact URL was already \
+fetched earlier in this conversation. If fetch_link fails, do not call it again for that URL. \
+Write the config from the request and the retrieved examples.
+- Treat fetch_link output as authoritative for CivitAI artifact type, baseModel, trainedWords, \
+suggested --model-type, the checkpoint repo, download URLs, publisher usage notes, and Hugging Face \
+weight paths. baseModel on the selected version chooses the family. Words in the publish title are \
+the other versions on that page, not this link. A file marked [selected by fileId] is the file the \
+URL asked for. Copy a download URL with no token= query. dgenerate appends CIVIT_AI_TOKEN from the \
+environment. A Hugging Face repo id is only organization/name. Copy a listed weight as subfolder= \
+and weight-name= inside one quoted value. An unquoted space splits that value into two tokens. \
+Use the trigger word from the note beside that weight.
+- Map LoRA and TextualInversion publishes to the suggested base --model-type plus --loras or \
+embeddings, not a checkpoint line alone.
+"""
+
+CHECK_TOOL_SYSTEM = """\
+Config check:
+- Call check_config with the complete config text to see the problems. Do not pass a file path.
+- Send the finished config by calling submit_config with that same text. \
+Do not also write a ```dgen block. submit_config is how the config is returned.
+- submit_config checks the config. If it lists problems, fix them and call submit_config again. \
+When it accepts the config, stop.
+- Do not paste a tool result into the config. Do not call these tools on an example \
+from the reference material.
 """
 
 _CLIP_GUIDE = (
@@ -274,15 +355,23 @@ with --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16". Public, no 
 - Flux Schnell: black-forest-labs/FLUX.1-schnell, 4 steps, guidance 0, --model-type flux --dtype bfloat16. Public, no HF_TOKEN.
 - Flux Dev: black-forest-labs/FLUX.1-dev, --model-type flux --dtype bfloat16. Gated, needs HF_TOKEN.
 - Flux Krea Dev: black-forest-labs/FLUX.1-Krea-dev, --model-type flux --dtype bfloat16, guidance 4.5, 28 steps. \
-Photographic, aesthetic finetune of Flux Dev. Gated, needs HF_TOKEN.
+Photographic, aesthetic finetune of Flux Dev. Gated, needs HF_TOKEN. \
+This is not Krea 2.
+- Krea 2: krea/Krea-2-Raw, --model-type krea2 --dtype bfloat16. Public, no HF_TOKEN. \
+A Krea 2 LoRA uses this repo on the invocation line and the LoRA on --loras. \
+Not FLUX.1-Krea-dev, and not Flux.2.
 - Flux inpainting and outpainting: black-forest-labs/FLUX.1-Fill-dev, --model-type flux-fill. Gated, needs HF_TOKEN.
 - Flux image editing: black-forest-labs/FLUX.1-Kontext-dev, --model-type flux-kontext. Gated, needs HF_TOKEN.
 - Flux.2: black-forest-labs/FLUX.2-dev, --model-type flux2 --dtype bfloat16, guidance 4, 50 steps. \
 Gated, needs HF_TOKEN. --image-seeds with no mask are reference images, not img2img, and have no strength. \
 Output size snaps to a multiple of 16. \
 GGUF: --transformer https://huggingface.co/city96/FLUX.2-dev-gguf/blob/main/flux2-dev-Q4_K_S.gguf (hidden width 6144).
-- Flux.2 Klein: black-forest-labs/FLUX.2-klein-base-9B, --model-type flux2 --dtype bfloat16. \
-Gated, needs HF_TOKEN. Text-to-image references are --image-seeds with no mask. \
+- Flux.2 Klein 9B distilled: black-forest-labs/FLUX.2-klein-9B, --model-type flux2 --dtype bfloat16. \
+Gated, needs HF_TOKEN. 4 steps, guidance 1. This is not FLUX.2-klein-base-9B. \
+A CivitAI base "Flux.2 Klein 9B" uses this repo. \
+- Flux.2 Klein 9B base: black-forest-labs/FLUX.2-klein-base-9B, --model-type flux2 --dtype bfloat16. \
+Gated, needs HF_TOKEN. Guidance 4, 50 steps. \
+Text-to-image references are --image-seeds with no mask. \
 Inpaint uses --image-seeds with a mask, and reference= is image_reference. \
 Distilled Klein ignores guidance above 1. Caption upsampling is full Flux.2 only. \
 Klein 4B is public: black-forest-labs/FLUX.2-klein-4B, no HF_TOKEN, 4 steps. \
@@ -324,6 +413,15 @@ Edit uses the same transformer module as Qwen-Image.
 GGUF: --transformer https://huggingface.co/unsloth/Qwen-Image-Layered-GGUF/blob/main/qwen-image-layered-Q4_K_S.gguf. \
 The extra addition embedding selects the layered config.
 - Kolors: Kwai-Kolors/Kolors-diffusers, --model-type kolors --variant fp16. Public, no HF_TOKEN.
+- Hunyuan-DiT: Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers, --model-type hydit --dtype float16, \
+guidance 5, 50 steps, 1024. Public, no HF_TOKEN. No quantizer and no offload. \
+This is not HunyuanVideo (--model-type hyvideo-15) and not HunyuanImage.
+- HunyuanImage 2.1: hunyuanvideo-community/HunyuanImage-2.1-Diffusers, --model-type hyimage-21 \
+--dtype bfloat16, guidance 3.5, 50 steps, 2048, --model-sequential-offload. No quantizer, \
+including a GGUF or FP8 transformer. Public, no HF_TOKEN. \
+Refiner: hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers, --model-type hyimage-21-refiner, \
+the same offload. Distilled: hunyuanvideo-community/HunyuanImage-2.1-Distilled-Diffusers, \
+still --model-type hyimage-21.
 - DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
 - Animate a still or make a clip: Lightricks/LTX-2.5-Diffusers, --model-type ltx2, \
 --guidance-scales 1, --video-fps 24, --model-sequential-offload, --animation-format mp4. \
@@ -451,14 +549,19 @@ _WEIGHT_REQUEST = re.compile(
 _FLUX_REQUEST = re.compile(r'\bflux\b', re.IGNORECASE)
 _COMPEL_REQUEST = re.compile(r'\bcompel\b', re.IGNORECASE)
 _GATED_HF = re.compile(
-    r'flux\.1-dev|\bflux[ -]?dev\b|flux\.1-krea|\bkrea\b|flux[ -]?fill|flux\.1-fill|\bkontext\b|'
-    r'\bsd3\b|stable diffusion 3|\bltx\b|\bdeepfloyd\b',
+    r'flux\.1-dev|\bflux[ -]?dev\b|flux\.1[ .-]*d\b|flux\.1-krea|(?<![\w/])krea(?!/)(?!\s*-?\s*2\b)|'
+    r'flux[ -]?fill|flux\.1-fill|\bkontext\b|'
+    r'flux\.2(?!-klein-(?:base-)?4b)|flux-2(?!-klein-(?:base-)?4b)|'
+    r'flux2(?!-klein-(?:base-)?4b)|flux 2(?! klein(?: base)? 4b)|'
+    r'klein-9b|klein 9b|'
+    r'\bsd3\b|\bsd\s*3|stable-diffusion-3|stable diffusion 3|'
+    r'\bltx2\b|\bltx\b|deep\s*floyd',
     re.IGNORECASE)
 _PUBLIC_HF = re.compile(
     r'\bsdxl\b|stable diffusion xl|\bsd\s*1\.?5\b|\bschnell\b|\bkolors\b|'
     r'\bcascade\b|\bpix2pix\b|\bupscal',
     re.IGNORECASE)
-_CIVITAI_REQUEST = re.compile(r'\bcivit\s*\.?ai\b|\bcivitai\.com\b', re.IGNORECASE)
+_CIVITAI_REQUEST = re.compile(r'\bcivit\s*\.?ai\b|\bcivitai\.(?:com|red)\b', re.IGNORECASE)
 
 
 def wants_prompt_weighting(request: str) -> bool:
@@ -470,7 +573,8 @@ def _example_source(chunk: _corpus.Chunk) -> str:
     return (chunk.source or '').replace('\\', '/')
 
 
-def first_draft_recipes(request: str) -> str:
+def first_draft_recipes(request: str, editor: str | None = None,
+                        machine: tuple[bool, float, bool, bool] | None = None) -> str:
     """
     Rules placed after the retrieved examples so the first draft does not copy
     their ``\\print`` wording, a Flux negative, or a weighter with no marks.
@@ -479,21 +583,32 @@ def first_draft_recipes(request: str) -> str:
         '### write the config from these rules',
         'The examples and the manual say "to run this example" because those files are examples.',
         'Do not copy that sentence.',
+        'Never put a # comment between options. A comment there ends the invocation. '
+        'Put comments above the model path.',
         'HF_TOKEN is only for a gated checkpoint. A public repo gets no token block, '
         'even when an example for a different repo has one.',
         'Public, no HF_TOKEN: SD 1.5, SD 2.1, SDXL, FLUX.1-schnell, Kolors, Stable Cascade, '
-        'Wan-AI, upscalers, pix2pix.',
+        'Krea 2 (krea/Krea-2-Raw, --model-type krea2), Wan-AI, upscalers, pix2pix, '
+        'Hunyuan-DiT (Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers, --model-type hydit), '
+        'HunyuanImage 2.1 (hunyuanvideo-community/HunyuanImage-2.1-Diffusers, --model-type hyimage-21). '
+        'Krea 2 is not FLUX.1-Krea-dev. Hunyuan-DiT is not HunyuanVideo and not HunyuanImage. '
+        'Klein 4B (black-forest-labs/FLUX.2-klein-4B) is public.',
         'Gated, HF_TOKEN required: FLUX.1-dev, FLUX.1-Krea-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, '
+        'black-forest-labs/FLUX.2-dev, black-forest-labs/FLUX.2-klein-9B, '
+        'black-forest-labs/FLUX.2-klein-base-9B, black-forest-labs/FLUX.2-klein-9b-kv, '
         'SD3, SD3.5, '
-        'LTX-2.5, LTX-Video, DeepFloyd IF.',
+        'LTX-2.5, LTX-Video, DeepFloyd IF. '
+        'FLUX.2-klein-9B is the distilled 9B checkpoint. It is gated. It is not the 4B repo and not the base-9B repo.',
         'For a gated repo the \\print is exactly:',
         r'    \print Set HF_TOKEN environmental variable or pass --auth-token.',
         'Put the HF_TOKEN \\set and that single {% if %} \\print \\exit {% endif %} block '
         'only once at the top of the config (after the shebang lines), not inside loops '
         'or before each invocation.',
-        'CIVIT_AI_TOKEN is only for a civitai.com link. A Hugging Face repo or a local file does not use it.',
+        'CIVIT_AI_TOKEN is only for a civitai.com or civitai.red link. A Hugging Face repo or a local file does not use it.',
         'That \\print is exactly: \\print Set CIVIT_AI_TOKEN environmental variable.',
         'Put the CIVIT_AI_TOKEN \\set and that single early-exit only once at the top of the config.',
+        'Do not put token= or {{ civit_ai_token }} on the download URL. dgenerate appends '
+        'CIVIT_AI_TOKEN from the environment. Copy the download URL without a token query.',
         'Neither token \\print contains the word "example".',
     ]
     if re.search(r'\b(animat\w*|video|ltx|wan|clip)\b', request, re.IGNORECASE):
@@ -544,6 +659,9 @@ def first_draft_recipes(request: str) -> str:
                 '(phrase:1.3) and ((phrase)) are sd-embed. word+ is compel, not sd-embed. '
                 'A plain sentence with --prompt-weighter does nothing.',
             ]
+    hint = memory_draft(request, editor, machine)
+    if hint:
+        lines.append(hint)
     return '\n'.join(lines)
 
 
@@ -749,10 +867,13 @@ def prompt_guide(examples: list[_corpus.Chunk]) -> str:
 
 
 def user_message(request: str, context: str, files: list[RequestFile],
-                 editor: str | None = None) -> str:
+                 editor: str | None = None,
+                 machine: tuple[bool, float, bool, bool] | None = None) -> str:
     for f in files:
         request = re.sub(rf'(?<![\w./\\-]){re.escape(f.written)}(?![\w.-])',
                          lambda _: f'"{f.config_path}" (input file)', request)
+    if machine is None:
+        machine = machine_state()
     body = (f'Reference material from the dgenerate documentation and examples:\n\n{context}\n\n')
     if editor and editor.strip():
         body += (
@@ -763,8 +884,11 @@ def user_message(request: str, context: str, files: list[RequestFile],
             'expression on the line it already occupies.\n\n'
             f'{editor.strip()}\n\n'
             f'Request:\n{request}\n')
+        hint = memory_draft(request, editor, machine)
+        if hint:
+            body += '\n' + hint + '\n'
         return body
-    return body + f'Request:\n{request}\n\n{first_draft_recipes(request)}'
+    return body + f'Request:\n{request}\n\n{first_draft_recipes(request, machine=machine)}'
 
 
 def inputs_used_as_output(config: str, files: list[RequestFile]) -> list[str]:
@@ -818,8 +942,539 @@ def split_prompts(config: str) -> list[str]:
     return problems
 
 
-def system_message(version: str) -> str:
-    return SYSTEM_PROMPT.format(shebang=SHEBANG, version=version)
+@dataclasses.dataclass(frozen=True)
+class MemorySpec:
+    """Flags one model needs on this computer. ``nothing`` means the examples load it as-is."""
+
+    offload: str | None = None
+    second_offload: str | None = None
+    quantizer: str | None = None
+    quantizer_map: tuple[str, ...] | None = None
+    forbid_quantizer: bool = False
+    nothing: bool = False
+
+
+def _quant_uri(cuda: bool, bitsandbytes: bool, sdnq: bool) -> str | None:
+    """4-bit quantizer URI. bitsandbytes is preferred over sdnq. CPU has neither."""
+    if not cuda:
+        return None
+    if bitsandbytes:
+        return 'bnb;bits=4'
+    if sdnq:
+        return 'sdnq;type=int4'
+    return None
+
+
+def _spec_text(spec: MemorySpec) -> str:
+    parts = []
+    if spec.offload == 'sequential':
+        parts.append('--model-sequential-offload')
+    elif spec.offload == 'cpu':
+        parts.append('--model-cpu-offload')
+    if spec.second_offload == 'cpu':
+        parts.append('--second-model-cpu-offload')
+    if spec.quantizer:
+        quantizer = f'--quantizer {spec.quantizer}'
+        if spec.quantizer_map:
+            quantizer += ' --quantizer-map ' + ' '.join(spec.quantizer_map)
+        parts.append(quantizer)
+    if parts:
+        return ' and '.join(parts)
+    if spec.nothing:
+        return 'no offload and no quantizer'
+    return ''
+
+
+def _memory_spec(kind: str | None, cuda: bool, gib: float, bitsandbytes: bool, sdnq: bool) -> MemorySpec | None:
+    """
+    The example's memory flags for one kind of checkpoint.
+
+    Cutoffs are the ``gpu_memory_gib`` tests in ``examples/``. SD3 full checkpoints
+    use 8-bit above 24 GiB and never sdnq. Z-Image full checkpoints offload at
+    16 GiB and below and are not quantized. Klein 4B quantizes above 12 GiB.
+    Flux.2 dev and Klein 9B quantize above 24 GiB.
+    """
+    quantizer = _quant_uri(cuda, bitsandbytes, sdnq)
+    if kind in ('sequential', 'ltx-full', 'flux-comfy'):
+        return MemorySpec('sequential', forbid_quantizer=True)
+    if kind in ('ltx-gguf', 'packed-cpu'):
+        return MemorySpec('cpu', forbid_quantizer=True)
+    if kind == 'cascade':
+        return MemorySpec('cpu', second_offload='cpu', forbid_quantizer=True)
+    if kind == 'kolors':
+        if bitsandbytes and cuda and gib > 15:
+            return MemorySpec(quantizer='bnb;bits=4')
+        if bitsandbytes and cuda and gib > 7:
+            return MemorySpec(quantizer='bnb;bits=4;bits4-quant-type=nf4;bits4-use-double-quant=True')
+        if sdnq and cuda and gib > 15:
+            return MemorySpec(quantizer='sdnq;type=int4')
+        return MemorySpec('sequential')
+    if kind == 'sd3-full':
+        if cuda and bitsandbytes and gib > 24:
+            return MemorySpec(quantizer='bnb;bits=8')
+        return MemorySpec('sequential')
+    if kind == 'sd3-pre':
+        mapped = quantizer if quantizer and gib > 15 else None
+        return MemorySpec('cpu', quantizer=mapped, quantizer_map=('text_encoder_3',) if mapped else None)
+    if kind == 'flux-full':
+        if quantizer and gib > 15:
+            return MemorySpec(quantizer=quantizer)
+        return MemorySpec('sequential')
+    if kind == 'flux-control':
+        if quantizer and gib > 24:
+            return MemorySpec(quantizer=quantizer)
+        return MemorySpec('sequential')
+    if kind == 'flux-gguf':
+        mapped = quantizer if quantizer and gib > 15 else None
+        return MemorySpec('cpu', quantizer=mapped, quantizer_map=('text_encoder',) if mapped else None)
+    if kind == 'flux2-heavy':
+        if quantizer and gib > 24:
+            return MemorySpec(quantizer=quantizer)
+        return MemorySpec('sequential')
+    if kind == 'klein4-full':
+        if quantizer and gib > 12:
+            return MemorySpec(quantizer=quantizer)
+        return MemorySpec('sequential')
+    if kind == 'flux2-pre-dev':
+        mapped = quantizer if quantizer and gib > 16 else None
+        return MemorySpec('sequential', quantizer=mapped, quantizer_map=('text_encoder',) if mapped else None)
+    if kind == 'flux2-pre-klein':
+        mapped = quantizer if quantizer and gib > 12 else None
+        return MemorySpec('sequential', quantizer=mapped, quantizer_map=('text_encoder',) if mapped else None)
+    if kind == 'qwen-full':
+        if quantizer and gib > 24:
+            return MemorySpec(quantizer=quantizer)
+        return MemorySpec('sequential')
+    if kind == 'qwen-pre':
+        mapped = quantizer if quantizer and gib > 16 else None
+        return MemorySpec('sequential', quantizer=mapped, quantizer_map=('text_encoder',) if mapped else None)
+    if kind == 'zimage-full':
+        if not cuda or gib <= 16:
+            return MemorySpec('sequential', forbid_quantizer=True)
+        return MemorySpec(nothing=True, forbid_quantizer=True)
+    if kind == 'zimage-pre':
+        mapped = quantizer if quantizer and gib > 12 else None
+        offload = 'sequential' if (not cuda or gib <= 16) else None
+        return MemorySpec(offload, quantizer=mapped, quantizer_map=('text_encoder',) if mapped else None)
+    if kind == 'zimage-sdnq':
+        if not cuda or gib <= 16:
+            return MemorySpec('cpu', forbid_quantizer=True)
+        return MemorySpec(nothing=True, forbid_quantizer=True)
+    if kind == 'hydit':
+        return MemorySpec(nothing=True, forbid_quantizer=True)
+    return None
+
+
+_SEQUENTIAL_TYPES = frozenset({
+    'krea2', 'wan', 'wan-animate', 'wan-animate-2', 'ltx2',
+    'hyvideo-15', 'motif-video', 'kandinsky5-image', 'kandinsky5-video',
+    'hyimage-21', 'hyimage-21-refiner', 'qwen-image-21',
+    'if', 'ifs', 'ifs-img2img',
+})
+_UNCHECKED_TYPES = frozenset({
+    'sd', 'pix2pix', 'sdxl', 'sdxl-pix2pix', 'upscaler-x2', 'upscaler-x4',
+    '', 'z-image-omni',
+})
+_FLUX_TYPES = frozenset({'flux', 'flux-fill', 'flux-kontext'})
+_QWEN_TYPES = frozenset({'qwen-image', 'qwen-image-edit', 'qwen-image-layered'})
+_PREQUANTIZED = re.compile(r'\.gguf|fp8|fp4|nvfp4|int8|q\d-k|q4-0|q8-0', re.IGNORECASE)
+
+
+def _norm_blob(*parts: str | None) -> str:
+    return ' '.join(part or '' for part in parts).lower().replace('_', '-')
+
+
+def _is_prequantized(*parts: str | None) -> bool:
+    return bool(_PREQUANTIZED.search(_norm_blob(*parts)))
+
+
+def memory_kind(model_type: str, model_path: str, transformer: str | None = None,
+                text_encoders: collections.abc.Iterable[str] | None = None,
+                control_loras: collections.abc.Iterable[str] | None = None) -> str | None:
+    """Which memory row an invocation uses. ``None`` means the examples set no flags."""
+    mt = (model_type or '').lower()
+    if mt in _UNCHECKED_TYPES:
+        return None
+    if mt in _SEQUENTIAL_TYPES:
+        return 'sequential'
+    if mt == 'ltx-video':
+        return 'ltx-gguf' if _is_prequantized(transformer) else 'ltx-full'
+    if mt == 's-cascade':
+        return 'cascade'
+    if mt == 'kolors':
+        return 'kolors'
+    if mt == 'hydit':
+        return 'hydit'
+    prequantized = _is_prequantized(transformer)
+    text_prequantized = _is_prequantized(*(text_encoders or ()))
+    names = _norm_blob(model_path, transformer)
+    if mt == 'z-image':
+        if 'sdnq' in _norm_blob(model_path):
+            return 'zimage-sdnq'
+        return 'zimage-pre' if prequantized else 'zimage-full'
+    if mt in ('sd3', 'sd3-pix2pix'):
+        return 'sd3-pre' if prequantized else 'sd3-full'
+    if mt in _FLUX_TYPES:
+        if prequantized and text_prequantized:
+            return 'packed-cpu'
+        if prequantized and '.gguf' in _norm_blob(transformer):
+            return 'flux-gguf'
+        if prequantized:
+            return 'flux-comfy'
+        if any(control_loras or ()):
+            return 'flux-control'
+        return 'flux-full'
+    if mt in ('flux2', 'flux2-klein-kv'):
+        klein = 'klein' in names or mt == 'flux2-klein-kv'
+        if prequantized and text_prequantized:
+            return 'packed-cpu'
+        if prequantized and klein:
+            return 'flux2-pre-klein'
+        if prequantized:
+            return 'flux2-pre-dev'
+        # klein-base-4B is still the 4B checkpoint. The hyphen is not always before 4b.
+        if 'klein' in names and re.search(r'4b', names):
+            return 'klein4-full'
+        return 'flux2-heavy'
+    if mt in _QWEN_TYPES:
+        return 'qwen-pre' if prequantized else 'qwen-full'
+    return None
+
+
+_KIND_LABEL = {
+    'sequential': 'Krea 2, Wan, LTX-2.5, Qwen-Image 2.1, Hunyuan, Kandinsky, Motif, or DeepFloyd',
+    'ltx-full': 'LTX-Video full checkpoint',
+    'ltx-gguf': 'LTX-Video GGUF transformer',
+    'cascade': 'Stable Cascade',
+    'kolors': 'Kolors',
+    'sd3-full': 'SD3 or SD3 pix2pix full checkpoint',
+    'sd3-pre': 'SD3 prequantized transformer',
+    'flux-full': 'Flux.1 full checkpoint',
+    'flux-control': 'Flux.1 Control LoRA',
+    'flux-gguf': 'Flux.1 GGUF transformer',
+    'flux-comfy': 'Flux.1 FP8 or Comfy transformer',
+    'flux2-heavy': 'Flux.2 dev, Klein 9B, or Klein KV full checkpoint',
+    'klein4-full': 'Flux.2 Klein 4B full checkpoint (--model-type flux2, not flux)',
+    'flux2-pre-dev': 'Flux.2 dev prequantized transformer',
+    'flux2-pre-klein': 'Flux.2 Klein prequantized transformer',
+    'packed-cpu': 'Flux.2 with a quantized transformer and a quantized text encoder',
+    'qwen-full': 'Qwen-Image, Edit, or Layered full checkpoint',
+    'qwen-pre': 'Qwen-Image prequantized transformer',
+    'zimage-full': 'Z-Image full checkpoint',
+    'zimage-pre': 'Z-Image prequantized transformer',
+    'hydit': 'Hunyuan-DiT (--model-type hydit, not hyvideo-15 or hyimage-21)',
+    'zimage-sdnq': 'Z-Image SDNQ checkpoint',
+}
+
+
+def _request_prequantized(text: str) -> bool:
+    return bool(re.search(r'\.gguf|\bfp8\b|\bfp4\b|nvfp4|\bint8\b|q\d-k', text))
+
+
+def _request_kinds(request: str) -> list[str]:
+    """Memory rows named by the request, most specific model first."""
+    text = request.lower().replace('_', '-')
+    pre = _request_prequantized(text)
+    found: list[str] = []
+
+    def add(kind: str) -> None:
+        if kind not in found:
+            found.append(kind)
+
+    # klein-base-4B is still the 4B checkpoint. The hyphen is not always before 4b.
+    klein4 = bool(re.search(r'klein', text) and re.search(r'4b', text))
+    flux2 = bool(re.search(r'flux\.2|flux2|flux-2|flux 2', text))
+    if klein4:
+        add('flux2-pre-klein' if pre else 'klein4-full')
+    elif flux2:
+        if 'klein' in text:
+            add('flux2-pre-klein' if pre else 'flux2-heavy')
+        else:
+            add('flux2-pre-dev' if pre else 'flux2-heavy')
+    elif re.search(r'\bflux\b|flux\.1|flux1', text):
+        if re.search(r'control[- ]lora', text):
+            add('flux-control')
+        elif 'gguf' in text:
+            add('flux-gguf')
+        elif pre:
+            add('flux-comfy')
+        else:
+            add('flux-full')
+    if re.search(r'z-image|zimage|z image', text):
+        if 'sdnq' in text:
+            add('zimage-sdnq')
+        elif pre:
+            add('zimage-pre')
+        else:
+            add('zimage-full')
+    if re.search(r'qwen-image-2\.1|qwen-image-21(?!\d)|qwen image 2\.1', text):
+        add('sequential')
+    elif re.search(r'qwen-image|qwen image', text):
+        add('qwen-pre' if pre else 'qwen-full')
+    if re.search(r'\bsd3\b|sd3\.5|stable-diffusion-3|stable diffusion 3', text):
+        add('sd3-pre' if pre else 'sd3-full')
+    if re.search(r'\bkolors\b', text):
+        add('kolors')
+    if re.search(r'\bkrea\s*-?\s*2\b|krea2', text) and not re.search(r'flux\.1\b|flux1\b', text):
+        add('sequential')
+    if re.search(r'ltx-2|ltx2(?!\d)|ltxv2|ltxv-2\.\d', text):
+        add('sequential')
+    elif re.search(r'ltx-video|ltxvideo|\bltxv\b|ltx video', text):
+        add('ltx-gguf' if 'gguf' in text else 'ltx-full')
+    if re.search(r'\bwan\b|wan\d|wan-\d', text):
+        add('sequential')
+    if re.search(r'hunyuan-?dit|\bhydit\b|hunyuan dit', text):
+        add('hydit')
+    image21 = bool(re.search(r'hunyuan-?image|hyimage', text)) and not re.search(r'3\.0|image-3', text)
+    video15 = bool(re.search(r'hunyuan-?video-?1\.5|hunyuanvideo1\.5|hyvideo', text))
+    kandinsky5 = bool(re.search(r'kandinsky-5|kandinsky5', text)) and not re.search(
+        r'kandinsky-6|kandinsky6', text)
+    if image21 or video15 or kandinsky5 or re.search(r'motif-video|\bmotif\b|deepfloyd|\bif-i-', text):
+        add('sequential')
+    elif re.search(r'\bcascade\b', text):
+        add('cascade')
+    return found
+
+
+def _config_kinds(config: str) -> list[str]:
+    """Memory rows of the invocations in an open config."""
+    kinds: list[str] = []
+    model_path = ''
+    model_type = ''
+    transformer = ''
+    text_encoders: list[str] = []
+    control: list[str] = []
+
+    def finish() -> None:
+        nonlocal model_path, model_type, transformer, text_encoders, control
+        if model_path or model_type:
+            kind = memory_kind(model_type, model_path, transformer or None, text_encoders, control)
+            if kind and kind not in kinds:
+                kinds.append(kind)
+        model_path = model_type = transformer = ''
+        text_encoders = []
+        control = []
+
+    for raw in config.splitlines():
+        stripped = raw.strip()
+        if not stripped or stripped.startswith(('#', '\\', '{%', '{{')):
+            continue
+        if stripped.startswith('--'):
+            name, _, value = stripped.partition(' ')
+            if name == '--model-type':
+                model_type = value.split()[0] if value else ''
+            elif name == '--transformer':
+                transformer = value
+            elif name == '--text-encoders':
+                text_encoders.append(value)
+            elif name == '--control-loras':
+                control.append(value)
+            continue
+        finish()
+        head, _, rest = stripped.partition(' ')
+        model_path = head
+        if '--model-type' in rest:
+            model_type = rest.split('--model-type', 1)[1].split()[0]
+    finish()
+    return kinds
+
+
+def memory_draft(request: str, editor: str | None,
+                 machine: tuple[bool, float, bool, bool] | None) -> str:
+    """
+    The exact flags for the model this request is writing, placed after the examples
+    so the first draft copies them instead of the example's memory ``{% if %}``.
+    """
+    if machine is None:
+        machine = machine_state()
+    cuda, gib, bitsandbytes, sdnq = machine
+    kinds = _request_kinds(request) or _config_kinds(editor or '')
+    rows = []
+    for kind in kinds:
+        spec = _memory_spec(kind, cuda, gib, bitsandbytes, sdnq)
+        if spec is None:
+            continue
+        flags = _spec_text(spec)
+        label = _KIND_LABEL.get(kind, kind)
+        if not flags or flags == 'no offload and no quantizer':
+            rows.append(f'- {label}: do not add --quantizer or an offload flag.')
+        elif spec.forbid_quantizer:
+            rows.append(f'- {label}: write {flags}. Do not pass --quantizer.')
+        else:
+            rows.append(f'- {label}: write {flags}.')
+    if not rows:
+        return ''
+    return (
+        'Memory flags for this request. Write each flag as its own line under the model path. '
+        'Do not copy the example memory block: no total_memory, no \\setp gpu_memory_gib, '
+        'no {% if have_cuda() %}, no \\set offload, no \\set optimization, '
+        'and no {{ offload }} or {{ optimization }} on the --model-type line. '
+        f'This GPU has {gib:.1f} GiB.\n' + '\n'.join(rows))
+
+
+def _offload_ok(required: str | None, sequential: bool, cpu: bool, group: bool) -> bool:
+    if required is None:
+        return True
+    if required == 'sequential':
+        return sequential or group
+    if required == 'cpu':
+        return cpu or sequential or group
+    return False
+
+
+def _quantizer_ok(spec: MemorySpec, quantizer: str | None, quantizer_map: collections.abc.Iterable[str] | None) -> bool:
+    if not spec.quantizer:
+        return True
+    if not quantizer or spec.quantizer not in quantizer:
+        return False
+    mapped = set(quantizer_map or ())
+    if spec.quantizer_map:
+        return set(spec.quantizer_map).issubset(mapped)
+    if not mapped:
+        return True
+    return bool(mapped & {'transformer', 'unet', 'transformer_2'})
+
+
+def memory_problem(model_type: str, model_path: str, *,
+                   transformer: str | None = None,
+                   text_encoders: collections.abc.Iterable[str] | None = None,
+                   control_loras: collections.abc.Iterable[str] | None = None,
+                   quantizer: str | None = None,
+                   quantizer_map: collections.abc.Iterable[str] | None = None,
+                   sequential: bool = False, cpu: bool = False, group: bool = False,
+                   second_sequential: bool = False, second_cpu: bool = False,
+                   cuda: bool, gib: float, bitsandbytes: bool, sdnq: bool) -> str | None:
+    """
+    What to tell the model when an invocation does not match this GPU's row.
+
+    An offload satisfies a quantizer-only row, because it also fits. A quantizer
+    does not satisfy an offload row. Text-encoder-only quantization does not
+    satisfy a global quantizer.
+    """
+    spec = _memory_spec(memory_kind(model_type, model_path, transformer, text_encoders, control_loras),
+                        cuda, gib, bitsandbytes, sdnq)
+    if spec is None:
+        return None
+    if spec.forbid_quantizer and quantizer:
+        flags = _spec_text(spec)
+        extra = f' Write {flags}.' if flags and flags != 'no offload and no quantizer' else ''
+        return (f'{model_path or model_type} must not be quantized on this GPU. '
+                f'Do not pass --quantizer.{extra}')
+    if spec.nothing and (sequential or cpu or group or second_sequential or second_cpu):
+        return (f'{model_path or model_type} must not use offload on this GPU. '
+                'Do not pass an offload flag.')
+    offload_ok = _offload_ok(spec.offload, sequential, cpu, group)
+    second_ok = _offload_ok(spec.second_offload, second_sequential, second_cpu, False)
+    quantizer_ok = _quantizer_ok(spec, quantizer, quantizer_map)
+    any_offload = sequential or cpu or group
+    if spec.offload and spec.quantizer:
+        fits = offload_ok and quantizer_ok and second_ok
+    elif spec.offload:
+        fits = offload_ok and second_ok
+    elif spec.quantizer:
+        fits = quantizer_ok or any_offload
+    elif spec.second_offload:
+        fits = second_ok
+    else:
+        fits = True
+    if fits:
+        return None
+    return (f'{model_path or model_type} is missing the memory flags for this GPU ({gib:.1f} GiB). '
+            f'Write {_spec_text(spec)} on that invocation.')
+
+
+def offload_plan(cuda: bool, gib: float, bitsandbytes: bool, sdnq: bool) -> str:
+    """
+    Concrete memory flags for this computer, one row per model family.
+
+    Each row is the branch the examples take at this memory size. A prequantized
+    transformer keeps its offload and may quantize only the text encoder.
+    """
+    def row(kind: str) -> str:
+        spec = _memory_spec(kind, cuda, gib, bitsandbytes, sdnq)
+        return _spec_text(spec) if spec is not None else ''
+
+    zimage_sdnq = row('zimage-sdnq')
+    if 'quantizer' not in zimage_sdnq:
+        zimage_sdnq += '. Do not pass --quantizer'
+    lines = [
+        '- krea2, wan, wan-animate, wan-animate-2, ltx2, hyvideo-15, motif-video, '
+        'kandinsky5-image, kandinsky5-video, hyimage-21, hyimage-21-refiner, qwen-image-21, '
+        f'if, ifs, ifs-img2img: {row("sequential")}. No quantizer, including a GGUF or FP8 file.',
+        f'- ltx-video, full checkpoint: {row("ltx-full")}. No quantizer.',
+        f'- ltx-video, prequantized transformer: {row("ltx-gguf")}. No quantizer.',
+        f'- s-cascade: {row("cascade")}. No quantizer.',
+        '- hydit: no quantizer and no offload.',
+        '- sd, pix2pix, sdxl, sdxl-pix2pix, upscaler-x2, upscaler-x4: no quantizer. '
+        '--model-cpu-offload only when the closest example uses it.',
+        f'- kolors: {row("kolors")}.',
+        f'- sd3, sd3-pix2pix, full checkpoint: {row("sd3-full")}.',
+        f'- sd3, prequantized transformer: {row("sd3-pre")}.',
+        f'- flux, flux-fill, flux-kontext, full checkpoint: {row("flux-full")}.',
+        f'- flux, flux-fill, flux-kontext, control lora: {row("flux-control")}.',
+        f'- flux, flux-fill, flux-kontext, GGUF transformer: {row("flux-gguf")}.',
+        f'- flux, flux-fill, flux-kontext, FP8 or Comfy transformer: {row("flux-comfy")}. No quantizer.',
+        f'- flux2 dev, flux2 klein 9b, flux2-klein-kv, full checkpoint: {row("flux2-heavy")}.',
+        f'- flux2 klein 4b, full checkpoint: {row("klein4-full")}.',
+        f'- flux2 dev, prequantized transformer: {row("flux2-pre-dev")}.',
+        '- flux2 klein 4b, flux2 klein 9b, flux2-klein-kv, prequantized transformer: '
+        f'{row("flux2-pre-klein")}.',
+        '- flux2, transformer and text encoder both already quantized: --model-cpu-offload. No quantizer.',
+        f'- qwen-image, qwen-image-edit, qwen-image-layered, full checkpoint: {row("qwen-full")}.',
+        '- qwen-image, qwen-image-edit, qwen-image-layered, prequantized transformer: '
+        f'{row("qwen-pre")}.',
+        f'- z-image, full checkpoint: {row("zimage-full")}.',
+        f'- z-image, prequantized transformer: {row("zimage-pre")}.',
+        f'- z-image, SDNQ checkpoint: {zimage_sdnq}.',
+    ]
+    return '\n'.join(lines)
+
+
+def machine_state() -> tuple[bool, float, bool, bool]:
+    """CUDA, accelerator GiB, bitsandbytes, and sdnq for this computer."""
+    import dgenerate.batchprocess.configrunnerbuiltins as _builtins
+
+    cuda = bool(_builtins.have_cuda())
+    try:
+        gib = float(_builtins.total_memory(unit='gib'))
+    except Exception:
+        gib = 0.0
+    return cuda, gib, bool(_builtins.have_feature('bitsandbytes')), bool(_builtins.have_feature('sdnq'))
+
+
+def machine_report() -> str:
+    """
+    Accelerator memory and installed quantizers, plus one offload line per family.
+    """
+    import dgenerate.batchprocess.configrunnerbuiltins as _builtins
+
+    device = _builtins.default_device()
+    cuda, gib, bitsandbytes, sdnq = machine_state()
+    quantizers = [name for name, present in (('bitsandbytes', bitsandbytes), ('sdnq', sdnq)) if present]
+    plan = offload_plan(cuda, gib, bitsandbytes, sdnq)
+    return (
+        '### machine\n'
+        f'Default device: {device}. CUDA: {cuda}. XPU: {_builtins.have_xpu()}. '
+        f'MPS: {_builtins.have_mps()}.\n'
+        f'Accelerator memory: {gib:.1f} GiB.\n'
+        f'Quantizers installed: {", ".join(quantizers) if quantizers else "none"}.\n'
+        'Copy that row\'s flags onto every invocation of that family. '
+        'Do not write a total_memory check. '
+        'An invocation that leaves those flags off does not fit this GPU.\n'
+        f'{plan}'
+    )
+
+
+def system_message(version: str, link_tools: bool = False, machine: str = '',
+                   check_tool: bool = False) -> str:
+    text = SYSTEM_PROMPT.format(shebang=SHEBANG, version=version)
+    if check_tool:
+        text += '\n' + CHECK_TOOL_SYSTEM
+    if link_tools:
+        text += '\n' + LINK_TOOLS_SYSTEM
+    if machine:
+        text += '\n\n' + machine
+    return text
 
 
 def extract_config(reply: str, version: str) -> str:
@@ -838,7 +1493,70 @@ def extract_config(reply: str, version: str) -> str:
         lines.pop(0)
     while lines and not lines[0].strip():
         lines.pop(0)
-    return '\n'.join([SHEBANG, f'#! dgenerate {version}', ''] + lines).rstrip() + '\n'
+    return lift_comments_between_options(
+        '\n'.join([SHEBANG, f'#! dgenerate {version}', ''] + lines).rstrip() + '\n')
+
+
+def lift_comments_between_options(config: str) -> str:
+    """
+    Move a ``#`` comment that sits inside an invocation to just above its model path.
+
+    A comment between options ends the invocation. Small models keep writing them
+    there, and asking those models to move the line does not stick.
+    """
+    output: list[str] = []
+    in_invocation = False
+    model_index: int | None = None
+    gap: list[str] = []
+
+    def comments_were_between_options() -> None:
+        nonlocal gap, model_index
+        if gap and model_index is not None:
+            for comment in reversed(gap):
+                output.insert(model_index, comment)
+            model_index += len(gap)
+        gap = []
+
+    def comments_stay() -> None:
+        nonlocal gap
+        output.extend(gap)
+        gap = []
+
+    def end_invocation() -> None:
+        nonlocal in_invocation, model_index
+        comments_stay()
+        in_invocation = False
+        model_index = None
+
+    for raw in config.splitlines():
+        stripped = raw.strip()
+        if not stripped:
+            end_invocation()
+            output.append(raw)
+            continue
+        if stripped.startswith('#'):
+            if in_invocation:
+                gap.append(raw)
+            else:
+                output.append(raw)
+            continue
+        if stripped.startswith(('\\', '{%', '{{', '{#')):
+            end_invocation()
+            output.append(raw)
+            continue
+        if stripped.startswith('-'):
+            comments_were_between_options()
+            output.append(raw)
+            continue
+        end_invocation()
+        model_index = len(output)
+        output.append(raw)
+        in_invocation = True
+    end_invocation()
+    text = '\n'.join(output)
+    if config.endswith('\n'):
+        text += '\n'
+    return text
 
 
 def unknown_options(config: str, known: list[str]) -> list[tuple[str, list[str]]]:

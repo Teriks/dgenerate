@@ -406,8 +406,8 @@ def reconstruct_dgenerate_opts(
     if wrapper.lora_fuse_scale is not None:
         opts.append(('--lora-fuse-scale', wrapper.lora_fuse_scale))
 
-    if wrapper.lora_no_disk_fuse:
-        opts.append(('--lora-no-disk-fuse',))
+    if wrapper.lora_disk_fuse:
+        opts.append(('--lora-disk-fuse',))
 
     if wrapper.ltx_ic_lora_uri:
         opts.append(('--ltx-ic-lora', wrapper.ltx_ic_lora_uri))

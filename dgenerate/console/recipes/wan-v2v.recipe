@@ -29,7 +29,7 @@ title: Wan 2.1 Video to Video
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
-@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer"}]
 @submodelbuilder[{"label":"Second Transformer (MoE)", "arg":"--wan-second-transformer", "model": "Transformer", "divider-after":true}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]

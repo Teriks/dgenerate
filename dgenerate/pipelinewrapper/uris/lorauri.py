@@ -78,7 +78,7 @@ def _activate_loaded_loras(pipeline, adapter_names, adapter_weights, fuse, fuse_
             'Leaving LoRA adapters active on packed weights '
             f'({", ".join(quantized)}). ComfyUI, GGUF, bitsandbytes, and SDNQ '
             'checkpoints cannot take a fused write, so the LoRA is applied on top '
-            'of already quantized weights. Quality is affected. The fuse scale is '
+            'of already quantized weights. Quality may be affected. The fuse scale is '
             'folded into those adapter weights.')
     # Hunyuan-DiT keeps ``set_adapters`` on the pipeline. Its text encoder is
     # not a PEFT module, so a per-component listing still fuses from here.
@@ -231,6 +231,10 @@ def _pipeline_is_z_image(pipeline) -> bool:
     return pipeline.__class__.__name__.startswith('ZImage')
 
 
+def _pipeline_is_krea2(pipeline) -> bool:
+    return pipeline.__class__.__name__.startswith('Krea2')
+
+
 class LoRAUri:
     """
     Representation of a ``--loras`` uri
@@ -367,6 +371,7 @@ class LoRAUri:
         if hasattr(pipeline, 'load_lora_weights'):
             adapter_names = []
             adapter_weights = []
+            fused_lokr_only = True
             for adapter_index, lora_uri in enumerate(uris):
 
                 if not isinstance(lora_uri, LoRAUri):
@@ -408,8 +413,6 @@ class LoRAUri:
                     model_path = os.path.dirname(file_path)
 
                 adapter_name = str(adapter_index)
-                adapter_names.append(adapter_name)
-                adapter_weights.append(lora_uri.scale)
 
                 load_kwargs = dict(
                     revision=lora_uri.revision,
@@ -419,23 +422,38 @@ class LoRAUri:
                     token=auth_token,
                 )
                 try:
-                    _load_one_lora(
+                    load_mode = _load_one_lora(
                         pipeline, model_path, adapter_name,
                         lora_strength=lora_uri.scale,
                         load_into_transformer_2=lora_uri.component == 'transformer_2',
+                        fuse=fuse,
+                        fuse_scale=fuse_scale,
                         use_safetensors=True, **load_kwargs)
                 except EnvironmentError:
                     # brute force, try for .bin files
-                    _load_one_lora(
+                    load_mode = _load_one_lora(
                         pipeline, model_path, adapter_name,
                         lora_strength=lora_uri.scale,
                         load_into_transformer_2=lora_uri.component == 'transformer_2',
+                        fuse=fuse,
+                        fuse_scale=fuse_scale,
                         **load_kwargs)
 
+                if load_mode in ('fused_lokr', 'lokr'):
+                    _messages.debug_log(
+                        f'Loaded LoKr weights for LoRA: "{lora_uri}" ({load_mode})')
+                    continue
+
+                fused_lokr_only = False
+                adapter_names.append(adapter_name)
+                adapter_weights.append(lora_uri.scale)
                 if not pipeline.get_list_adapters():
                     raise RuntimeError(f'LoRA model "{lora_uri.model}" contained no usable weights.')
 
                 _messages.debug_log(f'Added LoRA: "{lora_uri}" to pipeline: "{pipeline.__class__.__name__}"')
+
+            if fused_lokr_only:
+                return
 
             _activate_loaded_loras(
                 pipeline, adapter_names, adapter_weights, fuse, fuse_scale)
@@ -482,7 +500,7 @@ class LoRAUri:
 
 def _load_one_lora(
         pipeline, model_path, adapter_name, lora_strength=1.0,
-        load_into_transformer_2=False, **kwargs):
+        load_into_transformer_2=False, fuse=True, fuse_scale=1.0, **kwargs):
     parameters = inspect.signature(pipeline.load_lora_weights).parameters
     if 'lora_strength' in parameters:
         kwargs['lora_strength'] = lora_strength
@@ -495,6 +513,24 @@ def _load_one_lora(
             raise RuntimeError(
                 f'{pipeline.__class__.__name__} cannot load a LoRA onto transformer_2.')
         kwargs['load_into_transformer_2'] = True
+    from dgenerate.pipelinewrapper.krea2_lora import load_krea2_lora_on_pipeline
+    from dgenerate.pipelinewrapper.lokr import load_lokr_if_present
+    lokr_mode = load_lokr_if_present(
+        pipeline, model_path, adapter_name,
+        lora_strength=lora_strength,
+        fuse=fuse,
+        fuse_scale=fuse_scale,
+        **kwargs)
+    if lokr_mode:
+        return lokr_mode
+    if _pipeline_is_krea2(pipeline):
+        return load_krea2_lora_on_pipeline(
+            pipeline, model_path, adapter_name,
+            lora_strength=lora_strength,
+            fuse=fuse,
+            fuse_scale=fuse_scale,
+            **kwargs)
+
     if not _pipeline_is_z_image(pipeline):
         pipeline.load_lora_weights(model_path, adapter_name=adapter_name, **kwargs)
         return

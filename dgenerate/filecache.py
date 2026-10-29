@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import datetime
+import functools
 import hashlib
 import json
 import os
@@ -48,6 +49,31 @@ On disk file cache implementation and primitives.
 # socket reads. Large CDN downloads stall for longer than a few seconds.
 _DOWNLOAD_TIMEOUT = (10, 60)
 _DOWNLOAD_ATTEMPTS = 5
+
+_DESKTOP_CHROME = (
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+    '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+)
+
+
+@functools.lru_cache(maxsize=1)
+def _desktop_user_agent() -> fake_useragent.UserAgent:
+    """Chrome on desktop OS only. Mobile agents often get 403 from Cloudflare."""
+    return fake_useragent.UserAgent(
+        browsers=['Chrome'],
+        os=['Windows', 'Linux', 'Ubuntu', 'Mac OS X', 'Chrome OS'],
+        platforms=['desktop'],
+        fallback=_DESKTOP_CHROME,
+    )
+
+
+def user_agent() -> str:
+    """A random desktop user agent string."""
+    try:
+        return _desktop_user_agent().chrome
+    except Exception:
+        return _DESKTOP_CHROME
+
 _RETRYABLE_STATUS = frozenset({408, 429, 500, 502, 503, 504})
 _RETRYABLE_DOWNLOAD_ERRORS = (
     requests.ConnectionError,
@@ -876,7 +902,7 @@ class WebFileCache(FileCache):
                 f'file for "{url}" was not found in the local cache.'
             )
 
-        headers = {'User-Agent': fake_useragent.UserAgent().chrome}
+        headers = {'User-Agent': user_agent()}
         if extra_headers:
             headers.update(extra_headers)
 
@@ -989,7 +1015,7 @@ class WebFileCache(FileCache):
         if tqdm_pbar is not None:
             _messages.log(f'Downloading: "{url}"', underline=True)
 
-        headers = {'User-Agent': fake_useragent.UserAgent().chrome}
+        headers = {'User-Agent': user_agent()}
         if extra_headers:
             headers.update(extra_headers)
 
@@ -1030,7 +1056,7 @@ class WebFileCache(FileCache):
 
         :return: ``(filename or None, failure reason or None)``
         """
-        headers = {'User-Agent': fake_useragent.UserAgent().chrome}
+        headers = {'User-Agent': user_agent()}
         if extra_headers:
             headers.update(extra_headers)
         try:

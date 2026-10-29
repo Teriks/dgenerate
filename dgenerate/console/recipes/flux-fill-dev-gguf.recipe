@@ -25,7 +25,7 @@ title: Flux Fill Dev (GGUF)
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
-@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/YarvixPA/FLUX.1-Fill-dev-GGUF/blob/main/flux1-fill-dev-Q4_K_S.gguf", "divider-after":true}]
 --image-seeds @file[{"label":"Input Image File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}];@file[{"label":"Input Mask File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]

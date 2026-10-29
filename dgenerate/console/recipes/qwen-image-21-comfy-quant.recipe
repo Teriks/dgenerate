@@ -16,7 +16,7 @@ title: Qwen-Image 2.1 (ComfyUI Quant)
 @quantizer[{"model-type":"qwen-image-21", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
-@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/diffusion_models/qwen_image_2.1_int8_convrot.safetensors", "divider-after":true}]
 @imageseed[{"label":"Condition Image", "arg":"--image-seeds", "file-types":["images-in"], "hide-float":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":40, "min":1}]

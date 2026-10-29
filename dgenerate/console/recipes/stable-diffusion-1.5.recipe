@@ -16,7 +16,7 @@ title: Stable Diffusion 1.5
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
-@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse"}]
 @submodelbuilder[{"id":"control-net", "label":"Control Net", "arg":"--control-nets", "model": "Control Net"}]
 @submodelbuilder[{"id":"control-lora","label":"Control LoRA","arg":"--control-loras","model":"Control LoRA","exclude":"control-net"}]
 @float[{"label":"Control LoRA Fuse Scale","arg":"--control-lora-fuse-scale","min":0}]

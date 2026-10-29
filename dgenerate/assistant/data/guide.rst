@@ -23,7 +23,7 @@ inside that block is empty because the block is rendered before
 ``\set`` runs::
 
     {% if civit_ai_token.strip() %}
-        \set model https://civitai.com/api/download/models/1?token={{civit_ai_token}}
+        \set model https://civitai.com/api/download/models/1
         {{ model }}
         --model-type sdxl
         --prompts "a fox"
@@ -40,15 +40,17 @@ only when the next line starts with ``--`` and ``model`` was set
 
 CivitAI::
 
-Only when the config downloads from a ``civitai.com`` link. A Hugging Face
-repo or a local file does not use ``CIVIT_AI_TOKEN``.
+Only when the config downloads from a ``civitai.com`` or ``civitai.red`` link. A Hugging Face
+repo or a local file does not use ``CIVIT_AI_TOKEN``. Do not put ``token=``
+on the download URL. dgenerate appends ``CIVIT_AI_TOKEN`` from the environment
+when that query parameter is absent.
 
     \set civit_ai_token %CIVIT_AI_TOKEN%
     {% if not civit_ai_token.strip() %}
         \print Set CIVIT_AI_TOKEN environmental variable.
         \exit
     {% endif %}
-    \set model https://civitai.com/api/download/models/1?token={{civit_ai_token}}
+    \set model https://civitai.com/api/download/models/1
     {{ model }}
     --model-type sdxl
     --prompts "a fox"
@@ -90,7 +92,7 @@ Do not copy that sentence. Only a gated checkpoint gets a token
 
     \print Set HF_TOKEN environmental variable or pass --auth-token.
 
-``CIVIT_AI_TOKEN`` only when a ``civitai.com`` link is in the config::
+``CIVIT_AI_TOKEN`` only when a ``civitai.com`` or ``civitai.red`` link is in the config::
 
     \print Set CIVIT_AI_TOKEN environmental variable.
 

@@ -2483,7 +2483,7 @@ def create_diffusion_pipeline(
         vae_uri: _types.OptionalUri = None,
         lora_uris: _types.OptionalUris = None,
         lora_fuse_scale: _types.OptionalFloat = None,
-        lora_no_disk_fuse: bool = False,
+        lora_disk_fuse: bool = False,
         image_encoder_uri: _types.OptionalUri = None,
         ip_adapter_uris: _types.OptionalUris = None,
         textual_inversion_uris: _types.OptionalUris = None,
@@ -2525,9 +2525,9 @@ def create_diffusion_pipeline(
     :param lora_fuse_scale: Optional ``--lora-fuse-scale`` global LoRA fuse scale value.
         Once all LoRAs are merged with their individual scales, the merged weights will be fused
         into the pipeline at this scale. The default value is 1.0.
-    :param lora_no_disk_fuse: When true, ``--quantizer`` does not fuse LoRAs into a
-        full-precision copy on disk first. The LoRA stays active on the quantized
-        modules. The default fuses before quantization.
+    :param lora_disk_fuse: When true, ``--quantizer`` fuses LoRAs into a
+        full-precision copy on disk first. The default keeps the LoRA active
+        on the quantized modules.
     :param image_encoder_uri: Optional ``--image-encoder`` URI for use with IP Adapter weights or Stable Cascade
     :param ip_adapter_uris: Optional ``--ip-adapters`` URI strings for specifying IP Adapter weights
     :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
@@ -2540,7 +2540,7 @@ def create_diffusion_pipeline(
         SD and SDXL fuse into the ControlNet cloned from the UNet. ``--quantizer``
         quantizes the UNet or transformer, and that clone stays full precision
         unless ``controlnet`` is in ``quantizer_map``. Flux control LoRAs are fused
-        before quantization unless ``lora_no_disk_fuse`` is set, in which case a
+        before quantization when ``lora_disk_fuse`` is set. Otherwise a
         quantized transformer keeps the adapter and folds this scale in.
     :param t2i_adapter_uris: Optional ``--t2i-adapters`` URI strings for specifying T2IAdapter models
     :param quantizer_uri: Optional ``--quantizer`` URI value
@@ -2611,7 +2611,7 @@ class PipelineFactory:
                  vae_uri: _types.OptionalUri = None,
                  lora_uris: _types.OptionalUris = None,
                  lora_fuse_scale: _types.OptionalFloat = None,
-                 lora_no_disk_fuse: bool = False,
+                 lora_disk_fuse: bool = False,
                  image_encoder_uri: _types.OptionalUri = None,
                  ip_adapter_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
@@ -3789,7 +3789,7 @@ def _create_diffusion_pipeline(
         vae_uri: _types.OptionalUri = None,
         lora_uris: _types.OptionalUris = None,
         lora_fuse_scale: _types.OptionalFloat = None,
-        lora_no_disk_fuse: bool = False,
+        lora_disk_fuse: bool = False,
         image_encoder_uri: _types.OptionalUri = None,
         ip_adapter_uris: _types.OptionalUris = None,
         textual_inversion_uris: _types.OptionalUris = None,
@@ -4160,9 +4160,9 @@ def _create_diffusion_pipeline(
     components_to_cache = []
 
     # Determine if we need granular caching.
-    # By default, LoRAs are fused into full-precision weights and written to
-    # disk before --quantizer runs. --lora-no-disk-fuse leaves those adapters
-    # active on the quantized modules instead. SD/SDXL control LoRAs still
+    # By default, LoRAs stay active on the quantized modules.
+    # --lora-disk-fuse writes them into full-precision weights on
+    # disk before --quantizer runs. SD/SDXL control LoRAs still
     # save their ControlNet clone either way. A single-file checkpoint is
     # converted first.
     (components_to_cache,
@@ -4174,7 +4174,7 @@ def _create_diffusion_pipeline(
         model_path,
         lora_uris,
         control_lora_uris,
-        lora_no_disk_fuse,
+        lora_disk_fuse,
         manual_quantizer_components,
         quantizer_map)
     needs_granular_caching = (
@@ -4971,9 +4971,19 @@ def _create_diffusion_pipeline(
             auth_token=auth_token,
             local_files_only=local_files_only)
 
-    # A quantized run fuses LoRAs into the disk cache unless
-    # --lora-no-disk-fuse asked for the adapter path.
-    attach_loras_now = lora_no_disk_fuse or not quantizer_uri
+    # --lora-disk-fuse already merged these into the pre-quantization
+    # cache when a global or per-component quantizer caused that cache
+    # to be written. Attaching them again would apply the LoRA twice.
+    # A component URI such as --transformer ...;quantizer= counts here,
+    # not only --quantizer.
+    fused_before_quant = lora_disk_fuse and needs_granular_caching
+    attach_loras_now = not fused_before_quant
+    lora_targets_quantized = bool(quantizer_uri) or bool(
+        manual_quantizer_components - {'controlnet'})
+    if not lora_disk_fuse and lora_targets_quantized and (
+            lora_uris or (
+                control_lora_uris and model_type == _enums.ModelType.FLUX)):
+        _warn_quantized_lora_not_fused_to_disk()
     if lora_uris and attach_loras_now:
         for lora_uri in lora_uris:
             parsed_lora_uris.append(_uris.LoRAUri.parse(lora_uri))
@@ -4981,11 +4991,11 @@ def _create_diffusion_pipeline(
     flux_control_loaded = bool(
         control_lora_uris
         and model_type == _enums.ModelType.FLUX
-        and (lora_no_disk_fuse or not needs_granular_caching))
+        and not fused_before_quant)
     if flux_control_loaded:
-        # Quantized runs fuse the control LoRA in the pre-quantization cache
-        # unless --lora-no-disk-fuse is set. An already packed transformer
-        # keeps the adapters active.
+        # Quantized runs keep the control LoRA active unless
+        # --lora-disk-fuse writes it into the pre-quantization cache.
+        # An already packed transformer keeps the adapters active.
         _load_flux_control_and_style_loras(
             pipeline,
             control_lora_uris,
@@ -5321,26 +5331,33 @@ def _get_component_cache_key(
            f"{str(dtype)}|{str(original_config)}{manual_uri_part}"
 
 
+def _warn_quantized_lora_not_fused_to_disk() -> None:
+    _messages.warning(
+        'LoRAs stay active on the quantized weights and are not fused to disk. '
+        'If the result looks poor, pass --lora-disk-fuse. That fuses them into '
+        'a full-precision copy before quantization but uses more disk space.')
+
+
 def _components_cached_before_quantization(
         pipeline_class,
         model_type: _enums.ModelType,
         model_path: str,
         lora_uris,
         control_lora_uris,
-        lora_no_disk_fuse: bool,
+        lora_disk_fuse: bool,
         manual_quantizer_components,
         quantizer_map):
     """
     Components written to the pre-quantization cache.
 
-    Style LoRAs and Flux control LoRAs are part of that cache only when they
-    are fused first. ``--lora-no-disk-fuse`` leaves them off the cached
+    Style LoRAs and Flux control LoRAs are part of that cache only when
+    ``--lora-disk-fuse`` is set. Otherwise they stay off the cached
     checkpoint. An SD/SDXL control LoRA still builds a ControlNet clone.
     That clone is not the UNet, so a repository UNet is not written here.
     A single-file checkpoint still converts the modules quantization can
     load, and that conversion is the plain checkpoint, not a LoRA fuse.
     """
-    fuse_loras_before_quant = not lora_no_disk_fuse
+    fuse_loras_before_quant = lora_disk_fuse
     single_file = _hfhub.is_single_file_model_load(model_path)
     sd_control = bool(
         control_lora_uris
@@ -5731,8 +5748,8 @@ def _create_minimal_pipeline_for_component_extraction(
 
     # Control LoRAs fuse before style LoRAs. SD/SDXL clones the UNet first,
     # while it is still the base checkpoint. Flux fuses into the transformer.
-    # Callers omit these URIs when --lora-no-disk-fuse leaves the adapters
-    # for the quantized pipeline.
+    # Callers omit these URIs when the adapters stay on the quantized pipeline.
+    # --lora-disk-fuse includes them in this cached copy.
     held_controlnet = None
     flux_control_loaded = False
     if control_lora_uris and _enums.model_type_supports_control_lora(model_type):
@@ -5875,8 +5892,7 @@ def _cache_components_granular(
             f'Model "{model_path}" is having LoRAs '
             f'fused into specific components, that will then be cached on disk '
             f'prior to quantization. This is a one time task per LoRA scale value, '
-            f'please be patient... Pass --lora-no-disk-fuse to skip this '
-            f'at the cost of quality.'
+            f'please be patient...'
         )
     elif sd_control_lora:
         extra = ''

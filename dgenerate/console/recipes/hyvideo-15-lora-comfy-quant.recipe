@@ -20,7 +20,7 @@ title: HunyuanVideo 1.5 Text to Video (4-step LoRA, ComfyUI Quant)
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model":"LoRA", "default":"https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/loras/hunyuanvideo1.5_t2v_480p_lightx2v_4step_lora_rank_32_bf16.safetensors"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
-@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/diffusion_models/hunyuanvideo1.5_480p_t2v_fp16.safetensors", "divider-after":true}]
 @int[{"id":"is","label":"Inference Steps","arg":"--inference-steps","default":4,"min":1,"exclude":["ts"]}]
 @string[{"id":"ts","label":"Timesteps (override)","arg":"--timesteps","default":"","exclude":["is"]}]

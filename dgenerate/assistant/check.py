@@ -1,3 +1,24 @@
+# Copyright (c) 2023, Teriks
+#
+# dgenerate is distributed under the following BSD 3-Clause License
+#
+# Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 """
 Validate a dgenerate config without loading any models.
 
@@ -622,7 +643,10 @@ class _UriChecker:
         return problems
 
 
-def check_config(text: str) -> dict:
+def check_config(text: str, memory: tuple | None = None) -> dict:
+    if memory is None:
+        import dgenerate.assistant.prompt as _prompt
+        memory = _prompt.machine_state()
     import dgenerate.arguments as _arguments
     import dgenerate.image_process.arguments as _image_process_arguments
     import dgenerate.batchprocess as _batchprocess
@@ -638,6 +662,7 @@ def check_config(text: str) -> dict:
     invocations: list[dict] = []
     errors.extend(_template_delayed_expansion(text))
     errors.extend(_runaway_comments(text))
+    errors.extend(_comment_between_options(text))
     errors.extend(_print_says_example(text))
     if _LAST_ANIM_SEED.search(text) and not re.search(
             r'--model-type\s+(' + '|'.join(map(re.escape, _video_model_types())) + r')(?![\w-])', text):
@@ -888,6 +913,23 @@ def check_config(text: str) -> dict:
             if problem:
                 errors.append({'line': line, 'message': problem})
             mt = _model_type_str(config)
+            import dgenerate.assistant.prompt as _prompt
+            cuda, gib, bitsandbytes, sdnq = memory
+            problem = _prompt.memory_problem(
+                mt, model_path,
+                transformer=config.transformer_uri,
+                text_encoders=config.text_encoder_uris,
+                control_loras=config.control_lora_uris,
+                quantizer=config.quantizer_uri,
+                quantizer_map=config.quantizer_map,
+                sequential=bool(config.model_sequential_offload),
+                cpu=bool(config.model_cpu_offload),
+                group=bool(config.model_group_offload),
+                second_sequential=bool(config.second_model_sequential_offload),
+                second_cpu=bool(config.second_model_cpu_offload),
+                cuda=cuda, gib=gib, bitsandbytes=bitsandbytes, sdnq=sdnq)
+            if problem:
+                errors.append({'line': line, 'message': problem})
             if mt == 'z-image-omni':
                 errors.append({
                     'line': line,
@@ -1031,6 +1073,79 @@ def check_config(text: str) -> dict:
     }
 
 
+def check_config_text(config: str) -> str:
+    """Short report for the ``check_config`` tool. The model fixes the text and calls again."""
+    if not (config or '').strip():
+        return 'Missing config text. Pass the complete config in the config argument.'
+    report = check_config(config)
+    errors = report.get('errors') or []
+    if not errors:
+        return 'No problems. Call submit_config with this config. Do not write it in the message.'
+    lines = ['Fix these problems, then call check_config again.']
+    for entry in errors[:12]:
+        line = entry.get('line')
+        where = f'line {line}: ' if line else ''
+        lines.append(f'- {where}{entry.get("message")}')
+    extra = len(errors) - 12
+    if extra > 0:
+        lines.append(f'- {extra} more problems.')
+    return '\n'.join(lines)
+
+
+def consider_submission(config: str) -> tuple[bool, str, int]:
+    """
+    Accept a ``submit_config`` payload, or return the problems.
+
+    Comments that sit between options are moved above the model path first,
+    so a small model is not asked to repair that itself.
+    """
+    from dgenerate.assistant.prompt import lift_comments_between_options
+    lifted = lift_comments_between_options(config or '')
+    if not lifted.strip():
+        return False, check_config_text(lifted), 0
+    report = check_config(lifted)
+    errors = report.get('errors') or []
+    if not errors:
+        return True, lifted, int(report.get('invocations') or 0)
+    return False, check_config_text(lifted), 0
+
+
+def _comment_between_options(text: str) -> list[dict]:
+    """A ``#`` comment between options ends the invocation, so the next option has no model path."""
+    errors = []
+    in_invocation = False
+    comment_line = None
+    for number, raw in enumerate(text.splitlines(), 1):
+        stripped = raw.strip()
+        if not stripped:
+            in_invocation = False
+            comment_line = None
+            continue
+        if stripped.startswith('#'):
+            if in_invocation:
+                comment_line = number
+            continue
+        if stripped.startswith('-'):
+            if comment_line is not None:
+                errors.append({
+                    'line': number,
+                    'message': (
+                        f'The # comment on line {comment_line} sits between options and ends '
+                        'the invocation, so this option runs with no model path. Move that '
+                        'comment to above the model path, or delete it. Keep every option on '
+                        'the next line, starting with -.'),
+                })
+            comment_line = None
+            continue
+        if stripped.startswith(('\\', '{%', '{{', '{#')):
+            in_invocation = False
+            comment_line = None
+            continue
+        in_invocation = True
+        comment_line = None
+    return errors
+
+
 def _explain_parse_error(message: str) -> str:
     """
     Argparse's missing ``model_path`` means this invocation is only options.
@@ -1041,10 +1156,11 @@ def _explain_parse_error(message: str) -> str:
     """
     bare = message.removeprefix('dgenerate: error: ').strip()
     if bare == 'the following arguments are required: model_path':
-        return ('This line was run on its own, with no model path. A blank line, or a '
-                'wrapped line that does not start with -, ended the invocation above. '
-                'Put this line back with that invocation. Do not wrap --prompts, and '
-                'leave a {{ }} expression on the line it already occupies.')
+        return ('This line was run on its own, with no model path. A # comment, a blank '
+                'line, or a wrapped line that does not start with - ended the invocation '
+                'above. Move a # comment to above the model path. Put this option back '
+                'with that invocation. Do not wrap --prompts, and leave a {{ }} expression '
+                'on the line it already occupies.')
     return message
 
 

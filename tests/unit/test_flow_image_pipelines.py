@@ -58,14 +58,14 @@ def _config(**values):
 
 
 class TestFlowImagePipelines(unittest.TestCase):
-    def test_lora_no_disk_fuse_skips_the_lora_component_cache(self):
+    def test_default_skips_the_lora_component_cache_until_disk_fuse(self):
         class Pipeline:
             _lora_loadable_modules = [
                 'unet', 'text_encoder', 'text_encoder_2', 'lora_only']
 
         repo, skip, fused, fuse_first = _pipelines._components_cached_before_quantization(
             Pipeline, _pipelinewrapper.ModelType.SDXL, 'org/sdxl',
-            ['org/lora'], ['org/control'], True, set(), None)
+            ['org/lora'], ['org/control'], False, set(), None)
         self.assertEqual(repo, [])
         self.assertTrue(skip)
         self.assertTrue(fused)
@@ -73,7 +73,7 @@ class TestFlowImagePipelines(unittest.TestCase):
 
         single, skip, _, fuse_first = _pipelines._components_cached_before_quantization(
             Pipeline, _pipelinewrapper.ModelType.SDXL, 'model.safetensors',
-            ['org/lora'], ['org/control'], True, set(), None)
+            ['org/lora'], ['org/control'], False, set(), None)
         self.assertFalse(fuse_first)
         self.assertFalse(skip)
         self.assertNotIn('lora_only', single)
@@ -82,7 +82,7 @@ class TestFlowImagePipelines(unittest.TestCase):
 
         fused_components, _, _, fuse_first = _pipelines._components_cached_before_quantization(
             Pipeline, _pipelinewrapper.ModelType.SDXL, 'model.safetensors',
-            ['org/lora'], ['org/control'], False, set(), None)
+            ['org/lora'], ['org/control'], True, set(), None)
         self.assertTrue(fuse_first)
         self.assertIn('lora_only', fused_components)
         self.assertIn('unet', fused_components)
@@ -929,6 +929,118 @@ class TestFlowImagePipelines(unittest.TestCase):
         self.assertEqual(loaded.weights_dtype, 'uint4')
         self.assertEqual(loaded.svd_rank, 32)
         self.assertTrue(loaded.use_svd)
+
+    def test_krea2_lokr_merges_with_peft(self):
+        import torch
+        from diffusers.loaders.lora_pipeline import Krea2LoraLoaderMixin
+        from dgenerate.pipelinewrapper.lokr import apply_lokr_state_dict
+
+        w1 = torch.zeros(2, 2)
+        w1[0, 0] = 1.0
+        w2 = torch.ones(6, 3)
+        raw = {
+            'diffusion_model.blocks.0.attn.wq.lokr_w1': w1,
+            'diffusion_model.blocks.0.attn.wq.lokr_w2': w2,
+            'diffusion_model.blocks.0.attn.wq.alpha': torch.tensor(2.0),
+        }
+        linear = torch.nn.Linear(6, 12, bias=False)
+        block = torch.nn.Module()
+        block.attn = torch.nn.Module()
+        block.attn.to_q = linear
+        pipe = torch.nn.Module()
+        pipe.transformer = torch.nn.Module()
+        pipe.transformer.transformer_blocks = torch.nn.ModuleList([block])
+        pipe.lora_state_dict = Krea2LoraLoaderMixin.lora_state_dict
+
+        before = linear.weight.detach().clone()
+        mode = apply_lokr_state_dict(pipe, raw, '0', scale=1.0, fuse=True)
+        self.assertEqual(mode, 'fused_lokr')
+        self.assertIsInstance(pipe.transformer.transformer_blocks[0].attn.to_q, torch.nn.Linear)
+        expected = before + torch.kron(w1, w2).to(before.dtype)
+        self.assertTrue(torch.allclose(pipe.transformer.transformer_blocks[0].attn.to_q.weight, expected))
+
+    def test_packed_lokr_stays_an_adapter(self):
+        import torch
+        from diffusers.loaders.lora_pipeline import Krea2LoraLoaderMixin
+        from peft.tuners.lokr.layer import LoKrLayer
+
+        import dgenerate.messages as messages
+        from dgenerate.pipelinewrapper.lokr import apply_lokr_state_dict
+
+        class Linear4bit(torch.nn.Linear):
+            pass
+
+        w1 = torch.zeros(2, 2)
+        w1[0, 0] = 1.0
+        w2 = torch.ones(6, 3)
+        raw = {
+            'diffusion_model.blocks.0.attn.wq.lokr_w1': w1,
+            'diffusion_model.blocks.0.attn.wq.lokr_w2': w2,
+        }
+        linear = Linear4bit(6, 12, bias=False)
+        block = torch.nn.Module()
+        block.attn = torch.nn.Module()
+        block.attn.to_q = linear
+        pipe = torch.nn.Module()
+        pipe.transformer = torch.nn.Module()
+        pipe.transformer.transformer_blocks = torch.nn.ModuleList([block])
+        pipe.lora_state_dict = Krea2LoraLoaderMixin.lora_state_dict
+
+        before = linear.weight.detach().clone()
+        with unittest.mock.patch.object(messages, 'warning') as warning:
+            mode = apply_lokr_state_dict(pipe, raw, '0', scale=1.0, fuse=True)
+        self.assertEqual(mode, 'lokr')
+        layer = pipe.transformer.transformer_blocks[0].attn.to_q
+        self.assertIsInstance(layer, LoKrLayer)
+        self.assertTrue(torch.equal(layer.get_base_layer().weight, before))
+        warning.assert_called_once()
+        self.assertIn('Quality may be affected', warning.call_args.args[0])
+        self.assertIn('--lora-disk-fuse', warning.call_args.args[0])
+
+    def test_lokr_factorized_w1_applies_alpha(self):
+        import torch
+        from diffusers.loaders.lora_pipeline import Krea2LoraLoaderMixin
+        from dgenerate.pipelinewrapper.lokr import apply_lokr_state_dict
+
+        # lora_dim is 1, so alpha 2 scales the Kronecker product by 2.
+        w1_a = torch.tensor([[1.0], [0.0]])
+        w1_b = torch.tensor([[1.0, 0.0]])
+        w2 = torch.ones(6, 3)
+        raw = {
+            'diffusion_model.blocks.0.attn.wq.lokr_w1_a': w1_a,
+            'diffusion_model.blocks.0.attn.wq.lokr_w1_b': w1_b,
+            'diffusion_model.blocks.0.attn.wq.lokr_w2': w2,
+            'diffusion_model.blocks.0.attn.wq.alpha': torch.tensor(2.0),
+        }
+        linear = torch.nn.Linear(6, 12, bias=False)
+        block = torch.nn.Module()
+        block.attn = torch.nn.Module()
+        block.attn.to_q = linear
+        pipe = torch.nn.Module()
+        pipe.transformer = torch.nn.Module()
+        pipe.transformer.transformer_blocks = torch.nn.ModuleList([block])
+        pipe.lora_state_dict = Krea2LoraLoaderMixin.lora_state_dict
+
+        before = linear.weight.detach().clone()
+        mode = apply_lokr_state_dict(pipe, raw, '0', scale=1.0, fuse=True)
+        self.assertEqual(mode, 'fused_lokr')
+        w1 = w1_a @ w1_b
+        expected = before + (torch.kron(w1, w2) * 2).to(before.dtype)
+        self.assertTrue(torch.allclose(pipe.transformer.transformer_blocks[0].attn.to_q.weight, expected))
+
+    def test_sd_lokr_key_maps_through_unet_converter(self):
+        import torch
+        from diffusers.loaders.lora_pipeline import StableDiffusionLoraLoaderMixin
+        from dgenerate.pipelinewrapper.lokr import _probe_modules
+
+        class _Pipe:
+            lora_state_dict = StableDiffusionLoraLoaderMixin.lora_state_dict
+
+        stem = 'lora_unet_down_blocks_0_attentions_0_transformer_blocks_0_attn1_to_q'
+        modules = _probe_modules(_Pipe(), stem)
+        self.assertEqual(
+            modules,
+            ['unet.down_blocks.0.attentions.0.transformer_blocks.0.attn1.to_q'])
 
     def test_zimage_kohya_lora_drops_empty_unet_prefix(self):
         import torch

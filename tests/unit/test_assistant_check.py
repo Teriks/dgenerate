@@ -80,6 +80,8 @@ class TestAssistantCheck(unittest.TestCase):
             'black-forest-labs/FLUX.1-dev',
             '--model-type flux --dtype bfloat16',
             '--transformer path/to/flux1-dev-Q4_K_S.gguf',
+            '--model-cpu-offload',
+            '--quantizer bnb;bits=4 --quantizer-map text_encoder',
             '--prompts "a fox"',
         ))
         self.assertTrue(report['ok'], report['errors'])
@@ -272,6 +274,7 @@ class TestAssistantCheck(unittest.TestCase):
             '',
             'Lightricks/LTX-2.5-Diffusers',
             '--model-type ltx2 --dtype bfloat16',
+            '--model-sequential-offload',
             '--image-seeds {{ quote(first(last_images)) }}',
             '--video-lengths 2',
             '--prompts "the dog wags its tail"',
@@ -427,6 +430,7 @@ class TestAssistantCheck(unittest.TestCase):
         report = check_config(_cfg(
             'black-forest-labs/FLUX.1-dev',
             '--model-type flux',
+            '--model-sequential-offload',
             '--prompt-weighter sd-embed',
             '--prompts "(alien creatures:1.3), bioluminescent flora"',
         ))
@@ -490,6 +494,19 @@ class TestAssistantCheck(unittest.TestCase):
         self.assertIn('blank line', text)
         self.assertIn('Do not wrap --prompts', text)
 
+    def test_comment_between_options_ends_the_invocation(self):
+        report = check_config(_cfg(
+            'black-forest-labs/FLUX.2-klein-base-9B',
+            '--model-type flux2',
+            '--loras "https://civitai.com/api/download/models/1"',
+            '# Flux never takes a negative prompt.',
+            '--prompts "a vaporwave horse"',
+        ))
+        text = _messages(report)
+        self.assertIn('comment on line', text)
+        self.assertIn('above the model path', text)
+        self.assertNotIn('backslash', text.lower())
+
     def test_wan_animate_needs_pose_or_driving(self):
         report = check_config(_cfg(
             'Wan-AI/Wan2.2-Animate-14B-Diffusers',
@@ -514,10 +531,48 @@ class TestAssistantCheck(unittest.TestCase):
         report = check_config(_cfg(
             'Wan-AI/Wan2.1-T2V-1.3B-Diffusers',
             '--model-type wan --dtype bfloat16',
+            '--model-sequential-offload',
             '--video-lengths 2',
             '--prompts "a fox runs"',
         ))
         self.assertTrue(report['ok'], report['errors'])
+
+    def test_klein_4b_on_16gib_needs_a_quantizer(self):
+        report = check_config(_cfg(
+            'black-forest-labs/FLUX.2-klein-4B',
+            '--model-type flux2 --dtype bfloat16',
+            '--inference-steps 4 --guidance-scales 1',
+            '--prompts "a red fox"',
+        ), memory=(True, 16.0, True, False))
+        self.assertFalse(report['ok'], report)
+        self.assertIn('--quantizer bnb;bits=4', _messages(report))
+
+    def test_klein_base_4b_on_16gib_needs_a_quantizer(self):
+        report = check_config(_cfg(
+            'black-forest-labs/FLUX.2-klein-base-4B',
+            '--model-type flux2 --dtype bfloat16',
+            '--inference-steps 4 --guidance-scales 1',
+            '--prompts "a red fox"',
+        ), memory=(True, 16.0, True, False))
+        self.assertFalse(report['ok'], report)
+        self.assertIn('--quantizer bnb;bits=4', _messages(report))
+        self.assertNotIn('sequential-offload', _messages(report))
+
+    def test_klein_4b_quantizer_is_enough(self):
+        report = check_config(_cfg(
+            'black-forest-labs/FLUX.2-klein-4B',
+            '--model-type flux2 --dtype bfloat16',
+            '--quantizer bnb;bits=4',
+            '--prompts "a red fox"',
+        ), memory=(True, 16.0, True, False))
+        self.assertNotIn('memory flags', _messages(report))
+
+    def test_memory_check_always_runs(self):
+        report = check_config(_cfg(
+            'black-forest-labs/FLUX.2-klein-4B',
+            '--model-type flux2 --prompts "a red fox"',
+        ))
+        self.assertIn('memory flags', _messages(report))
 
     def test_z_image_omni_unreleased(self):
         report = check_config(_cfg(

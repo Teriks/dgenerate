@@ -27,7 +27,6 @@ import platform as _platform
 import typing
 
 import PIL.Image
-import fake_useragent
 import pyrfc6266
 import requests
 import torch
@@ -380,7 +379,7 @@ def download(url: str,
         try:
             try:
                 download_url = _webcache._append_tokens_to_url(url)
-                headers = {'User-Agent': fake_useragent.UserAgent().chrome}
+                headers = {'User-Agent': _filecache.user_agent()}
                 headers.update(_webcache.huggingface_authorization_header(download_url))
                 _filecache.download_url_to_file(
                     download_url,

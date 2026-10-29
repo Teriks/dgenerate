@@ -924,10 +924,10 @@ class RenderLoopConfig(_types.SetFromMixin):
     The default value when ``None`` is specified is ``1.0``.
     """
 
-    lora_no_disk_fuse: bool = False
+    lora_disk_fuse: bool = False
     """
-    Skip the fused LoRA copy written before ``--quantizer``. This corresponds to
-    ``--lora-no-disk-fuse``. The LoRA stays active on the quantized weights.
+    Fuse LoRAs into a full-precision copy before ``--quantizer``. This corresponds to
+    ``--lora-disk-fuse``. The default keeps the LoRA active on the quantized weights.
     """
 
     ltx_ic_lora_uri: _types.OptionalUri = None

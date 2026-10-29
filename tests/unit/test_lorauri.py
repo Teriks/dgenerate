@@ -152,7 +152,7 @@ class TestLoraUri(unittest.TestCase):
         warning.assert_called_once()
         message = warning.call_args.args[0]
         self.assertIn('transformer', message)
-        self.assertIn('Quality is affected', message)
+        self.assertIn('Quality may be affected', message)
         self.assertEqual(pipe.adapter_weights, [1.0])
         self.assertIsNone(pipe.fused)
 
@@ -253,7 +253,7 @@ class TestLoraUri(unittest.TestCase):
         warning.assert_called_once()
         message = warning.call_args.args[0]
         self.assertIn('transformer', message)
-        self.assertIn('Quality is affected', message)
+        self.assertIn('Quality may be affected', message)
         self.assertEqual(pipe.adapter_weights, [1.0])
         self.assertIsNone(pipe.fused)
 

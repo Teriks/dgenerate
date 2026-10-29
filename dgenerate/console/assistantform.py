@@ -25,6 +25,7 @@ import pathlib
 import platform
 import queue
 import subprocess
+import sys
 import tempfile
 import threading
 import tkinter as tk
@@ -37,11 +38,13 @@ import psutil
 
 import dgenerate.assistant.catalog as _catalog
 import dgenerate.console.combobox as _combobox
+import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.scrolledtext as _scrolledtext
 import dgenerate.console.terminaltext as _terminaltext
 import dgenerate.console.themetext as _themetext
 import dgenerate.console.util as _util
 import dgenerate.files as _files
+import dgenerate.textprocessing as _textprocessing
 
 _dialog_state = _util.DialogState(save_position=True, save_size=True)
 
@@ -53,6 +56,9 @@ _SETTINGS_THINK = 'assistant_think'
 _SETTINGS_EFFORT = 'assistant_reasoning_effort'
 _SETTINGS_EDIT = 'assistant_editor_in_context'
 _EFFORT_LABELS = {'low': 'Low', 'medium': 'Medium', 'xhigh': 'Extra high'}
+
+_PROMPT_HISTORY_FILE = 'assistant_prompt_history.json'
+_DEFAULT_PROMPT_HISTORY = 500
 
 
 def _settings_path() -> pathlib.Path:
@@ -101,6 +107,42 @@ def _model_name(spec: str) -> str:
     return os.path.splitext(os.path.basename(spec))[0]
 
 
+def _prompt_history_path() -> pathlib.Path:
+    return pathlib.Path.home() / '.dgenerate' / _PROMPT_HISTORY_FILE
+
+
+def _max_prompt_history_from_environ() -> int:
+    raw = os.environ.get('DGENERATE_ASSISTANT_MAX_HISTORY', _DEFAULT_PROMPT_HISTORY)
+    try:
+        value = int(raw)
+    except ValueError:
+        print(
+            f'WARNING: environmental variable DGENERATE_ASSISTANT_MAX_HISTORY '
+            f'set to invalid value: "{raw}", defaulting to {_DEFAULT_PROMPT_HISTORY}',
+            file=sys.stderr)
+        return _DEFAULT_PROMPT_HISTORY
+    if value < 0:
+        print(
+            f'WARNING: environmental variable DGENERATE_ASSISTANT_MAX_HISTORY '
+            f'set to invalid value: "{raw}", defaulting to {_DEFAULT_PROMPT_HISTORY}. '
+            f'Value must be greater than or equal to "0"',
+            file=sys.stderr)
+        return _DEFAULT_PROMPT_HISTORY
+    return value
+
+
+def _request_intro_task(editing: bool) -> str:
+    return (
+        'Describe the change to make to the config in the editor.'
+        if editing else
+        'Describe what the config script should do.')
+
+
+_INTRO_HISTORY = (
+    'Previous prompts are saved, use the up and down arrow keys '
+    'on the first and last line to recall them.')
+
+
 class _AssistantForm(tk.Toplevel):
     """
     Runs ``dgenerate --sub-command assistant`` on a plain language request
@@ -119,6 +161,7 @@ class _AssistantForm(tk.Toplevel):
         super().__init__(master)
         self.title('Generate Code')
         self.configure(padx=5, pady=5)
+        self.transient(master)
 
         self._populate = populate
         self._dgenerate_exe = dgenerate_exe
@@ -131,6 +174,12 @@ class _AssistantForm(tk.Toplevel):
         self._stderr_queue: queue.Queue = queue.Queue()
         self._stdout_chunks: list[bytes] = []
         self._readers: list[threading.Thread] = []
+
+        self._max_prompt_history = _max_prompt_history_from_environ()
+        self._prompt_history: list[str] = []
+        self._prompt_history_index = 0
+        self._prompt_history_draft = ''
+        self._load_prompt_history()
 
         self._create_widgets()
         self._theme_text_boxes()
@@ -147,16 +196,37 @@ class _AssistantForm(tk.Toplevel):
         self.grid_rowconfigure(1, weight=1)
         self.grid_rowconfigure(4, weight=1)
 
-        self._intro = ttk.Label(
-            self, anchor=tk.W, justify=tk.LEFT,
-            text='Describe what the config script should do.')
+        self._intro = ttk.Frame(self)
         self._intro.grid(row=0, column=0, sticky=tk.EW)
+        self._intro.grid_columnconfigure(0, weight=1)
+        self._intro_task = ttk.Label(
+            self._intro, anchor=tk.W, justify=tk.LEFT,
+            text=_request_intro_task(False))
+        self._intro_task.grid(row=0, column=0, sticky=tk.EW)
+        self._intro_history = ttk.Label(
+            self._intro, anchor=tk.W, justify=tk.LEFT, text=_INTRO_HISTORY)
+        self._intro_history.grid(row=1, column=0, sticky=tk.EW)
         self.bind('<Configure>', self._fit_intro, add='+')
 
         self._request_text = _scrolledtext.ScrolledText(self)
         self._request_text.text.configure(height=6)
         self._request_text.grid(row=1, column=0, sticky=tk.NSEW, pady=(4, 8))
         self._request_text.text.bind('<Control-Return>', lambda e: (self._generate(), 'break')[1])
+        self._request_text.text.bind('<Up>', self._show_previous_prompt)
+        self._request_text.text.bind('<Down>', self._show_next_prompt)
+        self._request_context_menu = self._create_request_context_menu()
+        self._request_text.text.bind(
+            '<Button-3>',
+            lambda e: self._show_request_context_menu(e))
+        if platform.system() == 'Darwin':
+            self._request_text.text.bind(
+                '<Control-x>', lambda e: (self._request_cut(), 'break')[1])
+            self._request_text.text.bind(
+                '<Control-c>', lambda e: (self._request_copy(), 'break')[1])
+            self._request_text.text.bind(
+                '<Control-v>', lambda e: (self._request_paste(), 'break')[1])
+            self._request_text.text.bind(
+                '<Control-a>', lambda e: (self._request_select_all(), 'break')[1])
 
         options = ttk.LabelFrame(self, text='Options', padding=(8, 6))
         options.grid(row=2, column=0, sticky=tk.EW, pady=(0, 8))
@@ -241,7 +311,204 @@ class _AssistantForm(tk.Toplevel):
 
     def _fit_intro(self, event):
         if event.widget is self:
-            self._intro.configure(wraplength=max(event.width - 24, 200))
+            wrap = max(event.width - 24, 200)
+            self._intro_task.configure(wraplength=wrap)
+            self._intro_history.configure(wraplength=wrap)
+
+    def _load_prompt_history(self):
+        if self._max_prompt_history == 0:
+            self._prompt_history_index = 0
+            return
+        history_path = _prompt_history_path()
+        try:
+            with history_path.open(encoding='utf-8') as handle:
+                loaded = json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            self._prompt_history = []
+            self._prompt_history_index = 0
+            return
+        if not isinstance(loaded, list):
+            self._prompt_history = []
+            self._prompt_history_index = 0
+            return
+        self._prompt_history = [
+            item for item in loaded
+            if isinstance(item, str)
+        ][-self._max_prompt_history:]
+        self._prompt_history_index = len(self._prompt_history)
+
+    def _save_prompt_history(self):
+        if self._max_prompt_history == 0:
+            return
+        history_path = _prompt_history_path()
+        try:
+            history_path.parent.mkdir(exist_ok=True)
+            with history_path.open('w', encoding='utf-8') as handle:
+                json.dump(self._prompt_history[-self._max_prompt_history:], handle)
+        except OSError:
+            pass
+
+    def _append_prompt_history(self, prompt: str):
+        if self._max_prompt_history == 0:
+            return
+        if self._prompt_history:
+            if self._prompt_history[-1] != prompt:
+                self._prompt_history.append(prompt)
+        else:
+            self._prompt_history.append(prompt)
+        self._prompt_history_index = len(self._prompt_history)
+        self._save_prompt_history()
+
+    def _browsing_prompt_history(self) -> bool:
+        return self._prompt_history_index < len(self._prompt_history)
+
+    def _prompt_on_first_line(self) -> bool:
+        return int(self._request_text.text.index('insert').split('.')[0]) == 1
+
+    def _prompt_on_last_line(self) -> bool:
+        insert_line = int(self._request_text.text.index('insert').split('.')[0])
+        end_line = int(self._request_text.text.index('end-1c').split('.')[0])
+        return insert_line == end_line
+
+    def _set_request_prompt(self, text: str):
+        text_widget = self._request_text.text
+        text_widget.replace('1.0', tk.END, text)
+        text_widget.mark_set('insert', tk.END)
+        text_widget.see(tk.END)
+
+    def _show_previous_prompt(self, event):
+        if event.state & 0x0004:
+            return
+        if str(self._request_text.text.cget('state')) == tk.DISABLED:
+            return 'break'
+        if not self._browsing_prompt_history() and not self._prompt_on_first_line():
+            return
+        if self._prompt_history_index == len(self._prompt_history):
+            self._prompt_history_draft = self._request_text.text.get('1.0', 'end-1c')
+        if self._prompt_history_index > 0:
+            self._prompt_history_index -= 1
+            self._set_request_prompt(self._prompt_history[self._prompt_history_index])
+        return 'break'
+
+    def _show_next_prompt(self, event):
+        if event.state & 0x0004:
+            return
+        if str(self._request_text.text.cget('state')) == tk.DISABLED:
+            return 'break'
+        if not self._browsing_prompt_history() and not self._prompt_on_last_line():
+            return
+        if self._prompt_history_index < len(self._prompt_history) - 1:
+            self._prompt_history_index += 1
+            self._set_request_prompt(self._prompt_history[self._prompt_history_index])
+        elif self._prompt_history_index == len(self._prompt_history) - 1:
+            self._prompt_history_index = len(self._prompt_history)
+            self._set_request_prompt(self._prompt_history_draft)
+        return 'break'
+
+    def _request_initial_dir(self) -> str:
+        return self._get_cwd() or os.getcwd()
+
+    def _insert_or_replace_request_text(self, text: str):
+        text_widget = self._request_text.text
+        try:
+            selection_start = text_widget.index('sel.first')
+            selection_end = text_widget.index('sel.last')
+        except tk.TclError:
+            selection_start = selection_end = None
+        if selection_start and selection_end:
+            text_widget.replace(selection_start, selection_end, text)
+        else:
+            text_widget.insert('insert', text)
+
+    def _request_insert_directory_path(self):
+        directory = _filedialog.open_directory_dialog(initialdir=self._request_initial_dir())
+        if directory is None:
+            return
+        self._insert_or_replace_request_text(_textprocessing.shell_quote(directory))
+
+    def _request_insert_file_path(self):
+        path = _filedialog.open_file_dialog(initialdir=self._request_initial_dir())
+        if path is None:
+            return
+        self._insert_or_replace_request_text(_textprocessing.shell_quote(path))
+
+    def _request_insert_file_path_save(self):
+        path = _filedialog.open_file_save_dialog(initialdir=self._request_initial_dir())
+        if path is None:
+            return
+        self._insert_or_replace_request_text(_textprocessing.shell_quote(path))
+
+    def _request_cut(self):
+        self._request_text.text.event_generate('<<Cut>>')
+
+    def _request_copy(self):
+        self._request_text.text.event_generate('<<Copy>>')
+
+    def _request_paste(self):
+        self._request_text.text.event_generate('<<Paste>>')
+
+    def _request_delete(self):
+        try:
+            self._request_text.text.delete('sel.first', 'sel.last')
+        except tk.TclError:
+            pass
+
+    def _request_select_all(self):
+        self._request_text.text.event_generate('<<SelectAll>>')
+
+    def _update_request_context_menu(self):
+        text_widget = self._request_text.text
+        disabled = str(text_widget.cget('state')) == tk.DISABLED
+        try:
+            text_widget.index('sel.first')
+            has_selection = not disabled
+        except tk.TclError:
+            has_selection = False
+        has_clipboard = False
+        if not disabled:
+            try:
+                self.clipboard_get()
+                has_clipboard = True
+            except tk.TclError:
+                pass
+        for label, enabled in (
+            ('Cut', has_selection),
+            ('Copy', has_selection),
+            ('Paste', has_clipboard),
+            ('Delete', has_selection),
+        ):
+            self._request_context_menu.entryconfigure(
+                label, state=tk.NORMAL if enabled else tk.DISABLED)
+        self._request_context_menu.entryconfigure(
+            'Select All', state=tk.NORMAL if not disabled else tk.DISABLED)
+        self._request_context_menu.entryconfigure(
+            'Insert Path', state=tk.NORMAL if not disabled else tk.DISABLED)
+
+    def _create_request_context_menu(self) -> tk.Menu:
+        menu = tk.Menu(self._request_text, tearoff=0)
+        menu.add_command(label='Cut', accelerator='Ctrl+X', command=self._request_cut)
+        menu.add_command(label='Copy', accelerator='Ctrl+C', command=self._request_copy)
+        menu.add_command(label='Paste', accelerator='Ctrl+V', command=self._request_paste)
+        menu.add_command(label='Delete', accelerator='DEL', command=self._request_delete)
+        menu.add_command(label='Select All', accelerator='Ctrl+A', command=self._request_select_all)
+        menu.add_separator()
+        path_submenu = tk.Menu(menu, tearoff=0)
+        path_submenu.add_command(
+            label='File Path (Open)', command=self._request_insert_file_path)
+        path_submenu.add_command(
+            label='File Path (Save)', command=self._request_insert_file_path_save)
+        path_submenu.add_command(
+            label='Directory Path', command=self._request_insert_directory_path)
+        menu.add_cascade(label='Insert Path', menu=path_submenu)
+        menu.configure(postcommand=self._update_request_context_menu)
+        return menu
+
+    def _show_request_context_menu(self, event):
+        self._request_text.text.focus_set()
+        try:
+            self._request_context_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            self._request_context_menu.grab_release()
 
     def _theme_text_boxes(self):
         if not self.winfo_exists():
@@ -301,10 +568,7 @@ class _AssistantForm(tk.Toplevel):
     def _sync_edit_mode(self, *_):
         editing = bool(self._edit_var.get())
         _remember(_SETTINGS_EDIT, editing)
-        self._intro.configure(text=(
-            'Describe the change to make to the config in the editor.'
-            if editing else
-            'Describe what the config script should do.'))
+        self._intro_task.configure(text=_request_intro_task(editing))
         if self._process is None:
             self._generate_button.configure(text='Edit' if editing else 'Generate')
 
@@ -351,6 +615,8 @@ class _AssistantForm(tk.Toplevel):
         if not request:
             self._request_text.text.focus_set()
             return
+
+        self._append_prompt_history(request)
 
         edit_path = None
         if self._edit_var.get():

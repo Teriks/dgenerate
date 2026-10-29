@@ -151,8 +151,7 @@ def _preflight_quantized_video_loras_locked(
     try:
         _messages.warning(
             f'Fusing LoRAs into unquantized video components and caching them at "{fused_path}". '
-            'This is a one-time task for this model and LoRA scale. '
-            'Pass --lora-no-disk-fuse to skip this at the cost of quality.')
+            'This is a one-time task for this model and LoRA scale.')
         with _hfhub.with_hf_errors_as_model_not_found():
             if str(family).startswith('wan-animate-2'):
                 from . import wan

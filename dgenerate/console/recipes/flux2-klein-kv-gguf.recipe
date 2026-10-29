@@ -19,7 +19,7 @@ title: Flux.2 Klein KV (GGUF)
 @quantizer[{"model-type":"flux2-klein-kv", "divider-after":true, "map-default":"text_encoder"}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
-@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/QuantStack/FLUX.2-Klein-9B-KV-GGUF/blob/main/Flux-2-Klein-9B-KV-Q4_K_S.gguf", "divider-after":true}]
 @imageseed[{"label":"Reference Image", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "default":"", "float":""}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4, "min":1}]

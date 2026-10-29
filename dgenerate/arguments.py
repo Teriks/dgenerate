@@ -2010,7 +2010,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     IC-LoRAs for ``ltx2`` are loaded with --ltx-ic-lora instead.
                     ``hyvideo-15`` accepts HunyuanVideo 1.5 LoRAs, including original module names
                     and Musubi ``lora_unet_`` files. ``motif-video`` accepts Diffusers-format and
-                    Musubi Motif-Video LoRAs.
+                    Musubi Motif-Video LoRAs. ``krea2`` accepts Diffusers-format LoRAs, the
+                    reference ``diffusion_model.`` and AI-Toolkit layouts, and Musubi
+                    ``lora_unet_`` files.
                     
                     If a LoRA model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
@@ -2039,15 +2041,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     "transformer" is the default. "transformer_2" loads a Wan 2.2 LoRA onto
                     the low-noise expert, which is how a high-noise and low-noise pair is applied.
 
-                    Full-precision weights are fused into the model. With --quantizer, the LoRA is
-                    fused into a full-precision copy and cached on disk before quantization.
-                    --lora-no-disk-fuse skips that copy and keeps the LoRA active on the
-                    quantized weights. That path is faster and uses no fused cache, and it is
-                    lower quality at low bit widths. A low-memory video load keeps those
-                    LoRA targets in memory instead of merging them onto disk. Weights that
-                    are already packed (GGUF,
-                    ComfyUI, bitsandbytes, or SDNQ) keep the LoRA active, and --lora-fuse-scale
-                    is folded into those adapter weights.
+                    Full-precision weights are fused into the model. With --quantizer, the LoRA
+                    stays active on the quantized weights. That uses no fused cache. Quality can
+                    be lower at low bit widths, because the LoRA was trained against the
+                    unquantized weights. Pass --lora-disk-fuse to fuse into a full-precision
+                    copy and cache that copy before quantization. A low-memory video load keeps
+                    those LoRA targets in memory unless --lora-disk-fuse is set. Weights that
+                    are already packed (GGUF, ComfyUI, bitsandbytes, or SDNQ) keep the LoRA
+                    active, and --lora-fuse-scale is folded into those adapter weights.
 
                     If you wish to load a weights file directly from disk, the simplest
                     way is: --loras "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0",
@@ -2060,24 +2061,26 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-lrfs', '--lora-fuse-scale', default=None, type=float, metavar="LORA_FUSE_SCALE",
             help="""Scale applied to every --loras entry after that entry's own scale. The default is 1.0.
 
-                    Full-precision modules are fused at this scale. With --quantizer, the fused
-                    weights are written to disk before quantization. --lora-no-disk-fuse keeps
-                    the LoRA active and folds this scale into the adapter weights. Weights that
-                    are already packed (GGUF, ComfyUI, bitsandbytes, or SDNQ) do the same."""
+                    Full-precision modules are fused at this scale. With --quantizer, the LoRA
+                    stays active and this scale is folded into the adapter weights.
+                    --lora-disk-fuse writes the fused weights to disk before quantization.
+                    Weights that are already packed (GGUF, ComfyUI, bitsandbytes, or SDNQ)
+                    keep the LoRA active either way."""
         )
     )
 
     actions.append(
         parser.add_argument(
-            '-lrnf', '--lora-no-disk-fuse', action='store_true', default=False,
-            help="""With --quantizer, keep --loras and Flux --control-loras active on the
-                    quantized model instead of fusing them into a full-precision copy on disk
-                    first. This is faster and does not write a fused cache. A low-memory video
-                    load keeps the LoRA targets in memory. The result is lower quality at low
-                    bit widths, because the LoRA was trained against the unquantized weights.
-                    The default fuses before quantization. Packed weights
-                    (GGUF, ComfyUI, bitsandbytes, or SDNQ) already keep the LoRA active.
-                    SD and SDXL --control-loras still build their ControlNet clone."""
+            '-lrdf', '--lora-disk-fuse', action='store_true', default=False,
+            help="""With --quantizer, fuse --loras and Flux --control-loras into a
+                    full-precision copy and cache that copy before quantization. The default
+                    keeps those LoRAs active on the quantized weights, which uses no fused
+                    cache. Try this if the result looks poor. It is slower, uses more disk
+                    space, and can be higher quality at low bit widths, because the LoRA was
+                    trained against the unquantized weights. A low-memory video load then
+                    merges LoRA targets before releasing them. Packed weights (GGUF, ComfyUI,
+                    bitsandbytes, or SDNQ) already keep the LoRA active. SD and SDXL
+                    --control-loras still build their ControlNet clone either way."""
         )
     )
 
@@ -2272,10 +2275,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     bitsandbytes, SDNQ) cannot be cloned.
 
                     Flux control LoRAs follow the same rule as --loras. A full-precision transformer
-                    is fused. With --quantizer, that fuse is written to disk first unless
-                    --lora-no-disk-fuse is set, in which case the quantized transformer keeps
-                    the control LoRA active and --control-lora-fuse-scale is folded into the
-                    adapter weights. SD and SDXL always fuse into the ControlNet clone.
+                    is fused. With --quantizer, the quantized transformer keeps the control LoRA
+                    active and --control-lora-fuse-scale is folded into the adapter weights,
+                    unless --lora-disk-fuse writes that fuse to disk first. SD and SDXL always
+                    fuse into the ControlNet clone.
 
                     One control image from --image-seeds is required, the same way a plain path is the
                     control image for --control-nets. Use --control-image-processors to build the signal
@@ -2304,9 +2307,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     fused at this scale. The default is 1.0.
 
                     Flux fuses into a full-precision transformer before any --loras. With
-                    --quantizer, that fuse is cached on disk unless --lora-no-disk-fuse is set.
-                    That option keeps the control LoRA active and folds this scale into the
-                    adapter weights. SD and SDXL fuse into the ControlNet cloned from the UNet."""
+                    --quantizer, the control LoRA stays active and this scale is folded into
+                    the adapter weights. --lora-disk-fuse caches that fuse on disk instead.
+                    SD and SDXL fuse into the ControlNet cloned from the UNet."""
         )
     )
 
