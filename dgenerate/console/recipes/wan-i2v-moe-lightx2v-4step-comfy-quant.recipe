@@ -1,0 +1,52 @@
+title: Wan 2.2 Image to Video (4-step LoRA, ComfyUI Quant)
+
+# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
+# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
+
+# LightX2V 4-step LoRAs for undistilled Wan 2.2 14B image-to-video with ComfyUI experts.
+# The first LoRA is the high-noise expert. The second uses component=transformer_2
+# for the low-noise expert. Guidance stays at 1. UniPC flow-shift=5 with 4 steps.
+# The seed image is the first frame.
+
+\setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
+
+\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+\setp first_frame "@file[{"label":"First Frame", "optional":false, "mode":"input", "file-types":["images-in"]}]"
+
+\set image_seeds {{ format_image_seed(seed_images=first_frame) }}
+\set image_seeds {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Wan-AI/Wan2.2-I2V-A14B-Diffusers", "optional":false, "file-types":["models"]}]
+--model-type wan {{ image_seeds }} {{ auth_token }}
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["UniPCMultistepScheduler"], "optional":false, "default":"UniPCMultistepScheduler;flow-shift=5"}]
+@switch[{"id": "sp", "label":"Use Spectrum", "arg":"--spectrum"}]
+@switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["tc", "sada", "sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
+@dype[{"exclude":["cd", "sp"],"divider-after":true}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@quantizer[{"model-type":"wan", "divider-after":true, "map-default":"text_encoder"}]
+@switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
+--loras @submodelbuilder[{"label":"High-noise LoRA", "help-arg":"--loras", "model": "LoRA", "optional":false, "default":"lightx2v/Wan2.2-Distill-Loras;scale=1.0;weight-name=wan2.2_i2v_A14b_high_noise_lora_rank64_lightx2v_4step_1022.safetensors"}] @submodelbuilder[{"label":"Low-noise LoRA", "help-arg":"--loras", "model": "LoRA", "optional":false, "default":"lightx2v/Wan2.2-Distill-Loras;scale=1.0;weight-name=wan2.2_i2v_A14b_low_noise_lora_rank64_lightx2v_4step_1022.safetensors;component=transformer_2"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
+@switch[{"label":"LoRA No Disk Fuse", "arg":"--lora-no-disk-fuse"}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"}]
+@submodelbuilder[{"label":"Second Transformer (MoE)", "arg":"--wan-second-transformer", "model": "Transformer", "default":"https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors", "divider-after":true}]
+@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]
+@float[{"label":"Low-Noise Guidance Scale", "arg":"--wan-low-noise-guidance-scales", "min":0}]
+@float[{"label":"Boundary Ratio", "arg":"--wan-boundary-ratios", "min":0, "max":1, "divider-after":true}]
+@float[{"label":"Video Length (seconds)", "arg":"--video-lengths", "default":5, "min":0.1}]
+@float[{"label":"Video FPS", "arg":"--video-fps", "default":"16", "min":1, "divider-after":true}]
+@dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@switchradio[{"labels":["Output Dgenerate Image Metadata", "Output Automatic1111 Image Metadata"], "args":["--output-metadata", "--output-auto1111-metadata"]}]
+@switch[{"label":"Output Configs", "arg":"--output-configs"}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"832x480", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here"

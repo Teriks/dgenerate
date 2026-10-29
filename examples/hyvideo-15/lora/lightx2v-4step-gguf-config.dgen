@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LightX2V 4-step LoRA with a jayn7 GGUF T2V transformer. Same schedule as
+# examples/hyvideo-15/lora/lightx2v-4step-config.dgen.
+
+hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v
+--model-type hyvideo-15
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/jayn7/HunyuanVideo-1.5_T2V_480p-GGUF/blob/main/480p/hunyuanvideo1.5_480p_t2v-Q4_K_S.gguf
+--loras "https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/loras/hunyuanvideo1.5_t2v_480p_lightx2v_4step_lora_rank_32_bf16.safetensors;scale=1.0"
+--inference-steps 4
+--guidance-scales 1
+--video-lengths 4
+--video-fps 15
+--animation-format mp4
+--gen-seeds 1
+--output-path hyvideo-15-lightx2v-4step-gguf
+--output-size 848x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement; worst quality, blurry, jittery, distorted"

@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LightX2V 4-step LoRA with a city96 GGUF T2V transformer. Same schedule as
+# examples/wan/lora/lightx2v-4step-t2v-config.dgen.
+
+Wan-AI/Wan2.1-T2V-14B-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--scheduler UniPCMultistepScheduler;flow-shift=5
+--transformer https://huggingface.co/city96/Wan2.1-T2V-14B-gguf/blob/main/wan2.1-t2v-14b-Q4_K_S.gguf
+--loras "lightx2v/Wan2.1-Distill-Loras;scale=1.0;weight-name=wan2.1_t2v_14b_lora_rank64_lightx2v_4step.safetensors"
+--inference-steps 4
+--guidance-scales 1
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 5
+--animation-format mp4
+--output-path wan-lightx2v-4step-gguf
+--prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window."

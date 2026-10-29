@@ -1,0 +1,26 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LightX2V 4-step MoE LoRAs with QuantStack GGUF I2V experts. Same as
+# examples/wan/lora/lightx2v-4step-moe-i2v-config.dgen.
+
+\setp image "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg"
+
+Wan-AI/Wan2.2-I2V-A14B-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--scheduler UniPCMultistepScheduler;flow-shift=5
+--transformer https://huggingface.co/QuantStack/Wan2.2-I2V-A14B-GGUF/blob/main/HighNoise/Wan2.2-I2V-A14B-HighNoise-Q4_K_S.gguf
+--wan-second-transformer https://huggingface.co/QuantStack/Wan2.2-I2V-A14B-GGUF/blob/main/LowNoise/Wan2.2-I2V-A14B-LowNoise-Q4_K_S.gguf
+--loras "lightx2v/Wan2.2-Distill-Loras;scale=1.0;weight-name=wan2.2_i2v_A14b_high_noise_lora_rank64_lightx2v_4step_1022.safetensors" "lightx2v/Wan2.2-Distill-Loras;scale=1.0;weight-name=wan2.2_i2v_A14b_low_noise_lora_rank64_lightx2v_4step_1022.safetensors;component=transformer_2"
+--inference-steps 4
+--guidance-scales 1
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 5
+--animation-format mp4
+--output-path wan-lightx2v-4step-moe-i2v-gguf
+--image-seeds {{ image }}
+--prompts "An astronaut in a white spacesuit stands on the lunar surface, then walks forward. Dust lifts around the boots. Earth hangs in the black sky. The suit matches the first frame."
