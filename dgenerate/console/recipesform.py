@@ -37,6 +37,8 @@ from dgenerate.console.combobox import ComboBox
 
 _dialog_state = _util.DialogState(save_position=True, save_size=True)
 
+_FILTER_DEBOUNCE_MS = 120
+
 
 class _RecipeTemplateTag:
     classname: str
@@ -116,10 +118,15 @@ class _RecipesForm(tk.Toplevel):
         self._filter_toggle = None
         self._filter_visible = False
         self._templates_dict: dict[str, str] = _resources.get_recipes()
-        self._template_names: list[str] = list(_resources.get_recipes().keys())
+        self._template_names: list[str] = list(self._templates_dict.keys())
+        self._search_rows = [
+            (name, name.lower(), self._templates_dict[name].lower())
+            for name in self._template_names
+        ]
 
         self._current_template = tk.StringVar(value=self._template_names[0])
         self._filter_var = tk.StringVar()
+        self._filter_after_id: typing.Optional[str] = None
         self._entries: list[_formentries._Entry] = []
         self._content: typing.Optional[str] = None
 
@@ -175,7 +182,14 @@ class _RecipesForm(tk.Toplevel):
         query = self._filter_var.get().strip().lower()
         if not query:
             return list(self._template_names)
-        return [name for name in self._template_names if query in name.lower()]
+        by_title = [name for name, title_l, _body_l in self._search_rows if query in title_l]
+        if by_title:
+            return by_title
+        terms = query.split()
+        return [
+            name for name, _title_l, body_l in self._search_rows
+            if all(term in body_l for term in terms)
+        ]
 
     def _filter_query(self) -> str:
         return self._filter_var.get().strip()
@@ -222,19 +236,20 @@ class _RecipesForm(tk.Toplevel):
         self._set_filter_visible(True)
         return 'break'
 
-    def _apply_recipe_filter(self, *_args) -> None:
+    def _on_filter_changed(self, *_args) -> None:
+        self._update_filter_toggle_label()
+        if self._filter_after_id is not None:
+            self.after_cancel(self._filter_after_id)
+        self._filter_after_id = self.after(_FILTER_DEBOUNCE_MS, self._apply_recipe_filter)
+
+    def _apply_recipe_filter(self) -> None:
+        self._filter_after_id = None
         if self._dropdown is None:
             return
 
         filtered = self._filtered_template_names()
-        self._dropdown['values'] = filtered
-
-        current = self._current_template.get()
-        if filtered and current not in filtered:
-            self._current_template.set(filtered[0])
-            self._update_form(filtered[0])
-
-        self._update_filter_toggle_label()
+        if list(self._dropdown['values']) != filtered:
+            self._dropdown['values'] = filtered
 
     def _create_scrollable_form(self) -> None:
         """Create a scrollable form for the template entries."""
@@ -245,7 +260,7 @@ class _RecipesForm(tk.Toplevel):
         ttk.Label(self._filter_frame, text='Filter').grid(row=0, column=0, sticky='w')
         self._filter_entry = _t_entry.TextEntry(self._filter_frame, textvariable=self._filter_var)
         self._filter_entry.grid(row=0, column=1, sticky='ew', padx=(5, 0))
-        self._filter_var.trace_add('write', self._apply_recipe_filter)
+        self._filter_var.trace_add('write', self._on_filter_changed)
         self._filter_entry.bind('<Escape>', self._on_filter_escape)
         self._filter_frame.grid_remove()
 
@@ -481,6 +496,9 @@ class _RecipesForm(tk.Toplevel):
             entry.set_row_enabled(enabled[entry])
 
     def destroy(self) -> None:
+        if self._filter_after_id is not None:
+            self.after_cancel(self._filter_after_id)
+            self._filter_after_id = None
         self.unbind_mousewheel()
         super().destroy()
 
