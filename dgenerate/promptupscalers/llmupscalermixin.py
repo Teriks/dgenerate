@@ -34,6 +34,8 @@ import dgenerate.prompt as _prompt
 import dgenerate.promptupscalers.util as _util
 import dgenerate.spacycache as _spacycache
 
+_FILE_ARGUMENT = re.compile(r'^file:\s*(.*)\Z', re.DOTALL)
+
 
 class LLMPromptUpscalerMixin(abc.ABC):
     def __init__(self,
@@ -86,6 +88,32 @@ class LLMPromptUpscalerMixin(abc.ABC):
             self._validate_custom_cleanup_operations(cleanup_config_operations)
             self._custom_cleanup_operations = cleanup_config_operations
             self._cleanup_config_path = cleanup_config
+
+    def _resolve_file_argument(self, value, name: str):
+        """Return ``value``, or the UTF-8 text of a ``file:path`` value.
+
+        Paths with spaces must be shell-quoted on the command line. Any other
+        string is kept as written.
+        """
+        if not isinstance(value, str):
+            return value
+        match = _FILE_ARGUMENT.match(value.strip())
+        if match is None:
+            return value
+        path = (match.group(1) or '').strip()
+        if not path:
+            raise self.argument_error(
+                f'Argument "{name}" file: needs a file path.')
+        try:
+            with open(path, encoding='utf-8') as handle:
+                loaded = handle.read().strip()
+        except OSError as error:
+            raise self.argument_error(
+                f'Argument "{name}" could not read "{path}": {error}') from error
+        if not loaded:
+            raise self.argument_error(
+                f'Argument "{name}" file "{path}" is empty.')
+        return loaded
 
     def _validate_custom_cleanup_operations(self, operations: list[dict[str, typing.Any]]) -> bool:
         for operation in operations:

@@ -223,7 +223,16 @@ class TestDyPE(unittest.TestCase):
             dype_mscales=['decay', 'off'],
             prompts=['a horse'])
         config.check()
-        self.assertTrue(config.dype)
+        self.assertFalse(config.dype)
+        self.assertTrue(config.is_dype_enabled())
+        wrapper = _pipelinewrapper.DiffusionPipelineWrapper.__new__(
+            _pipelinewrapper.DiffusionPipelineWrapper)
+        wrapper._model_type = _pipelinewrapper.ModelType.FLUX
+        args = _pipelinewrapper.DiffusionArguments()
+        args.dype_mscale = 'decay'
+        wrapper._auto_dype_check(args)
+        self.assertTrue(args.dype)
+        self.assertEqual(config.calculate_generation_steps(), 2)
 
         invalid = _config(
             model_path='black-forest-labs/FLUX.1-dev',
@@ -288,7 +297,15 @@ class TestDyPE(unittest.TestCase):
             dype_axis_scalings=['shared'],
             prompts=['a horse'])
         config.check()
-        self.assertTrue(config.dype)
+        self.assertFalse(config.dype)
+        self.assertTrue(config.is_dype_enabled())
+        wrapper = _pipelinewrapper.DiffusionPipelineWrapper.__new__(
+            _pipelinewrapper.DiffusionPipelineWrapper)
+        wrapper._model_type = _pipelinewrapper.ModelType.FLUX
+        args = _pipelinewrapper.DiffusionArguments()
+        args.dype_axis_scaling = 'shared'
+        wrapper._auto_dype_check(args)
+        self.assertTrue(args.dype)
 
         invalid = _config(
             model_path='black-forest-labs/FLUX.1-dev',

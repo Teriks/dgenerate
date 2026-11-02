@@ -131,23 +131,23 @@ def _fit_output_media(user_args, primary: str, companions, width, height,
 
     ``companions`` is a list of ``(attribute, nearest)``.
     """
-    from dgenerate.pipelinewrapper import videopipelines as _pipelines_pkg
+    import dgenerate.pipelinewrapper.videopipelines.media as _media
 
     frames = getattr(user_args, primary)
     if not frames:
         return width, height
     source = frames[0].size
-    target_w, target_h = _pipelines_pkg.conditioning_canvas(
+    target_w, target_h = _media.conditioning_canvas(
         source, width, height, user_args.aspect_correct, align)
     target = (target_w, target_h)
     if source != target:
         _messages.log(
             f'Resizing {label} from {source[0]}x{source[1]} to {target_w}x{target_h}.')
-    setattr(user_args, primary, _pipelines_pkg.resize_media(frames, target))
+    setattr(user_args, primary, _media.resize_media(frames, target))
     for attr, nearest in companions:
         extra = getattr(user_args, attr, None)
         if extra:
-            setattr(user_args, attr, _pipelines_pkg.resize_media(
+            setattr(user_args, attr, _media.resize_media(
                 extra, target, nearest=nearest))
     user_args.width = target_w
     user_args.height = target_h

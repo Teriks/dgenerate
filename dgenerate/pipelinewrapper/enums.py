@@ -984,6 +984,31 @@ def model_type_supports_freeu(model_type: ModelType | str) -> bool:
     return _model_type_supported(model_type, FREEU_MODEL_TYPES)
 
 
+PIPELINE_PROMPT_ENHANCE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
+    ModelType.FLUX2,
+    ModelType.FLUX2_KLEIN_KV,
+    ModelType.Z_IMAGE,
+    ModelType.Z_IMAGE_OMNI,
+    ModelType.QWEN_IMAGE,
+    ModelType.QWEN_IMAGE_EDIT,
+    ModelType.QWEN_IMAGE_LAYERED,
+    ModelType.QWEN_IMAGE_21,
+    ModelType.KREA2,
+    ModelType.LTX2,
+)
+"""``--model-type`` values that accept ``--pipeline-prompt-enhance``."""
+
+
+def model_type_supports_pipeline_prompt_enhance(model_type: ModelType | str) -> bool:
+    """
+    ``--pipeline-prompt-enhance`` can rewrite the prompt for this model type.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return _model_type_supported(model_type, PIPELINE_PROMPT_ENHANCE_MODEL_TYPES)
+
+
 PAG_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.SD,
     ModelType.SDXL,

@@ -14,8 +14,13 @@
 
 # Use dynamicprompts before the llama plugin to generate combinatorial variations using dynamicprompts syntax
 
+# llama-file-config.dgen loads "system" and "preamble" with file: instead.
+
 # "gpu-layers" defaults to "auto" (as many layers as fit in VRAM).
 # "all" offloads every layer. 0 keeps the model on the CPU.
+
+# "presence-penalty" lowers tokens that have already appeared.
+# 0 is the default and leaves those tokens alone.
 
 # the default model is also already Phi-3 abliterated for now
 
@@ -42,5 +47,5 @@ stabilityai/stable-diffusion-xl-base-1.0
 --output-path xllamacpp-phi3
 --output-size 1024x1024
 --prompt-weighter sd-embed
---prompt-upscaler dynamicprompts llama;model={{ llm_model }};system={{llm_system}};preamble={{ llm_preamble }}
+--prompt-upscaler dynamicprompts llama;model={{ llm_model }};system={{llm_system}};preamble={{ llm_preamble }};presence-penalty=1.0
 --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"

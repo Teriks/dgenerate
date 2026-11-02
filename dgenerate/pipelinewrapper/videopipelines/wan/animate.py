@@ -31,16 +31,11 @@ import dgenerate.filelock as _filelock
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.pipelines as _pipelines
+import dgenerate.pipelinewrapper.sampling as _sampling
 import dgenerate.types as _types
+import dgenerate.pipelinewrapper.videopipelines.media as _media
 import dgenerate.pipelinewrapper.videopipelines as _vp
-from .common import (
-    _apply_wan_config,
-    _fit_output_media,
-    _require_image_encoder,
-    _spatial_multiple,
-    _temporal_factor,
-    _trim_wan_clip,
-)
+import dgenerate.pipelinewrapper.videopipelines.wan.common as _common
 
 
 def _call_wan_animate(wrapper, user_args):
@@ -73,14 +68,14 @@ def _call_wan_animate(wrapper, user_args):
     user_args.wan_pose_video_frames = pose
 
     pipe, held = _vp._video_pipeline(wrapper, 'wan-animate', user_args.scheduler_uri)
-    _require_image_encoder(pipe, 'wan-animate')
-    _apply_wan_config(pipe, user_args)
+    _common._require_image_encoder(pipe, 'wan-animate')
+    _common._apply_wan_config(pipe, user_args)
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
-    align = _spatial_multiple(pipe)
-    width, height = _vp._force_output_size_alignment(
+    align = _common._spatial_multiple(pipe)
+    width, height = _media._force_output_size_alignment(
         width, height, align, 'Wan-Animate')
-    width, height = _fit_output_media(
+    width, height = _common._fit_output_media(
         user_args, 'wan_pose_video_frames',
         [('wan_background_video_frames', False), ('mask_video_frames', True)],
         width, height, align, 'Wan-Animate pose clip')
@@ -96,22 +91,19 @@ def _call_wan_animate(wrapper, user_args):
             raise _pipelines.UnsupportedPipelineConfigError(
                 'Wan-Animate replace mode needs wan-background= and mask= clips.')
 
-    guidance = float(
-        _types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
-    steps = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
-    if guidance == _constants.DEFAULT_GUIDANCE_SCALE:
-        guidance = _constants.DEFAULT_WAN_ANIMATE_GUIDANCE_SCALE
-        user_args.guidance_scale = guidance
+    omitted_guidance = user_args.guidance_scale is None
+    omitted_steps = user_args.inference_steps is None
+    guidance = _sampling.resolved_guidance_scale(pipe, user_args)
+    steps = _sampling.resolved_inference_steps(pipe, user_args)
+    if omitted_guidance:
         _messages.debug_log(
-            'Wan-Animate runs unguided. Default guidance scale 5 was replaced with 1.')
-    if steps == _constants.DEFAULT_INFERENCE_STEPS:
-        steps = _constants.DEFAULT_WAN_ANIMATE_INFERENCE_STEPS
-        user_args.inference_steps = steps
+            'Wan-Animate runs unguided. Using guidance scale 1.')
+    if omitted_steps:
         _messages.debug_log(
-            'Wan-Animate default inference steps 30 was replaced with 20.')
+            f'Wan-Animate using default inference steps {steps}.')
 
-    temporal = _temporal_factor(pipe)
-    pose = _trim_wan_clip(pose, None, temporal)
+    temporal = _common._temporal_factor(pipe)
+    pose = _common._trim_wan_clip(pose, None, temporal)
     face = face[:len(pose)]
     kwargs = {
         'image': user_args.images[0],
@@ -143,7 +135,7 @@ def _call_wan_animate(wrapper, user_args):
 
     _vp._set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
     output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
-    frames = _vp.frames_from_output(getattr(output, 'frames', output))
+    frames = _media.frames_from_output(getattr(output, 'frames', output))
     return frames[:len(pose)], None, None, fps
 
 

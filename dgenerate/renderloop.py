@@ -968,13 +968,25 @@ class RenderLoop:
                                                  generation_result)
 
     def _pre_generation_step(self,
-                             diffusion_args: _pipelinewrapper.DiffusionArguments):
+                             diffusion_args: _pipelinewrapper.DiffusionArguments,
+                             image_seed=None):
 
         self._last_frame_time = 0
         self._frame_time_sum = 0
         self._generation_step += 1
 
-        desc = diffusion_args.describe_pipeline_wrapper_args()
+        control_guidance = bool(
+            image_seed is not None
+            and getattr(image_seed, 'is_single_spec', False)
+            and (self._c_config.controlnet_uris
+                 or self._c_config.control_lora_uris
+                 or self._c_config.t2i_adapter_uris))
+        desc = diffusion_args.describe_pipeline_wrapper_args(
+            self._c_config.model_type,
+            refiner=self._c_config.sdxl_refiner_uri is not None,
+            image_seed=image_seed,
+            control_guidance=control_guidance,
+            adetailer=bool(self._c_config.adetailer_detector_uris))
 
         total_steps = self._c_config.calculate_generation_steps()
 
@@ -1012,8 +1024,13 @@ class RenderLoop:
 
     def run(self):
         """
-        Run the diffusion loop, this calls :py:meth:`RenderLoopConfig.check`
-        on a copy of your configuration prior to running.
+        Run the diffusion loop.
+
+        Calls :py:meth:`RenderLoopConfig.check` and
+        :py:meth:`RenderLoopConfig.fill_defaults` on a copy of your configuration
+        before generation. Omitted guidance and inference-step lists stay unset
+        on that copy (**auto** in step text); the pipeline wrapper or video
+        pipeline supplies numeric values when each step runs.
 
         :raises RenderLoopConfigError:
         :raises dgenerate.ModelNotFoundError:
@@ -1032,7 +1049,9 @@ class RenderLoop:
         """
         Run the render loop, and iterate over a stream of event objects produced by the render loop.
 
-        This calls :py:meth:`RenderLoopConfig.check` on a copy of your configuration prior to running.
+        This calls :py:meth:`RenderLoopConfig.check` and
+        :py:meth:`RenderLoopConfig.fill_defaults` on a copy of your configuration
+        prior to running.
 
         Event objects are of the union type :py:data:`.RenderLoopEvent`
 
@@ -1120,6 +1139,7 @@ class RenderLoop:
     def _run(self) -> RenderLoopEventStream:
         self._c_config = self.config.copy()
         self._c_config.check()
+        self._c_config.fill_defaults()
 
         self._ensure_output_path()
 
@@ -1391,7 +1411,7 @@ class RenderLoop:
             else:
                 def image_seed_iterator():
                     # Skip automatic resizing when inpaint crop is enabled - let the pipeline wrapper handle it
-                    if self._c_config.inpaint_crop:
+                    if self._c_config.is_inpaint_crop_enabled():
                         resize_resolution = None
                     else:
                         if not self._should_skip_external_resize():
@@ -1435,14 +1455,16 @@ class RenderLoop:
                                                   set_wrapper_args_per_image_seed=set_extra_args,
                                                   arg_iterator=arg_iterator,
                                                   image_seed_iterator=image_seed_iterator,
-                                                  fps=seed_info.fps)
+                                                  fps=seed_info.fps,
+                                                  parsed_image_seed=parsed_image_seed)
                 continue
 
             for diffusion_arguments in arg_iterator:
                 diffusion_arguments.batch_size = self._c_config.batch_size
                 diffusion_arguments.sdxl_refiner_edit = self._c_config.sdxl_refiner_edit
 
-                yield from self._pre_generation_step(diffusion_arguments)
+                yield from self._pre_generation_step(
+                    diffusion_arguments, image_seed=parsed_image_seed)
 
                 with next(image_seed_iterator()) as image_seed:
                     if is_control_guidance_spec:
@@ -1626,17 +1648,19 @@ class RenderLoop:
             diffusion_arguments.aspect_correct = bool(parsed.aspect_correct)
         model_type = self._c_config.model_type
         wan = _pipelinewrapper.model_type_is_wan_family(model_type)
+        fps = diffusion_arguments.video_fps
+        if fps is None:
+            import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+            fps = _featuredefaults.video_fps_default(model_type)
         max_frames = None
-        if diffusion_arguments.video_length is not None:
+        if diffusion_arguments.video_length is not None and fps is not None:
             if wan:
-                max_frames = _videopipelines.wan_num_frames(
-                    diffusion_arguments.video_length,
-                    diffusion_arguments.video_fps or 16.0)
+                max_frames = _videopipelines.wan.wan_num_frames(
+                    diffusion_arguments.video_length, fps)
             else:
-                max_frames = _videopipelines.ltx_num_frames(
-                    diffusion_arguments.video_length,
-                    diffusion_arguments.video_fps or 24.0)
-        output_fps = diffusion_arguments.video_fps
+                max_frames = _videopipelines.ltx.ltx_num_frames(
+                    diffusion_arguments.video_length, fps)
+        output_fps = fps
         opening, end, control = _videopipelines.video_seed_slots(
             parsed, bool(self._c_config.ltx_ic_lora_uri))
         if opening:
@@ -1647,6 +1671,9 @@ class RenderLoop:
                 diffusion_arguments.images = frames
             else:
                 diffusion_arguments.video_frames = frames
+        if (wan and parsed.ltx_condition_strength is not None
+                and diffusion_arguments.image_seed_strength is None):
+            diffusion_arguments.image_seed_strength = parsed.ltx_condition_strength
         if end:
             frames = self._load_video_media(
                 end, parsed, processors['end'], owned_images,
@@ -1740,7 +1767,7 @@ class RenderLoop:
         resize, aspect, align = self._video_resize(parsed)
         frame_start = _types.default(parsed.frame_start, self._c_config.frame_start)
         frame_end = _types.default(parsed.frame_end, self._c_config.frame_end)
-        frames, source_fps = _videopipelines.load_rgb_frames(
+        frames, source_fps = _videopipelines.media.load_rgb_frames(
             path,
             local_files_only=self._c_config.offline_mode,
             resize_resolution=resize,
@@ -1984,7 +2011,8 @@ class RenderLoop:
                           collections.abc.Iterator[_pipelinewrapper.DiffusionArguments],
                           image_seed_iterator:
                           typing.Callable[[], collections.abc.Iterator[_mediainput.ImageSeed]],
-                          fps: float) \
+                          fps: float,
+                          parsed_image_seed=None) \
             -> RenderLoopEventStream:
 
         first_diffusion_args = next(arg_iterator)
@@ -2015,7 +2043,8 @@ class RenderLoop:
                 diffusion_args.batch_size = self._c_config.batch_size
                 diffusion_args.sdxl_refiner_edit = self._c_config.sdxl_refiner_edit
 
-                yield from self._pre_generation_step(diffusion_args)
+                yield from self._pre_generation_step(
+                    diffusion_args, image_seed=parsed_image_seed)
 
                 if next_args_terminates_anim:
                     next_args_terminates_anim = False

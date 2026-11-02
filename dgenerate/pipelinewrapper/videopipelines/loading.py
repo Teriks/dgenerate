@@ -36,29 +36,12 @@ import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.singlefilecompat as _singlefilecompat
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.pipelinewrapper.util as _util
-from dgenerate.memoize import memoize as _memoize
-from .ltx.conditions import _ic_lora_downscale_factor
-from .single_image_video import (
-    SINGLE_IMAGE_VIDEO_FAMILIES,
-    SINGLE_IMAGE_VIDEO_MODEL_TYPES,
-    _resolve_single_image_video_load,
-    _single_image_video_pipeline_class,
-    _single_image_video_transformer_class,
-)
+import dgenerate.pipelinewrapper.videopipelines.lora as _lora
+import dgenerate.pipelinewrapper.videopipelines.ltx as _ltx
+import dgenerate.pipelinewrapper.videopipelines.ltx.conditions as _ltx_conditions
+import dgenerate.pipelinewrapper.videopipelines.quantization as _quantization
+import dgenerate.pipelinewrapper.videopipelines.single_image_video as _single_image_video
 import dgenerate.pipelinewrapper.videopipelines as _vp
-from .quantization import (
-    _LTX_SKIP_OPTIONAL_MODULES,
-    _pin_video_8bit_modules,
-    _quantize_component,
-    _quantized_classic_modules,
-    _quantized_device_map,
-)
-from .lora import (
-    _load_fused_video_component,
-    _preflight_quantized_video_loras,
-    _video_lora_component_quantizers,
-    _video_lora_component_uri_cache_key,
-)
 
 
 _LTX_FALLBACK_EXTRA_DIRS = ('audio_vae', 'vocoder')
@@ -192,10 +175,10 @@ def _video_transformer_class(model_type, family: str = 'ltx2'):
         from diffusers import LTX2VideoTransformer3DModel
         return LTX2VideoTransformer3DModel
     if _enums.model_type_is_wan_family(model_type):
-        from . import wan
+        import dgenerate.pipelinewrapper.videopipelines.wan as wan
         return wan._wan_transformer_class(model_type, family)
-    if model_type in SINGLE_IMAGE_VIDEO_MODEL_TYPES:
-        return _single_image_video_transformer_class(family)
+    if model_type in _single_image_video.SINGLE_IMAGE_VIDEO_MODEL_TYPES:
+        return _single_image_video._single_image_video_transformer_class(family)
     raise _pipelines.UnsupportedPipelineConfigError(
         f'{_enums.get_model_type_string(model_type)} does not take --transformer.')
 
@@ -211,7 +194,7 @@ def _load_replacement_transformer(model_type, transformer_uri, dtype, variant,
     if (not _hfhub.is_gguf_model(parsed.model)
             and not force_unquantized
             and quantizer_uri and not parsed.quantizer
-            and _quantize_component(component_name, quantizer_uri, quantizer_map)):
+            and _quantization._quantize_component(component_name, quantizer_uri, quantizer_map)):
         parsed.quantizer = quantizer_uri
     if force_unquantized:
         if _hfhub.is_gguf_model(parsed.model):
@@ -224,7 +207,7 @@ def _load_replacement_transformer(model_type, transformer_uri, dtype, variant,
         dtype_fallback=dtype,
         auth_token=auth_token,
         local_files_only=local_files_only,
-        device_map=_quantized_device_map(
+        device_map=_quantization._quantized_device_map(
             device, offload, parsed.quantizer) if parsed.quantizer else None,
         config=config_repo,
         config_subfolder=component_name,
@@ -246,17 +229,17 @@ def pipeline_for_mode(pipe, mode: str, family: str = 'ltx2'):
         ``text-to-video``, or ``image-to-video``
     :return: pipeline of the class for ``mode``
     """
-    if family in SINGLE_IMAGE_VIDEO_FAMILIES:
-        cls = _single_image_video_pipeline_class(family, mode)
+    if family in _single_image_video.SINGLE_IMAGE_VIDEO_FAMILIES:
+        cls = _single_image_video._single_image_video_pipeline_class(family, mode)
     elif str(mode).startswith('wan'):
-        from . import wan
+        import dgenerate.pipelinewrapper.videopipelines.wan as wan
         if str(family).startswith('wan-animate-2'):
-            wan._require_image_encoder(pipe, 'wan-animate-2')
+            wan.common._require_image_encoder(pipe, 'wan-animate-2')
             return pipe
         cls = wan._wan_pipeline_class(mode, family)
-        wan._require_image_encoder(pipe, mode)
+        wan.common._require_image_encoder(pipe, mode)
     else:
-        cls = _vp._ltx_pipeline_class(mode, family)
+        cls = _ltx._ltx_pipeline_class(mode, family)
     if type(pipe) is cls:
         return pipe
     accepted = set(inspect.signature(cls.__init__).parameters)
@@ -334,14 +317,14 @@ def _video_on_create(key, new):
 def _resolve_video_load(model_type, index, ltx_ic_lora_uri):
     model_type = _enums.get_model_type_enum(model_type)
     if _enums.model_type_is_wan_family(model_type):
-        from . import wan
+        import dgenerate.pipelinewrapper.videopipelines.wan as wan
         return wan._resolve_wan_load(model_type, index)
-    if model_type in SINGLE_IMAGE_VIDEO_MODEL_TYPES:
-        return _resolve_single_image_video_load(model_type, index)
-    from . import ltx
+    if model_type in _single_image_video.SINGLE_IMAGE_VIDEO_MODEL_TYPES:
+        return _single_image_video._resolve_single_image_video_load(model_type, index)
+    import dgenerate.pipelinewrapper.videopipelines.ltx as ltx
     family = ltx.ltx_family_for_model_type(model_type, index)
     mode = 'ltx-control' if ltx_ic_lora_uri else 'ltx-txt'
-    return family, _vp._ltx_pipeline_class(mode, family), False
+    return family, _ltx._ltx_pipeline_class(mode, family), False
 
 
 def _text_encoder_slots(index: dict | None) -> list[str]:
@@ -397,7 +380,7 @@ def _inject_video_text_encoders(index,
         # Global --quantizer only applies when the slot is left as +.
         # Put quantizer= on the URI to quantize a replacement encoder.
         device_map = (
-            _quantized_device_map(device, offload, parsed.quantizer)
+            _quantization._quantized_device_map(device, offload, parsed.quantizer)
             if parsed.quantizer else None)
         injected[name] = parsed.load(
             dtype_fallback=dtype,
@@ -423,7 +406,7 @@ def _attach_video_loras_after_load(fused_components, stream_from_disk, lora_disk
     return not fused_components and ((not lora_disk_fuse) or not stream_from_disk)
 
 
-@_memoize(_pipelines._pipeline_cache,
+@_d_memoize.memoize(_pipelines._pipeline_cache,
           exceptions={'local_files_only'},
           hasher=_d_memoize.args_cache_key,
           extra_identities=[lambda held: held.pipeline],
@@ -498,7 +481,7 @@ def _create_cached_video_pipeline(model_path,
             dtype = detected_dtype
     te_slots = _text_encoder_slots(index)
     te_uris = list(text_encoder_uris or ())
-    lora_components, lora_component_quantizers = _video_lora_component_quantizers(
+    lora_components, lora_component_quantizers = _lora._video_lora_component_quantizers(
         pipeline_class, quantizer_uri, quantizer_map, transformer_uri,
         wan_second_transformer_uri, te_slots, te_uris)
     preflight_loras = _preflight_video_loras(
@@ -515,7 +498,7 @@ def _create_cached_video_pipeline(model_path,
     if family == 'ltx2':
         # The Gemma prompt enhancer is passed as None and is not loaded.
         estimate_directories = [
-            name for name in extra_dirs if name not in _LTX_SKIP_OPTIONAL_MODULES]
+            name for name in extra_dirs if name not in _quantization._LTX_SKIP_OPTIONAL_MODULES]
     estimate = _pipelines.estimate_pipeline_cache_footprint(
         model_path=pretrained_repo,
         model_type=model_type,
@@ -537,7 +520,7 @@ def _create_cached_video_pipeline(model_path,
         revision, variant, load_subfolder, local_files_only, auth_token, dtype,
         include_dtype=True)
     if family == 'ltx2':
-        load_kwargs.update(_LTX_SKIP_OPTIONAL_MODULES)
+        load_kwargs.update(_quantization._LTX_SKIP_OPTIONAL_MODULES)
 
     offload = bool(model_cpu_offload or sequential_cpu_offload or model_group_offload)
     injected = {}
@@ -577,10 +560,10 @@ def _create_cached_video_pipeline(model_path,
     load_kwargs.update(injected)
     fused_lora_components = {}
     if preflight_loras:
-        fused_lora_cache = _preflight_quantized_video_loras(
+        fused_lora_cache = _lora._preflight_quantized_video_loras(
             pipeline_class, pretrained_repo, load_kwargs, injected, model_type,
             all_lora_uris, lora_fuse_scale, auth_token, local_files_only, family,
-            component_uris=_video_lora_component_uri_cache_key(
+            component_uris=_lora._video_lora_component_uri_cache_key(
                 lora_components, transformer_uri, wan_second_transformer_uri,
                 te_slots, te_uris),
             components=lora_components)
@@ -588,19 +571,19 @@ def _create_cached_video_pipeline(model_path,
         for component_name, component_path in fused_lora_components.items():
             load_kwargs.pop(component_name, None)
             injected.pop(component_name, None)
-            injected[component_name] = _load_fused_video_component(
+            injected[component_name] = _lora._load_fused_video_component(
                 component_name, component_path, fused_lora_manifest[component_name],
                 dtype, lora_component_quantizers.get(component_name),
                 auth_token, local_files_only,
                 device, offload)
         load_kwargs.update(injected)
-    injected.update(_quantized_classic_modules(
+    injected.update(_quantization._quantized_classic_modules(
         pretrained_repo, revision, variant, load_subfolder, dtype, quantizer_uri, quantizer_map,
         auth_token, local_files_only, device, offload,
         skip_names=frozenset(load_kwargs)))
     load_kwargs.update(injected)
     _messages.debug_log(f'Loading {pipeline_class.__name__} from "{pretrained_repo}".')
-    from . import diskoffload as _diskoffload
+    import dgenerate.pipelinewrapper.videopipelines.diskoffload as _diskoffload
     replaced = set()
     if transformer_uri:
         replaced.add('transformer')
@@ -637,15 +620,15 @@ def _create_cached_video_pipeline(model_path,
             vae_uri=vae_uri))
     with _hfhub.with_hf_errors_as_model_not_found():
         if str(family).startswith('wan-animate-2'):
-            from . import wan
-            pipe = wan.load_wan_animate_2_pipeline(
+            import dgenerate.pipelinewrapper.videopipelines.wan as wan
+            pipe = wan.animate2.load_wan_animate_2_pipeline(
                 pipeline_class, pretrained_repo, load_kwargs, injected, dtype)
         elif stream_from_disk:
             def prepare_module(name, module, _vae_uri=vae_uri, _model_type=model_type):
                 if name != 'vae' or _vae_uri or not _enums.model_type_uses_wan_vae(_model_type):
                     return
-                from . import wan
-                wan._set_wan_vae_dtype(type('_VaeHost', (), {'vae': module})())
+                import dgenerate.pipelinewrapper.videopipelines.wan as wan
+                wan.common._set_wan_vae_dtype(type('_VaeHost', (), {'vae': module})())
 
             weight_sources = {}
             if transformer_uri:
@@ -670,7 +653,7 @@ def _create_cached_video_pipeline(model_path,
             pipe = pipeline_class.from_pretrained(pretrained_repo, **load_kwargs)
     if _attach_video_loras_after_load(
             fused_lora_components, stream_from_disk, lora_disk_fuse):
-        _vp._apply_video_loras(
+        _lora._apply_video_loras(
             pipe, model_type, all_lora_uris, lora_fuse_scale, auth_token, local_files_only)
     _disable_rope_double_precision_on_mps(pipe, device)
     # The Wan VAE (also used by Motif-Video) defaults to float32. Cast before
@@ -678,12 +661,12 @@ def _create_cached_video_pipeline(model_path,
     # --vae already chose a dtype (including the float32 fallback above), or
     # when the VAE is quantized. The disk loader casts before it releases the VAE.
     if _enums.model_type_uses_wan_vae(model_type) and not vae_uri and not stream_from_disk:
-        from . import wan
-        wan._set_wan_vae_dtype(pipe)
+        import dgenerate.pipelinewrapper.videopipelines.wan as wan
+        wan.common._set_wan_vae_dtype(pipe)
     if str(family).startswith('wan-animate-2'):
-        from . import wan
+        import dgenerate.pipelinewrapper.videopipelines.wan as wan
         # Compiles on every load, before the offload hooks wrap forward.
-        wan.place_wan_animate_2(
+        wan.animate2.place_wan_animate_2(
             pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
     else:
         if torch_compile and stream_from_disk:
@@ -693,15 +676,15 @@ def _create_cached_video_pipeline(model_path,
             _pipelines.apply_torch_compile(pipe, device)
         _apply_video_offload(
             pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
-    _pin_video_8bit_modules(pipe)
+    _quantization._pin_video_8bit_modules(pipe)
     _enable_vae_tiling(pipe)
     model_mode = None
     if family == 'kandinsky5-video':
-        model_mode = 'image-to-video' if isinstance(pipe, _single_image_video_pipeline_class(
+        model_mode = 'image-to-video' if isinstance(pipe, _single_image_video._single_image_video_pipeline_class(
             family, 'image-to-video')) else 'text-to-video'
     held = _VideoPipeline(pipe, family, moe=moe, model_mode=model_mode)
     if ltx_ic_lora_uri:
-        held.reference_downscale_factor = _ic_lora_downscale_factor(
+        held.reference_downscale_factor = _ltx_conditions._ic_lora_downscale_factor(
             ltx_ic_lora_uri, ic_lora_downscale, auth_token, local_files_only)
 
     cache_size = _diskoffload.DISK_PIPELINE_CACHE_BYTES if stream_from_disk else estimate

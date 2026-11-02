@@ -29,30 +29,12 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
+import dgenerate.pipelinewrapper.sampling as _sampling
 import dgenerate.types as _types
+import dgenerate.pipelinewrapper.videopipelines.media as _media
 import dgenerate.pipelinewrapper.videopipelines as _vp
-from ..schedules import (
-    _default_video_timesteps,
-    _eval_video_timesteps_expression,
-)
-from .common import (
-    _apply_wan_config,
-    _fit_output_media,
-    _require_image_encoder,
-    _spatial_multiple,
-    _temporal_factor,
-    _trim_wan_clip,
-)
-
-# Entry points the videopipelines package calls through ``wan``.
-from .animate import _call_wan_animate
-from .animate2 import (
-    _call_wan_animate_2,
-    load_wan_animate_2_pipeline,
-    place_wan_animate_2,
-)
-from .common import _set_wan_vae_dtype
-
+import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
+from . import animate, animate2, common
 
 WAN_SCHEDULER_NAMES = frozenset({
     'FlowMatchEulerDiscreteScheduler',
@@ -382,30 +364,30 @@ def _call_wan(wrapper, user_args):
             '--video-lengths cannot be used with video-to-video. '
             'The output length follows the input clip. Trim with frame-start= and frame-end=.')
     if mode in ('wan-image', 'wan-flf') and family == 'wan-t2v':
-        _require_image_encoder(pipe, mode)
+        common._require_image_encoder(pipe, mode)
     if mode == 'wan-flf' and family != 'wan-i2v':
-        _require_image_encoder(pipe, mode)
+        common._require_image_encoder(pipe, mode)
 
-    _apply_wan_config(pipe, user_args)
+    common._apply_wan_config(pipe, user_args)
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
-    align = _spatial_multiple(pipe)
-    width, height = _vp._force_output_size_alignment(width, height, align, 'Wan')
+    align = common._spatial_multiple(pipe)
+    width, height = _media._force_output_size_alignment(width, height, align, 'Wan')
     if mode == 'wan-image':
-        width, height = _fit_output_media(
+        width, height = common._fit_output_media(
             user_args, 'images', [], width, height, align, 'Wan image')
     elif mode == 'wan-flf':
-        width, height = _fit_output_media(
+        width, height = common._fit_output_media(
             user_args, 'images', [('end_images', False)], width, height, align,
             'Wan first frame')
     elif mode == 'wan-video':
-        width, height = _fit_output_media(
+        width, height = common._fit_output_media(
             user_args, 'video_frames', [], width, height, align, 'Wan video')
     elif mode == 'wan-vace':
         width, height = _fit_vace_canvas(user_args, width, height, align)
 
     fps = float(user_args.video_fps or _constants.DEFAULT_WAN_FPS)
-    temporal = _temporal_factor(pipe)
+    temporal = common._temporal_factor(pipe)
     kwargs = {
         'prompt': positive,
         'generator': _vp._generator(wrapper, user_args),
@@ -418,7 +400,7 @@ def _call_wan(wrapper, user_args):
         kwargs['height'] = height
 
     if mode == 'wan-video':
-        video = _trim_wan_clip(user_args.video_frames, None, temporal)
+        video = common._trim_wan_clip(user_args.video_frames, None, temporal)
         kwargs['video'] = video
         _messages.debug_log(f'Wan video-to-video: {len(video)} input frames.')
     elif user_args.video_length is not None:
@@ -430,9 +412,8 @@ def _call_wan(wrapper, user_args):
     else:
         _messages.debug_log('Wan will use its default frame count.')
 
-    guidance = float(
-        _types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
-    steps = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
+    guidance = _sampling.resolved_guidance_scale(pipe, user_args)
+    steps = _sampling.resolved_inference_steps(pipe, user_args)
     kwargs['guidance_scale'] = guidance
     kwargs['num_inference_steps'] = steps
     if user_args.wan_low_noise_guidance_scale is not None:
@@ -451,8 +432,8 @@ def _call_wan(wrapper, user_args):
             raise _pipelines.UnsupportedPipelineConfigError(
                 'The loaded Wan scheduler does not support custom timesteps.')
         if isinstance(user_args.timesteps, str):
-            base_timesteps = _default_video_timesteps(pipe, 'wan', steps)
-            custom_timesteps = _eval_video_timesteps_expression(
+            base_timesteps = _schedules._default_video_timesteps(pipe, 'wan', steps)
+            custom_timesteps = _schedules._eval_video_timesteps_expression(
                 user_args.timesteps, base_timesteps)
         else:
             custom_timesteps = [int(value) for value in user_args.timesteps]
@@ -469,8 +450,9 @@ def _call_wan(wrapper, user_args):
         kwargs['image'] = user_args.images[0]
         kwargs['last_image'] = user_args.end_images[0]
     elif mode == 'wan-video':
-        if user_args.image_seed_strength is not None:
-            kwargs['strength'] = float(user_args.image_seed_strength)
+        if user_args.image_seed_strength is None:
+            user_args.image_seed_strength = _constants.DEFAULT_IMAGE_SEED_STRENGTH
+        kwargs['strength'] = float(user_args.image_seed_strength)
         if custom_timesteps is not None:
             kwargs['timesteps'] = custom_timesteps
     elif mode == 'wan-vace':
@@ -481,7 +463,7 @@ def _call_wan(wrapper, user_args):
 
     # WanVideoToVideoPipeline forwards ``timesteps`` to retrieve_timesteps itself.
     output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
-    frames = _vp.frames_from_output(getattr(output, 'frames', output))
+    frames = _media.frames_from_output(getattr(output, 'frames', output))
     return frames, None, None, fps
 
 
@@ -492,14 +474,12 @@ def _fit_vace_canvas(user_args, width, height, align: int):
     The clip chooses the canvas with the still-image ``--output-size`` rule.
     The mask is resized to that same canvas so it stays registered.
     """
-    from dgenerate.pipelinewrapper import videopipelines as _pipelines_pkg
-
     video_attr = 'vace_video_frames' if user_args.vace_video_frames else 'video_frames'
     video = getattr(user_args, video_attr)
     if not video:
         return width, height
     source = video[0].size
-    width, height = _fit_output_media(
+    width, height = common._fit_output_media(
         user_args, video_attr, [], width, height, align, 'Wan VACE control clip')
     mask = user_args.vace_mask_frames
     target = (width, height)
@@ -509,7 +489,7 @@ def _fit_vace_canvas(user_args, width, height, align: int):
                 f'Wan VACE mask is {mask[0].size[0]}x{mask[0].size[1]} while the '
                 f'control clip is {source[0]}x{source[1]}. The mask is resized '
                 f'to the control clip canvas.')
-        user_args.vace_mask_frames = _pipelines_pkg.resize_media(
+        user_args.vace_mask_frames = _media.resize_media(
             mask, target, nearest=True)
     return width, height
 
@@ -518,10 +498,10 @@ def _fill_vace_kwargs(kwargs, user_args, temporal: int):
     video = user_args.vace_video_frames or user_args.video_frames
     if video:
         limit = kwargs.get('num_frames')
-        kwargs['video'] = _trim_wan_clip(video, limit, temporal)
+        kwargs['video'] = common._trim_wan_clip(video, limit, temporal)
         _messages.debug_log(f'Wan VACE control clip: {len(kwargs["video"])} frames.')
     if user_args.vace_mask_frames:
-        kwargs['mask'] = _trim_wan_clip(
+        kwargs['mask'] = common._trim_wan_clip(
             user_args.vace_mask_frames, kwargs.get('num_frames'), temporal)
     if user_args.vace_reference_images:
         kwargs['reference_images'] = list(user_args.vace_reference_images)

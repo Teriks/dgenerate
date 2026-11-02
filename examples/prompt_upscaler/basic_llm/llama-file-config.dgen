@@ -1,0 +1,29 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# The llama prompt upscaler reads "system" and "preamble" from UTF-8 text
+# files when the value starts with file:. Run from this directory so those
+# paths resolve. Quote the prompt-upscaler value
+# on the shell when a path contains spaces: system="file:My Prompt.txt"
+# xllamacpp-phi3-config.dgen is the same example with the text written inline.
+
+\set llm_model 'https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf'
+
+\set llm_system 'file:system-prompt.txt'
+
+\set llm_preamble 'file:preamble.txt'
+
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--clip-skips 0
+--gen-seeds 1
+--output-path xllamacpp-phi3
+--output-size 1024x1024
+--prompt-weighter sd-embed
+--prompt-upscaler dynamicprompts llama;model={{ llm_model }};system={{ llm_system }};preamble={{ llm_preamble }};presence-penalty=1.0
+--prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"

@@ -44,30 +44,19 @@ _PIPELINE_DEFAULTS: dict[str, dict[str, typing.Any]] = {
 REGIONE_INFERENCE_STEPS = 28
 
 
-def _default_inference_steps() -> int:
-    import dgenerate.pipelinewrapper.constants as _constants
-
-    return _constants.DEFAULT_INFERENCE_STEPS
-
-
 def resolve_regione_inference_steps_list(
         steps: typing.Sequence[int] | None) -> list[int]:
     """
-    RegionE requires 28 steps. Treat ``None`` and the global default (30) as omitted.
+    RegionE requires 28 steps when ``--inference-steps`` is omitted.
     """
-    default = _default_inference_steps()
     if steps is None:
         return [REGIONE_INFERENCE_STEPS]
-    normalized = list(steps)
-    if normalized == [default]:
-        return [REGIONE_INFERENCE_STEPS]
-    return normalized
+    return list(steps)
 
 
 def resolve_regione_inference_step_count(steps: int | None) -> int:
     """Like :func:`resolve_regione_inference_steps_list` for a single step count."""
-    default = _default_inference_steps()
-    if steps is None or steps == default:
+    if steps is None:
         return REGIONE_INFERENCE_STEPS
     return steps
 

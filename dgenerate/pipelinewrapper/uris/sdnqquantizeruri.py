@@ -25,7 +25,7 @@ import torch
 
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
 
 if typing.TYPE_CHECKING:
     from sdnq import SDNQConfig

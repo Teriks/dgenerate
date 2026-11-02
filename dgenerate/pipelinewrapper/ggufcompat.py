@@ -147,7 +147,7 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
             _COMFY_PREFIX + 'img_in.proj.weight',
             'model.model.txt_in.input_embedder.weight',
             'model.model.img_in.proj.weight'):
-        from . import singlefilecompat as _singlefilecompat
+        import dgenerate.pipelinewrapper.singlefilecompat as _singlefilecompat
         config_repo = _singlefilecompat.hunyuanimage_gguf_config_repo(shapes)
         return GGUFLayout('hyimage21', config_repo, comfy=comfy, adapt=True)
 
@@ -800,7 +800,7 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
     if layout.kind == 'qwen-image-layered':
         return adapt_qwen_layered_checkpoint(checkpoint), config, subfolder, False
     if layout.kind == 'hyimage21':
-        from . import singlefilecompat as _singlefilecompat
+        import dgenerate.pipelinewrapper.singlefilecompat as _singlefilecompat
         converted = _singlefilecompat.convert_hunyuanimage_transformer_for_single_file(checkpoint)
         return converted, config, subfolder, True
     if layout.kind == 'wan-animate-14B':

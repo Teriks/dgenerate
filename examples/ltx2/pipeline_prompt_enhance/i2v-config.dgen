@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LTX-2.5 image-to-video with the default Gemma enhancer. A first-frame image
+# selects the built-in image-to-video system prompt (see the short t2v example
+# in examples/ltx2/basic/prompt-enhancer-config.dgen).
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx2
+--dtype bfloat16
+--model-sequential-offload
+--pipeline-prompt-enhance
+--guidance-scales 1
+--gen-seeds 1
+--output-size 640x384
+--video-lengths 2
+--animation-format mp4
+--output-path output
+--image-seeds https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg
+--prompts "The astronaut turns toward the camera and waves slowly. The suit and background stay the same."

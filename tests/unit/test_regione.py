@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+import unittest.mock
 
 import dgenerate.extras.regione as _regione
 import dgenerate.extras.regione.runtime as _regione_runtime
@@ -101,15 +102,73 @@ class TestRegionE(unittest.TestCase):
             prompts=['edit'],
         )
         config.check()
-        self.assertEqual(config.inference_steps, [28])
+        self.assertIsNone(config.inference_steps)
+        import dgenerate.pipelinewrapper.arguments as _arguments
+        import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+        step = _arguments.DiffusionArguments()
+        step.regione = True
+        step.inference_steps = _regione.resolve_regione_inference_step_count(
+            step.inference_steps)
+        self.assertEqual(step.inference_steps, 28)
 
-    def test_default_inference_steps_coerced_to_28(self):
-        default = _pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS
+    def test_wrapper_forces_28_steps_and_warns(self):
+        import dgenerate.messages as _messages
+        import dgenerate.pipelinewrapper.arguments as _arguments
+        import dgenerate.pipelinewrapper.wrapper as _wrapper
+
+        wrapper = object.__new__(_wrapper.DiffusionPipelineWrapper)
+        wrapper._model_type = _pipelinewrapper.ModelType.QWEN_IMAGE_EDIT
+        wrapper._parsed_adetailer_detector_uris = None
+        wrapper._model_cpu_offload = False
+        wrapper._model_group_offload = False
+        wrapper._pipeline = type('QwenImageEditPipeline', (), {})()
+
+        wrong = _arguments.DiffusionArguments()
+        wrong.regione = True
+        wrong.inference_steps = 20
+        wrong.images = [self.image_path]
+        with unittest.mock.patch.object(_messages, 'warning') as warning:
+            wrapper._auto_regione_check(wrong)
+        self.assertEqual(wrong.inference_steps, 28)
+        self.assertIn('20', warning.call_args[0][0])
+        self.assertIn('28', warning.call_args[0][0])
+
+        omitted = _arguments.DiffusionArguments()
+        omitted.regione = True
+        omitted.inference_steps = None
+        omitted.images = [self.image_path]
+        with unittest.mock.patch.object(_messages, 'warning') as warning:
+            wrapper._auto_regione_check(omitted)
+        self.assertEqual(omitted.inference_steps, 28)
+        warning.assert_not_called()
+
+        exact = _arguments.DiffusionArguments()
+        exact.regione = True
+        exact.inference_steps = 28
+        exact.images = [self.image_path]
+        with unittest.mock.patch.object(_messages, 'warning') as warning:
+            wrapper._auto_regione_check(exact)
+        self.assertEqual(exact.inference_steps, 28)
+        warning.assert_not_called()
+
+        config = _config(
+            model_path='Qwen/Qwen-Image-Edit',
+            model_type=_pipelinewrapper.ModelType.QWEN_IMAGE_EDIT,
+            regione=True,
+            inference_steps=[20],
+            image_seeds=[self.image_path],
+            prompts=['edit'],
+        )
+        config.check()
+        self.assertEqual(config.inference_steps, [20])
+
+    def test_omitted_inference_steps_coerced_to_28(self):
+        default = _pipelinewrapper.constants.DEFAULT_FALLBACK_INFERENCE_STEPS
         self.assertEqual(_regione.resolve_regione_inference_steps_list(None), [28])
         self.assertEqual(
-            _regione.resolve_regione_inference_steps_list([default]), [28])
+            _regione.resolve_regione_inference_steps_list([default]), [default])
         self.assertEqual(
-            _regione.resolve_regione_inference_step_count(default), 28)
+            _regione.resolve_regione_inference_step_count(default), default)
         self.assertEqual(
             _regione.resolve_regione_inference_step_count(None), 28)
 

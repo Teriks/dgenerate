@@ -17,7 +17,7 @@ https://civitai.com/api/download/models/3352534?fileId=3239845
 --model-type qwen-image-21
 --dtype bfloat16
 --model-sequential-offload
---qwen21-output-resolution 1024
+--qwen21-resolution 1024
 --gen-seeds 1
 --output-path qwen-image-21-civitai
 --prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

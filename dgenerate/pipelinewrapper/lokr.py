@@ -318,10 +318,10 @@ def _fuse_split_delta(pipeline, modules: list[str], w1, w2, scale: float) -> Non
 
 def _component_rejects_lokr_fuse(component: nn.Module) -> bool:
     """Packed weights cannot take a LoKr write into ``weight.data``."""
-    from dgenerate.pipelinewrapper.pipelines import module_skips_group_offload
-    from dgenerate.pipelinewrapper.safetensorscompat import module_has_comfy_quant
+    import dgenerate.pipelinewrapper.pipelines as _pipelines_mod
+    import dgenerate.pipelinewrapper.safetensorscompat as _safetensorscompat
 
-    return module_skips_group_offload(component) or module_has_comfy_quant(component)
+    return _pipelines_mod.module_skips_group_offload(component) or _safetensorscompat.module_has_comfy_quant(component)
 
 
 def _warn_lokr_left_active() -> None:

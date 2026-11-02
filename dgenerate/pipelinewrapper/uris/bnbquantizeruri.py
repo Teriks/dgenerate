@@ -25,8 +25,8 @@ import transformers
 
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate.pipelinewrapper.enums import get_torch_dtype as _get_torch_dtype
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
 
 _bnb_quantizer_uri_parser = _textprocessing.ConceptUriParser(
     'BNB Quantizer',
@@ -122,7 +122,7 @@ class BNBQuantizerUri:
         return s
 
     def _config_args(self, compute_dtype: str | torch.dtype | None) -> dict:
-        compute_dtype = _get_torch_dtype(compute_dtype)
+        compute_dtype = _enums.get_torch_dtype(compute_dtype)
 
         return dict(
             load_in_4bit=self.bits == 4,

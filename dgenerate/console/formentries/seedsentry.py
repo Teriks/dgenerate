@@ -84,7 +84,21 @@ class _SeedsEntry(_entry._Entry):
         return self.text_var.get().strip() == ''
 
     def template(self, content):
+        value = self.text_var.get().strip()
+        if not value:
+            return self._template(content, '')
         if self.is_count_var.get():
-            return self._template(content, '--gen-seeds ' + self.text_var.get().strip())
+            flag = self.config.get('count-arg', '--gen-seeds')
         else:
-            return self._template(content, '--seeds ' + self.text_var.get().strip())
+            flag = self.config.get('seeds-arg', '--seeds')
+        saved_arg = self.arg
+        self.arg = None
+        try:
+            return self._template(content, f'{flag} {value}')
+        finally:
+            self.arg = saved_arg
+
+    def argument_help_targets(self):
+        if 'seeds-arg' in self.config or 'count-arg' in self.config:
+            self.help_arg = self.config.get('seeds-arg', self.config.get('count-arg'))
+        return super().argument_help_targets()

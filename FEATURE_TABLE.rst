@@ -685,6 +685,55 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
 
+.. list-table:: ``--pipeline-prompt-enhance`` rewrite language by ``--model-type``
+   :widths: 40 12
+   :header-rows: 1
+
+   * - Model Type
+     - Respond in user's language
+
+   * - ``flux2``
+     - ✅
+
+   * - ``flux2-klein-kv``
+     - ✅
+
+   * - ``z-image``
+     - ❌
+
+   * - ``z-image-omni``
+     - ❌
+
+   * - ``qwen-image``
+     - ✅
+
+   * - ``qwen-image-edit``
+     - ✅
+
+   * - ``qwen-image-layered``
+     - ✅
+
+   * - ``qwen-image-21``
+     - ✅
+
+   * - ``krea2``
+     - ❌
+
+   * - ``ltx2``
+     - ❌
+
+Any ``--pipeline-prompt-enhance-*`` option, including ``--pipeline-prompt-enhance-seeds``,
+turns prompt enhancement on with the built-in system prompt when
+``--pipeline-prompt-enhance`` itself is omitted. ``--ltx-prompt-enhancer`` is separate
+and turns on LTX enhancement by itself.
+
+When the built-in system prompt is used, a ✅ row means dgenerate asks the loaded
+text encoder to rewrite in the same language as the user's prompt (with checks that
+drop back to the original prompt when the rewrite is in the wrong language). ❌ means
+the rewrite targets an English caption: ``z-image``, ``z-image-omni``, and ``krea2``
+use that policy directly; ``ltx2`` uses the Gemma prompt enhancer, which is oriented
+toward English shot descriptions.
+
 .. list-table:: Generation features by ``--model-type``
    :widths: 25 12 16 22 18 28 24 12 24 24 24 20
    :header-rows: 1
@@ -1461,16 +1510,16 @@ Faster generation speeds can be achieved by using Cache-DiT, DyPE, DeepCache, Mi
 
 The DeepCache branch ID and interval can be specified with the ``--deep-cache-branch-ids`` and ``--deep-cache-intervals`` options. Benchmarks for different parameters can be reviewed `here <https://huggingface.co/docs/diffusers/main/en/optimization/deepcache#benchmark>`__.
 
-Microsoft Region-Adaptive Sampling (RAS) has numerous configurable options that can be reviewed `here <https://github.com/microsoft/ras?tab=readme-ov-file#customize-hyperparameters>`__. Note that the ``--ras-index-fusion`` parameter is not compatible with SD3.5.
+Microsoft Region-Adaptive Sampling (RAS) has numerous configurable options that can be reviewed `here <https://github.com/microsoft/ras?tab=readme-ov-file#customize-hyperparameters>`__. Omitted ``--ras-error-reset-steps`` is the single pattern ``12,22``. An omitted ``--ras-end-steps`` follows the step count the pipeline actually runs, which is 28 for Stable Diffusion 3 when ``--inference-steps`` is omitted. ``--ras-index-fusion`` is not compatible with SD3.5.
 
 The TeaCache threshold can be specified with the ``--tea-cache-rel-l1-thresholds`` parameter. Information about this parameter can be reviewed `here <https://github.com/ali-vilab/TeaCache/blob/main/TeaCache4FLUX/README.md>`__.
 
 SADA cannot be combined with Hi-Diffusion, DeepCache, or TeaCache.
 
-DyPE (``--dype``) adapts spatial RoPE frequencies during denoising. Use ``--dype-methods`` to try ``yarn`` (default), ``ntk``, or the ``base`` RoPE baseline as combinatoric values. The Flux.1 and Qwen-Image adapters follow the upstream architecture; Flux.1 Fill / Kontext, Qwen-Image Edit / Layered, Flux.2, Z-Image, Wan, Krea 2, HunyuanVideo 1.5, and Motif-Video are experimental adapters. Reference long-side defaults are 1024 pixels for Flux.1, Flux.2, and Z-Image, 1328 for Qwen-Image, and 832 for Wan. ``--dype-mscales`` controls the ``yarn`` method's attention magnitude scale: ``constant`` (default), ``decay``, or ``off``. Use ``decay`` or ``off`` if ``yarn`` produces a fine repeating texture, as it does with FLUX.1-dev. ``--dype-axis-scalings`` controls non-square images: ``shared`` (default) applies the long side's scaling to both axes, as ComfyUI-DyPE does; ``independent`` scales each axis separately, as upstream DyPE does. DyPE cannot be combined with Cache-DiT, TeaCache, Spectrum, or SADA, because those features reuse or skip denoiser work from an earlier step. See the `DyPE source <https://github.com/guyyariv/DyPE>`__ and the vendored adapter notes under ``dgenerate/extras/dype``.
+DyPE (``--dype``) adapts spatial RoPE frequencies during denoising. Use ``--dype-methods`` to try ``yarn`` (default), ``ntk``, or the ``base`` RoPE baseline as combinatoric values. The Flux.1 and Qwen-Image adapters follow the upstream architecture; Flux.1 Fill / Kontext, Qwen-Image Edit / Layered, Flux.2, Z-Image, Wan, Wan-Animate, Wan-Animate-2, Krea 2, HunyuanVideo 1.5, and Motif-Video are experimental adapters. Reference long-side defaults are 1024 pixels for Flux.1, Flux.2, and Z-Image, 1328 for Qwen-Image, and 832 for Wan. ``--dype-mscales`` controls the ``yarn`` method's attention magnitude scale: ``constant`` (default), ``decay``, or ``off``. Use ``decay`` or ``off`` if ``yarn`` produces a fine repeating texture, as it does with FLUX.1-dev. ``--dype-axis-scalings`` controls non-square images: ``shared`` (default) applies the long side's scaling to both axes, as ComfyUI-DyPE does; ``independent`` scales each axis separately, as upstream DyPE does. DyPE cannot be combined with Cache-DiT, TeaCache, Spectrum, or SADA, because those features reuse or skip denoiser work from an earlier step. See the `DyPE source <https://github.com/guyyariv/DyPE>`__ and the vendored adapter notes under ``dgenerate/extras/dype``.
 
 
 
-RegionE (``--regione``) accelerates instruction-based image editing on ``--model-type flux-kontext`` and ``qwen-image-edit`` by partitioning edited and unchanged regions. It requires an input image in ``--image-seeds``, exactly 28 ``--inference-steps``, and a non-inpaint pipeline (Kontext inpaint and Qwen-Image-Edit inpaint are rejected). Omitting inference steps, or leaving the global default of 30, uses 28. Pipeline-specific defaults apply to ``--regione-warmup-steps``, ``--regione-post-steps``, ``--regione-refresh-steps``, ``--regione-thresholds``, ``--regione-cache-thresholds``, and ``--regione-erosion-dilation``. RegionE cannot be combined with Cache-DiT, DyPE, TeaCache, Spectrum, SADA, Microsoft RAS, or ADetailer, and it does not support model CPU offloading or group offloading. Examples are under ``examples/flux/regione`` and ``examples/qwen-image/regione``. See `RegionE <https://github.com/Peyton-Chen/RegionE>`__.
+RegionE (``--regione``) accelerates instruction-based image editing on ``--model-type flux-kontext`` and ``qwen-image-edit`` by partitioning edited and unchanged regions. It requires an input image in ``--image-seeds`` and a non-inpaint pipeline (Kontext inpaint and Qwen-Image-Edit inpaint are rejected). RegionE always runs 28 inference steps. Omitting ``--inference-steps`` uses 28. Any other explicit count is changed to 28, with a warning. Pipeline-specific defaults apply to ``--regione-warmup-steps``, ``--regione-post-steps``, ``--regione-refresh-steps``, ``--regione-thresholds``, ``--regione-cache-thresholds``, and ``--regione-erosion-dilation``. RegionE cannot be combined with Cache-DiT, DyPE, TeaCache, Spectrum, SADA, Microsoft RAS, or ADetailer, and it does not support model CPU offloading or group offloading. Examples are under ``examples/flux/regione`` and ``examples/qwen-image/regione``. See `RegionE <https://github.com/Peyton-Chen/RegionE>`__.
 
-Spectrum (``--spectrum``) forecasts denoiser block outputs and skips those blocks on later steps. Transformers skip their blocks. SDXL and Kolors skip the UNet down, mid, and up blocks and still run the output convolution. It is supported on SD3, SDXL, Kolors, Flux.1, Flux.2, Z-Image, Qwen-Image (including 2.1), HunyuanImage 2.1 (base and refiner), Krea 2, Kandinsky 5.0 Image, Wan, HunyuanVideo 1.5, and Motif-Video. The moderate schedule is the default (window ``2``, flex ``0.75``). ``--spectrum-flex-windows 3`` is the paper's aggressive schedule. Details are at `Spectrum <https://github.com/hanjq17/Spectrum>`__.
+Spectrum (``--spectrum``) forecasts denoiser block outputs and skips those blocks on later steps. Transformers skip their blocks. SDXL and Kolors skip the UNet down, mid, and up blocks and still run the output convolution. It is supported on SD3, SDXL, Kolors, Flux.1, Flux.2, Z-Image, Qwen-Image (including 2.1), HunyuanImage 2.1 (base and refiner), Krea 2, Kandinsky 5.0 Image, Wan, Wan-Animate, Wan-Animate-2, HunyuanVideo 1.5, and Motif-Video. The moderate schedule is the default (window ``2``, flex ``0.75``). ``--spectrum-flex-windows 3`` is the paper's aggressive schedule. Details are at `Spectrum <https://github.com/hanjq17/Spectrum>`__.

@@ -1076,8 +1076,8 @@ def single_file_pretrained_repo_for_shapes(
     if is_native_hydit_checkpoint(shapes):
         return infer_hydit_config_repo(shapes)
 
-    from dgenerate.pipelinewrapper.ggufcompat import detect_gguf_layout
-    layout = detect_gguf_layout(shapes)
+    import dgenerate.pipelinewrapper.ggufcompat as _ggufcompat
+    layout = _ggufcompat.detect_gguf_layout(shapes)
     repo = layout.config_repo if layout is not None else _diffusers_aux_repo(shapes)
     if repo is None:
         return None
@@ -1194,8 +1194,8 @@ def single_file_pretrained_repo_for_model_path(
             path, local_files_only=local_files_only, auth_token=auth_token)
     lower = path.lower()
     if lower.endswith('.gguf'):
-        from dgenerate.pipelinewrapper.ggufcompat import read_gguf_shapes
-        shapes = read_gguf_shapes(path)
+        import dgenerate.pipelinewrapper.ggufcompat as _ggufcompat
+        shapes = _ggufcompat.read_gguf_shapes(path)
     elif lower.endswith('.safetensors'):
         shapes = _safetensors_weight_shapes(path)
     else:

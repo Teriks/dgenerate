@@ -30,6 +30,7 @@ import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.uris as _uris
+import dgenerate.pipelinewrapper.videopipelines.media as _media
 import dgenerate.pipelinewrapper.videopipelines as _vp
 
 
@@ -231,7 +232,7 @@ def _fit_ltx_inputs(pipe, held, mode, user_args, width, height):
     if primary is None:
         return width, height
     align = _ltx_canvas_align(pipe, held, mode, user_args)
-    target_w, target_h = _vp.conditioning_canvas(
+    target_w, target_h = _media.conditioning_canvas(
         primary, width, height, user_args.aspect_correct, align)
     target = (target_w, target_h)
     if primary != target:
@@ -242,13 +243,13 @@ def _fit_ltx_inputs(pipe, held, mode, user_args, width, height):
                  'end_video_frames', 'end_images'):
         frames = getattr(user_args, attr, None)
         if frames:
-            setattr(user_args, attr, _vp.resize_media(frames, target))
+            setattr(user_args, attr, _media.resize_media(frames, target))
     extras = []
     for frames, index, strength in user_args.ltx_extra_conditions or []:
         if isinstance(frames, list):
-            frames = _vp.resize_media(frames, target)
+            frames = _media.resize_media(frames, target)
         else:
-            frames = _vp.resize_media([frames], target)[0]
+            frames = _media.resize_media([frames], target)[0]
         extras.append((frames, index, strength))
     if extras:
         user_args.ltx_extra_conditions = extras
@@ -260,7 +261,7 @@ def _fit_ltx_inputs(pipe, held, mode, user_args, width, height):
 def _resize_ltx_control_clip(frames, width, height, aspect_correct, align: int):
     """Fit an IC-LoRA control clip with the still-image ``--output-size`` rule."""
     source = frames[0].size
-    target_w, target_h = _vp.conditioning_canvas(
+    target_w, target_h = _media.conditioning_canvas(
         source, width, height, aspect_correct, align)
     target = (target_w, target_h)
     if source == target:
@@ -268,7 +269,7 @@ def _resize_ltx_control_clip(frames, width, height, aspect_correct, align: int):
     _messages.log(
         f'Resizing LTX IC-LoRA control clip from {source[0]}x{source[1]} '
         f'to {target[0]}x{target[1]}.')
-    return _vp.resize_media(frames, target)
+    return _media.resize_media(frames, target)
 
 
 def _ic_lora_downscale_factor(lora_uri: str, override: int | None,

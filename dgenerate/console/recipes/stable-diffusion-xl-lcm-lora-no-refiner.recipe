@@ -8,8 +8,8 @@ title: Stable Diffusion XL LCM LoRA (no refiner)
 --scheduler LCMScheduler
 @checkboxwithtwointargs[{"id": "dc", "label":"Use DeepCache", "help-arg":"--deep-cache", "int1-label": "DeepCache Interval", "int1-arg":"--deep-cache-intervals", "int1":5, "int1-min":1, "int2-label":"DeepCache Branch ID", "int2":1, "int2-arg": "--deep-cache-branch-ids", "int2-min":0}]
 @conditionalcheckboxes[{"id": "hd", "labels":["Use HiDiffusion", "HiDiffusion No Window Attention", "HiDiffusion No RAUNet"], "args":["--hi-diffusion", "--hi-diffusion-no-win-attn", "--hi-diffusion-no-raunet"]}]
-@switch[{"id": "sada", "label":"Use SADA", "arg":"--sada", "exclude": ["hd", "dc"]}]
-@switch[{"id": "sp", "label":"Use Spectrum", "arg":"--spectrum", "exclude": ["hd", "dc", "sada"]}]
+@sada[{"id": "sada", "preset": "sdxl", "exclude": ["hd", "dc"], "divider-after": true}]
+@spectrum[{"id": "sp", "exclude": ["hd", "dc", "sada"], "divider-after": true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":0}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @quantizer[{"model-type":"sdxl", "divider-after": true}]

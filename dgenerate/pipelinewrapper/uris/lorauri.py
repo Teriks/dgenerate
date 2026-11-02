@@ -31,7 +31,7 @@ import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
 
 _lora_uri_parser = _textprocessing.ConceptUriParser(
     'LoRA', ['scale', 'revision', 'subfolder', 'weight-name', 'component'])
@@ -143,8 +143,8 @@ def _collapse_zimage_lora_prefix(state_dict):
 
 def _quantized_adapter_components(pipeline, listed, adapter_names) -> list[str]:
     """Components that received these adapters and cannot take a fused write."""
-    from dgenerate.pipelinewrapper import pipelines as _pipelines
-    from dgenerate.pipelinewrapper.safetensorscompat import module_has_comfy_quant
+    import dgenerate.pipelinewrapper.pipelines as _pipelines
+    import dgenerate.pipelinewrapper.safetensorscompat as _safetensorscompat
 
     components = getattr(pipeline, 'components', None)
     if not isinstance(components, dict):
@@ -161,7 +161,7 @@ def _quantized_adapter_components(pipeline, listed, adapter_names) -> list[str]:
         # ComfyUI packed linears are ordinary integer Parameters, so group
         # offload can move them. A fused write still cannot: PEFT adds a
         # floating delta into int8 or uint8 storage.
-        if _pipelines.module_skips_group_offload(module) or module_has_comfy_quant(module):
+        if _pipelines.module_skips_group_offload(module) or _safetensorscompat.module_has_comfy_quant(module):
             found.append(component)
     return found
 
@@ -513,9 +513,9 @@ def _load_one_lora(
             raise RuntimeError(
                 f'{pipeline.__class__.__name__} cannot load a LoRA onto transformer_2.')
         kwargs['load_into_transformer_2'] = True
-    from dgenerate.pipelinewrapper.krea2_lora import load_krea2_lora_on_pipeline
-    from dgenerate.pipelinewrapper.lokr import load_lokr_if_present
-    lokr_mode = load_lokr_if_present(
+    import dgenerate.pipelinewrapper.krea2_lora as _krea2_lora
+    import dgenerate.pipelinewrapper.lokr as _lokr
+    lokr_mode = _lokr.load_lokr_if_present(
         pipeline, model_path, adapter_name,
         lora_strength=lora_strength,
         fuse=fuse,
@@ -524,7 +524,7 @@ def _load_one_lora(
     if lokr_mode:
         return lokr_mode
     if _pipeline_is_krea2(pipeline):
-        return load_krea2_lora_on_pipeline(
+        return _krea2_lora.load_krea2_lora_on_pipeline(
             pipeline, model_path, adapter_name,
             lora_strength=lora_strength,
             fuse=fuse,

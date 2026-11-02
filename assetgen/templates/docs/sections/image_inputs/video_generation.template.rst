@@ -195,7 +195,7 @@ repository still supplies the VAE and text encoders. ``--scheduler`` accepts
 These options are rejected: ``--ltx-audio-guidance-scales``,
 ``--ltx-audio-guidance-rescales``, ``--sigmas``, ``--ltx-ic-lora``,
 ``--ltx-latent-upscale``, ``--ltx-stg-scales``, ``--ltx-modality-scales``,
-``--ltx-video-decoder diffusion``, ``--ltx-diffusion-decode-tile``, ``--ltx-prompt-enhancer``,
+``--ltx-video-decoder diffusion``, ``--ltx-diffusion-decode-tile``, ``--pipeline-prompt-enhance``,
 ``--ltx-image-crfs``, ``--ltx-no-cross-timestep``,
 ``--ltx-video-min-seconds``, and ``--ltx-video-max-seconds``.
 
@@ -353,18 +353,28 @@ arguments overlay the checkpoint scheduler config. Other scheduler names are
 rejected. Omitting ``--scheduler`` keeps the checkpoint scheduler.
 ``--scheduler help`` and ``--scheduler helpargs`` still print help.
 
-The image-model defaults still apply if you omit the options: ``--guidance-scales``
-is ``5`` and ``--inference-steps`` is ``30``. LTX then rewrites those defaults when
-they are still unused. A value you set yourself is kept, except as noted below.
+When you omit ``--guidance-scales`` or ``--inference-steps``, generation-step text
+shows **auto**. At run time the video pipeline reads the loaded pipeline's
+``__call__`` defaults, then the model-specific rules below, then global fallbacks
+(not during config ``check`` or ``fill_defaults``).
+For ``--model-type ltx-video``, omitted values follow ``LTXPipeline`` (published
+Diffusers checkpoints typically use guidance ``3`` and ``50`` steps). Values you
+set are passed as written.
+
+For ``--model-type ltx2``, omitted guidance becomes ``1`` on a distilled checkpoint,
+or video ``3`` with audio ``7`` on a full checkpoint. Values you set are used as
+written. An omitted step count uses the pipeline default (``30`` on full
+``LTX2Pipeline`` when neither ``--timesteps`` nor ``--sigmas`` is set). A
+distilled checkpoint always uses its sigma table length regardless of
+``--inference-steps``.
 
 **Scheduler without dynamic shifting (the published LTX-2.5 scheduler)**
 
 * The clip uses Diffusers' distilled 8-value sigma table. ``--inference-steps`` is
-  not sent to the pipeline. dgenerate warns with the ignored value, including the
-  default 30, and still uses the table. Passing ``--inference-steps 8`` matches
-  the table and silences the warning.
-* If ``--guidance-scales`` is still ``5``, it is replaced with ``1`` (unguided).
-  Any other guidance value is used as written.
+  not sent to the pipeline. dgenerate warns when you passed an explicit step count
+  that does not match the table, and still uses the table. Passing ``--inference-steps 8``
+  matches the table and silences the warning.
+* Omitted guidance is ``1`` (unguided). Any explicit guidance value is used as written.
 * Video guidance and audio guidance receive that same number unless
   ``--ltx-audio-guidance-scales`` is set.
 * After the clip runs, the written config records 8 steps and the guidance that
@@ -373,12 +383,11 @@ they are still unused. A value you set yourself is kept, except as noted below.
 **Scheduler with dynamic shifting**
 
 * ``--inference-steps`` is sent as ``num_inference_steps`` when neither
-  ``--timesteps`` nor ``--sigmas`` is set. The default ``30`` is used if you
-  omit it.
-* If ``--guidance-scales`` is still ``5``, video guidance becomes ``3`` and audio
-  guidance becomes ``7``, with a warning, unless ``--ltx-audio-guidance-scales``
-  is set. Any other guidance value is used for video, and for audio unless
-  ``--ltx-audio-guidance-scales`` is set.
+  ``--timesteps`` nor ``--sigmas`` is set. Omitted steps use ``30`` on a full
+  checkpoint.
+* Omitted guidance becomes video ``3`` and audio ``7``, unless
+  ``--ltx-audio-guidance-scales`` is set. Explicit values are used for video, and
+  for audio unless ``--ltx-audio-guidance-scales`` is set.
 
 ``--sigmas`` (CSV list or ``expr:``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -390,8 +399,7 @@ This path wins over both of the above.
   ``scheduler.set_timesteps(--inference-steps)`` when it does.
 * The step count becomes the length of the resulting list. ``--inference-steps``
   is overwritten to match, including in the written config.
-* ``--guidance-scales`` is used as written, including leftover ``5``. Nothing is
-  rewritten to 1, 3, or 7 on this path. Video and audio guidance get the same
+* ``--guidance-scales`` is used as written. Video and audio guidance get the same
   value unless ``--ltx-audio-guidance-scales`` is set.
 
 ``--sigmas`` is combinatorial with ``--guidance-scales``, ``--inference-steps``,
@@ -429,8 +437,8 @@ tokens and audio tokens. There is no audio-only prompt argument, so
 
 Audio CFG is a separate pipeline scale. ``--ltx-audio-guidance-scales`` sets it
 and is combinatorial. Omit that option and audio copies the video guidance
-that will be sent, except the unused default ``5`` on a full scheduler, which
-uses audio ``7``. A distilled unused ``5`` becomes video and audio ``1``.
+that will be sent. On a full checkpoint with omitted video guidance, video uses
+``3`` and audio ``7``.
 
 ``--ltx-audio-guidance-rescales`` is the matching combinatorial audio rescale.
 Omit it and audio copies ``--guidance-rescales`` when that is set, otherwise
@@ -539,14 +547,17 @@ Omit it and the missing-NATTEN path uses that size. NATTEN stays untiled unless 
 ``--ltx-decode-timesteps`` and ``--ltx-decode-noise-scales`` are the decode arguments.
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
-``--ltx-prompt-enhancer`` loads a model such as ``google/gemma-4-E2B-it`` and rewrites
-the prompt before denoising. Its URI accepts ``revision``, ``subfolder``, ``dtype``,
-and ``quantizer``; for example, ``google/gemma-4-E2B-it;dtype=bfloat16`` or
-``google/gemma-4-E2B-it;quantizer="bnb;bits=4"``. ``--ltx-system-prompt`` overrides
-the built-in system prompt. LTX-2.5 selects its text-to-video prompt for text-only
-generation and its image-to-video prompt when image conditioning is supplied. For
-image-conditioned generation, the reference image is also provided to the enhancer.
-See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/prompt-enhancer-config.dgen>`_.
+``--pipeline-prompt-enhance`` turns on LTX-2.5's optional Gemma prompt enhancer
+(``google/gemma-4-E2B-it``). With no value, LTX-2.5 selects its text-to-video or
+image-to-video system prompt. A value replaces that system prompt.
+Any other ``--pipeline-prompt-enhance-*`` option turns enhancement on with that
+built-in system prompt when ``--pipeline-prompt-enhance`` is omitted.
+``--ltx-prompt-enhancer`` names a different enhancer model and turns enhancement
+on by itself. Its URI accepts ``revision``, ``subfolder``, ``dtype``, and
+``quantizer``.
+See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/prompt-enhancer-config.dgen>`_,
+`examples/ltx2/pipeline_prompt_enhance/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/config.dgen>`_,
+and `examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen>`_.
 
 ``--ltx-image-crfs`` recompresses a conditioning still before the VAE encode. Omit it
 and the pipeline default is used (``18`` on LTX-2.5). ``0`` skips recompression.
@@ -671,8 +682,10 @@ with ``--model-type wan-animate-2``.
 
 A prompt can name what to avoid after one ``;``. The published examples use a
 long negative that starts ``Bright tones, overexposed, static, blurred details``.
-``--guidance-scales`` defaults to 5. The examples use 5 for Wan 2.1 and 4 with
-``--wan-low-noise-guidance-scales 3`` for Wan 2.2 MoE.
+Omitting ``--guidance-scales`` or ``--inference-steps`` uses the loaded Wan
+pipeline defaults (typically guidance ``5`` and ``50`` steps on ``WanPipeline``).
+The examples explicitly set sampling: ``5`` for Wan 2.1 and ``4`` with ``--wan-low-noise-guidance-scales 3``
+for Wan 2.2 MoE.
 
 ``--video-fps`` defaults to 16 for wan, 30 for wan-animate, and 24 for
 wan-animate-2. ``--video-lengths`` is seconds. Wan snaps that duration to
@@ -803,8 +816,8 @@ Wan-Animate
 ``--model-type wan-animate`` takes one character still plus motion.
 ``Wan-AI/Wan2.2-Animate-14B-Diffusers`` is the checkpoint. ``--video-lengths``
 is rejected. The output follows the pose clip. ``--video-fps`` defaults to 30.
-Leaving ``--inference-steps`` at 30 selects 20 steps, and leaving
-``--guidance-scales`` at 5 selects 1, because Wan-Animate runs unguided.
+Omitting ``--inference-steps`` uses ``20`` and omitting ``--guidance-scales`` uses ``1``,
+matching ``WanAnimatePipeline``. Wan-Animate runs unguided. Values you set are kept.
 
 Pass ``wan-pose=`` and ``wan-face=`` clips, or pass ``wan-driving=`` and let
 dgenerate derive them. ``--wan-animate-preprocess`` runs ``openpose`` for the
@@ -850,9 +863,9 @@ The driving clip is the motion source. There is no pose or face clip.
 ``wan-background=``, ``last-frame=``, ``control=``, ``mask=``, and
 ``reference=`` are rejected.
 
-``Wan-AI/Wan2.2-Animate-2-14B-Diffusers`` samples in 40 steps when
-``--inference-steps`` is left at 30. ``Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers``
-samples in 10. The published demo uses ``--wan-segment-frame-lengths 81``,
+``Wan-AI/Wan2.2-Animate-2-14B-Diffusers`` uses ``40`` steps when
+``--inference-steps`` is omitted. ``Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers``
+uses ``10``. Values you set are kept. The published demo uses ``--wan-segment-frame-lengths 81``,
 ``--wan-prev-segment-frames 1``, and ``--max-sequence-length 512``.
 ``--wan-driving-image-processors`` can preprocess the driving clip.
 The transformer blocks are compiled on every load, with or without

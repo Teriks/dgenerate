@@ -138,9 +138,9 @@ class TestFlowImagePipelines(unittest.TestCase):
 
         parsed = _arguments.parse_args([
             'org/qwen-image-2.1', '--model-type', 'qwen-image-21',
-            '--prompts', 'a fox', '--qwen21-output-resolution', '768',
+            '--prompts', 'a fox', '--qwen21-resolution', '768',
             '--qwen21-no-kv-cache'], throw=True, log_error=False)
-        self.assertEqual(parsed.qwen21_output_resolution, 768)
+        self.assertEqual(parsed.qwen21_resolution, 768)
         self.assertFalse(parsed.qwen21_use_kv_cache)
 
         import shlex
@@ -155,7 +155,7 @@ class TestFlowImagePipelines(unittest.TestCase):
             wrapper, next(parsed.iterate_diffusion_args()), omit_device=True)
         again = _arguments.parse_args(
             shlex.split(command)[1:], throw=True, log_error=False)
-        self.assertEqual(again.qwen21_output_resolution, 768)
+        self.assertEqual(again.qwen21_resolution, 768)
         self.assertFalse(again.qwen21_use_kv_cache)
 
     def test_new_flow_image_models_allow_latent_output_and_denoising_splits(self):
@@ -501,11 +501,11 @@ class TestFlowImagePipelines(unittest.TestCase):
         qwen21 = _config(
             model_path='org/Qwen-Image-2.1',
             model_type=_pipelinewrapper.ModelType.QWEN_IMAGE_21,
-            qwen21_output_resolution=768,
+            qwen21_resolution=768,
             qwen21_use_kv_cache=False)
         qwen21.check()
         qwen21_args = next(qwen21.iterate_diffusion_args())
-        self.assertEqual(qwen21_args.qwen21_output_resolution, 768)
+        self.assertEqual(qwen21_args.qwen21_resolution, 768)
         self.assertFalse(qwen21_args.qwen21_use_kv_cache)
 
         older_qwen_models = (
@@ -517,7 +517,7 @@ class TestFlowImagePipelines(unittest.TestCase):
         )
         for model_type, model_path, extra in older_qwen_models:
             for option in (
-                    {'qwen21_output_resolution': 768},
+                    {'qwen21_resolution': 768},
                     {'qwen21_use_kv_cache': False}):
                 with self.subTest(model_type=model_type, option=option):
                     with self.assertRaisesRegex(
@@ -533,7 +533,7 @@ class TestFlowImagePipelines(unittest.TestCase):
             _config(
                 model_path='org/Z-Image',
                 model_type=z_image,
-                qwen21_output_resolution=768).check()
+                qwen21_resolution=768).check()
 
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             _config(

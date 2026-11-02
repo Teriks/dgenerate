@@ -30,10 +30,10 @@ import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
-from dgenerate.pipelinewrapper import constants as _constants
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-from dgenerate.pipelinewrapper.uris import util as _util
-from dgenerate.pipelinewrapper import models as _models
+import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
+import dgenerate.pipelinewrapper.uris.util as _util
+import dgenerate.pipelinewrapper.models as _models
 
 _image_encoder_uri_parser = _textprocessing.ConceptUriParser(
     'ImageEncoder', ['revision', 'variant', 'subfolder', 'dtype'])

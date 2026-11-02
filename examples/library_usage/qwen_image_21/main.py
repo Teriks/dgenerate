@@ -19,7 +19,7 @@ config.model_type = ModelType.QWEN_IMAGE_21
 
 config.dtype = DataType.BFLOAT16
 config.inference_steps = [40]
-config.qwen21_output_resolution = 1024
+config.qwen21_resolution = 1024
 
 config.prompts = [Prompt.parse('A small red fox reading a map beside a mossy forest stream, soft morning light')]
 

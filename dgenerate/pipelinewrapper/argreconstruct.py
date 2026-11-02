@@ -20,10 +20,10 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Argument reconstruction functionality for DiffusionPipelineWrapper.
+Argument reconstruction functionality for _wrapper.DiffusionPipelineWrapper.
 
 This module provides utilities to reconstruct dgenerate command line arguments
-from DiffusionArguments and DiffusionPipelineWrapper state.
+from _arguments.DiffusionArguments and _wrapper.DiffusionPipelineWrapper state.
 """
 
 import collections.abc
@@ -34,14 +34,14 @@ import dgenerate.pipelinewrapper.util as _util
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
-from dgenerate.pipelinewrapper.arguments import DiffusionArguments
-from dgenerate.pipelinewrapper.wrapper import DiffusionPipelineWrapper
+import dgenerate.pipelinewrapper.arguments as _arguments
+import dgenerate.pipelinewrapper.wrapper as _wrapper
 
 
 # noinspection PyTypeChecker
 def reconstruct_dgenerate_opts(
-        wrapper: DiffusionPipelineWrapper,
-        args: DiffusionArguments | None = None,
+        wrapper: _wrapper.DiffusionPipelineWrapper,
+        args: _arguments.DiffusionArguments | None = None,
         extra_opts: collections.abc.Sequence[
                         tuple[str] | tuple[str, typing.Any]] | None = None,
         omit_device: bool = False,
@@ -55,7 +55,7 @@ def reconstruct_dgenerate_opts(
     this is because there is not enough information in :py:class:`.DiffusionArguments` to
     accurately reproduce it.
 
-    :param wrapper: DiffusionPipelineWrapper instance to extract configuration from
+    :param wrapper: _wrapper.DiffusionPipelineWrapper instance to extract configuration from
     :param args: :py:class:`.DiffusionArguments` object to take values from
     :param extra_opts: Extra option pairs to be added to the end of reconstructed options,
         this should be a sequence of tuples of length 1 (switch only) or length 2 (switch with args)
@@ -65,12 +65,10 @@ def reconstruct_dgenerate_opts(
     :param shell_quote: Shell quote and format the argument values? or return them raw.
     :param overrides: pipeline wrapper keyword arguments, these will override values derived from
         any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
-        :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+        :py:meth:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
     :return: List of tuples of length 1 or 2 representing the option
     """
-    from .arguments import DiffusionArguments
-
-    copy_args = DiffusionArguments()
+    copy_args = _arguments.DiffusionArguments()
 
     if args is not None:
         copy_args.set_from(args)
@@ -102,8 +100,10 @@ def reconstruct_dgenerate_opts(
     if not omit_device:
         opts.append(('--device', wrapper.device))
 
-    opts.append(('--inference-steps', args.inference_steps))
-    opts.append(('--guidance-scales', args.guidance_scale))
+    if args.inference_steps is not None:
+        opts.append(('--inference-steps', args.inference_steps))
+    if args.guidance_scale is not None:
+        opts.append(('--guidance-scales', args.guidance_scale))
 
     if _enums.model_type_is_video(wrapper.model_type):
         if getattr(wrapper, 'wan_second_transformer_uri', None):
@@ -192,13 +192,40 @@ def reconstruct_dgenerate_opts(
             opts.append(('--ltx-video-max-seconds', args.ltx_video_max_seconds))
         if args.ltx_prompt_enhancer:
             opts.append(('--ltx-prompt-enhancer', args.ltx_prompt_enhancer))
-        if args.ltx_system_prompt:
-            opts.append(('--ltx-system-prompt', args.ltx_system_prompt))
         if args.ltx_stage_sigmas is not None:
             if isinstance(args.ltx_stage_sigmas, str):
                 opts.append(('--ltx-stage-sigmas', f'expr: {args.ltx_stage_sigmas}'))
             else:
                 opts.append(('--ltx-stage-sigmas', ','.join(map(str, args.ltx_stage_sigmas))))
+
+    if args.pipeline_prompt_enhance is True:
+        opts.append(('--pipeline-prompt-enhance',))
+    elif isinstance(args.pipeline_prompt_enhance, str) and args.pipeline_prompt_enhance:
+        opts.append(('--pipeline-prompt-enhance', args.pipeline_prompt_enhance))
+    if args.pipeline_prompt_enhance_seed is not None:
+        opts.append(('--pipeline-prompt-enhance-seeds', args.pipeline_prompt_enhance_seed))
+    if args.pipeline_prompt_enhance_temperature is not None:
+        opts.append(('--pipeline-prompt-enhance-temperature', args.pipeline_prompt_enhance_temperature))
+    if args.pipeline_prompt_enhance_top_p is not None:
+        opts.append(('--pipeline-prompt-enhance-top-p', args.pipeline_prompt_enhance_top_p))
+    if args.pipeline_prompt_enhance_top_k is not None:
+        opts.append(('--pipeline-prompt-enhance-top-k', args.pipeline_prompt_enhance_top_k))
+    if args.pipeline_prompt_enhance_presence_penalty is not None:
+        opts.append((
+            '--pipeline-prompt-enhance-presence-penalty',
+            args.pipeline_prompt_enhance_presence_penalty))
+    if args.pipeline_prompt_enhance_max_new_tokens is not None:
+        opts.append((
+            '--pipeline-prompt-enhance-max-new-tokens',
+            args.pipeline_prompt_enhance_max_new_tokens))
+    if args.pipeline_prompt_enhance_min_new_tokens is not None:
+        opts.append((
+            '--pipeline-prompt-enhance-min-new-tokens',
+            args.pipeline_prompt_enhance_min_new_tokens))
+    if args.pipeline_prompt_enhance_gpu_headroom is not None:
+        opts.append((
+            '--pipeline-prompt-enhance-gpu-headroom',
+            args.pipeline_prompt_enhance_gpu_headroom))
 
     if args.sigmas is not None:
         if isinstance(args.sigmas, str):
@@ -261,8 +288,8 @@ def reconstruct_dgenerate_opts(
     if args.qwen_guidance_scale is not None:
         opts.append(('--qwen-guidance-scale', args.qwen_guidance_scale))
 
-    if args.qwen21_output_resolution is not None:
-        opts.append(('--qwen21-output-resolution', args.qwen21_output_resolution))
+    if args.qwen21_resolution is not None:
+        opts.append(('--qwen21-resolution', args.qwen21_resolution))
 
     if args.qwen21_use_kv_cache is False:
         opts.append(('--qwen21-no-kv-cache',))
@@ -322,7 +349,14 @@ def reconstruct_dgenerate_opts(
         opts.append(('--adetailer-crop-control-image',))
 
     # Inpaint crop arguments
-    if args.inpaint_crop:
+    crop_padding_is_default = (
+        args.inpaint_crop_padding is None
+        or args.inpaint_crop_padding == _constants.DEFAULT_INPAINT_CROP_PADDING)
+    crop_requested = bool(
+        args.inpaint_crop or args.inpaint_crop_padding is not None
+        or args.inpaint_crop_feather is not None or args.inpaint_crop_masked)
+    if (crop_requested and crop_padding_is_default
+            and not args.inpaint_crop_masked and args.inpaint_crop_feather is None):
         opts.append(('--inpaint-crop',))
 
     if (args.inpaint_crop_padding is not None and
@@ -461,7 +495,12 @@ def reconstruct_dgenerate_opts(
     if args.tea_cache:
         opts.append(('--tea-cache',))
 
-    if args.dype and (
+    dype_requested = bool(
+        args.dype or args.dype_method is not None
+        or args.dype_base_resolution is not None
+        or args.dype_mscale is not None
+        or args.dype_axis_scaling is not None)
+    if dype_requested and (
             args.dype_method is None or
             args.dype_method == _constants.DEFAULT_DYPE_METHOD) and \
             args.dype_base_resolution is None and (
@@ -889,8 +928,8 @@ def _format_option_pair(val):
 
 
 def gen_dgenerate_config(
-        wrapper: DiffusionPipelineWrapper,
-        args: DiffusionArguments | None = None,
+        wrapper: _wrapper.DiffusionPipelineWrapper,
+        args: _arguments.DiffusionArguments | None = None,
         extra_opts: collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
         extra_comments: collections.abc.Iterable[str] | None = None,
         omit_device: bool = False,
@@ -904,7 +943,7 @@ def gen_dgenerate_config(
     this is because there is not enough information in :py:class:`.DiffusionArguments` to
     accurately reproduce it.
 
-    :param wrapper: DiffusionPipelineWrapper instance to extract configuration from
+    :param wrapper: _wrapper.DiffusionPipelineWrapper instance to extract configuration from
     :param args: :py:class:`.DiffusionArguments` object to take values from
     :param extra_opts: Extra option pairs to be added to the end of reconstructed options
         of the dgenerate invocation, this should be a sequence of tuples of length 1 (switch only)
@@ -916,7 +955,7 @@ def gen_dgenerate_config(
         the default device is, which is generally ``cuda``
     :param overrides: pipeline wrapper keyword arguments, these will override values derived from
         any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
-        :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+        :py:meth:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
     :return: The configuration as a string
     """
     from dgenerate import __version__
@@ -952,8 +991,8 @@ def gen_dgenerate_config(
     return config + _format_option_pair(last)
 
 
-def gen_dgenerate_command(wrapper: DiffusionPipelineWrapper,
-                          args: DiffusionArguments | None = None,
+def gen_dgenerate_command(wrapper: _wrapper.DiffusionPipelineWrapper,
+                          args: _arguments.DiffusionArguments | None = None,
                           extra_opts: collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
                           omit_device: bool = False,
                           overrides: dict[str, typing.Any] = None) -> str:
@@ -965,7 +1004,7 @@ def gen_dgenerate_command(wrapper: DiffusionPipelineWrapper,
     this is because there is not enough information in :py:class:`.DiffusionArguments` to
     accurately reproduce it.
 
-    :param wrapper: DiffusionPipelineWrapper instance to extract configuration from
+    :param wrapper: _wrapper.DiffusionPipelineWrapper instance to extract configuration from
     :param args: :py:class:`.DiffusionArguments` object to take values from
     :param extra_opts: Extra option pairs to be added to the end of reconstructed options
         of the dgenerate invocation, this should be a sequence of tuples of length 1 (switch only)
@@ -975,7 +1014,7 @@ def gen_dgenerate_command(wrapper: DiffusionPipelineWrapper,
         the default device is, which is generally ``cuda``
     :param overrides: pipeline wrapper keyword arguments, these will override values derived from
         any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
-        :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+        :py:meth:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
     :return: A string containing the dgenerate command line needed to reproduce this result.
     """
     opt_string = \

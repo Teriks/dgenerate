@@ -23,13 +23,12 @@ import pathlib
 import random
 import typing
 
-import dgenerate.extras.regione as _regione
 import dgenerate.hfhub as _hfhub
 import dgenerate.image as _image
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.pipelinewrapper as _pipelinewrapper
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
+import dgenerate.pipelinewrapper.promptenhance as _promptenhance
 import dgenerate.prompt as _prompt
 import dgenerate.promptupscalers as _promptupscalers
 import dgenerate.promptweighters as _promptweighters
@@ -131,6 +130,16 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     It nearly directly maps to dgenerate's command line arguments.
 
+    Omitted ``guidance_scales`` and ``inference_steps`` stay ``None`` on the
+    config; generation-step text shows **auto** and the pipeline wrapper resolves
+    them in :meth:`~dgenerate.pipelinewrapper.wrapper.DiffusionPipelineWrapper._get_pipeline_defaults`
+    once the model is loaded. :meth:`fill_defaults` materializes other omitted lists (feature
+    parameters, RegionE step count, and similar) but not guidance or step counts.
+    :meth:`check` validates the configuration and may normalize a few fields
+    (for example blank ``pipeline_prompt_enhance`` text) without applying those
+    defaults. :py:class:`RenderLoop` calls :meth:`check` and then
+    :meth:`fill_defaults` on its internal copy before generation.
+
     See subclass :py:class:`dgenerate.arguments.DgenerateArguments`
     """
 
@@ -159,7 +168,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     Optional Cache-DiT YAML configuration. Its native Cache-DiT sections configure cache policies,
     calibrators, parallelism, attention backends, and quantization. A ``layerwise_offload`` section
-    can configure offload per pipeline component. Supplying this also enables Cache-DiT.
+    can configure offload per pipeline component.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_cache_dit_enabled` is ``True``.
 
     Corresponds to ``--cache-dit-config``.
     """
@@ -293,7 +303,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     ``--qwen-guidance-scale``. Embedded Qwen-Image guidance.
     """
 
-    qwen21_output_resolution: _types.OptionalInteger = None
+    qwen21_resolution: _types.OptionalInteger = None
     """Target side length for Qwen-Image 2.1 output resolution inference."""
 
     qwen21_use_kv_cache: _types.OptionalBoolean = None
@@ -379,10 +389,17 @@ class RenderLoopConfig(_types.SetFromMixin):
     image input instead of combinatorial? this includes control images.
     """
 
-    guidance_scales: _types.Floats
+    guidance_scales: _types.OptionalFloats = None
     """
     List of floating point guidance scales, this corresponds to the ``--guidance-scales`` argument 
     of the dgenerate command line tool.
+
+    ``None`` omits the option; generation-step text shows **auto**. Values are
+    resolved when the step runs (image models:
+    :meth:`~dgenerate.pipelinewrapper.wrapper.DiffusionPipelineWrapper._get_pipeline_defaults`
+    after the pipeline is loaded; video models:
+    :mod:`dgenerate.pipelinewrapper.videopipelines`). :meth:`fill_defaults` does
+    not fill this list.
     """
 
     sigmas: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float] | str]] = None
@@ -415,10 +432,16 @@ class RenderLoopConfig(_types.SetFromMixin):
     Example: ``[[1.0,2.0,3.0], 'sigmas * 0.95']``
     """
 
-    inference_steps: _types.Integers
+    inference_steps: _types.OptionalIntegers = None
     """
     List of inference steps values, this corresponds to the ``--inference-steps`` argument of the
     dgenerate command line tool.
+
+    ``None`` omits the option; generation-step text shows **auto**. Values are
+    resolved when the step runs (image models:
+    :meth:`~dgenerate.pipelinewrapper.wrapper.DiffusionPipelineWrapper._get_pipeline_defaults`;
+    video models: :mod:`dgenerate.pipelinewrapper.videopipelines`). With RegionE
+    enabled, :meth:`fill_defaults` normalizes an omitted list to ``[28]``.
     """
 
     video_lengths: _types.OptionalFloats = None
@@ -585,14 +608,99 @@ class RenderLoopConfig(_types.SetFromMixin):
     ``ltx_video_min_seconds``.
     """
 
-    ltx_prompt_enhancer: _types.OptionalString = None
+    pipeline_prompt_enhance: bool | str | None = None
     """
-    Prompt-enhancer model repo or path. Setting it turns enhancement on.
+    Rewrite the prompt before denoising.
+
+    Image families use the loaded text encoder. LTX-2 loads the optional
+    Gemma prompt enhancer. ``True`` selects the built-in system prompt.
+    A string is that system prompt. ``--pipeline-prompt-enhance``.
+    Sampling, length limits, and GPU headroom for that rewrite are set with
+    the ``--pipeline-prompt-enhance-*`` options documented on the fields
+    below.
     """
 
-    ltx_system_prompt: _types.OptionalString = None
+    pipeline_prompt_enhance_seeds: _types.OptionalIntegers = None
     """
-    System prompt used by the LTX prompt enhancer.
+    Seeds for prompt enhancement. Each value is tried with the other arguments.
+    When omitted, enhancement uses :py:attr:`seeds`.
+    ``--pipeline-prompt-enhance-seeds`` or ``--pipeline-prompt-enhance-gen-seeds``.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_pipeline_prompt_enhance_enabled` is ``True``.
+    """
+
+    pipeline_prompt_enhance_temperature: _types.OptionalFloat = None
+    """
+    Sampling temperature for one ``--pipeline-prompt-enhance`` rewrite.
+
+    Image families sample with the loaded text encoder. LTX-2 passes the
+    value to the Gemma enhancer or text-encoder fallback. ``None`` keeps the
+    default for that ``--model-type`` (and text encoder on Flux.2).
+    ``--pipeline-prompt-enhance-temperature``.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_pipeline_prompt_enhance_enabled` is ``True``.
+    """
+
+    pipeline_prompt_enhance_top_p: _types.OptionalFloat = None
+    """
+    Nucleus ``top_p`` for ``--pipeline-prompt-enhance``.
+
+    When set, the value must be greater than 0 and at most 1. ``None`` keeps
+    the model-type default. ``--pipeline-prompt-enhance-top-p``.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_pipeline_prompt_enhance_enabled` is ``True``.
+    """
+
+    pipeline_prompt_enhance_top_k: _types.OptionalInteger = None
+    """
+    Top-k sampling for ``--pipeline-prompt-enhance``.
+
+    ``0`` turns top-k off. ``None`` keeps the model-type default.
+    ``--pipeline-prompt-enhance-top-k``.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_pipeline_prompt_enhance_enabled` is ``True``.
+    """
+
+    pipeline_prompt_enhance_presence_penalty: _types.OptionalFloat = None
+    """
+    Presence penalty for ``--pipeline-prompt-enhance`` token sampling.
+
+    ``None`` keeps the model-type default.
+    ``--pipeline-prompt-enhance-presence-penalty``.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_pipeline_prompt_enhance_enabled` is ``True``.
+    """
+
+    pipeline_prompt_enhance_max_new_tokens: _types.OptionalInteger = None
+    """
+    Maximum new tokens for one ``--pipeline-prompt-enhance`` rewrite.
+
+    ``None`` keeps the default cap for that ``--model-type``.
+    ``--pipeline-prompt-enhance-max-new-tokens``.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_pipeline_prompt_enhance_enabled` is ``True``.
+    """
+
+    pipeline_prompt_enhance_min_new_tokens: _types.OptionalInteger = None
+    """
+    Minimum new tokens before end-of-sequence is allowed.
+
+    ``None`` keeps the default floor for that ``--model-type``.
+    ``--pipeline-prompt-enhance-min-new-tokens``.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_pipeline_prompt_enhance_enabled` is ``True``.
+    """
+
+    pipeline_prompt_enhance_gpu_headroom: _types.OptionalFloat = None
+    """
+    GiB of free GPU memory left unused when the text encoder is split across
+    GPU and CPU for ``--pipeline-prompt-enhance``, on top of 10 percent of
+    free memory.
+
+    ``None`` leaves 2 GiB. Raise it when the rewrite runs out of memory.
+    Lower it to keep more encoder layers on the GPU.
+    ``--pipeline-prompt-enhance-gpu-headroom``.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_pipeline_prompt_enhance_enabled` is ``True``.
+    """
+
+    ltx_prompt_enhancer: _types.OptionalString = None
+    """
+    Separate LTX prompt-enhancer model. Setting it turns enhancement on.
+    When omitted, ``--pipeline-prompt-enhance`` loads ``google/gemma-4-E2B-it``.
+    ``--ltx-prompt-enhancer``.
     """
 
     wan_low_noise_guidance_scales: _types.OptionalFloats = None
@@ -1127,7 +1235,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/Ting-Justin-Jiang/sada-icml
     
-    Supplying any SADA parameter implies that SADA is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sada_enabled` is ``True``.
     
     This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
     
@@ -1149,7 +1257,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/Ting-Justin-Jiang/sada-icml
     
-    Supplying any SADA parameter implies that SADA is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sada_enabled` is ``True``.
     
     This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
     
@@ -1171,7 +1279,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/Ting-Justin-Jiang/sada-icml
     
-    Supplying any SADA parameter implies that SADA is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sada_enabled` is ``True``.
     
     This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
     
@@ -1190,7 +1298,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/Ting-Justin-Jiang/sada-icml
     
-    Supplying any SADA parameter implies that SADA is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sada_enabled` is ``True``.
     
     This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
     
@@ -1212,7 +1320,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/Ting-Justin-Jiang/sada-icml
     
-    Supplying any SADA parameter implies that SADA is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sada_enabled` is ``True``.
     
     This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
     
@@ -1234,7 +1342,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/Ting-Justin-Jiang/sada-icml
     
-    Supplying any SADA parameter implies that SADA is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sada_enabled` is ``True``.
     
     This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
     
@@ -1256,7 +1364,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/Ting-Justin-Jiang/sada-icml
     
-    Supplying any SADA parameter implies that SADA is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sada_enabled` is ``True``.
     
     This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
     
@@ -1277,7 +1385,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/Ting-Justin-Jiang/sada-icml
     
-    Supplying any SADA parameter implies that SADA is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sada_enabled` is ``True``.
     
     This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
     
@@ -1294,7 +1402,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/Ting-Justin-Jiang/sada-icml
     
-    Supplying any SADA parameter implies that SADA is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sada_enabled` is ``True``.
     
     This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
     
@@ -1316,7 +1424,6 @@ class RenderLoopConfig(_types.SetFromMixin):
     Also see: :py:attr:`RenderLoopConfig.tea_cache_rel_l1_thresholds`
     
     This is supported for: ``--model-type flux*``.
-    
     """
 
     cache_dit: bool = False
@@ -1345,7 +1452,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     DyPE position encoding methods to try in turn: ``yarn`` (the default),
     ``ntk``, or ``base`` (the unmodified RoPE baseline).
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.dype` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_dype_enabled` is ``True``.
     """
 
     dype_base_resolutions: _types.OptionalIntegers = None
@@ -1354,7 +1461,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     Flux/Flux.2/Z-Image, 1328 for Qwen-Image, and 832 for Wan. Values must be
     at least 16 pixels. Each value supplied will be tried in turn.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.dype` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_dype_enabled` is ``True``.
     """
 
     dype_mscales: _types.OptionalStrings = None
@@ -1363,7 +1470,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     (the default, upstream DyPE's fixed scale), ``decay`` (fades the scale out
     as denoising progresses), or ``off``. Only affects the ``yarn`` method.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.dype` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_dype_enabled` is ``True``.
     """
 
     dype_axis_scalings: _types.OptionalStrings = None
@@ -1373,7 +1480,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     scaling, per-axis linear interpolation) or ``independent`` (upstream DyPE's
     per-axis scaling). Square images are unaffected.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.dype` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_dype_enabled` is ``True``.
     """
 
     tea_cache_rel_l1_thresholds: _types.OptionalFloats = None
@@ -1388,7 +1495,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     See: https://github.com/ali-vilab/TeaCache
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.tea_cache` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_tea_cache_enabled` is ``True``.
 
     This is supported for: ``--model-type flux*``.
     """
@@ -1414,7 +1521,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     ``1`` uses only the Chebyshev forecast. ``0`` uses only the last-step Taylor
     step. Each value is tried in turn. Defaults to 0.5.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_spectrum_enabled` is ``True``.
     """
 
     spectrum_orders: _types.OptionalIntegers = None
@@ -1423,7 +1530,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     This is ``M`` in the paper. Each value is tried in turn. Defaults to 4.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_spectrum_enabled` is ``True``.
     """
 
     spectrum_lambdas: _types.OptionalFloats = None
@@ -1432,7 +1539,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     Each value is tried in turn. Defaults to 0.1.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_spectrum_enabled` is ``True``.
     """
 
     spectrum_warmup_steps: _types.OptionalIntegers = None
@@ -1442,7 +1549,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     Each value is tried in turn. Defaults to 2. The paper uses 5 with 50
     inference steps.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_spectrum_enabled` is ``True``.
     """
 
     spectrum_window_sizes: _types.OptionalFloats = None
@@ -1452,7 +1559,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     ``2`` predicts every other eligible step. Values below 2 do not skip.
     Each value is tried in turn. Defaults to 2.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_spectrum_enabled` is ``True``.
     """
 
     spectrum_flex_windows: _types.OptionalFloats = None
@@ -1462,7 +1569,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     ``0`` keeps the interval fixed. ``0.75`` is the moderate schedule and ``3``
     is the aggressive one. Each value is tried in turn. Defaults to 0.75.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.spectrum` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_spectrum_enabled` is ``True``.
     """
 
     regione: bool = False
@@ -1483,42 +1590,42 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     Each value is tried in turn. Pipeline-specific defaults apply when unset.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.regione` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_regione_enabled` is ``True``.
     """
 
     regione_post_steps: _types.OptionalIntegers = None
     """
     RegionE trailing full denoising steps to try.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.regione` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_regione_enabled` is ``True``.
     """
 
     regione_refresh_steps: _types.OptionalIntegers = None
     """
     RegionE mask refresh steps to try.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.regione` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_regione_enabled` is ``True``.
     """
 
     regione_thresholds: _types.OptionalFloats = None
     """
     RegionE region partition thresholds to try.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.regione` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_regione_enabled` is ``True``.
     """
 
     regione_cache_thresholds: _types.OptionalFloats = None
     """
     RegionE velocity-decay cache thresholds to try.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.regione` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_regione_enabled` is ``True``.
     """
 
     regione_erosion_dilation: _types.OptionalBoolean = None
     """
     Whether RegionE morphologically erodes/dilates the region mask.
 
-    Supplying any value implies that :py:attr:`RenderLoopConfig.regione` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_regione_enabled` is ``True``.
     """
 
     deep_cache: bool = False
@@ -1549,7 +1656,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for Stable Diffusion, Stable Diffusion XL,
     Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.deep_cache` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_deep_cache_enabled` is ``True``.
     
     (default: 5)
     """
@@ -1568,7 +1675,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for Stable Diffusion, Stable Diffusion XL,
     Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.deep_cache` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_deep_cache_enabled` is ``True``.
     
     (default: 1)
     """
@@ -1596,7 +1703,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     This is supported for Stable Diffusion XL and Kolors based models.
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.sdxl_refiner_deep_cache` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sdxl_refiner_deep_cache_enabled` is ``True``.
     
     (default: 5)
     """
@@ -1614,7 +1721,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     This is supported for Stable Diffusion XL and Kolors based models.
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.sdxl_refiner_deep_cache` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sdxl_refiner_deep_cache_enabled` is ``True``.
     
     (default: 1)
     """
@@ -1638,7 +1745,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/microsoft/ras
     
-    Setting to ``True`` implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_ras_enabled` is ``True``.
     
     This is supported for: ``--model-type sd3``, (but not for SD3.5 models)
     """
@@ -1652,7 +1759,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Each value will be tried in turn.
     
-    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_ras_enabled` is ``True``.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1667,7 +1774,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Each value will be tried in turn.
     
-    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_ras_enabled` is ``True``.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1683,7 +1790,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Each value will be tried in turn.
     
-    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_ras_enabled` is ``True``.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1698,7 +1805,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Each value will be tried in turn.
     
-    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_ras_enabled` is ``True``.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1712,7 +1819,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Each list will be tried in turn.
     
-    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_ras_enabled` is ``True``.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1727,7 +1834,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Each value will be tried in turn.
     
-    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_ras_enabled` is ``True``.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1742,7 +1849,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Each value will be tried in turn.
     
-    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_ras_enabled` is ``True``.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1762,7 +1869,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Each value will be tried in turn.
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_ras_enabled` is ``True``.
     
     This is supported for: ``--model-type sd3``.
     
@@ -1785,7 +1892,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Each value will be tried in turn.
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_ras_enabled` is ``True``.
     
     This is supported for: ``--model-type sd3``.
     
@@ -1801,18 +1908,21 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     List of floating point perturbed attention guidance scales, this 
     corresponds to the ``--pag-scales`` argument of the dgenerate command line tool.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_pag_enabled` is ``True``.
     """
 
     pag_adaptive_scales: _types.OptionalFloats = None
     """
     List of floating point adaptive perturbed attention guidance scales, this
     corresponds to the ``--pag-adaptive-scales`` argument of the dgenerate command line tool.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_pag_enabled` is ``True``.
     """
 
     pag_applied_layers: list[list[str]] | None = None
     """
     PAG attention layer sets for the main model. Each entry is one set of layer
     names applied together. Corresponds to ``--pag-applied-layers``.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_pag_enabled` is ``True``.
     """
 
     sdxl_refiner_pag: _types.OptionalBoolean = None
@@ -1824,18 +1934,21 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     List of floating point perturbed attention guidance scales to try with the SDXL refiner,
     this corresponds to the ``--sdxl-refiner-pag-scales`` argument of the dgenerate command line tool.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sdxl_refiner_pag_enabled` is ``True``.
     """
 
     sdxl_refiner_pag_adaptive_scales: _types.OptionalFloats = None
     """
     List of floating point adaptive perturbed attention guidance scales to try with the SDXL refiner, 
     this corresponds to the ``--sdxl-refiner-pag-adaptive-scales`` argument of the dgenerate command line tool.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sdxl_refiner_pag_enabled` is ``True``.
     """
 
     sdxl_refiner_pag_applied_layers: list[list[str]] | None = None
     """
     PAG attention layer sets for the SDXL refiner. Each entry is one set of layer
     names applied together. Corresponds to ``--sdxl-refiner-pag-applied-layers``.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_sdxl_refiner_pag_enabled` is ``True``.
     """
 
     second_model_scheduler_uri: _types.OptionalUriOrUris = None
@@ -2259,7 +2372,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     inpaint_crop_paddings: _types.OptionalPaddings = None
     """
     One or more padding values to use around mask bounds for inpaint cropping. Each value will be 
-    tried in turn (combinatorial). Specifying this automatically enables :py:attr:`RenderLoopConfig.inpaint_crop`.
+    tried in turn (combinatorial).
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_inpaint_crop_enabled` is ``True``.
     
     Padding can be specified as:
     - A single integer (e.g., 32) for uniform padding on all sides
@@ -2272,7 +2386,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     inpaint_crop_masked: bool = False
     """
     Use the mask when pasting the generated result back onto the original image for inpaint 
-    cropping. Specifying this automatically enables :py:attr:`RenderLoopConfig.inpaint_crop`. 
+    cropping.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_inpaint_crop_enabled` is ``True``.
     This means only the masked areas will be replaced. Cannot be used together with 
     :py:attr:`RenderLoopConfig.inpaint_crop_feathers`.
     
@@ -2282,8 +2397,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     inpaint_crop_feathers: _types.OptionalIntegers = None
     """
     One or more feather values to use when pasting the generated result back onto the 
-    original image for inpaint cropping. Specifying this automatically enables 
-    :py:attr:`RenderLoopConfig.inpaint_crop`. Each value will be tried in turn (combinatorial). 
+    original image for inpaint cropping.
+    Supplying any value implies that :py:meth:`RenderLoopConfig.is_inpaint_crop_enabled` is ``True``.
+    Each value will be tried in turn (combinatorial). 
     Feathering creates smooth transitions from opaque to transparent. Cannot be used together 
     with :py:attr:`RenderLoopConfig.inpaint_crop_masked`.
     
@@ -2368,17 +2484,20 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
 
     def __init__(self):
-        self.guidance_scales = [_pipelinewrapper.constants.DEFAULT_GUIDANCE_SCALE]
-        self.inference_steps = [_pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS]
+        self.guidance_scales = None
+        self.inference_steps = None
         self.prompts = [_prompt.Prompt()]
         self.seeds = gen_seeds(1)
 
     def _check(self, attribute_namer: typing.Optional[typing.Callable[[str], str]] = None):
         """
-        Check the configuration for type and logical usage errors, set
-        defaults for certain values when needed and not specified.
+        Check the configuration for type and logical usage errors.
 
-        This may modify the configuration.
+        This may modify the configuration (for example normalizing blank
+        ``pipeline_prompt_enhance`` text). It does not fill omitted guidance,
+        step counts, or optimization parameters; call :meth:`fill_defaults` after
+        a successful check to materialize feature-parameter lists (not guidance
+        or inference steps).
 
         :param attribute_namer: Callable for naming attributes mentioned in exception messages
         """
@@ -2386,6 +2505,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         a_namer = self._create_attribute_namer(attribute_namer)
 
         self._validate_type_constraints(a_namer)
+        self._check_pipeline_prompt_enhance(a_namer)
 
         # Setup help mode and validate help-related arguments
         help_mode = self._check_help_arguments(a_namer)
@@ -2410,9 +2530,6 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         # Check output-related arguments
         self._check_output_arguments(a_namer)
-
-        # Configure PAG defaults if needed
-        self._configure_pag_defaults()
 
         # Check prompt weighters
         self._check_prompt_weighters(a_namer)
@@ -2443,6 +2560,43 @@ class RenderLoopConfig(_types.SetFromMixin):
             _types.type_check_struct(self, a_namer)
         except ValueError as e:
             raise RenderLoopConfigError(e) from e
+
+    def _check_pipeline_prompt_enhance(self, a_namer: typing.Callable[[str], str]):
+        self.pipeline_prompt_enhance = _promptenhance.normalize_pipeline_prompt_enhance_flag(
+            self.pipeline_prompt_enhance)
+        if isinstance(self.pipeline_prompt_enhance, str):
+            try:
+                _promptenhance.check_system_prompt_file(self.pipeline_prompt_enhance)
+            except _pipelinewrapper.UnsupportedPipelineConfigError as error:
+                raise RenderLoopConfigError(str(error)) from error
+        if self.ltx_prompt_enhancer:
+            try:
+                ltx2 = self.model_type == _pipelinewrapper.ModelType.LTX2
+            except Exception:
+                ltx2 = False
+            if not ltx2:
+                raise RenderLoopConfigError(
+                    f'{a_namer("ltx_prompt_enhancer")} is only supported for --model-type ltx2.')
+            try:
+                _pipelinewrapper.uris.LTXPromptEnhancerUri.parse(self.ltx_prompt_enhancer)
+            except _pipelinewrapper.uris.InvalidLTXPromptEnhancerUriError as e:
+                raise RenderLoopConfigError(
+                    f'{a_namer("ltx_prompt_enhancer")}: {e}') from e
+        overrides = _promptenhance.PromptEnhanceOverrides.from_args(self)
+        try:
+            _promptenhance.check_generation_overrides(overrides, a_namer, self.model_type)
+        except _pipelinewrapper.UnsupportedPipelineConfigError as error:
+            raise RenderLoopConfigError(str(error)) from error
+        if not self.is_pipeline_prompt_enhance_enabled():
+            return
+        try:
+            supported = _pipelinewrapper.model_type_supports_pipeline_prompt_enhance(self.model_type)
+        except ValueError:
+            supported = False
+        if not supported:
+            raise RenderLoopConfigError(
+                f'{a_namer("pipeline_prompt_enhance")} is only supported for '
+                f'--model-type {_textprocessing.oxford_comma(_pipelinewrapper.PIPELINE_PROMPT_ENHANCE_MODEL_TYPES, "and")}.')
 
     def _check_help_arguments(self, a_namer: typing.Callable[[str], str]) -> bool:
         """Check help-related arguments for validity."""
@@ -2490,6 +2644,8 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_optimization_features(self, a_namer: typing.Callable[[str], str]):
         """Check optimization features compatibility with the selected model type."""
+        cache_dit_enabled = self.is_cache_dit_enabled()
+        dype_enabled = self.is_dype_enabled()
 
         if self.quantizer_map and not self.quantizer_uri:
             raise RenderLoopConfigError(
@@ -2503,7 +2659,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             )
 
         # Check TeaCache compatibility
-        tea_cache_enabled = (self.tea_cache or any(self._non_null_attr_that_start_with('tea_cache_')))
+        tea_cache_enabled = self.is_tea_cache_enabled()
         if tea_cache_enabled and not _pipelinewrapper.model_type_supports_tea_cache(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("tea_cache")} and related arguments are only '
@@ -2521,7 +2677,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'with {a_namer("tea_cache")} and related arguments.'
             )
 
-        regione_enabled = (self.regione or any(self._non_null_attr_that_start_with('regione_')))
+        regione_enabled = self.is_regione_enabled()
         if regione_enabled and not _pipelinewrapper.model_type_supports_regione(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("regione")} and related arguments are only supported for '
@@ -2531,16 +2687,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'{a_namer("regione")} requires at least one input image in {a_namer("image_seeds")}.'
             )
-        if regione_enabled:
-            self.inference_steps = _regione.resolve_regione_inference_steps_list(
-                self.inference_steps)
-            bad_steps = [s for s in self.inference_steps if s != _regione.REGIONE_INFERENCE_STEPS]
-            if bad_steps:
-                raise RenderLoopConfigError(
-                    f'{a_namer("regione")} requires {a_namer("inference_steps")} to be '
-                    f'{_regione.REGIONE_INFERENCE_STEPS} (got {bad_steps}).')
 
-        spectrum_enabled = (self.spectrum or any(self._non_null_attr_that_start_with('spectrum_')))
+        spectrum_enabled = self.is_spectrum_enabled()
         if spectrum_enabled and not _pipelinewrapper.model_type_supports_spectrum(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("spectrum")} is only supported for '
@@ -2552,7 +2700,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             )
 
         # Check RAS compatibility
-        ras_enabled = (self.ras or any(self._non_null_attr_that_start_with('ras_')))
+        ras_enabled = self.is_ras_enabled()
         if ras_enabled and not _pipelinewrapper.model_type_supports_ras(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("ras")} and related arguments are only '
@@ -2610,7 +2758,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 )
 
         # Check DeepCache compatibility first (needed for SADA validation)
-        deep_cache_enabled = (self.deep_cache or any(self._non_null_attr_that_start_with('deep_cache_')))
+        deep_cache_enabled = self.is_deep_cache_enabled()
         if spectrum_enabled and deep_cache_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("spectrum")} cannot be used with {a_namer("deep_cache")}.'
@@ -2625,7 +2773,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             )
 
         # Check SADA compatibility
-        sada_enabled = (self.sada or any(self._non_null_attr_that_start_with('sada_')))
+        sada_enabled = self.is_sada_enabled()
         if regione_enabled and tea_cache_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("regione")} cannot be used with {a_namer("tea_cache")}.')
@@ -2638,10 +2786,10 @@ class RenderLoopConfig(_types.SetFromMixin):
         if regione_enabled and ras_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("regione")} cannot be used with {a_namer("ras")}.')
-        if regione_enabled and self.cache_dit:
+        if regione_enabled and cache_dit_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("regione")} cannot be used with {a_namer("cache_dit")}.')
-        if regione_enabled and self.dype:
+        if regione_enabled and dype_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("regione")} cannot be used with {a_namer("dype")}.')
         if regione_enabled and self.adetailer_detector_uris:
@@ -2696,30 +2844,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                             f'divisible by {a_namer("sada_lagrange_ints")} ({lagrange_int})'
                         )
 
-        # Set up SADA defaults when any SADA argument is used
-        if sada_enabled:
-            # Get model-specific defaults
-            sada_defaults = _pipelinewrapper_util.get_sada_model_defaults(self.model_type)
-
-            if self.sada_max_downsamples is None:
-                self.sada_max_downsamples = [sada_defaults['max_downsample']]
-            if self.sada_sxs is None:
-                self.sada_sxs = [sada_defaults['sx']]
-            if self.sada_sys is None:
-                self.sada_sys = [sada_defaults['sy']]
-            if self.sada_acc_ranges is None:
-                self.sada_acc_ranges = [sada_defaults['acc_range']]
-            if self.sada_lagrange_terms is None:
-                self.sada_lagrange_terms = [sada_defaults['lagrange_term']]
-            if self.sada_lagrange_ints is None:
-                self.sada_lagrange_ints = [sada_defaults['lagrange_int']]
-            if self.sada_lagrange_steps is None:
-                self.sada_lagrange_steps = [sada_defaults['lagrange_step']]
-            if self.sada_max_fixes is None:
-                self.sada_max_fixes = [sada_defaults['max_fix']]
-            if self.sada_max_intervals is None:
-                self.sada_max_intervals = [sada_defaults['max_interval']]
-
         if deep_cache_enabled and not _pipelinewrapper.model_type_supports_deep_cache(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("deep_cache")} and related arguments are only '
@@ -2734,11 +2858,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("freeu_params")} not supported with '
                     f'{a_namer("model_type")} {_pipelinewrapper.get_model_type_string(self.model_type)}.'
                 )
-
-        if self.cache_dit_config is not None:
-            self.cache_dit = True
-        if self.dype_methods is not None or self.dype_base_resolutions is not None or                 self.dype_mscales is not None or self.dype_axis_scalings is not None:
-            self.dype = True
 
         if self.dype_methods:
             invalid_dype_methods = [
@@ -2769,12 +2888,12 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'{a_namer("dype_base_resolutions")} values must be at least 16 pixels.')
 
-        if self.dype and not _pipelinewrapper.model_type_supports_dype(self.model_type):
+        if dype_enabled and not _pipelinewrapper.model_type_supports_dype(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("dype")} is supported for {a_namer("model_type")} '
                 f'{_textprocessing.oxford_comma(_pipelinewrapper.DYPE_MODEL_TYPES, "and")}.')
 
-        if self.cache_dit and self.model_type in (
+        if cache_dit_enabled and self.model_type in (
                 _pipelinewrapper.ModelType.QWEN_IMAGE_21,
                 _pipelinewrapper.ModelType.MOTIF_VIDEO):
             # cache-dit has no block adapter for these transformers.
@@ -2782,35 +2901,35 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("cache_dit")} is not supported for --model-type '
                 f'{_pipelinewrapper.get_model_type_string(self.model_type)}.')
 
-        if self.dype and self.cache_dit:
+        if dype_enabled and cache_dit_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("dype")} cannot be used with {a_namer("cache_dit")}.')
-        if self.dype and tea_cache_enabled:
+        if dype_enabled and tea_cache_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("dype")} cannot be used with {a_namer("tea_cache")}.')
-        if self.dype and spectrum_enabled:
+        if dype_enabled and spectrum_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("dype")} cannot be used with {a_namer("spectrum")}.')
-        if self.dype and regione_enabled:
+        if dype_enabled and regione_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("dype")} cannot be used with {a_namer("regione")}.')
-        if self.dype and sada_enabled:
+        if dype_enabled and sada_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("dype")} cannot be used with {a_namer("sada")}.')
 
-        if self.cache_dit and tea_cache_enabled:
+        if cache_dit_enabled and tea_cache_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("cache_dit")} cannot be used with {a_namer("tea_cache")}.')
-        if self.cache_dit and regione_enabled:
+        if cache_dit_enabled and regione_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("cache_dit")} cannot be used with {a_namer("regione")}.')
-        if self.cache_dit and spectrum_enabled:
+        if cache_dit_enabled and spectrum_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("cache_dit")} cannot be used with {a_namer("spectrum")}.')
-        if self.cache_dit and sada_enabled:
+        if cache_dit_enabled and sada_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("cache_dit")} cannot be used with {a_namer("sada")}.')
-        if self.cache_dit and ras_enabled:
+        if cache_dit_enabled and ras_enabled:
             raise RenderLoopConfigError(
                 f'{a_namer("cache_dit")} cannot be used with {a_namer("ras")}.')
 
@@ -2923,18 +3042,15 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_inpaint_crop_compatibility(self, a_namer: typing.Callable[[str], str]):
         """Check compatibility of inpaint crop arguments."""
-        # Automatically enable inpaint crop if padding, feathering, or masking is specified
-        if not self.inpaint_crop and (
-                self.inpaint_crop_paddings or self.inpaint_crop_feathers or self.inpaint_crop_masked):
-            self.inpaint_crop = True
+        inpaint_crop_enabled = self.is_inpaint_crop_enabled()
 
-        if self.inpaint_crop and self.no_aspect:
+        if inpaint_crop_enabled and self.no_aspect:
             raise RenderLoopConfigError(
                 f'{a_namer("inpaint_crop")} is not compatible with {a_namer("no_aspect")}'
             )
 
         # Check if inpaint crop is used without mask inputs
-        if self.inpaint_crop and not self.image_seeds:
+        if inpaint_crop_enabled and not self.image_seeds:
             raise RenderLoopConfigError(
                 f'{a_namer("inpaint_crop")} requires {a_namer("image_seeds")} to be specified '
                 f'with mask images for inpainting.')
@@ -2946,14 +3062,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'are mutually exclusive options.')
 
         # Check compatibility with latent output
-        if self.inpaint_crop and self.is_output_latents():
+        if inpaint_crop_enabled and self.is_output_latents():
             raise RenderLoopConfigError(
                 f'Outputting latents with {a_namer("image_format")} {self.image_format} '
                 f'is not supported with {a_namer("inpaint_crop")}')
-
-        # Set default padding when inpaint crop is enabled but no padding/feathering specified
-        if self.inpaint_crop and not self.inpaint_crop_paddings and not self.inpaint_crop_feathers:
-            self.inpaint_crop_paddings = [_pipelinewrapper.constants.DEFAULT_INPAINT_CROP_PADDING]
 
     def _check_image_seeds_requirements(self, a_namer: typing.Callable[[str], str], help_mode: bool):
         """Verify requirements for image seeds based on model type."""
@@ -3076,7 +3188,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                         controlnet_uris=self.controlnet_uris,
                         control_lora_uris=self.control_lora_uris,
                         t2i_adapter_uris=self.t2i_adapter_uris,
-                        pag=self.pag,
+                        pag=self.is_pag_enabled(),
                         help_mode=help_mode
                     )
                 except _pipelinewrapper.UnsupportedPipelineConfigError as e:
@@ -3084,10 +3196,10 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_output_arguments(self, a_namer: typing.Callable[[str], str]):
         """Check output-related arguments for compatibility."""
-        if self.output_size is not None and self.qwen21_output_resolution is not None:
+        if self.output_size is not None and self.qwen21_resolution is not None:
             raise RenderLoopConfigError(
                 f'Cannot specify both {a_namer("output_size")} and '
-                f'{a_namer("qwen21_output_resolution")}.')
+                f'{a_namer("qwen21_resolution")}.')
 
         # Check output prefix
         if self.output_prefix:
@@ -3151,24 +3263,6 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.animation_format == 'frames' and self.no_frames:
             raise RenderLoopConfigError(
                 f'Cannot specify {a_namer("no_frames")} when {a_namer("animation_format")} is set to "frames"')
-
-    def _configure_pag_defaults(self):
-        """Configure PAG default values if needed."""
-        if self.pag_applied_layers:
-            self.pag = True
-        if self.sdxl_refiner_pag_applied_layers:
-            self.sdxl_refiner_pag = True
-
-        if self.pag:
-            if not (self.pag_scales or self.pag_adaptive_scales):
-                self.pag_scales = [_pipelinewrapper.constants.DEFAULT_PAG_SCALE]
-                self.pag_adaptive_scales = [_pipelinewrapper.constants.DEFAULT_PAG_ADAPTIVE_SCALE]
-
-        if self.sdxl_refiner_pag and self.sdxl_refiner_uri:
-            if not (self.sdxl_refiner_pag_scales or self.sdxl_refiner_pag_adaptive_scales):
-                self.sdxl_refiner_pag_scales = [_pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_SCALE]
-                self.sdxl_refiner_pag_adaptive_scales = [
-                    _pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE]
 
     def _check_prompt_weighters(self, a_namer: typing.Callable[[str], str]):
         """Check prompt weighter compatibility."""
@@ -3401,12 +3495,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'for example {a_namer("image_seeds")} "control.mp4".')
 
         if _pipelinewrapper.model_type_is_ltx_family(self.model_type):
-            if self.sigmas:
-                first = self.sigmas[0]
-                if (self.inference_steps == [_pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS]
-                        and isinstance(first, (list, tuple))):
-                    self.inference_steps = [len(first)]
-
             if self.max_sequence_length is not None:
                 # LTX-2 encodes prompts with Gemma, LTX-Video with T5
                 if self.model_type == _pipelinewrapper.ModelType.LTX2:
@@ -3482,17 +3570,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             except _pipelinewrapper.uris.InvalidLTXDiffusionDecoderUriError as e:
                 raise RenderLoopConfigError(
                     f'{a_namer("ltx_diffusion_decoder")}: {e}') from e
-
-        if self.ltx_system_prompt and not self.ltx_prompt_enhancer:
-            raise RenderLoopConfigError(
-                f'{a_namer("ltx_system_prompt")} needs {a_namer("ltx_prompt_enhancer")}.')
-
-        if self.ltx_prompt_enhancer:
-            try:
-                _pipelinewrapper.uris.LTXPromptEnhancerUri.parse(self.ltx_prompt_enhancer)
-            except _pipelinewrapper.uris.InvalidLTXPromptEnhancerUriError as e:
-                raise RenderLoopConfigError(
-                    f'{a_namer("ltx_prompt_enhancer")}: {e}') from e
 
         if self.ltx_video_min_seconds or self.ltx_video_max_seconds:
             if self.video_lengths:
@@ -3603,22 +3680,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'{a_namer("wan_boundary_ratios")} must be between 0 and 1. Got {value}.')
 
     def _check_video_shared_requirements(self, a_namer: typing.Callable[[str], str]):
-        if self.video_fps is None:
-            if _pipelinewrapper.model_type_is_ltx_family(self.model_type):
-                self.video_fps = [24.0]
-            elif self.model_type == _pipelinewrapper.ModelType.WAN:
-                self.video_fps = [16.0]
-            elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE:
-                self.video_fps = [30.0]
-            elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE_2:
-                self.video_fps = [24.0]
-            elif self.model_type == _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15:
-                self.video_fps = [15.0]
-            elif self.model_type == _pipelinewrapper.ModelType.MOTIF_VIDEO:
-                self.video_fps = [24.0]
-            elif self.model_type == _pipelinewrapper.ModelType.KANDINSKY5_VIDEO:
-                self.video_fps = [24.0]
-
         if self.batch_size is not None and self.batch_size > 1:
             raise RenderLoopConfigError(
                 f'{a_namer("batch_size")} is not supported for video model types. '
@@ -3716,15 +3777,15 @@ class RenderLoopConfig(_types.SetFromMixin):
             schedulers = [schedulers]
         import dgenerate.pipelinewrapper.videopipelines as _videopipelines
         if self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE:
-            allowed = _videopipelines.WAN_ANIMATE_SCHEDULER_NAMES
+            allowed = _videopipelines.wan.WAN_ANIMATE_SCHEDULER_NAMES
             family = 'Wan-Animate'
             extra = ''
         elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE_2:
-            allowed = _videopipelines.WAN_ANIMATE_2_SCHEDULER_NAMES
+            allowed = _videopipelines.wan.WAN_ANIMATE_2_SCHEDULER_NAMES
             family = 'Wan-Animate-2'
             extra = ''
         elif self.model_type == _pipelinewrapper.ModelType.WAN:
-            allowed = _videopipelines.WAN_SCHEDULER_NAMES
+            allowed = _videopipelines.wan.WAN_SCHEDULER_NAMES
             family = 'Wan'
             extra = (
                 ' including shift and use-dynamic-shifting on '
@@ -3732,19 +3793,19 @@ class RenderLoopConfig(_types.SetFromMixin):
                 'and flow-shift on UniPCMultistepScheduler.'
             )
         elif self.model_type == _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15:
-            allowed = _videopipelines.HUNYUAN_VIDEO_15_SCHEDULER_NAMES
+            allowed = _videopipelines.single_image_video.HUNYUAN_VIDEO_15_SCHEDULER_NAMES
             family = 'HunyuanVideo 1.5'
             extra = ''
         elif self.model_type == _pipelinewrapper.ModelType.MOTIF_VIDEO:
-            allowed = _videopipelines.MOTIF_VIDEO_SCHEDULER_NAMES
+            allowed = _videopipelines.single_image_video.MOTIF_VIDEO_SCHEDULER_NAMES
             family = 'Motif-Video'
             extra = ''
         elif self.model_type == _pipelinewrapper.ModelType.KANDINSKY5_VIDEO:
-            allowed = _videopipelines.KANDINSKY5_VIDEO_SCHEDULER_NAMES
+            allowed = _videopipelines.single_image_video.KANDINSKY5_VIDEO_SCHEDULER_NAMES
             family = 'Kandinsky 5.0 Video'
             extra = ''
         else:
-            allowed = _videopipelines.LTX_SCHEDULER_NAMES
+            allowed = _videopipelines.ltx.LTX_SCHEDULER_NAMES
             family = 'LTX'
             extra = ' including URI arguments such as shift and use-dynamic-shifting.'
         for item in schedulers:
@@ -3797,44 +3858,25 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("hi_diffusion")} is not supported with Stable Cascade.'
                 )
 
-            if not self.second_model_guidance_scales:
-                self.second_model_guidance_scales = [
-                    _pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE]
-
-            if not self.second_model_inference_steps:
-                self.second_model_inference_steps = [
-                    _pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS]
-
         elif self.s_cascade_decoder_uri:
             raise RenderLoopConfigError(
                 f'{a_namer("s_cascade_decoder_uri")} may only be used with "s-cascade"')
 
-    def _check_upscaler_requirements(self, a_namer: typing.Callable[[str], str]) -> bool:
-        """
-        Check upscaler model specific requirements.
-        
-        Returns: Whether upscaler noise levels default was set
-        """
-        upscaler_noise_levels_default_set = False
-
+    def _check_upscaler_requirements(self, a_namer: typing.Callable[[str], str]):
+        """Check upscaler model specific requirements."""
         if not _pipelinewrapper.model_type_is_upscaler(self.model_type) \
                 and not _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
             if self.upscaler_noise_levels:
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("upscaler_noise_levels")} for a '
                     f'non upscaler model type, see: {a_namer("model_type")}.')
-        elif self.upscaler_noise_levels is None:
-            if self.model_type == _pipelinewrapper.ModelType.UPSCALER_X4:
-                upscaler_noise_levels_default_set = True
-                self.upscaler_noise_levels = [_pipelinewrapper.constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
-        elif self.model_type != _pipelinewrapper.ModelType.UPSCALER_X4 and \
-                not _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
+        elif (self.upscaler_noise_levels is not None
+              and self.model_type != _pipelinewrapper.ModelType.UPSCALER_X4
+              and not _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
             raise RenderLoopConfigError(
                 f'you cannot specify {a_namer("upscaler_noise_levels")} for an upscaler '
                 f'model type that is not "upscaler-x4" or "ifs-*", '
                 f'see: {a_namer("model_type")}.')
-
-        return upscaler_noise_levels_default_set
 
     def _check_pix2pix_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check pix2pix model specific requirements."""
@@ -3843,8 +3885,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'argument {a_namer("image_guidance_scales")} only valid with '
                     f'pix2pix models, see: {a_namer("model_type")}.')
-        elif not self.image_guidance_scales:
-            self.image_guidance_scales = [_pipelinewrapper.constants.DEFAULT_IMAGE_GUIDANCE_SCALE]
 
     def _check_transformer_compatibility(self, a_namer: typing.Callable[[str], str]):
         """Check transformer compatibility with the model type."""
@@ -3886,7 +3926,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         """Reject a Flux.2, Z-Image, or Qwen option on the wrong model type."""
         groups = (
             (_pipelinewrapper.model_type_is_qwen_image_21, (
-                'qwen21_output_resolution', 'qwen21_use_kv_cache',
+                'qwen21_resolution', 'qwen21_use_kv_cache',
             ), 'qwen-image-21'),
             (_pipelinewrapper.model_type_is_flux2, (
                 'flux2_caption_upsample_temperature',
@@ -3926,9 +3966,9 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.qwen_guidance_scale is not None and self.qwen_guidance_scale < 0:
             raise RenderLoopConfigError(
                 f'{a_namer("qwen_guidance_scale")} must be greater than or equal to 0.')
-        if self.qwen21_output_resolution is not None and self.qwen21_output_resolution < 1:
+        if self.qwen21_resolution is not None and self.qwen21_resolution < 1:
             raise RenderLoopConfigError(
-                f'{a_namer("qwen21_output_resolution")} must be greater than 0.')
+                f'{a_namer("qwen21_resolution")} must be greater than 0.')
         if self.qwen_layered_layers is not None and self.qwen_layered_layers < 1:
             raise RenderLoopConfigError(
                 f'{a_namer("qwen_layered_layers")} must be greater than or equal to 1.')
@@ -3944,7 +3984,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'{a_namer("unet_uri")} cannot be used with --model-type hydit. '
                 f'Use {a_namer("transformer_uri")} to replace the DiT.')
-        if self.pag:
+        if self.is_pag_enabled():
             raise RenderLoopConfigError(
                 f'{a_namer("pag")} is not supported with --model-type hydit.')
 
@@ -4058,9 +4098,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                                     f'for a non SDXL model type, see: {a_namer("model_type")}.')
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
-
-            # Clear high noise fractions since it's not applicable
-            self.sdxl_high_noise_fractions = None
             return
 
         # We have an SDXL or Kolors model, check refiner compatibility
@@ -4080,43 +4117,28 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
-        else:
-            # Refiner is specified, set default high noise fraction if needed
-            if self.sdxl_high_noise_fractions is None:
-                self.sdxl_high_noise_fractions = [_pipelinewrapper.constants.DEFAULT_SDXL_HIGH_NOISE_FRACTION]
 
     def _process_image_seeds(self, a_namer: typing.Callable[[str], str], help_mode: bool):
         """Process image seeds and verify compatibility."""
         if not self.image_seeds:
             return
 
-        # Check if model type supports image seed strength.
-        # Video models accept it as the LTX condition strength when an image
-        # seed omits strength=. They do not receive the img2img default of 0.8.
+        # Video models accept a user value as the LTX condition strength when an
+        # image seed omits strength=. They do not receive the img2img default of 0.8.
         no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                             _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
                             _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
                             self.model_type == _pipelinewrapper.ModelType.FLUX_FILL or
                             self.model_type == _pipelinewrapper.ModelType.FLUX_KONTEXT)
-        video_model = _pipelinewrapper.model_type_is_video(self.model_type)
+        user_provided_image_seed_strengths = self.image_seed_strengths is not None
 
-        # Set default image seed strength if needed
-        image_seed_strengths_default_set = False
-        user_provided_image_seed_strengths = False
+        if user_provided_image_seed_strengths and no_seed_strength:
+            raise RenderLoopConfigError(
+                f'{a_namer("image_seed_strengths")} '
+                f'cannot be used with pix2pix, upscaler, stablecascade, flux-fill, or flux-kontext.')
 
-        if self.image_seed_strengths is None:
-            if not no_seed_strength and not video_model:
-                image_seed_strengths_default_set = True
-                self.image_seed_strengths = [_pipelinewrapper.constants.DEFAULT_IMAGE_SEED_STRENGTH]
-        else:
-            if no_seed_strength:
-                raise RenderLoopConfigError(
-                    f'{a_namer("image_seed_strengths")} '
-                    f'cannot be used with pix2pix, upscaler, stablecascade, flux-fill, or flux-kontext.')
-            user_provided_image_seed_strengths = True
-
-        # Check upscaler noise level default setting
-        upscaler_noise_levels_default_set = self._check_upscaler_requirements(a_namer)
+        # Check upscaler noise level compatibility
+        self._check_upscaler_requirements(a_namer)
 
         # Parse and validate each image seed URI
         parsed_image_seeds = []
@@ -4124,9 +4146,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             parsed_image_seeds.append(
                 self._check_image_seed_uri(
                     uri=uri,
-                    attribute_namer=a_namer,
-                    image_seed_strengths_default_set=image_seed_strengths_default_set,
-                    upscaler_noise_levels_default_set=upscaler_noise_levels_default_set))
+                    attribute_namer=a_namer))
 
         # Verify pipeline compatibility
         self._verify_pipeline_compatibility(
@@ -4143,7 +4163,6 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         self._check_image_input_compatibility(
             parsed_image_seeds=parsed_image_seeds,
-            image_seed_strengths_default_set=image_seed_strengths_default_set,
             user_provided_image_seed_strengths=user_provided_image_seed_strengths,
             a_namer=a_namer
         )
@@ -4153,7 +4172,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         self._check_regione_image_seeds(parsed_image_seeds, a_namer)
 
     def _check_regione_image_seeds(self, parsed_image_seeds, a_namer):
-        regione_enabled = self.regione or any(self._non_null_attr_that_start_with('regione_'))
+        regione_enabled = self.is_regione_enabled()
         if not regione_enabled:
             return
         if any(seed.mask_images for seed in parsed_image_seeds):
@@ -4199,7 +4218,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     controlnet_uris=self.controlnet_uris,
                     control_lora_uris=self.control_lora_uris,
                     t2i_adapter_uris=self.t2i_adapter_uris,
-                    pag=self.pag,
+                    pag=self.is_pag_enabled(),
                     help_mode=help_mode
                 )
         except _pipelinewrapper.UnsupportedPipelineConfigError as e:
@@ -4217,19 +4236,14 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_image_input_compatibility(self,
                                          parsed_image_seeds: typing.List[_mediainput.ImageSeedParseResult],
-                                         image_seed_strengths_default_set: bool,
                                          user_provided_image_seed_strengths: bool,
                                          a_namer: typing.Callable[[str], str]):
         """Check compatibility of image inputs with model type and settings."""
-        # Check if no images are provided for img2img
-        if all(p.images is None for p in parsed_image_seeds):
-            if image_seed_strengths_default_set:
-                self.image_seed_strengths = None
-            elif self.image_seed_strengths:
-                raise RenderLoopConfigError(
-                    f'{a_namer("image_seed_strengths")} '
-                    f'cannot be used unless an img2img operation exists '
-                    f'in at least one {a_namer("image_seeds")} definition.')
+        if all(p.images is None for p in parsed_image_seeds) and self.image_seed_strengths:
+            raise RenderLoopConfigError(
+                f'{a_namer("image_seed_strengths")} '
+                f'cannot be used unless an img2img operation exists '
+                f'in at least one {a_namer("image_seeds")} definition.')
 
         if any(p.reference_images for p in parsed_image_seeds):
             flux2 = _pipelinewrapper.model_type_is_flux2(self.model_type)
@@ -4250,13 +4264,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("image_seed_strengths")} cannot be used with these condition images. '
                 f'There is no img2img strength.')
 
-        if (_pipelinewrapper.model_type_image_is_condition(self.model_type)
-                and not self.adetailer_detector_uris
-                and image_seed_strengths_default_set
-                and parsed_image_seeds
-                and all(p.images and not p.mask_images for p in parsed_image_seeds)):
-            self.image_seed_strengths = None
-
         # Check flux-fill compatibility
         if not all(p.mask_images is not None for p in parsed_image_seeds):
             if self.model_type == _pipelinewrapper.ModelType.FLUX_FILL \
@@ -4269,7 +4276,6 @@ class RenderLoopConfig(_types.SetFromMixin):
         if all(p.mask_images is None for p in parsed_image_seeds):
 
             if self.model_type == _pipelinewrapper.ModelType.IFS:
-                self.image_seed_strengths = None
                 if user_provided_image_seed_strengths:
                     raise RenderLoopConfigError(
                         f'{a_namer("image_seed_strengths")} '
@@ -4277,14 +4283,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'when no inpainting is taking place in any image seed '
                         f'specification.')
 
-            if self.inpaint_crop:
+            if self.is_inpaint_crop_enabled():
                 raise RenderLoopConfigError(
                     f'All image seeds must be inpainting '
                     f'definitions when {a_namer("inpaint_crop")} or related arguments are used.'
                 )
 
         # Check batching compatibility
-        if self.inpaint_crop:
+        if self.is_inpaint_crop_enabled():
             for image_seed in parsed_image_seeds:
                 if ((image_seed.images is not None and len(list(image_seed.images)) > 1) or
                         (image_seed.mask_images is not None and len(list(image_seed.mask_images)) > 1)):
@@ -4295,16 +4301,12 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_image_seed_uri(self,
                               uri: str,
-                              attribute_namer: typing.Callable[[str], str],
-                              image_seed_strengths_default_set: bool,
-                              upscaler_noise_levels_default_set: bool) -> _mediainput.ImageSeedParseResult:
+                              attribute_namer: typing.Callable[[str], str]) -> _mediainput.ImageSeedParseResult:
         """
         Check image seed URI for compatibility with the current configuration.
         
         :param uri: The URI to check
         :param attribute_namer: Function to name attributes in error messages
-        :param image_seed_strengths_default_set: Whether check() has set an image_seed_strengths default value
-        :param upscaler_noise_levels_default_set: Whether check() has set an upscaler_noise_levels default value
         :return: Parsed image seed result
         """
         a_namer = attribute_namer
@@ -4356,9 +4358,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         self._check_control_guidance_compatibility(
             parsed=parsed,
             uri=uri,
-            a_namer=a_namer,
-            image_seed_strengths_default_set=image_seed_strengths_default_set,
-            upscaler_noise_levels_default_set=upscaler_noise_levels_default_set
+            a_namer=a_namer
         )
 
         # Check deep floyd compatibility
@@ -4679,9 +4679,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     def _check_control_guidance_compatibility(self,
                                               parsed: _mediainput.ImageSeedParseResult,
                                               uri: str,
-                                              a_namer: typing.Callable[[str], str],
-                                              image_seed_strengths_default_set: bool,
-                                              upscaler_noise_levels_default_set: bool):
+                                              a_namer: typing.Callable[[str], str]):
         """Check control guidance compatibility."""
         is_control_guidance_spec = (
             self.controlnet_uris or self.control_lora_uris or self.t2i_adapter_uris
@@ -4702,31 +4700,18 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'and to LTX conditions.')
 
         if is_control_guidance_spec and self.image_seed_strengths:
-            if image_seed_strengths_default_set:
-                # check() set this default that isn't valid
-                # upon further parsing
-                self.image_seed_strengths = None
-            else:
-                # user set this
-                raise RenderLoopConfigError(
-                    f'Cannot use {a_namer("image_seed_strengths")} with a control guidance image '
-                    f'specification "{uri}". IE: when {a_namer("controlnet_uris")} is specified and '
-                    f'your {a_namer("image_seeds")} specification has a single source or comma '
-                    f'separated list of sources.')
+            raise RenderLoopConfigError(
+                f'Cannot use {a_namer("image_seed_strengths")} with a control guidance image '
+                f'specification "{uri}". IE: when {a_namer("controlnet_uris")} is specified and '
+                f'your {a_namer("image_seeds")} specification has a single source or comma '
+                f'separated list of sources.')
 
         if is_control_guidance_spec and self.upscaler_noise_levels:
-            # upscaler noise level should already be handled but handle it again just incase
-            if upscaler_noise_levels_default_set:
-                # check() set this default that isn't valid
-                # upon further parsing
-                self.upscaler_noise_levels = None
-            else:
-                # user set this
-                raise RenderLoopConfigError(
-                    f'Cannot use {a_namer("upscaler_noise_levels")} with a control guidance image '
-                    f'specification "{uri}". IE: when {a_namer("controlnet_uris")} is specified and '
-                    f'your {a_namer("image_seeds")} specification has a single source or comma '
-                    f'separated list of sources.')
+            raise RenderLoopConfigError(
+                f'Cannot use {a_namer("upscaler_noise_levels")} with a control guidance image '
+                f'specification "{uri}". IE: when {a_namer("controlnet_uris")} is specified and '
+                f'your {a_namer("image_seeds")} specification has a single source or comma '
+                f'separated list of sources.')
 
     def _check_floyd_compatibility(self,
                                    parsed: _mediainput.ImageSeedParseResult,
@@ -4763,10 +4748,13 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def check(self, attribute_namer: typing.Optional[typing.Callable[[str], str]] = None):
         """
-        Check the configuration for type and logical usage errors, set
-        defaults for certain values when needed and not specified.
+        Check the configuration for type and logical usage errors.
 
-        This may modify the configuration.
+        This may modify the configuration (for example normalizing blank
+        ``pipeline_prompt_enhance`` text). It does not fill omitted guidance,
+        step counts, or optimization parameters; call :meth:`fill_defaults` after
+        a successful check to materialize feature-parameter lists (not guidance
+        or inference steps).
 
         :param attribute_namer: Callable for naming attributes mentioned in exception messages
         """
@@ -4821,6 +4809,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_pag_scales,
             self.sdxl_refiner_pag_adaptive_scales,
             self.sdxl_refiner_pag_applied_layers,
+            self.inpaint_crop_paddings,
+            self.inpaint_crop_feathers,
             self.second_model_inference_steps,
             self.second_model_guidance_scales,
             self.sdxl_refiner_guidance_rescales,
@@ -4906,8 +4896,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 (len(bounds) if bounds else 1) *
                 len(self.prompts) *
                 (len(self.seeds) if not self.seeds_to_images else 1) *
-                len(self.guidance_scales) *
-                len(self.inference_steps) *
+                (len(self.pipeline_prompt_enhance_seeds) if self.pipeline_prompt_enhance_seeds else 1) *
+                (len(self.guidance_scales) if self.guidance_scales else 1) *
+                (len(self.inference_steps) if self.inference_steps else 1) *
                 len(schedulers) *
                 len(second_model_schedulers))
 
@@ -4928,6 +4919,27 @@ class RenderLoopConfig(_types.SetFromMixin):
                 new_config.__dict__[attr_name] = attr_value
 
         return new_config
+
+    def fill_defaults(self, *, pipeline=None) -> 'RenderLoopConfig':
+        """
+        Fill omitted list fields using :mod:`dgenerate.pipelinewrapper.featuredefaults`.
+
+        Enabled feature parameters (SADA, PAG, RegionE, video FPS, and similar)
+        are set to the values shown in generation-step text. ``guidance_scales``
+        and ``inference_steps`` stay omitted (**auto** in step text) except
+        RegionE step normalization; numeric guidance and step counts are resolved
+        when the step runs (image:
+        :meth:`~dgenerate.pipelinewrapper.wrapper.DiffusionPipelineWrapper._get_pipeline_defaults`;
+        video: :mod:`dgenerate.pipelinewrapper.videopipelines`).
+
+        Does not replace values the user already supplied. Call after
+        :meth:`check` when ``parsed_image_seeds`` should inform img2img
+        strength defaults. Returns ``self``.
+        """
+        import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+
+        _featuredefaults.fill_render_loop_config_defaults(self, pipeline=pipeline)
+        return self
 
     def apply_prompt_upscalers(self):
         """
@@ -5074,8 +5086,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 qwen_guidance_scale=ov(
                     'qwen_guidance_scale',
                     [self.qwen_guidance_scale]),
-                qwen21_output_resolution=ov(
-                    'qwen21_output_resolution', [self.qwen21_output_resolution]),
+                qwen21_resolution=ov(
+                    'qwen21_resolution', [self.qwen21_resolution]),
                 qwen21_use_kv_cache=ov(
                     'qwen21_use_kv_cache', [self.qwen21_use_kv_cache]),
                 qwen_layered_layers=ov(
@@ -5189,7 +5201,29 @@ class RenderLoopConfig(_types.SetFromMixin):
                 ltx_decode_noise_scale=ov('ltx_decode_noise_scale', self.ltx_decode_noise_scales),
                 ltx_image_crf=ov('ltx_image_crf', self.ltx_image_crfs),
                 ltx_prompt_enhancer=ov('ltx_prompt_enhancer', [self.ltx_prompt_enhancer]),
-                ltx_system_prompt=ov('ltx_system_prompt', [self.ltx_system_prompt]),
+                pipeline_prompt_enhance=ov(
+                    'pipeline_prompt_enhance', [self.pipeline_prompt_enhance]),
+                pipeline_prompt_enhance_seed=ov(
+                    'pipeline_prompt_enhance_seed', self.pipeline_prompt_enhance_seeds),
+                pipeline_prompt_enhance_temperature=ov(
+                    'pipeline_prompt_enhance_temperature',
+                    [self.pipeline_prompt_enhance_temperature]),
+                pipeline_prompt_enhance_top_p=ov(
+                    'pipeline_prompt_enhance_top_p', [self.pipeline_prompt_enhance_top_p]),
+                pipeline_prompt_enhance_top_k=ov(
+                    'pipeline_prompt_enhance_top_k', [self.pipeline_prompt_enhance_top_k]),
+                pipeline_prompt_enhance_presence_penalty=ov(
+                    'pipeline_prompt_enhance_presence_penalty',
+                    [self.pipeline_prompt_enhance_presence_penalty]),
+                pipeline_prompt_enhance_max_new_tokens=ov(
+                    'pipeline_prompt_enhance_max_new_tokens',
+                    [self.pipeline_prompt_enhance_max_new_tokens]),
+                pipeline_prompt_enhance_min_new_tokens=ov(
+                    'pipeline_prompt_enhance_min_new_tokens',
+                    [self.pipeline_prompt_enhance_min_new_tokens]),
+                pipeline_prompt_enhance_gpu_headroom=ov(
+                    'pipeline_prompt_enhance_gpu_headroom',
+                    [self.pipeline_prompt_enhance_gpu_headroom]),
                 wan_low_noise_guidance_scale=ov(
                     'wan_low_noise_guidance_scale', self.wan_low_noise_guidance_scales),
                 wan_boundary_ratio=ov('wan_boundary_ratio', self.wan_boundary_ratios),
@@ -5279,6 +5313,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 on_object=arg,
                 forbidden_checker=_pipelinewrapper.DiffusionArguments.prompt_embedded_arg_checker)
 
+            self._stamp_implied_diffusion_args(arg)
+
             bounds = self._duration_bound_pairs()
             if not bounds:
                 yield arg
@@ -5296,6 +5332,147 @@ class RenderLoopConfig(_types.SetFromMixin):
         lows = list(self.ltx_video_min_seconds or [1.0])
         highs = list(self.ltx_video_max_seconds or [20.0])
         return list(zip(lows, highs))
+
+    def _stamp_implied_diffusion_args(self, arg):
+        """Give one generation step the defaults a bare parent switch used to carry.
+
+        ``--pag`` and ``--sdxl-refiner-pag`` have no field on
+        :py:class:`~dgenerate.pipelinewrapper.DiffusionArguments`. The pipeline
+        wrapper enables PAG from a scale or a layer set, so a bare switch has
+        to arrive as the default scales.
+        """
+        if (self.is_pag_enabled()
+                and arg.pag_scale is None
+                and arg.pag_adaptive_scale is None
+                and not arg.pag_applied_layers):
+            arg.pag_scale = _pipelinewrapper.constants.DEFAULT_PAG_SCALE
+            arg.pag_adaptive_scale = _pipelinewrapper.constants.DEFAULT_PAG_ADAPTIVE_SCALE
+        if (self.is_sdxl_refiner_pag_enabled()
+                and arg.sdxl_refiner_pag_scale is None
+                and arg.sdxl_refiner_pag_adaptive_scale is None
+                and not arg.sdxl_refiner_pag_applied_layers):
+            arg.sdxl_refiner_pag_scale = (
+                _pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_SCALE)
+            arg.sdxl_refiner_pag_adaptive_scale = (
+                _pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE)
+
+    def is_pipeline_prompt_enhance_enabled(self) -> bool:
+        """
+        Prompt enhancement will run for this configuration.
+
+        True when ``pipeline_prompt_enhance`` is set, or when enhance seeds
+        or any enhance generation option is set.
+        """
+        return _promptenhance.pipeline_prompt_enhance_requested(self)
+
+    def is_cache_dit_enabled(self) -> bool:
+        """
+        Cache-DiT will run for this configuration.
+
+        True when ``cache_dit`` is set or ``cache_dit_config`` is set.
+        """
+        return bool(self.cache_dit or self.cache_dit_config is not None)
+
+    def is_dype_enabled(self) -> bool:
+        """
+        DyPE will run for this configuration.
+
+        True when ``dype`` is set or any DyPE sub-option is set.
+        """
+        return bool(self.dype or any((
+            self.dype_methods, self.dype_base_resolutions,
+            self.dype_mscales, self.dype_axis_scalings)))
+
+    def is_tea_cache_enabled(self) -> bool:
+        """
+        TeaCache will run for this configuration.
+
+        True when ``tea_cache`` is set or any TeaCache parameter is set.
+        """
+        return bool(self.tea_cache or any(self._non_null_attr_that_start_with('tea_cache_')))
+
+    def is_spectrum_enabled(self) -> bool:
+        """
+        Spectrum will run for this configuration.
+
+        True when ``spectrum`` is set or any Spectrum parameter is set.
+        """
+        return bool(self.spectrum or any(self._non_null_attr_that_start_with('spectrum_')))
+
+    def is_regione_enabled(self) -> bool:
+        """
+        RegionE will run for this configuration.
+
+        True when ``regione`` is set or any RegionE parameter is set.
+        """
+        return bool(self.regione or any(self._non_null_attr_that_start_with('regione_')))
+
+    def is_ras_enabled(self) -> bool:
+        """
+        RAS will run for this configuration.
+
+        True when ``ras`` is set or any RAS parameter is set.
+        """
+        return bool(self.ras or any(self._non_null_attr_that_start_with('ras_')))
+
+    def is_deep_cache_enabled(self) -> bool:
+        """
+        DeepCache will run for the primary model.
+
+        True when ``deep_cache`` is set or any primary DeepCache parameter is set.
+        """
+        return bool(self.deep_cache or any(self._non_null_attr_that_start_with('deep_cache_')))
+
+    def is_sdxl_refiner_deep_cache_enabled(self) -> bool:
+        """
+        DeepCache will run for the SDXL refiner.
+
+        True when ``sdxl_refiner_deep_cache`` is set or any refiner DeepCache
+        parameter is set.
+        """
+        return bool(
+            self.sdxl_refiner_deep_cache or any(
+                self._non_null_attr_that_start_with('sdxl_refiner_deep_cache_')))
+
+    def is_sada_enabled(self) -> bool:
+        """
+        SADA will run for this configuration.
+
+        True when ``sada`` is set or any SADA parameter is set.
+        """
+        return bool(self.sada or any(self._non_null_attr_that_start_with('sada_')))
+
+    def is_pag_enabled(self) -> bool:
+        """
+        Perturbed attention guidance will run for the primary model.
+
+        True when ``pag`` is set or a scale, adaptive scale, or layer set is set.
+        """
+        return bool(
+            self.pag or self.pag_scales or self.pag_adaptive_scales or self.pag_applied_layers)
+
+    def is_sdxl_refiner_pag_enabled(self) -> bool:
+        """
+        Perturbed attention guidance will run for the SDXL refiner.
+
+        True when ``sdxl_refiner_pag`` is set or a refiner scale, adaptive scale,
+        or layer set is set.
+        """
+        return bool(
+            self.sdxl_refiner_pag or self.sdxl_refiner_pag_scales
+            or self.sdxl_refiner_pag_adaptive_scales
+            or self.sdxl_refiner_pag_applied_layers)
+
+    def is_inpaint_crop_enabled(self) -> bool:
+        """
+        Inpaint cropping will run for this configuration.
+
+        True when ``inpaint_crop`` is set or padding, feathering, or masked
+        pasting is set.
+        """
+        return bool(
+            self.inpaint_crop or self.inpaint_crop_paddings
+            or self.inpaint_crop_feathers or self.inpaint_crop_masked)
 
     def _non_null_attr_that_start_with(self, s: typing.Union[str, typing.List[str]]) -> typing.Iterator[str]:
         """

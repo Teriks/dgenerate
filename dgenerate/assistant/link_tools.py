@@ -310,6 +310,8 @@ def _specific_model_type(label: str) -> str | None:
         return 's-cascade'
     if re.search(r'\bkolors\b', label):
         return 'kolors'
+    if re.search(r'z-image|zimage|z image', label) and 'omni' in label:
+        return 'z-image-omni'
     if re.search(r'z-image|zimage|z image', label) and 'omni' not in label:
         return 'z-image'
     if re.search(r'if-ii\b', label):

@@ -31,9 +31,9 @@ import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
-from dgenerate.pipelinewrapper import constants as _constants
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-from dgenerate.pipelinewrapper.uris import util as _util
+import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
+import dgenerate.pipelinewrapper.uris.util as _util
 
 _controlnet_uri_parser = _textprocessing.ConceptUriParser(
     'ControlNet', ['scale', 'start', 'end', 'mode', 'revision', 'variant', 'subfolder', 'dtype', 'quantizer'])
@@ -362,8 +362,8 @@ class ControlNetUri:
                 self.quantizer,
                 _exceptions.InvalidControlNetUriError
             ).parse(self.quantizer).to_config(torch_dtype)
-            from dgenerate.pipelinewrapper.quant_skips import apply_architecture_quant_skips
-            apply_architecture_quant_skips(quant_config, model_class)
+            import dgenerate.pipelinewrapper.quant_skips as _quant_skips
+            _quant_skips.apply_architecture_quant_skips(quant_config, model_class)
         else:
             quant_config = None
 

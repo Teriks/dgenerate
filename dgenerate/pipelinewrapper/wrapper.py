@@ -47,6 +47,7 @@ import dgenerate.latentsprocessors as _latentsprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.pipelinewrapper.sampling as _sampling
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.help as _help
 import dgenerate.pipelinewrapper.pipelines as _pipelines
@@ -58,12 +59,9 @@ import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
-from dgenerate.extras.ras import RASArgs as _RASArgs
-from dgenerate.extras.ras import sd3_ras_context as _sd3_ras_context
-from dgenerate.pipelinewrapper.arguments import DiffusionArguments
-from dgenerate.pipelinewrapper.denoise_range import DenoiseRangeError as _DenoiseRangeError
-from dgenerate.pipelinewrapper.denoise_range import denoise_range as _denoise_range
-from dgenerate.pipelinewrapper.denoise_range import supports_native_denoising_start as _supports_native_denoising_start
+import dgenerate.extras.ras as _ras
+import dgenerate.pipelinewrapper.arguments as _arguments
+import dgenerate.pipelinewrapper.denoise_range as _denoise_range_mod
 
 
 def _diffusion_option_enabled(args, name: str) -> bool:
@@ -151,8 +149,8 @@ class _InpaintCropInfo:
 
 class DiffusionArgumentsHelpException(Exception):
     """
-    Thrown when a :py:class:`DiffusionArguments` attribute that supports
-    passing a help request value (such as :py:attr:`DiffusionArguments.scheduler_uri`)
+    Thrown when a :py:class:`_arguments.DiffusionArguments` attribute that supports
+    passing a help request value (such as :py:attr:`_arguments.DiffusionArguments.scheduler_uri`)
     is passed its help value.
 
     This exception returns the help string to the caller.
@@ -440,6 +438,70 @@ def _freeu(pipeline, params: tuple[float, float, float, float] | None):
             _messages.debug_log(
                 f'Disabling FreeU on pipeline: {pipeline.__class__.__name__}')
             pipeline.disable_freeu()
+
+
+def _resolve_omitted_sampling(
+        user_args: '_arguments.DiffusionArguments',
+        model_type,
+        pipeline) -> None:
+    """Fill omitted ``guidance_scale`` and ``inference_steps`` on ``user_args``.
+
+    Called from :meth:`DiffusionPipelineWrapper._get_pipeline_defaults` after the
+    pipeline is loaded. RegionE step counts are set earlier by
+    :meth:`DiffusionPipelineWrapper._auto_regione_check`. Video models resolve
+    sampling in :mod:`dgenerate.pipelinewrapper.videopipelines` instead.
+    """
+    if _enums.model_type_is_ltx_family(model_type):
+        return
+
+    source = pipeline if pipeline is not None else None
+    if source is None:
+        try:
+            source = _pipelines.get_pipeline_class(model_type)
+        except Exception:
+            source = None
+
+    if user_args.inference_steps is None:
+        if model_type == _enums.ModelType.QWEN_IMAGE_21:
+            user_args.inference_steps = 40
+        elif model_type == _enums.ModelType.KREA2:
+            distilled = bool(_loaded_pipeline_config_flag(pipeline, 'is_distilled', False))
+            user_args.inference_steps = 8 if distilled else 28
+        elif model_type == _enums.ModelType.HYIMAGE_21_REFINER:
+            user_args.inference_steps = 4
+        elif _enums.model_type_is_hyimage_21_family(model_type):
+            user_args.inference_steps = 50
+        elif model_type == _enums.ModelType.KANDINSKY5_IMAGE:
+            user_args.inference_steps = 50
+        elif isinstance(user_args.sigmas, (list, tuple)) and user_args.sigmas \
+                and not isinstance(user_args.sigmas[0], str):
+            user_args.inference_steps = len(user_args.sigmas)
+        else:
+            _sampling.resolved_inference_steps(source, user_args)
+
+    if user_args.guidance_scale is None:
+        if model_type == _enums.ModelType.QWEN_IMAGE_21:
+            user_args.guidance_scale = 1.0
+        elif model_type == _enums.ModelType.KREA2:
+            distilled = bool(_loaded_pipeline_config_flag(pipeline, 'is_distilled', False))
+            user_args.guidance_scale = 0.0 if distilled else 4.5
+        elif model_type == _enums.ModelType.KANDINSKY5_IMAGE:
+            user_args.guidance_scale = 3.5
+        elif (_enums.model_type_is_hyimage_21_family(model_type)
+              and (model_type == _enums.ModelType.HYIMAGE_21_REFINER
+                   or _loaded_pipeline_config_flag(pipeline, 'guidance_embeds', False))):
+            user_args.guidance_scale = 3.25
+        else:
+            _sampling.resolved_guidance_scale(source, user_args)
+
+
+def _loaded_pipeline_config_flag(pipeline, name: str, fallback=False):
+    config = getattr(pipeline, 'config', None)
+    if config is None:
+        return fallback
+    if hasattr(config, 'get'):
+        return config.get(name, fallback)
+    return getattr(config, name, fallback)
 
 
 class DiffusionPipelineWrapper:
@@ -1301,7 +1363,7 @@ class DiffusionPipelineWrapper:
         return DiffusionPipelineWrapper.__LAST_RECALL_SECONDARY_PIPELINE()
 
     def reconstruct_dgenerate_opts(self,
-                                   args: DiffusionArguments | None = None,
+                                   args: _arguments.DiffusionArguments | None = None,
                                    extra_opts:
                                    collections.abc.Sequence[
                                        tuple[str] | tuple[str, typing.Any]] | None = None,
@@ -1329,7 +1391,7 @@ class DiffusionPipelineWrapper:
 
         :param overrides: pipeline wrapper keyword arguments, these will override values derived from
             any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
-            :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+            :py:class:`._arguments.DiffusionArguments.get_pipeline_wrapper_kwargs`
 
         :return: List of tuples of length 1 or 2 representing the option
         """
@@ -1340,7 +1402,7 @@ class DiffusionPipelineWrapper:
         )
 
     def gen_dgenerate_config(self,
-                             args: DiffusionArguments | None = None,
+                             args: _arguments.DiffusionArguments | None = None,
                              extra_opts:
                              collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
                              extra_comments: collections.abc.Iterable[str] | None = None,
@@ -1365,7 +1427,7 @@ class DiffusionPipelineWrapper:
             the default device is, which is generally ``cuda``
         :param overrides: pipeline wrapper keyword arguments, these will override values derived from
             any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
-            :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+            :py:class:`._arguments.DiffusionArguments.get_pipeline_wrapper_kwargs`
         :return: The configuration as a string
         """
         import dgenerate.pipelinewrapper.argreconstruct as _a
@@ -1375,7 +1437,7 @@ class DiffusionPipelineWrapper:
         )
 
     def gen_dgenerate_command(self,
-                              args: DiffusionArguments | None = None,
+                              args: _arguments.DiffusionArguments | None = None,
                               extra_opts:
                               collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
                               omit_device: bool = False,
@@ -1397,7 +1459,7 @@ class DiffusionPipelineWrapper:
             the default device is, which is generally ``cuda``
         :param overrides: pipeline wrapper keyword arguments, these will override values derived from
             any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
-            :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+            :py:class:`._arguments.DiffusionArguments.get_pipeline_wrapper_kwargs`
         :return: A string containing the dgenerate command line needed to reproduce this result.
         """
         import dgenerate.pipelinewrapper.argreconstruct as _a
@@ -1502,13 +1564,13 @@ class DiffusionPipelineWrapper:
     def _resize_images_to_user_dimensions(
             self,
             images: _types.Images,
-            user_args: DiffusionArguments
+            user_args: _arguments.DiffusionArguments
     ) -> list[PIL.Image.Image]:
         """
         Resize images to user-specified width and height using dgenerate's image resize utility.
 
         :param images: List of PIL Images to resize
-        :param user_args: DiffusionArguments containing width and height
+        :param user_args: _arguments.DiffusionArguments containing width and height
         :return: List of resized PIL Images
         """
         if not images:
@@ -1595,7 +1657,7 @@ class DiffusionPipelineWrapper:
                             control_images: list[PIL.Image.Image] | None,
                             padding: int | tuple[int, int] | tuple[int, int, int, int],
                             decoded_latents: bool,
-                            user_args: DiffusionArguments) \
+                            user_args: _arguments.DiffusionArguments) \
             -> tuple[
                 list[PIL.Image.Image],
                 list[PIL.Image.Image],
@@ -1716,9 +1778,11 @@ class DiffusionPipelineWrapper:
 
         return result_images
 
-    def _set_pipeline_strength(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
-        strength = float(_types.default(user_args.image_seed_strength, _constants.DEFAULT_IMAGE_SEED_STRENGTH))
-        ifs = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
+    def _set_pipeline_strength(self, user_args: _arguments.DiffusionArguments, pipeline_args: dict[str, typing.Any]):
+        if user_args.image_seed_strength is None:
+            user_args.image_seed_strength = _constants.DEFAULT_IMAGE_SEED_STRENGTH
+        strength = float(user_args.image_seed_strength)
+        ifs = int(_types.default(user_args.inference_steps, _constants.DEFAULT_FALLBACK_INFERENCE_STEPS))
         if (strength * ifs) < 1.0:
             strength = 1.0 / ifs
             _messages.warning(
@@ -1728,7 +1792,7 @@ class DiffusionPipelineWrapper:
 
         pipeline_args['strength'] = strength
 
-    def _set_pipeline_control_lora_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
+    def _set_pipeline_control_lora_defaults(self, user_args: _arguments.DiffusionArguments, pipeline_args: dict[str, typing.Any]):
         control_images = user_args.control_images
         if not control_images:
             raise _pipelines.UnsupportedPipelineConfigError(
@@ -1771,7 +1835,7 @@ class DiffusionPipelineWrapper:
             mask_images = self._resize_images_to_user_dimensions(mask_images, user_args)
             pipeline_args['mask_image'] = mask_images
 
-    def _set_pipeline_controlnet_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
+    def _set_pipeline_controlnet_defaults(self, user_args: _arguments.DiffusionArguments, pipeline_args: dict[str, typing.Any]):
         control_images = user_args.control_images
 
         if (_enums.model_type_is_qwen_image(self._model_type)
@@ -1872,7 +1936,7 @@ class DiffusionPipelineWrapper:
             if _enums.model_type_is_qwen_image(self._model_type):
                 pipeline_args['control_mask'] = mask_images[0] if len(mask_images) == 1 else mask_images
 
-    def _set_pipeline_t2iadapter_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
+    def _set_pipeline_t2iadapter_defaults(self, user_args: _arguments.DiffusionArguments, pipeline_args: dict[str, typing.Any]):
         adapter_control_images = list(user_args.control_images)
 
         if not adapter_control_images:
@@ -1928,7 +1992,7 @@ class DiffusionPipelineWrapper:
                 'T2IAdapter models only work in txt2img mode.'
             )
 
-    def _get_pipeline_img2img_inputs(self, user_args: DiffusionArguments):
+    def _get_pipeline_img2img_inputs(self, user_args: _arguments.DiffusionArguments):
         # Separate images and tensors but skip validation initially
         images, img2img_latents = self._separate_images_and_tensors(user_args.images)
 
@@ -1963,7 +2027,7 @@ class DiffusionPipelineWrapper:
             # except in the case of the X2 latent upscaler, which can
             # work with the already denoised latents
             if img2img_latents and not (
-                    _supports_native_denoising_start(self._pipeline.__class__)
+                    _denoise_range_mod.supports_native_denoising_start(self._pipeline.__class__)
                     and user_args.denoising_start is not None
                     and user_args.denoising_start > 0.0
             ):
@@ -2014,7 +2078,7 @@ class DiffusionPipelineWrapper:
         return 8
 
     @staticmethod
-    def _resolve_pipeline_type(args: DiffusionArguments,
+    def _resolve_pipeline_type(args: _arguments.DiffusionArguments,
                                model_type: _enums.ModelType,
                                adetailer_detector_uris: _types.OptionalUris) -> _enums.PipelineType:
         pipeline_type = args.determine_pipeline_type()
@@ -2085,7 +2149,7 @@ class DiffusionPipelineWrapper:
             pipeline_args['height'] = height
 
     # noinspection PyUnresolvedReferences,PyTypeChecker
-    def _set_pipeline_img2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
+    def _set_pipeline_img2img_defaults(self, user_args: _arguments.DiffusionArguments, pipeline_args: dict[str, typing.Any]):
         user_width, user_height = self._aligned_user_dimensions(
             user_args.width, user_args.height, 'img2img')
         image_arg_inputs = self._get_pipeline_img2img_inputs(user_args)
@@ -2138,14 +2202,17 @@ class DiffusionPipelineWrapper:
                     f'mode "{self._pipeline_type.name}" and is being ignored.'
                 )
 
+        def use_noise(default):
+            if user_args.upscaler_noise_level is None:
+                user_args.upscaler_noise_level = default
+            pipeline_args['noise_level'] = int(user_args.upscaler_noise_level)
+
         def is_sd3_or_flux():
             return _enums.model_type_is_sd3(self._model_type) or _enums.model_type_is_flux(self._model_type)
 
         if _enums.model_type_is_upscaler(self._model_type):
             if self._model_type == _enums.ModelType.UPSCALER_X4:
-                pipeline_args['noise_level'] = int(
-                    _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL)
-                )
+                use_noise(_constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL)
             check_no_image_seed_strength()
         elif self._model_type in {
                 _enums.ModelType.FLUX_FILL,
@@ -2154,21 +2221,13 @@ class DiffusionPipelineWrapper:
             check_no_image_seed_strength()
         elif self._model_type == _enums.ModelType.IFS:
             if self._pipeline_type != _enums.PipelineType.INPAINT:
-                pipeline_args['noise_level'] = int(
-                    _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL)
-                )
+                use_noise(_constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL)
                 check_no_image_seed_strength()
             else:
-                pipeline_args['noise_level'] = int(
-                    _types.default(user_args.upscaler_noise_level,
-                                   _constants.DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL)
-                )
+                use_noise(_constants.DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL)
                 self._set_pipeline_strength(user_args, pipeline_args)
         elif self._model_type == _enums.ModelType.IFS_IMG2IMG:
-            pipeline_args['noise_level'] = int(
-                _types.default(user_args.upscaler_noise_level,
-                               _constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL)
-            )
+            use_noise(_constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL)
             self._set_pipeline_strength(user_args, pipeline_args)
         elif not _enums.model_type_is_pix2pix(self._model_type) and self._model_type != _enums.ModelType.S_CASCADE:
             self._set_pipeline_strength(user_args, pipeline_args)
@@ -2289,7 +2348,7 @@ class DiffusionPipelineWrapper:
             )
 
 
-    def _set_pipeline_txt2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
+    def _set_pipeline_txt2img_defaults(self, user_args: _arguments.DiffusionArguments, pipeline_args: dict[str, typing.Any]):
 
         width, height = self._aligned_user_dimensions(
             user_args.width, user_args.height, 'txt2img')
@@ -2329,7 +2388,7 @@ class DiffusionPipelineWrapper:
             pipeline_args
         )
 
-    def _delegated_padding_mask_crop(self, user_args: DiffusionArguments) -> int | None:
+    def _delegated_padding_mask_crop(self, user_args: _arguments.DiffusionArguments) -> int | None:
         """
         Klein and Qwen inpaint accept one padding integer as ``padding_mask_crop``.
 
@@ -2358,7 +2417,7 @@ class DiffusionPipelineWrapper:
             raise _pipelines.UnsupportedPipelineConfigError(message)
         pipeline_args[name] = value
 
-    def _prepare_inpaint_crop(self, user_args: DiffusionArguments):
+    def _prepare_inpaint_crop(self, user_args: _arguments.DiffusionArguments):
         """
         Handle inpaint crop preparation including validation and tensor decoding.
         
@@ -2491,10 +2550,13 @@ class DiffusionPipelineWrapper:
         _messages.debug_log(
             f'Inpaint crop applied: {original_images[0].size if original_images else None} -> crop bounds {crop_bounds}')
 
-    def _get_pipeline_defaults(self, user_args: DiffusionArguments):
+    def _get_pipeline_defaults(self, user_args: _arguments.DiffusionArguments):
         """
-        Get a default arrangement of arguments to be passed to a huggingface
-        diffusers pipeline call that are somewhat universal.
+        Build kwargs for a diffusers pipeline call from ``user_args``.
+
+        After the pipeline is loaded, resolves omitted guidance and step counts
+        on ``user_args`` (see :func:`_resolve_omitted_sampling`), then sets
+        universal keys such as ``guidance_scale`` and ``num_inference_steps``.
 
         :param user_args: user arguments to the pipeline wrapper
         :return: kwargs dictionary
@@ -2507,12 +2569,12 @@ class DiffusionPipelineWrapper:
         # This must happen first so all downstream methods work with cropped images
         self._prepare_inpaint_crop(user_args)
 
+        _resolve_omitted_sampling(user_args, self._model_type, self._pipeline)
+
         pipeline_args: dict[str, typing.Any] = dict()
 
-        pipeline_args['guidance_scale'] = float(
-            _types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
-        pipeline_args['num_inference_steps'] = int(
-            _types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
+        pipeline_args['guidance_scale'] = float(user_args.guidance_scale)
+        pipeline_args['num_inference_steps'] = int(user_args.inference_steps)
 
         # Create generator once and reuse it throughout
         pipeline_args['generator'] = torch.Generator(device=self._device).manual_seed(
@@ -2547,7 +2609,7 @@ class DiffusionPipelineWrapper:
 
         return pipeline_args
 
-    def _process_raw_input_latents(self, user_args: DiffusionArguments,
+    def _process_raw_input_latents(self, user_args: _arguments.DiffusionArguments,
                                    pipeline_args: dict[str, typing.Any]) -> torch.Tensor:
         """
         Process and validate incoming raw / noisy latents from ``latents``
@@ -2665,7 +2727,7 @@ class DiffusionPipelineWrapper:
         return [p.end for p in self._parsed_controlnet_uris] if \
             len(self._parsed_controlnet_uris) > 1 else self._parsed_controlnet_uris[0].end
 
-    def _check_for_invalid_model_specific_opts(self, user_args: DiffusionArguments):
+    def _check_for_invalid_model_specific_opts(self, user_args: _arguments.DiffusionArguments):
         if not _enums.model_type_is_flux(self.model_type):
             for arg, val in _types.get_public_attributes(user_args).items():
                 if arg.startswith('flux') and not arg.startswith('flux2') and val is not None:
@@ -2719,7 +2781,7 @@ class DiffusionPipelineWrapper:
     def _set_prompt_weighter_extra_supported_args(
             pipeline_args: dict,
             prompt_weighter: _promptweighters.PromptWeighter | None,
-            diffusion_args: DiffusionArguments,
+            diffusion_args: _arguments.DiffusionArguments,
             second_model: bool,
     ) -> list[str]:
         if prompt_weighter is None:
@@ -2768,7 +2830,7 @@ class DiffusionPipelineWrapper:
     def _set_non_universal_pipeline_arg(self,
                                         pipeline,
                                         pipeline_args: dict,
-                                        user_args: DiffusionArguments,
+                                        user_args: _arguments.DiffusionArguments,
                                         pipeline_arg_name: str,
                                         user_arg_name: str,
                                         option_name: str,
@@ -2800,7 +2862,7 @@ class DiffusionPipelineWrapper:
                     f'{_enums.get_pipeline_type_string(self._pipeline_type)} mode with the current '
                     f'combination of arguments and model.')
 
-    def _get_sdxl_conditioning_args(self, pipeline, pipeline_args: dict, user_args: DiffusionArguments,
+    def _get_sdxl_conditioning_args(self, pipeline, pipeline_args: dict, user_args: _arguments.DiffusionArguments,
                                     user_prefix=None):
         if user_prefix:
             user_prefix += '_'
@@ -3080,7 +3142,7 @@ class DiffusionPipelineWrapper:
             return self._repack_flux_latents(latents)
         return latents
 
-    def _call_torch_flux(self, pipeline_args, user_args: DiffusionArguments):
+    def _call_torch_flux(self, pipeline_args, user_args: _arguments.DiffusionArguments):
         self._check_for_invalid_model_specific_opts(user_args)
 
         if user_args.clip_skip is not None and user_args.clip_skip > 0:
@@ -3155,7 +3217,7 @@ class DiffusionPipelineWrapper:
                 self._pipeline,
                 _types.default(
                     user_args.inference_steps,
-                    _constants.DEFAULT_INFERENCE_STEPS)
+                    _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)
             ))
         self._set_timesteps_pipeline_arg(pipeline_args, user_args)
 
@@ -3192,7 +3254,7 @@ class DiffusionPipelineWrapper:
             height=self._inference_height,
             enabled=user_args.sada,
             **self._get_sada_args(user_args)
-        ), _denoise_range(
+        ), _denoise_range_mod.denoise_range(
             self._pipeline,
             user_args.denoising_start,
             user_args.denoising_end
@@ -3217,7 +3279,7 @@ class DiffusionPipelineWrapper:
                 )
                 return self._create_pipeline_result(pipeline_output, output_type, user_args, pipeline_args)
 
-    def _call_torch_flow_image(self, pipeline_args, user_args: DiffusionArguments):
+    def _call_torch_flow_image(self, pipeline_args, user_args: _arguments.DiffusionArguments):
         """
         Call Flux.2, Z-Image, or Qwen-Image.
 
@@ -3274,10 +3336,10 @@ class DiffusionPipelineWrapper:
         elif user_args.max_sequence_length is not None:
             pipeline_args['max_sequence_length'] = user_args.max_sequence_length
 
-        qres = user_args.qwen21_output_resolution
+        qres = user_args.qwen21_resolution
         self._set_accepted_call_argument(
             pipeline_args, 'output_resolution', qres,
-            '--qwen21-output-resolution is only supported by Qwen-Image 2.1.')
+            '--qwen21-resolution is only supported by Qwen-Image 2.1.')
         if qres is not None and user_args.width is None and user_args.height is None:
             # Pin the dimensions the pipeline derives from output_resolution
             # (including image-conditioned aspect ratio) so latent unpacking
@@ -3421,7 +3483,7 @@ class DiffusionPipelineWrapper:
                 self._pipeline,
                 _types.default(
                     user_args.inference_steps,
-                    _constants.DEFAULT_INFERENCE_STEPS)
+                    _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)
             ))
         self._set_timesteps_pipeline_arg(pipeline_args, user_args)
 
@@ -3443,7 +3505,7 @@ class DiffusionPipelineWrapper:
             if name not in call_signature:
                 pipeline_args.pop(name)
 
-        with _denoise_range(
+        with _denoise_range_mod.denoise_range(
             self._pipeline,
             user_args.denoising_start,
             user_args.denoising_end
@@ -3505,7 +3567,7 @@ class DiffusionPipelineWrapper:
     def _dype_context(
             self,
             pipeline,
-            user_args: DiffusionArguments,
+            user_args: _arguments.DiffusionArguments,
             pipeline_args: dict[str, typing.Any] | None = None):
         """Apply DyPE for one pipeline call, including ADetailer refinement passes."""
         if not user_args.dype:
@@ -3557,7 +3619,7 @@ class DiffusionPipelineWrapper:
 
     def _call_pipeline_with_cache_dit(self,
                                       pipeline: diffusers.DiffusionPipeline,
-                                      user_args: DiffusionArguments,
+                                      user_args: _arguments.DiffusionArguments,
                                       **kwargs):
         secondary_pipeline = (
             pipeline is self._s_cascade_decoder_pipeline or
@@ -3589,7 +3651,7 @@ class DiffusionPipelineWrapper:
                 return _pipelines.call_pipeline(pipeline=call_pipeline, **kwargs)
 
     def _call_asdff(self,
-                    user_args: DiffusionArguments,
+                    user_args: _arguments.DiffusionArguments,
                     prompt_weighter: _promptweighters.PromptWeighter,
                     pipeline_args: dict[str, typing.Any],
                     batch_size: int):
@@ -3707,7 +3769,7 @@ class DiffusionPipelineWrapper:
 
         return self._create_pipeline_result(asdff_output, user_args=user_args, pipeline_kwargs=pipeline_args)
 
-    def _call_torch_s_cascade(self, pipeline_args, user_args: DiffusionArguments):
+    def _call_torch_s_cascade(self, pipeline_args, user_args: _arguments.DiffusionArguments):
         self._check_for_invalid_model_specific_opts(user_args)
 
         if user_args.clip_skip is not None and user_args.clip_skip > 0:
@@ -3849,7 +3911,7 @@ class DiffusionPipelineWrapper:
         else:
             return list(val)
 
-    def _set_timesteps_pipeline_arg(self, pipeline_args: dict, user_args: DiffusionArguments):
+    def _set_timesteps_pipeline_arg(self, pipeline_args: dict, user_args: _arguments.DiffusionArguments):
         self._set_non_universal_pipeline_arg(
             self._pipeline,
             pipeline_args, user_args,
@@ -3861,7 +3923,7 @@ class DiffusionPipelineWrapper:
                 self._pipeline,
                 _types.default(
                     user_args.inference_steps,
-                    _constants.DEFAULT_INFERENCE_STEPS)
+                    _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)
             ))
         timesteps = pipeline_args.get('timesteps')
         if timesteps is not None:
@@ -3937,7 +3999,7 @@ class DiffusionPipelineWrapper:
                 f'Timesteps for the {model_title} model cannot be empty.')
         return result
 
-    def _call_torch(self, pipeline_args, user_args: DiffusionArguments):
+    def _call_torch(self, pipeline_args, user_args: _arguments.DiffusionArguments):
         self._check_for_invalid_model_specific_opts(user_args)
 
         prompt: _prompt.Prompt = _types.default(user_args.prompt, _prompt.Prompt())
@@ -4026,7 +4088,7 @@ class DiffusionPipelineWrapper:
                 self._pipeline,
                 _types.default(
                     user_args.inference_steps,
-                    _constants.DEFAULT_INFERENCE_STEPS)
+                    _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)
             ))
         self._set_timesteps_pipeline_arg(pipeline_args, user_args)
 
@@ -4170,7 +4232,7 @@ class DiffusionPipelineWrapper:
             ras_args = self._get_sd3_ras_args(user_args)
 
             with _freeu(self._pipeline, user_args.freeu_params), \
-                    _sd3_ras_context(self._pipeline, args=ras_args, enabled=user_args.ras), \
+                    _ras.sd3_ras_context(self._pipeline, args=ras_args, enabled=user_args.ras), \
                     _deep_cache_context(self._pipeline,
                                         cache_interval=_types.default(
                                             user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
@@ -4187,7 +4249,7 @@ class DiffusionPipelineWrapper:
                                   height=self._inference_height,
                                   enabled=user_args.sada,
                                   **self._get_sada_args(user_args)), \
-                    _denoise_range(self._pipeline, user_args.denoising_start, user_args.denoising_end):
+                    _denoise_range_mod.denoise_range(self._pipeline, user_args.denoising_start, user_args.denoising_end):
 
                 if self._parsed_adetailer_detector_uris:
                     return generate_asdff()
@@ -4430,7 +4492,7 @@ class DiffusionPipelineWrapper:
                 self._sigmas_eval,
                 'refiner',
                 self._sdxl_refiner_pipeline,
-                pipeline_args.get('num_inference_steps', _constants.DEFAULT_INFERENCE_STEPS)
+                pipeline_args.get('num_inference_steps', _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)
             )
         )
 
@@ -4460,9 +4522,9 @@ class DiffusionPipelineWrapper:
                 pipeline_output, output_type, user_args, pipeline_args
             )
 
-    def _get_sd3_ras_args(self, user_args) -> _RASArgs | None:
+    def _get_sd3_ras_args(self, user_args) -> _ras.RASArgs | None:
         if user_args.ras:
-            ras_args = _RASArgs(
+            ras_args = _ras.RASArgs(
                 num_inference_steps=user_args.inference_steps,
                 patch_size=self._pipeline.transformer.config.patch_size,
                 sample_ratio=_types.default(user_args.ras_sample_ratio, _constants.DEFAULT_RAS_SAMPLE_RATIO),
@@ -4487,20 +4549,9 @@ class DiffusionPipelineWrapper:
             ras_args = None
         return ras_args
 
-    def _get_sada_args(self, user_args: DiffusionArguments) -> dict:
-        model_defaults = _util.get_sada_model_defaults(self.model_type)
-
-        return {
-            'max_downsample': _types.default(user_args.sada_max_downsample, model_defaults['max_downsample']),
-            'sx': _types.default(user_args.sada_sx, model_defaults['sx']),
-            'sy': _types.default(user_args.sada_sy, model_defaults['sy']),
-            'acc_range': _types.default(user_args.sada_acc_range, model_defaults['acc_range']),
-            'lagrange_term': _types.default(user_args.sada_lagrange_term, model_defaults['lagrange_term']),
-            'lagrange_int': user_args.sada_lagrange_int or model_defaults['lagrange_int'],
-            'lagrange_step': user_args.sada_lagrange_step or model_defaults['lagrange_step'],
-            'max_fix': _types.default(user_args.sada_max_fix, model_defaults['max_fix']),
-            'max_interval': _types.default(user_args.sada_max_interval, model_defaults['max_interval']),
-        }
+    def _get_sada_args(self, user_args: _arguments.DiffusionArguments) -> dict:
+        import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+        return _featuredefaults.sada_values(user_args, self.model_type)
 
     def recall_main_pipeline(self) -> _pipelines.PipelineCreationResult:
         """
@@ -4578,7 +4629,7 @@ class DiffusionPipelineWrapper:
         except ValueError as e:
             raise _pipelines.UnsupportedPipelineConfigError(str(e)) from e
 
-    def _lazy_init_pipeline(self, args: DiffusionArguments):
+    def _lazy_init_pipeline(self, args: _arguments.DiffusionArguments):
 
         pag = (args.pag_scale is not None or args.pag_adaptive_scale is not None
                or bool(args.pag_applied_layers))
@@ -4864,14 +4915,14 @@ class DiffusionPipelineWrapper:
                 )
         return None
 
-    def _get_prompt_weighter(self, args: DiffusionArguments):
+    def _get_prompt_weighter(self, args: _arguments.DiffusionArguments):
         # prioritize in descending order
         return self._default_prompt_weighter(
             args.prompt,
             args.prompt_weighter_uri
         )
 
-    def _get_second_model_prompt_weighter(self, args: DiffusionArguments):
+    def _get_second_model_prompt_weighter(self, args: _arguments.DiffusionArguments):
         # prioritize in descending order
         return self._default_prompt_weighter(
             args.second_model_prompt,
@@ -4972,7 +5023,7 @@ class DiffusionPipelineWrapper:
             self,
             images: _types.Images,
             processor_uris: _types.OptionalUris,
-            user_args: DiffusionArguments) -> list[PIL.Image.Image]:
+            user_args: _arguments.DiffusionArguments) -> list[PIL.Image.Image]:
         """
         Process images decoded from latents using configured image processors.
         
@@ -5025,7 +5076,7 @@ class DiffusionPipelineWrapper:
             return self._resize_images_to_user_dimensions(images, user_args)
 
     @staticmethod
-    def _calc_image_target_size(image: PIL.Image.Image, user_args: DiffusionArguments):
+    def _calc_image_target_size(image: PIL.Image.Image, user_args: _arguments.DiffusionArguments):
         if user_args.width is not None and user_args.height is not None:
             target_size = (user_args.width, user_args.height)
         elif user_args.width is not None:
@@ -5039,14 +5090,14 @@ class DiffusionPipelineWrapper:
     def _create_pipeline_result(self,
                                 pipeline_output,
                                 output_type: str = 'pil',
-                                user_args: DiffusionArguments = None,
+                                user_args: _arguments.DiffusionArguments = None,
                                 pipeline_kwargs: dict = None) -> PipelineWrapperResult:
         """
         Create a PipelineWrapperResult from pipeline output and process output latents if needed.
 
         :param pipeline_output: The output from a diffusers pipeline call
         :param output_type: The output type that was used ('pil' or 'latent')
-        :param user_args: DiffusionArguments to get processor URIs from
+        :param user_args: _arguments.DiffusionArguments to get processor URIs from
         :param pipeline_kwargs: Pipeline keyword arguments, used for dimension prioritization
         :return: PipelineWrapperResult instance with processed latents if applicable
         """
@@ -5183,7 +5234,7 @@ class DiffusionPipelineWrapper:
         # Create and return the result object at the end
         return PipelineWrapperResult(images=final_images, latents=final_latents)
 
-    def _argument_help_check(self, args: DiffusionArguments):
+    def _argument_help_check(self, args: _arguments.DiffusionArguments):
         scheduler_help = _help.scheduler_is_help(args.scheduler_uri)
         second_model_scheduler_help = _help.scheduler_is_help(args.second_model_scheduler_uri)
         text_encoder_help = _help.text_encoder_is_help(self.text_encoder_uris)
@@ -5283,7 +5334,7 @@ class DiffusionPipelineWrapper:
             slicing=args.vae_slicing
         )
 
-    def _auto_denoise_range_check(self, args: DiffusionArguments):
+    def _auto_denoise_range_check(self, args: _arguments.DiffusionArguments):
         if _enums.model_type_is_sdxl(self._model_type):
 
             have_latent_input = any(
@@ -5315,7 +5366,7 @@ class DiffusionPipelineWrapper:
                         'with image inputs for img2img, it can only accept latents.'
                     )
 
-    def _auto_latents_check(self, args: DiffusionArguments):
+    def _auto_latents_check(self, args: _arguments.DiffusionArguments):
         if args.output_latents:
             if self.adetailer_detector_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -5345,7 +5396,7 @@ class DiffusionPipelineWrapper:
                     'Stable Cascade does not support accepting latents as input.'
                 )
 
-    def _auto_ras_check(self, args: DiffusionArguments):
+    def _auto_ras_check(self, args: _arguments.DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('ras_'):
                 value = getattr(args, prop)
@@ -5401,7 +5452,7 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'RAS start step must be less than or equal to end step.')
 
-    def _auto_deep_cache_check(self, args: DiffusionArguments):
+    def _auto_deep_cache_check(self, args: _arguments.DiffusionArguments):
         # Auto-enable deep_cache if any deep_cache_ parameters are set
         for prop in args.__dict__.keys():
             if prop.startswith('deep_cache_'):
@@ -5428,7 +5479,7 @@ class DiffusionPipelineWrapper:
                     args.sdxl_refiner_deep_cache = True
                     break
 
-    def _auto_hi_diffusion_check(self, args: DiffusionArguments):
+    def _auto_hi_diffusion_check(self, args: _arguments.DiffusionArguments):
         if args.hi_diffusion:
             if args.spectrum:
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -5454,7 +5505,7 @@ class DiffusionPipelineWrapper:
                     'HiDiffusion no-window-attention option is only supported when HiDiffusion is enabled.'
                 )
 
-    def _auto_sada_check(self, args: DiffusionArguments):
+    def _auto_sada_check(self, args: _arguments.DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('sada_'):
                 value = getattr(args, prop)
@@ -5510,7 +5561,7 @@ class DiffusionPipelineWrapper:
                         'SADA lagrange_step must be divisible by lagrange_int'
                     )
 
-    def _auto_dype_check(self, args: DiffusionArguments):
+    def _auto_dype_check(self, args: _arguments.DiffusionArguments):
         if args.dype_method is not None or args.dype_base_resolution is not None or \
                 args.dype_mscale is not None or \
                 args.dype_axis_scaling is not None:
@@ -5554,7 +5605,7 @@ class DiffusionPipelineWrapper:
                 'DyPE cannot be used simultaneously with '
                 f'{_textprocessing.oxford_comma(conflicts, "or")}.')
 
-    def _auto_tea_cache_check(self, args: DiffusionArguments):
+    def _auto_tea_cache_check(self, args: _arguments.DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('tea_cache_'):
                 value = getattr(args, prop)
@@ -5588,7 +5639,7 @@ class DiffusionPipelineWrapper:
                 )
 
     @staticmethod
-    def _auto_cache_dit_check(args: DiffusionArguments):
+    def _auto_cache_dit_check(args: _arguments.DiffusionArguments):
         if args.dype_method is not None or args.dype_base_resolution is not None or \
                 args.dype_mscale is not None or \
                 args.dype_axis_scaling is not None:
@@ -5611,7 +5662,7 @@ class DiffusionPipelineWrapper:
                 )
 
     @contextlib.contextmanager
-    def _regione_call_context(self, pipeline, user_args: DiffusionArguments):
+    def _regione_call_context(self, pipeline, user_args: _arguments.DiffusionArguments):
         try:
             with _regione.regione_context(
                     pipeline, self._regione_settings(user_args, pipeline)):
@@ -5620,7 +5671,7 @@ class DiffusionPipelineWrapper:
             raise _pipelines.UnsupportedPipelineConfigError(str(e)) from e
 
     def _regione_settings(self,
-                          args: DiffusionArguments,
+                          args: _arguments.DiffusionArguments,
                           pipeline) -> _regione.RegionESettings | None:
         if not _diffusion_option_enabled(args, 'regione'):
             return None
@@ -5634,7 +5685,7 @@ class DiffusionPipelineWrapper:
             erosion_dilation=args.regione_erosion_dilation,
         )
 
-    def _auto_regione_check(self, args: DiffusionArguments):
+    def _auto_regione_check(self, args: _arguments.DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('regione_'):
                 value = getattr(args, prop)
@@ -5666,13 +5717,15 @@ class DiffusionPipelineWrapper:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'RegionE does not support group offloading.')
 
-        args.inference_steps = _regione.resolve_regione_inference_step_count(
-            args.inference_steps)
-        steps = args.inference_steps
-        if steps != _regione.REGIONE_INFERENCE_STEPS:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'RegionE requires --inference-steps {_regione.REGIONE_INFERENCE_STEPS} '
-                f'(got {steps}).')
+        requested_steps = args.inference_steps
+        args.inference_steps = _regione.REGIONE_INFERENCE_STEPS
+        if (requested_steps is not None
+                and requested_steps != _regione.REGIONE_INFERENCE_STEPS):
+            _messages.warning(
+                'RegionE requires '
+                f'{_regione.REGIONE_INFERENCE_STEPS} inference steps. '
+                f'--inference-steps {requested_steps} was changed to '
+                f'{_regione.REGIONE_INFERENCE_STEPS}.')
 
         if not args.images and not args.reference_images:
             raise _pipelines.UnsupportedPipelineConfigError(
@@ -5701,7 +5754,7 @@ class DiffusionPipelineWrapper:
                 'RegionE cannot be used simultaneously with '
                 f'{_textprocessing.oxford_comma(conflicts, "or")}.')
 
-    def _spectrum_settings(self, args: DiffusionArguments) -> _spectrum.SpectrumSettings | None:
+    def _spectrum_settings(self, args: _arguments.DiffusionArguments) -> _spectrum.SpectrumSettings | None:
         if not args.spectrum:
             return None
         return _spectrum.SpectrumSettings(
@@ -5715,10 +5768,24 @@ class DiffusionPipelineWrapper:
             flex_window=float(_types.default(
                 args.spectrum_flex_window, _constants.DEFAULT_SPECTRUM_FLEX_WINDOW)),
             fallback_steps=int(_types.default(
-                args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS)),
+                args.inference_steps, _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)),
         )
 
-    def _auto_spectrum_check(self, args: DiffusionArguments):
+    def _auto_pipeline_prompt_enhance_check(self, args: _arguments.DiffusionArguments):
+        import dgenerate.pipelinewrapper.promptenhance as _promptenhance
+
+        _promptenhance.ensure_pipeline_prompt_enhance_enabled(args)
+        if isinstance(args.pipeline_prompt_enhance, str):
+            args.pipeline_prompt_enhance = _promptenhance.resolve_system_prompt(
+                args.pipeline_prompt_enhance)
+        if not _promptenhance.pipeline_prompt_enhance_requested(args):
+            return
+        if not _enums.model_type_supports_pipeline_prompt_enhance(self.model_type):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '--pipeline-prompt-enhance is only supported for '
+                f'--model-type {_textprocessing.oxford_comma(_enums.PIPELINE_PROMPT_ENHANCE_MODEL_TYPES, "and")}.')
+
+    def _auto_spectrum_check(self, args: _arguments.DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('spectrum_'):
                 value = getattr(args, prop)
@@ -5783,7 +5850,7 @@ class DiffusionPipelineWrapper:
                 'Spectrum flex window must be at least 0.'
             )
 
-    def _auto_freeu_check(self, args: DiffusionArguments):
+    def _auto_freeu_check(self, args: _arguments.DiffusionArguments):
         if args.freeu_params is not None:
             if not _enums.model_type_supports_freeu(self._model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -5967,7 +6034,7 @@ class DiffusionPipelineWrapper:
 
         return self._pipeline.image_processor.postprocess(decoded_images)
 
-    def __call__(self, args: DiffusionArguments | None = None, **kwargs) -> PipelineWrapperResult:
+    def __call__(self, args: _arguments.DiffusionArguments | None = None, **kwargs) -> PipelineWrapperResult:
         """
         Call the pipeline and generate a result.
 
@@ -5990,7 +6057,7 @@ class DiffusionPipelineWrapper:
         self._inpaint_crop_info = None
         self._padding_mask_crop = None
 
-        copy_args = DiffusionArguments()
+        copy_args = _arguments.DiffusionArguments()
 
         if args is not None:
             copy_args.set_from(args)
@@ -6001,8 +6068,13 @@ class DiffusionPipelineWrapper:
             copy_args.cache_dit = True
 
         self._auto_spectrum_check(copy_args)
+        self._auto_pipeline_prompt_enhance_check(copy_args)
         self._auto_dype_check(copy_args)
         self._auto_cache_dit_check(copy_args)
+        import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+        _featuredefaults.apply_known_defaults(
+            copy_args, self._model_type,
+            refiner=self._sdxl_refiner_uri is not None)
         spectrum_token = _spectrum.push(self._spectrum_settings(copy_args))
         try:
             if _enums.model_type_is_video(self._model_type):
@@ -6039,6 +6111,9 @@ class DiffusionPipelineWrapper:
                                     copy_args.get_pipeline_wrapper_kwargs()))
 
             self._lazy_init_pipeline(copy_args)
+            if copy_args.pipeline_prompt_enhance:
+                import dgenerate.pipelinewrapper.promptenhance as _promptenhance
+                _promptenhance.enhance_diffusion_arguments(self, copy_args)
             self._auto_regione_check(copy_args)
             self._apply_pag_applied_layers(self._pipeline, copy_args.pag_applied_layers)
             self._apply_pag_applied_layers(
@@ -6072,7 +6147,7 @@ class DiffusionPipelineWrapper:
                     else:
                         result = self._call_torch(pipeline_args=pipeline_args,
                                                   user_args=copy_args)
-                except _DenoiseRangeError as e:
+                except _denoise_range_mod.DenoiseRangeError as e:
                     raise _pipelines.UnsupportedPipelineConfigError(e) from e
             finally:
                 self._apply_pag_applied_layers(self._pipeline, None)

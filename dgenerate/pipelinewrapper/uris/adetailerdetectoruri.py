@@ -30,7 +30,7 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
 
 _lora_uri_parser = _textprocessing.ConceptUriParser(
     'Adetailer Detector', [

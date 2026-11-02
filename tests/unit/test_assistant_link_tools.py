@@ -228,6 +228,7 @@ class TestLinkTools(unittest.TestCase):
             'stabilityai/stable-diffusion-x4-upscaler': 'upscaler-x4',
             'stabilityai/sd-x2-latent-upscaler': 'upscaler-x2',
             'Tongyi-MAI/Z-Image-Turbo': 'z-image',
+            'Tongyi-MAI/Z-Image-Omni-Base': 'z-image-omni',
             'krea/Krea-2-Turbo': 'krea2',
             'Comfy-Org/Krea-2': 'krea2',
             'tencent/HunyuanImage-2.1': 'hyimage-21',

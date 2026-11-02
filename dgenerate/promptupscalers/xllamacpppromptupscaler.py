@@ -110,17 +110,23 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
 
     The "max-length" argument is the max number of new tokens. It defaults to 100.
 
-    The "temperature", "top-k", "top-p", and "min-p" arguments are the sampling
-    settings passed to the model.
+    The "temperature", "top-k", "top-p", "min-p", and "presence-penalty"
+    arguments are the sampling settings passed to the model.
+    "presence-penalty" lowers the chance of tokens that have already appeared.
+    0 leaves them alone. A positive value reduces repetition. A negative
+    value encourages it.
 
     The "thinking" argument enables a thought before the reply on models whose
     chat template supports it, such as Qwen and MiniCPM. It defaults to false
     so the reply is the prompt. Templates that do not use this flag ignore it.
 
-    The "system" argument is the chat system message.
+    The "system" argument is the chat system message. A value of "file:path.txt" reads that
+    message from a UTF-8 text file. Shell-quote the path when it contains spaces.
 
     The "preamble" argument is text placed in front of the user prompt. It is
-    removed from the generated text when it is echoed back.
+    removed from the generated text when it is echoed back. A value of "file:path.txt" reads
+    that preamble from a UTF-8 text file. Shell-quote the path when it contains
+    spaces.
 
     The "remove-prompt" argument specifies whether to remove the original prompt
     from the generated text.
@@ -132,21 +138,21 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
     or an integer, and defaults to "auto".
 
     NOWRAP!
-    * "auto": offload as many layers as fit in VRAM.
-    * "all": offload every layer onto the backend compiled into the installed
+    - "auto": offload as many layers as fit in VRAM.
+    - "all": offload every layer onto the backend compiled into the installed
       wheel (Metal, CUDA, ROCm, or Vulkan).
-    * 0: keep the model on the CPU.
-    * A positive integer: offload that many layers.
+    - 0: keep the model on the CPU.
+    - A positive integer: offload that many layers.
 
     The "block-regex" argument is a case-insensitive regular expression.
     Matching prompts are regenerated up to "max-attempts" times.
 
-    The "context-tokens" argument is the context window (``n_ctx``).
+    The "context-tokens" argument is the context window (n_ctx).
 
     The "smart-truncate" argument removes an incomplete trailing sentence
     using spaCy.
 
-    The "cleanup-config" argument is a ``.json``, ``.toml``, or ``.yaml``
+    The "cleanup-config" argument is a .json, .toml, or .yaml
     file of extra substitutions applied to the model output.
     """
 
@@ -176,6 +182,7 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
                  top_k: int = 40,
                  top_p: float = 0.4,
                  min_p: float = 0.0,
+                 presence_penalty: float = 0.0,
                  thinking: bool = False,
                  system: str | None = None,
                  preamble: str | None = None,
@@ -196,6 +203,9 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
                          cleanup_mode='magic' if 'magicprompt' in model.lower() else 'other',
                          smart_truncate=smart_truncate,
                          cleanup_config=cleanup_config)
+
+        system = self._resolve_file_argument(system, 'system')
+        preamble = self._resolve_file_argument(preamble, 'preamble')
 
         if xllamacpp is None:
             raise _exceptions.PromptUpscalerError(
@@ -228,6 +238,12 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
 
         if min_p > 1.0:
             raise self.argument_error('Argument "min-p" may not be greater than 1.')
+
+        try:
+            presence_penalty = float(presence_penalty)
+        except (TypeError, ValueError):
+            raise self.argument_error(
+                'Argument "presence-penalty" must be a number.') from None
 
         try:
             gpu_layers = _resolve_gpu_layers(gpu_layers)
@@ -286,6 +302,7 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
             params.sampling.top_k = top_k
             params.sampling.top_p = top_p
             params.sampling.min_p = min_p
+            params.sampling.penalty_present = presence_penalty
             params.hostname = '127.0.0.1'
             params.port = _free_localhost_port()
             # llama.cpp defaults to info (3), which prints model load, slot, and timing lines on stderr.
@@ -315,6 +332,7 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
         self._top_k = top_k
         self._top_p = top_p
         self._min_p = min_p
+        self._presence_penalty = presence_penalty
         self._thinking = thinking
         self._system = system
         self._variations = variations
@@ -355,6 +373,7 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
             'top_k': self._top_k,
             'top_p': self._top_p,
             'min_p': self._min_p,
+            'presence_penalty': self._presence_penalty,
             'messages': messages,
             # Templates that do not use this variable ignore it.
             'chat_template_kwargs': {'enable_thinking': self._thinking},

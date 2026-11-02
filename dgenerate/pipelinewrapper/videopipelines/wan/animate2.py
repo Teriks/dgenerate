@@ -31,14 +31,11 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
+import dgenerate.pipelinewrapper.sampling as _sampling
 import dgenerate.types as _types
+import dgenerate.pipelinewrapper.videopipelines.media as _media
 import dgenerate.pipelinewrapper.videopipelines as _vp
-from .common import (
-    _fit_output_media,
-    _require_image_encoder,
-    _spatial_multiple,
-    _temporal_factor,
-)
+import dgenerate.pipelinewrapper.videopipelines.wan.common as _common
 
 
 def _animate2_resampled_count(num_frames: int,
@@ -124,24 +121,26 @@ def _call_wan_animate_2(wrapper, user_args):
             'Wan-Animate-2 needs wan-driving= in --image-seeds.')
 
     pipe, held = _vp._video_pipeline(wrapper, 'wan-animate-2', user_args.scheduler_uri)
-    _require_image_encoder(pipe, 'wan-animate-2')
+    _common._require_image_encoder(pipe, 'wan-animate-2')
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
-    align = _spatial_multiple(pipe)
-    width, height = _vp._force_output_size_alignment(
+    align = _common._spatial_multiple(pipe)
+    width, height = _media._force_output_size_alignment(
         width, height, align, 'Wan-Animate-2')
-    width, height = _fit_output_media(
+    width, height = _common._fit_output_media(
         user_args, 'wan_driving_video_frames', [],
         width, height, align, 'Wan-Animate-2 driving clip')
 
     distilled = held.family == 'wan-animate-2-distilled'
-    steps = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
-    if steps == _constants.DEFAULT_INFERENCE_STEPS:
-        steps = _constants.DEFAULT_WAN_ANIMATE_2_DISTILLED_INFERENCE_STEPS if distilled else _constants.DEFAULT_WAN_ANIMATE_2_INFERENCE_STEPS
-        user_args.inference_steps = steps
+    omitted_steps = user_args.inference_steps is None
+    steps_fallback = (
+        _constants.DEFAULT_WAN_ANIMATE_2_DISTILLED_INFERENCE_STEPS
+        if distilled else _constants.DEFAULT_WAN_ANIMATE_2_INFERENCE_STEPS)
+    steps = _sampling.resolved_inference_steps(
+        pipe, user_args, fallback=steps_fallback)
+    if omitted_steps:
         _messages.debug_log(
-            f'Wan-Animate-2 default inference steps '
-            f'{_constants.DEFAULT_INFERENCE_STEPS} was replaced with {steps}.')
+            f'Wan-Animate-2 using default inference steps {steps}.')
 
     fps = float(user_args.video_fps or _constants.DEFAULT_WAN_ANIMATE_2_FPS)
     segment = int(_types.default(
@@ -154,7 +153,7 @@ def _call_wan_animate_2(wrapper, user_args):
     seen = _animate2_resampled_count(
         len(user_args.wan_driving_video_frames), source_fps, fps)
     fitted = _fit_wan_animate_2_segment(
-        seen, segment, prev, _temporal_factor(pipe))
+        seen, segment, prev, _common._temporal_factor(pipe))
     if fitted != segment:
         if source_fps is not None and float(source_fps) != float(fps):
             clip = (
@@ -195,7 +194,7 @@ def _call_wan_animate_2(wrapper, user_args):
 
     _vp._set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
     videos = pipe(**kwargs)
-    frames = _vp.frames_from_output(videos)
+    frames = _media.frames_from_output(videos)
     return frames, None, None, fps
 
 

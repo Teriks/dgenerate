@@ -28,14 +28,19 @@ Used to separate unique latents processor chains
 when running processors on batched latents input.
 """
 
-DEFAULT_INFERENCE_STEPS: int = 30
+DEFAULT_FALLBACK_INFERENCE_STEPS: int = 30
 """
-Default value for inference steps.
+Fallback step count when ``--inference-steps`` is omitted and no model rule
+applies, or when a pipeline ``__call__`` has no ``num_inference_steps`` default.
+
+Also used in LTX distilled step warnings for message wording only.
 """
 
-DEFAULT_GUIDANCE_SCALE: float = 5.0
+DEFAULT_FALLBACK_GUIDANCE_SCALE: float = 5.0
 """
-Default value for guidance scale.
+Fallback guidance when ``--guidance-scales`` is omitted and no model rule
+applies, or when a pipeline has no ``guidance_scale`` default (Wan, legacy
+LTX-Video, image wrapper).
 """
 
 DEFAULT_IMAGE_SEED_STRENGTH: float = 0.8
@@ -588,16 +593,6 @@ DEFAULT_WAN_VAE_DTYPE: str = 'float32'
 Default Wan VAE dtype. AutoencoderKLWan is fragile in bfloat16.
 """
 
-DEFAULT_WAN_ANIMATE_INFERENCE_STEPS: int = 20
-"""
-Default inference steps for Wan-Animate when the user left the global default.
-"""
-
-DEFAULT_WAN_ANIMATE_GUIDANCE_SCALE: float = 1.0
-"""
-Default guidance scale for Wan-Animate when the user left the global default.
-"""
-
 DEFAULT_WAN_ANIMATE_SEGMENT_FRAME_LENGTH: int = 77
 """
 Default Wan-Animate segment length in frames.
@@ -610,12 +605,12 @@ Default number of frames Wan-Animate carries over from the previous segment.
 
 DEFAULT_WAN_ANIMATE_2_INFERENCE_STEPS: int = 40
 """
-Default inference steps for Wan-Animate-2 when the user left the global default.
+Fallback when ``--inference-steps`` is omitted on Wan-Animate-2 (modular pipeline has no step default).
 """
 
 DEFAULT_WAN_ANIMATE_2_DISTILLED_INFERENCE_STEPS: int = 10
 """
-Default inference steps for distilled Wan-Animate-2 when the user left the global default.
+Fallback when ``--inference-steps`` is omitted on distilled Wan-Animate-2.
 """
 
 DEFAULT_WAN_ANIMATE_2_SEGMENT_FRAME_LENGTH: int = 81
@@ -631,6 +626,12 @@ Default number of frames Wan-Animate-2 carries over from the previous segment.
 DEFAULT_LTX_FPS: float = 24.0
 """
 Default frames per second for LTX video.
+"""
+
+DEFAULT_LTX_PROMPT_ENHANCER: str = 'google/gemma-4-E2B-it'
+"""
+Default ``--ltx-prompt-enhancer`` model when ``--pipeline-prompt-enhance`` is on
+and no enhancer URI was given.
 """
 
 PIPELINE_CACHE_MEMORY_CONSTRAINTS: list[str] = ['pipeline_size > (available * 0.75)']

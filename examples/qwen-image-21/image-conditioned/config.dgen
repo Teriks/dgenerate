@@ -8,7 +8,7 @@ Qwen/Qwen-Image-2.1
 --image-seeds ../../media/monalisa.png
 --dtype bfloat16
 --model-sequential-offload
---qwen21-output-resolution 1024
+--qwen21-resolution 1024
 --gen-seeds 1
 --output-path qwen-image-21-conditioned
 --prompts "Keep the subject, but place it in a snowy mountain landscape at sunrise"

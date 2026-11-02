@@ -21,8 +21,8 @@
 
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-from dgenerate.pipelinewrapper.uris import lorauri as _lorauri
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
+import dgenerate.pipelinewrapper.uris.lorauri as _lorauri
 
 _ic_lora_uri_parser = _textprocessing.ConceptUriParser(
     'IC-LoRA', ['scale', 'attention', 'downscale', 'revision', 'subfolder', 'weight-name'])

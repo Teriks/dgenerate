@@ -34,8 +34,6 @@ import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.pipelinewrapper.util as _util
-import dgenerate.pipelinewrapper.videopipelines as _vp
-
 
 _DEFAULT_QUANT_NAMES = {
     'transformer',
@@ -86,9 +84,9 @@ def _load_quantized_module(component_class, model_path, subfolder, revision, var
                            offload=False):
     module_name = getattr(component_class, '__module__', '')
     transformers_module = module_name.startswith('transformers')
-    config = _vp._quantizer_config(quantizer_uri, dtype, transformers_module)
-    from dgenerate.pipelinewrapper.quant_skips import apply_architecture_quant_skips
-    apply_architecture_quant_skips(config, component_class)
+    config = _quantizer_config(quantizer_uri, dtype, transformers_module)
+    import dgenerate.pipelinewrapper.quant_skips as _quant_skips
+    _quant_skips.apply_architecture_quant_skips(config, component_class)
     torch_dtype = _enums.get_torch_dtype(dtype) if isinstance(dtype, _enums.DataType) else None
     _messages.debug_log(
         f'Quantizing {component_class.__name__} from "{model_path}" '
@@ -166,7 +164,7 @@ def _quantized_classic_modules(model_path, revision, variant, subfolder, dtype,
             continue
         component_class = _resolve_index_class(library_name, class_name)
         folder = f'{subfolder}/{name}' if subfolder else name
-        modules[name] = _vp._load_quantized_module(
+        modules[name] = _load_quantized_module(
             component_class, model_path, folder, revision, variant, dtype,
             quantizer_uri, auth_token, local_files_only, device_map, offload=offload)
     return modules

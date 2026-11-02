@@ -460,10 +460,10 @@ GGUF: --transformer https://huggingface.co/city96/Wan2.1-T2V-14B-gguf/blob/main/
 with parent Wan-AI/Wan2.1-T2V-14B-Diffusers. \
 Wan-Animate is --model-type wan-animate, Wan-AI/Wan2.2-Animate-14B-Diffusers, a character still plus \
 wan-pose= and wan-face=, or wan-driving= with --wan-animate-preprocess. --video-fps 30. \
-Leaving steps at 30 selects 20 and leaving guidance at 5 selects 1. --video-lengths is rejected. \
+Omitting steps uses 20 and omitting guidance uses 1 (WanAnimatePipeline). --video-lengths is rejected. \
 replace mode needs wan-background= and mask=. \
 Wan-Animate-2 is --model-type wan-animate-2, a character still plus wan-driving= only. \
-Wan-AI/Wan2.2-Animate-2-14B-Diffusers uses 40 steps. The distilled repo uses 10. \
+Omitting steps uses 40 on Wan-AI/Wan2.2-Animate-2-14B-Diffusers and 10 on the distilled repo. \
 --video-fps 24. --video-lengths is rejected. No pose, face, or background keywords.
 - 4x upscaling with diffusion: stabilityai/stable-diffusion-x4-upscaler, --model-type upscaler-x4 --variant fp16. Public, no HF_TOKEN.
 - 2x latent upscaling: stabilityai/sd-x2-latent-upscaler, --model-type upscaler-x2. Public, no HF_TOKEN.

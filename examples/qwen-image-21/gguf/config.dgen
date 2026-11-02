@@ -9,7 +9,7 @@ Qwen/Qwen-Image-2.1
 --transformer https://huggingface.co/molbal/Qwen-Image-2.1-GGUF/blob/main/qwen_image_2.1_Q4_0.gguf
 --dtype bfloat16
 --model-sequential-offload
---qwen21-output-resolution 1024
+--qwen21-resolution 1024
 --gen-seeds 1
 --output-path qwen-image-21-gguf
 --prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

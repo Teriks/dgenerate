@@ -34,9 +34,11 @@ import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.pipelinewrapper.util as _putil
+import dgenerate.pipelinewrapper.videopipelines.loading as _loading
+import dgenerate.pipelinewrapper.videopipelines.media as _media
 import dgenerate.pipelinewrapper.videopipelines as _vp
-from .components import _is_missing_ltx_component
-from .neighborhood import _ltx_diffusion_natten_processor
+import dgenerate.pipelinewrapper.videopipelines.ltx.components as _components
+import dgenerate.pipelinewrapper.videopipelines.ltx.neighborhood as _neighborhood
 
 
 # Denoiser weights can leave the GPU before the diffusion decoder runs.
@@ -144,7 +146,7 @@ def _load_ltx_diffusion_decoder(wrapper, pipe, uri_string=None):
         revision = uri.revision
         subfolder = uri.subfolder or subfolder
         dtype = _enums.get_torch_dtype(uri.dtype or wrapper._dtype) or torch.bfloat16
-    if uri_string is None and _is_missing_ltx_component(
+    if uri_string is None and _components._is_missing_ltx_component(
             None, model_path, subfolder, LTX2VideoDiffusionDecoderModel.config_name):
         raise _pipelines.UnsupportedPipelineConfigError(
             f'The LTX checkpoint at "{wrapper.model_path}" does not contain a diffusion decoder. '
@@ -159,7 +161,7 @@ def _load_ltx_diffusion_decoder(wrapper, pipe, uri_string=None):
             revision=revision,
             local_files_only=bool(wrapper._local_files_only))
     except Exception as e:
-        if uri_string is None and _is_missing_ltx_component(
+        if uri_string is None and _components._is_missing_ltx_component(
                 e, model_path, subfolder, LTX2VideoDiffusionDecoderModel.config_name):
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'The LTX checkpoint at "{wrapper.model_path}" does not contain a diffusion decoder. '
@@ -243,7 +245,7 @@ def _enable_ltx_fallback_tiling(decoder, decode_tile: str | None = None) -> None
 
 
 def _prepare_ltx_diffusion_decoder(decoder, decode_tile: str | None = None):
-    processor = _ltx_diffusion_natten_processor()
+    processor = _neighborhood._ltx_diffusion_natten_processor()
     decoder._dgenerate_ltx_fallback_tiles = bool(getattr(processor, 'tiles', False))
     if (decoder._dgenerate_ltx_fallback_tiles or decode_tile) and hasattr(decoder, 'enable_tiling'):
         _enable_ltx_fallback_tiling(decoder, decode_tile)
@@ -367,7 +369,7 @@ def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator, decode_tile=N
             _load_ltx_diffusion_decoder(wrapper, pipe, diffusion_decoder_uri), decode_tile)
         decode_pipe = LTX2VideoDiffusionDecodePipeline(
             diffusion_decoder=decoder, scheduler=pipe.scheduler, vae=pipe.vae)
-        _vp._apply_video_offload(
+        _loading._apply_video_offload(
             decode_pipe, wrapper.device,
             bool(wrapper.model_cpu_offload), bool(wrapper.model_sequential_offload),
             bool(getattr(wrapper, 'model_group_offload', False)))
@@ -388,4 +390,4 @@ def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator, decode_tile=N
             generator=generator,
             output_type='pil',
             return_dict=False)[0]
-    return _vp.frames_from_output(frames)
+    return _media.frames_from_output(frames)

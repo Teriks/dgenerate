@@ -6,15 +6,20 @@
     Used to separate unique latents processor chains 
     when running processors on batched latents input.
 
-.. data:: DEFAULT_INFERENCE_STEPS
+.. data:: DEFAULT_FALLBACK_INFERENCE_STEPS
     :annotation: = 30
 
-    Default value for inference steps.
+    Fallback step count when ``--inference-steps`` is omitted and no model rule
+    applies, or when a pipeline ``__call__`` has no ``num_inference_steps`` default.
 
-.. data:: DEFAULT_GUIDANCE_SCALE
+    Also used in LTX distilled step warnings for message wording only.
+
+.. data:: DEFAULT_FALLBACK_GUIDANCE_SCALE
     :annotation: = 5.0
 
-    Default value for guidance scale.
+    Fallback guidance when ``--guidance-scales`` is omitted and no model rule
+    applies, or when a pipeline has no ``guidance_scale`` default (Wan, legacy
+    LTX-Video, image wrapper).
 
 .. data:: DEFAULT_IMAGE_SEED_STRENGTH
     :annotation: = 0.8
@@ -80,6 +85,26 @@
     :annotation: = 1024
 
     Default output height for Kolors txt2img.
+
+.. data:: DEFAULT_HYDIT_OUTPUT_WIDTH
+    :annotation: = 1024
+
+    Default output width for Hunyuan-DiT txt2img.
+
+.. data:: DEFAULT_HYDIT_OUTPUT_HEIGHT
+    :annotation: = 1024
+
+    Default output height for Hunyuan-DiT txt2img.
+
+.. data:: DEFAULT_HYIMAGE21_OUTPUT_WIDTH
+    :annotation: = 2048
+
+    Default output width for HunyuanImage 2.1 txt2img.
+
+.. data:: DEFAULT_HYIMAGE21_OUTPUT_HEIGHT
+    :annotation: = 2048
+
+    Default output height for HunyuanImage 2.1 txt2img.
 
 .. data:: DEFAULT_FLOYD_IF_OUTPUT_WIDTH
     :annotation: = 64
@@ -211,6 +236,103 @@
     :annotation: = 0.6
 
     Default relative L1 threshold for TeaCache (Timestep Embedding Aware Cache) for Flux.
+
+.. data:: DEFAULT_REGIONE_WARMUP_STEP
+    :annotation: = 6
+
+    Default RegionE warmup steps (Flux Kontext preset).
+
+.. data:: DEFAULT_REGIONE_POST_STEP
+    :annotation: = 2
+
+    Default RegionE post steps (Flux Kontext preset).
+
+.. data:: DEFAULT_REGIONE_REFRESH_STEP
+    :annotation: = 16
+
+    Default RegionE mask refresh step (Flux Kontext preset).
+
+.. data:: DEFAULT_REGIONE_THRESHOLD
+    :annotation: = 0.93
+
+    Default RegionE region partition threshold (Flux Kontext preset).
+
+.. data:: DEFAULT_REGIONE_CACHE_THRESHOLD
+    :annotation: = 0.04
+
+    Default RegionE velocity-decay cache threshold (Flux Kontext preset).
+
+.. data:: DEFAULT_REGIONE_EROSION_DILATION
+    :annotation: = True
+
+    Default RegionE mask erosion/dilation flag.
+
+.. data:: DEFAULT_SPECTRUM_WEIGHT
+    :annotation: = 0.5
+
+    Default Spectrum blend weight. ``1`` is the Chebyshev forecast and ``0`` is a
+    one-step Taylor step. ``0.5`` is the robust setting from the project README.
+
+.. data:: DEFAULT_SPECTRUM_ORDER
+    :annotation: = 4
+
+    Default number of Chebyshev polynomials used by Spectrum, not counting ``T_0``.
+
+.. data:: DEFAULT_SPECTRUM_LAMBDA
+    :annotation: = 0.1
+
+    Default ridge penalty for the Spectrum Chebyshev fit.
+
+.. data:: DEFAULT_SPECTRUM_WARMUP_STEPS
+    :annotation: = 2
+
+    Default number of leading denoiser passes Spectrum always runs.
+
+    The paper's 50-step setup uses 5. Two passes is enough to start a forecast on
+    the shorter schedules used here. Raise it when a 50-step sample drifts.
+
+.. data:: DEFAULT_SPECTRUM_WINDOW_SIZE
+    :annotation: = 2.0
+
+    Default initial Spectrum skip interval. ``2`` predicts every other step after warmup.
+
+.. data:: DEFAULT_SPECTRUM_FLEX_WINDOW
+    :annotation: = 0.75
+
+    Default amount added to the Spectrum skip interval after each full pass.
+
+    ``0.75`` is the paper's moderate schedule. ``0`` holds the interval fixed.
+    ``3`` is the paper's aggressive schedule.
+
+.. data:: DEFAULT_DYPE_METHOD
+    :annotation: = 'yarn'
+
+    Default position encoding method used by the DyPE adapter.
+
+.. data:: DYPE_METHODS
+    :annotation: = ('yarn', 'ntk', 'base')
+
+    Position encoding methods exposed by the DyPE adapter.
+
+.. data:: DEFAULT_DYPE_MSCALE
+    :annotation: = 'constant'
+
+    Default YARN attention magnitude scale mode used by the DyPE adapter.
+
+.. data:: DYPE_MSCALES
+    :annotation: = ('constant', 'decay', 'off')
+
+    YARN attention magnitude scale modes exposed by the DyPE adapter.
+
+.. data:: DEFAULT_DYPE_AXIS_SCALING
+    :annotation: = 'shared'
+
+    Default spatial axis scaling mode used by the DyPE adapter.
+
+.. data:: DYPE_AXIS_SCALINGS
+    :annotation: = ('independent', 'shared')
+
+    Spatial axis scaling modes exposed by the DyPE adapter.
 
 .. data:: DEFAULT_RAS_SAMPLE_RATIO
     :annotation: = 0.5
@@ -437,6 +559,67 @@
 
     Maximum interval for optimization for all models.
     Maximum interval between optimizations in the SADA algorithm.
+
+.. data:: DEFAULT_WAN_FPS
+    :annotation: = 16.0
+
+    Default frames per second for Wan text-to-video and image-to-video.
+
+.. data:: DEFAULT_WAN_ANIMATE_FPS
+    :annotation: = 30.0
+
+    Default frames per second for Wan-Animate.
+
+.. data:: DEFAULT_WAN_ANIMATE_2_FPS
+    :annotation: = 24.0
+
+    Default frames per second for Wan-Animate-2.
+
+.. data:: DEFAULT_WAN_VAE_DTYPE
+    :annotation: = 'float32'
+
+    Default Wan VAE dtype. AutoencoderKLWan is fragile in bfloat16.
+
+.. data:: DEFAULT_WAN_ANIMATE_SEGMENT_FRAME_LENGTH
+    :annotation: = 77
+
+    Default Wan-Animate segment length in frames.
+
+.. data:: DEFAULT_WAN_ANIMATE_PREV_SEGMENT_FRAMES
+    :annotation: = 1
+
+    Default number of frames Wan-Animate carries over from the previous segment.
+
+.. data:: DEFAULT_WAN_ANIMATE_2_INFERENCE_STEPS
+    :annotation: = 40
+
+    Fallback when ``--inference-steps`` is omitted on Wan-Animate-2 (modular pipeline has no step default).
+
+.. data:: DEFAULT_WAN_ANIMATE_2_DISTILLED_INFERENCE_STEPS
+    :annotation: = 10
+
+    Fallback when ``--inference-steps`` is omitted on distilled Wan-Animate-2.
+
+.. data:: DEFAULT_WAN_ANIMATE_2_SEGMENT_FRAME_LENGTH
+    :annotation: = 81
+
+    Default Wan-Animate-2 segment length in frames.
+
+.. data:: DEFAULT_WAN_ANIMATE_2_PREV_SEGMENT_FRAMES
+    :annotation: = 1
+
+    Default number of frames Wan-Animate-2 carries over from the previous segment.
+
+.. data:: DEFAULT_LTX_FPS
+    :annotation: = 24.0
+
+    Default frames per second for LTX video.
+
+.. data:: DEFAULT_LTX_PROMPT_ENHANCER
+    :annotation: = 'google/gemma-4-E2B-it'
+
+    Default ``--ltx-prompt-enhancer`` model when ``--pipeline-prompt-enhance`` is on
+    and no enhancer URI was given.
 
 .. data:: PIPELINE_CACHE_MEMORY_CONSTRAINTS
     :annotation: = ['pipeline_size > (available * 0.75)']

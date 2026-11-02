@@ -28,8 +28,8 @@ import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-from dgenerate.pipelinewrapper.uris.lorauri import LoRAUri
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
+import dgenerate.pipelinewrapper.uris.lorauri as _lorauri
 
 _control_lora_uri_parser = _textprocessing.ConceptUriParser(
     'Control LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
@@ -94,9 +94,9 @@ class ControlLoRAUri:
     def __repr__(self):
         return str(self)
 
-    def as_lora_uri(self) -> LoRAUri:
+    def as_lora_uri(self) -> _lorauri.LoRAUri:
         """Same weights as a ``--loras`` URI, for the Flux transformer loader."""
-        return LoRAUri(
+        return _lorauri.LoRAUri(
             model=self.model,
             revision=self.revision,
             subfolder=self.subfolder,
@@ -119,7 +119,7 @@ class ControlLoRAUri:
         parsed = [uri if isinstance(uri, ControlLoRAUri) else ControlLoRAUri.parse(uri)
                   for uri in uris]
         try:
-            LoRAUri.load_on_pipeline(
+            _lorauri.LoRAUri.load_on_pipeline(
                 pipeline,
                 [uri.as_lora_uri() for uri in parsed],
                 fuse_scale=fuse_scale,
@@ -143,10 +143,10 @@ class ControlLoRAUri:
         after this fuse. The clone stays full precision unless ``controlnet``
         is included in ``--quantizer-map``.
         """
-        from dgenerate.pipelinewrapper.pipelines import module_skips_group_offload
-        from dgenerate.pipelinewrapper.safetensorscompat import module_has_comfy_quant
+        import dgenerate.pipelinewrapper.pipelines as _pipelines_mod
+        import dgenerate.pipelinewrapper.safetensorscompat as _safetensorscompat
 
-        if module_skips_group_offload(unet) or module_has_comfy_quant(unet):
+        if _pipelines_mod.module_skips_group_offload(unet) or _safetensorscompat.module_has_comfy_quant(unet):
             raise _exceptions.ControlLoRAUriLoadError(
                 'SD and SDXL control LoRAs are fused into a ControlNet cloned from '
                 'the UNet before quantization. This UNet is already quantized or '

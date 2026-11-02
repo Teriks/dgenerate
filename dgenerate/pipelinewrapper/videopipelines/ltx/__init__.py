@@ -33,43 +33,20 @@ import torch
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.pipelinewrapper.sampling as _sampling
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.pipelinewrapper.util as _putil
 import dgenerate.types as _types
 import dgenerate.pipelinewrapper.videopipelines as _vp
-from ..schedules import (
-    _eval_sigma_expression,
-    _eval_video_timesteps_expression,
-    _forced_scheduler_timesteps,
-    _preserved_scheduler_state,
-)
-from .components import (
-    _check_ltx_component_available,
-    _check_ltx_diffusion_decoder_available,
-    _check_ltx_latent_upsampler_available,
-    _load_ltx_latent_upsampler,
-    _upsample_ltx_latents,
-)
-from .decoder import (
-    _decode_ltx_diffusion,
-    _park_ltx_after_diffusion_decode,
-    _park_ltx_for_diffusion_decode,
-)
-from .conditions import (
-    _fit_ltx_inputs,
-    _ltx_canvas_align,
-    _ltx_conditions,
-    _ltx_image_needs_conditions,
-    _ltx_reference_kwargs,
-    _ltx_temporal_compression,
-    _trim_ltx_clip,
-)
-from .legacy import (
-    _fix_legacy_ltx_condition_schedule,
-    _require_legacy_ltx_schedule,
-    _warn_legacy_ltx_canvas,
-)
+import dgenerate.pipelinewrapper.videopipelines.media as _media
+import dgenerate.pipelinewrapper.videopipelines.quantization as _quantization
+import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
+import dgenerate.pipelinewrapper.videopipelines.ltx.components as _components
+import dgenerate.pipelinewrapper.videopipelines.ltx.conditions as _conditions
+import dgenerate.pipelinewrapper.videopipelines.ltx.decoder as _decoder
+import dgenerate.pipelinewrapper.videopipelines.ltx.legacy as _legacy
+from . import components, conditions, decoder, legacy
 
 
 LTX_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
@@ -216,6 +193,35 @@ def _ltx_pipeline_class(mode: str, family: str = 'ltx2'):
     return classes[mode]
 
 
+def _ltx2_apply_automatic_guidance(
+        guidance: float | None,
+        *,
+        distilled: bool,
+        user_args,
+        user_audio,
+        label: str) -> tuple[float, float]:
+    """Apply LTX-2 automatic guidance when ``guidance_scale`` was omitted."""
+    if guidance is not None:
+        video = float(guidance)
+        audio = float(user_audio) if user_audio is not None else video
+        _messages.debug_log(f'{label}: guidance {video}, audio guidance {audio}.')
+        return video, audio
+
+    if distilled:
+        video = 1.0
+        audio = float(user_audio) if user_audio is not None else video
+        user_args.guidance_scale = video
+        _messages.debug_log(f'{label}: unguided at guidance 1.')
+    else:
+        video = 3.0
+        audio = 7.0 if user_audio is None else float(user_audio)
+        user_args.guidance_scale = video
+        if user_audio is None:
+            user_args.ltx_audio_guidance_scale = audio
+        _messages.debug_log(f'{label}: guidance 3, audio guidance {audio}.')
+    return video, audio
+
+
 def _call_ltx(wrapper, user_args):
     if user_args.reference_video_frames:
         if not getattr(wrapper, 'ltx_ic_lora_uri', None):
@@ -224,7 +230,7 @@ def _call_ltx(wrapper, user_args):
         mode = 'ltx-control'
     elif user_args.end_images or user_args.video_frames or user_args.end_video_frames:
         mode = 'ltx-condition'
-    elif user_args.images and _ltx_image_needs_conditions(user_args):
+    elif user_args.images and _conditions._ltx_image_needs_conditions(user_args):
         mode = 'ltx-condition'
     elif user_args.images:
         mode = 'ltx-image'
@@ -239,10 +245,10 @@ def _call_ltx(wrapper, user_args):
     family = held.family
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
-    align = _ltx_canvas_align(pipe, held, mode, user_args)
-    width, height = _vp._force_output_size_alignment(width, height, align, 'LTX')
+    align = _conditions._ltx_canvas_align(pipe, held, mode, user_args)
+    width, height = _media._force_output_size_alignment(width, height, align, 'LTX')
     if mode != 'ltx-txt':
-        width, height = _fit_ltx_inputs(pipe, held, mode, user_args, width, height)
+        width, height = _conditions._fit_ltx_inputs(pipe, held, mode, user_args, width, height)
 
     fps = float(user_args.video_fps or _constants.DEFAULT_LTX_FPS)
     kwargs = {
@@ -264,8 +270,8 @@ def _call_ltx(wrapper, user_args):
             f'LTX clip length {user_args.video_length} seconds at {fps} fps '
             f'-> {num_frames} frames.')
     elif mode == 'ltx-control':
-        num_frames = len(_trim_ltx_clip(
-            user_args.reference_video_frames, None, _ltx_temporal_compression(pipe)))
+        num_frames = len(_conditions._trim_ltx_clip(
+            user_args.reference_video_frames, None, _conditions._ltx_temporal_compression(pipe)))
         kwargs['num_frames'] = num_frames
         _messages.debug_log(f'LTX clip length follows the control clip: {num_frames} frames.')
     elif family == 'ltx2':
@@ -273,25 +279,27 @@ def _call_ltx(wrapper, user_args):
     else:
         _messages.debug_log('LTX-Video will use its default frame count.')
 
-    guidance = float(
-        _types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
+    guidance = user_args.guidance_scale
+    if guidance is not None:
+        guidance = float(guidance)
     user_audio = user_args.ltx_audio_guidance_scale
     if family == 'ltx':
         if user_audio is not None or user_args.ltx_audio_guidance_rescale is not None:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'Audio guidance is only supported by LTX-2. This checkpoint uses the earlier LTX pipeline.')
-        kwargs['num_inference_steps'] = int(
-            _types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
+        if guidance is None:
+            guidance = _sampling.resolved_guidance_scale(pipe, user_args)
+        kwargs['num_inference_steps'] = _sampling.resolved_inference_steps(pipe, user_args)
         kwargs['guidance_scale'] = guidance
-        _warn_legacy_ltx_canvas(width, height, kwargs.get('num_frames'), fps)
+        _legacy._warn_legacy_ltx_canvas(width, height, kwargs.get('num_frames'), fps)
         schedule_size = (
             width if width is not None else 704,
             height if height is not None else 512,
             kwargs.get('num_frames', 161),
             kwargs['num_inference_steps'])
-        _require_legacy_ltx_schedule(pipe, *schedule_size)
+        _legacy._require_legacy_ltx_schedule(pipe, *schedule_size)
         if mode == 'ltx-condition':
-            timesteps = _fix_legacy_ltx_condition_schedule(pipe, *schedule_size)
+            timesteps = _legacy._fix_legacy_ltx_condition_schedule(pipe, *schedule_size)
             if timesteps is not None:
                 kwargs['timesteps'] = timesteps
         if user_args.sigmas is not None:
@@ -307,67 +315,45 @@ def _call_ltx(wrapper, user_args):
             if isinstance(user_args.timesteps, str):
                 base_timesteps = _ltx_default_timesteps(
                     pipe, distilled, user_args.inference_steps)
-                kwargs['timesteps'] = _eval_video_timesteps_expression(
+                kwargs['timesteps'] = _schedules._eval_video_timesteps_expression(
                     user_args.timesteps, base_timesteps)
             else:
                 kwargs['timesteps'] = [int(value) for value in user_args.timesteps]
             # _complete_ltx_call moves these onto the scheduler.
             kwargs['num_inference_steps'] = len(kwargs['timesteps'])
-            if distilled:
-                if guidance == _constants.DEFAULT_GUIDANCE_SCALE:
-                    guidance = 1.0
-                    user_args.guidance_scale = 1.0
-                    _messages.debug_log(
-                        'LTX distilled checkpoint runs unguided. Default guidance scale 5 was replaced with 1.')
-                else:
-                    _messages.debug_log(
-                        f'LTX distilled checkpoint: distilled timestep schedule, guidance {guidance}.')
-            else:
-                if guidance == _constants.DEFAULT_GUIDANCE_SCALE:
-                    guidance = 3.0
-                    user_args.guidance_scale = 3.0
-                    audio_guidance = 7.0 if user_audio is None else float(user_audio)
-                    if user_audio is None:
-                        user_args.ltx_audio_guidance_scale = audio_guidance
-                    _messages.warning(
-                        f'LTX full checkpoint: guidance scale 5 was replaced with 3, '
-                        f'and audio guidance is {audio_guidance}.')
-                else:
-                    audio_guidance = float(user_audio) if user_audio is not None else guidance
-                    _messages.debug_log(
-                        f'LTX full checkpoint: {len(kwargs["timesteps"])} steps, guidance {guidance}, '
-                        f'audio guidance {audio_guidance}.')
-            if distilled:
-                audio_guidance = float(user_audio) if user_audio is not None else guidance
+            label = 'LTX distilled checkpoint' if distilled else 'LTX full checkpoint'
+            guidance, audio_guidance = _ltx2_apply_automatic_guidance(
+                guidance, distilled=distilled, user_args=user_args,
+                user_audio=user_audio, label=label)
             kwargs['guidance_scale'] = guidance
             kwargs['audio_guidance_scale'] = audio_guidance
             user_args.inference_steps = len(kwargs['timesteps'])
         elif user_args.sigmas is not None:
             if isinstance(user_args.sigmas, str):
-                kwargs['sigmas'] = _eval_sigma_expression(
+                kwargs['sigmas'] = _schedules._eval_sigma_expression(
                     user_args.sigmas,
                     _ltx_base_sigmas(pipe, distilled, user_args.inference_steps))
             else:
                 kwargs['sigmas'] = [float(value) for value in user_args.sigmas]
-            kwargs['guidance_scale'] = guidance
-            kwargs['audio_guidance_scale'] = (
-                float(user_audio) if user_audio is not None else guidance)
+            # Omitted guidance stays off this call. LTX2Pipeline's own defaults
+            # are video 3 and audio 7. Passing None replaces those defaults, and
+            # the pipeline then fails when it subtracts from guidance_scale.
+            if guidance is not None:
+                kwargs['guidance_scale'] = float(guidance)
+            if user_audio is not None:
+                kwargs['audio_guidance_scale'] = float(user_audio)
+            elif guidance is not None:
+                kwargs['audio_guidance_scale'] = float(guidance)
             user_args.inference_steps = len(kwargs['sigmas'])
         elif distilled:
             from diffusers.pipelines.ltx2.utils import DISTILLED_SIGMA_VALUES
 
             kwargs['sigmas'] = list(DISTILLED_SIGMA_VALUES)
-            if guidance == _constants.DEFAULT_GUIDANCE_SCALE:
-                guidance = 1.0
-                user_args.guidance_scale = 1.0
-                _messages.debug_log(
-                    'LTX distilled checkpoint runs unguided. Default guidance scale 5 was replaced with 1.')
-            else:
-                _messages.debug_log(
-                    f'LTX distilled checkpoint: distilled sigma schedule, guidance {guidance}.')
+            guidance, audio_guidance = _ltx2_apply_automatic_guidance(
+                guidance, distilled=True, user_args=user_args,
+                user_audio=user_audio, label='LTX distilled checkpoint')
             kwargs['guidance_scale'] = guidance
-            kwargs['audio_guidance_scale'] = (
-                float(user_audio) if user_audio is not None else guidance)
+            kwargs['audio_guidance_scale'] = audio_guidance
             scheduled = len(kwargs['sigmas'])
             steps, ignored = _ltx_distilled_inference_steps(
                 user_args.inference_steps, scheduled)
@@ -378,21 +364,10 @@ def _call_ltx(wrapper, user_args):
                     f'LTX distilled checkpoint uses its {scheduled}-value sigma schedule.')
             user_args.inference_steps = steps
         else:
-            steps = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
-            if guidance == _constants.DEFAULT_GUIDANCE_SCALE:
-                guidance = 3.0
-                user_args.guidance_scale = 3.0
-                audio_guidance = 7.0 if user_audio is None else float(user_audio)
-                if user_audio is None:
-                    user_args.ltx_audio_guidance_scale = audio_guidance
-                _messages.warning(
-                    f'LTX full checkpoint: guidance scale 5 was replaced with 3, '
-                    f'and audio guidance is {audio_guidance}.')
-            else:
-                audio_guidance = float(user_audio) if user_audio is not None else guidance
-                _messages.debug_log(
-                    f'LTX full checkpoint: {steps} steps, guidance {guidance}, '
-                    f'audio guidance {audio_guidance}.')
+            steps = _sampling.resolved_inference_steps(pipe, user_args)
+            guidance, audio_guidance = _ltx2_apply_automatic_guidance(
+                guidance, distilled=False, user_args=user_args,
+                user_audio=user_audio, label='LTX full checkpoint')
             kwargs['num_inference_steps'] = steps
             kwargs['guidance_scale'] = guidance
             kwargs['audio_guidance_scale'] = audio_guidance
@@ -413,14 +388,14 @@ def _call_ltx(wrapper, user_args):
     if mode == 'ltx-image':
         kwargs['image'] = user_args.images[0]
     elif mode == 'ltx-condition':
-        kwargs['conditions'] = _ltx_conditions(pipe, family, user_args, kwargs.get('num_frames'))
+        kwargs['conditions'] = _conditions._ltx_conditions(pipe, family, user_args, kwargs.get('num_frames'))
     elif mode == 'ltx-control':
-        kwargs.update(_ltx_reference_kwargs(
+        kwargs.update(_conditions._ltx_reference_kwargs(
             wrapper, pipe, held, user_args, kwargs['num_frames'], width, height))
         if (user_args.images or user_args.end_images or
                 user_args.video_frames or user_args.end_video_frames
                 or user_args.ltx_extra_conditions or _custom_ltx_condition_args(user_args)):
-            kwargs['conditions'] = _ltx_conditions(pipe, family, user_args, kwargs['num_frames'])
+            kwargs['conditions'] = _conditions._ltx_conditions(pipe, family, user_args, kwargs['num_frames'])
 
     if family == 'ltx2':
         _apply_ltx2_options(wrapper, pipe, user_args, kwargs)
@@ -457,6 +432,8 @@ def _reject_ltx2_only_options(user_args):
         used.append('--ltx-diffusion-decoder')
     if user_args.ltx_diffusion_decode_tile:
         used.append('--ltx-diffusion-decode-tile')
+    if user_args.pipeline_prompt_enhance:
+        used.append('--pipeline-prompt-enhance')
     if user_args.ltx_prompt_enhancer:
         used.append('--ltx-prompt-enhancer')
     if user_args.ltx_image_crf is not None:
@@ -481,13 +458,15 @@ def _apply_ltx2_options(wrapper, pipe, user_args, kwargs):
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'This LTX pipeline does not accept {option}.')
 
-    if user_args.ltx_prompt_enhancer:
-        _ensure_prompt_enhancer(wrapper, pipe, user_args.ltx_prompt_enhancer)
-        require('enable_prompt_enhancement', '--ltx-prompt-enhancer')
+    if user_args.ltx_prompt_enhancer or user_args.pipeline_prompt_enhance:
+        uri = user_args.ltx_prompt_enhancer or _constants.DEFAULT_LTX_PROMPT_ENHANCER
+        _ensure_prompt_enhancer(wrapper, pipe, uri)
+        option = '--ltx-prompt-enhancer' if user_args.ltx_prompt_enhancer else '--pipeline-prompt-enhance'
+        require('enable_prompt_enhancement', option)
         kwargs['enable_prompt_enhancement'] = True
-    if user_args.ltx_system_prompt:
-        require('system_prompt', '--ltx-system-prompt')
-        kwargs['system_prompt'] = user_args.ltx_system_prompt
+        if isinstance(user_args.pipeline_prompt_enhance, str):
+            require('system_prompt', '--pipeline-prompt-enhance')
+            kwargs['system_prompt'] = user_args.pipeline_prompt_enhance
     if user_args.ltx_stg_scale is not None:
         require('stg_scale', '--ltx-stg-scales')
         kwargs['stg_scale'] = float(user_args.ltx_stg_scale)
@@ -550,11 +529,11 @@ def _ensure_prompt_enhancer(wrapper, pipe, uri_string):
         load['subfolder'] = uri.subfolder
     _messages.debug_log(f'Loading LTX prompt enhancer "{uri.model}".')
     if uri.quantizer:
-        pipe.prompt_enhancer = _vp._load_quantized_module(
+        pipe.prompt_enhancer = _quantization._load_quantized_module(
             AutoModelForImageTextToText, uri.model, uri.subfolder, uri.revision,
             None, enhancer_dtype, uri.quantizer, wrapper._auth_token,
             wrapper._local_files_only,
-            _vp._quantized_device_map(wrapper.device, False, uri.quantizer))
+            _quantization._quantized_device_map(wrapper.device, False, uri.quantizer))
     else:
         pipe.prompt_enhancer = AutoModelForImageTextToText.from_pretrained(
             uri.model, torch_dtype=dtype, **load)
@@ -571,7 +550,8 @@ def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
     enhancement_requested = (
         kwargs.get('enable_prompt_enhancement')
         and kwargs.get('prompt') is not None
-        and getattr(pipe, 'prompt_enhancer', None) is not None)
+        and (getattr(pipe, 'prompt_enhancer', None) is not None
+             or getattr(pipe, 'text_encoder', None) is not None))
     # LTX2Pipeline always passes sigmas to retrieve_timesteps, which rejects
     # timesteps alongside them, so a --timesteps schedule is applied at the
     # scheduler. The earlier LTX condition pipeline takes its timesteps directly.
@@ -583,10 +563,10 @@ def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
             raise _pipelines.UnsupportedPipelineConfigError(
                 '--timesteps cannot be used with temporal latent upscaling, '
                 'its passes use fixed distilled schedules.')
-    forced_timesteps = (_forced_scheduler_timesteps(pipe.scheduler, custom_timesteps)
+    forced_timesteps = (_schedules._forced_scheduler_timesteps(pipe.scheduler, custom_timesteps)
                         if custom_timesteps is not None else contextlib.nullcontext())
 
-    _enhance_ltx_prompt_once(wrapper, pipe, kwargs)
+    _enhance_ltx_prompt_once(wrapper, pipe, kwargs, user_args)
     enhancer = _detach_prompt_enhancer(pipe) if enhancement_requested else None
     try:
         diffusion = family == 'ltx2' and user_args.ltx_video_decoder == 'diffusion'
@@ -613,7 +593,7 @@ def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
             pipe.prompt_enhancer = enhancer
 
 
-def _enhance_ltx_prompt_once(wrapper, pipe, kwargs):
+def _enhance_ltx_prompt_once(wrapper, pipe, kwargs, user_args):
     """
     Rewrite the prompt once, then turn enhancement off for every later pipeline call.
 
@@ -623,7 +603,7 @@ def _enhance_ltx_prompt_once(wrapper, pipe, kwargs):
     """
     if not kwargs.get('enable_prompt_enhancement') or kwargs.get('prompt') is None:
         return
-    if getattr(pipe, 'prompt_enhancer', None) is None:
+    if getattr(pipe, 'prompt_enhancer', None) is None and getattr(pipe, 'text_encoder', None) is None:
         return
     system_prompt = kwargs.get('system_prompt')
     image = kwargs.get('image')
@@ -643,17 +623,73 @@ def _enhance_ltx_prompt_once(wrapper, pipe, kwargs):
             system_prompt = LTX2_5_I2V_DEFAULT_SYSTEM_PROMPT
         else:
             system_prompt = LTX2_5_T2V_DEFAULT_SYSTEM_PROMPT
-    enhanced = pipe.enhance_prompt(
-        prompt=kwargs['prompt'],
-        system_prompt=system_prompt,
-        generator=kwargs.get('generator'),
-        device=wrapper.device,
-        image=image)
-    if isinstance(enhanced, (list, tuple)):
-        enhanced = enhanced[0]
+    seed = getattr(user_args, 'pipeline_prompt_enhance_seed', None)
+    if seed is not None:
+        try:
+            seed = int(seed)
+        except (TypeError, ValueError):
+            seed = None
+    using_dedicated_enhancer = getattr(pipe, 'prompt_enhancer', None) is not None
+    if not using_dedicated_enhancer and seed is None:
+        fallback = getattr(user_args, 'seed', None)
+        if fallback is not None:
+            try:
+                seed = int(fallback)
+            except (TypeError, ValueError):
+                seed = None
+    import dgenerate.pipelinewrapper.promptenhance as _promptenhance
+    overrides = _promptenhance.PromptEnhanceOverrides.from_args(user_args)
+    if not using_dedicated_enhancer:
+        images = []
+        if image is not None:
+            images.append(image)
+        enhanced = _promptenhance.rewrite_prompt(
+            pipe,
+            kwargs['prompt'],
+            system_prompt,
+            images,
+            wrapper.device,
+            seed,
+            local_files_only=bool(getattr(wrapper, '_local_files_only', False)),
+            offload=_vp._offload_requested(wrapper),
+            model_type=_enums.ModelType.LTX2,
+            overrides=overrides,
+            ltx_enhance=True)
+    else:
+        if seed is None:
+            generator = kwargs.get('generator')
+            if isinstance(generator, (list, tuple)):
+                generator = generator[0] if generator else None
+            if generator is not None:
+                try:
+                    seed = int(generator.initial_seed())
+                except (TypeError, ValueError, AttributeError):
+                    seed = None
+        enhancer = pipe.prompt_enhancer
+        counter = _promptenhance._TokenCounter(type(enhancer).__name__, 1)
+        with _promptenhance._fast_encoder(
+                enhancer,
+                wrapper.device,
+                _vp._offload_requested(wrapper),
+                headroom_bytes=_promptenhance._headroom_bytes(overrides)):
+            enhanced = _promptenhance._generate_ltx_enhance(
+                pipe,
+                enhancer,
+                kwargs['prompt'],
+                system_prompt,
+                image,
+                seed,
+                counter,
+                overrides,
+                dedicated_enhancer=True)
     kwargs['prompt'] = enhanced
     kwargs['enable_prompt_enhancement'] = False
-    enhancer = pipe.prompt_enhancer
+    _messages.log(f'Pipeline prompt enhance: {enhanced}')
+    enhancer = getattr(pipe, 'prompt_enhancer', None)
+    if enhancer is None:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        return
     if _putil.is_loaded_in_8bit_bnb(enhancer):
         # BitsAndBytes 8-bit modules cannot be moved back to CPU with .to().
         # Drop the pipeline reference instead so the accelerator memory can be
@@ -689,7 +725,7 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
         raise _pipelines.UnsupportedPipelineConfigError(
             '--ltx-latent-upscale needs an --output-size. '
             'That size is the finished clip.')
-    _enhance_ltx_prompt_once(wrapper, pipe, kwargs)
+    _enhance_ltx_prompt_once(wrapper, pipe, kwargs, user_args)
     stage1 = dict(kwargs)
     stage1['width'] = int(width) // 2
     stage1['height'] = int(height) // 2
@@ -701,14 +737,14 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
     video_latent = _video_latent_tensor(first.frames)
     audio_latent = getattr(first, 'audio', None)
 
-    upscaled = _upsample_ltx_latents(wrapper, pipe, video_latent, user_args)
+    upscaled = _components._upsample_ltx_latents(wrapper, pipe, video_latent, user_args)
     stage2 = {key: value for key, value in kwargs.items() if key not in ('image', 'conditions')}
     stage2['width'] = int(width)
     stage2['height'] = int(height)
     stage2['latents'] = upscaled
     stage2['audio_latents'] = audio_latent
     if stage2.get('num_frames') is None:
-        temporal = _ltx_temporal_compression(pipe)
+        temporal = _conditions._ltx_temporal_compression(pipe)
         stage2['num_frames'] = (int(video_latent.shape[2]) - 1) * temporal + 1
     sigmas = _stage_sigmas(user_args)
     stage2['sigmas'] = sigmas
@@ -798,7 +834,7 @@ def _ltx_temporal_upscale(wrapper, pipe, held, user_args, kwargs, diffusion):
     def dfr_kwargs(values):
         return {key: value for key, value in values.items() if key in accepted}
 
-    _enhance_ltx_prompt_once(wrapper, dfr, kwargs)
+    _enhance_ltx_prompt_once(wrapper, dfr, kwargs, user_args)
     kwargs['enable_prompt_enhancement'] = False
     first_kwargs = dfr_kwargs(kwargs)
     first_kwargs.update(
@@ -817,9 +853,9 @@ def _ltx_temporal_upscale(wrapper, pipe, held, user_args, kwargs, diffusion):
     first = _vp._invoke(wrapper, dfr, first_kwargs, user_args=user_args)
     if num_frames is None:
         num_frames = ((int(first.frames.shape[2]) - 1) *
-                      _ltx_temporal_compression(pipe) + 1)
+                      _conditions._ltx_temporal_compression(pipe) + 1)
 
-    upscaled = _upsample_ltx_latents(
+    upscaled = _components._upsample_ltx_latents(
         wrapper, pipe, first.frames, user_args, use_custom_uri=False)
     second_kwargs = {
         'prompt': kwargs.get('prompt'),
@@ -847,7 +883,7 @@ def _ltx_temporal_upscale(wrapper, pipe, held, user_args, kwargs, diffusion):
         second_kwargs.pop('noise_scale')
     second = _vp._invoke(wrapper, dfr, second_kwargs, user_args=user_args)
 
-    temporal_upsampler = _load_ltx_latent_upsampler(wrapper, user_args)
+    temporal_upsampler = _components._load_ltx_latent_upsampler(wrapper, user_args)
     temporal = LTX2DFRTemporalRefinePipeline.from_pipe(
         dfr,
         temporal_latent_upsampler=temporal_upsampler,
@@ -859,7 +895,7 @@ def _ltx_temporal_upscale(wrapper, pipe, held, user_args, kwargs, diffusion):
             'spatial_upsample=false; select subfolder=temporal_latent_upsampler.')
     temporal_upsampler.to(device=wrapper.device, dtype=dtype)
     output = second
-    canvas_frames = (int(second.frames.shape[2]) - 1) * _ltx_temporal_compression(pipe) + 1
+    canvas_frames = (int(second.frames.shape[2]) - 1) * _conditions._ltx_temporal_compression(pipe) + 1
     source_seconds = num_frames / fps
     try:
         for round_index in range(1, int(user_args.ltx_temporal_upscale_rounds) + 1):
@@ -933,7 +969,7 @@ def _stage_sigmas(user_args):
     if user_args.ltx_stage_sigmas is None:
         return base
     if isinstance(user_args.ltx_stage_sigmas, str):
-        return _eval_sigma_expression(user_args.ltx_stage_sigmas, base)
+        return _schedules._eval_sigma_expression(user_args.ltx_stage_sigmas, base)
     return [float(value) for value in user_args.ltx_stage_sigmas]
 
 
@@ -966,13 +1002,13 @@ def _preflight_ltx_components(wrapper, user_args) -> None:
 
     if user_args.ltx_latent_upscale:
         temporal = user_args.ltx_latent_upscale_mode == 'temporal'
-        _check_ltx_latent_upsampler_available(wrapper, user_args, temporal=temporal)
+        _components._check_ltx_latent_upsampler_available(wrapper, user_args, temporal=temporal)
         if temporal:
-            _check_ltx_component_available(
+            _components._check_ltx_component_available(
                 wrapper, wrapper.model_path, 'latent_upsampler', 'spatial latent upsampler',
                 subfolder='latent_upsampler')
     if family == 'ltx2' and user_args.ltx_video_decoder == 'diffusion':
-        _check_ltx_diffusion_decoder_available(wrapper, user_args)
+        _components._check_ltx_diffusion_decoder_available(wrapper, user_args)
 
 
 def _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, generator,
@@ -982,17 +1018,17 @@ def _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, generator,
     if diffusion:
         if isinstance(video, (list, tuple)):
             video = video[0]
-        _park_ltx_for_diffusion_decode(pipe, wrapper)
+        _decoder._park_ltx_for_diffusion_decode(pipe, wrapper)
         try:
-            frames = _decode_ltx_diffusion(
+            frames = _decoder._decode_ltx_diffusion(
                 wrapper, pipe, held, video, generator, decode_tile, diffusion_decoder_uri)
             audio = _waveform_from_audio_latents(pipe, audio_raw)
         finally:
-            _park_ltx_after_diffusion_decode(
+            _decoder._park_ltx_after_diffusion_decode(
                 pipe, getattr(held, 'diffusion_decoder_pipe', None), wrapper)
     else:
-        frames = _vp.frames_from_output(video)
-        audio = _vp.audio_to_numpy(audio_raw)
+        frames = _media.frames_from_output(video)
+        audio = _media.audio_to_numpy(audio_raw)
     return frames, audio, audio_sample_rate_from_pipeline(pipe, audio)
 
 
@@ -1000,10 +1036,10 @@ def _waveform_from_audio_latents(pipe, audio_latents):
     if audio_latents is None:
         return None
     if not torch.is_tensor(audio_latents):
-        return _vp.audio_to_numpy(audio_latents)
+        return _media.audio_to_numpy(audio_latents)
     mel = pipe.audio_vae.decode(
         audio_latents.to(dtype=pipe.audio_vae.dtype), return_dict=False)[0]
-    return _vp.audio_to_numpy(pipe.vocoder(mel))
+    return _media.audio_to_numpy(pipe.vocoder(mel))
 
 
 def _ltx_distilled_inference_steps(requested, scheduled: int) -> tuple[int, str | None]:
@@ -1019,11 +1055,11 @@ def _ltx_distilled_inference_steps(requested, scheduled: int) -> tuple[int, str 
 
 def _ltx_ignored_steps_warning(requested, scheduled: int) -> str | None:
     if requested is None:
-        requested = _constants.DEFAULT_INFERENCE_STEPS
+        return None
     requested = int(requested)
     if requested == scheduled:
         return None
-    if requested == _constants.DEFAULT_INFERENCE_STEPS:
+    if requested == _constants.DEFAULT_FALLBACK_INFERENCE_STEPS:
         passed = f'{requested} (the default)'
     else:
         passed = str(requested)
@@ -1047,7 +1083,7 @@ def _ltx_default_timesteps(pipe, distilled: bool, inference_steps):
         from diffusers.pipelines.ltx2.utils import DISTILLED_SIGMA_VALUES
         sigmas = numpy.asarray(DISTILLED_SIGMA_VALUES, dtype=float)
     else:
-        steps = int(_types.default(inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
+        steps = _sampling.default_inference_steps_value(pipe, inference_steps)
         sigmas = numpy.linspace(1.0, 1.0 / steps, steps)
     num_train_timesteps = pipe.scheduler.config.get('num_train_timesteps', 1000)
     return numpy.rint(sigmas * num_train_timesteps).astype(numpy.int64).tolist()
@@ -1057,9 +1093,9 @@ def _ltx_base_sigmas(pipe, distilled: bool, inference_steps):
     if distilled:
         from diffusers.pipelines.ltx2.utils import DISTILLED_SIGMA_VALUES
         return list(DISTILLED_SIGMA_VALUES)
-    steps = int(_types.default(inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
+    steps = _sampling.default_inference_steps_value(pipe, inference_steps)
     try:
-        with _preserved_scheduler_state(pipe.scheduler) as scheduler:
+        with _schedules._preserved_scheduler_state(pipe.scheduler) as scheduler:
             scheduler.set_timesteps(steps)
             return list(scheduler.sigmas)
     except Exception as e:

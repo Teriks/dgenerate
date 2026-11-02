@@ -1,0 +1,38 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Custom system prompt and sampling for the LTX-2.5 Gemma enhancer (text-to-video).
+# With no value, LTX-2.5 picks its text-to-video or image-to-video prompt.
+# Image-to-video with the default enhancer is
+# examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen.
+# A value replaces that prompt. file:path reads it from a UTF-8 file.
+# --pipeline-prompt-enhance-seeds is only the rewrite. --gen-seeds is the video.
+# Omit --ltx-prompt-enhancer to load google/gemma-4-E2B-it.
+# Set it to a model URI to load a different enhancer. text_encoder is not a URI.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx2
+--dtype bfloat16
+--model-sequential-offload
+--pipeline-prompt-enhance "Describe the finished shot in one English paragraph. Keep the subject the user named."
+--pipeline-prompt-enhance-seeds 7
+--pipeline-prompt-enhance-temperature 0.7
+--pipeline-prompt-enhance-top-p 0.9
+--pipeline-prompt-enhance-top-k 40
+--pipeline-prompt-enhance-presence-penalty 0.6
+--pipeline-prompt-enhance-max-new-tokens 200
+--pipeline-prompt-enhance-gpu-headroom 3
+--guidance-scales 1
+--gen-seeds 1
+--output-size 640x384
+--video-lengths 2
+--animation-format mp4
+--output-path output
+--prompts "A red fox walks through snow."

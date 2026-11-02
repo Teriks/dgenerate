@@ -94,6 +94,8 @@ from .enums import (
     RAS_MODEL_TYPES,
     model_type_supports_freeu,
     FREEU_MODEL_TYPES,
+    model_type_supports_pipeline_prompt_enhance,
+    PIPELINE_PROMPT_ENHANCE_MODEL_TYPES,
     model_type_supports_pag,
     PAG_MODEL_TYPES,
     model_type_supports_spectrum,
@@ -246,10 +248,10 @@ from .uris import (
 )
 
 # Wrapper
+from .arguments import DiffusionArguments
 from .wrapper import (
     PipelineWrapperResult,
     DiffusionPipelineWrapper,
-    DiffusionArguments,
     DiffusionArgumentsHelpException
 )
 

@@ -8,7 +8,7 @@ Qwen/Qwen-Image-2.1-Turbo
 --loras zimageapp/qwen-image-2.1-loras;weight-name=Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r128.safetensors;scale=1.0
 --dtype bfloat16
 --model-sequential-offload
---qwen21-output-resolution 1024
+--qwen21-resolution 1024
 --inference-steps 6
 --gen-seeds 1
 --output-path qwen-image-21-lora

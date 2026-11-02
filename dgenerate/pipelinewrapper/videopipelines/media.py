@@ -31,7 +31,6 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.types as _types
-import dgenerate.pipelinewrapper.videopipelines as _vp
 
 
 def load_rgb_frames(path: str,
@@ -138,11 +137,11 @@ def frames_from_output(value) -> list[PIL.Image.Image]:
         if isinstance(head, PIL.Image.Image):
             return [_to_rgb_image(frame) for frame in value]
         if isinstance(head, list):
-            return _vp.frames_from_output(head)
+            return frames_from_output(head)
         if torch.is_tensor(head) or isinstance(head, numpy.ndarray):
             array = head.detach().cpu().numpy() if torch.is_tensor(head) else numpy.asarray(head)
             if array.ndim >= 4:
-                return _vp.frames_from_output(head)
+                return frames_from_output(head)
             return [_array_frame_to_image(frame) for frame in value]
         raise _pipelines.UnsupportedPipelineConfigError(
             f'Cannot read video frames from a list of {type(head).__name__}.')

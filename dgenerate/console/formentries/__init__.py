@@ -33,6 +33,7 @@ from .latentsprocessorentry import _LatentsProcessorEntry
 from .intentry import _IntEntry
 from .karrasschedulerentry import _KarrasSchedulerEntry
 from .stringentry import _StringEntry
+from .stringfileentry import _StringFileEntry
 from .uriwithfloatentry import _UriWithFloatEntry
 from .uriwithfloatargentry import _UriWithFloatArgEntry
 from .seedsentry import _SeedsEntry
@@ -51,5 +52,8 @@ from .submodelbuilderentry import  _SubModelBuilderEntry
 from .submodelbuilderswitchentry import _SubModelBuilderSwitchEntry
 from .dypeentry import _DyPEEntry
 from .regioneentry import _RegionEEntry
+from .spectrumentry import _SpectrumEntry
+from .sadaentry import _SADAEntry
+from .rasentry import _RASEntry
 
 from .entry import DIVIDER_YPAD, ROW_XPAD

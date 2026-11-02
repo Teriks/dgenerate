@@ -179,6 +179,10 @@ Quantization backend packages will be installed by dgenerate's packaging on plat
 
 @EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/basic_llm/magic-phi3-config.dgen]
 
+The same Phi-3 setup can load ``system`` and ``preamble`` from UTF-8 files with ``file:path.txt``:
+
+@EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/basic_llm/magicprompt-file-config.dgen]
+
 
 Prompt upscaling with LLMs (llama)
 -----------------------------------
@@ -192,6 +196,10 @@ layers as fit in VRAM. ``all`` offloads every layer. ``0`` keeps the model on th
 Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF>`_
 
 @EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/basic_llm/xllamacpp-phi3-config.dgen]
+
+The llama plugin accepts the same ``file:path.txt`` form for ``system`` and ``preamble``:
+
+@EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/basic_llm/llama-file-config.dgen]
 
 Models that are not chat models can be used the same way. This example loads a GGUF
 conversion of the original MagicPrompt weights, prepends the prompt, and uses a

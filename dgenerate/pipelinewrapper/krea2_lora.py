@@ -33,11 +33,8 @@ import typing
 
 import torch
 
-from dgenerate.pipelinewrapper.lokr import (
-    apply_lokr_state_dict,
-    fetch_lora_state_dict,
-    state_dict_has_lokr,
-)
+import dgenerate.pipelinewrapper.lokr as _lokr
+
 
 if typing.TYPE_CHECKING:
     from diffusers import DiffusionPipeline
@@ -136,7 +133,7 @@ def convert_krea2_lora_state_dict(state_dict: dict[str, torch.Tensor]) -> dict[s
     """
     if _is_krea2_diffusers_lora(state_dict):
         return state_dict
-    if state_dict_has_lokr(state_dict):
+    if _lokr.state_dict_has_lokr(state_dict):
         raise ValueError(
             "This Krea 2 LoRA uses LoKr weights. Load it through the LoKr loader.")
     from diffusers.loaders.lora_conversion_utils import (
@@ -156,10 +153,10 @@ def load_krea2_lora_on_pipeline(
         fuse_scale: float = 1.0,
         **kwargs) -> str:
     """Load a Krea 2 LoRA. LoKr checkpoints are merged through PEFT."""
-    state_dict, metadata = fetch_lora_state_dict(
+    state_dict, metadata = _lokr.fetch_lora_state_dict(
         model_path, return_lora_metadata=True, **kwargs)
-    if state_dict_has_lokr(state_dict):
-        return apply_lokr_state_dict(
+    if _lokr.state_dict_has_lokr(state_dict):
+        return _lokr.apply_lokr_state_dict(
             pipeline,
             state_dict,
             adapter_name,

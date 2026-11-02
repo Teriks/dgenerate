@@ -7,7 +7,7 @@ import safetensors.torch
 import torch
 
 import dgenerate.pipelinewrapper.pipelines as _pipelines
-import dgenerate.pipelinewrapper.videopipelines as _videopipelines
+import dgenerate.pipelinewrapper.videopipelines.single_image_video as _single_image_video
 from dgenerate.pipelinewrapper.videopipelines.hyvideo_lora import (
     HunyuanVideo15LoraLoaderMixin,
     convert_hunyuan_video15_lora_state_dict,
@@ -31,7 +31,7 @@ class TestHunyuanVideo15Lora(unittest.TestCase):
             self.assertTrue(hasattr(pipeline_class, 'load_lora_weights'), pipeline_class.__name__)
             self.assertTrue(_pipelines.pipeline_class_supports_lora(pipeline_class))
         self.assertIs(
-            _videopipelines._single_image_video_pipeline_class('hyvideo-15', 'text-to-video'),
+            _single_image_video._single_image_video_pipeline_class('hyvideo-15', 'text-to-video'),
             diffusers.HunyuanVideo15Pipeline)
 
     def test_original_attention_keys_map_onto_diffusers_modules(self):

@@ -2,7 +2,6 @@ import unittest
 
 import dgenerate.arguments as _arguments
 import dgenerate.pipelinewrapper as _pipelinewrapper
-import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.wrapper as _wrapper
 import dgenerate.renderloopconfig as _renderloopconfig
 
@@ -32,15 +31,84 @@ class TestPagAppliedLayers(unittest.TestCase):
         ]
         config.check()
 
-        self.assertTrue(config.pag)
-        self.assertEqual(config.pag_scales, [_constants.DEFAULT_PAG_SCALE])
-        self.assertEqual(config.pag_adaptive_scales, [_constants.DEFAULT_PAG_ADAPTIVE_SCALE])
+        self.assertFalse(config.pag)
+        self.assertTrue(config.is_pag_enabled())
+        self.assertIsNone(config.pag_scales)
+        self.assertIsNone(config.pag_adaptive_scales)
 
         generated = list(config.iterate_diffusion_args())
         self.assertEqual(
             [step.pag_applied_layers for step in generated],
             [['blocks.13'], ['mid', 'blocks.1']])
-        self.assertTrue(all(step.pag_scale == _constants.DEFAULT_PAG_SCALE for step in generated))
+        self.assertTrue(all(step.pag_scale is None for step in generated))
+        self.assertEqual(config.calculate_generation_steps(), len(generated))
+
+    def test_implied_options_keep_generation_count_aligned(self):
+        def assert_aligned(config):
+            counted = config.calculate_generation_steps()
+            produced = len(list(config.iterate_diffusion_args()))
+            self.assertEqual(counted, produced)
+            return counted
+
+        layers = _renderloopconfig.RenderLoopConfig()
+        layers.model_path = 'stabilityai/stable-diffusion-3-medium-diffusers'
+        layers.model_type = _pipelinewrapper.ModelType.SD3
+        layers.pag_applied_layers = [['blocks.13'], ['mid', 'blocks.1']]
+        layers.pag_scales = [1.0, 2.0]
+        layers.check()
+        self.assertEqual(assert_aligned(layers), 4)
+        self.assertFalse(layers.pag)
+
+        crop = _renderloopconfig.RenderLoopConfig()
+        crop.model_path = 'runwayml/stable-diffusion-v1-5'
+        crop.model_type = _pipelinewrapper.ModelType.SD
+        crop.inpaint_crop_paddings = [32, 64]
+        self.assertEqual(assert_aligned(crop), 2)
+        self.assertFalse(crop.inpaint_crop)
+        self.assertTrue(crop.is_inpaint_crop_enabled())
+
+    def test_feature_queries_do_not_write_the_parent_flag(self):
+        fresh = _renderloopconfig.RenderLoopConfig()
+        for method in (
+                'is_pipeline_prompt_enhance_enabled',
+                'is_cache_dit_enabled',
+                'is_dype_enabled',
+                'is_tea_cache_enabled',
+                'is_spectrum_enabled',
+                'is_regione_enabled',
+                'is_ras_enabled',
+                'is_deep_cache_enabled',
+                'is_sdxl_refiner_deep_cache_enabled',
+                'is_sada_enabled',
+                'is_pag_enabled',
+                'is_sdxl_refiner_pag_enabled',
+                'is_inpaint_crop_enabled',
+        ):
+            self.assertFalse(getattr(fresh, method)(), method)
+
+        cases = (
+            ('pipeline_prompt_enhance_top_p', 0.9,
+             'is_pipeline_prompt_enhance_enabled', 'pipeline_prompt_enhance'),
+            ('cache_dit_config', 'cache.yaml', 'is_cache_dit_enabled', 'cache_dit'),
+            ('dype_mscales', ['decay'], 'is_dype_enabled', 'dype'),
+            ('tea_cache_rel_l1_thresholds', [0.4], 'is_tea_cache_enabled', 'tea_cache'),
+            ('spectrum_weights', [0.5], 'is_spectrum_enabled', 'spectrum'),
+            ('regione_thresholds', [0.1], 'is_regione_enabled', 'regione'),
+            ('ras_start_steps', [4], 'is_ras_enabled', 'ras'),
+            ('deep_cache_intervals', [3], 'is_deep_cache_enabled', 'deep_cache'),
+            ('sdxl_refiner_deep_cache_intervals', [3],
+             'is_sdxl_refiner_deep_cache_enabled', 'sdxl_refiner_deep_cache'),
+            ('sada_max_intervals', [4], 'is_sada_enabled', 'sada'),
+            ('pag_scales', [1.0], 'is_pag_enabled', 'pag'),
+            ('sdxl_refiner_pag_scales', [1.0],
+             'is_sdxl_refiner_pag_enabled', 'sdxl_refiner_pag'),
+            ('inpaint_crop_paddings', [32], 'is_inpaint_crop_enabled', 'inpaint_crop'),
+        )
+        for attr, value, method, flag in cases:
+            config = _renderloopconfig.RenderLoopConfig()
+            setattr(config, attr, value)
+            self.assertTrue(getattr(config, method)(), method)
+            self.assertFalse(getattr(config, flag), flag)
 
     def test_apply_keeps_the_pipeline_attention_processors(self):
         pipeline = _FakePagPipeline()
@@ -63,6 +131,16 @@ class TestPagAppliedLayers(unittest.TestCase):
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             config.check()
         self.assertIn('pag', str(raised.exception))
+
+    def test_bare_pag_switch_arrives_as_the_default_scales(self):
+        config = _renderloopconfig.RenderLoopConfig()
+        config.model_path = 'stabilityai/stable-diffusion-3-medium-diffusers'
+        config.model_type = _pipelinewrapper.ModelType.SD3
+        config.pag = True
+        generated = list(config.iterate_diffusion_args())
+        self.assertEqual(generated[0].pag_scale, 3.0)
+        self.assertEqual(generated[0].pag_adaptive_scale, 0.0)
+        self.assertTrue(config.pag)
 
 
 if __name__ == '__main__':

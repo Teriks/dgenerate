@@ -10,7 +10,7 @@ Qwen/Qwen-Image-2.1
 --dtype bfloat16
 --model-sequential-offload
 --transformer https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/diffusion_models/qwen_image_2.1_int8_convrot.safetensors
---qwen21-output-resolution 1024
+--qwen21-resolution 1024
 --gen-seeds 1
 --output-path qwen-image-21-comfy-quant
 --prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

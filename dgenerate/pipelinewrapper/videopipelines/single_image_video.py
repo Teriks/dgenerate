@@ -35,19 +35,15 @@ import numpy
 
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
+import dgenerate.pipelinewrapper.sampling as _sampling
 import dgenerate.types as _types
+import dgenerate.pipelinewrapper.videopipelines.media as _media
+import dgenerate.pipelinewrapper.videopipelines.wan as _wan
 import dgenerate.pipelinewrapper.videopipelines as _vp
-from .hyvideo_lora import install_hunyuan_video15_lora_loader as _install_hunyuan_video15_lora_loader
-from .schedules import (
-    _default_video_timesteps,
-    _eval_sigma_expression,
-    _eval_video_timesteps_expression,
-    _forced_scheduler_timesteps,
-    _integer_timesteps,
-    _preserved_scheduler_state,
-)
+import dgenerate.pipelinewrapper.videopipelines.hyvideo_lora as _hyvideo_lora
+import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
 
-_install_hunyuan_video15_lora_loader()
+_hyvideo_lora.install_hunyuan_video15_lora_loader()
 
 HUNYUAN_VIDEO_15_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
 MOTIF_VIDEO_SCHEDULER_NAMES = frozenset({
@@ -188,9 +184,9 @@ def _motif_default_timesteps(pipe, steps: int, call_kwargs: dict, call_parameter
         kwargs['sigmas'] = numpy.linspace(1.0, 1.0 / steps, steps)
 
     try:
-        with _preserved_scheduler_state(scheduler):
+        with _schedules._preserved_scheduler_state(scheduler):
             set_timesteps(steps, **kwargs)
-            return _integer_timesteps(getattr(scheduler, 'timesteps', None))
+            return _schedules._integer_timesteps(getattr(scheduler, 'timesteps', None))
     except Exception as e:
         raise _pipelines.UnsupportedPipelineConfigError(
             'Could not read Motif-Video scheduler timesteps for a --timesteps expression.') from e
@@ -248,21 +244,22 @@ def _call_single_image_video(wrapper, user_args):
     if negative:
         kwargs['negative_prompt'] = negative
     if width is not None:
-        width, height = _vp._force_output_size_alignment(width, height, 16, family)
+        width, height = _media._force_output_size_alignment(width, height, 16, family)
     if mode == 'image-to-video':
         source = user_args.images[0]
-        width, height = _vp.conditioning_canvas(
+        width, height = _media.conditioning_canvas(
             source.size, width, height, user_args.aspect_correct, 16)
-        user_args.images[0] = _vp.resize_media([source], (width, height))[0]
+        user_args.images[0] = _media.resize_media([source], (width, height))[0]
         kwargs['image'] = user_args.images[0]
     if width is not None and {'width', 'height'} <= call_parameters.keys():
         kwargs.update(width=width, height=height)
     if user_args.video_length is not None:
         temporal = int(getattr(pipe, 'vae_scale_factor_temporal', 4) or 4)
-        kwargs['num_frames'] = _vp.wan_num_frames(user_args.video_length, fps, temporal)
+        kwargs['num_frames'] = _wan.wan_num_frames(user_args.video_length, fps, temporal)
 
     guidance_default = 6.0 if family == 'hyvideo-15' else 5.0
-    guidance = float(_types.default(user_args.guidance_scale, guidance_default))
+    guidance = _sampling.resolved_guidance_scale(
+        pipe, user_args, fallback=guidance_default)
     if family == 'kandinsky5-video':
         kwargs['guidance_scale'] = guidance
     else:
@@ -272,7 +269,7 @@ def _call_single_image_video(wrapper, user_args):
                 f'{family} pipeline does not expose a configurable guider.')
         pipe.guider = guider.new(guidance_scale=guidance)
 
-    steps = int(_types.default(user_args.inference_steps, 50))
+    steps = _sampling.resolved_inference_steps(pipe, user_args, fallback=50)
     kwargs['num_inference_steps'] = steps
     custom_timesteps = None
     if user_args.timesteps is not None:
@@ -283,8 +280,8 @@ def _call_single_image_video(wrapper, user_args):
             if family == 'motif-video':
                 base_timesteps = _motif_default_timesteps(pipe, steps, kwargs, call_parameters)
             else:
-                base_timesteps = _default_video_timesteps(pipe, family, steps)
-            custom_timesteps = _eval_video_timesteps_expression(
+                base_timesteps = _schedules._default_video_timesteps(pipe, family, steps)
+            custom_timesteps = _schedules._eval_video_timesteps_expression(
                 user_args.timesteps, base_timesteps)
         else:
             custom_timesteps = [int(value) for value in user_args.timesteps]
@@ -300,9 +297,9 @@ def _call_single_image_video(wrapper, user_args):
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'--sigmas is not supported by {family}; its pipeline accepts a timestep schedule instead.')
         if isinstance(user_args.sigmas, str):
-            with _preserved_scheduler_state(pipe.scheduler) as scheduler:
+            with _schedules._preserved_scheduler_state(pipe.scheduler) as scheduler:
                 scheduler.set_timesteps(kwargs['num_inference_steps'])
-                kwargs['sigmas'] = _eval_sigma_expression(user_args.sigmas, scheduler.sigmas)
+                kwargs['sigmas'] = _schedules._eval_sigma_expression(user_args.sigmas, scheduler.sigmas)
         else:
             kwargs['sigmas'] = [float(value) for value in user_args.sigmas]
         user_args.inference_steps = len(kwargs['sigmas'])
@@ -310,11 +307,11 @@ def _call_single_image_video(wrapper, user_args):
     _vp._set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
     with contextlib.ExitStack() as stack:
         if custom_timesteps is not None:
-            stack.enter_context(_forced_scheduler_timesteps(pipe.scheduler, custom_timesteps))
+            stack.enter_context(_schedules._forced_scheduler_timesteps(pipe.scheduler, custom_timesteps))
         if family == 'motif-video' and mode == 'image-to-video':
             stack.enter_context(_vae_encode_in_vae_dtype(pipe.vae))
         output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
-    frames = _vp.frames_from_output(getattr(output, 'frames', output))
-    audio = _vp.audio_to_numpy(getattr(output, 'audio', None))
+    frames = _media.frames_from_output(getattr(output, 'frames', output))
+    audio = _media.audio_to_numpy(getattr(output, 'audio', None))
     sample_rate = getattr(pipe, 'audio_sample_rate', None) if audio is not None else None
     return frames, audio, int(sample_rate) if sample_rate else None, fps

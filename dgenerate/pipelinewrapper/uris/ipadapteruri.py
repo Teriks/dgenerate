@@ -26,7 +26,7 @@ import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
 
 _ip_adapter_uri_parser = _textprocessing.ConceptUriParser(
     'IP Adapter', ['scale', 'revision', 'subfolder', 'weight-name'])

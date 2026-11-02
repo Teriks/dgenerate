@@ -66,7 +66,7 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
-from dgenerate.pipelinewrapper import constants as _constants
+import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.models as _models
 
 # Text encoders, VAEs, and UNets read from a ComfyUI quantized single file
@@ -5991,8 +5991,8 @@ def _cache_components_granular(
 
         # Save component
         _messages.debug_log(f"Saving cached {component} to: {cache_path}")
-        from .weightsave import save_module_with_progress
-        save_module_with_progress(
+        import dgenerate.pipelinewrapper.weightsave as _weightsave
+        _weightsave.save_module_with_progress(
             component_obj, cache_path, variant=variant, desc=f'Writing {component}')
 
         # Store in cache
@@ -6021,8 +6021,8 @@ def _cache_components_granular(
                 cache_uuid = hashlib.sha256(
                     (controlnet_key + str(random.random())).encode('utf-8')).hexdigest()
                 cache_path = os.path.join(component_dir, cache_uuid)
-        from .weightsave import save_module_with_progress
-        save_module_with_progress(
+        import dgenerate.pipelinewrapper.weightsave as _weightsave
+        _weightsave.save_module_with_progress(
             held_controlnet, cache_path, variant=variant, desc='Writing controlnet')
         with cache_store:
             cache_store[controlnet_key] = cache_path

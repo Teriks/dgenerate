@@ -22,7 +22,7 @@
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
 
 _sdxl_refiner_uri_parser = _textprocessing.ConceptUriParser(
     'SDXL Refiner', ['revision', 'variant', 'subfolder', 'dtype'])

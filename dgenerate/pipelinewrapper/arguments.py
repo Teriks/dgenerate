@@ -340,7 +340,7 @@ class DiffusionArguments(_types.SetFromMixin):
     Omitted leaves it unset. ``--guidance-scales`` remains true CFG.
     """
 
-    qwen21_output_resolution: _types.OptionalInteger = None
+    qwen21_resolution: _types.OptionalInteger = None
     """Target-side length used by Qwen-Image 2.1 to infer output dimensions."""
 
     qwen21_use_kv_cache: _types.OptionalBoolean = None
@@ -576,9 +576,9 @@ class DiffusionArguments(_types.SetFromMixin):
     :py:attr:`.DiffusionArguments.prompt` at the expense of lower image quality. Guidance scale is enabled
     when :py:attr:`.DiffusionArguments.guidance_scale`  > 1
 
-    For LTX, a value you set is used as written. The unused image default ``5`` is rewritten
-    to ``1`` when the scheduler has no dynamic shifting, or to video ``3`` and audio ``7``
-    when it does. Setting :py:attr:`.DiffusionArguments.sigmas` skips that rewrite.
+    For LTX-2, omitted guidance becomes ``1`` on a distilled checkpoint, or video
+    ``3`` with audio ``7`` on a full checkpoint. Values you set are used as written.
+    Setting :py:attr:`.DiffusionArguments.sigmas` leaves guidance unchanged.
     """
 
     sigmas: collections.abc.Sequence[float] | str | None = None
@@ -1452,14 +1452,75 @@ class DiffusionArguments(_types.SetFromMixin):
     Ignored when a length is set.
     """
 
-    ltx_prompt_enhancer: _types.OptionalString = None
+    pipeline_prompt_enhance: bool | str | None = None
     """
-    Hugging Face repo or local path of the LTX prompt-enhancer model.
+    Image families rewrite with the loaded text encoder. LTX-2 loads the
+    optional Gemma prompt enhancer. ``True`` selects the built-in system prompt.
+    A string is that system prompt. Any ``--pipeline-prompt-enhance-*`` option
+    turns enhancement on with the built-in system prompt when this field is
+    omitted. Generation sampling and limits are set with
+    :py:attr:`pipeline_prompt_enhance_temperature` and the other
+    ``pipeline_prompt_enhance_*`` fields on this class.
     """
 
-    ltx_system_prompt: _types.OptionalString = None
+    pipeline_prompt_enhance_seed: _types.OptionalInteger = None
     """
-    System prompt override for LTX prompt enhancement.
+    Seed for this generation's prompt rewrite. ``None`` uses :py:attr:`seed`.
+    """
+
+    pipeline_prompt_enhance_temperature: _types.OptionalFloat = None
+    """
+    Sampling temperature for this generation's ``--pipeline-prompt-enhance``
+    rewrite, from ``--pipeline-prompt-enhance-temperature``. ``None`` keeps the
+    default for the pipeline model type.
+    """
+
+    pipeline_prompt_enhance_top_p: _types.OptionalFloat = None
+    """
+    Nucleus ``top_p`` for this generation's prompt rewrite, from
+    ``--pipeline-prompt-enhance-top-p``. When set, must be greater than 0 and
+    at most 1. ``None`` keeps the model-type default.
+    """
+
+    pipeline_prompt_enhance_top_k: _types.OptionalInteger = None
+    """
+    Top-k sampling for this generation's prompt rewrite, from
+    ``--pipeline-prompt-enhance-top-k``. ``0`` turns top-k off. ``None`` keeps
+    the model-type default.
+    """
+
+    pipeline_prompt_enhance_presence_penalty: _types.OptionalFloat = None
+    """
+    Presence penalty for this generation's prompt rewrite, from
+    ``--pipeline-prompt-enhance-presence-penalty``. ``None`` keeps the
+    model-type default.
+    """
+
+    pipeline_prompt_enhance_max_new_tokens: _types.OptionalInteger = None
+    """
+    Maximum new tokens for this generation's prompt rewrite, from
+    ``--pipeline-prompt-enhance-max-new-tokens``. ``None`` keeps the default
+    cap for the pipeline model type.
+    """
+
+    pipeline_prompt_enhance_min_new_tokens: _types.OptionalInteger = None
+    """
+    Minimum new tokens before end-of-sequence on this generation's rewrite,
+    from ``--pipeline-prompt-enhance-min-new-tokens``. ``None`` keeps the
+    default floor for the pipeline model type.
+    """
+
+    pipeline_prompt_enhance_gpu_headroom: _types.OptionalFloat = None
+    """
+    GiB of free GPU memory to leave unused when splitting the text encoder for
+    ``--pipeline-prompt-enhance``, from ``--pipeline-prompt-enhance-gpu-headroom``.
+    ``None`` leaves 2 GiB on top of 10 percent of free memory.
+    """
+
+    ltx_prompt_enhancer: _types.OptionalString = None
+    """
+    Separate LTX prompt-enhancer model. When set, enhancement loads this
+    model. Otherwise ``--pipeline-prompt-enhance`` loads google/gemma-4-E2B-it.
     """
 
     ltx_condition_index: _types.OptionalInteger = None
@@ -1927,13 +1988,36 @@ class DiffusionArguments(_types.SetFromMixin):
                     subsequent_indent=' ' * len(header))
             prompt_format.append(f'{header}"{prompt_val}"')
 
-    def describe_pipeline_wrapper_args(self) -> str:
+    def describe_pipeline_wrapper_args(self, model_type=None, *, refiner=False,
+                                       image_seed=None, control_guidance=False,
+                                       adetailer=False) -> str:
         """
         Describe the pipeline wrapper arguments in a pretty, human-readable way, with word wrapping
         depending on console size or a maximum length depending on what stdout currently is.
 
+        :param model_type: When given, feature-parameter defaults (SADA, PAG,
+            RegionE thresholds, and similar) are applied on a copy used only for
+            the description; the arguments object itself is not changed.
+            Omitted inference steps and guidance scale are not filled; they are
+            shown as ``auto``. Numeric guidance and step counts are chosen later
+            when the pipeline wrapper or video pipeline runs the step.
+        :param refiner: An SDXL or Kolors refiner is loaded. Used for the high-noise
+            fraction default.
+        :param image_seed: Parsed ``--image-seeds`` entry for this step, when one
+            exists. An omitted img2img or Wan video-to-video strength is shown as 0.8.
+            Floyd ``ifs`` shows noise level 250, or 0 when the seed has a mask.
+        :param control_guidance: This seed is a control-only guidance image.
+        :param adetailer: ADetailer is generating the inpaint mask.
         :return: description string.
         """
+        if model_type is not None:
+            import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+            shown = DiffusionArguments()
+            shown.set_from(self)
+            _featuredefaults.apply_known_defaults(
+                shown, model_type, refiner=refiner, image_seed=image_seed,
+                control_guidance=control_guidance, adetailer=adetailer)
+            return shown.describe_pipeline_wrapper_args()
         prompt_format = []
         DiffusionArguments._describe_prompt(
             prompt_format, self.prompt,
@@ -1983,9 +2067,14 @@ class DiffusionArguments(_types.SetFromMixin):
             return None
 
         descriptions = [
+            (self.inference_steps if self.inference_steps is not None else 'auto',
+             "Inference Steps:"),
+            (self.guidance_scale if self.guidance_scale is not None else 'auto',
+             "Guidance Scale:"),
             (self.scheduler_uri, "Scheduler:"),
             (self.second_model_scheduler_uri, "Second Model Scheduler:"),
             (self.seed, "Seed:"),
+            (self.pipeline_prompt_enhance_seed, "Pipeline Prompt Enhance Seed:"),
             (self.clip_skip, "Clip Skip:"),
             (self.sdxl_refiner_clip_skip, "SDXL Refiner Clip Skip:"),
             (self.image_seed_strength, "Image Seed Strength:"),
@@ -2024,7 +2113,6 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.pag_scale, "PAG Scale:"),
             (self.pag_adaptive_scale, "PAG Adaptive Scale:"),
             (format_pag_layers(self.pag_applied_layers), "PAG Applied Layers:"),
-            (self.guidance_scale, "Guidance Scale:"),
             (self.sigmas, "Sigmas:"),
             (self.dype_method, "DyPE Position Encoding Method:"),
             (self.dype_base_resolution, "DyPE Base Resolution:"),
@@ -2045,7 +2133,6 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.regione_erosion_dilation, "RegionE Erosion/Dilation:"),
             (self.image_guidance_scale, "Image Guidance Scale:"),
             (self.guidance_rescale, "Guidance Rescale:"),
-            (self.inference_steps, "Inference Steps:"),
             (self.video_length, "Video Length (seconds):"),
             (self.video_fps, "Video FPS:"),
             (self.ltx_audio_guidance_scale, "Audio Guidance Scale:"),
@@ -2064,6 +2151,7 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.ltx_diffusion_decode_tile, "Decode Tile:"),
             (self.ltx_image_crf, "Image CRF:"),
             (self.ltx_prompt_enhancer, "Prompt Enhancer:"),
+            (self.pipeline_prompt_enhance, "Pipeline Prompt Enhance:"),
             (self.wan_low_noise_guidance_scale, "Wan Low-Noise Guidance Scale:"),
             (self.wan_boundary_ratio, "Wan Boundary Ratio:"),
             (self.wan_animate_mode, "Wan-Animate Mode:"),

@@ -502,9 +502,9 @@ _LORA_MODULE_NAMES = (
 
 def module_used_by_cached_pipeline(module) -> bool:
     """True when a pipeline still in the pipeline cache holds this module."""
-    from dgenerate.pipelinewrapper.pipelines import _pipeline_cache
+    import dgenerate.pipelinewrapper.pipelines as _pipelines_mod
 
-    for cached in _pipeline_cache.values():
+    for cached in _pipelines_mod._pipeline_cache.values():
         pipe = getattr(cached, 'pipeline', cached)
         for name in _LORA_MODULE_NAMES:
             if getattr(pipe, name, None) is module:

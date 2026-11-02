@@ -3416,8 +3416,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help=f"""Enable RegionE region-aware acceleration for instruction editing?
 
             RegionE skips redundant denoising on unchanged image regions.
-            Omitting --inference-steps, or leaving the global default of 30,
-            uses 28. Any other step count is rejected.
+            Omitting --inference-steps uses 28. Any other step count is rejected.
             Provide --image-seeds.
 
             NOWRAP!
@@ -4189,7 +4188,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     is not supported, such as when using --control-nets and inpainting with SDXL, the inverse
                     proportion of this value IE: (1.0 - high-noise-fraction) becomes the --image-seed-strengths
                     input to the SDXL refiner in plain img2img mode. Edit mode may be forced with the 
-                    option --sdxl-refiner-edit (default: [0.8])"""
+                    option --sdxl-refiner-edit. Omitted, a refiner uses 0.8."""
         )
     )
 
@@ -4270,7 +4269,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     )
     actions.append(
         output_size_group.add_argument(
-            '--qwen21-output-resolution', type=_type_positive_int, default=None, metavar="RESOLUTION",
+            '--qwen21-resolution', type=_type_positive_int, default=None, metavar="RESOLUTION",
+            dest='qwen21_resolution',
             help="Target side length for Qwen-Image 2.1 output resolution inference. Only supported by Qwen-Image 2.1.")
     )
 
@@ -5141,7 +5141,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     or more relevant to the input image, high values will give the AI more creative freedom. This
                     value must be greater than 0 and less than or equal to 1. Each value is tried in turn.
                     An image seed keyword strength= overrides this option for that seed.
-                    (default: [0.8])
+                    Omitted, img2img, inpaint, and Wan video-to-video use 0.8.
 
                     For --model-type ltx2 and ltx-video, these values are the condition strength of image-seed
                     groups that omit strength=. 1 keeps the conditioning frame. A lower value
@@ -5159,8 +5159,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     resolution upscaler --model-type upscaler-x4 or ifs. Specifying
                     this option for --model-type upscaler-x2 will produce an error message.
                     The higher this value the more noise is added to the image before upscaling
-                    (similar to --image-seed-strengths). (default: [20 for x4, 250 for
-                    ifs/ifs-img2img, 0 for ifs inpainting mode])
+                    (similar to --image-seed-strengths). Omitted: 20 for upscaler-x4,
+                    250 for ifs and ifs-img2img, and 0 for ifs inpainting.
                     """
         )
     )
@@ -5205,7 +5205,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     Note: Inpaint crop cannot be used with multiple input images. See --inpaint-crop for details.
                     
-                    (default: [32])"""
+                    Omitted padding is 32 when cropping is enabled."""
         )
     )
 
@@ -5240,24 +5240,30 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-gs', '--guidance-scales', action='store', nargs='+',
-            default=[_pipelinewrapper.constants.DEFAULT_GUIDANCE_SCALE],
+            default=None,
             metavar="FLOAT", type=_type_guidance_scale,
             help="""One or more guidance scale values to try. Guidance scale effects how much your
                     text prompt is considered. Low values draw more data from images unrelated
                     to text prompt.
                     
-                    For --model-type ltx-video, the value is passed to the pipeline as written,
-                    including the default 5.
+                    Omitting this lets the pipeline choose. Qwen-Image 2.1 uses 1.
+                    Krea 2 uses 0 when the checkpoint is distilled and 4.5 otherwise.
+                    Kandinsky 5 Image uses 3.5. HunyuanImage 2.1 uses 3.25 when the
+                    checkpoint embeds guidance, and for the refiner.
                     
-                    For --model-type ltx2, a value you set is used as written. The unused
-                    image default 5 is rewritten: to 1 when the scheduler has no dynamic
-                    shifting, or to video 3 and audio 7 when it does. --sigmas skips that
-                    rewrite and uses the value you passed, including leftover 5.
-                    Video and audio guidance are the same number except for that 3 / 7 case.
+                    For --model-type ltx-video, omitted values follow the loaded
+                    LTXPipeline __call__ defaults (typically guidance 3). A value you
+                    set is passed as written.
+                    
+                    For --model-type ltx2, an omitted value is 1 on a distilled checkpoint,
+                    and video 3 with audio 7 on a full checkpoint. Values you set are
+                    used as written. --sigmas leaves guidance unchanged.
                     Use --ltx-audio-guidance-scales to set audio CFG separately.
                     
+                    The generation step text shows auto when this option is omitted.
+                    
                     NOWRAP!
-                    (default: [5])"""
+                    (default: omitted)"""
         )
     )
 
@@ -5319,7 +5325,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     Use in conjunction with --image-seeds, inpainting (masks) and --control-nets are not supported.
                     Image guidance scale is enabled by setting image-guidance-scale > 1. Higher image guidance scale
                     encourages generated images that are closely linked to the source image, usually at the expense of
-                    lower image quality. Requires a value of at least 1. (default: [1.5])"""
+                    lower image quality. Requires a value of at least 1.
+                    Omitted, pix2pix uses 1.5."""
         )
     )
 
@@ -5355,26 +5362,36 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-ifs', '--inference-steps', action='store', nargs='+',
-            default=[_pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS],
+            default=None,
             type=_type_inference_steps, metavar="INTEGER",
             help="""One or more inference steps values to try. The amount of inference (de-noising) steps
                     effects image clarity to a degree, higher values bring the image closer to what
                     the AI is targeting for the content of the image. Values between 30-40
                     produce good results, higher values may improve image quality and or
                     change image content.
+
+                    Omitting this lets the pipeline choose. RegionE uses 28.
+                    Qwen-Image 2.1 uses 40. Krea 2 uses 8 when the checkpoint is distilled
+                    and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the refiner.
+                    Kandinsky 5 Image uses 50.
                     
-                    For --model-type ltx-video, this value is passed to the pipeline as written.
+                    For --model-type ltx-video, omitted values follow the loaded
+                    LTXPipeline __call__ defaults (typically guidance 3 and 50 steps).
+                    A value you set is passed as written.
                     
-                    For --model-type ltx2, this value is sent to the pipeline only when
-                    the scheduler has dynamic shifting and neither --timesteps nor
-                    --sigmas is set. Without dynamic shifting, the distilled 8-value
-                    sigma table is used and this option is ignored. A warning names the
-                    ignored value, including the default 30. Pass --inference-steps 8
-                    to match the table and silence the warning. --timesteps and --sigmas
-                    overwrite the step count to the length of the resulting list.
+                    For --model-type ltx2, omitting this uses the pipeline default
+                    (30 on full LTX2Pipeline when neither --timesteps nor --sigmas
+                    is set). A distilled checkpoint uses its sigma table length
+                    regardless of this option. --timesteps and --sigmas overwrite
+                    the step count to the length of the resulting list.
+                    
+                    For --model-type wan, wan-animate, and wan-animate-2, omitted
+                    values follow the loaded pipeline __call__ defaults when present.
+                    
+                    The generation step text shows auto when this option is omitted.
                     
                     NOWRAP!
-                    (default: [30])"""
+                    (default: omitted)"""
         )
     )
 
@@ -5406,9 +5423,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""One or more output frame rates for video model types.
                     Each value will be tried in turn.
 
-                    Defaults to 24 for --model-type ltx2 and ltx-video, motif-video, and 15 for
-                    hyvideo-15; 16 for wan;
-                    30 for wan-animate; and 24 for wan-animate-2.
+                    Defaults to 24 for --model-type ltx2, ltx-video, motif-video,
+                    wan-animate-2, and kandinsky5-video; 15 for hyvideo-15;
+                    16 for wan; and 30 for wan-animate.
 
                     NOWRAP!
                     (default: model type default)"""
@@ -5755,26 +5772,139 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ltx-prompt-enhancer', action='store', default=None, metavar="URI",
-            dest='ltx_prompt_enhancer',
-            help="""URI for the model used to rewrite the LTX prompt before denoising,
-                    for example google/gemma-4-E2B-it or
-                    google/gemma-4-E2B-it;revision=main;subfolder=model;dtype=bfloat16,
-                    with an optional quantizer URI such as
-                    google/gemma-4-E2B-it;quantizer="sdnq;type=int4".
-                    Setting this turns enhancement on. LTX-2.5 selects its text-to-video
-                    or image-to-video system prompt from the conditioning input unless
-                    --ltx-system-prompt is set."""
+            '--pipeline-prompt-enhance', action='store', nargs='?', const=True, default=None,
+            dest='pipeline_prompt_enhance', metavar="TEXT",
+            help=f"""Rewrite the prompt with the text encoder already loaded for this
+                    pipeline, before denoising. With no value, dgenerate picks a
+                    built-in system prompt. A value is used as that system prompt.
+                    file:path reads that prompt from a UTF-8 text file (quote the
+                    value on the shell when the path contains spaces).
+                    Image families use the built-in text-to-image prompt. Qwen-Image
+                    edit, Qwen-Image layered, Qwen-Image 2.1, and Flux.2 use the
+                    built-in edit prompt when the text encoder can see an input image.
+                    On LTX-2 this turns on the optional Gemma prompt enhancer.
+                    With no value the enhancer is google/gemma-4-E2B-it and
+                    LTX-2.5 selects its text-to-video or image-to-video system
+                    prompt from the conditioning input. A value replaces that
+                    system prompt. --ltx-prompt-enhancer names a different
+                    enhancer model. LTX-Video (T5) is not supported.
+                    Supported --model-type values: {_textprocessing.oxford_comma(_pipelinewrapper.PIPELINE_PROMPT_ENHANCE_MODEL_TYPES, "and")}.
+                    Any other --pipeline-prompt-enhance-* option, including
+                    --pipeline-prompt-enhance-seeds, turns enhancement on with
+                    the built-in system prompt when this flag is omitted.
+                    This is separate from --prompt-upscaler."""
+        )
+    )
+
+    enhance_seed_options = parser.add_mutually_exclusive_group()
+
+    actions.append(
+        enhance_seed_options.add_argument(
+            '--pipeline-prompt-enhance-seeds', action='store', nargs='+', default=None,
+            dest='pipeline_prompt_enhance_seeds', metavar='SEED', type=_type_seeds,
+            help="""One or more seeds for prompt enhancement. Each value is tried
+                    in turn with the other arguments, including --seeds.
+                    These seeds are used only by the enhancer. The image or video
+                    still uses --seeds or --gen-seeds. When omitted, the enhancer
+                    uses that generation seed. Also turns --pipeline-prompt-enhance
+                    on when that flag is omitted."""
+        )
+    )
+
+    actions.append(
+        enhance_seed_options.add_argument(
+            '--pipeline-prompt-enhance-gen-seeds', action='store', default=None,
+            dest='pipeline_prompt_enhance_seeds', metavar='COUNT', type=_type_gen_seeds,
+            help="""Generate COUNT random seeds for prompt enhancement.
+                    This may not be used with --pipeline-prompt-enhance-seeds.
+                    The generated seeds override --seeds and --gen-seeds for the
+                    enhancer only. Also turns --pipeline-prompt-enhance on when
+                    that flag is omitted."""
         )
     )
 
     actions.append(
         parser.add_argument(
-            '--ltx-system-prompt', action='store', default=None, metavar="TEXT",
-            dest='ltx_system_prompt',
-            help="""System prompt for --ltx-prompt-enhancer. Omit it and LTX-2.5
-                    selects its text-to-video or image-to-video default from the
-                    conditioning input."""
+            '--pipeline-prompt-enhance-temperature', action='store', default=None,
+            dest='pipeline_prompt_enhance_temperature', metavar='FLOAT',
+            type=_type_non_negative_float,
+            help="""Sampling temperature for --pipeline-prompt-enhance. Image
+                    families use the pipeline text encoder. LTX-2 passes this to
+                    the Gemma enhancer or text-encoder fallback. Omitting it keeps
+                    the default for that model type. Any --pipeline-prompt-enhance-*
+                    option turns prompt enhancement on when the flag itself is omitted."""
+        )
+    )
+    actions.append(
+        parser.add_argument(
+            '--pipeline-prompt-enhance-top-p', action='store', default=None,
+            dest='pipeline_prompt_enhance_top_p', metavar='FLOAT', type=float,
+            help="""Nucleus top-p for --pipeline-prompt-enhance. Must be greater
+                    than 0 and at most 1. Also turns --pipeline-prompt-enhance on
+                    when that flag is omitted."""
+        )
+    )
+    actions.append(
+        parser.add_argument(
+            '--pipeline-prompt-enhance-top-k', action='store', default=None,
+            dest='pipeline_prompt_enhance_top_k', metavar='INT',
+            type=_type_non_negative_integer,
+            help="""Top-k for --pipeline-prompt-enhance. 0 turns top-k off.
+                    Also turns --pipeline-prompt-enhance on when that flag is omitted."""
+        )
+    )
+    actions.append(
+        parser.add_argument(
+            '--pipeline-prompt-enhance-presence-penalty', action='store', default=None,
+            dest='pipeline_prompt_enhance_presence_penalty', metavar='FLOAT', type=float,
+            help="""Presence penalty for --pipeline-prompt-enhance sampling.
+                    Also turns --pipeline-prompt-enhance on when that flag is omitted."""
+        )
+    )
+    actions.append(
+        parser.add_argument(
+            '--pipeline-prompt-enhance-max-new-tokens', action='store', default=None,
+            dest='pipeline_prompt_enhance_max_new_tokens', metavar='INT',
+            type=_type_positive_int,
+            help="""Maximum new tokens for one --pipeline-prompt-enhance rewrite.
+                    Also turns --pipeline-prompt-enhance on when that flag is omitted."""
+        )
+    )
+    actions.append(
+        parser.add_argument(
+            '--pipeline-prompt-enhance-min-new-tokens', action='store', default=None,
+            dest='pipeline_prompt_enhance_min_new_tokens', metavar='INT',
+            type=_type_non_negative_integer,
+            help="""Minimum new tokens before end-of-sequence is allowed.
+                    Also turns --pipeline-prompt-enhance on when that flag is omitted."""
+        )
+    )
+    actions.append(
+        parser.add_argument(
+            '--pipeline-prompt-enhance-gpu-headroom', action='store', default=None,
+            dest='pipeline_prompt_enhance_gpu_headroom', metavar='GIB',
+            type=_type_non_negative_float,
+            help="""GiB of free GPU memory to leave unused when splitting the
+                    text encoder across GPU and CPU, on top of 10 percent of
+                    free memory. The default is 2. Raise it when the rewrite
+                    runs out of memory. Lower it to keep more layers on the GPU.
+                    Also turns --pipeline-prompt-enhance on when that flag is omitted."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-prompt-enhancer', action='store', default=None, metavar="URI",
+            dest='ltx_prompt_enhancer',
+            help="""URI for a separate model that rewrites the LTX prompt before
+                    denoising, for example google/gemma-4-E2B-it or
+                    google/gemma-4-E2B-it;revision=main;subfolder=model;dtype=bfloat16,
+                    with an optional quantizer URI such as
+                    google/gemma-4-E2B-it;quantizer="sdnq;type=int4".
+                    Setting this turns enhancement on and loads that model.
+                    Omit it and --pipeline-prompt-enhance loads
+                    google/gemma-4-E2B-it. A value on --pipeline-prompt-enhance
+                    replaces the text-to-video or image-to-video system prompt."""
         )
     )
 
@@ -5891,10 +6021,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-ifs2', '--second-model-inference-steps', action='store', nargs='+', default=None, metavar="INTEGER",
             type=_type_inference_steps,
-            help=f"""One or more inference steps values for the SDXL refiner or Stable Cascade decoder
-                     when in use. Override the number of inference steps used by the second model,
-                     which defaults to the value taken from --inference-steps for SDXL and 
-                     {_pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS} for Stable Cascade.
+            help=f"""One or more inference step counts for the SDXL refiner or Stable Cascade decoder
+                     when in use. When omitted, an SDXL refiner uses the base step count,
+                     including when that count is chosen automatically. Stable Cascade uses
+                     {_pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS}.
                      """
         )
     )
@@ -5903,10 +6033,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-gs2', '--second-model-guidance-scales', action='store', nargs='+', default=None, metavar="FLOAT",
             type=_type_guidance_scale,
-            help=f"""One or more inference steps values for the SDXL refiner or Stable Cascade decoder
-                     when in use. Override the guidance scale value used by the second model,
-                     which defaults to the value taken from --guidance-scales for SDXL and 
-                     {_pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE} for Stable Cascade.
+            help=f"""One or more guidance scales for the SDXL refiner or Stable Cascade decoder
+                     when in use. When omitted, an SDXL refiner uses the base guidance scale,
+                     including when that scale is chosen automatically. Stable Cascade uses
+                     {_pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE}.
                      """
         )
     )
@@ -6090,9 +6220,6 @@ def _parse_args(args=None, print_usage=True, overrides: dict[str, typing.Any] | 
     args = parser.parse_args(args, namespace=DgenerateArguments())
     if overrides:
         args.set_from(overrides, missing_value_throws=False)
-    if (args.dype_methods is not None or args.dype_base_resolutions is not None
-            or args.dype_mscales is not None or args.dype_axis_scalings is not None):
-        args.dype = True
     args.check(config_attribute_name_to_option)
     return args
 

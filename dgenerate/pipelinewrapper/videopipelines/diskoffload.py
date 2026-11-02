@@ -268,12 +268,12 @@ def _write_weights(state: dict, folder: str, desc: str | None = None) -> dict | 
     storage and were written as accelerate memory-mapped files instead.
     """
     os.makedirs(folder, exist_ok=True)
-    from dgenerate.pipelinewrapper.weightsave import save_state_dict_with_progress
+    import dgenerate.pipelinewrapper.weightsave as _weightsave
     nbytes = sum(
         value.numel() * value.element_size()
         for value in state.values() if torch.is_tensor(value))
     gib = nbytes / (1024 ** 3)
-    return save_state_dict_with_progress(
+    return _weightsave.save_state_dict_with_progress(
         state, folder, desc=desc or f'Writing weights ({gib:.1f} GiB)')
 
 

@@ -48,7 +48,7 @@ class TestLTXLatentUpsampler(unittest.TestCase):
                 _ltx._putil, 'fetch_model_index_dict',
                 return_value={'_class_name': 'LTXPipeline'}), \
                 unittest.mock.patch.object(
-                    _ltx, '_check_ltx_latent_upsampler_available') as check_component:
+                    _ltx._components, '_check_ltx_latent_upsampler_available') as check_component:
             with self.assertRaisesRegex(
                     _pipelines.UnsupportedPipelineConfigError,
                     'earlier LTX pipeline does not support --ltx-latent-upscale'):

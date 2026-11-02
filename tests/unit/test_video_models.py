@@ -1,3 +1,4 @@
+import contextlib
 import inspect
 import json
 import math
@@ -16,6 +17,21 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.pipelinewrapper.videopipelines as _videopipelines
+import dgenerate.pipelinewrapper.pipelines as _pipeline_mod
+import dgenerate.pipelinewrapper.schedulers as _schedulers_mod
+import dgenerate.pipelinewrapper.uris as _uris_mod
+import dgenerate.pipelinewrapper.videopipelines.loading as _video_loading
+import dgenerate.pipelinewrapper.videopipelines.lora as _video_lora
+import dgenerate.pipelinewrapper.videopipelines.ltx as _video_ltx
+import dgenerate.pipelinewrapper.videopipelines.ltx.conditions as _ltx_conditions
+import dgenerate.pipelinewrapper.videopipelines.ltx.decoder as _ltx_decoder
+import dgenerate.pipelinewrapper.videopipelines.ltx.legacy as _ltx_legacy
+import dgenerate.pipelinewrapper.videopipelines.media as _video_media
+import dgenerate.pipelinewrapper.videopipelines.quantization as _video_quantization
+import dgenerate.pipelinewrapper.videopipelines.schedules as _video_schedules
+import dgenerate.pipelinewrapper.videopipelines.single_image_video as _single_image_video
+import dgenerate.pipelinewrapper.videopipelines.wan as _video_wan
+import dgenerate.messages as _messages
 import dgenerate.prompt as _prompt
 import dgenerate.renderloopconfig as _renderloopconfig
 
@@ -34,7 +50,7 @@ class TestVideoModels(unittest.TestCase):
 
         scheduler = diffusers.FlowMatchEulerDiscreteScheduler(use_dynamic_shifting=True)
         custom = [1000, 700, 300, 50]
-        with _videopipelines._forced_scheduler_timesteps(scheduler, custom):
+        with _video_schedules._forced_scheduler_timesteps(scheduler, custom):
             # Motif always passes its own sigmas, sized to num_inference_steps.
             timesteps, steps = retrieve_timesteps(
                 scheduler, len(custom), 'cpu', None,
@@ -52,7 +68,7 @@ class TestVideoModels(unittest.TestCase):
 
         scheduler = diffusers.FlowMatchEulerDiscreteScheduler(use_dynamic_shifting=True)
         custom = [1000, 600, 200]
-        with _videopipelines._forced_scheduler_timesteps(scheduler, custom):
+        with _video_schedules._forced_scheduler_timesteps(scheduler, custom):
             # LTX-2 copies the scheduler for the audio latents, then sets both.
             audio_scheduler = copy.deepcopy(scheduler)
             audio_timesteps, _ = retrieve_timesteps(
@@ -152,16 +168,16 @@ class TestVideoModels(unittest.TestCase):
             lora_fuse_scale = None
 
         with unittest.mock.patch.object(
-                _videopipelines, '_create_cached_video_pipeline',
+                _video_loading, '_create_cached_video_pipeline',
                 return_value=Held()), \
                 unittest.mock.patch.object(
-                    _videopipelines, 'pipeline_for_mode',
+                    _video_loading, 'pipeline_for_mode',
                     side_effect=lambda pipeline, mode, family: pipeline), \
                 unittest.mock.patch.object(
-                    _videopipelines._schedulers, 'load_scheduler'), \
+                    _schedulers_mod, 'load_scheduler'), \
                 unittest.mock.patch.object(
                     _videopipelines, '_invoke', side_effect=invoke):
-            _videopipelines._call_wan(Wrapper(), args)
+            _video_wan._call_wan(Wrapper(), args)
         return captured['kwargs'], args, pipe
 
     def test_wan_video_timesteps(self):
@@ -243,17 +259,20 @@ class TestVideoModels(unittest.TestCase):
     def test_ltx_check_defaults(self):
         config = _config(model_path='org/ltx', model_type=_pipelinewrapper.ModelType.LTX2)
         config.check()
-        self.assertEqual(config.video_fps, [24.0])
-        self.assertEqual(
-            config.inference_steps,
-            [_pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS])
+        self.assertIsNone(config.video_fps)
+        self.assertIn(
+            'Video FPS: 24.0',
+            next(config.iterate_diffusion_args()).describe_pipeline_wrapper_args(
+                config.model_type))
+        self.assertIsNone(config.inference_steps)
 
         listed = _config(
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX2,
             sigmas=[[1.0, 0.5, 0.25]])
         listed.check()
-        self.assertEqual(listed.inference_steps, [3])
+        self.assertIsNone(listed.inference_steps)
+        self.assertIsNone(next(listed.iterate_diffusion_args()).inference_steps)
 
     def test_ltx_video_rejects_ltx2_only_options(self):
         config = _config(
@@ -277,25 +296,23 @@ class TestVideoModels(unittest.TestCase):
             _videopipelines.ltx.ltx_family_for_model_type(ltx2, {'_class_name': 'LTXPipeline'})
 
     def test_distilled_steps_warning_shows_passed_value(self):
-        default = _pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS
-        self.assertIsNone(_videopipelines._ltx_ignored_steps_warning(8, 8))
+        default = _pipelinewrapper.constants.DEFAULT_FALLBACK_INFERENCE_STEPS
+        self.assertIsNone(_video_ltx._ltx_ignored_steps_warning(8, 8))
         suffix = ' Pass --inference-steps 8 to silence this warning.'
+        self.assertIsNone(
+            _video_ltx._ltx_ignored_steps_warning(None, 8))
         self.assertEqual(
-            _videopipelines._ltx_ignored_steps_warning(None, 8),
+            _video_ltx._ltx_ignored_steps_warning(default, 8),
             'The LTX distilled checkpoint uses an 8-value sigma schedule '
             f'and ignores --inference-steps {default} (the default).{suffix}')
         self.assertEqual(
-            _videopipelines._ltx_ignored_steps_warning(default, 8),
-            'The LTX distilled checkpoint uses an 8-value sigma schedule '
-            f'and ignores --inference-steps {default} (the default).{suffix}')
-        self.assertEqual(
-            _videopipelines._ltx_ignored_steps_warning(20, 8),
+            _video_ltx._ltx_ignored_steps_warning(20, 8),
             'The LTX distilled checkpoint uses an 8-value sigma schedule '
             f'and ignores --inference-steps 20.{suffix}')
-        steps, warning = _videopipelines._ltx_distilled_inference_steps(default, 8)
+        steps, warning = _video_ltx._ltx_distilled_inference_steps(default, 8)
         self.assertEqual(steps, 8)
         self.assertIn('--inference-steps 8', warning)
-        steps, warning = _videopipelines._ltx_distilled_inference_steps(8, 8)
+        steps, warning = _video_ltx._ltx_distilled_inference_steps(8, 8)
         self.assertEqual((steps, warning), (8, None))
 
     def test_unknown_video_type_is_rejected(self):
@@ -317,36 +334,36 @@ class TestVideoModels(unittest.TestCase):
         self.assertTrue(_pipelinewrapper.model_type_is_video('hyvideo-15'))
         self.assertTrue(_pipelinewrapper.model_type_is_video('motif-video'))
         self.assertEqual(
-            _videopipelines._resolve_video_load(
+            _video_loading._resolve_video_load(
                 _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15,
                 {'_class_name': 'HunyuanVideo15Pipeline'}, None)[:2],
             ('hyvideo-15', HunyuanVideo15Pipeline))
         self.assertEqual(
-            _videopipelines._resolve_video_load(
+            _video_loading._resolve_video_load(
                 _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15,
                 {'_class_name': 'HunyuanVideo15ImageToVideoPipeline'}, None)[:2],
             ('hyvideo-15', HunyuanVideo15ImageToVideoPipeline))
         self.assertEqual(
-            _videopipelines._resolve_video_load(
+            _video_loading._resolve_video_load(
                 _pipelinewrapper.ModelType.MOTIF_VIDEO,
                 {'_class_name': 'MotifVideoPipeline'}, None)[:2],
             ('motif-video', MotifVideoPipeline))
         self.assertIs(
-            _videopipelines._single_image_video_pipeline_class(
+            _single_image_video._single_image_video_pipeline_class(
                 'hyvideo-15', 'image-to-video'),
             HunyuanVideo15ImageToVideoPipeline)
         self.assertIs(
-            _videopipelines._single_image_video_pipeline_class('motif-video', 'image-to-video'),
+            _single_image_video._single_image_video_pipeline_class('motif-video', 'image-to-video'),
             MotifVideoImage2VideoPipeline)
         self.assertIs(
-            _videopipelines._single_image_video_pipeline_class('kandinsky5-video', 'text-to-video'),
+            _single_image_video._single_image_video_pipeline_class('kandinsky5-video', 'text-to-video'),
             diffusers.Kandinsky5T2VPipeline)
         self.assertIs(
-            _videopipelines._video_transformer_class(
+            _video_loading._video_transformer_class(
                 _pipelinewrapper.ModelType.KANDINSKY5_VIDEO, 'kandinsky5-video'),
             diffusers.Kandinsky5Transformer3DModel)
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            _videopipelines._single_image_video_pipeline_class('ltx2', 'text-to-video')
+            _single_image_video._single_image_video_pipeline_class('ltx2', 'text-to-video')
 
     def test_video_options_and_timesteps(self):
         parsed = _arguments.parse_args([
@@ -367,7 +384,11 @@ class TestVideoModels(unittest.TestCase):
             model_type=_pipelinewrapper.ModelType.MOTIF_VIDEO,
             timesteps=[[1000, 700, 300, 0]])
         config.check()
-        self.assertEqual(config.video_fps, [24.0])
+        self.assertIsNone(config.video_fps)
+        self.assertIn(
+            'Video FPS: 24.0',
+            next(config.iterate_diffusion_args()).describe_pipeline_wrapper_args(
+                config.model_type))
         self.assertEqual(next(config.iterate_diffusion_args()).timesteps,
                          [1000, 700, 300, 0])
         expression_config = _config(
@@ -379,15 +400,15 @@ class TestVideoModels(unittest.TestCase):
             next(expression_config.iterate_diffusion_args()).timesteps,
             'timesteps[::2]')
         self.assertEqual(
-            _videopipelines._eval_video_timesteps_expression(
+            _video_schedules._eval_video_timesteps_expression(
                 'timesteps[::2]', [1000, 800, 600, 400, 200]),
             [1000, 600, 200])
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            _videopipelines._eval_video_timesteps_expression(
+            _video_schedules._eval_video_timesteps_expression(
                 'timesteps * 0.5', [1000, 801, 600])
         motif_pipe = self._motif_schedule_pipe()
         self.assertEqual(
-            _videopipelines._motif_default_timesteps(
+            _single_image_video._motif_default_timesteps(
                 motif_pipe, 3, {}, inspect.signature(motif_pipe.__call__).parameters),
             [1000, 500, 0])
         dpm_config = _config(
@@ -488,7 +509,7 @@ class TestVideoModels(unittest.TestCase):
                 _videopipelines, '_video_pipeline', return_value=(Pipe(), Held())), \
                 unittest.mock.patch.object(_videopipelines, '_generator', return_value=None), \
                 unittest.mock.patch.object(_videopipelines, '_invoke', side_effect=invoke):
-            frames, audio, sample_rate, fps = _videopipelines._call_single_image_video(
+            frames, audio, sample_rate, fps = _single_image_video._call_single_image_video(
                 Wrapper(), args)
 
         self.assertNotIn('timesteps', captured['kwargs'])
@@ -581,24 +602,102 @@ class TestVideoModels(unittest.TestCase):
             lora_fuse_scale = None
 
         with unittest.mock.patch.object(
-                _videopipelines, '_create_cached_video_pipeline',
+                _video_loading, '_create_cached_video_pipeline',
                 return_value=Held()), \
                 unittest.mock.patch.object(
-                    _videopipelines, 'pipeline_for_mode',
+                    _video_loading, 'pipeline_for_mode',
                     side_effect=lambda pipeline, mode, family: pipeline), \
                 unittest.mock.patch.object(
-                    _videopipelines._schedulers, 'load_scheduler',
+                    _schedulers_mod, 'load_scheduler',
                     side_effect=apply_scheduler), \
                 unittest.mock.patch.object(
                     _videopipelines, '_invoke', side_effect=invoke):
-            _videopipelines._call_ltx(Wrapper(), args)
+            _video_ltx._call_ltx(Wrapper(), args)
 
         self.assertEqual(
             captured['uri'],
             'FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true')
         self.assertEqual(captured['kwargs']['num_inference_steps'], 50)
         self.assertNotIn('sigmas', captured['kwargs'])
-        self.assertFalse(_videopipelines._ltx_is_distilled(pipe))
+        self.assertFalse(_video_ltx._ltx_is_distilled(pipe))
+
+    def test_ltx_sigmas_omit_unset_guidance(self):
+        class Scheduler:
+            def __init__(self):
+                self.config = {'use_dynamic_shifting': True}
+
+        class Pipe:
+            def __init__(self):
+                self.scheduler = Scheduler()
+
+        class Held:
+            pipeline = Pipe()
+            family = 'ltx2'
+
+        class Wrapper:
+            device = 'cpu'
+            model_type = _pipelinewrapper.ModelType.LTX2
+            model_cpu_offload = False
+            model_sequential_offload = False
+            model_path = 'org/ltx'
+            _revision = None
+            _variant = None
+            _subfolder = None
+            _dtype = None
+            _local_files_only = False
+            _auth_token = None
+            quantizer_uri = None
+            quantizer_map = None
+            transformer_uri = None
+            lora_uris = None
+            lora_fuse_scale = None
+
+        captured = {}
+
+        def invoke(wrapper, pipeline, kwargs, user_args=None):
+            captured['kwargs'] = kwargs
+
+            class Output:
+                frames = [PIL.Image.new('RGB', (4, 4))]
+                audio = None
+
+            return Output()
+
+        def run(guidance, audio):
+            captured.clear()
+            args = _pipelinewrapper.DiffusionArguments()
+            args.prompt = _prompt.Prompt('fox')
+            args.guidance_scale = guidance
+            args.ltx_audio_guidance_scale = audio
+            args.sigmas = [1.0, 0.5, 0.25]
+            args.video_fps = 24
+            args.width = 640
+            args.height = 384
+            with unittest.mock.patch.object(
+                    _video_loading, '_create_cached_video_pipeline',
+                    return_value=Held()), \
+                    unittest.mock.patch.object(
+                        _video_loading, 'pipeline_for_mode',
+                        side_effect=lambda pipeline, mode, family: pipeline), \
+                    unittest.mock.patch.object(
+                        _videopipelines, '_invoke', side_effect=invoke):
+                _video_ltx._call_ltx(Wrapper(), args)
+            return captured['kwargs'], args
+
+        omitted, omitted_args = run(None, None)
+        self.assertEqual(omitted['sigmas'], [1.0, 0.5, 0.25])
+        self.assertNotIn('guidance_scale', omitted)
+        self.assertNotIn('audio_guidance_scale', omitted)
+        self.assertIsNone(omitted_args.guidance_scale)
+        self.assertEqual(omitted_args.inference_steps, 3)
+
+        video_only, _video_args = run(4.0, None)
+        self.assertEqual(video_only['guidance_scale'], 4.0)
+        self.assertEqual(video_only['audio_guidance_scale'], 4.0)
+
+        audio_only, _audio_args = run(None, 8.0)
+        self.assertNotIn('guidance_scale', audio_only)
+        self.assertEqual(audio_only['audio_guidance_scale'], 8.0)
 
     def test_ltx_control_seed(self):
         gif = 'examples/media/rickroll-roll.gif'
@@ -767,10 +866,10 @@ class TestVideoModels(unittest.TestCase):
 
     def test_legacy_ltx_rejects_control_mode(self):
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            _videopipelines._ltx_pipeline_class('ltx-control', 'ltx')
+            _video_ltx._ltx_pipeline_class('ltx-control', 'ltx')
         from diffusers import LTX2InContextPipeline
         self.assertIs(
-            _videopipelines._ltx_pipeline_class('ltx-control', 'ltx2'), LTX2InContextPipeline)
+            _video_ltx._ltx_pipeline_class('ltx-control', 'ltx2'), LTX2InContextPipeline)
 
     def test_lora_reference_downscale_factor(self):
         import safetensors.torch
@@ -782,7 +881,7 @@ class TestVideoModels(unittest.TestCase):
         plain = os.path.join(directory, 'plain.safetensors')
         safetensors.torch.save_file({'w': torch.zeros(1)}, plain)
 
-        factor = _videopipelines._ic_lora_downscale_factor
+        factor = _ltx_conditions._ic_lora_downscale_factor
         self.assertEqual(factor(f'{ic_lora};scale=0.8', None, None, True), 2)
         self.assertEqual(factor(ic_lora, 3, None, True), 3)
         self.assertEqual(factor(plain, None, None, True), 1)
@@ -801,7 +900,7 @@ class TestVideoModels(unittest.TestCase):
 
         args = _pipelinewrapper.DiffusionArguments()
         args.reference_video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(30)]
-        kwargs = _videopipelines._ltx_reference_kwargs(Wrapper(), Pipe(), Held(), args, 49, 512, 512)
+        kwargs = _ltx_conditions._ltx_reference_kwargs(Wrapper(), Pipe(), Held(), args, 49, 512, 512)
         self.assertEqual(kwargs['reference_downscale_factor'], 2)
         self.assertEqual(kwargs['conditioning_attention_strength'], 0.5)
         self.assertEqual(len(kwargs['reference_conditions'][0].frames), 25)
@@ -810,18 +909,18 @@ class TestVideoModels(unittest.TestCase):
         wide = _pipelinewrapper.DiffusionArguments()
         wide.aspect_correct = False
         wide.reference_video_frames = [PIL.Image.new('RGB', (720, 480)) for _ in range(17)]
-        wide_kwargs = _videopipelines._ltx_reference_kwargs(
+        wide_kwargs = _ltx_conditions._ltx_reference_kwargs(
             Wrapper(), Pipe(), Held(), wide, 17, 512, 512)
         self.assertEqual(wide_kwargs['reference_conditions'][0].frames[0].size, (512, 512))
 
         fitted = _pipelinewrapper.DiffusionArguments()
         fitted.aspect_correct = True
         fitted.reference_video_frames = [PIL.Image.new('RGB', (720, 480)) for _ in range(17)]
-        fitted_kwargs = _videopipelines._ltx_reference_kwargs(
+        fitted_kwargs = _ltx_conditions._ltx_reference_kwargs(
             Wrapper(), Pipe(), Held(), fitted, 17, 512, 512)
         self.assertEqual(fitted_kwargs['reference_conditions'][0].frames[0].size, (512, 320))
 
-        unaligned = _videopipelines._ltx_reference_kwargs(
+        unaligned = _ltx_conditions._ltx_reference_kwargs(
             Wrapper(), Pipe(), Held(), args, 49, 544, 512)
         self.assertEqual(
             unaligned['reference_conditions'][0].frames[0].size,
@@ -885,21 +984,21 @@ class TestVideoModels(unittest.TestCase):
         args.images = [PIL.Image.new('RGB', (8, 8))]
 
         with unittest.mock.patch.object(
-                _videopipelines, '_create_cached_video_pipeline',
+                _video_loading, '_create_cached_video_pipeline',
                 side_effect=create), \
                 unittest.mock.patch.object(
-                    _videopipelines, 'pipeline_for_mode',
+                    _video_loading, 'pipeline_for_mode',
                     side_effect=lambda pipeline, mode, family: captured.setdefault('mode', mode) and pipeline), \
                 unittest.mock.patch.object(
-                    _videopipelines._schedulers, 'load_scheduler'), \
+                    _schedulers_mod, 'load_scheduler'), \
                 unittest.mock.patch.object(
                     _videopipelines, '_invoke', side_effect=invoke):
-            _videopipelines._call_ltx(Wrapper(), args)
+            _video_ltx._call_ltx(Wrapper(), args)
 
             without = Wrapper()
             without.ltx_ic_lora_uri = None
             with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-                _videopipelines._call_ltx(without, args)
+                _video_ltx._call_ltx(without, args)
 
         cache = captured['cache']
         self.assertEqual(cache['lora_uris'], ('org/style',))
@@ -981,7 +1080,7 @@ class TestVideoModels(unittest.TestCase):
         misaligned.check()
 
     def test_ltx_sigma_expression(self):
-        scaled = _videopipelines._eval_sigma_expression(
+        scaled = _video_schedules._eval_sigma_expression(
             'sigmas * 0.95',
             [1.0, 0.5, 0.25])
         self.assertEqual(len(scaled), 3)
@@ -989,7 +1088,7 @@ class TestVideoModels(unittest.TestCase):
         self.assertAlmostEqual(scaled[2], 0.2375)
 
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            _videopipelines._eval_sigma_expression('1 + 1', [1.0, 0.5])
+            _video_schedules._eval_sigma_expression('1 + 1', [1.0, 0.5])
 
     def test_legacy_ltx_schedule_overflow(self):
         from diffusers import FlowMatchEulerDiscreteScheduler
@@ -1003,35 +1102,35 @@ class TestVideoModels(unittest.TestCase):
             shift_terminal=0.1,
             shift=1.0)
 
-        self.assertTrue(_videopipelines._legacy_ltx_schedule_finite(
+        self.assertTrue(_ltx_legacy._legacy_ltx_schedule_finite(
             scheduler, 768, 512, 121, 50))
-        self.assertFalse(_videopipelines._legacy_ltx_schedule_finite(
+        self.assertFalse(_ltx_legacy._legacy_ltx_schedule_finite(
             scheduler, 1024, 1024, 753, 50))
 
     def test_frame_snap(self):
-        self.assertEqual(_videopipelines.ltx_num_frames(5, 24), 121)
-        self.assertEqual(_videopipelines.ltx_num_frames(2, 16), 33)
+        self.assertEqual(_video_ltx.ltx_num_frames(5, 24), 121)
+        self.assertEqual(_video_ltx.ltx_num_frames(2, 16), 33)
 
     def test_output_normalization(self):
         image = PIL.Image.new('RGB', (4, 4), (1, 2, 3))
-        nested = _videopipelines.frames_from_output([[image]])
+        nested = _video_media.frames_from_output([[image]])
         self.assertEqual(len(nested), 1)
         self.assertEqual(nested[0].getpixel((0, 0)), (1, 2, 3))
 
         channels_last = numpy.zeros((2, 8, 8, 3), dtype=numpy.uint8)
         channels_last[0, :, :, 0] = 10
-        last_frames = _videopipelines.frames_from_output(channels_last)
+        last_frames = _video_media.frames_from_output(channels_last)
         self.assertEqual(len(last_frames), 2)
         self.assertEqual(last_frames[0].getpixel((0, 0)), (10, 0, 0))
 
         channels_first = numpy.zeros((2, 3, 8, 8), dtype=numpy.uint8)
         channels_first[1, 1, :, :] = 20
-        first_frames = _videopipelines.frames_from_output(channels_first)
+        first_frames = _video_media.frames_from_output(channels_first)
         self.assertEqual(first_frames[1].getpixel((0, 0)), (0, 20, 0))
 
         audio = numpy.zeros((1, 2, 16), dtype=numpy.float32)
         audio[0, 1, 3] = 0.5
-        planar = _videopipelines.audio_to_numpy(audio)
+        planar = _video_media.audio_to_numpy(audio)
         self.assertEqual(planar.shape, (2, 16))
         self.assertAlmostEqual(float(planar[1, 3]), 0.5)
 
@@ -1232,7 +1331,7 @@ class TestVideoModels(unittest.TestCase):
 
     def test_extra_weight_directories(self):
         self.assertEqual(
-            _videopipelines.extra_weight_directories_from_index(None),
+            _video_loading.extra_weight_directories_from_index(None),
             ['audio_vae', 'vocoder'])
         index = {
             '_class_name': 'LTX2Pipeline',
@@ -1245,7 +1344,7 @@ class TestVideoModels(unittest.TestCase):
             'scheduler': ['diffusers', 'FlowMatchEulerDiscreteScheduler'],
         }
         self.assertEqual(
-            _videopipelines.extra_weight_directories_from_index(index),
+            _video_loading.extra_weight_directories_from_index(index),
             ['audio_vae', 'vocoder', 'connector'])
         classic = {
             '_class_name': 'LTXPipeline',
@@ -1255,7 +1354,7 @@ class TestVideoModels(unittest.TestCase):
             'scheduler': ['diffusers', 'FlowMatchEulerDiscreteScheduler'],
         }
         self.assertEqual(
-            _videopipelines.extra_weight_directories_from_index(classic),
+            _video_loading.extra_weight_directories_from_index(classic),
             [])
 
     def test_video_text_encoder_slots(self):
@@ -1266,21 +1365,21 @@ class TestVideoModels(unittest.TestCase):
             '_class_name': 'WanPipeline',
         }
         self.assertEqual(
-            _videopipelines._text_encoder_slots(index),
+            _video_loading._text_encoder_slots(index),
             ['text_encoder', 'text_encoder_2'])
         self.assertEqual(
-            _videopipelines._inject_video_text_encoders(
+            _video_loading._inject_video_text_encoders(
                 index, ['+'], 'float16', None, True, 'cpu', False),
             {})
         self.assertEqual(
-            _videopipelines._inject_video_text_encoders(
+            _video_loading._inject_video_text_encoders(
                 index, ['null'], 'float16', None, True, 'cpu', False),
             {'text_encoder': None})
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            _videopipelines._inject_video_text_encoders(
+            _video_loading._inject_video_text_encoders(
                 index, ['a', 'b', 'c'], 'float16', None, True, 'cpu', False)
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            _videopipelines._inject_video_text_encoders(
+            _video_loading._inject_video_text_encoders(
                 {'_class_name': 'X'}, ['+'], 'float16', None, True, 'cpu', False)
 
     def test_wan_vae_dtype_skips_quantized(self):
@@ -1294,7 +1393,7 @@ class TestVideoModels(unittest.TestCase):
 
         pipe = unittest.mock.Mock()
         pipe.vae = _QuantVae()
-        _wan._set_wan_vae_dtype(pipe)
+        _wan.common._set_wan_vae_dtype(pipe)
         self.assertTrue(_wan.common._vae_is_quantized(pipe.vae))
 
     def test_cli_quantizer_map_accepts_wan_component_names(self):
@@ -1333,7 +1432,7 @@ class TestVideoModels(unittest.TestCase):
 
         with unittest.mock.patch(
                 'diffusers.hooks.apply_group_offloading') as apply_offload:
-            _wan.place_wan_animate_2(pipe, 'cpu', True, False, False)
+            _wan.animate2.place_wan_animate_2(pipe, 'cpu', True, False, False)
         apply_offload.assert_not_called()
 
     def test_wan_animate_2_group_offloads_full_precision_transformer(self):
@@ -1355,7 +1454,7 @@ class TestVideoModels(unittest.TestCase):
 
         with unittest.mock.patch(
                 'diffusers.hooks.apply_group_offloading') as apply_offload:
-            _wan.place_wan_animate_2(pipe, 'cpu', True, False, False)
+            _wan.animate2.place_wan_animate_2(pipe, 'cpu', True, False, False)
         apply_offload.assert_called_once()
         self.assertTrue(hasattr(pipe.text_encoder, '_hf_hook'))
         self.assertFalse(hasattr(pipe.vae, '_hf_hook'))
@@ -1384,9 +1483,9 @@ class TestVideoModels(unittest.TestCase):
                 'diffusers.hooks.apply_group_offloading'), \
                 unittest.mock.patch.object(
                     _wan._messages, 'warning', side_effect=warnings.append):
-            _wan.place_wan_animate_2(pipe(), 'cpu', False, False, False)
+            _wan.animate2.place_wan_animate_2(pipe(), 'cpu', False, False, False)
             self.assertEqual(warnings, [])
-            _wan.place_wan_animate_2(pipe(), 'cpu', False, False, True)
+            _wan.animate2.place_wan_animate_2(pipe(), 'cpu', False, False, True)
         self.assertEqual(len(warnings), 1)
         self.assertIn('--model-group-offload', warnings[0])
         self.assertIn('one placement', warnings[0])
@@ -1432,8 +1531,8 @@ class TestVideoModels(unittest.TestCase):
         warnings = []
         with unittest.mock.patch.object(
                 _wan._messages, 'warning', side_effect=warnings.append):
-            _wan.place_wan_animate_2(pipe(plain), 'cpu', False, False, False)
-            _wan.place_wan_animate_2(pipe(model), 'cpu', False, False, False)
+            _wan.animate2.place_wan_animate_2(pipe(plain), 'cpu', False, False, False)
+            _wan.animate2.place_wan_animate_2(pipe(model), 'cpu', False, False, False)
         self.assertIs(model.block.forward.__func__, original_forward)
         self.assertTrue(any('full score matrix' in message for message in warnings))
 
@@ -1441,10 +1540,10 @@ class TestVideoModels(unittest.TestCase):
                 'importlib.util.find_spec', return_value=object()), \
                 unittest.mock.patch(
                     'diffusers.hooks.apply_group_offloading') as apply_offload:
-            _wan.place_wan_animate_2(pipe(model), 'cuda', True, False, False)
+            _wan.animate2.place_wan_animate_2(pipe(model), 'cuda', True, False, False)
             compiled_forward = model.block.forward
             self.assertTrue(model.block._dgenerate_forward_compiled)
-            _wan.place_wan_animate_2(pipe(model), 'cuda', True, False, False)
+            _wan.animate2.place_wan_animate_2(pipe(model), 'cuda', True, False, False)
         self.assertIs(model.block.forward, compiled_forward)
         apply_offload.assert_called()
         self.assertEqual(apply_offload.call_args.kwargs['num_blocks_per_group'], 1)
@@ -1459,7 +1558,7 @@ class TestVideoModels(unittest.TestCase):
                 unittest.mock.patch.object(
                     _wan._messages, 'warning', side_effect=warnings.append), \
                 unittest.mock.patch('diffusers.hooks.apply_group_offloading'):
-            _wan.place_wan_animate_2(pipe(skipped), 'cuda', False, False, False)
+            _wan.animate2.place_wan_animate_2(pipe(skipped), 'cuda', False, False, False)
         self.assertFalse(getattr(skipped.block, '_dgenerate_forward_compiled', False))
         self.assertTrue(any('DGENERATE_TORCH_COMPILE=0' in message for message in warnings))
         self.assertTrue(any('full score matrix' in message for message in warnings))
@@ -1691,9 +1790,9 @@ class TestVideoModels(unittest.TestCase):
         FakeTransformer.__name__ = 'WanTransformer3DModel'
 
         with unittest.mock.patch.object(
-                _videopipelines, '_quantizer_config',
+                _video_quantization, '_quantizer_config',
                 return_value=diffusers.BitsAndBytesConfig(load_in_4bit=True)):
-            _videopipelines._load_quantized_module(
+            _video_quantization._load_quantized_module(
                 FakeTransformer, 'org/wan', 'transformer', None, None,
                 _pipelinewrapper.DataType.BFLOAT16, 'bnb;bits=4', None, True,
                 None, offload=False)
@@ -1748,7 +1847,7 @@ class TestVideoModels(unittest.TestCase):
                 'diffusers.WanAnimate2Blocks', _FakeBlocks), \
                 unittest.mock.patch(
                     'diffusers.WanAnimate2DistilledBlocks', _FakeBlocks):
-            pipe = _wan.load_wan_animate_2_pipeline(
+            pipe = _wan.animate2.load_wan_animate_2_pipeline(
                 _FakePipelineClass,
                 'org/wan',
                 {'local_files_only': True},
@@ -1762,53 +1861,53 @@ class TestVideoModels(unittest.TestCase):
 
     def test_ltx_family_from_index(self):
         self.assertEqual(
-            _videopipelines.ltx_family_from_index({'_class_name': 'LTX2Pipeline'}),
+            _video_ltx.ltx_family_from_index({'_class_name': 'LTX2Pipeline'}),
             'ltx2')
         self.assertEqual(
-            _videopipelines.ltx_family_from_index({'_class_name': 'LTXPipeline'}),
+            _video_ltx.ltx_family_from_index({'_class_name': 'LTXPipeline'}),
             'ltx')
         self.assertEqual(
-            _videopipelines.ltx_family_from_index({'_class_name': 'LTXImageToVideoPipeline'}),
+            _video_ltx.ltx_family_from_index({'_class_name': 'LTXImageToVideoPipeline'}),
             'ltx')
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            _videopipelines.ltx_family_from_index({'_class_name': 'FluxPipeline'})
+            _video_ltx.ltx_family_from_index({'_class_name': 'FluxPipeline'})
 
     def test_default_quant_names_include_connectors(self):
         self.assertTrue(
-            _videopipelines._quantize_component('connectors', 'sdnq', None))
+            _video_quantization._quantize_component('connectors', 'sdnq', None))
         self.assertTrue(
-            _videopipelines._quantize_component('transformer', 'sdnq', None))
+            _video_quantization._quantize_component('transformer', 'sdnq', None))
         self.assertTrue(
-            _videopipelines._quantize_component('text_encoder', 'sdnq', None))
+            _video_quantization._quantize_component('text_encoder', 'sdnq', None))
         self.assertFalse(
-            _videopipelines._quantize_component('vae', 'sdnq', None))
+            _video_quantization._quantize_component('vae', 'sdnq', None))
         self.assertFalse(
-            _videopipelines._quantize_component('ltx_prompt_enhancer', 'sdnq', None))
+            _video_quantization._quantize_component('ltx_prompt_enhancer', 'sdnq', None))
         self.assertFalse(
-            _videopipelines._quantize_component('connectors', None, None))
+            _video_quantization._quantize_component('connectors', None, None))
         self.assertTrue(
-            _videopipelines._quantize_component(
+            _video_quantization._quantize_component(
                 'connectors', 'sdnq', ['connectors']))
         self.assertFalse(
-            _videopipelines._quantize_component(
+            _video_quantization._quantize_component(
                 'connectors', 'sdnq', ['transformer']))
 
     def test_video_lora_quantizer_planning_respects_text_encoder_replacements(self):
         class Pipeline:
             _lora_loadable_modules = ('transformer', 'text_encoder')
 
-        components, quantizers = _videopipelines._video_lora_component_quantizers(
+        components, quantizers = _video_lora._video_lora_component_quantizers(
             Pipeline, 'sdnq;type=int4', None, None, None,
             ('text_encoder',), ('CLIPTextModel;model=org/custom-encoder',))
         self.assertEqual(components, ('transformer', 'text_encoder'))
         self.assertEqual(quantizers, {'transformer': 'sdnq;type=int4'})
 
-        _, quantizers = _videopipelines._video_lora_component_quantizers(
+        _, quantizers = _video_lora._video_lora_component_quantizers(
             Pipeline, 'sdnq;type=int4', None, None, None,
             ('text_encoder',), ('+',))
         self.assertEqual(quantizers['text_encoder'], 'sdnq;type=int4')
 
-        _, quantizers = _videopipelines._video_lora_component_quantizers(
+        _, quantizers = _video_lora._video_lora_component_quantizers(
             Pipeline, 'sdnq;type=int4', None, None, None,
             ('text_encoder',),
             ('CLIPTextModel;model=org/custom-encoder;quantizer="bnb;bits=4"',))
@@ -1822,19 +1921,19 @@ class TestVideoModels(unittest.TestCase):
                 diffusers.HunyuanVideo15ImageToVideoPipeline,
                 diffusers.MotifVideoPipeline,
                 diffusers.MotifVideoImage2VideoPipeline):
-            components, quantizers = _videopipelines._video_lora_component_quantizers(
+            components, quantizers = _video_lora._video_lora_component_quantizers(
                 pipeline_class, 'sdnq;type=int4', None, None, None, (), ())
             self.assertIn('transformer', components, pipeline_class.__name__)
             self.assertEqual(
                 quantizers, {'transformer': 'sdnq;type=int4'}, pipeline_class.__name__)
 
     def test_video_lora_component_cache_identity_ignores_manual_quantizers(self):
-        first = _videopipelines._video_lora_component_uri_cache_key(
+        first = _video_lora._video_lora_component_uri_cache_key(
             ('transformer', 'text_encoder'),
             'org/transformer;quantizer="sdnq;type=int4"', None,
             ('text_encoder',),
             ('CLIPTextModel;model=org/encoder;quantizer="bnb;bits=4"',))
-        second = _videopipelines._video_lora_component_uri_cache_key(
+        second = _video_lora._video_lora_component_uri_cache_key(
             ('transformer', 'text_encoder'), 'org/transformer', None,
             ('text_encoder',), ('CLIPTextModel;model=org/encoder',))
         self.assertEqual(first, second)
@@ -1843,23 +1942,23 @@ class TestVideoModels(unittest.TestCase):
         from diffusers.pipelines.ltx2.connectors import LTX2TextConnectors
         from diffusers import LTX2VideoTransformer3DModel
         self.assertIs(
-            _videopipelines._resolve_index_class('ltx2', 'LTX2TextConnectors'),
+            _video_quantization._resolve_index_class('ltx2', 'LTX2TextConnectors'),
             LTX2TextConnectors)
         self.assertIs(
-            _videopipelines._resolve_index_class(
+            _video_quantization._resolve_index_class(
                 'diffusers', 'LTX2VideoTransformer3DModel'),
             LTX2VideoTransformer3DModel)
 
     def test_pretrained_kwargs_uses_torch_dtype(self):
         import torch
-        kwargs = _videopipelines._pretrained_kwargs(
+        kwargs = _video_loading._pretrained_kwargs(
             None, None, None, True, None, _pipelinewrapper.DataType.BFLOAT16, True)
         self.assertEqual(kwargs.get('torch_dtype'), torch.bfloat16)
         self.assertNotIn('dtype', kwargs)
 
     def test_skip_prompt_enhancer(self):
         self.assertIsNone(
-            _videopipelines._LTX_SKIP_OPTIONAL_MODULES['prompt_enhancer'])
+            _video_quantization._LTX_SKIP_OPTIONAL_MODULES['prompt_enhancer'])
 
     def test_quantized_classic_modules_resolves_connectors(self):
         loaded = {}
@@ -1877,8 +1976,8 @@ class TestVideoModels(unittest.TestCase):
         with unittest.mock.patch.object(
                 _videopipelines.loading._util, 'fetch_model_index_dict', return_value=index), \
                 unittest.mock.patch.object(
-                    _videopipelines, '_load_quantized_module', side_effect=fake_load):
-            modules = _videopipelines._quantized_classic_modules(
+                    _video_quantization, '_load_quantized_module', side_effect=fake_load):
+            modules = _video_quantization._quantized_classic_modules(
                 'org/ltx', None, None, None, _pipelinewrapper.DataType.BFLOAT16,
                 'sdnq', None, None, True, 'cpu', False)
         from diffusers.pipelines.ltx2.connectors import LTX2TextConnectors
@@ -1906,8 +2005,8 @@ class TestVideoModels(unittest.TestCase):
         with unittest.mock.patch.object(
                 _videopipelines.loading._util, 'fetch_model_index_dict', return_value=index), \
                 unittest.mock.patch.object(
-                    _videopipelines, '_load_quantized_module', side_effect=fake_load):
-            modules = _videopipelines._quantized_classic_modules(
+                    _video_quantization, '_load_quantized_module', side_effect=fake_load):
+            modules = _video_quantization._quantized_classic_modules(
                 'Wan-AI/Wan2.2-I2V-A14B-Diffusers', None, None, None,
                 _pipelinewrapper.DataType.BFLOAT16,
                 'sdnq', None, None, True, 'cpu', False,
@@ -1934,27 +2033,27 @@ class TestVideoModels(unittest.TestCase):
             quantizer_uri = None
             quantizer_map = None
 
-        keys = _videopipelines._cache_kwargs(Wrapper())
+        keys = _video_loading._cache_kwargs(Wrapper())
         self.assertNotIn('mode', keys)
         self.assertNotIn('scheduler_uri', keys)
         self.assertFalse(keys['torch_compile'])
         animate = Wrapper()
         animate.model_type = _pipelinewrapper.ModelType.WAN_ANIMATE_2
-        self.assertTrue(_videopipelines._cache_kwargs(animate)['torch_compile'])
+        self.assertTrue(_video_loading._cache_kwargs(animate)['torch_compile'])
         animate.torch_compile = False
-        self.assertTrue(_videopipelines._cache_kwargs(animate)['torch_compile'])
+        self.assertTrue(_video_loading._cache_kwargs(animate)['torch_compile'])
         with unittest.mock.patch.dict('os.environ', {'DGENERATE_TORCH_COMPILE': '0'}):
-            self.assertFalse(_videopipelines._cache_kwargs(animate)['torch_compile'])
+            self.assertFalse(_video_loading._cache_kwargs(animate)['torch_compile'])
         self.assertNotIn(
             'scheduler_uri',
-            inspect.signature(_videopipelines._create_cached_video_pipeline).parameters)
+            inspect.signature(_video_loading._create_cached_video_pipeline).parameters)
         self.assertNotIn(
             'scheduler_uri',
-            inspect.signature(_videopipelines._pipelines._create_diffusion_pipeline).parameters)
+            inspect.signature(_pipeline_mod._create_diffusion_pipeline).parameters)
         video_exceptions = inspect.getclosurevars(
-            _videopipelines._create_cached_video_pipeline).nonlocals['exceptions']
+            _video_loading._create_cached_video_pipeline).nonlocals['exceptions']
         still_exceptions = inspect.getclosurevars(
-            _videopipelines._pipelines._create_diffusion_pipeline).nonlocals['exceptions']
+            _pipeline_mod._create_diffusion_pipeline).nonlocals['exceptions']
         self.assertIn('local_files_only', video_exceptions)
         self.assertIn('local_files_only', still_exceptions)
 
@@ -1974,7 +2073,7 @@ class TestVideoModels(unittest.TestCase):
     def test_audio_sample_rate_warns_without_vocoder(self):
         audio = numpy.zeros((1, 8), dtype=numpy.float32)
         self.assertIsNone(
-            _videopipelines.audio_sample_rate_from_pipeline(object(), audio))
+            _video_ltx.audio_sample_rate_from_pipeline(object(), audio))
 
         class Vocoder:
             class config:
@@ -1984,7 +2083,7 @@ class TestVideoModels(unittest.TestCase):
             vocoder = Vocoder()
 
         self.assertEqual(
-            _videopipelines.audio_sample_rate_from_pipeline(Pipe(), audio),
+            _video_ltx.audio_sample_rate_from_pipeline(Pipe(), audio),
             16000)
 
     def test_pipeline_for_mode_shares_components(self):
@@ -2005,8 +2104,8 @@ class TestVideoModels(unittest.TestCase):
                 raise AssertionError('from_pipe recasts dtype and breaks quantized modules')
 
         with unittest.mock.patch.object(
-                _videopipelines, '_ltx_pipeline_class', return_value=Other):
-            converted = _videopipelines.pipeline_for_mode(Base(), 'ltx-image')
+                _video_ltx, '_ltx_pipeline_class', return_value=Other):
+            converted = _video_loading.pipeline_for_mode(Base(), 'ltx-image')
         self.assertIs(converted.vae, vae)
         self.assertIs(converted.components['vae'], vae)
 
@@ -2026,7 +2125,7 @@ class TestVideoModels(unittest.TestCase):
             scheduler = Scheduler()
 
         pipe = Pipe()
-        values = _videopipelines._ltx_base_sigmas(pipe, False, 4)
+        values = _video_ltx._ltx_base_sigmas(pipe, False, 4)
         self.assertEqual(values, [4.0, 0.0])
         self.assertEqual(pipe.scheduler.sigmas, [1.0, 0.0])
         self.assertEqual(pipe.scheduler.timesteps, [10])
@@ -2051,9 +2150,9 @@ class TestVideoModels(unittest.TestCase):
         pipe = Pipe()
         original = FlowMatchEulerDiscreteScheduler.from_config(config)
         pipe.scheduler = original
-        expected = _videopipelines._legacy_ltx_timesteps(original, 512, 512, 121, 50)
+        expected = _ltx_legacy._legacy_ltx_timesteps(original, 512, 512, 121, 50)
 
-        timesteps = _videopipelines._fix_legacy_ltx_condition_schedule(pipe, 512, 512, 121, 50)
+        timesteps = _ltx_legacy._fix_legacy_ltx_condition_schedule(pipe, 512, 512, 121, 50)
         self.assertIsNot(pipe.scheduler, original)
         self.assertTrue(original.config.use_dynamic_shifting)
         self.assertFalse(pipe.scheduler.config.use_dynamic_shifting)
@@ -2064,7 +2163,7 @@ class TestVideoModels(unittest.TestCase):
 
         static = FlowMatchEulerDiscreteScheduler.from_config({**config, 'use_dynamic_shifting': False})
         pipe.scheduler = static
-        self.assertIsNone(_videopipelines._fix_legacy_ltx_condition_schedule(pipe, 512, 512, 121, 50))
+        self.assertIsNone(_ltx_legacy._fix_legacy_ltx_condition_schedule(pipe, 512, 512, 121, 50))
         self.assertIs(pipe.scheduler, static)
 
     def test_ltx_allows_frame_slice(self):
@@ -2082,7 +2181,7 @@ class TestVideoModels(unittest.TestCase):
             for index in range(12):
                 writer.write(PIL.Image.new('RGB', (64, 64), (index * 20, 0, 0)))
 
-        frames, fps = _videopipelines.load_rgb_frames(path, frame_start=2, frame_end=9)
+        frames, fps = _video_media.load_rgb_frames(path, frame_start=2, frame_end=9)
         try:
             self.assertEqual(len(frames), 8)
             self.assertAlmostEqual(fps, 12.0)
@@ -2091,15 +2190,15 @@ class TestVideoModels(unittest.TestCase):
             for frame in frames:
                 frame.close()
 
-        frames, _ = _videopipelines.load_rgb_frames(path, max_frames=5)
+        frames, _ = _video_media.load_rgb_frames(path, max_frames=5)
         self.assertEqual(len(frames), 5)
         for frame in frames:
             frame.close()
 
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            _videopipelines.load_rgb_frames(path, frame_start=50)
+            _video_media.load_rgb_frames(path, frame_start=50)
 
-        frames, fps = _videopipelines.load_rgb_frames('examples/media/earth.jpg')
+        frames, fps = _video_media.load_rgb_frames('examples/media/earth.jpg')
         self.assertEqual(len(frames), 1)
         self.assertIsNone(fps)
         frames[0].close()
@@ -2160,7 +2259,7 @@ class TestVideoModels(unittest.TestCase):
             try:
                 with unittest.mock.patch(
                         'dgenerate.mediainput.create_web_cache_file', fake_cache):
-                    frames, fps = _videopipelines.load_rgb_frames(url, max_frames=3)
+                    frames, fps = _video_media.load_rgb_frames(url, max_frames=3)
                 self.assertEqual(len(frames), 3)
                 self.assertAlmostEqual(fps, 12.0)
                 self.assertTrue(all(frame.mode == 'RGB' for frame in frames))
@@ -2179,17 +2278,17 @@ class TestVideoModels(unittest.TestCase):
         args.video_frames = start
         args.end_video_frames = end
 
-        legacy = _videopipelines._ltx_conditions(Pipe(), 'ltx', args, 49)
+        legacy = _ltx_conditions._ltx_conditions(Pipe(), 'ltx', args, 49)
         self.assertEqual([len(c.video) for c in legacy], [25, 17])
         self.assertEqual([c.frame_index for c in legacy], [0, 32])
 
-        ltx2 = _videopipelines._ltx_conditions(Pipe(), 'ltx2', args, 49)
+        ltx2 = _ltx_conditions._ltx_conditions(Pipe(), 'ltx2', args, 49)
         self.assertEqual([len(c.frames) for c in ltx2], [25, 17])
         self.assertEqual([c.index for c in ltx2], [0, 4])
 
         args.end_video_frames = None
         args.end_images = [PIL.Image.new('RGB', (8, 8))]
-        mixed = _videopipelines._ltx_conditions(Pipe(), 'ltx2', args, 49)
+        mixed = _ltx_conditions._ltx_conditions(Pipe(), 'ltx2', args, 49)
         self.assertEqual(len(mixed[0].frames), 25)
         self.assertEqual(mixed[1].index, -1)
 
@@ -2201,11 +2300,11 @@ class TestVideoModels(unittest.TestCase):
         args = _pipelinewrapper.DiffusionArguments()
         args.end_video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(9)]
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            _videopipelines._ltx_conditions(Pipe(), 'ltx2', args, None)
+            _ltx_conditions._ltx_conditions(Pipe(), 'ltx2', args, None)
 
         args.end_video_frames = None
         args.video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(12)]
-        conditions = _videopipelines._ltx_conditions(Pipe(), 'ltx2', args, None)
+        conditions = _ltx_conditions._ltx_conditions(Pipe(), 'ltx2', args, None)
         self.assertEqual(len(conditions[0].frames), 9)
 
     def test_ltx_condition_index_and_extra_group(self):
@@ -2229,9 +2328,9 @@ class TestVideoModels(unittest.TestCase):
         softened = _pipelinewrapper.DiffusionArguments()
         softened.image_seed_strength = 0.7
         softened.images = [PIL.Image.new('RGB', (8, 8))]
-        self.assertEqual(_videopipelines._ltx_resolved_strength(None, softened), 0.7)
-        self.assertEqual(_videopipelines._ltx_resolved_strength(0.4, softened), 0.4)
-        self.assertTrue(_videopipelines._ltx_image_needs_conditions(softened))
+        self.assertEqual(_ltx_conditions._ltx_resolved_strength(None, softened), 0.7)
+        self.assertEqual(_ltx_conditions._ltx_resolved_strength(0.4, softened), 0.4)
+        self.assertTrue(_ltx_conditions._ltx_image_needs_conditions(softened))
 
     def test_latent_upscale_size_check(self):
         missing = _config(
@@ -2270,14 +2369,14 @@ class TestVideoModels(unittest.TestCase):
 
     def test_video_output_size_alignment_forces_and_warns(self):
         with unittest.mock.patch('dgenerate.messages.warning') as warning:
-            size = _videopipelines._force_output_size_alignment(
+            size = _video_media._force_output_size_alignment(
                 650, 350, 64, 'LTX')
         self.assertEqual(size, (640, 320))
         warning.assert_called_once()
         self.assertIn('640x320', warning.call_args.args[0])
 
         with unittest.mock.patch('dgenerate.messages.warning') as warning:
-            size = _videopipelines._force_output_size_alignment(
+            size = _video_media._force_output_size_alignment(
                 1000, 1000, 32, 'Wan')
         self.assertEqual(size, (992, 992))
         warning.assert_called_once()
@@ -2293,14 +2392,14 @@ class TestVideoModels(unittest.TestCase):
         args = _pipelinewrapper.DiffusionArguments()
         args.aspect_correct = True
         args.ltx_latent_upscale = False
-        align = _videopipelines.ltx._ltx_canvas_align(Pipe(), Held(), 'ltx-image', args)
+        align = _videopipelines.ltx.conditions._ltx_canvas_align(Pipe(), Held(), 'ltx-image', args)
         self.assertEqual(align, 32)
 
         args.ltx_latent_upscale = True
-        align = _videopipelines.ltx._ltx_canvas_align(Pipe(), Held(), 'ltx-image', args)
+        align = _videopipelines.ltx.conditions._ltx_canvas_align(Pipe(), Held(), 'ltx-image', args)
         self.assertEqual(align, 64)
 
-        width, height = _videopipelines.conditioning_canvas(
+        width, height = _video_media.conditioning_canvas(
             (1280, 720), 768, 512, True, align)
         self.assertEqual((width // 2) % 32, 0)
         self.assertEqual((height // 2) % 32, 0)
@@ -2396,26 +2495,26 @@ class TestVideoModels(unittest.TestCase):
         args.ltx_modality_scale = 3
 
         with unittest.mock.patch.object(
-                _videopipelines, '_create_cached_video_pipeline', return_value=Held()), \
+                _video_loading, '_create_cached_video_pipeline', return_value=Held()), \
                 unittest.mock.patch.object(
-                    _videopipelines, 'pipeline_for_mode',
+                    _video_loading, 'pipeline_for_mode',
                     side_effect=lambda pipeline, mode, family: pipeline), \
                 unittest.mock.patch.object(
-                    _videopipelines._schedulers, 'load_scheduler'), \
+                    _schedulers_mod, 'load_scheduler'), \
                 unittest.mock.patch.object(
                     _videopipelines, '_invoke', side_effect=invoke), \
                 unittest.mock.patch(
                     'dgenerate.pipelinewrapper.videopipelines.ltx._putil.fetch_model_index_dict',
                     return_value={'_class_name': 'LTX2Pipeline'}), \
                 unittest.mock.patch(
-                    'dgenerate.pipelinewrapper.videopipelines.ltx._check_ltx_latent_upsampler_available'), \
+                    'dgenerate.pipelinewrapper.videopipelines.ltx._components._check_ltx_latent_upsampler_available'), \
                 unittest.mock.patch(
                     'diffusers.pipelines.ltx2.latent_upsampler.LTX2LatentUpsamplerModel.from_pretrained',
                     return_value=type('Upsampler', (), {'to': lambda self, *args, **kwargs: self})()), \
                 unittest.mock.patch(
                     'diffusers.pipelines.ltx2.pipeline_ltx2_latent_upsample.LTX2LatentUpsamplePipeline',
                     UpPipe):
-            frames, audio, sample_rate, fps = _videopipelines._call_ltx(Wrapper(), args)
+            frames, audio, sample_rate, fps = _video_ltx._call_ltx(Wrapper(), args)
 
         self.assertEqual(len(frames), 1)
         self.assertEqual(fps, 24)
@@ -2515,16 +2614,27 @@ class TestVideoModels(unittest.TestCase):
             'guidance_scale': 3,
         }
 
+        def generate_enhanced(pipe, encoder, prompt, system_prompt, image, seed, counter,
+                              overrides, dedicated_enhancer=False):
+            calls.append({'enhance': prompt, 'system': system_prompt})
+            return prompt + ' enhanced'
+
         with unittest.mock.patch.object(_videopipelines, '_invoke', side_effect=invoke), \
                 unittest.mock.patch.object(
-                    _videopipelines._uris.LoRAUri, 'load_on_pipeline', side_effect=load_on_pipeline), \
+                    _uris_mod.LoRAUri, 'load_on_pipeline', side_effect=load_on_pipeline), \
+                unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.promptenhance._fast_encoder',
+                    return_value=contextlib.nullcontext()), \
+                unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.promptenhance._generate_ltx_enhance',
+                    side_effect=generate_enhanced), \
                 unittest.mock.patch(
                     'diffusers.pipelines.ltx2.latent_upsampler.LTX2LatentUpsamplerModel.from_pretrained',
                     return_value=type('Upsampler', (), {'to': lambda self, *args, **kwargs: self})()), \
                 unittest.mock.patch(
                     'diffusers.pipelines.ltx2.pipeline_ltx2_latent_upsample.LTX2LatentUpsamplePipeline',
                     UpPipe):
-            _videopipelines._ltx_two_stage(wrapper, pipe, None, args, kwargs, False)
+            _video_ltx._ltx_two_stage(wrapper, pipe, None, args, kwargs, False)
 
         self.assertEqual(calls[0]['enhance'], 'fox')
         self.assertTrue(calls[0]['system'])
@@ -2550,23 +2660,72 @@ class TestVideoModels(unittest.TestCase):
                 return ['rewritten prompt']
 
         enhancer = Enhancer()
-        pipe = unittest.mock.Mock(
-            prompt_enhancer=enhancer, enhance_prompt=enhancer.enhance_prompt)
+        pipe = unittest.mock.Mock(prompt_enhancer=enhancer)
         wrapper = unittest.mock.Mock(device='cuda')
+        user_args = unittest.mock.Mock(
+            pipeline_prompt_enhance_seed=None,
+            pipeline_prompt_enhance_temperature=None,
+            pipeline_prompt_enhance_top_p=None,
+            pipeline_prompt_enhance_top_k=None,
+            pipeline_prompt_enhance_presence_penalty=None,
+            pipeline_prompt_enhance_max_new_tokens=None,
+            pipeline_prompt_enhance_min_new_tokens=None,
+            pipeline_prompt_enhance_gpu_headroom=None)
         kwargs = {'prompt': 'starting prompt', 'image': image,
                   'enable_prompt_enhancement': True}
+        generated = {}
+
+        def generate_enhanced(pipe, encoder, prompt, system_prompt, image, seed, counter,
+                              overrides, dedicated_enhancer=False):
+            generated['system_prompt'] = system_prompt
+            generated['image'] = image
+            generated['dedicated'] = dedicated_enhancer
+            return 'rewritten prompt'
 
         with unittest.mock.patch.object(
                 _ltx._putil, 'is_loaded_in_8bit_bnb', return_value=True), \
                 unittest.mock.patch.object(_ltx.torch.cuda, 'is_available', return_value=True), \
-                unittest.mock.patch.object(_ltx.torch.cuda, 'empty_cache'):
-            _ltx._enhance_ltx_prompt_once(wrapper, pipe, kwargs)
+                unittest.mock.patch.object(_ltx.torch.cuda, 'empty_cache'), \
+                unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.promptenhance._generate_ltx_enhance',
+                    side_effect=generate_enhanced):
+            _ltx._enhance_ltx_prompt_once(wrapper, pipe, kwargs, user_args)
 
         self.assertEqual(kwargs['prompt'], 'rewritten prompt')
         self.assertFalse(kwargs['enable_prompt_enhancement'])
-        self.assertEqual(enhancer.calls[0]['system_prompt'], LTX2_5_I2V_DEFAULT_SYSTEM_PROMPT)
-        self.assertIs(enhancer.calls[0]['image'], image)
+        self.assertEqual(generated['system_prompt'], LTX2_5_I2V_DEFAULT_SYSTEM_PROMPT)
+        self.assertIs(generated['image'], image)
+        self.assertTrue(generated['dedicated'])
         self.assertIsNone(pipe.prompt_enhancer)
+
+    def test_ltx_text_encoder_enhancer_uses_rewrite_prompt(self):
+        from diffusers.pipelines.ltx2.utils import LTX2_5_T2V_DEFAULT_SYSTEM_PROMPT
+        from dgenerate.pipelinewrapper.videopipelines import ltx as _ltx
+
+        pipe = unittest.mock.Mock(prompt_enhancer=None, text_encoder=object(), tokenizer=object())
+        wrapper = unittest.mock.Mock(device='cuda', _local_files_only=True)
+        user_args = unittest.mock.Mock(
+            pipeline_prompt_enhance_seed=None, seed=42,
+            pipeline_prompt_enhance_temperature=None,
+            pipeline_prompt_enhance_top_p=None,
+            pipeline_prompt_enhance_top_k=None,
+            pipeline_prompt_enhance_presence_penalty=None,
+            pipeline_prompt_enhance_max_new_tokens=None,
+            pipeline_prompt_enhance_min_new_tokens=None)
+        kwargs = {'prompt': 'fox', 'enable_prompt_enhancement': True}
+
+        with unittest.mock.patch.object(_ltx._vp, '_offload_requested', return_value=True), \
+                unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.promptenhance.rewrite_prompt',
+                    return_value='long fox') as rewrite, \
+                unittest.mock.patch.object(_ltx.torch.cuda, 'is_available', return_value=False):
+            _ltx._enhance_ltx_prompt_once(wrapper, pipe, kwargs, user_args)
+
+        rewrite.assert_called_once()
+        self.assertTrue(rewrite.call_args.kwargs['ltx_enhance'])
+        self.assertEqual(rewrite.call_args.args[2], LTX2_5_T2V_DEFAULT_SYSTEM_PROMPT)
+        self.assertEqual(kwargs['prompt'], 'long fox')
+        self.assertFalse(kwargs['enable_prompt_enhancement'])
 
     def test_quantized_ltx_enhancer_uses_default_bfloat16_dtype(self):
         from transformers import AutoProcessor
@@ -2580,9 +2739,9 @@ class TestVideoModels(unittest.TestCase):
             model_sequential_offload=False, model_group_offload=False)
 
         with unittest.mock.patch.object(
-                _ltx._vp, '_load_quantized_module', return_value=enhancer) as load_model, \
+                _video_quantization, '_load_quantized_module', return_value=enhancer) as load_model, \
                 unittest.mock.patch.object(
-                    _ltx._vp, '_quantized_device_map', return_value={'': 'cuda'}), \
+                    _video_quantization, '_quantized_device_map', return_value={'': 'cuda'}), \
                 unittest.mock.patch.object(
                     AutoProcessor, 'from_pretrained', return_value=object()), \
                 unittest.mock.patch.object(
@@ -2599,22 +2758,25 @@ class TestVideoModels(unittest.TestCase):
         events = []
 
         class Enhancer:
-            def enhance_prompt(self, **kwargs):
-                events.append('enhance')
-                return 'rewritten prompt'
-
             def to(self, device):
                 events.append(('move', device))
                 return self
 
         enhancer = Enhancer()
-        pipe = unittest.mock.Mock(
-            prompt_enhancer=enhancer, enhance_prompt=enhancer.enhance_prompt)
+        pipe = unittest.mock.Mock(prompt_enhancer=enhancer)
         wrapper = unittest.mock.Mock(device='cuda')
         kwargs = {'prompt': 'starting prompt', 'enable_prompt_enhancement': True}
         user_args = unittest.mock.Mock(
             ltx_latent_upscale=False, ltx_video_decoder='vae', ltx_diffusion_decode_tile=None,
-            ltx_diffusion_decoder=None)
+            ltx_diffusion_decoder=None, pipeline_prompt_enhance_seed=None,
+            pipeline_prompt_enhance_temperature=None, pipeline_prompt_enhance_top_p=None,
+            pipeline_prompt_enhance_top_k=None, pipeline_prompt_enhance_presence_penalty=None,
+            pipeline_prompt_enhance_max_new_tokens=None, pipeline_prompt_enhance_min_new_tokens=None,
+            pipeline_prompt_enhance_gpu_headroom=None)
+
+        def generate_enhanced(*args, **kwargs):
+            events.append('enhance')
+            return 'rewritten prompt'
 
         def invoke(_wrapper, _pipe, call_kwargs, user_args=None):
             events.append('inference')
@@ -2629,7 +2791,13 @@ class TestVideoModels(unittest.TestCase):
                     _ltx, '_ltx_pixels_from_output', return_value=(['frame'], None, None)), \
                 unittest.mock.patch.object(
                     _ltx._putil, 'is_loaded_in_8bit_bnb', return_value=False), \
-                unittest.mock.patch.object(_ltx.torch.cuda, 'is_available', return_value=False):
+                unittest.mock.patch.object(_ltx.torch.cuda, 'is_available', return_value=False), \
+                unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.promptenhance._fast_encoder',
+                    return_value=contextlib.nullcontext()), \
+                unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.promptenhance._generate_ltx_enhance',
+                    side_effect=generate_enhanced):
             result = _ltx._complete_ltx_call(
                 wrapper, pipe, None, user_args, kwargs, 'ltx2')
 
@@ -2695,14 +2863,14 @@ class TestVideoModels(unittest.TestCase):
             os.makedirs(preferred_path)
 
             with unittest.mock.patch.object(
-                    _videopipelines._pipelines, 'get_converted_checkpoint_cache_dir',
+                    _pipeline_mod, 'get_converted_checkpoint_cache_dir',
                     return_value=cache_dir), \
-                    unittest.mock.patch.object(_videopipelines, '_apply_video_loras') as apply_loras:
+                    unittest.mock.patch.object(_video_lora, '_apply_video_loras') as apply_loras:
                 args = (
                     Pipeline, 'org/model', {}, {}, _pipelinewrapper.ModelType.WAN,
                     ['org/lora;scale=1'], None, None, True, 'wan',
                 )
-                components, manifest = _videopipelines._preflight_quantized_video_loras(
+                components, manifest = _video_lora._preflight_quantized_video_loras(
                     *args, components=('transformer', 'transformer_2'))
 
                 self.assertEqual(set(components), {'transformer'})
@@ -2716,7 +2884,7 @@ class TestVideoModels(unittest.TestCase):
                 with unittest.mock.patch.object(
                         Pipeline, 'from_pretrained', side_effect=AssertionError('cache miss')):
                     reused_components, reused_manifest = (
-                        _videopipelines._preflight_quantized_video_loras(
+                        _video_lora._preflight_quantized_video_loras(
                             *args, components=('transformer', 'transformer_2')))
 
                 self.assertEqual(reused_components, components)
@@ -2752,14 +2920,14 @@ class TestVideoModels(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as cache_dir:
             with unittest.mock.patch.object(
-                    _videopipelines._pipelines, 'get_converted_checkpoint_cache_dir',
+                    _pipeline_mod, 'get_converted_checkpoint_cache_dir',
                     return_value=cache_dir), \
-                    unittest.mock.patch.object(_videopipelines, '_apply_video_loras'):
+                    unittest.mock.patch.object(_video_lora, '_apply_video_loras'):
                 args = (
                     Pipeline, 'org/model', {}, {}, _pipelinewrapper.ModelType.WAN,
                     ['org/lora;scale=1'], None, None, True, 'wan',
                 )
-                components, _ = _videopipelines._preflight_quantized_video_loras(
+                components, _ = _video_lora._preflight_quantized_video_loras(
                     *args, components=('transformer', 'transformer_2'))
                 manifest_path = os.path.join(
                     os.path.dirname(components['transformer']), 'components.json')
@@ -2769,7 +2937,7 @@ class TestVideoModels(unittest.TestCase):
                 with open(manifest_path, 'w', encoding='utf-8') as manifest_file:
                     json.dump(manifest, manifest_file)
 
-                _videopipelines._preflight_quantized_video_loras(
+                _video_lora._preflight_quantized_video_loras(
                     *args, components=('transformer', 'transformer_2'))
 
         self.assertEqual(Pipeline.loads, 2)
@@ -2805,11 +2973,11 @@ class TestVideoModels(unittest.TestCase):
                     'diffusers.LTX2VideoDiffusionDecodePipeline',
                     return_value=decode_pipe), \
                 unittest.mock.patch(
-                    'dgenerate.pipelinewrapper.videopipelines.frames_from_output',
+                    'dgenerate.pipelinewrapper.videopipelines.media.frames_from_output',
                     return_value=['ok']), \
                 unittest.mock.patch.object(
                     decoder_module, 'LTX2VideoVaeNeighborhoodNattenProcessor', MissingKernels):
-            result = _videopipelines._decode_ltx_diffusion(
+            result = _ltx_decoder._decode_ltx_diffusion(
                 self._decoder_wrapper(), unittest.mock.Mock(), held, None, None)
 
         processor = decoder.set_attn_processor.call_args.args[0]
@@ -2848,11 +3016,11 @@ class TestVideoModels(unittest.TestCase):
                     'diffusers.LTX2VideoDiffusionDecodePipeline',
                     return_value=decode_pipe), \
                 unittest.mock.patch(
-                    'dgenerate.pipelinewrapper.videopipelines.frames_from_output',
+                    'dgenerate.pipelinewrapper.videopipelines.media.frames_from_output',
                     return_value=['ok']), \
                 unittest.mock.patch.object(
                     decoder_module, 'LTX2VideoVaeNeighborhoodNattenProcessor', Loaded):
-            _videopipelines._decode_ltx_diffusion(
+            _ltx_decoder._decode_ltx_diffusion(
                 self._decoder_wrapper(), unittest.mock.Mock(), held, None, None)
 
         processor = decoder.set_attn_processor.call_args.args[0]
@@ -2889,11 +3057,11 @@ class TestVideoModels(unittest.TestCase):
                     'diffusers.LTX2VideoDiffusionDecodePipeline',
                     return_value=decode_pipe), \
                 unittest.mock.patch(
-                    'dgenerate.pipelinewrapper.videopipelines.frames_from_output',
+                    'dgenerate.pipelinewrapper.videopipelines.media.frames_from_output',
                     return_value=['ok']), \
                 unittest.mock.patch.object(
                     decoder_module, 'LTX2VideoVaeNeighborhoodNattenProcessor', MissingKernels):
-            _videopipelines._decode_ltx_diffusion(
+            _ltx_decoder._decode_ltx_diffusion(
                 self._decoder_wrapper(), pipe, held, None, None)
 
         load_decoder.assert_not_called()
@@ -2985,7 +3153,7 @@ class TestVideoModels(unittest.TestCase):
             return 'wave'
 
         output = unittest.mock.Mock(frames=torch.zeros(1), audio=torch.zeros(1))
-        with unittest.mock.patch.object(ltx_module, '_decode_ltx_diffusion', side_effect=decode), \
+        with unittest.mock.patch.object(ltx_module._decoder, '_decode_ltx_diffusion', side_effect=decode), \
                 unittest.mock.patch.object(ltx_module, '_waveform_from_audio_latents', side_effect=waveform), \
                 unittest.mock.patch.object(
                     ltx_module, 'audio_sample_rate_from_pipeline', return_value=24000):
@@ -3080,14 +3248,22 @@ class TestWanModels(unittest.TestCase):
     def test_wan_check_defaults(self):
         config = _config(model_path='org/wan', model_type=_pipelinewrapper.ModelType.WAN)
         config.check()
-        self.assertEqual(config.video_fps, [16.0])
+        self.assertIsNone(config.video_fps)
+        self.assertIn(
+            'Video FPS: 16.0',
+            next(config.iterate_diffusion_args()).describe_pipeline_wrapper_args(
+                config.model_type))
 
         animate = _config(
             model_path='org/wan-animate',
             model_type=_pipelinewrapper.ModelType.WAN_ANIMATE,
             image_seeds=['examples/media/earth.jpg;wan-pose=examples/media/rickroll-roll.gif;wan-face=examples/media/rickroll-roll.gif'])
         animate.check()
-        self.assertEqual(animate.video_fps, [30.0])
+        self.assertIsNone(animate.video_fps)
+        self.assertIn(
+            'Video FPS: 30.0',
+            next(animate.iterate_diffusion_args()).describe_pipeline_wrapper_args(
+                animate.model_type))
 
     def test_wan_rejects_video_lengths_for_animate(self):
         config = _config(
@@ -3271,64 +3447,64 @@ class TestWanModels(unittest.TestCase):
 
     def test_wan_family_from_index(self):
         self.assertEqual(
-            _videopipelines.wan_family_from_index({'_class_name': 'WanPipeline'}),
+            _video_wan.wan_family_from_index({'_class_name': 'WanPipeline'}),
             'wan-t2v')
         self.assertEqual(
-            _videopipelines.wan_family_from_index({'_class_name': 'WanImageToVideoPipeline'}),
+            _video_wan.wan_family_from_index({'_class_name': 'WanImageToVideoPipeline'}),
             'wan-i2v')
         self.assertEqual(
-            _videopipelines.wan_family_from_index({'_class_name': 'WanVACEPipeline'}),
+            _video_wan.wan_family_from_index({'_class_name': 'WanVACEPipeline'}),
             'wan-vace')
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            _videopipelines.wan_family_from_index({'_class_name': 'WanAnimatePipeline'})
+            _video_wan.wan_family_from_index({'_class_name': 'WanAnimatePipeline'})
         self.assertEqual(
-            _videopipelines.wan_animate_family_from_index(
+            _video_wan.wan_animate_family_from_index(
                 {'_class_name': 'WanAnimatePipeline'}),
             'wan-animate')
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            _videopipelines.wan_animate_family_from_index({'_class_name': 'WanPipeline'})
+            _video_wan.wan_animate_family_from_index({'_class_name': 'WanPipeline'})
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError) as raised:
-            _videopipelines.wan_family_from_index({'_class_name': 'WanAnimate2ModularPipeline'})
+            _video_wan.wan_family_from_index({'_class_name': 'WanAnimate2ModularPipeline'})
         self.assertIn('wan-animate-2', str(raised.exception))
         self.assertEqual(
-            _videopipelines.wan_animate_2_family_from_index({
+            _video_wan.wan_animate_2_family_from_index({
                 '_class_name': 'WanAnimate2Pipeline',
                 'scheduler': ['diffusers', 'DPMSolverMultistepScheduler'],
             }),
             'wan-animate-2')
         self.assertEqual(
-            _videopipelines.wan_animate_2_family_from_index({
+            _video_wan.wan_animate_2_family_from_index({
                 '_class_name': 'WanAnimate2Pipeline',
                 'scheduler': ['diffusers', 'FlowMatchEulerDiscreteScheduler'],
             }),
             'wan-animate-2-distilled')
 
     def test_wan_num_frames(self):
-        self.assertEqual(_videopipelines.wan_num_frames(5, 16, 4), 81)
-        self.assertEqual(_videopipelines.wan_num_frames(1, 16, 4), 17)
-        self.assertEqual((_videopipelines.wan_num_frames(2, 16, 4) - 1) % 4, 0)
+        self.assertEqual(_video_wan.wan_num_frames(5, 16, 4), 81)
+        self.assertEqual(_video_wan.wan_num_frames(1, 16, 4), 17)
+        self.assertEqual((_video_wan.wan_num_frames(2, 16, 4) - 1) % 4, 0)
 
     def test_wan_flf_clip_kind(self):
         first = unittest.mock.Mock()
         first.config.image_dim = 1280
         first.config.pos_embed_seq_len = None
         first.condition_embedder = None
-        self.assertEqual(_videopipelines._wan_flf_clip_kind(first), 'first')
+        self.assertEqual(_video_wan._wan_flf_clip_kind(first), 'first')
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError) as raised:
-            _videopipelines._require_wan_flf_clip(unittest.mock.Mock(transformer=first))
+            _video_wan._require_wan_flf_clip(unittest.mock.Mock(transformer=first))
         self.assertIn('FLF2V', str(raised.exception))
 
         flf = unittest.mock.Mock()
         flf.config.image_dim = 1280
         flf.config.pos_embed_seq_len = 514
-        self.assertEqual(_videopipelines._wan_flf_clip_kind(flf), 'flf')
-        _videopipelines._require_wan_flf_clip(unittest.mock.Mock(transformer=flf))
+        self.assertEqual(_video_wan._wan_flf_clip_kind(flf), 'flf')
+        _video_wan._require_wan_flf_clip(unittest.mock.Mock(transformer=flf))
 
         later = unittest.mock.Mock()
         later.config.image_dim = None
-        self.assertEqual(_videopipelines._wan_flf_clip_kind(later), 'none')
-        _videopipelines._require_wan_flf_clip(unittest.mock.Mock(transformer=later))
-        _videopipelines._require_wan_flf_clip(unittest.mock.Mock(transformer=None))
+        self.assertEqual(_video_wan._wan_flf_clip_kind(later), 'none')
+        _video_wan._require_wan_flf_clip(unittest.mock.Mock(transformer=later))
+        _video_wan._require_wan_flf_clip(unittest.mock.Mock(transformer=None))
 
     def test_control_mask_without_image_is_wan_vace_only(self):
         seed = (
@@ -3424,7 +3600,11 @@ class TestWanModels(unittest.TestCase):
             model_type=_pipelinewrapper.ModelType.WAN_ANIMATE_2,
             image_seeds=['examples/media/earth.jpg;wan-driving=examples/media/rickroll-roll.gif'])
         driving.check()
-        self.assertEqual(driving.video_fps, [24.0])
+        self.assertIsNone(driving.video_fps)
+        self.assertIn(
+            'Video FPS: 24.0',
+            next(driving.iterate_diffusion_args()).describe_pipeline_wrapper_args(
+                driving.model_type))
 
         pose = _config(
             model_path='org/wan-animate-2',
@@ -3530,7 +3710,6 @@ class TestWanModels(unittest.TestCase):
 
         args = _pipelinewrapper.DiffusionArguments()
         args.prompt = _prompt.Prompt('a dancer')
-        args.inference_steps = 30
         args.video_fps = 24
         args.width = 640
         args.height = 800
@@ -3549,7 +3728,7 @@ class TestWanModels(unittest.TestCase):
         with unittest.mock.patch.object(
                 _videopipelines, '_video_pipeline',
                 return_value=(pipe, Held())):
-            frames, audio, rate, fps = _videopipelines.wan._call_wan_animate_2(
+            frames, audio, rate, fps = _videopipelines.wan.animate2._call_wan_animate_2(
                 Wrapper(), args)
 
         self.assertEqual(captured['num_inference_steps'], 10)
@@ -3614,9 +3793,9 @@ class TestWanModels(unittest.TestCase):
                 _videopipelines, '_video_pipeline',
                 return_value=(pipe, Held())), \
                 unittest.mock.patch.object(
-                    _videopipelines.wan._messages, 'warning',
+                    _messages, 'warning',
                     side_effect=warnings.append):
-            _videopipelines.wan._call_wan_animate_2(Wrapper(), args)
+            _videopipelines.wan.animate2._call_wan_animate_2(Wrapper(), args)
 
         self.assertEqual(captured['fps'], 8)
         self.assertEqual(captured['segment_frame_length'], 25)
@@ -3685,16 +3864,16 @@ class TestWanModels(unittest.TestCase):
             lora_fuse_scale = None
 
         with unittest.mock.patch.object(
-                _videopipelines, '_create_cached_video_pipeline',
+                _video_loading, '_create_cached_video_pipeline',
                 return_value=Held()), \
                 unittest.mock.patch.object(
-                    _videopipelines, 'pipeline_for_mode',
+                    _video_loading, 'pipeline_for_mode',
                     side_effect=lambda pipeline, mode, family: captured.__setitem__('mode', mode) or pipeline), \
                 unittest.mock.patch.object(
-                    _videopipelines._schedulers, 'load_scheduler'), \
+                    _schedulers_mod, 'load_scheduler'), \
                 unittest.mock.patch.object(
                     _videopipelines, '_invoke', side_effect=invoke):
-            frames, audio, rate, fps = _videopipelines._call_wan(Wrapper(), args)
+            frames, audio, rate, fps = _video_wan._call_wan(Wrapper(), args)
 
         self.assertEqual(captured['mode'], 'wan-txt')
         self.assertEqual(captured['kwargs']['num_frames'], 33)
@@ -3776,16 +3955,16 @@ class TestWanModels(unittest.TestCase):
             lora_fuse_scale = None
 
         with unittest.mock.patch.object(
-                _videopipelines, '_create_cached_video_pipeline',
+                _video_loading, '_create_cached_video_pipeline',
                 return_value=Held()), \
                 unittest.mock.patch.object(
-                    _videopipelines, 'pipeline_for_mode',
+                    _video_loading, 'pipeline_for_mode',
                     side_effect=lambda pipeline, mode, family: captured.__setitem__('mode', mode) or pipeline), \
                 unittest.mock.patch.object(
-                    _videopipelines._schedulers, 'load_scheduler'), \
+                    _schedulers_mod, 'load_scheduler'), \
                 unittest.mock.patch.object(
                     _videopipelines, '_invoke', side_effect=invoke):
-            _videopipelines._call_wan(Wrapper(), args)
+            _video_wan._call_wan(Wrapper(), args)
 
         self.assertEqual(captured['mode'], 'wan-vace')
         self.assertEqual(captured['kwargs']['width'], 832)
@@ -3811,7 +3990,7 @@ class TestWanModels(unittest.TestCase):
         pose.images = [PIL.Image.new('RGB', (400, 600))]
         pose.wan_face_video_frames = [PIL.Image.new('RGB', (128, 128))]
         pose.mask_video_frames = [PIL.Image.new('L', (720, 480), 255)]
-        canvas = _videopipelines.wan._fit_output_media(
+        canvas = _videopipelines.wan.common._fit_output_media(
             pose, 'wan_pose_video_frames', [('mask_video_frames', True)],
             832, 480, 16, 'Wan-Animate pose clip')
         self.assertEqual(canvas, (832, 544))

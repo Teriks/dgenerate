@@ -134,6 +134,7 @@ def make_diffusers_sdxl_controlnet_ppl(block_class):
     class sdxl_controlnet_ppl(block_class):
         # Save for unpatching later
         _parent = block_class
+        _hidiffusion_patched = True
 
         @torch.no_grad()
         def __call__(
@@ -891,6 +892,7 @@ def make_diffusers_unet_2d_condition(block_class):
     class unet_2d_condition(block_class):
         # Save for unpatching later
         _parent = block_class
+        _hidiffusion_patched = True
         def forward(
             self,
             sample: torch.FloatTensor,
@@ -1287,6 +1289,7 @@ def make_diffusers_transformer_block(block_class: Type[torch.nn.Module], generat
     class transformer_block(block_class):
         # Save for unpatching later
         _parent = block_class
+        _hidiffusion_patched = True
 
         def forward(
             self,
@@ -1502,6 +1505,7 @@ def make_diffusers_cross_attn_down_block(block_class: Type[torch.nn.Module]) -> 
     class cross_attn_down_block(block_class):
         # Save for unpatching later
         _parent = block_class
+        _hidiffusion_patched = True
         timestep = 0
         aggressive_raunet = False
         T1_ratio = 0
@@ -1635,6 +1639,7 @@ def make_diffusers_cross_attn_up_block(block_class: Type[torch.nn.Module]) -> Ty
     class cross_attn_up_block(block_class):
         # Save for unpatching later
         _parent = block_class
+        _hidiffusion_patched = True
         timestep = 0
         aggressive_raunet = False
         T1_ratio = 0
@@ -1781,6 +1786,7 @@ def make_diffusers_downsampler_block(block_class: Type[torch.nn.Module]) -> Type
     class downsampler_block(block_class):
         # Save for unpatching later
         _parent = block_class
+        _hidiffusion_patched = True
         T1_ratio = 0
         T1 = 0
         timestep = 0
@@ -1820,7 +1826,10 @@ def make_diffusers_downsampler_block(block_class: Type[torch.nn.Module]) -> Type
                 self.T1 = int(aggressive_step/50 * self.max_timestep)
             else:
                 self.T1 = int(self.max_timestep * self.T1_ratio)
-            if self.timestep < self.T1:
+            # Restore even when conv2d raises, so a failed step cannot leave this
+            # cached conv permanently dilated.
+            mutated = self.timestep < self.T1
+            if mutated:
                 self.ori_stride = self.stride
                 self.ori_padding = self.padding
                 self.ori_dilation = self.dilation
@@ -1829,38 +1838,28 @@ def make_diffusers_downsampler_block(block_class: Type[torch.nn.Module]) -> Type
                 self.padding = (2,2)
                 self.dilation = (2,2)
 
-            if old_diffusers:
-                if self.lora_layer is None:
-                    # make sure to the functional Conv2D function as otherwise torch.compile's graph will break
+            try:
+                if old_diffusers and self.lora_layer is not None:
+                    original_outputs = F.conv2d(
+                        hidden_states, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups
+                    )
+                    hidden_states = original_outputs + (scale * self.lora_layer(hidden_states))
+                else:
+                    # functional Conv2D so torch.compile's graph does not break
                     # see: https://github.com/huggingface/diffusers/pull/4315
                     hidden_states = F.conv2d(
                         hidden_states, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups
                     )
-                    if self.timestep < self.T1:
-                        self.stride = self.ori_stride
-                        self.padding = self.ori_padding
-                        self.dilation = self.ori_dilation
-                    self.timestep += 1
-                    if self.timestep == self.max_timestep:
-                        self.timestep = 0
-                    return hidden_states
-                else:
-                    original_outputs = F.conv2d(
-                        hidden_states, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups
-                    )
-                    return original_outputs + (scale * self.lora_layer(hidden_states))
-            else:
-                hidden_states = F.conv2d(
-                    hidden_states, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups
-                )
-                if self.timestep < self.T1:
+            finally:
+                if mutated:
                     self.stride = self.ori_stride
                     self.padding = self.ori_padding
                     self.dilation = self.ori_dilation
-                self.timestep += 1
-                if self.timestep == self.max_timestep:
-                    self.timestep = 0
-                return hidden_states
+
+            self.timestep += 1
+            if self.timestep == self.max_timestep:
+                self.timestep = 0
+            return hidden_states
     return downsampler_block
 
 
@@ -1869,6 +1868,7 @@ def make_diffusers_upsampler_block(block_class: Type[torch.nn.Module]) -> Type[t
     class upsampler_block(block_class):
         # Save for unpatching later
         _parent = block_class
+        _hidiffusion_patched = True
         T1_ratio = 0
         T1 = 0
         timestep = 0
@@ -1994,8 +1994,11 @@ def apply_hidiffusion(
 
         diffusion_model = model.unet if hasattr(model, "unet") else model
 
-    # Hack, avoid non-square problem. See unet_2d_condition.py in diffusers
-    diffusion_model.num_upsamplers += 12
+    # Hack, avoid non-square problem. See unet_2d_condition.py in diffusers.
+    # Remember the original count so remove_hidiffusion can undo this on a cached UNet.
+    if "_hidiffusion_num_upsamplers" not in diffusion_model.__dict__:
+        diffusion_model._hidiffusion_num_upsamplers = diffusion_model.num_upsamplers
+        diffusion_model.num_upsamplers += 12
 
     name_or_path = model.name_or_path
     diffusion_model_module_key = []
@@ -2014,7 +2017,8 @@ def apply_hidiffusion(
         'text_to_img_controlnet': hasattr(model, 'controlnet'),
         'is_inpainting_task': model.__class__ in auto_pipeline.AUTO_INPAINT_PIPELINES_MAPPING.values(),
         'is_playground': is_playground,
-        'pipeline': model
+        'pipeline': model,
+        '_hidiffusion': True,
     }
     model.info = diffusion_model.info
     hook_diffusion_model(diffusion_model)
@@ -2100,18 +2104,106 @@ def apply_hidiffusion(
 
 
 
+_HIDIFFUSION_MODEL_TAGS = frozenset(("sd15", "sdxl", "sdxl_turbo"))
+
+# Instance attributes written by patched forwards. Deleted only from modules whose
+# class HiDiffusion replaced, so an unrelated module that happens to use the same
+# name is left alone.
+_HIDIFFUSION_INSTANCE_ATTRS = (
+    "switching_threshold_ratio",
+    "ori_stride",
+    "ori_padding",
+    "ori_dilation",
+    "T1_ratio",
+    "T1",
+    "T1_start",
+    "T1_end",
+    "timestep",
+    "aggressive_raunet",
+    "max_timestep",
+)
+
+
+def _hidiffusion_modules(model):
+    """Pipeline plus every UNet submodule, each once."""
+    diffusion_model = model.unet if hasattr(model, "unet") else model
+    modules = []
+    seen = set()
+
+    def add(module):
+        if module is None or id(module) in seen:
+            return
+        seen.add(id(module))
+        modules.append(module)
+
+    add(model)
+    if diffusion_model is not model and hasattr(diffusion_model, "named_modules"):
+        for _, submodule in diffusion_model.named_modules():
+            add(submodule)
+    elif hasattr(model, "named_modules"):
+        for _, submodule in model.named_modules():
+            add(submodule)
+    return diffusion_model, modules
+
+
+def _restore_hidiffusion_module(module):
+    """Put one module back the way apply_hidiffusion found it."""
+    cls = type(module)
+    patched = bool(cls.__dict__.get("_hidiffusion_patched"))
+    module_dict = getattr(module, "__dict__", None)
+    if module_dict is None:
+        return
+    info = module_dict.get("info")
+    tagged = isinstance(info, dict) and bool(info.get("_hidiffusion"))
+    if not patched and not tagged:
+        return
+
+    if patched:
+        if "ori_stride" in module_dict:
+            module.stride = module_dict["ori_stride"]
+        if "ori_padding" in module_dict:
+            module.padding = module_dict["ori_padding"]
+        if "ori_dilation" in module_dict:
+            module.dilation = module_dict["ori_dilation"]
+        module.__class__ = cls._parent
+        for name in _HIDIFFUSION_INSTANCE_ATTRS:
+            if name in module.__dict__:
+                delattr(module, name)
+
+    if tagged and "info" in module.__dict__:
+        del module.info
+
+    if module.__dict__.get("model") in _HIDIFFUSION_MODEL_TAGS:
+        del module.model
+
+
 def remove_hidiffusion(model: torch.nn.Module):
     """ Removes hidiffusion from a Diffusion module if it was already patched. """
-    # For diffusers
-    model = model.unet if hasattr(model, "unet") else model
+    diffusion_model, modules = _hidiffusion_modules(model)
 
-    for _, module in model.named_modules():
-        if hasattr(module, "info"):
-            for hook in module.info["hooks"]:
-                hook.remove()
-            module.info["hooks"].clear()
+    infos = []
+    for module in modules:
+        module_dict = getattr(module, "__dict__", None)
+        if module_dict is None:
+            continue
+        info = module_dict.get("info")
+        if isinstance(info, dict) and info.get("_hidiffusion") and info not in infos:
+            infos.append(info)
 
-        if hasattr(module, "_parent"):
-            module.__class__ = module._parent
+    for info in infos:
+        for hook in list(info.get("hooks") or ()):
+            hook.remove()
+        if "hooks" in info:
+            info["hooks"].clear()
+        # Drop the back-reference from the UNet to the pipeline.
+        info["pipeline"] = None
+
+    for module in modules:
+        _restore_hidiffusion_module(module)
+
+    diffusion_dict = getattr(diffusion_model, "__dict__", None)
+    if diffusion_dict is not None and "_hidiffusion_num_upsamplers" in diffusion_dict:
+        diffusion_model.num_upsamplers = diffusion_model._hidiffusion_num_upsamplers
+        del diffusion_model._hidiffusion_num_upsamplers
 
     return model

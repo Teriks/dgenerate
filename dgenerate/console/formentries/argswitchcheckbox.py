@@ -105,5 +105,21 @@ class _ArgSwitchCheckbox(_entry._Entry):
     def is_active(self):
         return self._is_checked()
 
+    def _value_for_same_arg(self):
+        """Another row already writes this flag together with a value."""
+        if not self.arg:
+            return False
+        for entry in getattr(self.form, '_entries', ()):
+            if entry is self or getattr(entry, 'arg', None) != self.arg:
+                continue
+            if getattr(entry, '_row_inactive', False) or entry.is_empty():
+                continue
+            return True
+        return False
+
     def template(self, content):
-        return _entry.replace_first(content, self.placeholder, self.arg if self._is_checked() else '')
+        # A checked switch and a filled value field must not both emit the flag.
+        # argparse keeps the last copy, which drops a custom system prompt when
+        # the bare switch comes second.
+        emit = self._is_checked() and not self._value_for_same_arg()
+        return _entry.replace_first(content, self.placeholder, self.arg if emit else '')

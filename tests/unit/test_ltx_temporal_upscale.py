@@ -81,9 +81,9 @@ class LTXTemporalUpscaleTest(unittest.TestCase):
                 mock.patch('diffusers.LTX2DFRTemporalRefinePipeline.from_pipe',
                            return_value=Temporal()), \
                 mock.patch.object(ltx._vp, '_invoke', side_effect=invoke), \
-                mock.patch.object(ltx, '_upsample_ltx_latents',
+                mock.patch.object(ltx._components, '_upsample_ltx_latents',
                                   return_value=torch.zeros(1, 128, 3, 8, 8)) as upsample, \
-                mock.patch.object(ltx, '_load_ltx_latent_upsampler', return_value=Upsampler()), \
+                mock.patch.object(ltx._components, '_load_ltx_latent_upsampler', return_value=Upsampler()), \
                 mock.patch.object(ltx, '_ltx_pixels_from_output', return_value=([], None, None)):
             result = ltx._ltx_temporal_upscale(
                 Wrapper(), Pipe(), types.SimpleNamespace(), args,

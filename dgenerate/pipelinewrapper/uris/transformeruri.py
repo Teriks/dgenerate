@@ -34,9 +34,9 @@ import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
-from dgenerate.pipelinewrapper import constants as _constants
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-from dgenerate.pipelinewrapper.uris import util as _util
+import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
+import dgenerate.pipelinewrapper.uris.util as _util
 
 # Classes ``load`` is called with. Image pipelines use
 # ``diffusion_transformer_class``; video pipelines use their own family class.
@@ -330,8 +330,8 @@ class TransformerUri:
                 quant_config = None
 
         if quant_config is not None:
-            from dgenerate.pipelinewrapper.quant_skips import apply_architecture_quant_skips
-            apply_architecture_quant_skips(quant_config, transformer_class)
+            import dgenerate.pipelinewrapper.quant_skips as _quant_skips
+            _quant_skips.apply_architecture_quant_skips(quant_config, transformer_class)
 
         if _hfhub.is_single_file_model_load(model_path):
             try:

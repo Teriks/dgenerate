@@ -433,7 +433,10 @@ The distilled checkpoint needs no stage LoRA. The full transformer uses
 ``shift-terminal=0.1``, ``--ltx-stg-scales 1``, ``--ltx-modality-scales 3``,
 ``--ltx-stg-blocks 28``, video guidance 3, and ``--ltx-audio-guidance-scales 7``.
 Its refine LoRA is ``--ltx-stage-loras``, not a second config.
-``--ltx-prompt-enhancer google/gemma-4-E2B-it`` rewrites the prompt.
+``--pipeline-prompt-enhance`` turns on LTX-2.5's optional Gemma prompt enhancer.
+Any other ``--pipeline-prompt-enhance-*`` option turns enhancement on with the
+built-in system prompt when that flag is omitted.
+``--ltx-prompt-enhancer`` names a different enhancer model.
 ``--ltx-video-decoder diffusion`` uses the diffusion decoder. Linux loads NATTEN through the kernels package. Windows runs that window with Triton, or gathers it in PyTorch when Triton is not installed. ``--ltx-diffusion-decode-tile`` sets that tile, for example ``384x384x24``.
 ``--ltx-image-crfs`` recompresses a conditioning still.
 ``--ltx-ic-lora`` is the IC-LoRA. The last frame is ``last-frame=``, not ``end=``.
@@ -464,12 +467,12 @@ Wan-Animate is ``--model-type wan-animate`` with a character still plus
 ``wan-pose=`` and ``wan-face=``, or ``wan-driving=`` with ``--wan-animate-preprocess``
 (openpose and yolo ``crops=True`` face crop) or ``--wan-pose-image-processors`` and
 ``--wan-face-image-processors``. ``--video-fps`` defaults to 30.
-Leaving steps at 30 selects 20 and leaving guidance at 5 selects 1.
-``--video-lengths`` is rejected. ``replace`` mode needs ``wan-background=``
+Omitting ``--inference-steps`` uses 20 and omitting ``--guidance-scales`` uses 1
+(WanAnimatePipeline defaults). ``--video-lengths`` is rejected. ``replace`` mode needs ``wan-background=``
 and ``mask=``.
 Wan-Animate-2 is ``--model-type wan-animate-2`` with a character still plus
-``wan-driving=`` only. The base repo samples in 40 steps and the distilled
-repo in 10. ``--video-fps`` defaults to 24. ``--video-lengths`` is rejected.
+``wan-driving=`` only. Omitting steps uses 40 on the base repo and 10 on the
+distilled repo. ``--video-fps`` defaults to 24. ``--video-lengths`` is rejected.
 No ``wan-pose=``, ``wan-face=``, or ``wan-background=``.
 Wan-Animate-2 compiles its transformer and VAE blocks on every load. Do not add
 ``--torch-compile`` for that model. Add ``--torch-compile`` for other models

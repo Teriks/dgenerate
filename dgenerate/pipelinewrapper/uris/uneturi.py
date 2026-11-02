@@ -33,9 +33,9 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
-from dgenerate.pipelinewrapper import constants as _constants
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-from dgenerate.pipelinewrapper.uris import util as _util
+import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
+import dgenerate.pipelinewrapper.uris.util as _util
 
 _unet_uri_parser = _textprocessing.ConceptUriParser(
     'UNet', [

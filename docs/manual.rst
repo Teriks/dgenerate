@@ -87,8 +87,8 @@ Help Output
                      [--sdxl-refiner-negative-target-sizes SIZE [SIZE ...]]
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]] [-hnf FLOAT [FLOAT ...]]
                      [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE] [-t DTYPE] [-s SIZE |
-                     --qwen21-output-resolution RESOLUTION] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om |
-                     -oam] [-pw PROMPT_WEIGHTER_URI] [-pw2 PROMPT_WEIGHTER_URI]
+                     --qwen21-resolution RESOLUTION] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om | -oam]
+                     [-pw PROMPT_WEIGHTER_URI] [-pw2 PROMPT_WEIGHTER_URI]
                      [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]]
                      [-lp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
                      [-ilp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
@@ -139,8 +139,14 @@ Help Output
                      [--ltx-diffusion-decoder URI] [--ltx-diffusion-decode-tile WIDTHxHEIGHTxFRAMES]
                      [--ltx-decode-timesteps FLOAT [FLOAT ...]] [--ltx-decode-noise-scales FLOAT [FLOAT ...]]
                      [--ltx-image-crfs INTEGER [INTEGER ...]] [--ltx-video-min-seconds SECONDS [SECONDS ...]]
-                     [--ltx-video-max-seconds SECONDS [SECONDS ...]] [--ltx-prompt-enhancer URI]
-                     [--ltx-system-prompt TEXT] [--wan-low-noise-guidance-scales FLOAT [FLOAT ...]]
+                     [--ltx-video-max-seconds SECONDS [SECONDS ...]] [--pipeline-prompt-enhance [TEXT]]
+                     [--pipeline-prompt-enhance-seeds SEED [SEED ...] |
+                     --pipeline-prompt-enhance-gen-seeds COUNT] [--pipeline-prompt-enhance-temperature FLOAT]
+                     [--pipeline-prompt-enhance-top-p FLOAT] [--pipeline-prompt-enhance-top-k INT]
+                     [--pipeline-prompt-enhance-presence-penalty FLOAT]
+                     [--pipeline-prompt-enhance-max-new-tokens INT]
+                     [--pipeline-prompt-enhance-min-new-tokens INT] [--pipeline-prompt-enhance-gpu-headroom GIB]
+                     [--ltx-prompt-enhancer URI] [--wan-low-noise-guidance-scales FLOAT [FLOAT ...]]
                      [--wan-boundary-ratios FLOAT [FLOAT ...]] [--wan-expand-timesteps]
                      [--wan-second-transformer TRANSFORMER_URI]
                      [--wan-conditioning-scales FLOAT_OR_CSV [FLOAT_OR_CSV ...]] [--wan-animate-mode MODE]
@@ -1764,8 +1770,8 @@ Help Output
       --regione
             Enable RegionE region-aware acceleration for instruction editing?
             
-            RegionE skips redundant denoising on unchanged image regions. Omitting --inference-steps, or leaving
-            the global default of 30, uses 28. Any other step count is rejected. Provide --image-seeds.
+            RegionE skips redundant denoising on unchanged image regions. Omitting --inference-steps uses 28.
+            Any other step count is rejected. Provide --image-seeds.
             
             See: https://github.com/Peyton-Chen/RegionE
             
@@ -2230,8 +2236,8 @@ Help Output
             certain situations when collaborative denoising is not supported, such as when using --control-nets
             and inpainting with SDXL, the inverse proportion of this value IE: (1.0 - high-noise-fraction)
             becomes the --image-seed-strengths input to the SDXL refiner in plain img2img mode. Edit mode may be
-            forced with the option --sdxl-refiner-edit (default: [0.8])
-            -----------------------------------------------------------
+            forced with the option --sdxl-refiner-edit. Omitted, a refiner uses 0.8.
+            ------------------------------------------------------------------------
       -rgr, --sdxl-refiner-guidance-rescales FLOAT [FLOAT ...]
             One or more guidance rescale values for the SDXL refiner when in use. Override the guidance rescale
             value used by the SDXL refiner, which defaults to the value taken from --guidance-rescales.
@@ -2279,7 +2285,7 @@ Help Output
             the 'floyd' keyword argument in an --image-seeds definition are never resized or processed in any
             way.
             ----
-      --qwen21-output-resolution RESOLUTION
+      --qwen21-resolution RESOLUTION
             Target side length for Qwen-Image 2.1 output resolution inference. Only supported by Qwen-Image 2.1.
             ----------------------------------------------------------------------------------------------------
       -na, --no-aspect
@@ -2768,7 +2774,7 @@ Help Output
             usage (high noise convolution). Low values will produce something closer or more relevant to the
             input image, high values will give the AI more creative freedom. This value must be greater than 0
             and less than or equal to 1. Each value is tried in turn. An image seed keyword strength= overrides
-            this option for that seed. (default: [0.8])
+            this option for that seed. Omitted, img2img, inpaint, and Wan video-to-video use 0.8.
             
             For --model-type ltx2 and ltx-video, these values are the condition strength of image-seed groups
             that omit strength=. 1 keeps the conditioning frame. A lower value lets the generated frames leave
@@ -2779,8 +2785,9 @@ Help Output
             One or more upscaler noise level values to try when using the super resolution upscaler --model-type
             upscaler-x4 or ifs. Specifying this option for --model-type upscaler-x2 will produce an error
             message. The higher this value the more noise is added to the image before upscaling (similar to
-            --image-seed-strengths). (default: [20 for x4, 250 for ifs/ifs-img2img, 0 for ifs inpainting mode])
-            ---------------------------------------------------------------------------------------------------
+            --image-seed-strengths). Omitted: 20 for upscaler-x4, 250 for ifs and ifs-img2img, and 0 for ifs
+            inpainting.
+            -----------
       -ic, --inpaint-crop
             Enable cropping to mask bounds for inpainting. When enabled, input images will be automatically
             cropped to the bounds of their masks (plus any padding) before processing, then the generated result
@@ -2811,8 +2818,8 @@ Help Output
             
             Note: Inpaint crop cannot be used with multiple input images. See --inpaint-crop for details.
             
-            (default: [32])
-            ---------------
+            Omitted padding is 32 when cropping is enabled.
+            -----------------------------------------------
       -icm, --inpaint-crop-masked
             Use the mask when pasting the generated result back onto the original image for inpaint cropping.
             Automatically enables --inpaint-crop. This means only the masked areas will be replaced. Cannot be
@@ -2836,16 +2843,21 @@ Help Output
             One or more guidance scale values to try. Guidance scale effects how much your text prompt is
             considered. Low values draw more data from images unrelated to text prompt.
             
-            For --model-type ltx-video, the value is passed to the pipeline as written, including the default 5.
+            Omitting this lets the pipeline choose. Qwen-Image 2.1 uses 1. Krea 2 uses 0 when the checkpoint is
+            distilled and 4.5 otherwise. Kandinsky 5 Image uses 3.5. HunyuanImage 2.1 uses 3.25 when the
+            checkpoint embeds guidance, and for the refiner.
             
-            For --model-type ltx2, a value you set is used as written. The unused image default 5 is rewritten:
-            to 1 when the scheduler has no dynamic shifting, or to video 3 and audio 7 when it does. --sigmas
-            skips that rewrite and uses the value you passed, including leftover 5. Video and audio guidance are
-            the same number except for that 3 / 7 case. Use --ltx-audio-guidance-scales to set audio CFG
-            separately.
+            For --model-type ltx-video, omitted values follow the loaded LTXPipeline __call__ defaults
+            (typically guidance 3). A value you set is passed as written.
             
-            (default: [5])
-            --------------
+            For --model-type ltx2, an omitted value is 1 on a distilled checkpoint, and video 3 with audio 7 on
+            a full checkpoint. Values you set are used as written. --sigmas leaves guidance unchanged. Use
+            --ltx-audio-guidance-scales to set audio CFG separately.
+            
+            The generation step text shows auto when this option is omitted.
+            
+            (default: omitted)
+            ------------------
       -si, --sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
             One or more comma-separated lists (or singular values) of floating point sigmas to try. This is
             supported when using a --scheduler that supports setting sigmas. Sigma values control the noise
@@ -2885,8 +2897,8 @@ Help Output
             in conjunction with --image-seeds, inpainting (masks) and --control-nets are not supported. Image
             guidance scale is enabled by setting image-guidance-scale > 1. Higher image guidance scale
             encourages generated images that are closely linked to the source image, usually at the expense of
-            lower image quality. Requires a value of at least 1. (default: [1.5])
-            ---------------------------------------------------------------------
+            lower image quality. Requires a value of at least 1. Omitted, pix2pix uses 1.5.
+            -------------------------------------------------------------------------------
       -gr, --guidance-rescales FLOAT [FLOAT ...]
             One or more guidance rescale factors to try. Proposed by
             
@@ -2912,16 +2924,24 @@ Help Output
             content of the image. Values between 30-40 produce good results, higher values may improve image
             quality and or change image content.
             
-            For --model-type ltx-video, this value is passed to the pipeline as written.
+            Omitting this lets the pipeline choose. RegionE uses 28. Qwen-Image 2.1 uses 40. Krea 2 uses 8 when
+            the checkpoint is distilled and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the refiner.
+            Kandinsky 5 Image uses 50.
             
-            For --model-type ltx2, this value is sent to the pipeline only when the scheduler has dynamic
-            shifting and neither --timesteps nor --sigmas is set. Without dynamic shifting, the distilled
-            8-value sigma table is used and this option is ignored. A warning names the ignored value, including
-            the default 30. Pass --inference-steps 8 to match the table and silence the warning. --timesteps and
-            --sigmas overwrite the step count to the length of the resulting list.
+            For --model-type ltx-video, omitted values follow the loaded LTXPipeline __call__ defaults
+            (typically guidance 3 and 50 steps). A value you set is passed as written.
             
-            (default: [30])
-            ---------------
+            For --model-type ltx2, omitting this uses the pipeline default (30 on full LTX2Pipeline when neither
+            --timesteps nor --sigmas is set). A distilled checkpoint uses its sigma table length regardless of
+            this option. --timesteps and --sigmas overwrite the step count to the length of the resulting list.
+            
+            For --model-type wan, wan-animate, and wan-animate-2, omitted values follow the loaded pipeline
+            __call__ defaults when present.
+            
+            The generation step text shows auto when this option is omitted.
+            
+            (default: omitted)
+            ------------------
       --video-lengths SECONDS [SECONDS ...]
             One or more clip lengths in seconds for video model types. Each value will be tried in turn, and
             each combination writes one clip.
@@ -2938,8 +2958,8 @@ Help Output
       --video-fps FPS [FPS ...]
             One or more output frame rates for video model types. Each value will be tried in turn.
             
-            Defaults to 24 for --model-type ltx2 and ltx-video, motif-video, and 15 for hyvideo-15; 16 for wan;
-            30 for wan-animate; and 24 for wan-animate-2.
+            Defaults to 24 for --model-type ltx2, ltx-video, motif-video, wan-animate-2, and kandinsky5-video;
+            15 for hyvideo-15; 16 for wan; and 30 for wan-animate.
             
             (default: model type default)
             -----------------------------
@@ -3104,17 +3124,71 @@ Help Output
             
             (default: None; 20 when only a lower bound is given)
             ----------------------------------------------------
+      --pipeline-prompt-enhance [TEXT]
+            Rewrite the prompt with the text encoder already loaded for this pipeline, before denoising. With no
+            value, dgenerate picks a built-in system prompt. A value is used as that system prompt. file:path
+            reads that prompt from a UTF-8 text file (quote the value on the shell when the path contains
+            spaces). Image families use the built-in text-to-image prompt. Qwen-Image edit, Qwen-Image layered,
+            Qwen-Image 2.1, and Flux.2 use the built-in edit prompt when the text encoder can see an input
+            image. On LTX-2 this turns on the optional Gemma prompt enhancer. With no value the enhancer is
+            google/gemma-4-E2B-it and LTX-2.5 selects its text-to-video or image-to-video system prompt from the
+            conditioning input. A value replaces that system prompt. --ltx-prompt-enhancer names a different
+            enhancer model. LTX-Video (T5) is not supported. Supported --model-type values: flux2,
+            flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered,
+            qwen-image-21, krea2, and ltx2. Any other --pipeline-prompt-enhance-* option, including
+            --pipeline-prompt-enhance-seeds, turns enhancement on with the built-in system prompt when this flag
+            is omitted. This is separate from --prompt-upscaler.
+            ----------------------------------------------------
+      --pipeline-prompt-enhance-seeds SEED [SEED ...]
+            One or more seeds for prompt enhancement. Each value is tried in turn with the other arguments,
+            including --seeds. These seeds are used only by the enhancer. The image or video still uses --seeds
+            or --gen-seeds. When omitted, the enhancer uses that generation seed. Also turns
+            --pipeline-prompt-enhance on when that flag is omitted.
+            -------------------------------------------------------
+      --pipeline-prompt-enhance-gen-seeds COUNT
+            Generate COUNT random seeds for prompt enhancement. This may not be used with
+            --pipeline-prompt-enhance-seeds. The generated seeds override --seeds and --gen-seeds for the
+            enhancer only. Also turns --pipeline-prompt-enhance on when that flag is omitted.
+            ---------------------------------------------------------------------------------
+      --pipeline-prompt-enhance-temperature FLOAT
+            Sampling temperature for --pipeline-prompt-enhance. Image families use the pipeline text encoder.
+            LTX-2 passes this to the Gemma enhancer or text-encoder fallback. Omitting it keeps the default for
+            that model type. Any --pipeline-prompt-enhance-* option turns prompt enhancement on when the flag
+            itself is omitted.
+            ------------------
+      --pipeline-prompt-enhance-top-p FLOAT
+            Nucleus top-p for --pipeline-prompt-enhance. Must be greater than 0 and at most 1. Also turns
+            --pipeline-prompt-enhance on when that flag is omitted.
+            -------------------------------------------------------
+      --pipeline-prompt-enhance-top-k INT
+            Top-k for --pipeline-prompt-enhance. 0 turns top-k off. Also turns --pipeline-prompt-enhance on when
+            that flag is omitted.
+            ---------------------
+      --pipeline-prompt-enhance-presence-penalty FLOAT
+            Presence penalty for --pipeline-prompt-enhance sampling. Also turns --pipeline-prompt-enhance on
+            when that flag is omitted.
+            --------------------------
+      --pipeline-prompt-enhance-max-new-tokens INT
+            Maximum new tokens for one --pipeline-prompt-enhance rewrite. Also turns --pipeline-prompt-enhance
+            on when that flag is omitted.
+            -----------------------------
+      --pipeline-prompt-enhance-min-new-tokens INT
+            Minimum new tokens before end-of-sequence is allowed. Also turns --pipeline-prompt-enhance on when
+            that flag is omitted.
+            ---------------------
+      --pipeline-prompt-enhance-gpu-headroom GIB
+            GiB of free GPU memory to leave unused when splitting the text encoder across GPU and CPU, on top of
+            10 percent of free memory. The default is 2. Raise it when the rewrite runs out of memory. Lower it
+            to keep more layers on the GPU. Also turns --pipeline-prompt-enhance on when that flag is omitted.
+            --------------------------------------------------------------------------------------------------
       --ltx-prompt-enhancer URI
-            URI for the model used to rewrite the LTX prompt before denoising, for example google/gemma-4-E2B-it
-            or google/gemma-4-E2B-it;revision=main;subfolder=model;dtype=bfloat16, with an optional quantizer
-            URI such as google/gemma-4-E2B-it;quantizer="sdnq;type=int4". Setting this turns enhancement on.
-            LTX-2.5 selects its text-to-video or image-to-video system prompt from the conditioning input unless
-            --ltx-system-prompt is set.
-            ---------------------------
-      --ltx-system-prompt TEXT
-            System prompt for --ltx-prompt-enhancer. Omit it and LTX-2.5 selects its text-to-video or
-            image-to-video default from the conditioning input.
-            ---------------------------------------------------
+            URI for a separate model that rewrites the LTX prompt before denoising, for example
+            google/gemma-4-E2B-it or google/gemma-4-E2B-it;revision=main;subfolder=model;dtype=bfloat16, with an
+            optional quantizer URI such as google/gemma-4-E2B-it;quantizer="sdnq;type=int4". Setting this turns
+            enhancement on and loads that model. Omit it and --pipeline-prompt-enhance loads
+            google/gemma-4-E2B-it. A value on --pipeline-prompt-enhance replaces the text-to-video or
+            image-to-video system prompt.
+            -----------------------------
       --wan-low-noise-guidance-scales FLOAT [FLOAT ...]
             CFG scales for the Wan 2.2 MoE low-noise expert. When omitted, that expert copies --guidance-scales.
             ----------------------------------------------------------------------------------------------------
@@ -3155,15 +3229,15 @@ Help Output
             --output-path. A name that already exists receives a _duplicate_ suffix. Off by default.
             ----------------------------------------------------------------------------------------
       -ifs2, --second-model-inference-steps INTEGER [INTEGER ...]
-            One or more inference steps values for the SDXL refiner or Stable Cascade decoder when in use.
-            Override the number of inference steps used by the second model, which defaults to the value taken
-            from --inference-steps for SDXL and 10 for Stable Cascade.
-            ----------------------------------------------------------
+            One or more inference step counts for the SDXL refiner or Stable Cascade decoder when in use. When
+            omitted, an SDXL refiner uses the base step count, including when that count is chosen
+            automatically. Stable Cascade uses 10.
+            --------------------------------------
       -gs2, --second-model-guidance-scales FLOAT [FLOAT ...]
-            One or more inference steps values for the SDXL refiner or Stable Cascade decoder when in use.
-            Override the guidance scale value used by the second model, which defaults to the value taken from
-            --guidance-scales for SDXL and 0 for Stable Cascade.
-            ----------------------------------------------------
+            One or more guidance scales for the SDXL refiner or Stable Cascade decoder when in use. When
+            omitted, an SDXL refiner uses the base guidance scale, including when that scale is chosen
+            automatically. Stable Cascade uses 0.
+            -------------------------------------
       -sir, --sdxl-refiner-sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
             See: --sigmas, but for the SDXL Refiner.
             ----------------------------------------
@@ -4876,7 +4950,7 @@ repository still supplies the VAE and text encoders. ``--scheduler`` accepts
 These options are rejected: ``--ltx-audio-guidance-scales``,
 ``--ltx-audio-guidance-rescales``, ``--sigmas``, ``--ltx-ic-lora``,
 ``--ltx-latent-upscale``, ``--ltx-stg-scales``, ``--ltx-modality-scales``,
-``--ltx-video-decoder diffusion``, ``--ltx-diffusion-decode-tile``, ``--ltx-prompt-enhancer``,
+``--ltx-video-decoder diffusion``, ``--ltx-diffusion-decode-tile``, ``--pipeline-prompt-enhance``,
 ``--ltx-image-crfs``, ``--ltx-no-cross-timestep``,
 ``--ltx-video-min-seconds``, and ``--ltx-video-max-seconds``.
 
@@ -5034,18 +5108,28 @@ arguments overlay the checkpoint scheduler config. Other scheduler names are
 rejected. Omitting ``--scheduler`` keeps the checkpoint scheduler.
 ``--scheduler help`` and ``--scheduler helpargs`` still print help.
 
-The image-model defaults still apply if you omit the options: ``--guidance-scales``
-is ``5`` and ``--inference-steps`` is ``30``. LTX then rewrites those defaults when
-they are still unused. A value you set yourself is kept, except as noted below.
+When you omit ``--guidance-scales`` or ``--inference-steps``, generation-step text
+shows **auto**. At run time the video pipeline reads the loaded pipeline's
+``__call__`` defaults, then the model-specific rules below, then global fallbacks
+(not during config ``check`` or ``fill_defaults``).
+For ``--model-type ltx-video``, omitted values follow ``LTXPipeline`` (published
+Diffusers checkpoints typically use guidance ``3`` and ``50`` steps). Values you
+set are passed as written.
+
+For ``--model-type ltx2``, omitted guidance becomes ``1`` on a distilled checkpoint,
+or video ``3`` with audio ``7`` on a full checkpoint. Values you set are used as
+written. An omitted step count uses the pipeline default (``30`` on full
+``LTX2Pipeline`` when neither ``--timesteps`` nor ``--sigmas`` is set). A
+distilled checkpoint always uses its sigma table length regardless of
+``--inference-steps``.
 
 **Scheduler without dynamic shifting (the published LTX-2.5 scheduler)**
 
 * The clip uses Diffusers' distilled 8-value sigma table. ``--inference-steps`` is
-  not sent to the pipeline. dgenerate warns with the ignored value, including the
-  default 30, and still uses the table. Passing ``--inference-steps 8`` matches
-  the table and silences the warning.
-* If ``--guidance-scales`` is still ``5``, it is replaced with ``1`` (unguided).
-  Any other guidance value is used as written.
+  not sent to the pipeline. dgenerate warns when you passed an explicit step count
+  that does not match the table, and still uses the table. Passing ``--inference-steps 8``
+  matches the table and silences the warning.
+* Omitted guidance is ``1`` (unguided). Any explicit guidance value is used as written.
 * Video guidance and audio guidance receive that same number unless
   ``--ltx-audio-guidance-scales`` is set.
 * After the clip runs, the written config records 8 steps and the guidance that
@@ -5054,12 +5138,11 @@ they are still unused. A value you set yourself is kept, except as noted below.
 **Scheduler with dynamic shifting**
 
 * ``--inference-steps`` is sent as ``num_inference_steps`` when neither
-  ``--timesteps`` nor ``--sigmas`` is set. The default ``30`` is used if you
-  omit it.
-* If ``--guidance-scales`` is still ``5``, video guidance becomes ``3`` and audio
-  guidance becomes ``7``, with a warning, unless ``--ltx-audio-guidance-scales``
-  is set. Any other guidance value is used for video, and for audio unless
-  ``--ltx-audio-guidance-scales`` is set.
+  ``--timesteps`` nor ``--sigmas`` is set. Omitted steps use ``30`` on a full
+  checkpoint.
+* Omitted guidance becomes video ``3`` and audio ``7``, unless
+  ``--ltx-audio-guidance-scales`` is set. Explicit values are used for video, and
+  for audio unless ``--ltx-audio-guidance-scales`` is set.
 
 ``--sigmas`` (CSV list or ``expr:``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -5071,8 +5154,7 @@ This path wins over both of the above.
   ``scheduler.set_timesteps(--inference-steps)`` when it does.
 * The step count becomes the length of the resulting list. ``--inference-steps``
   is overwritten to match, including in the written config.
-* ``--guidance-scales`` is used as written, including leftover ``5``. Nothing is
-  rewritten to 1, 3, or 7 on this path. Video and audio guidance get the same
+* ``--guidance-scales`` is used as written. Video and audio guidance get the same
   value unless ``--ltx-audio-guidance-scales`` is set.
 
 ``--sigmas`` is combinatorial with ``--guidance-scales``, ``--inference-steps``,
@@ -5110,8 +5192,8 @@ tokens and audio tokens. There is no audio-only prompt argument, so
 
 Audio CFG is a separate pipeline scale. ``--ltx-audio-guidance-scales`` sets it
 and is combinatorial. Omit that option and audio copies the video guidance
-that will be sent, except the unused default ``5`` on a full scheduler, which
-uses audio ``7``. A distilled unused ``5`` becomes video and audio ``1``.
+that will be sent. On a full checkpoint with omitted video guidance, video uses
+``3`` and audio ``7``.
 
 ``--ltx-audio-guidance-rescales`` is the matching combinatorial audio rescale.
 Omit it and audio copies ``--guidance-rescales`` when that is set, otherwise
@@ -5220,14 +5302,17 @@ Omit it and the missing-NATTEN path uses that size. NATTEN stays untiled unless 
 ``--ltx-decode-timesteps`` and ``--ltx-decode-noise-scales`` are the decode arguments.
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
-``--ltx-prompt-enhancer`` loads a model such as ``google/gemma-4-E2B-it`` and rewrites
-the prompt before denoising. Its URI accepts ``revision``, ``subfolder``, ``dtype``,
-and ``quantizer``; for example, ``google/gemma-4-E2B-it;dtype=bfloat16`` or
-``google/gemma-4-E2B-it;quantizer="bnb;bits=4"``. ``--ltx-system-prompt`` overrides
-the built-in system prompt. LTX-2.5 selects its text-to-video prompt for text-only
-generation and its image-to-video prompt when image conditioning is supplied. For
-image-conditioned generation, the reference image is also provided to the enhancer.
-See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/basic/prompt-enhancer-config.dgen>`_.
+``--pipeline-prompt-enhance`` turns on LTX-2.5's optional Gemma prompt enhancer
+(``google/gemma-4-E2B-it``). With no value, LTX-2.5 selects its text-to-video or
+image-to-video system prompt. A value replaces that system prompt.
+Any other ``--pipeline-prompt-enhance-*`` option turns enhancement on with that
+built-in system prompt when ``--pipeline-prompt-enhance`` is omitted.
+``--ltx-prompt-enhancer`` names a different enhancer model and turns enhancement
+on by itself. Its URI accepts ``revision``, ``subfolder``, ``dtype``, and
+``quantizer``.
+See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/basic/prompt-enhancer-config.dgen>`_,
+`examples/ltx2/pipeline_prompt_enhance/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/config.dgen>`_,
+and `examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen>`_.
 
 ``--ltx-image-crfs`` recompresses a conditioning still before the VAE encode. Omit it
 and the pipeline default is used (``18`` on LTX-2.5). ``0`` skips recompression.
@@ -5352,8 +5437,10 @@ with ``--model-type wan-animate-2``.
 
 A prompt can name what to avoid after one ``;``. The published examples use a
 long negative that starts ``Bright tones, overexposed, static, blurred details``.
-``--guidance-scales`` defaults to 5. The examples use 5 for Wan 2.1 and 4 with
-``--wan-low-noise-guidance-scales 3`` for Wan 2.2 MoE.
+Omitting ``--guidance-scales`` or ``--inference-steps`` uses the loaded Wan
+pipeline defaults (typically guidance ``5`` and ``50`` steps on ``WanPipeline``).
+The examples explicitly set sampling: ``5`` for Wan 2.1 and ``4`` with ``--wan-low-noise-guidance-scales 3``
+for Wan 2.2 MoE.
 
 ``--video-fps`` defaults to 16 for wan, 30 for wan-animate, and 24 for
 wan-animate-2. ``--video-lengths`` is seconds. Wan snaps that duration to
@@ -5484,8 +5571,8 @@ Wan-Animate
 ``--model-type wan-animate`` takes one character still plus motion.
 ``Wan-AI/Wan2.2-Animate-14B-Diffusers`` is the checkpoint. ``--video-lengths``
 is rejected. The output follows the pose clip. ``--video-fps`` defaults to 30.
-Leaving ``--inference-steps`` at 30 selects 20 steps, and leaving
-``--guidance-scales`` at 5 selects 1, because Wan-Animate runs unguided.
+Omitting ``--inference-steps`` uses ``20`` and omitting ``--guidance-scales`` uses ``1``,
+matching ``WanAnimatePipeline``. Wan-Animate runs unguided. Values you set are kept.
 
 Pass ``wan-pose=`` and ``wan-face=`` clips, or pass ``wan-driving=`` and let
 dgenerate derive them. ``--wan-animate-preprocess`` runs ``openpose`` for the
@@ -5531,9 +5618,9 @@ The driving clip is the motion source. There is no pose or face clip.
 ``wan-background=``, ``last-frame=``, ``control=``, ``mask=``, and
 ``reference=`` are rejected.
 
-``Wan-AI/Wan2.2-Animate-2-14B-Diffusers`` samples in 40 steps when
-``--inference-steps`` is left at 30. ``Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers``
-samples in 10. The published demo uses ``--wan-segment-frame-lengths 81``,
+``Wan-AI/Wan2.2-Animate-2-14B-Diffusers`` uses ``40`` steps when
+``--inference-steps`` is omitted. ``Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers``
+uses ``10``. Values you set are kept. The published demo uses ``--wan-segment-frame-lengths 81``,
 ``--wan-prev-segment-frames 1``, and ``--max-sequence-length 512``.
 ``--wan-driving-image-processors`` can preprocess the driving clip.
 The transformer blocks are compiled on every load, with or without
@@ -8752,7 +8839,7 @@ images can be passed with the ``images:`` image-seed syntax.
 
 The default is 40 steps with true CFG disabled (guidance 1). Setting
 ``--guidance-scales`` above 1 enables true CFG; a negative prompt can be given
-after ``;`` in the prompt. ``--qwen21-output-resolution`` is the pipeline's
+after ``;`` in the prompt. ``--qwen21-resolution`` is the pipeline's
 target-side setting, not a width, height, or maximum-side option. It uses the
 square of that value as the target image area and derives width and height,
 preserving the reference image aspect ratio when conditioning. Use
@@ -9671,6 +9758,7 @@ Which is a GPT2 finetune focused specifically on prompt generation.
             temperature: float = 0.7
             top-k: int = 50
             top-p: float = 1.0
+            presence-penalty: float = 0.0
             system: str | None = None
             preamble: str | None = None
             remove-prompt: bool = False
@@ -9678,6 +9766,7 @@ Which is a GPT2 finetune focused specifically on prompt generation.
             batch: bool = True
             max-batch: int | None = 50
             quantizer: str | None = None
+            gpu-headroom: float | None = None
             block-regex: str | None = None
             max-attempts: int = 10
             smart-truncate: bool = False
@@ -9692,6 +9781,9 @@ Which is a GPT2 finetune focused specifically on prompt generation.
     
         The "model" specifies the model path for magicprompt, the default value is:
         "Gustavosta/MagicPrompt-Stable-Diffusion". This can be a folder on disk or a Hugging Face repository slug.
+    
+        An unquantized model keeps as many decoder layers as fit in free GPU memory. The rest stay in CPU memory
+        and run on the GPU one layer at a time. Quantized models stay on the single device given by "device".
     
         The "image" argument is a path or URL to an image. When it is set, "model" must be a vision-language model
         that transformers can load, such as heretic-org/MiniCPM-V-4.6-heretic. The image is attached to every
@@ -9718,10 +9810,15 @@ Which is a GPT2 finetune focused specifically on prompt generation.
         The "top_p" argument sets the "top_p" generation value, i.e. randomly sample at each generation step from
         the top most likely tokens whose probabilities add up to "top_p".
     
-        The "system" argument sets the system instruction for the LLM.
+        The "presence-penalty" argument lowers the score of each token that has already been generated, once. 0
+        leaves those tokens alone. A positive value reduces repetition. A negative value encourages it.
+    
+        The "system" argument sets the system instruction for the LLM. A value of "file:path.txt" reads that
+        instruction from a UTF-8 text file. Shell-quote the path when it contains spaces.
     
         The "preamble" argument sets a text input preamble for the LLM, this preamble will be removed from the
-        output generated by the LLM.
+        output generated by the LLM. A value of "file:path.txt" reads that preamble from a UTF-8 text file.
+        Shell-quote the path when it contains spaces.
     
         The "remove-prompt" argument specifies whether to remove the original prompt from the generated text.
     
@@ -9739,6 +9836,10 @@ Which is a GPT2 finetune focused specifically on prompt generation.
     
         The "quantizer" argument allows you to specify a quantization backend for loading the LLM, this is the
         same syntax and supported backends as with the dgenerate --quantizer argument.
+    
+        The "gpu-headroom" argument is how many GiB of free GPU memory to leave unused when splitting an
+        unquantized model across GPU and CPU, on top of 10 percent of free memory. The default is 2. Raise it when
+        generation runs out of memory. Lower it to keep more layers on the GPU. Quantized models ignore it.
     
         The "block-regex" argument is a python syntax regex that will block prompts that match the regex, the
         prompt will be regenerated until the regex does not match, up to "max-attempts". This regex is
@@ -9827,6 +9928,7 @@ Older NVIDIA, Windows AMD, and Intel Arc:
             top-k: int = 40
             top-p: float = 0.4
             min-p: float = 0.0
+            presence-penalty: float = 0.0
             thinking: bool = False
             system: str | None = None
             preamble: str | None = None
@@ -9859,16 +9961,20 @@ Older NVIDIA, Windows AMD, and Intel Arc:
     
         The "max-length" argument is the max number of new tokens. It defaults to 100.
     
-        The "temperature", "top-k", "top-p", and "min-p" arguments are the sampling settings passed to the model.
+        The "temperature", "top-k", "top-p", "min-p", and "presence-penalty" arguments are the sampling settings
+        passed to the model. "presence-penalty" lowers the chance of tokens that have already appeared. 0 leaves
+        them alone. A positive value reduces repetition. A negative value encourages it.
     
         The "thinking" argument enables a thought before the reply on models whose chat template supports it, such
         as Qwen and MiniCPM. It defaults to false so the reply is the prompt. Templates that do not use this flag
         ignore it.
     
-        The "system" argument is the chat system message.
+        The "system" argument is the chat system message. A value of "file:path.txt" reads that message from a
+        UTF-8 text file. Shell-quote the path when it contains spaces.
     
         The "preamble" argument is text placed in front of the user prompt. It is removed from the generated text
-        when it is echoed back.
+        when it is echoed back. A value of "file:path.txt" reads that preamble from a UTF-8 text file. Shell-quote
+        the path when it contains spaces.
     
         The "remove-prompt" argument specifies whether to remove the original prompt from the generated text.
     
@@ -9877,21 +9983,21 @@ Older NVIDIA, Windows AMD, and Intel Arc:
         The "gpu-layers" argument controls GPU offload. It accepts "auto", "all", or an integer, and defaults to
         "auto".
     
-        * "auto": offload as many layers as fit in VRAM.
-        * "all": offload every layer onto the backend compiled into the installed
+        - "auto": offload as many layers as fit in VRAM.
+        - "all": offload every layer onto the backend compiled into the installed
           wheel (Metal, CUDA, ROCm, or Vulkan).
-        * 0: keep the model on the CPU.
-        * A positive integer: offload that many layers.
+        - 0: keep the model on the CPU.
+        - A positive integer: offload that many layers.
     
         The "block-regex" argument is a case-insensitive regular expression. Matching prompts are regenerated up
         to "max-attempts" times.
     
-        The "context-tokens" argument is the context window (``n_ctx``).
+        The "context-tokens" argument is the context window (n_ctx).
     
         The "smart-truncate" argument removes an incomplete trailing sentence using spaCy.
     
-        The "cleanup-config" argument is a ``.json``, ``.toml``, or ``.yaml`` file of extra substitutions applied
-        to the model output.
+        The "cleanup-config" argument is a .json, .toml, or .yaml file of extra substitutions applied to the model
+        output.
     
     ==============================================================================================================
 
@@ -10111,7 +10217,12 @@ Quantization backend packages will be installed by dgenerate's packaging on plat
     
     # Set a seed for consistent LLM output across prompt variations
     
+    # "presence-penalty" lowers each token that has already appeared, once.
+    # 0 is the default and leaves those tokens alone.
+    
     # Use dynamicprompts before the magicprompt plugin to generate combinatorial variations using dynamicprompts syntax
+    
+    # magicprompt-file-config.dgen loads "system" and "preamble" with file: instead.
     
     {% if have_cuda() and have_feature('bitsandbytes') %}
         \set llm_optimization ;quantizer='bnb;bits=8'
@@ -10137,7 +10248,47 @@ Quantization backend packages will be installed by dgenerate's packaging on plat
     --output-path magic-phi3
     --output-size 1024x1024
     --prompt-weighter sd-embed
-    --prompt-upscaler dynamicprompts magicprompt;model={{ llm_model }};system={{llm_system}};preamble={{ llm_preamble }};seed={{ llm_seed }}{{ llm_optimization }}
+    --prompt-upscaler dynamicprompts magicprompt;model={{ llm_model }};system={{llm_system}};preamble={{ llm_preamble }};seed={{ llm_seed }};presence-penalty=1.0{{ llm_optimization }}
+    --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
+
+The same Phi-3 setup can load ``system`` and ``preamble`` from UTF-8 files with ``file:path.txt``:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # magicprompt reads "system" and "preamble" from UTF-8 text files when the
+    # value starts with file:. Run from this directory so those paths resolve.
+    # Quote the prompt-upscaler value on the shell when
+    # a path contains spaces: system="file:My Prompt.txt"
+    # magic-phi3-config.dgen is the same example with the text written inline.
+    
+    {% if have_cuda() and have_feature('bitsandbytes') %}
+        \set llm_optimization ;quantizer='bnb;bits=8'
+    {% endif %}
+    
+    \set llm_model 'failspy/Phi-3-mini-128k-instruct-abliterated-v3'
+    
+    \set llm_system 'file:system-prompt.txt'
+    
+    \set llm_preamble 'file:preamble.txt'
+    
+    \set llm_seed 32
+    
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path magic-phi3
+    --output-size 1024x1024
+    --prompt-weighter sd-embed
+    --prompt-upscaler dynamicprompts magicprompt;model={{ llm_model }};system={{ llm_system }};preamble={{ llm_preamble }};seed={{ llm_seed }};presence-penalty=1.0{{ llm_optimization }}
     --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
 
 
@@ -10170,8 +10321,13 @@ Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_
     
     # Use dynamicprompts before the llama plugin to generate combinatorial variations using dynamicprompts syntax
     
+    # llama-file-config.dgen loads "system" and "preamble" with file: instead.
+    
     # "gpu-layers" defaults to "auto" (as many layers as fit in VRAM).
     # "all" offloads every layer. 0 keeps the model on the CPU.
+    
+    # "presence-penalty" lowers tokens that have already appeared.
+    # 0 is the default and leaves those tokens alone.
     
     # the default model is also already Phi-3 abliterated for now
     
@@ -10198,7 +10354,41 @@ Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_
     --output-path xllamacpp-phi3
     --output-size 1024x1024
     --prompt-weighter sd-embed
-    --prompt-upscaler dynamicprompts llama;model={{ llm_model }};system={{llm_system}};preamble={{ llm_preamble }}
+    --prompt-upscaler dynamicprompts llama;model={{ llm_model }};system={{llm_system}};preamble={{ llm_preamble }};presence-penalty=1.0
+    --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
+
+The llama plugin accepts the same ``file:path.txt`` form for ``system`` and ``preamble``:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # The llama prompt upscaler reads "system" and "preamble" from UTF-8 text
+    # files when the value starts with file:. Run from this directory so those
+    # paths resolve. Quote the prompt-upscaler value
+    # on the shell when a path contains spaces: system="file:My Prompt.txt"
+    # xllamacpp-phi3-config.dgen is the same example with the text written inline.
+    
+    \set llm_model 'https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf'
+    
+    \set llm_system 'file:system-prompt.txt'
+    
+    \set llm_preamble 'file:preamble.txt'
+    
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path xllamacpp-phi3
+    --output-size 1024x1024
+    --prompt-weighter sd-embed
+    --prompt-upscaler dynamicprompts llama;model={{ llm_model }};system={{ llm_system }};preamble={{ llm_preamble }};presence-penalty=1.0
     --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
 
 Models that are not chat models can be used the same way. This example loads a GGUF
@@ -10947,7 +11137,7 @@ these are the arguments that are available for use:
     z-image-cfg-normalization: bool
     z-image-cfg-truncation: float
     qwen-guidance-scale: float
-    qwen21-output-resolution: int
+    qwen21-resolution: int
     qwen21-use-kv-cache: bool
     qwen-layered-layers: int
     qwen-layered-resolution: int
@@ -14826,8 +15016,8 @@ The ``\templates_help`` output from the above example is:
             Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_guidance_scales"
-            Type: collections.abc.Sequence[float]
-            Value: [5.0]
+            Type: collections.abc.Sequence[float] | None
+            Value: []
         Name: "last_hi_diffusion"
             Type: <class 'bool'>
             Value: False
@@ -14859,7 +15049,7 @@ The ``\templates_help`` output from the above example is:
             Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_inference_steps"
-            Type: collections.abc.Sequence[int]
+            Type: collections.abc.Sequence[int] | None
             Value: [30]
         Name: "last_inpaint_crop"
             Type: <class 'bool'>
@@ -14957,9 +15147,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ltx_stg_scales"
             Type: collections.abc.Sequence[float] | None
             Value: []
-        Name: "last_ltx_system_prompt"
-            Type: str | None
-            Value: None
         Name: "last_ltx_temporal_upscale_rounds"
             Type: <class 'int'>
             Value: 1
@@ -15044,6 +15231,33 @@ The ``\templates_help`` output from the above example is:
         Name: "last_parsed_image_seeds"
             Type: collections.abc.Sequence[dgenerate.mediainput.ImageSeedParseResult] | None
             Value: []
+        Name: "last_pipeline_prompt_enhance"
+            Type: bool | str | None
+            Value: None
+        Name: "last_pipeline_prompt_enhance_gpu_headroom"
+            Type: float | None
+            Value: None
+        Name: "last_pipeline_prompt_enhance_max_new_tokens"
+            Type: int | None
+            Value: None
+        Name: "last_pipeline_prompt_enhance_min_new_tokens"
+            Type: int | None
+            Value: None
+        Name: "last_pipeline_prompt_enhance_presence_penalty"
+            Type: float | None
+            Value: None
+        Name: "last_pipeline_prompt_enhance_seeds"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
+        Name: "last_pipeline_prompt_enhance_temperature"
+            Type: float | None
+            Value: None
+        Name: "last_pipeline_prompt_enhance_top_k"
+            Type: int | None
+            Value: None
+        Name: "last_pipeline_prompt_enhance_top_p"
+            Type: float | None
+            Value: None
         Name: "last_plugin_module_paths"
             Type: collections.abc.Sequence[str]
             Value: []
@@ -15065,7 +15279,7 @@ The ``\templates_help`` output from the above example is:
         Name: "last_quantizer_uri"
             Type: str | None
             Value: None
-        Name: "last_qwen21_output_resolution"
+        Name: "last_qwen21_resolution"
             Type: int | None
             Value: None
         Name: "last_qwen21_use_kv_cache"
@@ -15337,7 +15551,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [40276606729851]
+            Value: [93500624042689]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

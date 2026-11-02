@@ -27,6 +27,7 @@ spacy = "3.8.16"
 ultralytics-opencv-headless = {version = "8.4.160", platform = "not_darwin"}
 pi-heif = "1.4.0"
 langcodes = "^3.5.1"
+fast-langdetect = "^1.1.0"
 pytorch-lightning = "^2.6.6"
 lightning-utilities = "^0.15.3"
 charset-normalizer = "^3.5.1"

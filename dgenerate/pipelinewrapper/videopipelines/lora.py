@@ -41,11 +41,7 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.uris as _uris
-import dgenerate.pipelinewrapper.videopipelines as _vp
-from .quantization import (
-    _quantize_component,
-    _quantized_device_map,
-)
+import dgenerate.pipelinewrapper.videopipelines.quantization as _quantization
 
 
 def _apply_video_loras(pipe, model_type, lora_uris, fuse_scale, auth_token, local_files_only):
@@ -154,12 +150,12 @@ def _preflight_quantized_video_loras_locked(
             'This is a one-time task for this model and LoRA scale.')
         with _hfhub.with_hf_errors_as_model_not_found():
             if str(family).startswith('wan-animate-2'):
-                from . import wan
-                pipeline = wan.load_wan_animate_2_pipeline(
+                import dgenerate.pipelinewrapper.videopipelines.wan as wan
+                pipeline = wan.animate2.load_wan_animate_2_pipeline(
                     pipeline_class, model_path, load_kwargs, injected, load_kwargs.get('torch_dtype'))
             else:
                 pipeline = pipeline_class.from_pretrained(model_path, **load_kwargs)
-        _vp._apply_video_loras(
+        _apply_video_loras(
             pipeline, model_type, lora_uris, fuse_scale, auth_token, local_files_only)
         # Pipelines advertise every component *capable* of loading a LoRA, but
         # a particular adapter can target only a subset (for example, LTX
@@ -192,8 +188,8 @@ def _preflight_quantized_video_loras_locked(
                 raise _pipelines.UnsupportedPipelineConfigError(
                     f'LoRA adapters remain attached to video component "{name}" after unloading.')
             component_path = temporary_path / name
-            from dgenerate.pipelinewrapper.weightsave import save_module_with_progress
-            save_module_with_progress(
+            import dgenerate.pipelinewrapper.weightsave as _weightsave
+            _weightsave.save_module_with_progress(
                 module, str(component_path), desc=f'Writing {name}')
             manifest[name] = {
                 'module': type(module).__module__,
@@ -227,9 +223,9 @@ def _load_fused_video_component(name, component_path, component_info, dtype,
     module_class = getattr(
         importlib.import_module(component_info['module']), component_info['class'])
     if quantizer_uri:
-        return _vp._load_quantized_module(
+        return _quantization._load_quantized_module(
             module_class, component_path, None, None, None, dtype, quantizer_uri,
-            auth_token, True, _quantized_device_map(device, offload, quantizer_uri),
+            auth_token, True, _quantization._quantized_device_map(device, offload, quantizer_uri),
             offload=offload)
 
     kwargs = {'local_files_only': True}
@@ -257,7 +253,7 @@ def _video_lora_component_quantizers(
     component_quantizers = {
         name: quantizer_uri
         for name in lora_components
-        if _quantize_component(name, quantizer_uri, quantizer_map)
+        if _quantization._quantize_component(name, quantizer_uri, quantizer_map)
     }
     for name, uri in (
             ('transformer', transformer_uri),
@@ -411,11 +407,11 @@ def _guard_video_lora_state_dict(pipeline_class):
 
 def install_video_lora_support() -> None:
     """Install Motif-Video LoRA loading and the shared metadata guard."""
-    from .motif_lora import install_motif_video_lora_loader
-    from .hyvideo_lora import install_hunyuan_video15_lora_loader
+    import dgenerate.pipelinewrapper.videopipelines.hyvideo_lora as _hyvideo_lora
+    import dgenerate.pipelinewrapper.videopipelines.motif_lora as _motif_lora
 
-    install_hunyuan_video15_lora_loader()
-    install_motif_video_lora_loader()
+    _hyvideo_lora.install_hunyuan_video15_lora_loader()
+    _motif_lora.install_motif_video_lora_loader()
     import diffusers
     for name in _VIDEO_LORA_PIPELINE_CLASSES:
         pipeline_class = getattr(diffusers, name, None)

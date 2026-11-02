@@ -249,7 +249,7 @@ images can be passed with the ``images:`` image-seed syntax.
 
 The default is 40 steps with true CFG disabled (guidance 1). Setting
 ``--guidance-scales`` above 1 enables true CFG; a negative prompt can be given
-after ``;`` in the prompt. ``--qwen21-output-resolution`` is the pipeline's
+after ``;`` in the prompt. ``--qwen21-resolution`` is the pipeline's
 target-side setting, not a width, height, or maximum-side option. It uses the
 square of that value as the target image area and derives width and height,
 preserving the reference image aspect ratio when conditioning. Use

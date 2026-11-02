@@ -1,13 +1,17 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# --ltx-prompt-enhancer rewrites the prompt before denoising.
-# Omit --ltx-system-prompt and LTX-2.5 uses its built-in system prompt.
+# --pipeline-prompt-enhance turns on the optional Gemma prompt enhancer
+# (google/gemma-4-E2B-it). The pipeline text encoder is not used.
+# --ltx-prompt-enhancer replaces that default model.
+# A value on --pipeline-prompt-enhance replaces the built-in system prompt.
+# Sampling options and a custom system prompt are in
+# examples/ltx2/pipeline_prompt_enhance/config.dgen.
 
 \set token %HF_TOKEN%
 
 {% if not token.strip() and not '--auth-token' in injected_args %}
-    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
     \exit
 {% endif %}
 
@@ -15,7 +19,7 @@ Lightricks/LTX-2.5-Diffusers
 --model-type ltx2
 --dtype bfloat16
 --model-sequential-offload
---ltx-prompt-enhancer google/gemma-4-E2B-it
+--pipeline-prompt-enhance
 --guidance-scales 1
 --gen-seeds 1
 --output-size 640x384

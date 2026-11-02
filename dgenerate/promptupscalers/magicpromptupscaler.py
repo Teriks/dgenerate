@@ -51,6 +51,39 @@ def _with_seed(seed: int | None):
             torch.random.set_rng_state(orig_state)
 
 
+def _sampling_generate_kwargs(prompt_length: int, temperature: float, top_k: int, top_p: float,
+                              presence_penalty: float, max_new_tokens: int) -> dict:
+    """Sampling arguments for ``model.generate``.
+
+    Transformers does not take ``presence_penalty``. A non-zero value is applied
+    by lowering each already generated token once, after the prompt.
+    """
+    generate_kwargs = {'max_new_tokens': max(1, int(max_new_tokens))}
+    if temperature > 0:
+        generate_kwargs.update(
+            do_sample=True,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+        )
+    else:
+        generate_kwargs['do_sample'] = False
+    if presence_penalty:
+        from dgenerate.pipelinewrapper.promptenhance import _PresencePenaltyLogitsProcessor
+        generate_kwargs['logits_processor'] = [
+            _PresencePenaltyLogitsProcessor(presence_penalty, prompt_length)]
+    return generate_kwargs
+
+
+def _model_input_device(model) -> torch.device:
+    """Device that holds the token embedding after a GPU/CPU layer split."""
+    from dgenerate.pipelinewrapper.promptenhance import _embedding_device
+    try:
+        return _embedding_device(model)
+    except StopIteration:
+        return torch.device('cpu')
+
+
 def _attn_implementation_for_config(config) -> str | None:
     """
     Phi-3 128k (and similar) set ``sliding_window``. Without flash-attn
@@ -157,6 +190,10 @@ class _TextGenerationPipeline:
                  max_length: int = 100,
                  **kwargs
                  ):
+        temperature = float(kwargs.pop('temperature', 0.0))
+        top_k = int(kwargs.pop('top_k', 50))
+        top_p = float(kwargs.pop('top_p', 1.0))
+        presence_penalty = float(kwargs.pop('presence_penalty', 0.0) or 0.0)
         results = []
         for i in range(0, len(prompts), batch_size):
             batch = prompts[i: i + batch_size]
@@ -168,20 +205,20 @@ class _TextGenerationPipeline:
                 truncation=True,
                 max_length=max_length)
 
-            model_device = self.model.device
+            model_device = _model_input_device(self.model)
 
             inputs = inputs.to(model_device)
 
             # Prefer max_new_tokens so total length is prompt + generation,
             # not a hard cap that can equal the already-truncated prompt.
             prompt_len = int(inputs['input_ids'].shape[-1])
-            max_new_tokens = max(1, int(max_length) - prompt_len)
+            generate_kwargs = dict(kwargs)
+            generate_kwargs.update(_sampling_generate_kwargs(
+                prompt_len, temperature, top_k, top_p, presence_penalty,
+                max(1, int(max_length) - prompt_len)))
 
             with torch.no_grad():
-                outputs = self.model.generate(
-                    **inputs,
-                    max_new_tokens=max_new_tokens,
-                    **kwargs)
+                outputs = self.model.generate(**inputs, **generate_kwargs)
 
             if model_device.type != 'cpu':
                 inputs.to('cpu')
@@ -213,7 +250,7 @@ class _ImageTextGenerationPipeline:
             return_tensors='pt',
             processor_kwargs=processor_kwargs,
         )
-        inputs = inputs.to(self.model.device)
+        inputs = inputs.to(_model_input_device(self.model))
         dtype = getattr(self.model, 'dtype', None)
         if dtype is not None and dtype.is_floating_point and dtype != torch.float32:
             for key, value in inputs.items():
@@ -246,7 +283,8 @@ class _ImageTextGenerationPipeline:
                  max_new_tokens: int,
                  temperature: float,
                  top_k: int,
-                 top_p: float) -> list[str]:
+                 top_p: float,
+                 presence_penalty: float = 0.0) -> list[str]:
         processor_kwargs = {'padding': True} if len(conversations) > 1 else {}
         # The processor rewrites message content in place. Keep a copy in case
         # the image has to be encoded again without slicing.
@@ -255,16 +293,8 @@ class _ImageTextGenerationPipeline:
         inputs = self._without_uneven_slices(original_conversations, inputs, processor_kwargs)
 
         prompt_width = int(inputs['input_ids'].shape[-1])
-        generate_kwargs = {'max_new_tokens': max(1, int(max_new_tokens))}
-        if temperature > 0:
-            generate_kwargs.update(
-                do_sample=True,
-                temperature=temperature,
-                top_k=top_k,
-                top_p=top_p,
-            )
-        else:
-            generate_kwargs['do_sample'] = False
+        generate_kwargs = _sampling_generate_kwargs(
+            prompt_width, temperature, top_k, top_p, presence_penalty, max_new_tokens)
 
         with torch.no_grad():
             outputs = self.model.generate(**inputs, **generate_kwargs)
@@ -294,6 +324,10 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
     The "model" specifies the model path for magicprompt, the
     default value is: "Gustavosta/MagicPrompt-Stable-Diffusion". This
     can be a folder on disk or a Hugging Face repository slug.
+
+    An unquantized model keeps as many decoder layers as fit in free GPU
+    memory. The rest stay in CPU memory and run on the GPU one layer at a
+    time. Quantized models stay on the single device given by "device".
 
     The "image" argument is a path or URL to an image. When it is set,
     "model" must be a vision-language model that transformers can load,
@@ -327,10 +361,18 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
     randomly sample at each generation step from the top most likely
     tokens whose probabilities add up to "top_p".
 
+    The "presence-penalty" argument lowers the score of each token that has
+    already been generated, once. 0 leaves those tokens alone. A positive
+    value reduces repetition. A negative value encourages it.
+
     The "system" argument sets the system instruction for the LLM.
+    A value of "file:path.txt" reads that instruction from a UTF-8 text file. Shell-quote
+    the path when it contains spaces.
 
     The "preamble" argument sets a text input preamble for the LLM, this
     preamble will be removed from the output generated by the LLM.
+    A value of "file:path.txt" reads that preamble from a UTF-8 text file. Shell-quote
+    the path when it contains spaces.
 
     The "remove-prompt" argument specifies whether to remove the
     original prompt from the generated text.
@@ -356,6 +398,12 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
     The "quantizer" argument allows you to specify a quantization
     backend for loading the LLM, this is the same syntax and supported
     backends as with the dgenerate --quantizer argument.
+
+    The "gpu-headroom" argument is how many GiB of free GPU memory to leave
+    unused when splitting an unquantized model across GPU and CPU, on top of
+    10 percent of free memory. The default is 2. Raise it when generation
+    runs out of memory. Lower it to keep more layers on the GPU. Quantized
+    models ignore it.
 
     The "block-regex" argument is a python syntax regex that will
     block prompts that match the regex, the prompt will be regenerated
@@ -401,6 +449,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                  temperature: float = 0.7,
                  top_k: int = 50,
                  top_p: float = 1.0,
+                 presence_penalty: float = 0.0,
                  system: str | None = None,
                  preamble: str | None = None,
                  remove_prompt: bool = False,
@@ -408,6 +457,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                  batch: bool = True,
                  max_batch: int | None = 50,
                  quantizer: str | None = None,
+                 gpu_headroom: float | None = None,
                  block_regex: str | None = None,
                  max_attempts: int = 10,
                  smart_truncate: bool = False,
@@ -425,9 +475,15 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                          smart_truncate=smart_truncate,
                          cleanup_config=cleanup_config)
 
+        system = self._resolve_file_argument(system, 'system')
+        preamble = self._resolve_file_argument(preamble, 'preamble')
+
         dtype = dtype.lower()
         if dtype not in {'float32', 'float16', 'bfloat16'}:
             raise self.argument_error('Argument "dtype" must be either float32, float16, or bfloat16.')
+
+        if gpu_headroom is not None and gpu_headroom < 0:
+            raise self.argument_error('Argument "gpu-headroom" must be at least 0.')
 
         if quantizer:
             try:
@@ -545,12 +601,14 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         self._temperature = temperature
         self._top_k = top_k
         self._top_p = top_p
+        self._presence_penalty = presence_penalty
 
         self._variations = variations
         self._accepts_batch = batch
         self._max_batch = max_batch
         self._part = part
         self._quantizer = quantizer
+        self._gpu_headroom = gpu_headroom
         self._max_attempts = max_attempts
         self._prepend_prompt = prepend_prompt
 
@@ -674,9 +732,6 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             quantized=quantization_config is not None,
         )
 
-    def _to(self, device: str | torch.device):
-        self._pipeline.to(device)
-
     def _generate_prompts(self, original_prompts: list[str]) -> list[str]:
         if self._vision_image is not None:
             return self._generate_vision_prompts(original_prompts)
@@ -778,6 +833,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                     temperature=self._temperature,
                     top_k=self._top_k,
                     top_p=self._top_p,
+                    presence_penalty=self._presence_penalty,
                 ))
         elif self._max_batch is not None:
             generated_prompts = []
@@ -789,6 +845,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                     temperature=self._temperature,
                     top_k=self._top_k,
                     top_p=self._top_p,
+                    presence_penalty=self._presence_penalty,
                 ))
         else:
             generated_prompts = self._pipeline.generate(
@@ -797,6 +854,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                 temperature=self._temperature,
                 top_k=self._top_k,
                 top_p=self._top_p,
+                presence_penalty=self._presence_penalty,
             )
         return generated_prompts
 
@@ -807,7 +865,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             temperature=self._temperature,
             top_k=self._top_k,
             top_p=self._top_p,
-            do_sample=True,
+            presence_penalty=self._presence_penalty,
             batch_size=len(prompts)
         )
 
@@ -817,15 +875,26 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             yield
             gc.collect()
             _memory.torch_gc()
-        else:
-            try:
-                self.memory_guard_device(self.device, self.size_estimate)
-                self._to(self.device)
+            return
+        from dgenerate.pipelinewrapper.promptenhance import (
+            PromptEnhanceOverrides, _fast_encoder, _headroom_bytes)
+        headroom_bytes = None
+        if self._gpu_headroom is not None:
+            headroom_bytes = _headroom_bytes(
+                PromptEnhanceOverrides(gpu_headroom=self._gpu_headroom))
+        try:
+            self.memory_guard_device(self.device, self.size_estimate)
+            with _fast_encoder(
+                    self._pipeline.model,
+                    self.device,
+                    offload=True,
+                    headroom_bytes=headroom_bytes,
+                    label='magicprompt',
+                    debug=True):
                 yield
-            finally:
-                self._to('cpu')
-                gc.collect()
-                _memory.torch_gc()
+        finally:
+            gc.collect()
+            _memory.torch_gc()
 
     @property
     def accepts_batch(self) -> bool:

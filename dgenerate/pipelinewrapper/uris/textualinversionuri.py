@@ -28,7 +28,7 @@ import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
 
 _textual_inversion_uri_parser = _textprocessing.ConceptUriParser(
     'Textual Inversion', ['token', 'revision', 'subfolder', 'weight-name'])
