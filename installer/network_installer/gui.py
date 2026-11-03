@@ -58,10 +58,15 @@ class DGenerateInstallerGUI:
         from network_installer.uv_installer import UvInstaller
         return UvInstaller(log_callback=log_callback, source_dir=source_dir)
 
-    def __init__(self):
+    def __init__(self, preset_version: str | None = None, preset_branch: str | None = None):
         """
         Initialize the DGenerateInstallerGUI.
+
+        :param preset_version: Release tag to preselect on the source screen.
+        :param preset_branch: Development branch to preselect on the source screen.
         """
+        self.preset_version = preset_version
+        self.preset_branch = preset_branch
         self.root = tk.Tk()
         self.root.title("dgenerate network installer")
         self.root.resizable(False, False)  # Fixed size like MSI installers
@@ -562,11 +567,41 @@ class DGenerateInstallerGUI:
             self.release_combo.set(releases[0])
 
         self.branch_combo['values'] = branches
-        if branches:
+        if branches and not self.preset_branch:
             self.branch_combo.set(branches[0])
 
         self.status_var.set("Ready")
         self._hide_progress_bar()
+        self._apply_source_preset()
+
+    def _apply_source_preset(self):
+        """Select a release or development branch requested on the command line."""
+        if not hasattr(self, 'latest_release_var'):
+            return
+
+        if self.preset_branch:
+            names = list(self.branch_combo['values'])
+            match = next((name for name in names if name == self.preset_branch), None)
+            if match:
+                self.branch_combo.set(match)
+            else:
+                self.branch_var.set(self.preset_branch)
+            self.latest_release_var.set('branch')
+            return
+
+        if not self.preset_version:
+            return
+
+        wanted = {self.preset_version, self.preset_version.lstrip('vV')}
+        match = None
+        for name in self.release_combo['values']:
+            tag = name.split(' - ', 1)[0]
+            if tag in wanted or tag.lstrip('vV') in wanted:
+                match = name
+                break
+        if match:
+            self.release_combo.set(match)
+        self.latest_release_var.set('specific')
 
     def _on_release_selected(self, event=None):
         """
@@ -1763,11 +1798,14 @@ class DGenerateInstallerGUI:
         self.root.mainloop()
 
 
-def main():
+def main(version: str | None = None, branch: str | None = None):
     """
     Main entry point for the GUI application.
+
+    :param version: Release tag to preselect.
+    :param branch: Development branch to preselect.
     """
-    app = DGenerateInstallerGUI()
+    app = DGenerateInstallerGUI(preset_version=version, preset_branch=branch)
     app.run()
 
 

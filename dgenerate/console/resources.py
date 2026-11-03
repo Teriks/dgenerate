@@ -336,7 +336,8 @@ def _choose_update_action(parent, message: str) -> str:
     return choice['value']
 
 
-def start_network_installer(console, tag: str, page_url: str, message: str):
+def start_network_installer(console, tag: str, page_url: str, message: str,
+                            installer_args: list[str] | None = None):
     """
     Offer a download of the platform installer for ``tag``, or the release page.
 
@@ -387,7 +388,10 @@ def start_network_installer(console, tag: str, page_url: str, message: str):
     if platform.system() == 'Windows':
         popen_kwargs['cwd'] = os.path.expanduser('~')
 
-    subprocess.Popen([installer_path], **popen_kwargs)
+    if not installer_args:
+        installer_args = []
+
+    subprocess.Popen([installer_path, *installer_args], **popen_kwargs)
     console.destroy()
 
 
@@ -438,16 +442,17 @@ def add_help_menu_links(menu: tk.Menu, console=None):
                 if release_info.network_install and console is not None:
                     menu.add_command(
                         label='Pre-Release Update Available!',
-                        command=lambda url=page_url: start_network_installer(
+                        command=lambda url=page_url, branch=release_info.branch:
+                        start_network_installer(
                             console,
                             'pre-release',
                             url,
                             'A newer pre-release build is available.\n\n'
-                            'Download and Install closes the Console and runs '
-                            'the network installer. Choose Development Branch '
-                            'and your development branch (for example '
-                            'version_6.0.0).\n\n'
-                            'View Release opens the pre-release page.'))
+                            'Download and Install closes the Console and opens '
+                            'the network installer with Development Branch and '
+                            f'{branch} selected.\n\n'
+                            'View Release opens the pre-release page.',
+                            ['-b', branch]))
                 else:
                     menu.add_command(
                         label='Pre-Release Update Available!',
@@ -476,9 +481,10 @@ def add_help_menu_links(menu: tk.Menu, console=None):
                         tag,
                         url,
                         f'A newer release is available ({tag}).\n\n'
-                        'Download and Install closes the Console and runs '
-                        'the network installer. Choose Latest Release.\n\n'
-                        'View Release opens the release page.'))
+                        'Download and Install closes the Console and opens '
+                        f'the network installer with release {tag} selected.\n\n'
+                        'View Release opens the release page.',
+                        ['-v', tag]))
             else:
                 menu.add_command(
                     label=f'Newer Release Available! ({latest_release.tag_name})',

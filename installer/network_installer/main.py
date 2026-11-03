@@ -40,6 +40,8 @@ def parse_arguments():
         epilog="""
 Examples:
   %(prog)s                    # Start GUI installer
+  %(prog)s -b version_6.0.0  # GUI with that development branch selected
+  %(prog)s -v v5.0.0         # GUI with that release selected
   %(prog)s -s -v 3.5.0       # Install version 3.5.0 silently (no GUI)
   %(prog)s -s -b master      # Install master branch silently
   %(prog)s -u                # Uninstall dgenerate silently
@@ -49,9 +51,11 @@ Examples:
     parser.add_argument('-s', '--silent', action='store_true',
                         help='Silent mode - no GUI, always overwrite existing installation')
     parser.add_argument('-v', '--version', type=str,
-                        help='Install specific version (e.g., 3.5.0)')
+                        help='Release tag to install. With -s this installs silently; '
+                             'without -s the GUI opens with that release selected')
     parser.add_argument('-b', '--branch', type=str,
-                        help='Install specific branch (e.g., master)')
+                        help='Git branch to install. With -s this installs silently; '
+                             'without -s the GUI opens with Development Branch selected')
     parser.add_argument('-e', '--extras', type=str, nargs='+',
                         help='Specify extras to install (e.g. --extras bitsandbytes xllamacpp')
     parser.add_argument('-u', '--uninstall', action='store_true',
@@ -247,12 +251,11 @@ def main():
         success = run_silent_uninstall()
         sys.exit(0 if success else 1)
 
-    if args.silent:
-        # Validate arguments
-        if args.version and args.branch:
-            print("ERROR: Cannot specify both version (-v) and branch (-b)")
-            sys.exit(1)
+    if args.version and args.branch:
+        print("ERROR: Cannot specify both version (-v) and branch (-b)")
+        sys.exit(1)
 
+    if args.silent:
         success = run_silent_install(
             version=args.version,
             branch=args.branch,
@@ -261,11 +264,11 @@ def main():
 
         sys.exit(0 if success else 1)
 
-    # If no command line arguments, run GUI
+    # GUI, with optional source preselection from -v / -b
     try:
         # Import and run the GUI
         from network_installer.gui import main as gui_main
-        gui_main()
+        gui_main(version=args.version, branch=args.branch)
 
     except Exception as e:
         # Show error dialog if GUI fails to start
