@@ -1,0 +1,18 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image 2.1 with ComfyUI's INT8 ConvRot transformer and W4A8 Qwen3-VL
+# 8B text encoder (4-bit weights, 8-bit activations). Base and Turbo share
+# this encoder. The file includes the vision tower, so image conditioning
+# can use this URI. No mode and no quantizer: the linears stay packed.
+
+Qwen/Qwen-Image-2.1
+--model-type qwen-image-21
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/diffusion_models/qwen_image_2.1_int8_convrot.safetensors
+--text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/text_encoders/qwen3vl_8b_w4a8.safetensors"
+--qwen21-resolution 1024
+--gen-seeds 1
+--output-path qwen-image-21-comfy-quant-text-encoder-w4a8
+--prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

@@ -137,35 +137,60 @@ class TestAssistantPrompt(unittest.TestCase):
         from dgenerate.assistant.prompt import memory_problem
 
         plan = offload_plan(True, 16, True, True)
-        self.assertIn('krea2, wan', plan)
+        self.assertIn('krea2 otherwise, and wan', plan)
         self.assertIn('motif-video', plan)
         self.assertIn('kandinsky5-image', plan)
         self.assertIn('qwen-image-21', plan)
         self.assertIn('ltx-video', plan)
-        self.assertRegex(plan, r'krea2.*--model-sequential-offload\. No quantizer')
-        self.assertIn('flux, flux-fill, flux-kontext, full checkpoint: --quantizer bnb;bits=4.', plan)
-        self.assertIn('flux, flux-fill, flux-kontext, control lora: --model-sequential-offload.', plan)
+        self.assertIn('32 GiB and above covers 32, 48, and 80 GiB cards.', plan)
+        self.assertIn('This computer has 16.0 GiB, the 16 GiB tier.', plan)
+        self.assertIn(
+            'krea2, quantized transformer and quantized text encoder',
+            plan)
+        self.assertIn('every tier: --model-cpu-offload. No quantizer.', plan)
+        self.assertRegex(plan, r'krea2 otherwise.*\n  every tier: --model-sequential-offload\. No quantizer')
+        packed = memory_problem(
+            'krea2', 'krea/Krea-2-Raw',
+            transformer='Krea-2-Base-Q4_K_M.gguf',
+            text_encoders=['Qwen3VL-4B-Instruct-Q4_K_M.gguf'],
+            cuda=True, gib=16, bitsandbytes=True, sdnq=False)
+        self.assertIn('--model-cpu-offload', packed)
+        self.assertIsNone(memory_problem(
+            'krea2', 'krea/Krea-2-Raw',
+            transformer='Krea-2-Base-Q4_K_M.gguf',
+            text_encoders=['Qwen3VL-4B-Instruct-Q4_K_M.gguf'],
+            cpu=True,
+            cuda=True, gib=16, bitsandbytes=True, sdnq=False))
+        self.assertIn('--model-sequential-offload', memory_problem(
+            'krea2', 'krea/Krea-2-Raw',
+            transformer='Krea-2-Base-Q4_K_M.gguf',
+            cuda=True, gib=16, bitsandbytes=True, sdnq=False))
+        self.assertIn('flux, flux-fill, flux-kontext, full checkpoint', plan)
+        self.assertIn('16 GiB, 24 GiB, 32 GiB and above: --quantizer bnb;bits=4', plan)
+        self.assertIn('flux, flux-fill, flux-kontext, control lora', plan)
         self.assertIn('qwen-image, qwen-image-edit', plan)
-        self.assertIn('flux2 dev, flux2 klein 9b, flux2-klein-kv, full checkpoint: --model-sequential-offload.', plan)
-        self.assertIn('flux2 klein 4b, full checkpoint: --quantizer bnb;bits=4.', plan)
-        self.assertIn('z-image, full checkpoint: --model-sequential-offload.', plan)
-        self.assertIn('sd3, sd3-pix2pix, full checkpoint: --model-sequential-offload.', plan)
+        self.assertIn('flux2 dev, flux2 klein 9b, flux2-klein-kv, full checkpoint', plan)
+        self.assertIn('flux2 klein 4b, full checkpoint', plan)
+        self.assertIn('z-image, full checkpoint', plan)
+        self.assertIn('sd3, sd3-pix2pix, full checkpoint', plan)
         self.assertIn('--quantizer-map text_encoder', plan)
         self.assertIn('--quantizer-map text_encoder_3', plan)
-        self.assertIn('kolors: --quantizer bnb;bits=4.', plan)
-        self.assertIn('s-cascade: --model-cpu-offload and --second-model-cpu-offload.', plan)
-        self.assertIn('hydit: no quantizer and no offload.', plan)
+        self.assertIn('kolors', plan)
+        self.assertIn('s-cascade', plan)
+        self.assertIn('every tier: --model-cpu-offload and --second-model-cpu-offload. No quantizer.', plan)
+        self.assertIn('every tier: no quantizer and no offload.', plan)
 
         roomy = offload_plan(True, 32, True, True)
-        self.assertIn('sd3, sd3-pix2pix, full checkpoint: --quantizer bnb;bits=8.', roomy)
-        self.assertIn('z-image, full checkpoint: no offload and no quantizer.', roomy)
-        self.assertIn('qwen-image, qwen-image-edit, qwen-image-layered, full checkpoint: --quantizer bnb;bits=4.', roomy)
+        self.assertIn('This computer has 32.0 GiB, the 32 GiB and above tier.', roomy)
+        self.assertIn('32 GiB and above: --quantizer bnb;bits=8', roomy)
+        self.assertIn('24 GiB, 32 GiB and above: no offload and no quantizer', roomy)
+        self.assertIn('32 GiB and above: --quantizer bnb;bits=4', roomy)
         self.assertIn('qwen-image-21', roomy)
         self.assertIn('--model-sequential-offload. No quantizer, including a GGUF or FP8 file.', roomy)
 
         tight = offload_plan(True, 10, True, False)
-        self.assertIn('flux, flux-fill, flux-kontext, full checkpoint: --model-sequential-offload.', tight)
-        self.assertIn('flux2 klein 4b, full checkpoint: --model-sequential-offload.', tight)
+        self.assertIn('This computer has 10.0 GiB, the 12 GiB tier.', tight)
+        self.assertIn('8 GiB, 12 GiB: --model-sequential-offload', tight)
         self.assertIn('bits4-quant-type=nf4', tight)
 
         cpu = offload_plan(False, 64, True, True)
@@ -205,16 +230,14 @@ class TestAssistantPrompt(unittest.TestCase):
             cuda=True, gib=16, bitsandbytes=True, sdnq=False))
 
     def test_first_draft_states_the_memory_flags(self):
-        machine = (True, 16.0, True, False)
         klein = first_draft_recipes(
-            'sprite sheet with https://huggingface.co/fal/flux-2-klein-4b-spritesheet-lora',
-            machine=machine)
-        self.assertIn('Flux.2 Klein 4B full checkpoint (--model-type flux2, not flux): write --quantizer bnb;bits=4.', klein)
-        self.assertIn('no {% if have_cuda() %}', klein)
-        self.assertIn('no total_memory', klein)
-        dev = first_draft_recipes('flux.2 dev photo of a horse', machine=machine)
-        self.assertIn('Flux.2 dev, Klein 9B, or Klein KV full checkpoint: write --model-sequential-offload.', dev)
-        self.assertNotIn('Klein 4B full checkpoint', dev)
+            'sprite sheet with https://huggingface.co/fal/flux-2-klein-4b-spritesheet-lora')
+        self.assertNotIn('Memory flags for this request', klein)
+        plan = offload_plan(True, 16, True, False)
+        self.assertIn('flux2 klein 4b, full checkpoint', plan)
+        self.assertIn('16 GiB, 24 GiB, 32 GiB and above: --quantizer bnb;bits=4', plan)
+        self.assertIn('flux2 dev, flux2 klein 9b, flux2-klein-kv, full checkpoint', plan)
+        self.assertIn('8 GiB, 12 GiB, 16 GiB, 24 GiB: --model-sequential-offload', plan)
 
     def test_a_comment_between_options_is_moved_above_the_model(self):
         text = extract_config(
@@ -268,13 +291,10 @@ class TestAssistantPrompt(unittest.TestCase):
         self.assertEqual(lines[1], '#! dgenerate 6.0.0')
 
     def test_z_image_words_get_the_flag_on_its_own_line(self):
-        text = first_draft_recipes(
-            'can you depict yourself using z image turbo',
-            machine=(True, 16.0, True, False))
-        self.assertIn('Z-Image full checkpoint: write --model-sequential-offload.', text)
-        self.assertIn('Do not pass --quantizer.', text)
-        self.assertIn('no \\setp gpu_memory_gib', text)
-        self.assertIn('no {% if have_cuda() %}', text)
+        plan = offload_plan(True, 16, True, False)
+        self.assertIn('z-image, full checkpoint', plan)
+        self.assertIn('8 GiB, 12 GiB, 16 GiB: --model-sequential-offload. Do not pass --quantizer', plan)
+        self.assertIn('24 GiB, 32 GiB and above: no offload and no quantizer', plan)
 
     def test_distilled_klein_9b_requests_the_token(self):
         text = first_draft_recipes(

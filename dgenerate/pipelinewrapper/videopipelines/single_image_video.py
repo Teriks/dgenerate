@@ -33,6 +33,7 @@ import inspect
 
 import numpy
 
+import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.sampling as _sampling
@@ -227,22 +228,60 @@ def _vae_encode_in_vae_dtype(vae):
             vae.encode = shadowed
 
 
+def _skip_nabla_sparse_attention(pipe) -> None:
+    """Run a Nabla checkpoint with dense scaled-dot-product attention.
+
+    Pro Kandinsky video sets ``attention_type`` to ``nabla`` and builds a flex
+    block mask. The flex kernel available here still stores the full score
+    matrix. At 768x512 and 5 seconds that matrix is about 270 GiB. Dense SDPA
+    keeps the scores in the kernel. Lite checkpoints are not Nabla and are
+    left alone.
+    """
+    if not hasattr(pipe, 'get_sparse_params') or getattr(pipe, '_dgenerate_nabla_skipped', False):
+        return
+    transformer = getattr(pipe, 'transformer', None)
+    config = getattr(transformer, 'config', None)
+    attention_type = config.get('attention_type', None) if hasattr(config, 'get') else None
+    if attention_type != 'nabla':
+        return
+
+    def get_sparse_params(*args, **kwargs):
+        return None
+
+    pipe.get_sparse_params = get_sparse_params
+    pipe._dgenerate_nabla_skipped = True
+    _messages.warning(
+        'Kandinsky 5 Pro Nabla attention needs a 270 GiB score matrix at this '
+        'length, so attention is running dense.')
+
+
+def _enhance_loaded_video_prompt(wrapper, pipe, user_args) -> None:
+    """Rewrite the prompt with the loaded pipeline text encoder.
+
+    The still-image call path does this in ``DiffusionPipelineWrapper``. Video
+    generation returns before that point, so Kandinsky 5 video does it here,
+    after the pipeline exists and before the prompt is read for the call.
+    """
+    if not user_args.pipeline_prompt_enhance:
+        return
+    import dgenerate.pipelinewrapper.promptenhance as _promptenhance
+
+    previous = wrapper._pipeline
+    wrapper._pipeline = pipe
+    try:
+        _promptenhance.enhance_diffusion_arguments(wrapper, user_args)
+    finally:
+        wrapper._pipeline = previous
+
+
 def _call_single_image_video(wrapper, user_args):
     mode ='image-to-video' if user_args.images else 'text-to-video'
     pipe, held = _vp._video_pipeline(wrapper, mode, user_args.scheduler_uri)
     family = held.family
     call_parameters = inspect.signature(pipe.__call__).parameters
-    positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
     default_fps = 15.0 if family == 'hyvideo-15' else 24.0
     fps = float(user_args.video_fps or default_fps)
-    kwargs = {
-        'prompt': positive,
-        'generator': _vp._generator(wrapper, user_args),
-        'output_type': 'np' if family == 'hyvideo-15' else 'pil',
-    }
-    if negative:
-        kwargs['negative_prompt'] = negative
     if width is not None:
         width, height = _media._force_output_size_alignment(width, height, 16, family)
     if mode == 'image-to-video':
@@ -250,6 +289,17 @@ def _call_single_image_video(wrapper, user_args):
         width, height = _media.conditioning_canvas(
             source.size, width, height, user_args.aspect_correct, 16)
         user_args.images[0] = _media.resize_media([source], (width, height))[0]
+    if family == 'kandinsky5-video':
+        _enhance_loaded_video_prompt(wrapper, pipe, user_args)
+    positive, negative = _vp._prompt_text(user_args)
+    kwargs = {
+        'prompt': positive,
+        'generator': _vp._generator(wrapper, user_args),
+        'output_type': 'np' if family == 'hyvideo-15' else 'pil',
+    }
+    if negative:
+        kwargs['negative_prompt'] = negative
+    if mode == 'image-to-video':
         kwargs['image'] = user_args.images[0]
     if width is not None and {'width', 'height'} <= call_parameters.keys():
         kwargs.update(width=width, height=height)
@@ -305,6 +355,8 @@ def _call_single_image_video(wrapper, user_args):
         user_args.inference_steps = len(kwargs['sigmas'])
 
     _vp._set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
+    if family == 'kandinsky5-video':
+        _skip_nabla_sparse_attention(pipe)
     with contextlib.ExitStack() as stack:
         if custom_timesteps is not None:
             stack.enter_context(_schedules._forced_scheduler_timesteps(pipe.scheduler, custom_timesteps))

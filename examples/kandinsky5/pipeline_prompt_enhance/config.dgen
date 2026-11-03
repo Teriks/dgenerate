@@ -1,0 +1,17 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Kandinsky 5 text-to-image with encoder-side prompt enhancement.
+# The rewrite uses Qwen2.5-VL. CLIP then encodes the rewritten prompt as well.
+
+kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers
+--model-type kandinsky5-image
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 3.5
+--pipeline-prompt-enhance
+--gen-seeds 1
+--output-path kandinsky5-pipeline-prompt-enhance
+--output-size 1024
+--prompts "A tiny bookshop inside a hollow tree, warm lamps glowing through the windows"

@@ -371,6 +371,7 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'upscaler-x2': ModelType.UPSCALER_X2,
                 'upscaler-x4': ModelType.UPSCALER_X4,
                 's-cascade': ModelType.S_CASCADE,
+                's-cascade-decoder': ModelType.S_CASCADE_DECODER,
                 'sd3': ModelType.SD3,
                 'sd3-pix2pix': ModelType.SD3_PIX2PIX,
                 'flux': ModelType.FLUX,
@@ -453,7 +454,17 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.HYIMAGE_21_REFINER: 'hyimage-21-refiner'}[model_type]
 
 
-def model_type_is_sd15(model_type: ModelType | str) -> bool:
+def model_type_is_sd(model_type: ModelType | str) -> bool:
+    """Stable Diffusion 1.x / 2.x (``--model-type sd``)."""
+    return get_model_type_enum(model_type) == ModelType.SD
+
+
+def model_type_is_pix2pix(model_type: ModelType | str) -> bool:
+    """Stable Diffusion pix2pix (``--model-type pix2pix``)."""
+    return get_model_type_enum(model_type) == ModelType.PIX2PIX
+
+
+def model_type_is_sd15_family(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an SD1.5 model?
 
@@ -462,16 +473,12 @@ def model_type_is_sd15(model_type: ModelType | str) -> bool:
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_enum(model_type)
-
-    return model_type in {
-        ModelType.SD,
-        ModelType.PIX2PIX,
-        ModelType.UPSCALER_X2
-    }
+    return (model_type_is_sd(model_type)
+            or model_type_is_pix2pix(model_type)
+            or model_type_is_upscaler_x2(model_type))
 
 
-def model_type_is_sd2(model_type: ModelType | str) -> bool:
+def model_type_is_sd2_family(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an SD 2.X compatible model?
 
@@ -480,24 +487,27 @@ def model_type_is_sd2(model_type: ModelType | str) -> bool:
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_enum(model_type)
-
-    return model_type in {
-        ModelType.SD,
-        ModelType.UPSCALER_X4
-    }
+    return model_type_is_sd(model_type) or model_type_is_upscaler_x4(model_type)
 
 
-def model_type_is_upscaler(model_type: ModelType | str) -> bool:
+def model_type_is_upscaler_family(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an upscaler model?
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_string(model_type)
+    return model_type_is_upscaler_x2(model_type) or model_type_is_upscaler_x4(model_type)
 
-    return 'upscaler' in model_type
+
+def model_type_is_upscaler_x2(model_type: ModelType | str) -> bool:
+    """Stable Diffusion x2 upscaler."""
+    return get_model_type_enum(model_type) == ModelType.UPSCALER_X2
+
+
+def model_type_is_upscaler_x4(model_type: ModelType | str) -> bool:
+    """Stable Diffusion x4 upscaler."""
+    return get_model_type_enum(model_type) == ModelType.UPSCALER_X4
 
 
 def model_type_supports_control_lora(model_type: ModelType | str) -> bool:
@@ -508,20 +518,29 @@ def model_type_supports_control_lora(model_type: ModelType | str) -> bool:
     ``FluxControlPipeline``. SD and SDXL clone the UNet into a ControlNet
     and load the Stability control LoRA onto that clone.
     """
-    model_type = get_model_type_enum(model_type)
-    return model_type in {ModelType.SD, ModelType.SDXL, ModelType.FLUX}
+    return (model_type_is_sd(model_type)
+            or model_type_is_sdxl(model_type)
+            or model_type_is_flux(model_type))
 
 
 def model_type_is_sdxl(model_type: ModelType | str) -> bool:
+    """Stable Diffusion XL (``--model-type sdxl``)."""
+    return get_model_type_enum(model_type) == ModelType.SDXL
+
+
+def model_type_is_sdxl_pix2pix(model_type: ModelType | str) -> bool:
+    """SDXL pix2pix (``--model-type sdxl-pix2pix``)."""
+    return get_model_type_enum(model_type) == ModelType.SDXL_PIX2PIX
+
+
+def model_type_is_sdxl_family(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an SDXL model?
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_string(model_type)
-
-    return 'sdxl' in model_type
+    return model_type_is_sdxl(model_type) or model_type_is_sdxl_pix2pix(model_type)
 
 
 def model_type_is_kolors(model_type: ModelType | str) -> bool:
@@ -531,39 +550,57 @@ def model_type_is_kolors(model_type: ModelType | str) -> bool:
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_string(model_type)
-
-    return 'kolors' in model_type
+    return get_model_type_enum(model_type) == ModelType.KOLORS
 
 
 def model_type_is_sd3(model_type: ModelType | str) -> bool:
+    """Stable Diffusion 3 (``--model-type sd3``)."""
+    return get_model_type_enum(model_type) == ModelType.SD3
+
+
+def model_type_is_sd3_pix2pix(model_type: ModelType | str) -> bool:
+    """SD3 pix2pix (``--model-type sd3-pix2pix``)."""
+    return get_model_type_enum(model_type) == ModelType.SD3_PIX2PIX
+
+
+def model_type_is_sd3_family(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an SD3 model?
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_string(model_type)
-
-    return 'sd3' in model_type
+    return model_type_is_sd3(model_type) or model_type_is_sd3_pix2pix(model_type)
 
 
 def model_type_is_flux(model_type: ModelType | str) -> bool:
-    """
-    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent a Flux.1 model?
+    """Flux.1 (``--model-type flux``)."""
+    return get_model_type_enum(model_type) == ModelType.FLUX
 
+
+def model_type_is_flux_family(model_type: ModelType | str) -> bool:
+    """
+    Flux.1, Flux.1 Fill, and Flux.1 Kontext.
+
+    ``--model-type flux`` alone is :py:func:`model_type_is_flux`.
     Flux.2 is :py:func:`model_type_is_flux2`, not this function.
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_enum(model_type)
+    return (model_type_is_flux(model_type)
+            or model_type_is_flux_fill(model_type)
+            or model_type_is_flux_kontext(model_type))
 
-    return model_type in {
-        ModelType.FLUX,
-        ModelType.FLUX_FILL,
-        ModelType.FLUX_KONTEXT
-    }
+
+def model_type_is_flux_fill(model_type: ModelType | str) -> bool:
+    """Flux.1 Fill."""
+    return get_model_type_enum(model_type) == ModelType.FLUX_FILL
+
+
+def model_type_is_flux_kontext(model_type: ModelType | str) -> bool:
+    """Flux.1 Kontext."""
+    return get_model_type_enum(model_type) == ModelType.FLUX_KONTEXT
 
 
 def model_type_is_flux2(model_type: ModelType | str) -> bool:
@@ -590,8 +627,7 @@ def model_type_is_flux2_klein_kv(model_type: ModelType | str) -> bool:
 
 def model_type_is_flux2_family(model_type: ModelType | str) -> bool:
     """Flux.2 or Flux.2 Klein KV."""
-    model_type = get_model_type_enum(model_type)
-    return model_type in {ModelType.FLUX2, ModelType.FLUX2_KLEIN_KV}
+    return model_type_is_flux2(model_type) or model_type_is_flux2_klein_kv(model_type)
 
 
 def model_type_is_z_image(model_type: ModelType | str) -> bool:
@@ -611,8 +647,7 @@ def model_type_is_z_image_omni(model_type: ModelType | str) -> bool:
 
 def model_type_is_z_image_family(model_type: ModelType | str) -> bool:
     """Z-Image or Z-Image Omni."""
-    model_type = get_model_type_enum(model_type)
-    return model_type in {ModelType.Z_IMAGE, ModelType.Z_IMAGE_OMNI}
+    return model_type_is_z_image(model_type) or model_type_is_z_image_omni(model_type)
 
 
 def model_type_is_qwen_image(model_type: ModelType | str) -> bool:
@@ -652,13 +687,23 @@ def model_type_is_hyimage_21_refiner(model_type: ModelType | str) -> bool:
 
 def model_type_is_hyimage_21_family(model_type: ModelType | str) -> bool:
     """HunyuanImage 2.1 base or refiner."""
-    model_type = get_model_type_enum(model_type)
-    return model_type in {ModelType.HYIMAGE_21, ModelType.HYIMAGE_21_REFINER}
+    return model_type_is_hyimage_21(model_type) or model_type_is_hyimage_21_refiner(model_type)
 
 
 def model_type_is_kandinsky5_image(model_type: ModelType | str) -> bool:
     """Kandinsky 5 image-generation and editing pipelines."""
     return get_model_type_enum(model_type) == ModelType.KANDINSKY5_IMAGE
+
+
+def model_type_is_kandinsky5_video(model_type: ModelType | str) -> bool:
+    """Kandinsky 5 text-to-video and image-to-video."""
+    return get_model_type_enum(model_type) == ModelType.KANDINSKY5_VIDEO
+
+
+def model_type_is_kandinsky5_family(model_type: ModelType | str) -> bool:
+    """Kandinsky 5 image or video."""
+    return (model_type_is_kandinsky5_image(model_type)
+            or model_type_is_kandinsky5_video(model_type))
 
 
 def model_type_is_qwen_image_edit(model_type: ModelType | str) -> bool:
@@ -673,12 +718,9 @@ def model_type_is_qwen_image_layered(model_type: ModelType | str) -> bool:
 
 def model_type_is_qwen_image_family(model_type: ModelType | str) -> bool:
     """The original Qwen-Image, edit, and layered pipelines."""
-    model_type = get_model_type_enum(model_type)
-    return model_type in {
-        ModelType.QWEN_IMAGE,
-        ModelType.QWEN_IMAGE_EDIT,
-        ModelType.QWEN_IMAGE_LAYERED,
-    }
+    return (model_type_is_qwen_image(model_type)
+            or model_type_is_qwen_image_edit(model_type)
+            or model_type_is_qwen_image_layered(model_type))
 
 
 def model_type_image_is_condition(model_type: ModelType | str) -> bool:
@@ -687,20 +729,19 @@ def model_type_image_is_condition(model_type: ModelType | str) -> bool:
 
     There is no strength. Flux.2 references, Klein KV, Z-Image Omni, Qwen edit,
     Qwen layered, Qwen-Image 2.1, and Kandinsky 5 image editing work this way.
+    The HunyuanImage refiner is included so its required seed has no strength
+    either. The pipeline call receives that seed as ``image``.
     ``--adetailer-detectors`` is the exception: that seed is the image being
     inpainted.
     """
-    model_type = get_model_type_enum(model_type)
-    return model_type in {
-        ModelType.FLUX2,
-        ModelType.FLUX2_KLEIN_KV,
-        ModelType.Z_IMAGE_OMNI,
-        ModelType.QWEN_IMAGE_EDIT,
-        ModelType.QWEN_IMAGE_LAYERED,
-        ModelType.QWEN_IMAGE_21,
-        ModelType.KANDINSKY5_IMAGE,
-        ModelType.HYIMAGE_21_REFINER,
-    }
+    return (model_type_is_flux2(model_type)
+            or model_type_is_flux2_klein_kv(model_type)
+            or model_type_is_z_image_omni(model_type)
+            or model_type_is_qwen_image_edit(model_type)
+            or model_type_is_qwen_image_layered(model_type)
+            or model_type_is_qwen_image_21(model_type)
+            or model_type_is_kandinsky5_image(model_type)
+            or model_type_is_hyimage_21_refiner(model_type))
 
 
 ADETAILER_NO_INPAINT = (
@@ -719,7 +760,7 @@ def model_type_supports_adetailer(model_type: ModelType | str) -> bool:
     return _model_type_supported(model_type, ADETAILER_INPAINT_MODEL_TYPES)
 
 
-def model_type_is_flow_image(model_type: ModelType | str) -> bool:
+def model_type_is_flow_image_family(model_type: ModelType | str) -> bool:
     """
     Flux.2, Z-Image, and Qwen-family image transformers.
 
@@ -729,24 +770,51 @@ def model_type_is_flow_image(model_type: ModelType | str) -> bool:
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_enum(model_type)
-    return model_type in {
-        ModelType.FLUX2,
-        ModelType.FLUX2_KLEIN_KV,
-        ModelType.Z_IMAGE,
-        ModelType.Z_IMAGE_OMNI,
-        ModelType.QWEN_IMAGE,
-        ModelType.QWEN_IMAGE_EDIT,
-        ModelType.QWEN_IMAGE_LAYERED,
-        ModelType.QWEN_IMAGE_21,
-        ModelType.KREA2,
-        ModelType.KANDINSKY5_IMAGE,
-        ModelType.HYIMAGE_21,
-        ModelType.HYIMAGE_21_REFINER,
-    }
+    return (model_type_is_flux2_family(model_type)
+            or model_type_is_z_image_family(model_type)
+            or model_type_is_qwen_image_family(model_type)
+            or model_type_is_qwen_image_21(model_type)
+            or model_type_is_krea2(model_type)
+            or model_type_is_kandinsky5_image(model_type)
+            or model_type_is_hyimage_21_family(model_type))
 
 
-def model_type_is_video(model_type: ModelType | str) -> bool:
+def model_type_is_ltx2(model_type: ModelType | str) -> bool:
+    """LTX-2 or LTX-2.5."""
+    return get_model_type_enum(model_type) == ModelType.LTX2
+
+
+def model_type_is_ltx_video(model_type: ModelType | str) -> bool:
+    """LTX-Video 0.9.x."""
+    return get_model_type_enum(model_type) == ModelType.LTX_VIDEO
+
+
+def model_type_is_wan(model_type: ModelType | str) -> bool:
+    """Wan 2.1 or Wan 2.2."""
+    return get_model_type_enum(model_type) == ModelType.WAN
+
+
+def model_type_is_wan_animate(model_type: ModelType | str) -> bool:
+    """Wan-Animate."""
+    return get_model_type_enum(model_type) == ModelType.WAN_ANIMATE
+
+
+def model_type_is_wan_animate_2(model_type: ModelType | str) -> bool:
+    """Wan-Animate-2."""
+    return get_model_type_enum(model_type) == ModelType.WAN_ANIMATE_2
+
+
+def model_type_is_hyvideo_15(model_type: ModelType | str) -> bool:
+    """HunyuanVideo 1.5."""
+    return get_model_type_enum(model_type) == ModelType.HUNYUAN_VIDEO_15
+
+
+def model_type_is_motif_video(model_type: ModelType | str) -> bool:
+    """Motif-Video."""
+    return get_model_type_enum(model_type) == ModelType.MOTIF_VIDEO
+
+
+def model_type_is_video_family(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value generate a video clip
     in one pipeline call?
@@ -754,11 +822,11 @@ def model_type_is_video(model_type: ModelType | str) -> bool:
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_enum(model_type)
-
-    return model_type in {
-        ModelType.LTX2, ModelType.LTX_VIDEO, ModelType.WAN, ModelType.WAN_ANIMATE, ModelType.WAN_ANIMATE_2,
-        ModelType.HUNYUAN_VIDEO_15, ModelType.MOTIF_VIDEO, ModelType.KANDINSKY5_VIDEO}
+    return (model_type_is_ltx_family(model_type)
+            or model_type_is_wan_family(model_type)
+            or model_type_is_hyvideo_15(model_type)
+            or model_type_is_motif_video(model_type)
+            or model_type_is_kandinsky5_video(model_type))
 
 
 def model_type_is_ltx_family(model_type: ModelType | str) -> bool:
@@ -769,9 +837,7 @@ def model_type_is_ltx_family(model_type: ModelType | str) -> bool:
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_enum(model_type)
-
-    return model_type in {ModelType.LTX2, ModelType.LTX_VIDEO}
+    return model_type_is_ltx2(model_type) or model_type_is_ltx_video(model_type)
 
 
 def model_type_is_wan_family(model_type: ModelType | str) -> bool:
@@ -782,9 +848,9 @@ def model_type_is_wan_family(model_type: ModelType | str) -> bool:
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_enum(model_type)
-
-    return model_type in {ModelType.WAN, ModelType.WAN_ANIMATE, ModelType.WAN_ANIMATE_2}
+    return (model_type_is_wan(model_type)
+            or model_type_is_wan_animate(model_type)
+            or model_type_is_wan_animate_2(model_type))
 
 
 def model_type_uses_wan_vae(model_type: ModelType | str) -> bool:
@@ -797,8 +863,7 @@ def model_type_uses_wan_vae(model_type: ModelType | str) -> bool:
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_enum(model_type)
-    return model_type_is_wan_family(model_type) or model_type == ModelType.MOTIF_VIDEO
+    return model_type_is_wan_family(model_type) or model_type_is_motif_video(model_type)
 
 
 def _model_type_names(*model_types: ModelType) -> tuple[str, ...]:
@@ -993,6 +1058,10 @@ PIPELINE_PROMPT_ENHANCE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.QWEN_IMAGE_EDIT,
     ModelType.QWEN_IMAGE_LAYERED,
     ModelType.QWEN_IMAGE_21,
+    ModelType.HYIMAGE_21,
+    ModelType.HYIMAGE_21_REFINER,
+    ModelType.KANDINSKY5_IMAGE,
+    ModelType.KANDINSKY5_VIDEO,
     ModelType.KREA2,
     ModelType.LTX2,
 )
@@ -1103,41 +1172,35 @@ def model_type_supports_dype(model_type: ModelType | str) -> bool:
 
 
 def model_type_is_s_cascade(model_type: ModelType | str) -> bool:
+    """Stable Cascade prior (``--model-type s-cascade``)."""
+    return get_model_type_enum(model_type) == ModelType.S_CASCADE
+
+
+def model_type_is_s_cascade_family(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent a Stable Cascade related model?
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_string(model_type)
-
-    return 's-cascade' in model_type
+    return model_type_is_s_cascade(model_type) or model_type_is_s_cascade_decoder(model_type)
 
 
-def model_type_is_pix2pix(model_type: ModelType | str) -> bool:
+def model_type_is_s_cascade_decoder(model_type: ModelType | str) -> bool:
+    """Stable Cascade decoder. This is not a primary ``--model-type``."""
+    return get_model_type_enum(model_type) == ModelType.S_CASCADE_DECODER
+
+
+def model_type_is_pix2pix_family(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an pix2pix type model?
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_string(model_type)
-
-    return 'pix2pix' in model_type
-
-
-def model_type_is_floyd(model_type: ModelType | str) -> bool:
-    """
-    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an floyd "if" of "ifs" type model?
-
-    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
-    :return: bool
-    """
-    model_type = get_model_type_enum(model_type)
-
-    return model_type == ModelType.IF or \
-        model_type == ModelType.IFS or \
-        model_type == ModelType.IFS_IMG2IMG
+    return (model_type_is_pix2pix(model_type)
+            or model_type_is_sdxl_pix2pix(model_type)
+            or model_type_is_sd3_pix2pix(model_type))
 
 
 def model_type_is_floyd_if(model_type: ModelType | str) -> bool:
@@ -1147,21 +1210,39 @@ def model_type_is_floyd_if(model_type: ModelType | str) -> bool:
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_enum(model_type)
-
-    return model_type == ModelType.IF
+    return get_model_type_enum(model_type) == ModelType.IF
 
 
-def model_type_is_floyd_ifs(model_type: ModelType | str) -> bool:
+def model_type_is_ifs(model_type: ModelType | str) -> bool:
+    """Deep Floyd IF stage 2 (``--model-type ifs``)."""
+    return get_model_type_enum(model_type) == ModelType.IFS
+
+
+def model_type_is_ifs_img2img(model_type: ModelType | str) -> bool:
+    """Deep Floyd IF stage 2 img2img (``--model-type ifs-img2img``)."""
+    return get_model_type_enum(model_type) == ModelType.IFS_IMG2IMG
+
+
+def model_type_is_floyd_family(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an floyd "if" of "ifs" type model?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return (model_type_is_floyd_if(model_type)
+            or model_type_is_ifs(model_type)
+            or model_type_is_ifs_img2img(model_type))
+
+
+def model_type_is_floyd_ifs_family(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an floyd "ifs" type model?
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_enum(model_type)
-
-    return model_type == ModelType.IFS or model_type == ModelType.IFS_IMG2IMG
+    return model_type_is_ifs(model_type) or model_type_is_ifs_img2img(model_type)
 
 
 def get_torch_dtype(dtype: DataType | torch.dtype | str | None) -> torch.dtype | None:

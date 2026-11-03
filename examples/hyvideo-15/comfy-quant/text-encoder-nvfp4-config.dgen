@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# HunyuanVideo 1.5 480p T2V distilled, with ComfyUI's scaled FP8 transformer
+# and NVFP4 Qwen2.5-VL. The Hunyuan repository only publishes the FP8 Qwen
+# file; this is the same encoder from Qwen-Image's ComfyUI pack. The pipeline
+# class is Qwen2_5_VLTextModel, the text tower. The ComfyUI file also stores
+# the vision tower; those tensors are not loaded into this class. "+" keeps
+# the small ByT5 encoder from the repository. Distilled guidance is 1.
+
+hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v_distilled
+--model-type hyvideo-15
+--transformer https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/diffusion_models/hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors
+--text-encoders "Qwen2_5_VLTextModel;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_nvfp4.safetensors" +
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 1
+--video-lengths 4
+--video-fps 15
+--animation-format mp4
+--gen-seeds 1
+--output-path hyvideo-15-comfy-quant-text-encoder-nvfp4
+--output-size 848x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"

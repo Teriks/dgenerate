@@ -752,9 +752,9 @@ def _sd_family_model_type_supports_builtin_vae(model_type) -> bool:
     import dgenerate.pipelinewrapper.enums as _enums
 
     return (
-        _enums.model_type_is_sd15(model_type)
-        or _enums.model_type_is_sd2(model_type)
-        or _enums.model_type_is_sdxl(model_type)
+        _enums.model_type_is_sd15_family(model_type)
+        or _enums.model_type_is_sd2_family(model_type)
+        or _enums.model_type_is_sdxl_family(model_type)
     )
 
 
@@ -837,10 +837,10 @@ def _sd_family_use_sd2_builtin_vae(
     """SD 2.x checkpoints need the SD 2.1 VAE, not the SD 1.5 fine-tune."""
     import dgenerate.pipelinewrapper.enums as _enums
 
-    if _enums.model_type_is_sdxl(model_type):
+    if _enums.model_type_is_sdxl_family(model_type):
         return False
-    sd15 = _enums.model_type_is_sd15(model_type)
-    sd2 = _enums.model_type_is_sd2(model_type)
+    sd15 = _enums.model_type_is_sd15_family(model_type)
+    sd2 = _enums.model_type_is_sd2_family(model_type)
     if sd2 and not sd15:
         return True
     if not (sd15 and sd2) or not model_path:
@@ -857,11 +857,11 @@ def _sd_family_builtin_vae_source(
     """``(repo, subfolder)`` for the SD-family built-in VAE, or ``None``."""
     import dgenerate.pipelinewrapper.enums as _enums
 
-    if _enums.model_type_is_sdxl(model_type):
+    if _enums.model_type_is_sdxl_family(model_type):
         return _SD_FAMILY_BUILTIN_SDXL_VAE_REPO, None
     if not (
-            _enums.model_type_is_sd15(model_type)
-            or _enums.model_type_is_sd2(model_type)):
+            _enums.model_type_is_sd15_family(model_type)
+            or _enums.model_type_is_sd2_family(model_type)):
         return None
     if _sd_family_use_sd2_builtin_vae(
             model_type, model_path, local_files_only=local_files_only):
@@ -1029,7 +1029,7 @@ def _refine_aux_repo_for_model_type(repo: str, model_type, hint: str | None) -> 
             return _QWEN_IMAGE_EDIT_2509
         return _QWEN_IMAGE_EDIT
     if (repo == _FLUX_DEV
-            and _enums.get_model_type_enum(model_type) == _enums.ModelType.FLUX_KONTEXT):
+            and _enums.model_type_is_flux_kontext(model_type)):
         return _FLUX_KONTEXT
     if repo == _FLUX2_KLEIN_9B and _enums.model_type_is_flux2_klein_kv(model_type):
         return _FLUX2_KLEIN_KV

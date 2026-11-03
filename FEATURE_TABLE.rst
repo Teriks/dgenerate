@@ -716,6 +716,18 @@ Diffusion Model Feature Support Tables
    * - ``qwen-image-21``
      - ✅
 
+   * - ``hyimage-21``
+     - ✅
+
+   * - ``hyimage-21-refiner``
+     - ✅
+
+   * - ``kandinsky5-image``
+     - ✅
+
+   * - ``kandinsky5-video``
+     - ✅
+
    * - ``krea2``
      - ❌
 

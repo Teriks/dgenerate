@@ -105,7 +105,7 @@ def reconstruct_dgenerate_opts(
     if args.guidance_scale is not None:
         opts.append(('--guidance-scales', args.guidance_scale))
 
-    if _enums.model_type_is_video(wrapper.model_type):
+    if _enums.model_type_is_video_family(wrapper.model_type):
         if getattr(wrapper, 'wan_second_transformer_uri', None):
             opts.append(('--wan-second-transformer', wrapper.wan_second_transformer_uri))
         if args.video_length is not None:
@@ -819,7 +819,7 @@ def reconstruct_dgenerate_opts(
     # Img2img omits the default 0.8. LTX has no default here: an omitted
     # strength stays at 1, so any set value, including 0.8, is written back.
     if args.image_seed_strength is not None and (
-            _enums.model_type_is_video(wrapper.model_type) or
+            _enums.model_type_is_video_family(wrapper.model_type) or
             args.image_seed_strength != _constants.DEFAULT_IMAGE_SEED_STRENGTH):
         opts.append(('--image-seed-strengths', args.image_seed_strength))
 
@@ -827,11 +827,11 @@ def reconstruct_dgenerate_opts(
     if args.upscaler_noise_level is not None:
         # Determine the appropriate default based on model type
         upscaler_default = None
-        if wrapper.model_type == _enums.ModelType.UPSCALER_X4:
+        if _enums.model_type_is_upscaler_x4(wrapper.model_type):
             upscaler_default = _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL
-        elif wrapper.model_type_string == _enums.ModelType.IFS:
+        elif _enums.model_type_is_ifs(wrapper.model_type):
             upscaler_default = _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL
-        elif wrapper.model_type_string == _enums.ModelType.IFS_IMG2IMG:
+        elif _enums.model_type_is_ifs_img2img(wrapper.model_type):
             upscaler_default = _constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL
         
         # Only include if different from the model-specific default

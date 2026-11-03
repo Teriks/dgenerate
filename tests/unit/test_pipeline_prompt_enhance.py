@@ -1,4 +1,5 @@
 import re
+import types
 import unittest
 import unittest.mock
 
@@ -114,6 +115,8 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         self.assertNotIn('kolors', str(raised.exception))
         self.assertIn('ltx2', str(raised.exception))
         self.assertTrue(_enums.model_type_supports_pipeline_prompt_enhance('krea2'))
+        self.assertTrue(_enums.model_type_supports_pipeline_prompt_enhance('kandinsky5-image'))
+        self.assertTrue(_enums.model_type_supports_pipeline_prompt_enhance('kandinsky5-video'))
         self.assertIn('krea2', _enums.PIPELINE_PROMPT_ENHANCE_MODEL_TYPES)
         self.assertFalse(_enums.model_type_supports_pipeline_prompt_enhance(_enums.ModelType.SD))
         self.assertFalse(_enums.model_type_supports_pipeline_prompt_enhance(_enums.ModelType.KOLORS))
@@ -134,6 +137,46 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         except _renderloopconfig.RenderLoopConfigError as error:
             self.assertNotIn('pipeline_prompt_enhance', str(error))
         self.assertIs(config.pipeline_prompt_enhance, True)
+
+    def test_hyimage_refiner_keeps_the_image_prompt(self):
+        name = 'Qwen2_5_VLForConditionalGeneration'
+        prompt = _promptenhance.auto_system_prompt(
+            _enums.ModelType.HYIMAGE_21_REFINER, True, encoder_name=name)
+        self.assertIn('image generation model', prompt)
+        self.assertIn('in the user\'s language', prompt)
+        self.assertNotIn('editing', prompt)
+        self.assertTrue(_enums.model_type_supports_pipeline_prompt_enhance('hyimage-21-refiner'))
+
+    def test_kandinsky5_uses_edit_and_shot_prompts(self):
+        name = 'Qwen2_5_VLForConditionalGeneration'
+        image = _promptenhance.auto_system_prompt(
+            _enums.ModelType.KANDINSKY5_IMAGE, False, encoder_name=name)
+        edit = _promptenhance.auto_system_prompt(
+            _enums.ModelType.KANDINSKY5_IMAGE, True, encoder_name=name)
+        video = _promptenhance.auto_system_prompt(
+            _enums.ModelType.KANDINSKY5_VIDEO, False, encoder_name=name)
+        i2v = _promptenhance.auto_system_prompt(
+            _enums.ModelType.KANDINSKY5_VIDEO, True, encoder_name=name)
+        self.assertIn('image generation model', image)
+        self.assertIn('in the user\'s language', image)
+        self.assertIn('editing instruction', edit)
+        self.assertNotIn('<image1>', edit)
+        self.assertIn('video generation model', video)
+        self.assertIn('how the camera moves', video)
+        self.assertNotIn('first frame', video)
+        self.assertIn('first frame', i2v)
+        self.assertIn('description of the shot', i2v)
+
+    def test_condition_images_follow_the_reference_slot(self):
+        picture = object()
+        args = types.SimpleNamespace(images=None, reference_images=[picture])
+        seen = _promptenhance._condition_images(
+            args, _enums.ModelType.KANDINSKY5_IMAGE)
+        self.assertEqual(seen, [picture])
+        refiner = _promptenhance._condition_images(
+            types.SimpleNamespace(images=None, reference_images=[picture]),
+            _enums.ModelType.HYIMAGE_21_REFINER)
+        self.assertEqual(refiner, [])
 
     def test_auto_prompt_uses_edit_for_qwen_edit(self):
         qwen_edit = _promptenhance.auto_system_prompt(_enums.ModelType.QWEN_IMAGE_EDIT, True)
@@ -831,6 +874,18 @@ class TestPipelinePromptEnhance(unittest.TestCase):
                 'examples/qwen-image-21/pipeline_prompt_enhance/config.dgen',
                 'examples/qwen-image-21/pipeline_prompt_enhance/image-conditioned-config.dgen',
             ),
+            'hyimage-21': ('examples/hyimage-21/pipeline_prompt_enhance/config.dgen',),
+            'hyimage-21-refiner': (
+                'examples/hyimage-21/pipeline_prompt_enhance/refiner-config.dgen',
+            ),
+            'kandinsky5-image': (
+                'examples/kandinsky5/pipeline_prompt_enhance/config.dgen',
+                'examples/kandinsky5/pipeline_prompt_enhance/image-edit-config.dgen',
+            ),
+            'kandinsky5-video': (
+                'examples/kandinsky5/pipeline_prompt_enhance/text-to-video-config.dgen',
+                'examples/kandinsky5/pipeline_prompt_enhance/image-to-video-config.dgen',
+            ),
             'krea2': ('examples/krea2/pipeline_prompt_enhance/config.dgen',),
             'ltx2': (
                 'examples/ltx2/basic/prompt-enhancer-config.dgen',
@@ -887,6 +942,37 @@ class TestPipelinePromptEnhance(unittest.TestCase):
 
 
 class TestHeadGeneration(unittest.TestCase):
+    def test_processor_without_chat_template_uses_its_tokenizer(self):
+        class Inner:
+            def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True,
+                                    return_tensors=None, return_dict=False, enable_thinking=False):
+                if tokenize:
+                    return {'input_ids': torch.tensor([[1, 2]])}
+                return 'formatted'
+
+            def __call__(self, text, return_tensors='pt'):
+                return {'input_ids': torch.tensor([[1]])}
+
+        class Processor:
+            def __init__(self):
+                self.tokenizer = Inner()
+                self.calls = []
+
+            def apply_chat_template(self, *args, **kwargs):
+                raise ValueError(
+                    'Cannot use apply_chat_template because this processor does not have a chat template.')
+
+            def __call__(self, text=None, return_tensors='pt', images=None):
+                self.calls.append((text, images))
+                return {'input_ids': torch.tensor([[1, 2, 3]]), 'pixel_values': torch.zeros(1)}
+
+        processor = Processor()
+        text_only = _promptenhance._chat_inputs(processor, 'lantern', 'system', None)
+        self.assertEqual(text_only['input_ids'].tolist(), [[1, 2]])
+        with_image = _promptenhance._chat_inputs(processor, 'edit', 'system', ['frame'])
+        self.assertEqual(processor.calls, [('formatted', ['frame'])])
+        self.assertIn('pixel_values', with_image)
+
     def test_presence_penalty_skips_the_prompt(self):
         processor = _promptenhance._PresencePenaltyLogitsProcessor(1.5, 2)
         scores = torch.zeros(1, 6)
@@ -953,6 +1039,41 @@ class TestHeadGeneration(unittest.TestCase):
         self.assertNotIn('temperature', quiet)
         self.assertNotIn('top_k', quiet)
         self.assertNotIn('logits_processor', quiet)
+
+    def test_disk_offload_weights_are_loaded_for_the_rewrite(self):
+        import tempfile
+
+        from dgenerate.pipelinewrapper.videopipelines import diskoffload
+
+        layer = torch.nn.Sequential(torch.nn.Linear(4, 4))
+        weight = layer[0].weight.detach().clone()
+        folder = tempfile.mkdtemp()
+        index = diskoffload._write_weights(layer.state_dict(), folder, desc='test weights')
+        diskoffload._install_disk_hooks(layer, index, torch.device('cpu'))
+        self.assertEqual(layer[0].weight.device.type, 'meta')
+        self.assertTrue(layer._dgenerate_weights_on_disk)
+        try:
+            with _promptenhance._fast_encoder(layer, 'cpu', offload=True):
+                self.assertEqual(layer[0].weight.device.type, 'cpu')
+                self.assertTrue(torch.equal(layer[0].weight, weight))
+                self.assertFalse(layer._dgenerate_weights_on_disk)
+            self.assertTrue(layer._dgenerate_weights_on_disk)
+            self.assertEqual(layer[0].weight.device.type, 'meta')
+            output = layer(torch.ones(1, 4))
+            self.assertEqual(tuple(output.shape), (1, 4))
+        finally:
+            import shutil
+            shutil.rmtree(folder, ignore_errors=True)
+
+    def test_loaded_qwen_processor_is_used_for_the_image(self):
+        processor = type('QwenProcessor', (), {
+            'image_processor': object(),
+            'tokenizer': object(),
+        })()
+        pipe = type('Pipe', (), {'processor': None, 'tokenizer': processor})()
+        encoder = type('Encoder', (), {'name_or_path': 'repo/text_encoder'})()
+        found = _promptenhance._vision_processor(pipe, encoder, processor, True)
+        self.assertIs(found, processor)
 
 
 def _pipeline_args():

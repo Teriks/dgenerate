@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image 2.1 with a GGUF transformer and the official Qwen3-VL 8B GGUF
+# as the text encoder. Base and Turbo share this encoder. The GGUF is the
+# language tower; its mmproj sidecar is not loaded, so this is for
+# text-to-image. Image conditioning should use the ComfyUI safetensors
+# encoder, which includes the vision tower:
+# examples/qwen-image-21/comfy-quant/text-encoder-config.dgen
+# The file is already quantized. Do not set quantizer.
+
+Qwen/Qwen-Image-2.1
+--model-type qwen-image-21
+--transformer https://huggingface.co/molbal/Qwen-Image-2.1-GGUF/blob/main/qwen_image_2.1_Q4_0.gguf
+--text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF/blob/main/Qwen3VL-8B-Instruct-Q4_K_M.gguf"
+--dtype bfloat16
+--model-sequential-offload
+--qwen21-resolution 1024
+--gen-seeds 1
+--output-path qwen-image-21-gguf-text-encoder
+--prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"

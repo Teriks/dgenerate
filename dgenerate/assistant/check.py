@@ -505,7 +505,7 @@ def _has_mask(image_seeds: list[str] | None) -> bool:
 
 def _video_model_types() -> list[str]:
     import dgenerate.pipelinewrapper.enums as _enums
-    return [name for name in _enums.supported_model_type_strings() if _enums.model_type_is_video(name)]
+    return [name for name in _enums.supported_model_type_strings() if _enums.model_type_is_video_family(name)]
 
 
 def _model_type_str(config) -> str:

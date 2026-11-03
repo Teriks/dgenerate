@@ -1766,6 +1766,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     The "mode" option is mutually exclusive with "subfolder".
                     
+                    A pre-quantized text encoder can be loaded with no "mode" and no "quantizer".
+                    Point "model" at a .gguf file (a T5-XXL or UMT5-XXL GGUF, or a llama.cpp Qwen,
+                    Mistral, or Gemma GGUF) or at a ComfyUI quantized .safetensors file. Name the
+                    encoder class that matches the file. The configuration is matched from the file
+                    against the configurations dgenerate ships with, and quantized linears stay packed.
+                    CLIP and the Flux / SD3 monolithic T5 checkpoints can still use "mode".
+                    
                     Available encoder classes are:
                     
                     NOWRAP!
@@ -1775,11 +1782,15 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     * UMT5EncoderModel (Wan)
                     * DistillT5EncoderModel (see: LifuWang/DistillT5)
                     * ChatGLMModel (Kolors)
+                    * Gemma3ForConditionalGeneration (LTX-2)
                     * Gemma4UnifiedForConditionalGeneration (LTX-2.5)
                     * Mistral3ForConditionalGeneration (Flux.2)
-                    * Qwen2_5_VLForConditionalGeneration (Qwen-Image)
+                    * Qwen2_5_VLForConditionalGeneration (Qwen-Image, Kandinsky 5)
+                    * Qwen2_5_VLTextModel (HunyuanVideo 1.5)
                     * Qwen3ForCausalLM (Flux.2 Klein)
                     * Qwen3Model (Z-Image)
+                    * Qwen3VLForConditionalGeneration (Qwen-Image 2.1)
+                    * Qwen3VLModel (Krea 2)
                     
                     If you wish to load weights directly from a path on disk, you must point this argument at the folder
                     they exist in, which should also contain the config.json file for the Text Encoder.
@@ -1917,6 +1928,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     "ConsistencyDecoderVAE;model=huggingface/vae"
                     "AutoencoderKLFlux2;model=black-forest-labs/FLUX.2-dev;subfolder=vae"
                     "AutoencoderKLQwenImage;model=Qwen/Qwen-Image;subfolder=vae"
+                    "AutoencoderKLHunyuanImageRefiner;model=hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers;subfolder=vae"
                     "AutoencoderKLWan;model=Wan-AI/Wan2.1-T2V-1.3B-Diffusers;subfolder=vae;dtype=float32"
                     "AutoencoderKLLTXVideo;model=Lightricks/LTX-Video;subfolder=vae"
                     "AutoencoderKLLTX2Video;model=Lightricks/LTX-2.5-Diffusers;subfolder=vae"
@@ -5780,8 +5792,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     file:path reads that prompt from a UTF-8 text file (quote the
                     value on the shell when the path contains spaces).
                     Image families use the built-in text-to-image prompt. Qwen-Image
-                    edit, Qwen-Image layered, Qwen-Image 2.1, and Flux.2 use the
-                    built-in edit prompt when the text encoder can see an input image.
+                    edit, Qwen-Image layered, Qwen-Image 2.1, Flux.2, and Kandinsky 5
+                    image editing use the built-in edit prompt when the text encoder
+                    can see an input image. Kandinsky 5 video uses a shot prompt, and
+                    an image-to-video prompt when a first frame is present.
                     On LTX-2 this turns on the optional Gemma prompt enhancer.
                     With no value the enhancer is google/gemma-4-E2B-it and
                     LTX-2.5 selects its text-to-video or image-to-video system

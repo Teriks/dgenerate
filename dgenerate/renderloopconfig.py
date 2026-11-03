@@ -2571,7 +2571,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(str(error)) from error
         if self.ltx_prompt_enhancer:
             try:
-                ltx2 = self.model_type == _pipelinewrapper.ModelType.LTX2
+                ltx2 = _pipelinewrapper.model_type_is_ltx2(self.model_type)
             except Exception:
                 ltx2 = False
             if not ltx2:
@@ -2893,9 +2893,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("dype")} is supported for {a_namer("model_type")} '
                 f'{_textprocessing.oxford_comma(_pipelinewrapper.DYPE_MODEL_TYPES, "and")}.')
 
-        if cache_dit_enabled and self.model_type in (
-                _pipelinewrapper.ModelType.QWEN_IMAGE_21,
-                _pipelinewrapper.ModelType.MOTIF_VIDEO):
+        if cache_dit_enabled and (
+                _pipelinewrapper.model_type_is_qwen_image_21(self.model_type)
+                or _pipelinewrapper.model_type_is_motif_video(self.model_type)):
             # cache-dit has no block adapter for these transformers.
             raise RenderLoopConfigError(
                 f'{a_namer("cache_dit")} is not supported for --model-type '
@@ -2936,9 +2936,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     def _check_second_model_compatibility(self, a_namer: typing.Callable[[str], str]):
         """Check compatibility of second model arguments with the primary model type."""
         # Check if second model arguments are valid for the primary model type
-        if not (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
+        if not (_pipelinewrapper.model_type_is_sdxl_family(self.model_type) or
                 _pipelinewrapper.model_type_is_kolors(self.model_type) or
-                _pipelinewrapper.model_type_is_s_cascade(self.model_type)):
+                _pipelinewrapper.model_type_is_s_cascade_family(self.model_type)):
             errors = []
             for arg in self._non_null_second_model_arguments():
                 errors.append(
@@ -3072,7 +3072,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         if not self.image_seeds:
             args_help = help_mode
 
-            if _pipelinewrapper.model_type_is_video(self.model_type) and not args_help:
+            if _pipelinewrapper.model_type_is_video_family(self.model_type) and not args_help:
                 import dgenerate.pipelinewrapper.videopipelines as _videopipelines
                 try:
                     _videopipelines.classify_video_seed(self.model_type, None)
@@ -3080,25 +3080,25 @@ class RenderLoopConfig(_types.SetFromMixin):
                     raise RenderLoopConfigError(str(e)) from e
 
             # Check if model type requires image seeds
-            if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type) and not args_help:
+            if _pipelinewrapper.model_type_is_floyd_ifs_family(self.model_type) and not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot specify Deep Floyd IF super-resolution '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}'
                 )
 
-            if _pipelinewrapper.model_type_is_upscaler(self.model_type) and not args_help:
+            if _pipelinewrapper.model_type_is_upscaler_family(self.model_type) and not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot specify an upscaler model '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
                 )
 
-            if _pipelinewrapper.model_type_is_pix2pix(self.model_type) and not args_help:
+            if _pipelinewrapper.model_type_is_pix2pix_family(self.model_type) and not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot specify a pix2pix model '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
                 )
 
-            if self.model_type == _pipelinewrapper.ModelType.FLUX_FILL:
+            if _pipelinewrapper.model_type_is_flux_fill(self.model_type):
                 raise RenderLoopConfigError(
                     f'you cannot use {a_namer("model_type")} '
                     f'flux-fill without {a_namer("image_seeds")}.'
@@ -3113,7 +3113,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'without {a_namer("image_seeds")}.'
                 )
 
-            if self.model_type == _pipelinewrapper.ModelType.HYIMAGE_21_REFINER and not args_help:
+            if _pipelinewrapper.model_type_is_hyimage_21_refiner(self.model_type) and not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot use {a_namer("model_type")} hyimage-21-refiner '
                     f'without {a_namer("image_seeds")}.'
@@ -3172,7 +3172,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
 
-            if not _pipelinewrapper.model_type_is_video(self.model_type):
+            if not _pipelinewrapper.model_type_is_video_family(self.model_type):
                 # Check pipeline class compatibility
                 try:
                     _pipelinewrapper.get_pipeline_class(
@@ -3334,10 +3334,10 @@ class RenderLoopConfig(_types.SetFromMixin):
         # Check clip skip compatibility
         if self.clip_skips:
             if (
-                    self.model_type != _pipelinewrapper.ModelType.SD and
-                    self.model_type != _pipelinewrapper.ModelType.SDXL and
-                    self.model_type != _pipelinewrapper.ModelType.SD3 and
-                    self.model_type != _pipelinewrapper.ModelType.SD3_PIX2PIX and
+                    not _pipelinewrapper.model_type_is_sd(self.model_type) and
+                    not _pipelinewrapper.model_type_is_sdxl(self.model_type) and
+                    not _pipelinewrapper.model_type_is_sd3(self.model_type) and
+                    not _pipelinewrapper.model_type_is_sd3_pix2pix(self.model_type) and
                     self.prompt_weighter_uri is None
             ):
                 # prompt weighter may be able to handle clip skips
@@ -3373,7 +3373,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_video_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check video model types and set their length, fps, and step defaults."""
-        if not _pipelinewrapper.model_type_is_video(self.model_type):
+        if not _pipelinewrapper.model_type_is_video_family(self.model_type):
             if self.video_lengths:
                 raise RenderLoopConfigError(
                     f'{a_namer("video_lengths")} is only supported for video model types.')
@@ -3395,7 +3395,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer(name)} is only supported for the wan, wan-animate, and '
                     f'wan-animate-2 video model types.')
             self._check_ltx_requirements(a_namer)
-        elif self.model_type == _pipelinewrapper.ModelType.WAN:
+        elif _pipelinewrapper.model_type_is_wan(self.model_type):
             for name in _ltx_arguments_in_use(self):
                 raise RenderLoopConfigError(
                     f'{a_namer(name)} is only supported for the ltx2 and ltx-video model types.')
@@ -3404,7 +3404,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     raise RenderLoopConfigError(
                         f'{a_namer(name)} is only supported for --model-type wan-animate.')
             self._check_wan_requirements(a_namer)
-        elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE:
+        elif _pipelinewrapper.model_type_is_wan_animate(self.model_type):
             for name in _ltx_arguments_in_use(self):
                 raise RenderLoopConfigError(
                     f'{a_namer(name)} is only supported for the ltx2 and ltx-video model types.')
@@ -3413,7 +3413,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     raise RenderLoopConfigError(
                         f'{a_namer(name)} is only supported for --model-type wan.')
             self._check_wan_animate_requirements(a_namer)
-        elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE_2:
+        elif _pipelinewrapper.model_type_is_wan_animate_2(self.model_type):
             for name in _ltx_arguments_in_use(self):
                 raise RenderLoopConfigError(
                     f'{a_namer(name)} is only supported for the ltx2 and ltx-video model types.')
@@ -3445,19 +3445,19 @@ class RenderLoopConfig(_types.SetFromMixin):
                 if not schedule or any(int(step) < 0 for step in schedule):
                     raise RenderLoopConfigError(
                         f'{a_namer("timesteps")} must contain non-empty, non-negative schedules.')
-            if self.model_type in {_pipelinewrapper.ModelType.WAN_ANIMATE,
-                                   _pipelinewrapper.ModelType.WAN_ANIMATE_2}:
+            if (_pipelinewrapper.model_type_is_wan_animate(self.model_type)
+                    or _pipelinewrapper.model_type_is_wan_animate_2(self.model_type)):
                 raise RenderLoopConfigError(
                     f'{a_namer("timesteps")} is not supported for Wan-Animate. '
                     f'Wan takes a timestep schedule in video-to-video mode only.')
-            if self.model_type in {_pipelinewrapper.ModelType.S_CASCADE,
-                                   _pipelinewrapper.ModelType.UPSCALER_X2,
-                                   _pipelinewrapper.ModelType.UPSCALER_X4}:
+            if ((_pipelinewrapper.model_type_is_s_cascade_family(self.model_type)
+                    and not _pipelinewrapper.model_type_is_s_cascade_decoder(self.model_type))
+                    or _pipelinewrapper.model_type_is_upscaler_family(self.model_type)):
                 raise RenderLoopConfigError(
                     f'{a_namer("timesteps")} is not supported for this model type.')
 
     def _check_ltx_requirements(self, a_namer: typing.Callable[[str], str]):
-        if self.model_type == _pipelinewrapper.ModelType.LTX_VIDEO:
+        if _pipelinewrapper.model_type_is_ltx_video(self.model_type):
             ltx2_only = (
                 ('sigmas', self.sigmas),
                 ('timesteps', self.timesteps),
@@ -3497,7 +3497,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         if _pipelinewrapper.model_type_is_ltx_family(self.model_type):
             if self.max_sequence_length is not None:
                 # LTX-2 encodes prompts with Gemma, LTX-Video with T5
-                if self.model_type == _pipelinewrapper.ModelType.LTX2:
+                if _pipelinewrapper.model_type_is_ltx2(self.model_type):
                     limit, name = 1024, 'ltx2'
                 else:
                     limit, name = 512, 'ltx-video'
@@ -3704,7 +3704,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     'transformer', 'text_encoder', 'connectors'
                 }
                 allowed = 'transformer, text_encoder, or connectors'
-                if self.model_type == _pipelinewrapper.ModelType.KANDINSKY5_VIDEO:
+                if _pipelinewrapper.model_type_is_kandinsky5_video(self.model_type):
                     video_quant_names = {'transformer', 'text_encoder', 'text_encoder_2'}
                     allowed = 'transformer, text_encoder, or text_encoder_2'
             unknown = [name for name in self.quantizer_map if name not in video_quant_names]
@@ -3713,9 +3713,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("quantizer_map")} value {unknown[0]!r} cannot be used with '
                     f'video model types. Use {allowed}.')
 
-        if self.model_type not in (
-                _pipelinewrapper.ModelType.LTX2,
-                _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15) and self.sigmas:
+        if not (_pipelinewrapper.model_type_is_ltx2(self.model_type)
+                or _pipelinewrapper.model_type_is_hyvideo_15(self.model_type)) and self.sigmas:
             raise RenderLoopConfigError(
                 f'{a_namer("sigmas")} is not supported for --model-type '
                 f'{_pipelinewrapper.get_model_type_string(self.model_type)}.')
@@ -3776,15 +3775,15 @@ class RenderLoopConfig(_types.SetFromMixin):
         if isinstance(schedulers, str) or schedulers is None:
             schedulers = [schedulers]
         import dgenerate.pipelinewrapper.videopipelines as _videopipelines
-        if self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE:
+        if _pipelinewrapper.model_type_is_wan_animate(self.model_type):
             allowed = _videopipelines.wan.WAN_ANIMATE_SCHEDULER_NAMES
             family = 'Wan-Animate'
             extra = ''
-        elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE_2:
+        elif _pipelinewrapper.model_type_is_wan_animate_2(self.model_type):
             allowed = _videopipelines.wan.WAN_ANIMATE_2_SCHEDULER_NAMES
             family = 'Wan-Animate-2'
             extra = ''
-        elif self.model_type == _pipelinewrapper.ModelType.WAN:
+        elif _pipelinewrapper.model_type_is_wan(self.model_type):
             allowed = _videopipelines.wan.WAN_SCHEDULER_NAMES
             family = 'Wan'
             extra = (
@@ -3792,15 +3791,15 @@ class RenderLoopConfig(_types.SetFromMixin):
                 'FlowMatchEulerDiscreteScheduler (3.0 for 480p, 5.0 for 720p), '
                 'and flow-shift on UniPCMultistepScheduler.'
             )
-        elif self.model_type == _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15:
+        elif _pipelinewrapper.model_type_is_hyvideo_15(self.model_type):
             allowed = _videopipelines.single_image_video.HUNYUAN_VIDEO_15_SCHEDULER_NAMES
             family = 'HunyuanVideo 1.5'
             extra = ''
-        elif self.model_type == _pipelinewrapper.ModelType.MOTIF_VIDEO:
+        elif _pipelinewrapper.model_type_is_motif_video(self.model_type):
             allowed = _videopipelines.single_image_video.MOTIF_VIDEO_SCHEDULER_NAMES
             family = 'Motif-Video'
             extra = ''
-        elif self.model_type == _pipelinewrapper.ModelType.KANDINSKY5_VIDEO:
+        elif _pipelinewrapper.model_type_is_kandinsky5_video(self.model_type):
             allowed = _videopipelines.single_image_video.KANDINSKY5_VIDEO_SCHEDULER_NAMES
             family = 'Kandinsky 5.0 Video'
             extra = ''
@@ -3839,7 +3838,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_floyd_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Floyd model specific requirements."""
-        if _pipelinewrapper.model_type_is_floyd(self.model_type):
+        if _pipelinewrapper.model_type_is_floyd_family(self.model_type):
             if self.is_output_latents():
                 raise RenderLoopConfigError(
                     f'Outputting latents with {a_namer("image_format")} {self.image_format} '
@@ -3848,11 +3847,12 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_stable_cascade_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Stable Cascade specific requirements."""
-        if self.model_type == _pipelinewrapper.ModelType.S_CASCADE_DECODER:
+        if _pipelinewrapper.model_type_is_s_cascade_decoder(self.model_type):
             raise RenderLoopConfigError(
                 f'Stable Cascade decoder {a_namer("model_type")} may not be used as the primary model.')
 
-        if self.model_type == _pipelinewrapper.ModelType.S_CASCADE:
+        if (_pipelinewrapper.model_type_is_s_cascade_family(self.model_type)
+                and not _pipelinewrapper.model_type_is_s_cascade_decoder(self.model_type)):
             if self.hi_diffusion:
                 raise RenderLoopConfigError(
                     f'{a_namer("hi_diffusion")} is not supported with Stable Cascade.'
@@ -3864,15 +3864,15 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_upscaler_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check upscaler model specific requirements."""
-        if not _pipelinewrapper.model_type_is_upscaler(self.model_type) \
-                and not _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
+        if not _pipelinewrapper.model_type_is_upscaler_family(self.model_type) \
+                and not _pipelinewrapper.model_type_is_floyd_ifs_family(self.model_type):
             if self.upscaler_noise_levels:
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("upscaler_noise_levels")} for a '
                     f'non upscaler model type, see: {a_namer("model_type")}.')
         elif (self.upscaler_noise_levels is not None
-              and self.model_type != _pipelinewrapper.ModelType.UPSCALER_X4
-              and not _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
+              and not _pipelinewrapper.model_type_is_upscaler_x4(self.model_type)
+              and not _pipelinewrapper.model_type_is_floyd_ifs_family(self.model_type)):
             raise RenderLoopConfigError(
                 f'you cannot specify {a_namer("upscaler_noise_levels")} for an upscaler '
                 f'model type that is not "upscaler-x4" or "ifs-*", '
@@ -3880,7 +3880,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_pix2pix_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check pix2pix model specific requirements."""
-        if not _pipelinewrapper.model_type_is_pix2pix(self.model_type):
+        if not _pipelinewrapper.model_type_is_pix2pix_family(self.model_type):
             if self.image_guidance_scales:
                 raise RenderLoopConfigError(
                     f'argument {a_namer("image_guidance_scales")} only valid with '
@@ -3889,10 +3889,10 @@ class RenderLoopConfig(_types.SetFromMixin):
     def _check_transformer_compatibility(self, a_namer: typing.Callable[[str], str]):
         """Check transformer compatibility with the model type."""
         if self.transformer_uri:
-            if not _pipelinewrapper.model_type_is_sd3(self.model_type) \
-                    and not _pipelinewrapper.model_type_is_flux(self.model_type) \
-                    and not _pipelinewrapper.model_type_is_flow_image(self.model_type) \
-                    and not _pipelinewrapper.model_type_is_video(self.model_type):
+            if not _pipelinewrapper.model_type_is_sd3_family(self.model_type) \
+                    and not _pipelinewrapper.model_type_is_flux_family(self.model_type) \
+                    and not _pipelinewrapper.model_type_is_flow_image_family(self.model_type) \
+                    and not _pipelinewrapper.model_type_is_video_family(self.model_type):
                 raise _pipelinewrapper.UnsupportedPipelineConfigError(
                     f'{a_namer("transformer_uri")} is only supported for '
                     f'{a_namer("model_type")} sd3, flux, flux2, flux2-klein-kv, z-image, '
@@ -3901,7 +3901,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_flux_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Flux model specific requirements."""
-        if not _pipelinewrapper.model_type_is_flux(self.model_type):
+        if not _pipelinewrapper.model_type_is_flux_family(self.model_type):
             invalid_self = []
             for flux_self in self._non_null_attr_that_start_with('flux'):
                 if flux_self.startswith('flux2'):
@@ -3990,7 +3990,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_flow_image_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Validate adapter and interchange compatibility for flow-image families."""
-        if not _pipelinewrapper.model_type_is_flow_image(self.model_type):
+        if not _pipelinewrapper.model_type_is_flow_image_family(self.model_type):
             return
 
         model_type = _pipelinewrapper.get_model_type_string(self.model_type)
@@ -4037,7 +4037,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                         'Z-Image ControlNet only accepts scale. '
                         f'{a_namer("controlnet_uris")} start and end are not pipeline arguments.')
 
-        if self.model_type == _pipelinewrapper.ModelType.QWEN_IMAGE_21 \
+        if _pipelinewrapper.model_type_is_qwen_image_21(self.model_type) \
                 and self.max_sequence_length is not None:
             raise RenderLoopConfigError(
                 f'{a_namer("max_sequence_length")} is not supported by Qwen-Image 2.1.')
@@ -4045,7 +4045,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.max_sequence_length is not None:
             limit = 1024 if (
                 _pipelinewrapper.model_type_is_qwen_image_family(self.model_type)
-                or self.model_type == _pipelinewrapper.ModelType.KANDINSKY5_IMAGE
+                or _pipelinewrapper.model_type_is_kandinsky5_image(self.model_type)
             ) else 512
             if self.max_sequence_length < 1 or self.max_sequence_length > limit:
                 raise RenderLoopConfigError(
@@ -4054,7 +4054,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_sd3_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check SD3 model specific requirements."""
-        if not _pipelinewrapper.model_type_is_sd3(self.model_type):
+        if not _pipelinewrapper.model_type_is_sd3_family(self.model_type):
             invalid_self = []
             for sd3_self in self._non_null_attr_that_start_with('sd3'):
                 invalid_self.append(f'you cannot specify {a_namer(sd3_self)} '
@@ -4087,7 +4087,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     def _check_sdxl_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check SDXL model specific requirements."""
         # Check if we're using an SDXL or Kolors model
-        is_sdxl_model = (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
+        is_sdxl_model = (_pipelinewrapper.model_type_is_sdxl_family(self.model_type) or
                          _pipelinewrapper.model_type_is_kolors(self.model_type))
 
         if not is_sdxl_model:
@@ -4125,11 +4125,11 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         # Video models accept a user value as the LTX condition strength when an
         # image seed omits strength=. They do not receive the img2img default of 0.8.
-        no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
-                            _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
-                            _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
-                            self.model_type == _pipelinewrapper.ModelType.FLUX_FILL or
-                            self.model_type == _pipelinewrapper.ModelType.FLUX_KONTEXT)
+        no_seed_strength = (_pipelinewrapper.model_type_is_upscaler_family(self.model_type) or
+                            _pipelinewrapper.model_type_is_pix2pix_family(self.model_type) or
+                            _pipelinewrapper.model_type_is_s_cascade_family(self.model_type) or
+                            _pipelinewrapper.model_type_is_flux_fill(self.model_type) or
+                            _pipelinewrapper.model_type_is_flux_kontext(self.model_type))
         user_provided_image_seed_strengths = self.image_seed_strengths is not None
 
         if user_provided_image_seed_strengths and no_seed_strength:
@@ -4184,7 +4184,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                                        help_mode: bool,
                                        a_namer: typing.Callable[[str], str]):
         """Verify that a pipeline can be built for the given configuration."""
-        if _pipelinewrapper.model_type_is_video(self.model_type):
+        if _pipelinewrapper.model_type_is_video_family(self.model_type):
             return
         try:
             for image_seed in parsed_image_seeds:
@@ -4192,7 +4192,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     (self.controlnet_uris or self.control_lora_uris or self.t2i_adapter_uris) and image_seed.is_single_spec
 
                 if (_pipelinewrapper.model_type_image_is_condition(self.model_type)
-                        and self.model_type != _pipelinewrapper.ModelType.KANDINSKY5_IMAGE
+                        and not _pipelinewrapper.model_type_is_kandinsky5_image(self.model_type)
                         and image_seed.images and not image_seed.mask_images
                         and not self.adetailer_detector_uris):
                     # Condition images. There is no img2img class.
@@ -4247,7 +4247,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if any(p.reference_images for p in parsed_image_seeds):
             flux2 = _pipelinewrapper.model_type_is_flux2(self.model_type)
-            wan = self.model_type == _pipelinewrapper.ModelType.WAN
+            wan = _pipelinewrapper.model_type_is_wan(self.model_type)
             if not flux2 and not wan:
                 raise RenderLoopConfigError(
                     f'{a_namer("image_seeds")} reference= is only for --model-type flux2 or wan.')
@@ -4266,7 +4266,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         # Check flux-fill compatibility
         if not all(p.mask_images is not None for p in parsed_image_seeds):
-            if self.model_type == _pipelinewrapper.ModelType.FLUX_FILL \
+            if _pipelinewrapper.model_type_is_flux_fill(self.model_type) \
                     and not self.adetailer_detector_uris:
                 raise RenderLoopConfigError(
                     f'Only inpainting {a_namer("image_seeds")} '
@@ -4275,7 +4275,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         # Check non-inpainting mode compatibility
         if all(p.mask_images is None for p in parsed_image_seeds):
 
-            if self.model_type == _pipelinewrapper.ModelType.IFS:
+            if _pipelinewrapper.model_type_is_ifs(self.model_type):
                 if user_provided_image_seed_strengths:
                     raise RenderLoopConfigError(
                         f'{a_namer("image_seed_strengths")} '
@@ -4371,6 +4371,32 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         return parsed
 
+    def _image_seed_strength_unsupported(self, parsed: _mediainput.ImageSeedParseResult) -> bool:
+        """True when this seed's ``strength=`` keyword cannot affect generation.
+
+        Video models use it as a condition weight. Img2img and inpaint use it
+        as noise strength. Pix2pix, the upscalers, Stable Cascade, Flux Fill,
+        Flux Kontext, and Floyd ``ifs`` without a mask do not. A condition
+        image has no strength either, unless ``--adetailer-detectors`` turns
+        that seed into inpaint.
+        """
+        model_type = self.model_type
+        if _pipelinewrapper.model_type_is_video_family(model_type):
+            return False
+        if (_pipelinewrapper.model_type_is_upscaler_family(model_type)
+                or _pipelinewrapper.model_type_is_pix2pix_family(model_type)
+                or _pipelinewrapper.model_type_is_s_cascade_family(model_type)
+                or _pipelinewrapper.model_type_is_flux_fill(model_type)
+                or _pipelinewrapper.model_type_is_flux_kontext(model_type)):
+            return True
+        if (_pipelinewrapper.model_type_image_is_condition(model_type)
+                and not self.adetailer_detector_uris
+                and parsed.images and not parsed.mask_images):
+            return True
+        if _pipelinewrapper.model_type_is_ifs(model_type) and not parsed.mask_images:
+            return True
+        return False
+
     def _check_model_specific_image_seed_requirements(self,
                                                       parsed: _mediainput.ImageSeedParseResult,
                                                       uri: str,
@@ -4382,11 +4408,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 'Cannot use "mask" without an image seed. '
                 'mask= with only a control= clip is a Wan VACE input.')
 
-        if parsed.end_image is not None and not _pipelinewrapper.model_type_is_video(self.model_type):
+        if parsed.end_image is not None and not _pipelinewrapper.model_type_is_video_family(self.model_type):
             raise RenderLoopConfigError(
                 'The image seed argument "last-frame" is only supported for video model types.')
 
-        if self.last_frame_image_processors and not _pipelinewrapper.model_type_is_video(self.model_type):
+        if self.last_frame_image_processors and not _pipelinewrapper.model_type_is_video_family(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("last_frame_image_processors")} is only supported for video model types.')
 
@@ -4396,17 +4422,13 @@ class RenderLoopConfig(_types.SetFromMixin):
                 'Image seed ltx-index and " ++ " conditions are only supported '
                 'for --model-type ltx2 or ltx-video.')
 
-        if parsed.ltx_condition_strength is not None and (
-                _pipelinewrapper.model_type_is_upscaler(self.model_type) or
-                _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
-                _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
-                self.model_type == _pipelinewrapper.ModelType.FLUX_FILL or
-                self.model_type == _pipelinewrapper.ModelType.FLUX_KONTEXT):
+        if (parsed.ltx_condition_strength is not None
+                and self._image_seed_strength_unsupported(parsed)):
             raise RenderLoopConfigError(
-                'Image seed strength is not supported for pix2pix, upscaler, '
-                'stablecascade, flux-fill, or flux-kontext.')
+                'Image seed strength= is not supported by --model-type '
+                f'{_pipelinewrapper.get_model_type_string(self.model_type)}.')
 
-        if _pipelinewrapper.model_type_is_video(self.model_type):
+        if _pipelinewrapper.model_type_is_video_family(self.model_type):
             import dgenerate.pipelinewrapper.videopipelines as _videopipelines
             ic_lora = bool(self.ltx_ic_lora_uri)
             try:
@@ -4444,19 +4466,19 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("wan_background_image_processors")} runs on the image seed wan-background= clip, '
                     f'and {a_namer("image_seeds")} "{uri}" has none.')
 
-        if _pipelinewrapper.model_type_is_s_cascade(self.model_type):
+        if _pipelinewrapper.model_type_is_s_cascade_family(self.model_type):
             if not parsed.is_single_spec:
                 raise RenderLoopConfigError(
                     f'{a_namer("image_seeds")} configurations other than plain '
                     f'img2img are not supported for Stable Cascade.')
 
-        if _pipelinewrapper.model_type_is_upscaler(self.model_type):
+        if _pipelinewrapper.model_type_is_upscaler_family(self.model_type):
             if not parsed.is_single_spec:
                 raise RenderLoopConfigError(
                     f'{a_namer("image_seeds")} configurations other than plain '
                     f'img2img are not supported for Stable Diffusion upscaler models.')
 
-        if _pipelinewrapper.model_type_is_sdxl(self.model_type):
+        if _pipelinewrapper.model_type_is_sdxl_family(self.model_type):
             if self.denoising_start is not None and self.denoising_start != 0.0:
                 if not parsed.images:
                     raise RenderLoopConfigError(
@@ -4538,7 +4560,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                                              uri: str,
                                              a_namer: typing.Callable[[str], str]):
         """Check compatibility of image processors with available images."""
-        if self.seed_image_processors and not _pipelinewrapper.model_type_is_video(self.model_type):
+        if self.seed_image_processors and not _pipelinewrapper.model_type_is_video_family(self.model_type):
             num_img2img_images = len(parsed.images) if parsed.images is not None else 0
 
             seed_processor_chain_count = \
@@ -4687,7 +4709,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         has_additional_control = parsed.control_images and not parsed.is_single_spec
 
         if has_additional_control and not self.controlnet_uris and not self.control_lora_uris \
-                and not _pipelinewrapper.model_type_is_video(self.model_type):
+                and not _pipelinewrapper.model_type_is_video_family(self.model_type):
             raise RenderLoopConfigError(
                 f'Cannot use the "control" argument in an image seed without '
                 f'specifying {a_namer("controlnet_uris")} or {a_namer("control_lora_uris")}.'
@@ -4719,8 +4741,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                                    a_namer: typing.Callable[[str], str],
                                    mask_part: str):
         """Check compatibility with Deep Floyd IF models."""
-        if self.model_type == _pipelinewrapper.ModelType.IFS_IMG2IMG or \
-                (parsed.mask_images and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
+        if _pipelinewrapper.model_type_is_ifs_img2img(self.model_type) or \
+                (parsed.mask_images and _pipelinewrapper.model_type_is_floyd_ifs_family(self.model_type)):
 
             if not parsed.floyd_image:
                 raise RenderLoopConfigError(
@@ -5000,7 +5022,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'dgenerate.pipelinewrapper.DiffusionArguments lacks property: {n}')
 
             if not (
-                    _pipelinewrapper.model_type_is_sdxl(self.model_type) or
+                    _pipelinewrapper.model_type_is_sdxl_family(self.model_type) or
                     _pipelinewrapper.model_type_is_kolors(self.model_type)):
                 if n.startswith('sdxl_'):
                     return None
@@ -5008,11 +5030,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 if n.startswith('sdxl_refiner_') and not self.sdxl_refiner_uri:
                     return None
 
-            if not _pipelinewrapper.model_type_is_sd3(self.model_type):
+            if not _pipelinewrapper.model_type_is_sd3_family(self.model_type):
                 if n.startswith('sd3_'):
                     return None
 
-            if not _pipelinewrapper.model_type_is_flux(self.model_type):
+            if not _pipelinewrapper.model_type_is_flux_family(self.model_type):
                 if n.startswith('flux_'):
                     return None
 

@@ -68,7 +68,11 @@ def _multilingual_tokenizer(model_type, encoder_name: str | None) -> bool:
         or _enums.model_type_is_qwen_image_edit(model_type)
         or _enums.model_type_is_qwen_image_layered(model_type)
         or _enums.model_type_is_qwen_image_21(model_type)
-        or model_type == _enums.ModelType.FLUX2_KLEIN_KV)
+        or _enums.model_type_is_hyimage_21(model_type)
+        or _enums.model_type_is_hyimage_21_refiner(model_type)
+        or _enums.model_type_is_kandinsky5_image(model_type)
+        or _enums.model_type_is_kandinsky5_video(model_type)
+        or _enums.model_type_is_flux2_klein_kv(model_type))
 
 
 def _words_for_tokens(tokens: int, *, model_type=None, encoder_name: str | None = None) -> int:
@@ -144,6 +148,10 @@ def _keep_user_language(model_type) -> bool:
         or _enums.model_type_is_qwen_image_edit(model_type)
         or _enums.model_type_is_qwen_image_layered(model_type)
         or _enums.model_type_is_qwen_image_21(model_type)
+        or _enums.model_type_is_hyimage_21(model_type)
+        or _enums.model_type_is_hyimage_21_refiner(model_type)
+        or _enums.model_type_is_kandinsky5_image(model_type)
+        or _enums.model_type_is_kandinsky5_video(model_type)
         or _enums.model_type_is_flux2(model_type)
         or _enums.model_type_is_flux2_klein_kv(model_type))
 
@@ -308,13 +316,14 @@ _IMAGE_TEXT_RULE = (
 
 
 def _t2i_length_line(min_tokens: int, max_tokens: int, *,
-                     model_type=None, encoder_name: str | None = None) -> str:
+                     model_type=None, encoder_name: str | None = None,
+                     subject: str = 'the image') -> str:
     words, several, characters, char_several = _measure(
         min_tokens, max_tokens, 80, 150, 250,
         model_type=model_type, encoder_name=encoder_name)
     line = (
         f'- {_language_lead(model_type)}, '
-        f'{_with_script(words, characters)}, in the present tense, as a description of the image, '
+        f'{_with_script(words, characters)}, in the present tense, as a description of {subject}, '
         'not as instructions.')
     extras = []
     word_hi = _span_hi(words)
@@ -367,7 +376,9 @@ def _brief_encoder(model_type, encoder_name: str | None) -> bool:
         return False
     return bool(
         _enums.model_type_is_z_image_family(model_type)
-        or _enums.model_type_is_krea2(model_type))
+        or _enums.model_type_is_krea2(model_type)
+        or _enums.model_type_is_kandinsky5_image(model_type)
+        or _enums.model_type_is_kandinsky5_video(model_type))
 
 
 def _encoder_sees_images(model_type, encoder_name: str | None) -> bool:
@@ -382,7 +393,9 @@ def _encoder_sees_images(model_type, encoder_name: str | None) -> bool:
         _enums.model_type_is_qwen_image_edit(model_type)
         or _enums.model_type_is_qwen_image_layered(model_type)
         or _enums.model_type_is_qwen_image_21(model_type)
-        or model_type == _enums.ModelType.FLUX2)
+        or _enums.model_type_is_kandinsky5_image(model_type)
+        or _enums.model_type_is_kandinsky5_video(model_type)
+        or _enums.model_type_is_flux2(model_type))
 
 
 def _uses_image_placeholders(model_type) -> bool:
@@ -402,6 +415,7 @@ def _wants_edit_prompt(model_type, encoder_name: str | None, has_image: bool) ->
         _enums.model_type_is_qwen_image_edit(model_type)
         or _enums.model_type_is_qwen_image_layered(model_type)
         or _enums.model_type_is_qwen_image_21(model_type)
+        or _enums.model_type_is_kandinsky5_image(model_type)
         or _enums.model_type_is_flux2_family(model_type))
     return bool(family and _encoder_sees_images(model_type, encoder_name))
 
@@ -456,6 +470,75 @@ def t2i_system_prompt(min_tokens: int, max_tokens: int, *, brief: bool = False,
         length,
         'Output only the prompt.',
     ]
+    if keep:
+        lines.insert(1, _KEEP_USER_LANGUAGE_RULE)
+    return '\n'.join(lines)
+
+
+def video_system_prompt(min_tokens: int, max_tokens: int, *, has_image: bool,
+                        brief: bool = False, model_type=None,
+                        encoder_name: str | None = None) -> str:
+    """Text-to-video or image-to-video prompt for Kandinsky 5."""
+    length = _t2i_length_line(
+        min_tokens, max_tokens, model_type=model_type, encoder_name=encoder_name,
+        subject='the shot')
+    keep = _keep_user_language(model_type)
+    language = 'in the user\'s language ' if keep else 'in English '
+    if has_image:
+        seen = 'You see the first frame and the user\'s request. '
+        motion = (
+            '- The first frame is the start of the shot. Keep the subjects that stay, and describe what moves, '
+            'how it moves, and how the camera moves.')
+    else:
+        seen = ''
+        motion = '- Describe what moves, how it moves, and how the camera moves.'
+    if brief:
+        opening = (
+            'You write prompts for a video generation model. ' + seen
+            + 'Expand the user\'s request into one paragraph '
+            + language
+            + 'that describes the finished shot.')
+        lines = [
+            opening,
+            '- Keep everything the user specified and never contradict it. If the request is already detailed, keep it and add only what is missing. Leave out duration, frame rate, and resolution.',
+            motion,
+            '- Counts are exact. "three X and one Y" means three X and one Y.',
+            '- Name the medium near the start. If the user names none, use a cinematic shot for a real-world scene.',
+            '- Describe the light, the colours, and where things are. No quality tags such as masterpiece or highly detailed.',
+            _IMAGE_TEXT_RULE,
+            length,
+            'Output only the prompt.',
+        ]
+    else:
+        if keep:
+            opening = (
+                'You write prompts for a video generation model. ' + seen
+                + 'Expand the user\'s request into one detailed paragraph in the user\'s language '
+                'that describes the finished shot: subject, motion, camera, setting, lighting and style.')
+            meaning = (
+                '- Keep the user\'s language. A "red" cat in Italian, French, or Spanish means a ginger cat; '
+                'describe that coat in the user\'s language.')
+        else:
+            opening = (
+                'You write prompts for a video generation model. ' + seen
+                + 'Expand the user\'s request into one detailed English paragraph '
+                'that describes the finished shot: subject, motion, camera, setting, lighting and style.')
+            meaning = '- Translate the meaning, not word by word. A "red" cat in Italian, French or Spanish is a ginger cat.'
+        lines = [
+            opening,
+            '- Keep everything the user specified about the shot (objects, counts, colours, motion, camera, style) and never contradict it. If the request is already detailed, keep all of it and only add what is missing. Leave out duration, frame rate, and resolution: the app sets those.',
+            motion,
+            '- Counts are exact and per group: "three X and one Y" means four things, written as three X and one Y.',
+            meaning,
+            '- Name the medium and style near the start. If the user names none, choose the one that fits the request best: a cinematic shot for real-world scenes.',
+            '- Always describe the light: its source, direction and quality.',
+            '- Be concrete: specific colours that suit this scene, materials, where things are in the frame. Never write vague words like "various items".',
+            '- People: only what is visible (life stage, expression, pose, hair, clothing). No brand names unless the user gave them.',
+            _IMAGE_TEXT_RULE,
+            '- Describe only what is seen, with no quality tags (masterpiece, highly detailed).',
+            length,
+            'Output only the prompt.',
+        ]
     if keep:
         lines.insert(1, _KEEP_USER_LANGUAGE_RULE)
     return '\n'.join(lines)
@@ -575,7 +658,7 @@ def ensure_pipeline_prompt_enhance_enabled(config) -> None:
 
 def generation_limits(model_type=None, encoder_name: str | None = None) -> tuple[int, int]:
     """(max_new_tokens, min_new_tokens) for one rewrite."""
-    if model_type is not None and _enums.get_model_type_enum(model_type) == _enums.ModelType.LTX2:
+    if model_type is not None and _enums.model_type_is_ltx2(model_type):
         return 600, 0
     if _is_qwen25_vl_encoder(encoder_name):
         return MAX_NEW_TOKENS, 32
@@ -619,7 +702,7 @@ def _override_check_limits(model_type, encoder_name: str | None) -> tuple[int, i
     if encoder_name is not None:
         return generation_limits(model_type, encoder_name)
     if (model_type is not None
-            and _enums.get_model_type_enum(model_type) == _enums.ModelType.LTX2):
+            and _enums.model_type_is_ltx2(model_type)):
         return generation_limits(model_type, None)
     return MAX_NEW_TOKENS, 32
 
@@ -900,15 +983,25 @@ def auto_system_prompt(model_type, has_image: bool, *,
     """Built-in prompt for this model, encoder, and token budget.
 
     The length is the sampler's minimum and maximum. Multilingual enhance is selected
-    by ``--model-type`` (Qwen-Image family, ``flux2``, ``flux2-klein-kv``). Z-Image and
+    by ``--model-type`` (Qwen-Image family, HunyuanImage 2.1 and its refiner, Kandinsky 5,
+    ``flux2``, ``flux2-klein-kv``). Z-Image and
     Krea 2 rewrite in English. Token budgets may include a CJK character count when the
     rewrite is not forced to English.
     Edit wording is used only when this encoder can see the picture.
-    Qwen edit models are told to say ``<image1>``. Flux names the images in order.
+    The HunyuanImage 2.1 refiner always has an input image, and that image stays a latent.
+    Its rewrite is still the text-to-image prompt.
+    Qwen edit models are told to say ``<image1>``. Flux and Kandinsky 5 image editing
+    name the images in order. Kandinsky 5 video describes a shot, and an image-to-video
+    shot when a first frame is present.
     Tied Qwen encoders get the shorter text-to-image prompt.
     Qwen2.5-VL uses that shorter prompt, cooler sampling, and a user-turn language reminder.
     """
     max_tokens, min_tokens = merged_generation_limits(model_type, encoder_name, overrides)
+    if model_type is not None and _enums.model_type_is_kandinsky5_video(model_type):
+        return video_system_prompt(
+            min_tokens, max_tokens, has_image=has_image,
+            brief=_brief_encoder(model_type, encoder_name),
+            model_type=model_type, encoder_name=encoder_name)
     if _wants_edit_prompt(model_type, encoder_name, has_image):
         return edit_system_prompt(
             min_tokens, max_tokens,
@@ -1008,12 +1101,12 @@ def sampling_for(model_type, encoder_name: str | None = None) -> Sampling:
     if model_type is not None and _enhance_english_only(model_type):
         if encoder_name is None or encoder_name.startswith('Qwen3'):
             return _QWEN25_VL
-    if model_type == _enums.ModelType.FLUX2 and encoder_name and encoder_name.startswith('Qwen'):
+    if _enums.model_type_is_flux2(model_type) and encoder_name and encoder_name.startswith('Qwen'):
         return _QWEN
     if model_type is not None and _keep_user_language(model_type):
         if encoder_name is None or encoder_name.startswith('Qwen3'):
             return _QWEN25_VL
-    if model_type == _enums.ModelType.FLUX2:
+    if _enums.model_type_is_flux2(model_type):
         return _MISTRAL
     if _is_qwen25_vl_encoder(encoder_name):
         return _QWEN25_VL
@@ -1309,12 +1402,12 @@ def _drop_repetitive_tail(text: str) -> str:
 def enhance_diffusion_arguments(wrapper, user_args) -> None:
     """Rewrite ``user_args.prompt`` with the pipeline text encoder, in place."""
     setting = user_args.pipeline_prompt_enhance
-    if not setting or _enums.get_model_type_enum(wrapper.model_type) == _enums.ModelType.LTX2:
+    if not setting or _enums.model_type_is_ltx2(wrapper.model_type):
         return
     prompt = user_args.prompt
     if prompt is None or not (prompt.positive or '').strip():
         return
-    images = _condition_images(user_args)
+    images = _condition_images(user_args, wrapper.model_type)
     system_prompt = setting if isinstance(setting, str) else None
     pipe = wrapper._pipeline
     offload = bool(
@@ -1456,15 +1549,25 @@ def _rewrite_with_encoder(pipe, encoder, tokenizer, name, prompt, system_prompt,
         f'--pipeline-prompt-enhance cannot generate text with {name}.')
 
 
-def _condition_images(user_args):
+def _condition_images(user_args, model_type=None):
+    """Images the rewriter should look at.
+
+    Condition seeds are stored on ``reference_images``. The HunyuanImage
+    refiner encodes its input image as a VAE latent, so the rewriter stays
+    text-only.
+    """
+    if model_type is not None and _enums.model_type_is_hyimage_21_refiner(model_type):
+        return []
+    sources = [user_args.images or (), getattr(user_args, 'reference_images', None) or ()]
     images = []
-    for image in user_args.images or ():
-        if image is None:
-            continue
-        if isinstance(image, (list, tuple)):
-            image = image[0] if image else None
-        if image is not None and not torch.is_tensor(image):
-            images.append(image)
+    for source in sources:
+        for image in source:
+            if image is None:
+                continue
+            if isinstance(image, (list, tuple)):
+                image = image[0] if image else None
+            if image is not None and not torch.is_tensor(image):
+                images.append(image)
     return images
 
 
@@ -1956,11 +2059,83 @@ def _fast_encoder(encoder, device, offload: bool, resident: bool = True,
     each forward, then returned. Sequential offload is put back before
     denoising, so the image model still loads one layer at a time. A dedicated
     enhancer that was only parked on CPU uses the same split and is returned
-    to CPU afterward.
+    to CPU afterward. Disk offload keeps the weights in safetensors and the
+    parameters on the meta device; those are loaded for the rewrite and the
+    disk hooks are put back afterward.
     """
     if not resident:
         yield
         return
+    with _borrowed_disk_weights(encoder):
+        with _fast_encoder_from_memory(
+                encoder, device, offload,
+                headroom_bytes=headroom_bytes, label=label, debug=debug):
+            yield
+
+
+def _capture_disk_offload(encoder):
+    """Safetensors index and execution device for a disk-offloaded encoder."""
+    if not getattr(encoder, '_dgenerate_weights_on_disk', False):
+        return None
+    from accelerate.utils.offload import PrefixedDataset
+
+    for module in encoder.modules():
+        hook = getattr(module, '_hf_hook', None)
+        if hook is None or not getattr(hook, 'offload', False):
+            continue
+        loader = getattr(hook, 'weights_map', None)
+        while isinstance(loader, PrefixedDataset):
+            loader = loader.dataset
+        if loader is None:
+            continue
+        index = getattr(loader, 'index', None)
+        folder = getattr(loader, 'save_folder', None)
+        weights = index if index else folder
+        if not weights:
+            continue
+        device = getattr(hook, 'execution_device', None) or 'cpu'
+        return weights, torch.device(device)
+    return None
+
+
+def _release_disk_hooks(encoder) -> None:
+    """Load disk-offloaded weights back into the module and drop the hooks."""
+    from accelerate.hooks import remove_hook_from_module
+
+    with _real_weights():
+        remove_hook_from_module(encoder, recurse=True)
+    if 'to' in encoder.__dict__:
+        del encoder.to
+    encoder._dgenerate_weights_on_disk = False
+    _pipelines._set_sequential_cpu_offload_flag(encoder, False)
+
+
+def _restore_disk_offload(encoder, state) -> None:
+    weights, device = state
+    from dgenerate.pipelinewrapper.videopipelines.diskoffload import _install_disk_hooks
+
+    with _real_weights():
+        _install_disk_hooks(encoder, weights, device)
+
+
+@contextlib.contextmanager
+def _borrowed_disk_weights(encoder):
+    state = _capture_disk_offload(encoder)
+    if state is None:
+        yield
+        return
+    _release_disk_hooks(encoder)
+    try:
+        yield
+    finally:
+        _restore_disk_offload(encoder, state)
+
+
+@contextlib.contextmanager
+def _fast_encoder_from_memory(encoder, device, offload: bool,
+                              headroom_bytes: int | None = None,
+                              label: str = 'Pipeline prompt enhance',
+                              debug: bool = False):
     target = torch.device(device) if device is not None else torch.device('cpu')
     original_to = getattr(encoder, '_DGENERATE_ORIGINAL_TO_DISABLED', None)
     if target.type == 'cpu' or _putil.is_loaded_in_8bit_bnb(encoder) or not offload:
@@ -2328,13 +2503,30 @@ def _generate_with_head(pipe, encoder, tokenizer, prompt, system_prompt, images,
     return decoder.decode(new_tokens, skip_special_tokens=True)
 
 
+def _as_vision_processor(candidate):
+    """A loaded processor that can turn a picture into pixels.
+
+    Kandinsky 5 registers ``Qwen2VLProcessor`` as ``tokenizer``. Its image
+    processor is already there. The text-encoder folder has no
+    ``preprocessor_config.json``, so loading another processor from that
+    folder fails and is not needed.
+    """
+    if candidate is None or getattr(candidate, 'image_processor', None) is None:
+        return None
+    return candidate
+
+
 def _vision_processor(pipe, encoder, tokenizer, local_files_only: bool):
     cached = getattr(pipe, '_dgenerate_enhance_processor', None)
     if cached is not None:
         return cached
-    processor = getattr(pipe, 'processor', None)
-    if processor is not None and getattr(processor, 'tokenizer', None) is not None:
-        return processor
+    for candidate in (
+            getattr(pipe, 'processor', None),
+            getattr(pipe, 'tokenizer', None),
+            tokenizer):
+        processor = _as_vision_processor(candidate)
+        if processor is not None:
+            return processor
     name = getattr(encoder, 'name_or_path', None)
     if not name:
         config = getattr(encoder, 'config', None)
@@ -2353,10 +2545,25 @@ def _vision_processor(pipe, encoder, tokenizer, local_files_only: bool):
 
 
 def _apply_chat_template(tokenizer, messages, **kwargs):
+    """Render a chat template.
+
+    A vision processor often has ``apply_chat_template`` and no template of its
+    own. The template then lives on ``processor.tokenizer``, which is what
+    Kandinsky 5's ``Qwen2VLProcessor`` does.
+    """
+    def _call(target):
+        try:
+            return target.apply_chat_template(messages, enable_thinking=False, **kwargs)
+        except TypeError:
+            return target.apply_chat_template(messages, **kwargs)
+
     try:
-        return tokenizer.apply_chat_template(messages, enable_thinking=False, **kwargs)
-    except TypeError:
-        return tokenizer.apply_chat_template(messages, **kwargs)
+        return _call(tokenizer)
+    except ValueError as error:
+        inner = getattr(tokenizer, 'tokenizer', None)
+        if inner is None or inner is tokenizer or 'chat template' not in str(error).lower():
+            raise
+        return _call(inner)
 
 
 def _ltx_enhance_user_content(prompt: str, has_image: bool):

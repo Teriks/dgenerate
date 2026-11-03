@@ -1,0 +1,30 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Flux.2 Klein 9B with an Unsloth GGUF transformer and the official Qwen3-8B
+# GGUF. Klein 9B is the 8B Qwen3 (hidden size 4096), not the 4B file used by
+# Klein 4B. Qwen publishes Q4_K_M for this model and not Q4_K_S. Both files
+# are already quantized. Do not set quantizer. Distilled Klein ignores
+# guidance above 1. Four steps is the short schedule. The base 9B checkpoint
+# reads this same encoder and uses its own 50-step schedule.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+black-forest-labs/FLUX.2-klein-9B
+--model-type flux2
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/unsloth/FLUX.2-klein-9B-GGUF/blob/main/flux-2-klein-9b-Q4_K_S.gguf
+--text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Qwen/Qwen3-8B-GGUF/blob/main/Qwen3-8B-Q4_K_M.gguf"
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 4
+--guidance-scales 1
+--gen-seeds 1
+--output-path flux2-gguf-klein-9b-text-encoder
+--output-size 1024
+--prompts "A cat holding a sign that says hello world"

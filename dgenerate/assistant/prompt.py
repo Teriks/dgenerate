@@ -111,16 +111,23 @@ Rules:
 reference material. Never invent an option. If something is not supported, say so in \
 a # comment instead of guessing.
 - Base the config on the closest example and keep its model, --model-type, --dtype, \
-and required settings unless the request asks otherwise. Copy the memory flags from \
-the Machine section row for that model onto the invocation, even when the closest \
-example omits them or hides them in a total_memory check. A row that is only \
---quantizer is required. A row that is only --model-sequential-offload is required. \
+and required settings unless the request asks otherwise. Memory flags come from \
+the Machine section. It gives each model a line for the 8, 12, 16, and 24 GiB \
+consumer tiers and for 32 GiB and above. Write this computer's tier, even when \
+the closest example omits the flags or hides them in a total_memory check. \
+A line that is only --quantizer is required. A line that is only \
+--model-sequential-offload or only --model-cpu-offload is required. \
 Write that flag as its own line. Do not copy the example's \\setp gpu_memory_gib \
 total_memory, {{% if not have_cuda() %}}, \\set offload, \\set optimization, \
 or --model-type model {{{{ optimization }}}}. \
 Klein 4B is not Flux.2 dev and not Klein 9B. A GGUF, FP8, FP4, NVFP4, or INT8 \
-transformer uses the prequantized row. Follow the documented constraints on output \
-size, frame counts, and guidance.
+transformer uses the prequantized line for this tier. A quantized transformer \
+and a quantized text encoder use the both-quantized line and its offload, with \
+no --quantizer. If the user names --model-sequential-offload, \
+--model-cpu-offload, or --model-group-offload, write the flag they named. \
+If they name a quantizer, write it, and still write the offload from the \
+matching line unless they also named an offload. Follow the documented \
+constraints on output size, frame counts, and guidance.
 - Copy Hugging Face repo names (org/name) exactly as they appear in the reference material. \
 Never invent a repo or change its organization or name. Do not use --model-type z-image-omni; \
 Z-Image-Omni-Base is not released on Hugging Face yet.
@@ -155,14 +162,12 @@ appends CIVIT_AI_TOKEN from the environment to a civitai.com or civitai.red \
 A CivitAI trigger word (trainedWords) goes in --prompts only. It is not a \
 URI argument. --loras accepts only scale, revision, subfolder, weight-name, \
 and component. token= is valid only on --textual-inversions.
-- The Machine section is the memory plan for this computer, one row per model. \
-Copy that row's flags onto the invocation. Do not write a total_memory \
+- The Machine section is the memory plan for this computer. Use the tier that \
+matches its GiB: 8, 12, 16, 24, or 32 GiB and above. Do not write a total_memory \
 check or an {{% if %}} block that picks the flags. SD3 full checkpoints use \
-8-bit, not 4-bit. Z-Image full checkpoints are not quantized. Qwen-Image 2.1, \
-Krea 2, Wan, LTX-2.5, HunyuanImage 2.1, HunyuanVideo, Kandinsky 5, and Motif \
-stay on sequential offload with no quantizer. Hunyuan-DiT (--model-type hydit) \
-gets no quantizer and no offload. An SDNQ checkpoint does not get a second --quantizer. \
-A GGUF, FP8, FP4, NVFP4, or INT8 transformer uses the prequantized row. \
+8-bit, not 4-bit, on the tiers that quantize them. Z-Image full checkpoints are \
+not quantized. Hunyuan-DiT (--model-type hydit) gets no quantizer and no offload. \
+An SDNQ checkpoint does not get a second --quantizer. \
 SD 1.5 and SDXL are not quantized: keep --model-cpu-offload when the closest \
 example uses it.
 - Paths marked (input file) in the request are inputs, for example for --image-seeds. \
@@ -665,9 +670,6 @@ def first_draft_recipes(request: str, editor: str | None = None,
                 '(phrase:1.3) and ((phrase)) are sd-embed. word+ is compel, not sd-embed. '
                 'A plain sentence with --prompt-weighter does nothing.',
             ]
-    hint = memory_draft(request, editor, machine)
-    if hint:
-        lines.append(hint)
     return '\n'.join(lines)
 
 
@@ -878,8 +880,6 @@ def user_message(request: str, context: str, files: list[RequestFile],
     for f in files:
         request = re.sub(rf'(?<![\w./\\-]){re.escape(f.written)}(?![\w.-])',
                          lambda _: f'"{f.config_path}" (input file)', request)
-    if machine is None:
-        machine = machine_state()
     body = (f'Reference material from the dgenerate documentation and examples:\n\n{context}\n\n')
     if editor and editor.strip():
         body += (
@@ -890,9 +890,6 @@ def user_message(request: str, context: str, files: list[RequestFile],
             'expression on the line it already occupies.\n\n'
             f'{editor.strip()}\n\n'
             f'Request:\n{request}\n')
-        hint = memory_draft(request, editor, machine)
-        if hint:
-            body += '\n' + hint + '\n'
         return body
     return body + f'Request:\n{request}\n\n{first_draft_recipes(request, machine=machine)}'
 
@@ -1003,7 +1000,7 @@ def _memory_spec(kind: str | None, cuda: bool, gib: float, bitsandbytes: bool, s
     quantizer = _quant_uri(cuda, bitsandbytes, sdnq)
     if kind in ('sequential', 'ltx-full', 'flux-comfy'):
         return MemorySpec('sequential', forbid_quantizer=True)
-    if kind in ('ltx-gguf', 'packed-cpu'):
+    if kind in ('ltx-gguf', 'packed-cpu', 'krea2-packed'):
         return MemorySpec('cpu', forbid_quantizer=True)
     if kind == 'cascade':
         return MemorySpec('cpu', second_offload='cpu', forbid_quantizer=True)
@@ -1099,8 +1096,12 @@ def memory_kind(model_type: str, model_path: str, transformer: str | None = None
                 control_loras: collections.abc.Iterable[str] | None = None) -> str | None:
     """Which memory row an invocation uses. ``None`` means the examples set no flags."""
     mt = (model_type or '').lower()
+    prequantized = _is_prequantized(transformer)
+    text_prequantized = _is_prequantized(*(text_encoders or ()))
     if mt in _UNCHECKED_TYPES:
         return None
+    if mt == 'krea2' and prequantized and text_prequantized:
+        return 'krea2-packed'
     if mt in _SEQUENTIAL_TYPES:
         return 'sequential'
     if mt == 'ltx-video':
@@ -1111,8 +1112,6 @@ def memory_kind(model_type: str, model_path: str, transformer: str | None = None
         return 'kolors'
     if mt == 'hydit':
         return 'hydit'
-    prequantized = _is_prequantized(transformer)
-    text_prequantized = _is_prequantized(*(text_encoders or ()))
     names = _norm_blob(model_path, transformer)
     if mt == 'z-image':
         if 'sdnq' in _norm_blob(model_path):
@@ -1145,32 +1144,6 @@ def memory_kind(model_type: str, model_path: str, transformer: str | None = None
     if mt in _QWEN_TYPES:
         return 'qwen-pre' if prequantized else 'qwen-full'
     return None
-
-
-_KIND_LABEL = {
-    'sequential': 'Krea 2, Wan, LTX-2.5, Qwen-Image 2.1, Hunyuan, Kandinsky, Motif, or DeepFloyd',
-    'ltx-full': 'LTX-Video full checkpoint',
-    'ltx-gguf': 'LTX-Video GGUF transformer',
-    'cascade': 'Stable Cascade',
-    'kolors': 'Kolors',
-    'sd3-full': 'SD3 or SD3 pix2pix full checkpoint',
-    'sd3-pre': 'SD3 prequantized transformer',
-    'flux-full': 'Flux.1 full checkpoint',
-    'flux-control': 'Flux.1 Control LoRA',
-    'flux-gguf': 'Flux.1 GGUF transformer',
-    'flux-comfy': 'Flux.1 FP8 or Comfy transformer',
-    'flux2-heavy': 'Flux.2 dev, Klein 9B, or Klein KV full checkpoint',
-    'klein4-full': 'Flux.2 Klein 4B full checkpoint (--model-type flux2, not flux)',
-    'flux2-pre-dev': 'Flux.2 dev prequantized transformer',
-    'flux2-pre-klein': 'Flux.2 Klein prequantized transformer',
-    'packed-cpu': 'Flux.2 with a quantized transformer and a quantized text encoder',
-    'qwen-full': 'Qwen-Image, Edit, or Layered full checkpoint',
-    'qwen-pre': 'Qwen-Image prequantized transformer',
-    'zimage-full': 'Z-Image full checkpoint',
-    'zimage-pre': 'Z-Image prequantized transformer',
-    'hydit': 'Hunyuan-DiT (--model-type hydit, not hyvideo-15 or hyimage-21)',
-    'zimage-sdnq': 'Z-Image SDNQ checkpoint',
-}
 
 
 def _request_prequantized(text: str) -> bool:
@@ -1222,7 +1195,10 @@ def _request_kinds(request: str) -> list[str]:
     if re.search(r'\bkolors\b', text):
         add('kolors')
     if re.search(r'\bkrea\s*-?\s*2\b|krea2', text) and not re.search(r'flux\.1\b|flux1\b', text):
-        add('sequential')
+        if pre and re.search(r'text[- ]encoder', text):
+            add('krea2-packed')
+        else:
+            add('sequential')
     if re.search(r'ltx-2|ltx2(?!\d)|ltxv2|ltxv-2\.\d', text):
         add('sequential')
     elif re.search(r'ltx-video|ltxvideo|\bltxv\b|ltx video', text):
@@ -1240,82 +1216,6 @@ def _request_kinds(request: str) -> list[str]:
     elif re.search(r'\bcascade\b', text):
         add('cascade')
     return found
-
-
-def _config_kinds(config: str) -> list[str]:
-    """Memory rows of the invocations in an open config."""
-    kinds: list[str] = []
-    model_path = ''
-    model_type = ''
-    transformer = ''
-    text_encoders: list[str] = []
-    control: list[str] = []
-
-    def finish() -> None:
-        nonlocal model_path, model_type, transformer, text_encoders, control
-        if model_path or model_type:
-            kind = memory_kind(model_type, model_path, transformer or None, text_encoders, control)
-            if kind and kind not in kinds:
-                kinds.append(kind)
-        model_path = model_type = transformer = ''
-        text_encoders = []
-        control = []
-
-    for raw in config.splitlines():
-        stripped = raw.strip()
-        if not stripped or stripped.startswith(('#', '\\', '{%', '{{')):
-            continue
-        if stripped.startswith('--'):
-            name, _, value = stripped.partition(' ')
-            if name == '--model-type':
-                model_type = value.split()[0] if value else ''
-            elif name == '--transformer':
-                transformer = value
-            elif name == '--text-encoders':
-                text_encoders.append(value)
-            elif name == '--control-loras':
-                control.append(value)
-            continue
-        finish()
-        head, _, rest = stripped.partition(' ')
-        model_path = head
-        if '--model-type' in rest:
-            model_type = rest.split('--model-type', 1)[1].split()[0]
-    finish()
-    return kinds
-
-
-def memory_draft(request: str, editor: str | None,
-                 machine: tuple[bool, float, bool, bool] | None) -> str:
-    """
-    The exact flags for the model this request is writing, placed after the examples
-    so the first draft copies them instead of the example's memory ``{% if %}``.
-    """
-    if machine is None:
-        machine = machine_state()
-    cuda, gib, bitsandbytes, sdnq = machine
-    kinds = _request_kinds(request) or _config_kinds(editor or '')
-    rows = []
-    for kind in kinds:
-        spec = _memory_spec(kind, cuda, gib, bitsandbytes, sdnq)
-        if spec is None:
-            continue
-        flags = _spec_text(spec)
-        label = _KIND_LABEL.get(kind, kind)
-        if not flags or flags == 'no offload and no quantizer':
-            rows.append(f'- {label}: do not add --quantizer or an offload flag.')
-        elif spec.forbid_quantizer:
-            rows.append(f'- {label}: write {flags}. Do not pass --quantizer.')
-        else:
-            rows.append(f'- {label}: write {flags}.')
-    if not rows:
-        return ''
-    return (
-        'Memory flags for this request. Write each flag as its own line under the model path. '
-        'Do not copy the example memory block: no total_memory, no \\setp gpu_memory_gib, '
-        'no {% if have_cuda() %}, no \\set offload, no \\set optimization, '
-        'and no {{ offload }} or {{ optimization }} on the --model-type line. '
-        f'This GPU has {gib:.1f} GiB.\n' + '\n'.join(rows))
 
 
 def _offload_ok(required: str | None, sequential: bool, cpu: bool, group: bool) -> bool:
@@ -1389,49 +1289,107 @@ def memory_problem(model_type: str, model_path: str, *,
             f'Write {_spec_text(spec)} on that invocation.')
 
 
+# Representative GiB for each tier. 48 stands for 32, 48, and 80 GiB cards,
+# which take the same branch as any GPU above 24 GiB.
+_GPU_TIERS = (
+    (8.0, '8 GiB'),
+    (12.0, '12 GiB'),
+    (16.0, '16 GiB'),
+    (24.0, '24 GiB'),
+    (48.0, '32 GiB and above'),
+)
+
+
+def _tier_name(gib: float) -> str:
+    """The consumer or large tier a GPU's GiB uses."""
+    if gib <= 8:
+        return '8 GiB'
+    if gib <= 12:
+        return '12 GiB'
+    if gib <= 16:
+        return '16 GiB'
+    if gib <= 24:
+        return '24 GiB'
+    return '32 GiB and above'
+
+
+def _tier_flags(kind: str, cuda: bool, bitsandbytes: bool, sdnq: bool, note: str = '') -> str:
+    """One model's flags at every GPU tier, with identical neighbors joined."""
+    grouped: list[tuple[list[str], str]] = []
+    for gib, label in _GPU_TIERS:
+        spec = _memory_spec(kind, cuda, gib, bitsandbytes, sdnq)
+        text = _spec_text(spec) if spec is not None else ''
+        if note and 'quantizer' not in text:
+            text = f'{text}. {note}' if text else note
+        if grouped and grouped[-1][1] == text:
+            grouped[-1][0].append(label)
+        else:
+            grouped.append(([label], text))
+    if len(grouped) == 1:
+        return f'  every tier: {grouped[0][1]}'
+    lines = []
+    for labels, text in grouped:
+        lines.append(f'  {", ".join(labels)}: {text}')
+    return '\n'.join(lines)
+
+
 def offload_plan(cuda: bool, gib: float, bitsandbytes: bool, sdnq: bool) -> str:
     """
-    Concrete memory flags for this computer, one row per model family.
+    Memory flags for every model at each consumer tier and on large GPUs.
 
-    Each row is the branch the examples take at this memory size. A prequantized
+    The flags are the branch the examples take at that size. A prequantized
     transformer keeps its offload and may quantize only the text encoder.
     """
-    def row(kind: str) -> str:
-        spec = _memory_spec(kind, cuda, gib, bitsandbytes, sdnq)
-        return _spec_text(spec) if spec is not None else ''
+    def block(heading: str, kind: str, note: str = '') -> str:
+        return f'- {heading}\n{_tier_flags(kind, cuda, bitsandbytes, sdnq, note)}'
 
-    zimage_sdnq = row('zimage-sdnq')
-    if 'quantizer' not in zimage_sdnq:
-        zimage_sdnq += '. Do not pass --quantizer'
     lines = [
-        '- krea2, wan, wan-animate, wan-animate-2, ltx2, hyvideo-15, motif-video, '
-        'kandinsky5-image, kandinsky5-video, hyimage-21, hyimage-21-refiner, qwen-image-21, '
-        f'if, ifs, ifs-img2img: {row("sequential")}. No quantizer, including a GGUF or FP8 file.',
-        f'- ltx-video, full checkpoint: {row("ltx-full")}. No quantizer.',
-        f'- ltx-video, prequantized transformer: {row("ltx-gguf")}. No quantizer.',
-        f'- s-cascade: {row("cascade")}. No quantizer.',
-        '- hydit: no quantizer and no offload.',
-        '- sd, pix2pix, sdxl, sdxl-pix2pix, upscaler-x2, upscaler-x4: no quantizer. '
-        '--model-cpu-offload only when the closest example uses it.',
-        f'- kolors: {row("kolors")}.',
-        f'- sd3, sd3-pix2pix, full checkpoint: {row("sd3-full")}.',
-        f'- sd3, prequantized transformer: {row("sd3-pre")}.',
-        f'- flux, flux-fill, flux-kontext, full checkpoint: {row("flux-full")}.',
-        f'- flux, flux-fill, flux-kontext, control lora: {row("flux-control")}.',
-        f'- flux, flux-fill, flux-kontext, GGUF transformer: {row("flux-gguf")}.',
-        f'- flux, flux-fill, flux-kontext, FP8 or Comfy transformer: {row("flux-comfy")}. No quantizer.',
-        f'- flux2 dev, flux2 klein 9b, flux2-klein-kv, full checkpoint: {row("flux2-heavy")}.',
-        f'- flux2 klein 4b, full checkpoint: {row("klein4-full")}.',
-        f'- flux2 dev, prequantized transformer: {row("flux2-pre-dev")}.',
-        '- flux2 klein 4b, flux2 klein 9b, flux2-klein-kv, prequantized transformer: '
-        f'{row("flux2-pre-klein")}.',
-        '- flux2, transformer and text encoder both already quantized: --model-cpu-offload. No quantizer.',
-        f'- qwen-image, qwen-image-edit, qwen-image-layered, full checkpoint: {row("qwen-full")}.',
-        '- qwen-image, qwen-image-edit, qwen-image-layered, prequantized transformer: '
-        f'{row("qwen-pre")}.',
-        f'- z-image, full checkpoint: {row("zimage-full")}.',
-        f'- z-image, prequantized transformer: {row("zimage-pre")}.',
-        f'- z-image, SDNQ checkpoint: {zimage_sdnq}.',
+        'GPU tiers: 8 GiB, 12 GiB, 16 GiB, and 24 GiB are consumer cards. '
+        '32 GiB and above covers 32, 48, and 80 GiB cards.',
+        f'This computer has {gib:.1f} GiB, the {_tier_name(gib)} tier. Write that tier\'s flags.',
+        'The user did not name an offload or a quantizer: use the full-checkpoint line.',
+        'The user asked for a GGUF, FP8, FP4, NVFP4, INT8, or Q4 transformer and left '
+        'the text encoder as the repository default: use the prequantized line. '
+        'Do not add --quantizer unless that line includes one.',
+        'The user asked for both the transformer and the text encoder to be already '
+        'quantized, for example Q4 GGUF for both: use the both-quantized line. '
+        'Write those files and the offload on that line. Do not pass --quantizer.',
+        'The user named --model-sequential-offload, --model-cpu-offload, or '
+        '--model-group-offload: write the flag they named. Still follow the quantizer '
+        'part of the matching line unless they also named a quantizer or a quantized file.',
+        'The user named a quantizer such as bnb or sdnq: write that quantizer, and still '
+        'write the offload from the matching line unless they also named an offload.',
+        block('krea2, quantized transformer and quantized text encoder', 'krea2-packed', 'No quantizer.'),
+        block(
+            'krea2 otherwise, and wan, wan-animate, wan-animate-2, ltx2, hyvideo-15, '
+            'motif-video, kandinsky5-image, kandinsky5-video, hyimage-21, '
+            'hyimage-21-refiner, qwen-image-21, if, ifs, ifs-img2img',
+            'sequential', 'No quantizer, including a GGUF or FP8 file.'),
+        block('ltx-video, full checkpoint', 'ltx-full', 'No quantizer.'),
+        block('ltx-video, prequantized transformer', 'ltx-gguf', 'No quantizer.'),
+        block('s-cascade', 'cascade', 'No quantizer.'),
+        '- hydit\n  every tier: no quantizer and no offload.',
+        '- sd, pix2pix, sdxl, sdxl-pix2pix, upscaler-x2, upscaler-x4\n'
+        '  every tier: no quantizer. --model-cpu-offload only when the closest example uses it.',
+        block('kolors', 'kolors'),
+        block('sd3, sd3-pix2pix, full checkpoint', 'sd3-full'),
+        block('sd3, prequantized transformer', 'sd3-pre'),
+        block('flux, flux-fill, flux-kontext, full checkpoint', 'flux-full'),
+        block('flux, flux-fill, flux-kontext, control lora', 'flux-control'),
+        block('flux, flux-fill, flux-kontext, GGUF transformer', 'flux-gguf'),
+        block('flux, flux-fill, flux-kontext, FP8 or Comfy transformer', 'flux-comfy', 'No quantizer.'),
+        block('flux2 dev, flux2 klein 9b, flux2-klein-kv, full checkpoint', 'flux2-heavy'),
+        block('flux2 klein 4b, full checkpoint', 'klein4-full'),
+        block('flux2 dev, prequantized transformer', 'flux2-pre-dev'),
+        block(
+            'flux2 klein 4b, flux2 klein 9b, flux2-klein-kv, prequantized transformer',
+            'flux2-pre-klein'),
+        block('flux2, transformer and text encoder both already quantized', 'packed-cpu', 'No quantizer.'),
+        block('qwen-image, qwen-image-edit, qwen-image-layered, full checkpoint', 'qwen-full'),
+        block('qwen-image, qwen-image-edit, qwen-image-layered, prequantized transformer', 'qwen-pre'),
+        block('z-image, full checkpoint', 'zimage-full', 'Do not pass --quantizer'),
+        block('z-image, prequantized transformer', 'zimage-pre'),
+        block('z-image, SDNQ checkpoint', 'zimage-sdnq', 'Do not pass --quantizer'),
     ]
     return '\n'.join(lines)
 
@@ -1462,9 +1420,9 @@ def machine_report() -> str:
         '### machine\n'
         f'Default device: {device}. CUDA: {cuda}. XPU: {_builtins.have_xpu()}. '
         f'MPS: {_builtins.have_mps()}.\n'
-        f'Accelerator memory: {gib:.1f} GiB.\n'
+        f'Accelerator memory: {gib:.1f} GiB. This is the {_tier_name(gib)} tier.\n'
         f'Quantizers installed: {", ".join(quantizers) if quantizers else "none"}.\n'
-        'Copy that row\'s flags onto every invocation of that family. '
+        'Write the flags for this tier. Each flag is its own line. '
         'Do not write a total_memory check. '
         'An invocation that leaves those flags off does not fit this GPU.\n'
         f'{plan}'

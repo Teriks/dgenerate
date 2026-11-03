@@ -1095,7 +1095,7 @@ def estimate_pipeline_cache_footprint(
             include_directories=include_directories,
             auth_token=auth_token,
             local_files_only=local_files_only,
-            sentencepiece=_enums.model_type_is_floyd(model_type)
+            sentencepiece=_enums.model_type_is_floyd_family(model_type)
         )
     else:
         usage = _util.estimate_model_memory_use(
@@ -1112,7 +1112,7 @@ def estimate_pipeline_cache_footprint(
             include_directories=include_directories,
             auth_token=auth_token,
             local_files_only=local_files_only,
-            sentencepiece=_enums.model_type_is_floyd(model_type)
+            sentencepiece=_enums.model_type_is_floyd_family(model_type)
         )
 
     if image_encoder_uri:
@@ -2827,9 +2827,9 @@ def diffusion_transformer_class(model_type: _enums.ModelType):
     """
     Transformer class for a model type that uses one, or ``None``.
     """
-    if _enums.model_type_is_sd3(model_type):
+    if _enums.model_type_is_sd3_family(model_type):
         return diffusers.SD3Transformer2DModel
-    if _enums.model_type_is_flux(model_type):
+    if _enums.model_type_is_flux_family(model_type):
         return diffusers.FluxTransformer2DModel
     if _enums.model_type_is_flux2_family(model_type):
         return diffusers.Flux2Transformer2DModel
@@ -2837,17 +2837,15 @@ def diffusion_transformer_class(model_type: _enums.ModelType):
         return diffusers.ZImageTransformer2DModel
     if _enums.model_type_is_qwen_image_family(model_type):
         return diffusers.QwenImageTransformer2DModel
-    if model_type == _enums.ModelType.QWEN_IMAGE_21:
+    if _enums.model_type_is_qwen_image_21(model_type):
         return diffusers.QwenImage21Transformer2DModel
-    if model_type == _enums.ModelType.KREA2:
+    if _enums.model_type_is_krea2(model_type):
         return diffusers.Krea2Transformer2DModel
     if _enums.model_type_is_hydit(model_type):
         return diffusers.HunyuanDiT2DModel
     if _enums.model_type_is_hyimage_21_family(model_type):
         return diffusers.HunyuanImageTransformer2DModel
-    if model_type in {
-            _enums.ModelType.KANDINSKY5_IMAGE,
-            _enums.ModelType.KANDINSKY5_VIDEO}:
+    if (_enums.model_type_is_kandinsky5_image(model_type) or _enums.model_type_is_kandinsky5_video(model_type)):
         return diffusers.Kandinsky5Transformer3DModel
     return None
 
@@ -2903,7 +2901,7 @@ def _flow_image_pipeline_class(
     ``model_class_name`` is ``model_index.json`` ``_class_name``. It selects
     Flux.2 Klein versus full Flux.2. Klein stays ``--model-type flux2``.
     """
-    if not _enums.model_type_is_flow_image(model_type):
+    if not _enums.model_type_is_flow_image_family(model_type):
         return None
 
     model_type_string = _enums.get_model_type_string(model_type)
@@ -2918,7 +2916,7 @@ def _flow_image_pipeline_class(
         raise UnsupportedPipelineConfigError(
             f'--model-type {model_type_string} does not use a UNet. Use --transformer.')
 
-    if model_type == _enums.ModelType.QWEN_IMAGE_21:
+    if _enums.model_type_is_qwen_image_21(model_type):
         if controlnet_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type qwen-image-21 does not support --control-nets.')
@@ -2928,14 +2926,14 @@ def _flow_image_pipeline_class(
                 'img2img or inpaint pipeline.')
         return diffusers.QwenImage21Pipeline
 
-    if model_type == _enums.ModelType.KREA2:
+    if _enums.model_type_is_krea2(model_type):
         if controlnet_uris:
             raise UnsupportedPipelineConfigError('--model-type krea2 does not support --control-nets.')
         if pipeline_type != _enums.PipelineType.TXT2IMG and not help_mode:
             raise UnsupportedPipelineConfigError('--model-type krea2 supports text-to-image only.')
         return diffusers.Krea2Pipeline
 
-    if model_type == _enums.ModelType.HYIMAGE_21_REFINER:
+    if _enums.model_type_is_hyimage_21_refiner(model_type):
         if controlnet_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type hyimage-21-refiner does not support --control-nets.')
@@ -2945,7 +2943,7 @@ def _flow_image_pipeline_class(
                 'via --image-seeds (no img2img strength).')
         return diffusers.HunyuanImageRefinerPipeline
 
-    if model_type == _enums.ModelType.HYIMAGE_21:
+    if _enums.model_type_is_hyimage_21(model_type):
         if controlnet_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type hyimage-21 does not support --control-nets.')
@@ -2954,7 +2952,7 @@ def _flow_image_pipeline_class(
                 '--model-type hyimage-21 supports text-to-image only.')
         return diffusers.HunyuanImagePipeline
 
-    if model_type == _enums.ModelType.KANDINSKY5_IMAGE:
+    if _enums.model_type_is_kandinsky5_image(model_type):
         if controlnet_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type kandinsky5-image does not support --control-nets.')
@@ -3077,18 +3075,18 @@ _MODEL_INDEX_CHECKS = [
     (_enums.model_type_is_hyimage_21, ('^HunyuanImagePipeline', 'HunyuanImage 2.1')),
     (_enums.model_type_is_hydit, ('^HunyuanDiT', 'Hunyuan-DiT')),
     (_enums.model_type_is_kandinsky5_image, ('^Kandinsky5', 'Kandinsky 5.0 Image')),
-    (_enums.model_type_is_flux, ('^Flux(?!2)', 'Flux')),
-    (_enums.model_type_is_sd3, ('^StableDiffusion3.*', 'Stable Diffusion 3')),
-    (_enums.model_type_is_sdxl, ('^StableDiffusionXL.*', 'Stable Diffusion XL')),
-    (_enums.model_type_is_sd15, ('^StableDiffusion[^X3].*', 'Stable Diffusion')),
-    (_enums.model_type_is_sd2, ('^StableDiffusion[^X3].*', 'Stable Diffusion')),
-    (_enums.model_type_is_s_cascade, ('^StableCascade.*', 'Stable Cascade')),
+    (_enums.model_type_is_flux_family, ('^Flux(?!2)', 'Flux')),
+    (_enums.model_type_is_sd3_family, ('^StableDiffusion3.*', 'Stable Diffusion 3')),
+    (_enums.model_type_is_sdxl_family, ('^StableDiffusionXL.*', 'Stable Diffusion XL')),
+    (_enums.model_type_is_sd15_family, ('^StableDiffusion[^X3].*', 'Stable Diffusion')),
+    (_enums.model_type_is_sd2_family, ('^StableDiffusion[^X3].*', 'Stable Diffusion')),
+    (_enums.model_type_is_s_cascade_family, ('^StableCascade.*', 'Stable Cascade')),
     (_enums.model_type_is_kolors, ('^Kolors.*', 'Kolors')),
-    (_enums.model_type_is_floyd, ('^IF.*', 'Deep Floyd')),
+    (_enums.model_type_is_floyd_family, ('^IF.*', 'Deep Floyd')),
 ]
 
 _MODEL_INDEX_FALLBACK_CHECKS = [
-    (lambda model_type: model_type == _enums.ModelType.SD, '^LatentConsistency.*')
+    (lambda model_type: _enums.model_type_is_sd(model_type), '^LatentConsistency.*')
 ]
 
 _REDIRECTED_FLOW_CLASSES = (
@@ -3187,7 +3185,7 @@ def get_pipeline_class(
                 'with --t2i-adapters.')
 
     # Flux model restrictions
-    if _enums.model_type_is_flux(model_type):
+    if _enums.model_type_is_flux_family(model_type):
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Flux --model-type values are not compatible with --t2i-adapters.')
@@ -3198,14 +3196,14 @@ def get_pipeline_class(
             raise UnsupportedPipelineConfigError(
                 'Flux --model-type values do not support multiple --ip-adapters.')
 
-    if model_type == _enums.ModelType.FLUX_FILL:
+    if _enums.model_type_is_flux_fill(model_type):
         if pipeline_type != _enums.PipelineType.INPAINT:
             raise UnsupportedPipelineConfigError(
                 'Flux fill --model-type value does not support anything but inpaint mode.'
             )
 
     # Deep Floyd model restrictions
-    if _enums.model_type_is_floyd(model_type):
+    if _enums.model_type_is_floyd_family(model_type):
         if controlnet_uris:
             raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --control-nets.')
@@ -3220,7 +3218,7 @@ def get_pipeline_class(
                 'Deep Floyd --model-type values are not compatible with --image-encoder.')
 
     # Stable Cascade model restrictions
-    if _enums.model_type_is_s_cascade(model_type):
+    if _enums.model_type_is_s_cascade_family(model_type):
         if controlnet_uris:
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --control-nets.')
@@ -3232,7 +3230,7 @@ def get_pipeline_class(
                 'Stable Cascade --model-type values are not compatible with --vae.')
 
     # Torch SD3 restrictions
-    if _enums.model_type_is_sd3(model_type):
+    if _enums.model_type_is_sd3_family(model_type):
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type sd3 is not compatible with --t2i-adapters.')
@@ -3258,11 +3256,11 @@ def get_pipeline_class(
                 '--model-type hydit does not support perturbed attention guidance (--pag*).')
 
     if transformer_uri:
-        if not _enums.model_type_is_sd3(model_type) \
-                and not _enums.model_type_is_flux(model_type) \
-                and not _enums.model_type_is_flow_image(model_type) \
+        if not _enums.model_type_is_sd3_family(model_type) \
+                and not _enums.model_type_is_flux_family(model_type) \
+                and not _enums.model_type_is_flow_image_family(model_type) \
                 and not _enums.model_type_is_hydit(model_type) \
-                and not _enums.model_type_is_video(model_type):
+                and not _enums.model_type_is_video_family(model_type):
             raise UnsupportedPipelineConfigError(
                 '--transformer is only supported for --model-type sd3, sd3-pix2pix, flux, flux-fill, '
                 'flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, '
@@ -3286,12 +3284,12 @@ def get_pipeline_class(
             raise UnsupportedPipelineConfigError(
                 '--control-loras and --t2i-adapters cannot be used together.')
 
-    if image_encoder_uri and not ip_adapter_uris and model_type != _enums.ModelType.S_CASCADE:
+    if image_encoder_uri and not ip_adapter_uris and not _enums.model_type_is_s_cascade(model_type):
         raise UnsupportedPipelineConfigError(
             '--image-encoder cannot be specified without --ip-adapters if --model-type is not s-cascade.')
 
     # Pix2Pix model restrictions
-    is_pix2pix = _enums.model_type_is_pix2pix(model_type)
+    is_pix2pix = _enums.model_type_is_pix2pix_family(model_type)
 
     if is_pix2pix:
         if controlnet_uris:
@@ -3300,13 +3298,13 @@ def get_pipeline_class(
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Pix2Pix --model-type values are not compatible with --t2i-adapters.')
-        if image_encoder_uri and model_type != _enums.ModelType.PIX2PIX:
+        if image_encoder_uri and not _enums.model_type_is_pix2pix(model_type):
             raise UnsupportedPipelineConfigError(
                 'Only Pix2Pix --model-type pix2pix is compatible '
                 'with --image-encoder. Pix2Pix SDXL is not supported.')
 
-    is_sdxl = _enums.model_type_is_sdxl(model_type)
-    is_sd3 = _enums.model_type_is_sd3(model_type)
+    is_sdxl = _enums.model_type_is_sdxl_family(model_type)
+    is_sd3 = _enums.model_type_is_sd3_family(model_type)
 
     sdxl_controlnet_union = False
     parsed_control_net_uris = None
@@ -3352,7 +3350,7 @@ def get_pipeline_class(
     )
     if flow_pipeline_class is not None:
         pipeline_class = flow_pipeline_class
-    elif _enums.model_type_is_upscaler(model_type):
+    elif _enums.model_type_is_upscaler_family(model_type):
         if controlnet_uris:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models are not compatible with --control-nets.')
@@ -3368,7 +3366,7 @@ def get_pipeline_class(
 
         pipeline_class = (
             diffusers.StableDiffusionUpscalePipeline
-            if model_type == _enums.ModelType.UPSCALER_X4
+            if _enums.model_type_is_upscaler_x4(model_type)
             else diffusers.StableDiffusionLatentUpscalePipeline
         )
     else:
@@ -3388,37 +3386,37 @@ def get_pipeline_class(
                         # noinspection PyUnusedLocal
                         pipeline_class = diffusers.StableDiffusionInstructPix2PixPipeline
 
-            if model_type == _enums.ModelType.FLUX_KONTEXT:
+            if _enums.model_type_is_flux_kontext(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Flux Kontext models only work in img2img / inpaint mode and cannot work without --image-seeds.'
                 )
 
-            if model_type == _enums.ModelType.FLUX_FILL:
+            if _enums.model_type_is_flux_fill(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Flux Fill models only work in inpaint mode and cannot work without --image-seeds.'
                 )
 
-            if model_type == _enums.ModelType.IF:
+            if _enums.model_type_is_floyd_if(model_type):
                 pipeline_class = diffusers.IFPipeline
-            elif model_type == _enums.ModelType.IFS:
+            elif _enums.model_type_is_ifs(model_type):
                 if not help_mode:
                     raise UnsupportedPipelineConfigError(
                         'Deep Floyd IF super-resolution (IFS) only works in '
                         'img2img mode and cannot work without --image-seeds.')
                 else:
                     pipeline_class = diffusers.IFSuperResolutionPipeline
-            elif model_type == _enums.ModelType.S_CASCADE:
+            elif _enums.model_type_is_s_cascade(model_type):
                 pipeline_class = diffusers.StableCascadePriorPipeline
-            elif model_type == _enums.ModelType.S_CASCADE_DECODER:
+            elif _enums.model_type_is_s_cascade_decoder(model_type):
                 pipeline_class = diffusers.StableCascadeDecoderPipeline
-            elif model_type == _enums.ModelType.FLUX:
+            elif _enums.model_type_is_flux(model_type):
                 if controlnet_uris:
                     pipeline_class = diffusers.FluxControlNetPipeline
                 elif control_lora_uris:
                     pipeline_class = diffusers.FluxControlPipeline
                 else:
                     pipeline_class = diffusers.FluxPipeline
-            elif model_type == _enums.ModelType.SD3:
+            elif _enums.model_type_is_sd3(model_type):
                 if pag:
                     pipeline_class = diffusers.StableDiffusion3PAGPipeline
                 elif controlnet_uris:
@@ -3434,7 +3432,7 @@ def get_pipeline_class(
                     pipeline_class = _hydit.HunyuanDiTControlNetPipeline
                 else:
                     pipeline_class = _hydit.HunyuanDiTPipeline
-            elif model_type == _enums.ModelType.KOLORS:
+            elif _enums.model_type_is_kolors(model_type):
                 if controlnet_uris:
                     if pag:
                         raise UnsupportedPipelineConfigError(
@@ -3498,7 +3496,7 @@ def get_pipeline_class(
                     raise UnsupportedPipelineConfigError(
                         'Pix2Pix models are not compatible with --control-nets.')
 
-            if model_type == _enums.ModelType.FLUX_FILL:
+            if _enums.model_type_is_flux_fill(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Flux Fill models only work in inpaint mode.'
                 )
@@ -3513,31 +3511,31 @@ def get_pipeline_class(
                 else:
                     # noinspection PyUnusedLocal
                     pipeline_class = diffusers.StableDiffusionInstructPix2PixPipeline
-            elif model_type == _enums.ModelType.IF:
+            elif _enums.model_type_is_floyd_if(model_type):
                 pipeline_class = diffusers.IFImg2ImgPipeline
-            elif model_type == _enums.ModelType.IFS:
+            elif _enums.model_type_is_ifs(model_type):
                 pipeline_class = diffusers.IFSuperResolutionPipeline
-            elif model_type == _enums.ModelType.IFS_IMG2IMG:
+            elif _enums.model_type_is_ifs_img2img(model_type):
                 pipeline_class = diffusers.IFImg2ImgSuperResolutionPipeline
-            elif model_type == _enums.ModelType.S_CASCADE:
+            elif _enums.model_type_is_s_cascade(model_type):
                 pipeline_class = diffusers.StableCascadePriorPipeline
-            elif model_type == _enums.ModelType.S_CASCADE_DECODER:
+            elif _enums.model_type_is_s_cascade_decoder(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade decoder models do not support img2img.')
-            elif model_type == _enums.ModelType.FLUX:
+            elif _enums.model_type_is_flux(model_type):
                 if controlnet_uris:
                     pipeline_class = diffusers.FluxControlNetImg2ImgPipeline
                 elif control_lora_uris:
                     pipeline_class = diffusers.FluxControlImg2ImgPipeline
                 else:
                     pipeline_class = diffusers.FluxImg2ImgPipeline
-            elif model_type == _enums.ModelType.FLUX_KONTEXT:
+            elif _enums.model_type_is_flux_kontext(model_type):
                 if controlnet_uris:
                     raise UnsupportedPipelineConfigError(
                         '--model-type flux-kontext does not support ControlNet models.'
                     )
                 pipeline_class = diffusers.FluxKontextPipeline
-            elif model_type == _enums.ModelType.SD3:
+            elif _enums.model_type_is_sd3(model_type):
                 if controlnet_uris:
                     raise UnsupportedPipelineConfigError(
                         '--model-type sd3 does not support img2img mode with ControlNet models.')
@@ -3546,7 +3544,7 @@ def get_pipeline_class(
                 else:
                     pipeline_class = diffusers.StableDiffusion3Img2ImgPipeline
 
-            elif model_type == _enums.ModelType.KOLORS:
+            elif _enums.model_type_is_kolors(model_type):
                 if controlnet_uris:
                     if pag:
                         raise UnsupportedPipelineConfigError(
@@ -3598,10 +3596,10 @@ def get_pipeline_class(
 
         elif pipeline_type == _enums.PipelineType.INPAINT:
 
-            if _enums.model_type_is_s_cascade(model_type):
+            if _enums.model_type_is_s_cascade_family(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade model types do not support inpainting.')
-            if _enums.model_type_is_upscaler(model_type):
+            if _enums.model_type_is_upscaler_family(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Diffusion upscaler model types do not support inpainting.')
             if _enums.model_type_is_hydit(model_type) and not help_mode:
@@ -3621,28 +3619,28 @@ def get_pipeline_class(
                 else:
                     # noinspection PyUnusedLocal
                     pipeline_class = dgenerate.extras.ultraedit.StableDiffusionInstructPix2PixPipeline
-            elif model_type == _enums.ModelType.FLUX:
+            elif _enums.model_type_is_flux(model_type):
                 if controlnet_uris:
                     pipeline_class = diffusers.FluxControlNetInpaintPipeline
                 elif control_lora_uris:
                     pipeline_class = diffusers.FluxControlInpaintPipeline
                 else:
                     pipeline_class = diffusers.FluxInpaintPipeline
-            elif model_type == _enums.ModelType.FLUX_FILL:
+            elif _enums.model_type_is_flux_fill(model_type):
                 if controlnet_uris:
                     raise UnsupportedPipelineConfigError(
                         '--model-type flux-fill does not support ControlNet models.')
                 pipeline_class = diffusers.FluxFillPipeline
-            elif model_type == _enums.ModelType.FLUX_KONTEXT:
+            elif _enums.model_type_is_flux_kontext(model_type):
                 if controlnet_uris:
                     raise UnsupportedPipelineConfigError(
                         '--model-type flux-kontext does not support ControlNet models.')
                 pipeline_class = diffusers.FluxKontextInpaintPipeline
-            elif model_type == _enums.ModelType.IF:
+            elif _enums.model_type_is_floyd_if(model_type):
                 pipeline_class = diffusers.IFInpaintingPipeline
-            elif model_type == _enums.ModelType.IFS:
+            elif _enums.model_type_is_ifs(model_type):
                 pipeline_class = diffusers.IFInpaintingSuperResolutionPipeline
-            elif model_type == _enums.ModelType.SD3:
+            elif _enums.model_type_is_sd3(model_type):
                 if controlnet_uris:
                     return diffusers.StableDiffusion3ControlNetInpaintingPipeline
                 if pag:
@@ -3651,7 +3649,7 @@ def get_pipeline_class(
                     )
 
                 pipeline_class = diffusers.StableDiffusion3InpaintPipeline
-            elif model_type == _enums.ModelType.KOLORS:
+            elif _enums.model_type_is_kolors(model_type):
                 if controlnet_uris:
                     if pag:
                         raise UnsupportedPipelineConfigError(
@@ -4082,7 +4080,7 @@ def _create_diffusion_pipeline(
             raise UnsupportedPipelineConfigError(error)
         return True
 
-    if _enums.model_type_is_flow_image(model_type):
+    if _enums.model_type_is_flow_image_family(model_type):
         # The text encoder has to be registered before from_pretrained.
         # The cast hack follows the transformer, which is the published SDNQ Turbo weight.
         if _reject_repeated_sdnq(model_path, 'text_encoder', revision, None):
@@ -4549,9 +4547,9 @@ def _create_diffusion_pipeline(
     # Load UNet
     if not unet_override:
         unet_parameter = 'unet'
-        if model_type == _enums.ModelType.S_CASCADE:
+        if _enums.model_type_is_s_cascade(model_type):
             unet_parameter = 'prior'
-        elif model_type == _enums.ModelType.S_CASCADE_DECODER:
+        elif _enums.model_type_is_s_cascade_decoder(model_type):
             unet_parameter = 'decoder'
 
         unet_class = diffusers.UNet2DConditionModel if unet_parameter == 'unet' \
@@ -4660,7 +4658,7 @@ def _create_diffusion_pipeline(
     if image_encoder_uri is not None and not image_encoder_override:
         parsed_image_encoder_uri = _uris.ImageEncoderUri.parse(image_encoder_uri)
 
-        if _enums.model_type_is_sd3(model_type):
+        if _enums.model_type_is_sd3_family(model_type):
             # image encoder does not participate in sequential offloading for SD3
             no_cache_image_encoder = model_cpu_offload or model_group_offload
         else:
@@ -4673,7 +4671,7 @@ def _create_diffusion_pipeline(
             no_cache=no_cache_image_encoder,
             image_encoder_class=
             _models.SiglipImageEncoder
-            if _enums.model_type_is_sd3(model_type) else
+            if _enums.model_type_is_sd3_family(model_type) else
             transformers.CLIPVisionModelWithProjection
         )
 
@@ -4799,9 +4797,9 @@ def _create_diffusion_pipeline(
 
         if isinstance(controlnets, list):
             # not handled internally for whatever reason like the other pipelines
-            if _enums.model_type_is_sd3(model_type):
+            if _enums.model_type_is_sd3_family(model_type):
                 creation_kwargs['controlnet'] = diffusers.SD3MultiControlNetModel(controlnets)
-            elif _enums.model_type_is_flux(model_type):
+            elif _enums.model_type_is_flux_family(model_type):
                 creation_kwargs['controlnet'] = diffusers.FluxMultiControlNetModel(controlnets)
             elif _enums.model_type_is_qwen_image(model_type):
                 creation_kwargs['controlnet'] = diffusers.QwenImageMultiControlNetModel(controlnets)
@@ -4813,7 +4811,7 @@ def _create_diffusion_pipeline(
             creation_kwargs['controlnet'] = controlnets
 
     if (control_lora_uris
-            and model_type in {_enums.ModelType.SD, _enums.ModelType.SDXL}
+            and (_enums.model_type_is_sd(model_type) or _enums.model_type_is_sdxl(model_type))
             and 'controlnet' not in creation_kwargs):
         if 'controlnet' in cached_component_paths:
             # --quantizer leaves ControlNet full precision. Pass controlnet in
@@ -4847,12 +4845,12 @@ def _create_diffusion_pipeline(
                 auth_token=auth_token,
                 local_files_only=local_files_only)
 
-    if _enums.model_type_is_floyd(model_type):
+    if _enums.model_type_is_floyd_family(model_type):
         creation_kwargs['watermarker'] = None
 
     if not safety_checker and \
-            (_enums.model_type_is_sd15(model_type) or
-             _enums.model_type_is_floyd(model_type)) and not safety_checker_override:
+            (_enums.model_type_is_sd15_family(model_type) or
+             _enums.model_type_is_floyd_family(model_type)) and not safety_checker_override:
         creation_kwargs['safety_checker'] = None
 
     creation_kwargs.update(extra_modules)
@@ -4943,7 +4941,7 @@ def _create_diffusion_pipeline(
             _handle_generic_pipeline_load_failure(e)
 
     if hasattr(pipeline, 'vae') and \
-            _enums.model_type_is_sd3(model_type):
+            _enums.model_type_is_sd3_family(model_type):
         # patch to enable tiling at all resolutions
         if pipeline.vae.quant_conv is None:
             pipeline.vae.quant_conv = lambda x: x
@@ -4982,7 +4980,7 @@ def _create_diffusion_pipeline(
         manual_quantizer_components - {'controlnet'})
     if not lora_disk_fuse and lora_targets_quantized and (
             lora_uris or (
-                control_lora_uris and model_type == _enums.ModelType.FLUX)):
+                control_lora_uris and _enums.model_type_is_flux(model_type))):
         _warn_quantized_lora_not_fused_to_disk()
     if lora_uris and attach_loras_now:
         for lora_uri in lora_uris:
@@ -4990,7 +4988,7 @@ def _create_diffusion_pipeline(
 
     flux_control_loaded = bool(
         control_lora_uris
-        and model_type == _enums.ModelType.FLUX
+        and _enums.model_type_is_flux(model_type)
         and not fused_before_quant)
     if flux_control_loaded:
         # Quantized runs keep the control LoRA active unless
@@ -5032,7 +5030,7 @@ def _create_diffusion_pipeline(
     # Safety Checker
 
     if not safety_checker_override:
-        if _enums.model_type_is_floyd(model_type):
+        if _enums.model_type_is_floyd_family(model_type):
             _set_floyd_safety_checker(pipeline, safety_checker)
         else:
             _set_sd_safety_checker(pipeline, safety_checker)
@@ -5047,7 +5045,7 @@ def _create_diffusion_pipeline(
     # (meta tensor errors when accelerate hooks wrap CLIP).
 
     if (sequential_cpu_offload or model_group_offload) and (
-            (_enums.model_type_is_sd3(model_type) and 'image_encoder' in creation_kwargs)
+            (_enums.model_type_is_sd3_family(model_type) and 'image_encoder' in creation_kwargs)
             or hydit_ip_adapter_image_encoder is not None
             or (_enums.model_type_is_hydit(model_type) and ip_adapter_uris)):
         # The Diffusers list is a class attribute. Append would change every
@@ -5307,7 +5305,7 @@ def _get_component_cache_key(
     # one cached clone. The replacement --unet does change the clone.
     sd_control_clone = (
         component_name == 'controlnet'
-        and model_type in {_enums.ModelType.SD, _enums.ModelType.SDXL})
+        and (_enums.model_type_is_sd(model_type) or _enums.model_type_is_sdxl(model_type)))
     if sd_control_clone:
         lora_uris_for_cache = None
         lora_scale_for_cache = None
@@ -5323,7 +5321,7 @@ def _get_component_cache_key(
     control_part = ''
     if control_lora_uris and (
             sd_control_clone
-            or (component_name == 'transformer' and model_type == _enums.ModelType.FLUX)):
+            or (component_name == 'transformer' and _enums.model_type_is_flux(model_type))):
         control_part = f'{control_lora_uris}|{control_lora_fuse_scale}|'
     return f"{component_name}|{model_path}|{str(lora_uris_for_cache)}|{str(lora_scale_for_cache)}|" \
            f"{control_part}" \
@@ -5361,14 +5359,14 @@ def _components_cached_before_quantization(
     single_file = _hfhub.is_single_file_model_load(model_path)
     sd_control = bool(
         control_lora_uris
-        and model_type in {_enums.ModelType.SD, _enums.ModelType.SDXL})
+        and (_enums.model_type_is_sd(model_type) or _enums.model_type_is_sdxl(model_type)))
     weights_fused_before_quant = bool(
         (fuse_loras_before_quant and (lora_uris or control_lora_uris))
         or sd_control)
     fused_into_checkpoint = bool(
         fuse_loras_before_quant and (
             lora_uris
-            or (control_lora_uris and model_type == _enums.ModelType.FLUX)))
+            or (control_lora_uris and _enums.model_type_is_flux(model_type))))
     if fused_into_checkpoint:
         skip_unmodified_unet_cache = bool(
             sd_control and not lora_uris and not single_file)
@@ -5437,15 +5435,15 @@ def _get_quantizable_components(model_type: _enums.ModelType) -> list[str]:
     components = []
 
     # Add UNet or Transformer based on model type
-    if (_enums.model_type_is_sd3(model_type) or _enums.model_type_is_flux(model_type)
-            or _enums.model_type_is_flow_image(model_type)):
+    if (_enums.model_type_is_sd3_family(model_type) or _enums.model_type_is_flux_family(model_type)
+            or _enums.model_type_is_flow_image_family(model_type)):
         # For SD3 and Flux, single file checkpoints typically only contain the transformer
         # Text encoders are usually separate standard models that don't need conversion
         components.append('transformer')
     else:
         # For older models (SD1.5, SD2, SDXL), single files often contain UNet and text encoders
         components.append('unet')
-        if _enums.model_type_is_sdxl(model_type):
+        if _enums.model_type_is_sdxl_family(model_type):
             components.extend(['text_encoder', 'text_encoder_2'])
         else:
             components.append('text_encoder')
@@ -5477,7 +5475,7 @@ def _create_minimal_pipeline_for_component_extraction(
         # FluxControlPipeline loads the dev weights and accepts the control LoRA.
         # SD/SDXL stay on the base pipeline here so the UNet can be cloned before
         # the ControlNet pipeline, which requires that clone, is constructed.
-        control_lora_uris=control_lora_uris if model_type == _enums.ModelType.FLUX else None,
+        control_lora_uris=control_lora_uris if _enums.model_type_is_flux(model_type) else None,
         help_mode=True  # Allow creation even if pipeline_type doesn't match
     )
 
@@ -5566,28 +5564,28 @@ def _create_minimal_pipeline_for_component_extraction(
                 # bitsandbytes (Parameter without CB).
                 flow_encoder_name = None
                 if encoder_index and (
-                        _enums.model_type_is_flow_image(model_type) or single_file_pipeline_repo):
+                        _enums.model_type_is_flow_image_family(model_type) or single_file_pipeline_repo):
                     flow_entry = encoder_index.get(encoder_param)
                     if flow_entry and flow_entry[1]:
                         flow_encoder_name = flow_entry[1]
                 if flow_encoder_name:
                     encoder_name = flow_encoder_name
                 elif encoder_param == 'text_encoder':
-                    if _enums.model_type_is_sd3(model_type):
+                    if _enums.model_type_is_sd3_family(model_type):
                         encoder_name = 'CLIPTextModelWithProjection'
                     else:
                         encoder_name = 'CLIPTextModel'  # Default for most SD models
                 elif encoder_param == 'text_encoder_2':
-                    if _enums.model_type_is_sdxl(model_type):
+                    if _enums.model_type_is_sdxl_family(model_type):
                         encoder_name = 'CLIPTextModelWithProjection'
-                    elif _enums.model_type_is_sd3(model_type):
+                    elif _enums.model_type_is_sd3_family(model_type):
                         encoder_name = 'CLIPTextModelWithProjection'
-                    elif _enums.model_type_is_flux(model_type):
+                    elif _enums.model_type_is_flux_family(model_type):
                         encoder_name = 'CLIPTextModel'
                     else:
                         encoder_name = 'CLIPTextModel'
                 elif encoder_param == 'text_encoder_3':
-                    if _enums.model_type_is_sd3(model_type) or _enums.model_type_is_flux(model_type):
+                    if _enums.model_type_is_sd3_family(model_type) or _enums.model_type_is_flux_family(model_type):
                         encoder_name = 'T5EncoderModel'
                     else:
                         encoder_name = 'CLIPTextModel'
@@ -5622,7 +5620,7 @@ def _create_minimal_pipeline_for_component_extraction(
     # is not one of the components being written to the cache.
     manual_load_names = list(components_needed)
     if (control_lora_uris
-            and model_type in {_enums.ModelType.SD, _enums.ModelType.SDXL}
+            and (_enums.model_type_is_sd(model_type) or _enums.model_type_is_sdxl(model_type))
             and manual_component_uris
             and 'unet' in manual_component_uris
             and 'unet' not in manual_load_names):
@@ -5754,7 +5752,7 @@ def _create_minimal_pipeline_for_component_extraction(
     flux_control_loaded = False
     if control_lora_uris and _enums.model_type_supports_control_lora(model_type):
         fuse_scale = 1.0 if control_lora_fuse_scale is None else control_lora_fuse_scale
-        if model_type == _enums.ModelType.FLUX:
+        if _enums.model_type_is_flux(model_type):
             _load_flux_control_and_style_loras(
                 pipeline,
                 control_lora_uris,
@@ -5866,7 +5864,7 @@ def _cache_components_granular(
                     _messages.debug_log(f"Error extracting quantizer from {component} URI: {e}")
 
     sd_control_lora = bool(
-        control_lora_uris and model_type in {_enums.ModelType.SD, _enums.ModelType.SDXL})
+        control_lora_uris and (_enums.model_type_is_sd(model_type) or _enums.model_type_is_sdxl(model_type)))
     if sd_control_lora:
         controlnet_key = _get_component_cache_key(
             'controlnet', model_path, model_type, lora_uris, lora_fuse_scale,
@@ -5887,7 +5885,7 @@ def _cache_components_granular(
         return cached_component_paths, manual_quantizers
 
     # Create pipeline and extract needed components
-    if lora_uris or (control_lora_uris and model_type == _enums.ModelType.FLUX):
+    if lora_uris or (control_lora_uris and _enums.model_type_is_flux(model_type)):
         _messages.warning(
             f'Model "{model_path}" is having LoRAs '
             f'fused into specific components, that will then be cached on disk '
@@ -5932,7 +5930,7 @@ def _cache_components_granular(
             control_lora_fuse_scale=control_lora_fuse_scale
         )
 
-    if lora_uris or (control_lora_uris and model_type == _enums.ModelType.FLUX):
+    if lora_uris or (control_lora_uris and _enums.model_type_is_flux(model_type)):
         affected_components = tuple(dict.fromkeys((
             *cached_component_paths,
             *(component for component in components_to_load

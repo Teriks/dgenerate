@@ -106,6 +106,7 @@ class HfConfigsBuilder:
             #
             ### Model type: LTX
             "Lightricks/LTX-Video",
+            "Lightricks/LTX-2",
             "Lightricks/LTX-2.5-Diffusers",
             #
             ### Model type: Wan

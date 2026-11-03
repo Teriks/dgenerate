@@ -104,7 +104,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         self._tensors = list()
 
     def get_extra_supported_args(self) -> list[str]:
-        if self.model_type == _enums.ModelType.S_CASCADE:
+        if _enums.model_type_is_s_cascade(self.model_type):
             return ['clip_skip']
         else:
             return []
@@ -334,7 +334,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         if pos_pooled is not None:
             self._tensors.append(pos_pooled)
 
-            if self.model_type == _enums.ModelType.S_CASCADE:
+            if _enums.model_type_is_s_cascade(self.model_type):
                 output.update({
                     'prompt_embeds_pooled': pos_pooled,
                 })
@@ -346,7 +346,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         if neg_pooled is not None:
             self._tensors.append(neg_pooled)
 
-            if self.model_type == _enums.ModelType.S_CASCADE:
+            if _enums.model_type_is_s_cascade(self.model_type):
                 output.update({
                     'negative_prompt_embeds_pooled': neg_pooled,
                 })

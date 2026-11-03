@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image with ComfyUI's NVFP4 transformer and NVFP4 Qwen2.5-VL text
+# encoder. The text encoder file includes the vision tower, so the same URI
+# works for image edit. No mode and no quantizer: the linears stay packed.
+# Blackwell GPUs run NVFP4 matmuls; other devices decode the 4-bit weights
+# per layer.
+
+Qwen/Qwen-Image
+--model-type qwen-image
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_nvfp4.safetensors
+--text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_nvfp4.safetensors"
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 20
+--guidance-scales 4
+--gen-seeds 1
+--output-path qwen-image-comfy-quant-text-encoder-nvfp4
+--output-size 1024
+--prompts "A cat holding a sign that says hello world"

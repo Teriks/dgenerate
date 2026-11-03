@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# HunyuanVideo 1.5 480p T2V with a Q4_K_S GGUF transformer and Unsloth's
+# Qwen2.5-VL GGUF as Qwen2_5_VLTextModel. The GGUF is the language tower.
+# Its mmproj sidecar is not loaded, which matches this pipeline: it does
+# not read the vision tower. "+" keeps the small ByT5 encoder. The GGUF
+# is already quantized. Do not set quantizer.
+
+hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v
+--model-type hyvideo-15
+--transformer "https://huggingface.co/jayn7/HunyuanVideo-1.5_T2V_480p-GGUF/blob/main/480p/hunyuanvideo1.5_480p_t2v-Q4_K_S.gguf"
+--text-encoders "Qwen2_5_VLTextModel;model=https://huggingface.co/unsloth/Qwen2.5-VL-7B-Instruct-GGUF/blob/main/Qwen2.5-VL-7B-Instruct-Q4_K_S.gguf" +
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 6
+--video-lengths 4
+--video-fps 15
+--animation-format mp4
+--gen-seeds 1
+--output-path hyvideo-15-gguf-text-encoder
+--output-size 848x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"

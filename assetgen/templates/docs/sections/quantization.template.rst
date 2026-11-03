@@ -195,6 +195,9 @@ And for ``sdnq``:
 
 A pre-quantized ``.gguf`` transformer is a file format, not a ``--quantizer`` backend.
 Point ``--transformer`` at the ``.gguf`` file or blob link. See :ref:`specifying-a-transformer`.
+A ``.gguf`` text encoder (T5-XXL, UMT5-XXL, Qwen, Mistral, Gemma) is the same kind of
+file: point ``--text-encoders`` at it and name the encoder class. See
+:ref:`specifying-text-encoders`.
 
 ComfyUI quantized ``.safetensors`` files (FP8, INT8 ConvRot, NVFP4) are also file
 formats. They load through ``--transformer``, ``--text-encoders``, or as the model,

@@ -15,14 +15,12 @@
     \exit
 {% endif %}
 
-\set text_encoder https://huggingface.co/Comfy-Org/flux2-klein-4B/blob/main/split_files/text_encoders/qwen_3_4b_fp4_flux2.safetensors
-
 black-forest-labs/FLUX.2-klein-4B
 --model-type flux2
 --dtype bfloat16
 --model-cpu-offload
 --transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/blob/main/flux-2-klein-4b-fp8.safetensors
---text-encoders Qwen3ForCausalLM;model={{ text_encoder }}
+--text-encoders Qwen3ForCausalLM;model=https://huggingface.co/Comfy-Org/flux2-klein-4B/blob/main/split_files/text_encoders/qwen_3_4b_fp4_flux2.safetensors
 --scheduler FlowMatchEulerDiscreteScheduler
 --inference-steps 4
 --guidance-scales 1

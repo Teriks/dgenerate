@@ -44,6 +44,7 @@ Available encoder classes are:
 * ConsistencyDecoderVAE
 * AutoencoderKLFlux2
 * AutoencoderKLQwenImage
+* AutoencoderKLHunyuanImageRefiner
 * AutoencoderKLWan
 * AutoencoderKLLTXVideo
 * AutoencoderKLLTX2Video

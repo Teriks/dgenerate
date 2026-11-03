@@ -891,7 +891,12 @@ It may not name ``vae``.
 ``.gguf`` file. The Diffusers repository still supplies the VAE and the UMT5
 text encoder. ``--wan-second-transformer`` does the same for the Wan 2.2
 low-noise expert. ``--text-encoders`` replaces UMT5. Use ``+`` to keep the
-checkpoint default, or ``null`` to skip a slot. ``--loras`` loads a Diffusers
+checkpoint default, or ``null`` to skip a slot. Wan 2.2 has that same one
+UMT5 encoder. See
+`examples/wan/gguf/text-encoder-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/gguf/text-encoder-wan22-config.dgen>`_
+and
+`examples/wan/comfy-quant/text-encoder-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/comfy-quant/text-encoder-wan22-config.dgen>`_.
+``--loras`` loads a Diffusers
 LoRA onto the transformer. ``component=transformer_2`` loads one LoRA onto the
 Wan 2.2 low-noise expert instead, so a high-noise and low-noise pair can be
 given together.

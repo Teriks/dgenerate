@@ -1085,7 +1085,7 @@ def get_sada_model_defaults(model_type: _enums.ModelType) -> dict:
     :returns: A dictionary containing the model-specific SADA parameters
     """
 
-    if _enums.model_type_is_flux(model_type):
+    if _enums.model_type_is_flux_family(model_type):
         return {
             'max_downsample': _constants.DEFAULT_SADA_FLUX_MAX_DOWNSAMPLE,
             'sx': _constants.DEFAULT_SADA_FLUX_SX,
@@ -1097,8 +1097,8 @@ def get_sada_model_defaults(model_type: _enums.ModelType) -> dict:
             'max_fix': _constants.DEFAULT_SADA_FLUX_MAX_FIX,
             'max_interval': _constants.DEFAULT_SADA_MAX_INTERVAL,
         }
-    elif (model_type == _enums.ModelType.SDXL or
-          model_type == _enums.ModelType.KOLORS):
+    elif (_enums.model_type_is_sdxl(model_type) or
+          _enums.model_type_is_kolors(model_type)):
         return {
             'max_downsample': _constants.DEFAULT_SADA_SDXL_MAX_DOWNSAMPLE,
             'sx': _constants.DEFAULT_SADA_SDXL_SX,

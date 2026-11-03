@@ -470,7 +470,8 @@ class RenderLoop:
         elif diffusion_args.image_seed_strength is not None:
             args += ['st', diffusion_args.image_seed_strength]
 
-        args += ['g', diffusion_args.guidance_scale]
+        args += ['g', diffusion_args.guidance_scale
+                 if diffusion_args.guidance_scale is not None else 'auto']
 
         if diffusion_args.second_model_guidance_scale is not None:
             args += ['g2', diffusion_args.second_model_guidance_scale]
@@ -493,7 +494,8 @@ class RenderLoop:
         if diffusion_args.pag_adaptive_scale is not None:
             args += ['pas', diffusion_args.pag_adaptive_scale]
 
-        args += ['i', diffusion_args.inference_steps]
+        args += ['i', diffusion_args.inference_steps
+                 if diffusion_args.inference_steps is not None else 'auto']
 
         if diffusion_args.second_model_inference_steps is not None:
             args += ['i2', diffusion_args.second_model_inference_steps]
@@ -1163,7 +1165,7 @@ class RenderLoop:
         try:
             self._init_post_processor()
 
-            if _pipelinewrapper.model_type_is_video(self._c_config.model_type):
+            if _pipelinewrapper.model_type_is_video_family(self._c_config.model_type):
                 pipeline_wrapper = self._create_pipeline_wrapper()
                 yield from self._render_video(pipeline_wrapper)
             elif self._c_config.image_seeds:
@@ -1343,7 +1345,7 @@ class RenderLoop:
         
         :return: True if resizing should be skipped, False otherwise
         """
-        return _pipelinewrapper.model_type_is_s_cascade(self._c_config.model_type)
+        return _pipelinewrapper.model_type_is_s_cascade_family(self._c_config.model_type)
 
     def _render_with_image_seeds_unmanaged(
             self,
@@ -1435,7 +1437,7 @@ class RenderLoop:
                         # seeds may differ in size; masks are still checked
                         # later in the pipeline wrapper when present.
                         check_dimensions_match=not (
-                            _pipelinewrapper.model_type_is_s_cascade(
+                            _pipelinewrapper.model_type_is_s_cascade_family(
                                 self._c_config.model_type)
                             or _pipelinewrapper.model_type_is_qwen_image_edit(
                                 self._c_config.model_type)))
@@ -1486,6 +1488,8 @@ class RenderLoop:
         Copy one zipped frame onto the pipeline arguments.
 
         Flux.2 text-to-image has no img2img init. Those frames are references.
+        The HunyuanImage refiner is one of these condition seeds. Its pipeline
+        call receives that seed as ``image``.
         ``--adetailer-detectors`` is inpaint, so that seed stays the init image.
         ``reference=`` on an inpaint seed stays beside the init image and mask.
         A video in either slot was already zipped by the image-seed reader.
@@ -1728,7 +1732,7 @@ class RenderLoop:
             driving_fps = []
             # Wan-Animate-2 resamples the driving clip to --video-fps inside
             # the pipeline. The other video paths play the loaded frames as-is.
-            resample_driving = model_type == _pipelinewrapper.ModelType.WAN_ANIMATE_2
+            resample_driving = _pipelinewrapper.model_type_is_wan_animate_2(model_type)
             driving_frames = self._load_video_media(
                 parsed.wan_driving_video, parsed, processors.get('wan_driving'), owned_images,
                 None, output_fps, fps_out=driving_fps, resample_fps=resample_driving)

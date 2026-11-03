@@ -104,7 +104,7 @@ def ltx_family_for_model_type(model_type, index: dict | None) -> str:
     :return: ``ltx2`` or ``ltx``
     """
     model_type = _enums.get_model_type_enum(model_type)
-    expected = 'ltx2' if model_type == _enums.ModelType.LTX2 else 'ltx'
+    expected = 'ltx2' if _enums.model_type_is_ltx2(model_type) else 'ltx'
     if index is not None:
         found = ltx_family_from_index(index)
         if found != expected:

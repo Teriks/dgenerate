@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Krea 2 Turbo with ComfyUI's scaled FP8 transformer and scaled FP8
+# Qwen3-VL 4B text encoder. Raw uses the same encoder. The file includes
+# the vision tower, so image conditioning can use this URI. No mode and
+# no quantizer: the linears stay packed. ComfyUI does not publish a 4-bit
+# Qwen3-VL 4B file. The Q4 encoder is examples/krea2/gguf/text-encoder-config.dgen.
+
+krea/Krea-2-Turbo
+--model-type krea2
+--transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_fp8_scaled.safetensors
+--text-encoders "Qwen3VLModel;model=https://huggingface.co/Comfy-Org/Krea-2/blob/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors"
+--dtype bfloat16
+--model-cpu-offload
+--inference-steps 8
+--guidance-scales 0
+--gen-seeds 1
+--output-path krea2-comfy-quant-text-encoder
+--output-size 1024
+--prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"

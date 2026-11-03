@@ -320,7 +320,7 @@ class TestVideoModels(unittest.TestCase):
             _pipelinewrapper.get_model_type_enum('minimax-h3')
         with self.assertRaises(ValueError):
             _pipelinewrapper.get_model_type_enum('hunyuan-video')
-        self.assertFalse(_pipelinewrapper.model_type_is_video(_pipelinewrapper.ModelType.FLUX))
+        self.assertFalse(_pipelinewrapper.model_type_is_video_family(_pipelinewrapper.ModelType.FLUX))
 
     def test_video_family_registration(self):
         import diffusers
@@ -331,8 +331,8 @@ class TestVideoModels(unittest.TestCase):
             MotifVideoPipeline,
         )
 
-        self.assertTrue(_pipelinewrapper.model_type_is_video('hyvideo-15'))
-        self.assertTrue(_pipelinewrapper.model_type_is_video('motif-video'))
+        self.assertTrue(_pipelinewrapper.model_type_is_video_family('hyvideo-15'))
+        self.assertTrue(_pipelinewrapper.model_type_is_video_family('motif-video'))
         self.assertEqual(
             _video_loading._resolve_video_load(
                 _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15,
@@ -364,6 +364,47 @@ class TestVideoModels(unittest.TestCase):
             diffusers.Kandinsky5Transformer3DModel)
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
             _single_image_video._single_image_video_pipeline_class('ltx2', 'text-to-video')
+
+    def test_kandinsky_video_rewrites_the_prompt_before_the_call(self):
+        prompt = unittest.mock.Mock(positive='a diner', negative=None)
+        user_args = unittest.mock.Mock(pipeline_prompt_enhance=True, prompt=prompt)
+        wrapper = unittest.mock.Mock(_pipeline=None)
+        pipe = object()
+
+        def rewrite(wrapper, user_args):
+            self.assertIs(wrapper._pipeline, pipe)
+            revised = unittest.mock.Mock(positive='rewritten shot', negative=None)
+            user_args.prompt = revised
+
+        with unittest.mock.patch(
+                'dgenerate.pipelinewrapper.promptenhance.enhance_diffusion_arguments',
+                rewrite):
+            _single_image_video._enhance_loaded_video_prompt(wrapper, pipe, user_args)
+        self.assertEqual(user_args.prompt.positive, 'rewritten shot')
+        self.assertIsNone(wrapper._pipeline)
+        user_args.pipeline_prompt_enhance = False
+        skipped = unittest.mock.Mock()
+        with unittest.mock.patch(
+                'dgenerate.pipelinewrapper.promptenhance.enhance_diffusion_arguments',
+                skipped):
+            _single_image_video._enhance_loaded_video_prompt(wrapper, pipe, user_args)
+        skipped.assert_not_called()
+
+    def test_nabla_kandinsky_skips_the_dense_flex_mask(self):
+        class Pipe:
+            def __init__(self, attention_type):
+                self.transformer = unittest.mock.Mock(config={'attention_type': attention_type})
+                self.sparse = {'attention_type': attention_type}
+
+            def get_sparse_params(self, sample, device):
+                return self.sparse
+
+        pro = Pipe('nabla')
+        lite = Pipe('regular')
+        _single_image_video._skip_nabla_sparse_attention(pro)
+        _single_image_video._skip_nabla_sparse_attention(lite)
+        self.assertIsNone(pro.get_sparse_params(None, None))
+        self.assertEqual(lite.get_sparse_params(None, None)['attention_type'], 'regular')
 
     def test_video_options_and_timesteps(self):
         parsed = _arguments.parse_args([

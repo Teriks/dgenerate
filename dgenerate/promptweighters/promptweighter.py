@@ -94,7 +94,7 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
         self.__dtype = dtype
         self.__device = device if device else 'cpu'
 
-        if _enums.model_type_is_flow_image(model_type):
+        if _enums.model_type_is_flow_image_family(model_type):
             raise _exceptions.PromptWeightingUnsupported(
                 f'Prompt weighting is not supported for --model-type '
                 f'{_enums.get_model_type_string(model_type)}. '

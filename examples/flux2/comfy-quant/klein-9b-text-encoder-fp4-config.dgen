@@ -1,0 +1,28 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Flux.2 Klein 9B with Black Forest Labs' official FP8 transformer and
+# ComfyUI's FP4 mixed Qwen3-8B text encoder. Klein 4B's Qwen3-4B file does
+# not match this checkpoint. The text encoder is already quantized. Do not
+# set quantizer. Distilled Klein ignores guidance above 1.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+black-forest-labs/FLUX.2-klein-9B
+--model-type flux2
+--dtype bfloat16
+--model-cpu-offload
+--transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-9b-fp8/blob/main/flux-2-klein-9b-fp8.safetensors
+--text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Comfy-Org/flux2-klein-9B/blob/main/split_files/text_encoders/qwen_3_8b_fp4mixed.safetensors"
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 4
+--guidance-scales 1
+--gen-seeds 1
+--output-path flux2-comfy-quant-klein-9b-text-encoder-fp4
+--output-size 1024
+--prompts "A cat holding a sign that says hello world"

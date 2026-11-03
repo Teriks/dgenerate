@@ -195,7 +195,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         self._syntax = syntax
 
     def get_extra_supported_args(self) -> list[str]:
-        if self.model_type == _enums.ModelType.S_CASCADE:
+        if _enums.model_type_is_s_cascade(self.model_type):
             return ['clip_skip']
         else:
             return []
@@ -234,7 +234,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 or pipeline_name.startswith('StableDiffusion')
                 or pipeline_name.startswith('StableCascade')
                 or (pipeline_name.startswith('Flux') and not pipeline_name.startswith('Flux2'))) or \
-                _enums.model_type_is_sd3(self.model_type):
+                _enums.model_type_is_sd3_family(self.model_type):
             raise _exceptions.PromptWeightingUnsupported(
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
 
@@ -430,7 +430,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
 
         if pos_pooled is not None:
 
-            if self.model_type == _enums.ModelType.S_CASCADE:
+            if _enums.model_type_is_s_cascade(self.model_type):
                 output.update({
                     'prompt_embeds_pooled': pos_pooled,
                 })
@@ -440,7 +440,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 })
 
         if neg_pooled is not None:
-            if self.model_type == _enums.ModelType.S_CASCADE:
+            if _enums.model_type_is_s_cascade(self.model_type):
                 output.update({
                     'negative_prompt_embeds_pooled': neg_pooled,
                 })

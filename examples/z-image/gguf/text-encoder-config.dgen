@@ -1,0 +1,26 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Z-Image Turbo with a GGUF transformer and the official Qwen3-4B GGUF as
+# the text encoder. Qwen3-4B is the encoder this checkpoint was trained
+# with. The file is already quantized. Do not set quantizer.
+# Same Tongyi prompt as examples/z-image/gguf/turbo-config.dgen.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if not have_cuda() or gpu_memory_gib <= 16 %}
+    \set offload --model-sequential-offload
+{% endif %}
+
+Tongyi-MAI/Z-Image-Turbo
+--model-type z-image {{ offload }}
+--dtype bfloat16
+--transformer https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/blob/main/z_image_turbo-Q4_K_S.gguf
+--text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Qwen/Qwen3-4B-GGUF/blob/main/Qwen3-4B-Q4_K_M.gguf"
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 9
+--guidance-scales 0
+--gen-seeds 1
+--output-path z-image-gguf-text-encoder
+--output-size 1024
+--prompts "Young Chinese woman in red Hanfu, intricate embroidery. Impeccable makeup, red floral forehead pattern. Elaborate high bun, golden phoenix headdress, red flowers, beads. Holds round folding fan with lady, trees, bird. Neon lightning-bolt lamp (⚡️), bright yellow glow, above extended left palm. Soft-lit outdoor night background, silhouetted tiered pagoda, blurred colorful distant lights."

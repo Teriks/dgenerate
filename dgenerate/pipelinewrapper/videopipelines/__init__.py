@@ -76,20 +76,20 @@ def classify_video_seed(model_type: _enums.ModelType | str,
         parsed,
         _enums.get_model_type_string(model_type),
         allow_mask=_enums.model_type_is_wan_family(model_type))
-    if model_type == _enums.ModelType.WAN_ANIMATE_2:
+    if _enums.model_type_is_wan_animate_2(model_type):
         import dgenerate.pipelinewrapper.videopipelines.wan as wan
         return wan._classify_wan_animate_2(parsed)
-    if model_type != _enums.ModelType.WAN_ANIMATE:
+    if not _enums.model_type_is_wan_animate(model_type):
         import dgenerate.pipelinewrapper.videopipelines.wan as wan
         wan._reject_animate_keywords(parsed, _enums.get_model_type_string(model_type))
 
     if _enums.model_type_is_ltx_family(model_type):
         import dgenerate.pipelinewrapper.videopipelines.ltx as ltx
         return ltx._classify_ltx(parsed, ic_lora)
-    if model_type == _enums.ModelType.WAN:
+    if _enums.model_type_is_wan(model_type):
         import dgenerate.pipelinewrapper.videopipelines.wan as wan
         return wan._classify_wan(parsed)
-    if model_type == _enums.ModelType.WAN_ANIMATE:
+    if _enums.model_type_is_wan_animate(model_type):
         import dgenerate.pipelinewrapper.videopipelines.wan as wan
         return wan._classify_wan_animate(parsed)
     if model_type in _single_image_video.SINGLE_IMAGE_VIDEO_MODEL_TYPES:
@@ -136,19 +136,18 @@ def generate(wrapper, user_args) -> tuple[list[PIL.Image.Image], numpy.ndarray |
         if _enums.model_type_is_ltx_family(model_type):
             import dgenerate.pipelinewrapper.videopipelines.ltx as ltx
             return ltx._call_ltx(wrapper, user_args)
-        if model_type == _enums.ModelType.WAN:
+        if _enums.model_type_is_wan(model_type):
             import dgenerate.pipelinewrapper.videopipelines.wan as wan
             return wan._call_wan(wrapper, user_args)
-        if model_type == _enums.ModelType.WAN_ANIMATE:
+        if _enums.model_type_is_wan_animate(model_type):
             import dgenerate.pipelinewrapper.videopipelines.wan as wan
             return wan.animate._call_wan_animate(wrapper, user_args)
-        if model_type == _enums.ModelType.WAN_ANIMATE_2:
+        if _enums.model_type_is_wan_animate_2(model_type):
             import dgenerate.pipelinewrapper.videopipelines.wan as wan
             return wan.animate2._call_wan_animate_2(wrapper, user_args)
-        if model_type in {
-                _enums.ModelType.HUNYUAN_VIDEO_15,
-                _enums.ModelType.MOTIF_VIDEO,
-                _enums.ModelType.KANDINSKY5_VIDEO}:
+        if (_enums.model_type_is_hyvideo_15(model_type)
+                or _enums.model_type_is_motif_video(model_type)
+                or _enums.model_type_is_kandinsky5_video(model_type)):
             return _single_image_video._call_single_image_video(wrapper, user_args)
     except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
         _d_exceptions.raise_if_not_cuda_oom(e)

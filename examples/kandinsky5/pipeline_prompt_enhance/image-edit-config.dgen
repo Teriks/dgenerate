@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Kandinsky 5 image editing. The rewrite sees the condition image.
+
+kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers
+--model-type kandinsky5-image
+--image-seeds ../../media/monalisa.png
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 3.5
+--pipeline-prompt-enhance
+--gen-seeds 1
+--output-path kandinsky5-i2i-pipeline-prompt-enhance
+--prompts "Change the scene to a sunny spring morning while keeping the subject and composition"

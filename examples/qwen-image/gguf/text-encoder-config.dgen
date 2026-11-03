@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image with a QuantStack GGUF transformer and Unsloth's Qwen2.5-VL GGUF.
+# The GGUF is the language tower. Its mmproj sidecar is not loaded, so this
+# is for text-to-image. Image edit should use the ComfyUI safetensors text
+# encoder, which carries the vision tower:
+# examples/qwen-image/comfy-quant/text-encoder-config.dgen
+
+Qwen/Qwen-Image
+--model-type qwen-image
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/QuantStack/Qwen-Image-GGUF/blob/main/Qwen_Image-Q4_K_S.gguf
+--text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/unsloth/Qwen2.5-VL-7B-Instruct-GGUF/blob/main/Qwen2.5-VL-7B-Instruct-Q4_K_S.gguf"
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 20
+--guidance-scales 4
+--gen-seeds 1
+--output-path qwen-image-gguf-text-encoder
+--output-size 1024
+--prompts "A cat holding a sign that says hello world"

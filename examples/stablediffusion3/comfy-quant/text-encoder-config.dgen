@@ -1,0 +1,30 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# SD3.5 Large with ComfyUI's scaled FP8 transformer and scaled FP8 T5-XXL.
+# "+ +" keeps both CLIP encoders from the repository. The T5 file is the
+# same architecture as Flux T5-XXL and needs no mode. Its linears stay
+# packed, except the feed-forward output projection, which T5 runs in float32.
+# ComfyUI does not publish a 4-bit T5-XXL. The Q4 file is
+# examples/stablediffusion3/gguf/text-encoder-config.dgen.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+stabilityai/stable-diffusion-3.5-large
+--model-type sd3
+--variant fp16
+--dtype float16
+--model-cpu-offload
+--transformer https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/sd3.5_large_fp8_scaled.safetensors
+--text-encoders + + "T5EncoderModel;model=https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors"
+--inference-steps 28
+--guidance-scales 5
+--gen-seeds 1
+--output-path sd3-comfy-quant-text-encoder
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

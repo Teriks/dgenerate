@@ -119,12 +119,17 @@ class TestFlowImagePipelines(unittest.TestCase):
         self.assertIn('z-image', _pipelinewrapper.supported_model_type_strings())
         self.assertIn('qwen-image', _pipelinewrapper.supported_model_type_strings())
         self.assertTrue(_pipelinewrapper.model_type_is_flux('flux'))
-        self.assertTrue(_pipelinewrapper.model_type_is_flux('flux-fill'))
+        self.assertTrue(_pipelinewrapper.model_type_is_flux(_pipelinewrapper.ModelType.FLUX))
+        self.assertFalse(_pipelinewrapper.model_type_is_flux('flux-fill'))
+        self.assertFalse(_pipelinewrapper.model_type_is_flux('flux-kontext'))
         self.assertFalse(_pipelinewrapper.model_type_is_flux('flux2'))
+        self.assertTrue(_pipelinewrapper.model_type_is_flux_family('flux'))
+        self.assertTrue(_pipelinewrapper.model_type_is_flux_family('flux-fill'))
+        self.assertFalse(_pipelinewrapper.model_type_is_flux_family('flux2'))
         self.assertTrue(_pipelinewrapper.model_type_is_flux2('flux2'))
-        self.assertTrue(_pipelinewrapper.model_type_is_flow_image('qwen-image'))
+        self.assertTrue(_pipelinewrapper.model_type_is_flow_image_family('qwen-image'))
         for model_type in ('qwen-image-21', 'krea2', 'kandinsky5-image'):
-            self.assertTrue(_pipelinewrapper.model_type_is_flow_image(model_type))
+            self.assertTrue(_pipelinewrapper.model_type_is_flow_image_family(model_type))
         self.assertTrue(_pipelinewrapper.model_type_is_qwen_image_21('qwen-image-21'))
         self.assertTrue(_pipelinewrapper.model_type_is_qwen_image_21(
             _pipelinewrapper.ModelType.QWEN_IMAGE_21))
@@ -134,7 +139,44 @@ class TestFlowImagePipelines(unittest.TestCase):
         self.assertTrue(_pipelinewrapper.model_type_is_kandinsky5_image('kandinsky5-image'))
         self.assertTrue(_pipelinewrapper.model_type_is_kandinsky5_image(
             _pipelinewrapper.ModelType.KANDINSKY5_IMAGE))
-        self.assertFalse(_pipelinewrapper.model_type_is_flow_image('flux'))
+        self.assertFalse(_pipelinewrapper.model_type_is_kandinsky5_image('kandinsky5-video'))
+        self.assertTrue(_pipelinewrapper.model_type_is_kandinsky5_video('kandinsky5-video'))
+        self.assertTrue(_pipelinewrapper.model_type_is_kandinsky5_video(
+            _pipelinewrapper.ModelType.KANDINSKY5_VIDEO))
+        self.assertFalse(_pipelinewrapper.model_type_is_kandinsky5_video('kandinsky5-image'))
+        self.assertTrue(_pipelinewrapper.model_type_is_kandinsky5_family('kandinsky5-image'))
+        self.assertTrue(_pipelinewrapper.model_type_is_kandinsky5_family('kandinsky5-video'))
+        self.assertTrue(_pipelinewrapper.model_type_is_flux2_klein_kv('flux2-klein-kv'))
+        self.assertTrue(_pipelinewrapper.model_type_is_flux2_klein_kv(
+            _pipelinewrapper.ModelType.FLUX2_KLEIN_KV))
+        self.assertFalse(_pipelinewrapper.model_type_is_flux2('flux2-klein-kv'))
+        self.assertFalse(_pipelinewrapper.model_type_is_flux2_klein_kv('flux2'))
+        self.assertTrue(_pipelinewrapper.model_type_is_flux_fill('flux-fill'))
+        self.assertTrue(_pipelinewrapper.model_type_is_flux_kontext('flux-kontext'))
+        self.assertFalse(_pipelinewrapper.model_type_is_flux_fill('flux'))
+        self.assertTrue(_pipelinewrapper.model_type_is_ltx2('ltx2'))
+        self.assertTrue(_pipelinewrapper.model_type_is_ltx_video('ltx-video'))
+        self.assertFalse(_pipelinewrapper.model_type_is_ltx2('ltx-video'))
+        self.assertTrue(_pipelinewrapper.model_type_is_ltx_family('ltx-video'))
+        self.assertTrue(_pipelinewrapper.model_type_is_wan('wan'))
+        self.assertTrue(_pipelinewrapper.model_type_is_wan_animate('wan-animate'))
+        self.assertTrue(_pipelinewrapper.model_type_is_wan_animate_2('wan-animate-2'))
+        self.assertFalse(_pipelinewrapper.model_type_is_wan('wan-animate'))
+        self.assertTrue(_pipelinewrapper.model_type_is_wan_family('wan-animate-2'))
+        self.assertTrue(_pipelinewrapper.model_type_is_hyvideo_15('hyvideo-15'))
+        self.assertTrue(_pipelinewrapper.model_type_is_hyvideo_15(
+            _pipelinewrapper.ModelType.HUNYUAN_VIDEO_15))
+        self.assertTrue(_pipelinewrapper.model_type_is_motif_video('motif-video'))
+        self.assertFalse(_pipelinewrapper.model_type_is_motif_video('wan'))
+        self.assertTrue(_pipelinewrapper.model_type_is_video_family('motif-video'))
+        self.assertTrue(_pipelinewrapper.model_type_is_upscaler_x2('upscaler-x2'))
+        self.assertTrue(_pipelinewrapper.model_type_is_upscaler_x4('upscaler-x4'))
+        self.assertFalse(_pipelinewrapper.model_type_is_upscaler_x4('upscaler-x2'))
+        self.assertTrue(_pipelinewrapper.model_type_is_s_cascade_family('s-cascade'))
+        self.assertTrue(_pipelinewrapper.model_type_is_s_cascade_family('s-cascade-decoder'))
+        self.assertTrue(_pipelinewrapper.model_type_is_s_cascade_decoder('s-cascade-decoder'))
+        self.assertFalse(_pipelinewrapper.model_type_is_s_cascade_decoder('s-cascade'))
+        self.assertFalse(_pipelinewrapper.model_type_is_flow_image_family('flux'))
 
         parsed = _arguments.parse_args([
             'org/qwen-image-2.1', '--model-type', 'qwen-image-21',
@@ -450,6 +492,52 @@ class TestFlowImagePipelines(unittest.TestCase):
                 model_type=_pipelinewrapper.ModelType.Z_IMAGE,
                 image_seeds=[f'{beach};reference=examples/media/earth.jpg'],
                 prompts=['a wave']).check()
+
+    def test_wrapper_rejects_strength_without_an_image(self):
+        wrapper = _pipelinewrapper.DiffusionPipelineWrapper.__new__(
+            _pipelinewrapper.DiffusionPipelineWrapper)
+        args = _pipelinewrapper.DiffusionArguments()
+        args.image_seed_strength = 0.4
+        with self.assertRaises(_pipelines.UnsupportedPipelineConfigError) as raised:
+            wrapper._get_pipeline_defaults(args)
+        self.assertIn('input image', str(raised.exception))
+
+    def test_strength_keyword_is_rejected_when_the_pipeline_cannot_use_it(self):
+        beach = 'examples/media/beach.jpg'
+        mask = 'examples/media/horse1-mask.jpg'
+        for model_path, model_type in (
+                ('hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers',
+                 _pipelinewrapper.ModelType.HYIMAGE_21_REFINER),
+                ('black-forest-labs/FLUX.2-dev', _pipelinewrapper.ModelType.FLUX2),
+                ('org/Kandinsky-5-I2I', _pipelinewrapper.ModelType.KANDINSKY5_IMAGE),
+                ('stabilityai/stable-diffusion-2-1-unclip', _pipelinewrapper.ModelType.PIX2PIX),
+                ('DeepFloyd/IF-II-M-v1.0', _pipelinewrapper.ModelType.IFS),
+        ):
+            with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+                _config(
+                    model_path=model_path,
+                    model_type=model_type,
+                    image_seeds=[f'{beach};strength=0.4'],
+                    prompts=['a wave']).check()
+            self.assertIn('strength=', str(raised.exception))
+
+        _config(
+            model_path='Qwen/Qwen-Image',
+            model_type=_pipelinewrapper.ModelType.QWEN_IMAGE,
+            image_seeds=[f'{beach};strength=0.4'],
+            prompts=['a wave']).check()
+        _config(
+            model_path='DeepFloyd/IF-II-M-v1.0',
+            model_type=_pipelinewrapper.ModelType.IFS,
+            image_seeds=[f'{beach};mask={mask};floyd=examples/media/earth.jpg;strength=0.4'],
+            prompts=['a wave']).check()
+        _config(
+            model_path='black-forest-labs/FLUX.2-klein-4B',
+            model_type=_pipelinewrapper.ModelType.FLUX2,
+            image_seeds=[f'{beach};strength=0.4'],
+            image_seed_strengths=[0.4],
+            adetailer_detector_uris=['Bingsu/adetailer;weight-name=face_yolov8n.pt'],
+            prompts=['a face']).check()
 
     def test_prefixed_options_stay_on_their_model(self):
         flux2 = _pipelinewrapper.ModelType.FLUX2
@@ -1377,6 +1465,43 @@ class TestFlowImagePipelines(unittest.TestCase):
         apply_architecture_quant_skips(ltx1_sdnq, 'LTXVideoTransformer3DModel')
         self.assertIn('time_embed', ltx1_sdnq.modules_to_not_convert)
         self.assertIn('scale_shift_table', ltx1_sdnq.modules_to_not_convert)
+
+
+class SeedArgs:
+    def __init__(self, images=None, reference_images=None, mask_images=None):
+        self.images = images
+        self.reference_images = reference_images
+        self.mask_images = mask_images
+
+    def determine_pipeline_type(self):
+        if self.images is not None and self.mask_images is not None:
+            return _pipelinewrapper.PipelineType.INPAINT
+        if self.images is not None:
+            return _pipelinewrapper.PipelineType.IMG2IMG
+        return _pipelinewrapper.PipelineType.TXT2IMG
+
+
+class TestConditionImagePipelineType(unittest.TestCase):
+    def test_kandinsky_reference_image_selects_the_edit_pipeline(self):
+        kind = _pipelinewrapper.DiffusionPipelineWrapper._resolve_pipeline_type(
+            SeedArgs(reference_images=['diner.png']),
+            _pipelinewrapper.ModelType.KANDINSKY5_IMAGE,
+            None)
+        self.assertIs(kind, _pipelinewrapper.PipelineType.IMG2IMG)
+
+    def test_kandinsky_without_an_image_stays_text_to_image(self):
+        kind = _pipelinewrapper.DiffusionPipelineWrapper._resolve_pipeline_type(
+            SeedArgs(),
+            _pipelinewrapper.ModelType.KANDINSKY5_IMAGE,
+            None)
+        self.assertIs(kind, _pipelinewrapper.PipelineType.TXT2IMG)
+
+    def test_flux2_reference_image_stays_text_to_image(self):
+        kind = _pipelinewrapper.DiffusionPipelineWrapper._resolve_pipeline_type(
+            SeedArgs(reference_images=['style.png']),
+            _pipelinewrapper.ModelType.FLUX2,
+            None)
+        self.assertIs(kind, _pipelinewrapper.PipelineType.TXT2IMG)
 
 
 class TestFlowImageTimesteps(unittest.TestCase):

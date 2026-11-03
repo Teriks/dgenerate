@@ -462,16 +462,16 @@ def _resolve_omitted_sampling(
             source = None
 
     if user_args.inference_steps is None:
-        if model_type == _enums.ModelType.QWEN_IMAGE_21:
+        if _enums.model_type_is_qwen_image_21(model_type):
             user_args.inference_steps = 40
-        elif model_type == _enums.ModelType.KREA2:
+        elif _enums.model_type_is_krea2(model_type):
             distilled = bool(_loaded_pipeline_config_flag(pipeline, 'is_distilled', False))
             user_args.inference_steps = 8 if distilled else 28
-        elif model_type == _enums.ModelType.HYIMAGE_21_REFINER:
+        elif _enums.model_type_is_hyimage_21_refiner(model_type):
             user_args.inference_steps = 4
         elif _enums.model_type_is_hyimage_21_family(model_type):
             user_args.inference_steps = 50
-        elif model_type == _enums.ModelType.KANDINSKY5_IMAGE:
+        elif _enums.model_type_is_kandinsky5_image(model_type):
             user_args.inference_steps = 50
         elif isinstance(user_args.sigmas, (list, tuple)) and user_args.sigmas \
                 and not isinstance(user_args.sigmas[0], str):
@@ -480,15 +480,15 @@ def _resolve_omitted_sampling(
             _sampling.resolved_inference_steps(source, user_args)
 
     if user_args.guidance_scale is None:
-        if model_type == _enums.ModelType.QWEN_IMAGE_21:
+        if _enums.model_type_is_qwen_image_21(model_type):
             user_args.guidance_scale = 1.0
-        elif model_type == _enums.ModelType.KREA2:
+        elif _enums.model_type_is_krea2(model_type):
             distilled = bool(_loaded_pipeline_config_flag(pipeline, 'is_distilled', False))
             user_args.guidance_scale = 0.0 if distilled else 4.5
-        elif model_type == _enums.ModelType.KANDINSKY5_IMAGE:
+        elif _enums.model_type_is_kandinsky5_image(model_type):
             user_args.guidance_scale = 3.5
         elif (_enums.model_type_is_hyimage_21_family(model_type)
-              and (model_type == _enums.ModelType.HYIMAGE_21_REFINER
+              and (_enums.model_type_is_hyimage_21_refiner(model_type)
                    or _loaded_pipeline_config_flag(pipeline, 'guidance_embeds', False))):
             user_args.guidance_scale = 3.25
         else:
@@ -716,7 +716,7 @@ class DiffusionPipelineWrapper:
                 'Cannot use "controlnet_uris" and "t2i_adapter_uris" together.'
             )
 
-        if image_encoder_uri and not ip_adapter_uris and model_type != _enums.ModelType.S_CASCADE:
+        if image_encoder_uri and not ip_adapter_uris and not _enums.model_type_is_s_cascade(model_type):
             raise _pipelines.UnsupportedPipelineConfigError(
                 'Cannot use "image_encoder_uri" without "ip_adapter_uris" '
                 'if "model_type" is not S_CASCADE.'
@@ -754,7 +754,7 @@ class DiffusionPipelineWrapper:
                 )
 
         if sdxl_refiner_uri is not None:
-            if not (_enums.model_type_is_sdxl(model_type) or
+            if not (_enums.model_type_is_sdxl_family(model_type) or
                     _enums.model_type_is_kolors(model_type)):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Only Stable Diffusion XL models support refiners, '
@@ -762,18 +762,18 @@ class DiffusionPipelineWrapper:
                 )
 
         if s_cascade_decoder_uri is not None:
-            if not _enums.model_type_is_s_cascade(model_type):
+            if not _enums.model_type_is_s_cascade_family(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Only Stable Cascade models support decoders, '
                     'please use model_type "s-cascade" if you are trying to load an Stable Cascade model.'
                 )
 
         if transformer_uri:
-            if not _enums.model_type_is_sd3(model_type) \
-                    and not _enums.model_type_is_flux(model_type) \
-                    and not _enums.model_type_is_flow_image(model_type) \
+            if not _enums.model_type_is_sd3_family(model_type) \
+                    and not _enums.model_type_is_flux_family(model_type) \
+                    and not _enums.model_type_is_flow_image_family(model_type) \
                     and not _enums.model_type_is_hydit(model_type) \
-                    and not _enums.model_type_is_video(model_type):
+                    and not _enums.model_type_is_video_family(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     '--transformer is only supported for --model-type sd3, sd3-pix2pix, flux, flux-fill, '
                     'flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, '
@@ -782,8 +782,7 @@ class DiffusionPipelineWrapper:
                     'wan-animate-2, hyvideo-15, motif-video, and kandinsky5-video.')
 
         if wan_second_transformer_uri:
-            if _enums.get_model_type_enum(model_type) not in (
-                    _enums.ModelType.WAN, _enums.ModelType.WAN_ANIMATE):
+            if not (_enums.model_type_is_wan(model_type) or _enums.model_type_is_wan_animate(model_type)):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     '--wan-second-transformer is only supported for --model-type wan and wan-animate.')
             try:
@@ -792,7 +791,7 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(str(e)) from e
 
         if ltx_ic_lora_uri:
-            if _enums.get_model_type_enum(model_type) != _enums.ModelType.LTX2:
+            if not _enums.model_type_is_ltx2(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     '--ltx-ic-lora is only supported for --model-type ltx2.')
             try:
@@ -1494,7 +1493,7 @@ class DiffusionPipelineWrapper:
         :raises UnsupportedPipelineConfigError: If tensors have incorrect number of channels
         """
 
-        if _enums.model_type_is_s_cascade(self.model_type):
+        if _enums.model_type_is_s_cascade_family(self.model_type):
             raise _pipelines.UnsupportedPipelineConfigError(
                 'Stable Cascade does not support accepting latents as input.'
             )
@@ -1506,7 +1505,7 @@ class DiffusionPipelineWrapper:
             )
 
         # External latents are always spatial [B, C, H, W] / [C, H, W].
-        if _enums.model_type_is_flux(self.model_type):
+        if _enums.model_type_is_flux_family(self.model_type):
             expected_channels = 16
             family = 'Flux'
         elif _enums.model_type_is_flux2_family(self.model_type):
@@ -1525,7 +1524,7 @@ class DiffusionPipelineWrapper:
                 elif hasattr(self._pipeline.vae.config, 'z_dim'):
                     expected_channels = self._pipeline.vae.config.z_dim
             family = 'Z-Image'
-        elif _enums.model_type_is_sd3(self.model_type):
+        elif _enums.model_type_is_sd3_family(self.model_type):
             expected_channels = self._pipeline.transformer.config.in_channels
             family = 'SD3'
         else:
@@ -1818,7 +1817,7 @@ class DiffusionPipelineWrapper:
         self._set_pipe_dimensions(
             None, None, control_images[0].width, control_images[0].height, pipeline_args)
 
-        flux_control = self._model_type == _enums.ModelType.FLUX
+        flux_control = _enums.model_type_is_flux(self._model_type)
         if self._pipeline_type == _enums.PipelineType.TXT2IMG:
             if flux_control:
                 pipeline_args['control_image'] = control_images[0]
@@ -1899,16 +1898,16 @@ class DiffusionPipelineWrapper:
                 pipeline_args
             )
 
-        sdxl_cn_union = _enums.model_type_is_sdxl(self._model_type) and \
+        sdxl_cn_union = _enums.model_type_is_sdxl_family(self._model_type) and \
                         any(p.mode is not None for p in self._parsed_controlnet_uris)
 
         if self._pipeline_type == _enums.PipelineType.TXT2IMG:
-            if _enums.model_type_is_sd3(self._model_type):
+            if _enums.model_type_is_sd3_family(self._model_type):
                 # Handle SD3 model specifics for control images
                 pipeline_args['control_image'] = self._sd3_force_control_to_a16(
                     pipeline_args, control_images
                 )
-            elif (_enums.model_type_is_flux(self._model_type)
+            elif (_enums.model_type_is_flux_family(self._model_type)
                   or _enums.model_type_is_z_image(self._model_type)
                   or _enums.model_type_is_qwen_image(self._model_type)
                   or _enums.model_type_is_hydit(self._model_type)):
@@ -1976,7 +1975,7 @@ class DiffusionPipelineWrapper:
             for idx, img in enumerate(adapter_control_images):
                 adapter_control_images[idx] = _image.resize_image(img, new_size)
 
-        if _enums.model_type_is_sdxl(self.model_type) and user_args.sdxl_t2i_adapter_factor is not None:
+        if _enums.model_type_is_sdxl_family(self.model_type) and user_args.sdxl_t2i_adapter_factor is not None:
             pipeline_args['adapter_conditioning_factor'] = user_args.sdxl_t2i_adapter_factor
 
         self._set_pipe_dimensions(
@@ -2013,13 +2012,13 @@ class DiffusionPipelineWrapper:
         if images:
             # Stable Cascade and Qwen-Image edit-plus accept mixed sizes.
             # Edit-inpaint still checks image vs mask below.
-            if not (_enums.model_type_is_s_cascade(self._model_type)
+            if not (_enums.model_type_is_s_cascade_family(self._model_type)
                     or _enums.model_type_is_qwen_image_edit(self._model_type)):
                 self._validate_images_all_same_size('img2img images', images)
-            if not _enums.model_type_is_s_cascade(self._model_type):
+            if not _enums.model_type_is_s_cascade_family(self._model_type):
                 images = self._resize_images_to_user_dimensions(images, user_args)
 
-        if self._model_type != _enums.ModelType.UPSCALER_X2 and \
+        if not _enums.model_type_is_upscaler_x2(self._model_type) and \
                 hasattr(self._pipeline, 'vae') and self._pipeline.vae is not None:
             # we need to decode the latents into an image using the VAE for
             # the best img2img result, passing already denoised latents
@@ -2063,17 +2062,17 @@ class DiffusionPipelineWrapper:
         Video models handle their model-specific size requirements in their
         pipeline implementations.
         """
-        if _enums.model_type_is_s_cascade(self._model_type):
+        if _enums.model_type_is_s_cascade_family(self._model_type):
             return 128
-        if _enums.model_type_is_sd3(self._model_type):
+        if _enums.model_type_is_sd3_family(self._model_type):
             return 16
-        if self._model_type == _enums.ModelType.QWEN_IMAGE_21:
+        if _enums.model_type_is_qwen_image_21(self._model_type):
             return 32
         if _enums.model_type_is_hyimage_21_family(self._model_type):
             return 32
         if _enums.model_type_is_hydit(self._model_type):
             return 16
-        if _enums.model_type_is_flow_image(self._model_type):
+        if _enums.model_type_is_flow_image_family(self._model_type):
             return 16
         return 8
 
@@ -2082,11 +2081,20 @@ class DiffusionPipelineWrapper:
                                model_type: _enums.ModelType,
                                adetailer_detector_uris: _types.OptionalUris) -> _enums.PipelineType:
         pipeline_type = args.determine_pipeline_type()
+        condition = (
+            args.mask_images is None
+            and not adetailer_detector_uris
+            and _enums.model_type_image_is_condition(model_type))
+        # Kandinsky editing has no strength, so the seed is stored as a
+        # reference image. The checkpoint still has to load the image-to-image
+        # pipeline; the text-to-image class builds a different visual token.
+        if (_enums.model_type_is_kandinsky5_image(model_type)
+                and condition
+                and (args.images is not None or args.reference_images)):
+            return _enums.PipelineType.IMG2IMG
         if (args.images is not None
-                and args.mask_images is None
-                and not adetailer_detector_uris
-                and _enums.model_type_image_is_condition(model_type)
-                and model_type != _enums.ModelType.KANDINSKY5_IMAGE):
+                and condition
+                and not _enums.model_type_is_kandinsky5_image(model_type)):
             return _enums.PipelineType.TXT2IMG
         return pipeline_type
 
@@ -2163,8 +2171,8 @@ class DiffusionPipelineWrapper:
 
         # Handle special model type configurations
         floyd_og_image_needed = (self._pipeline_type == _enums.PipelineType.INPAINT and
-                                 _enums.model_type_is_floyd_ifs(self._model_type)
-                                 ) or (self._model_type == _enums.ModelType.IFS_IMG2IMG)
+                                 _enums.model_type_is_floyd_ifs_family(self._model_type)
+                                 ) or (_enums.model_type_is_ifs_img2img(self._model_type))
 
         if floyd_og_image_needed:
             if user_args.floyd_image is None:
@@ -2178,7 +2186,7 @@ class DiffusionPipelineWrapper:
                 inference_width, inference_height
             )
 
-        elif self._model_type == _enums.ModelType.S_CASCADE:
+        elif _enums.model_type_is_s_cascade(self._model_type):
             pipeline_args['images'] = image_arg_inputs
             # Stable cascade output dimension will not be based on the image input for img2img
             self._set_pipe_dimensions(
@@ -2208,28 +2216,27 @@ class DiffusionPipelineWrapper:
             pipeline_args['noise_level'] = int(user_args.upscaler_noise_level)
 
         def is_sd3_or_flux():
-            return _enums.model_type_is_sd3(self._model_type) or _enums.model_type_is_flux(self._model_type)
+            return _enums.model_type_is_sd3_family(self._model_type) or _enums.model_type_is_flux_family(self._model_type)
 
-        if _enums.model_type_is_upscaler(self._model_type):
-            if self._model_type == _enums.ModelType.UPSCALER_X4:
+        if _enums.model_type_is_upscaler_family(self._model_type):
+            if _enums.model_type_is_upscaler_x4(self._model_type):
                 use_noise(_constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL)
             check_no_image_seed_strength()
-        elif self._model_type in {
-                _enums.ModelType.FLUX_FILL,
-                _enums.ModelType.FLUX_KONTEXT,
-                _enums.ModelType.KANDINSKY5_IMAGE}:
+        elif (_enums.model_type_is_flux_fill(self._model_type)
+              or _enums.model_type_is_flux_kontext(self._model_type)
+              or _enums.model_type_is_kandinsky5_image(self._model_type)):
             check_no_image_seed_strength()
-        elif self._model_type == _enums.ModelType.IFS:
+        elif _enums.model_type_is_ifs(self._model_type):
             if self._pipeline_type != _enums.PipelineType.INPAINT:
                 use_noise(_constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL)
                 check_no_image_seed_strength()
             else:
                 use_noise(_constants.DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL)
                 self._set_pipeline_strength(user_args, pipeline_args)
-        elif self._model_type == _enums.ModelType.IFS_IMG2IMG:
+        elif _enums.model_type_is_ifs_img2img(self._model_type):
             use_noise(_constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL)
             self._set_pipeline_strength(user_args, pipeline_args)
-        elif not _enums.model_type_is_pix2pix(self._model_type) and self._model_type != _enums.ModelType.S_CASCADE:
+        elif not _enums.model_type_is_pix2pix_family(self._model_type) and not _enums.model_type_is_s_cascade(self._model_type):
             self._set_pipeline_strength(user_args, pipeline_args)
         else:
             check_no_image_seed_strength()
@@ -2250,7 +2257,7 @@ class DiffusionPipelineWrapper:
 
             pipeline_args['mask_image'] = mask_images
 
-            if not (_enums.model_type_is_floyd(self._model_type) or is_sd3_or_flux()):
+            if not (_enums.model_type_is_floyd_family(self._model_type) or is_sd3_or_flux()):
                 # Override dimensions for masked models
                 self._set_pipe_dimensions(
                     user_width, user_height,
@@ -2269,13 +2276,13 @@ class DiffusionPipelineWrapper:
                 )
 
         # Handle specific model types that need special dimension handling
-        if self._model_type == _enums.ModelType.SDXL_PIX2PIX:
+        if _enums.model_type_is_sdxl_pix2pix(self._model_type):
             self._set_pipe_dimensions(
                 user_width, user_height,
                 inference_width, inference_height,
                 pipeline_args
             )
-        elif self._model_type == _enums.ModelType.UPSCALER_X2:
+        elif _enums.model_type_is_upscaler_x2(self._model_type):
             image_arg_inputs = list(image_arg_inputs)
             pipeline_args['image'] = image_arg_inputs
 
@@ -2296,7 +2303,7 @@ class DiffusionPipelineWrapper:
                 image_arg_inputs[0].width, image_arg_inputs[0].height
             )
 
-        elif self._model_type == _enums.ModelType.S_CASCADE:
+        elif _enums.model_type_is_s_cascade(self._model_type):
             # Override with cascade defaults and set both pipeline and inference dimensions
             cascade_width = _types.default(user_width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
             cascade_height = _types.default(user_height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
@@ -2308,7 +2315,7 @@ class DiffusionPipelineWrapper:
             )
 
         elif is_sd3_or_flux():
-            if _enums.model_type_is_sd3(self._model_type):
+            if _enums.model_type_is_sd3_family(self._model_type):
                 image_arg_inputs = list(image_arg_inputs)
                 pipeline_args['image'] = image_arg_inputs
                 aligned_sizes = []
@@ -2353,7 +2360,7 @@ class DiffusionPipelineWrapper:
         width, height = self._aligned_user_dimensions(
             user_args.width, user_args.height, 'txt2img')
 
-        if _enums.model_type_is_sdxl(self._model_type):
+        if _enums.model_type_is_sdxl_family(self._model_type):
             self._inference_height = _types.default(height, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT)
             self._inference_width = _types.default(width, _constants.DEFAULT_SDXL_OUTPUT_WIDTH)
         elif _enums.model_type_is_kolors(self._model_type):
@@ -2368,14 +2375,14 @@ class DiffusionPipelineWrapper:
         elif _enums.model_type_is_floyd_if(self._model_type):
             self._inference_height = _types.default(height, _constants.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
             self._inference_width = _types.default(width, _constants.DEFAULT_FLOYD_IF_OUTPUT_WIDTH)
-        elif self._model_type == _enums.ModelType.S_CASCADE:
+        elif _enums.model_type_is_s_cascade(self._model_type):
             self._inference_height = _types.default(height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
             self._inference_width = _types.default(width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
-        elif self._model_type == _enums.ModelType.SD3:
+        elif _enums.model_type_is_sd3(self._model_type):
             self._inference_height = _types.default(height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
             self._inference_width = _types.default(width, _constants.DEFAULT_SD3_OUTPUT_WIDTH)
-        elif (_enums.model_type_is_flux(self._model_type)
-              or _enums.model_type_is_flow_image(self._model_type)):
+        elif (_enums.model_type_is_flux_family(self._model_type)
+              or _enums.model_type_is_flow_image_family(self._model_type)):
             self._inference_height = _types.default(height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT)
             self._inference_width = _types.default(width, _constants.DEFAULT_FLUX_OUTPUT_WIDTH)
         else:
@@ -2565,6 +2572,10 @@ class DiffusionPipelineWrapper:
         self._inference_width = None
         self._inference_height = None
 
+        if user_args.image_seed_strength is not None and not user_args.images:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'image_seed_strength requires an input image.')
+
         # Apply inpaint crop if enabled and we have the necessary inputs
         # This must happen first so all downstream methods work with cropped images
         self._prepare_inpaint_crop(user_args)
@@ -2588,7 +2599,7 @@ class DiffusionPipelineWrapper:
             self._set_pipeline_t2iadapter_defaults(user_args, pipeline_args)
         elif user_args.images is not None:
             if (_enums.model_type_image_is_condition(self._model_type)
-                    and self._model_type != _enums.ModelType.KANDINSKY5_IMAGE
+                    and not _enums.model_type_is_kandinsky5_image(self._model_type)
                     and user_args.mask_images is None
                     and not self._parsed_adetailer_detector_uris):
                 self._set_pipeline_txt2img_defaults(user_args, pipeline_args)
@@ -2728,7 +2739,7 @@ class DiffusionPipelineWrapper:
             len(self._parsed_controlnet_uris) > 1 else self._parsed_controlnet_uris[0].end
 
     def _check_for_invalid_model_specific_opts(self, user_args: _arguments.DiffusionArguments):
-        if not _enums.model_type_is_flux(self.model_type):
+        if not _enums.model_type_is_flux_family(self.model_type):
             for arg, val in _types.get_public_attributes(user_args).items():
                 if arg.startswith('flux') and not arg.startswith('flux2') and val is not None:
                     raise _pipelines.UnsupportedPipelineConfigError(
@@ -2758,20 +2769,20 @@ class DiffusionPipelineWrapper:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         f'{arg} may only be used with Qwen-Image layered.')
 
-        if not (_enums.model_type_is_sdxl(self.model_type) or
+        if not (_enums.model_type_is_sdxl_family(self.model_type) or
                 _enums.model_type_is_kolors(self.model_type)):
             for arg, val in _types.get_public_attributes(user_args).items():
                 if arg.startswith('sdxl') and val is not None:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         f'{arg} may only be used with SDXL models.')
 
-        if not _enums.model_type_is_sd3(self.model_type):
+        if not _enums.model_type_is_sd3_family(self.model_type):
             for arg, val in _types.get_public_attributes(user_args).items():
                 if arg.startswith('sd3') and val is not None:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         f'{arg} may only be used with Stable Diffusion 3 models.')
 
-        if not _enums.model_type_is_s_cascade(self.model_type):
+        if not _enums.model_type_is_s_cascade_family(self.model_type):
             for arg, val in _types.get_public_attributes(user_args).items():
                 if arg.startswith('s_cascade') and val is not None:
                     raise _pipelines.UnsupportedPipelineConfigError(
@@ -2923,8 +2934,8 @@ class DiffusionPipelineWrapper:
     def _latents_use_flux_style_packing(self) -> bool:
         """Models that pack 2x2 latent patches into the channel dimension."""
         return (
-                _enums.model_type_is_flux(self._model_type)
-                or self._model_type == _enums.ModelType.KREA2
+                _enums.model_type_is_flux_family(self._model_type)
+                or _enums.model_type_is_krea2(self._model_type)
                 or (_enums.model_type_is_qwen_image_family(self._model_type)
                     and not _enums.model_type_is_qwen_image_layered(self._model_type))
         )
@@ -2935,11 +2946,11 @@ class DiffusionPipelineWrapper:
 
     def _latents_use_qwen21_packing(self) -> bool:
         """Qwen-Image 2.1 flattens unpatched spatial latents into tokens."""
-        return self._model_type == _enums.ModelType.QWEN_IMAGE_21
+        return _enums.model_type_is_qwen_image_21(self._model_type)
 
     def _latents_use_kandinsky5_image_layout(self) -> bool:
         """Kandinsky 5 Image uses [B, 1, H, W, C] transformer latents."""
-        return self._model_type == _enums.ModelType.KANDINSKY5_IMAGE
+        return _enums.model_type_is_kandinsky5_image(self._model_type)
 
     @staticmethod
     def _unpack_qwen21_latents(latents: torch.Tensor,
@@ -3310,7 +3321,7 @@ class DiffusionPipelineWrapper:
             guidance_scale = pipeline_args.pop('guidance_scale')
             pipeline_args.update(_pipelines.qwen_image_call_guidance(
                 guidance_scale, prompt.negative if prompt.negative else None))
-        elif self._model_type == _enums.ModelType.QWEN_IMAGE_21:
+        elif _enums.model_type_is_qwen_image_21(self._model_type):
             # Qwen-Image 2.1 is sampled unguided by default. A user-supplied
             # --guidance-scales opts into true CFG, as on the original model.
             guidance_scale = user_args.guidance_scale
@@ -3329,7 +3340,7 @@ class DiffusionPipelineWrapper:
                 pipeline_args['negative_prompt'] = prompt.negative if prompt.negative else None
 
         if user_args.max_sequence_length is not None \
-                and self._model_type == _enums.ModelType.QWEN_IMAGE_21:
+                and _enums.model_type_is_qwen_image_21(self._model_type):
             self._set_accepted_call_argument(
                 pipeline_args, 'max_sequence_length', user_args.max_sequence_length,
                 '--max-sequence-length is not supported by Qwen-Image 2.1.')
@@ -3360,9 +3371,9 @@ class DiffusionPipelineWrapper:
             pipeline_args, 'use_kv_cache', user_args.qwen21_use_kv_cache,
             '--qwen21-no-kv-cache is only supported by Qwen-Image 2.1.')
 
-        if self._model_type == _enums.ModelType.QWEN_IMAGE_21 and user_args.inference_steps is None:
+        if _enums.model_type_is_qwen_image_21(self._model_type) and user_args.inference_steps is None:
             pipeline_args['num_inference_steps'] = 40
-        elif self._model_type == _enums.ModelType.KREA2:
+        elif _enums.model_type_is_krea2(self._model_type):
             distilled = bool(self._pipeline.config.get('is_distilled', False))
             if user_args.inference_steps is None:
                 pipeline_args['num_inference_steps'] = 8 if distilled else 28
@@ -3374,7 +3385,7 @@ class DiffusionPipelineWrapper:
                 'guidance_scale',
                 user_args.guidance_scale if user_args.guidance_scale is not None else None)
             if user_args.inference_steps is None:
-                if self._model_type == _enums.ModelType.HYIMAGE_21_REFINER:
+                if _enums.model_type_is_hyimage_21_refiner(self._model_type):
                     pipeline_args['num_inference_steps'] = 4
                 else:
                     pipeline_args['num_inference_steps'] = 50
@@ -3382,7 +3393,7 @@ class DiffusionPipelineWrapper:
                 transformer = getattr(self._pipeline, 'transformer', None)
                 guidance_embeds = bool(
                     getattr(getattr(transformer, 'config', None), 'guidance_embeds', False))
-                if guidance_embeds or self._model_type == _enums.ModelType.HYIMAGE_21_REFINER:
+                if guidance_embeds or _enums.model_type_is_hyimage_21_refiner(self._model_type):
                     if guidance_scale is None:
                         guidance_scale = 3.25
                     pipeline_args['distilled_guidance_scale'] = float(guidance_scale)
@@ -3390,13 +3401,15 @@ class DiffusionPipelineWrapper:
                     guider = self._pipeline.guider
                     if hasattr(guider, 'guidance_scale'):
                         guider.guidance_scale = float(guidance_scale)
-            if self._model_type == _enums.ModelType.HYIMAGE_21_REFINER:
-                if not user_args.images:
+            if _enums.model_type_is_hyimage_21_refiner(self._model_type):
+                # A condition seed is stored on reference_images. The pipeline
+                # argument is image.
+                images = user_args.images or user_args.reference_images
+                if not images:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         '--model-type hyimage-21-refiner requires --image-seeds with an input image.')
-                images = user_args.images
                 pipeline_args['image'] = images if len(images) > 1 else images[0]
-        elif self._model_type == _enums.ModelType.KANDINSKY5_IMAGE:
+        elif _enums.model_type_is_kandinsky5_image(self._model_type):
             if user_args.inference_steps is None:
                 pipeline_args['num_inference_steps'] = 50
             if user_args.guidance_scale is None:
@@ -3542,7 +3555,7 @@ class DiffusionPipelineWrapper:
         denoised channel slice.
         """
         pipeline = self._pipeline
-        if (self._model_type != _enums.ModelType.KANDINSKY5_IMAGE
+        if (not _enums.model_type_is_kandinsky5_image(self._model_type)
                 or pipeline_args.get('latents') is None
                 or pipeline_args.get('image') is None):
             yield
@@ -3579,9 +3592,9 @@ class DiffusionPipelineWrapper:
                 'DyPE cannot be combined with Cache-DiT Ray execution because the model patch '
                 'runs in a separate worker process.')
 
-        if _enums.model_type_is_flux(self.model_type):
+        if _enums.model_type_is_flux_family(self.model_type):
             model_family = 'flux1'
-        elif self.model_type is _enums.ModelType.KREA2:
+        elif _enums.model_type_is_krea2(self.model_type):
             model_family = 'krea2'
         elif _enums.model_type_is_flux2_family(self.model_type):
             model_family = 'flux2'
@@ -3591,9 +3604,9 @@ class DiffusionPipelineWrapper:
             model_family = 'zimage'
         elif _enums.model_type_is_wan_family(self.model_type):
             model_family = 'wan'
-        elif self.model_type is _enums.ModelType.HUNYUAN_VIDEO_15:
+        elif _enums.model_type_is_hyvideo_15(self.model_type):
             model_family = 'hyvideo-15'
-        elif self.model_type is _enums.ModelType.MOTIF_VIDEO:
+        elif _enums.model_type_is_motif_video(self.model_type):
             model_family = 'motif-video'
         else:
             raise _pipelines.UnsupportedPipelineConfigError(
@@ -4018,7 +4031,7 @@ class DiffusionPipelineWrapper:
             second_model=False
         )
 
-        if _enums.model_type_is_sd3(self.model_type):
+        if _enums.model_type_is_sd3_family(self.model_type):
 
             self._set_non_universal_pipeline_arg(self._pipeline,
                                                  pipeline_args, user_args,
@@ -4113,7 +4126,7 @@ class DiffusionPipelineWrapper:
                     'Cannot specify IP Adapter images without loading any IP Adapter models.'
                 )
 
-            if _enums.model_type_is_sd3(self.model_type):
+            if _enums.model_type_is_sd3_family(self.model_type):
                 self._pipeline.set_ip_adapter_scale(self._parsed_ip_adapter_uris[0].scale)
             else:
                 self._pipeline.set_ip_adapter_scale([u.scale for u in self._parsed_ip_adapter_uris])
@@ -4143,7 +4156,7 @@ class DiffusionPipelineWrapper:
                         f'provided number of input images.'
                     )
 
-        if self._model_type != _enums.ModelType.UPSCALER_X2:
+        if not _enums.model_type_is_upscaler_x2(self._model_type):
             pipeline_args['num_images_per_prompt'] = batch_size
         else:
             in_img_cnt = len(pipeline_args['image'])
@@ -4679,7 +4692,7 @@ class DiffusionPipelineWrapper:
         if self._parsed_adetailer_detector_uris:
             pipeline_type = _enums.PipelineType.INPAINT
 
-        if self._model_type == _enums.ModelType.S_CASCADE:
+        if _enums.model_type_is_s_cascade(self._model_type):
 
             if self._s_cascade_decoder_uri is None:
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -4794,7 +4807,7 @@ class DiffusionPipelineWrapper:
 
             if self._pipeline is not None:
 
-                if _enums.model_type_is_sdxl(self.model_type):
+                if _enums.model_type_is_sdxl_family(self.model_type):
                     refiner_extra_modules = {'vae': self._pipeline.vae,
                                              'text_encoder_2': self._pipeline.text_encoder_2}
                 else:
@@ -5053,7 +5066,7 @@ class DiffusionPipelineWrapper:
             processed_images = []
             for image in images:
 
-                if not _enums.model_type_is_s_cascade(self._model_type):
+                if not _enums.model_type_is_s_cascade_family(self._model_type):
 
                     target_size = self._calc_image_target_size(image, user_args)
 
@@ -5335,7 +5348,7 @@ class DiffusionPipelineWrapper:
         )
 
     def _auto_denoise_range_check(self, args: _arguments.DiffusionArguments):
-        if _enums.model_type_is_sdxl(self._model_type):
+        if _enums.model_type_is_sdxl_family(self._model_type):
 
             have_latent_input = any(
                 _torchutil.is_tensor(i) for i in args.images
@@ -5373,7 +5386,7 @@ class DiffusionPipelineWrapper:
                     'Adetailer does not support outputting to latents.'
                 )
 
-            if _enums.model_type_is_floyd(self.model_type):
+            if _enums.model_type_is_floyd_family(self.model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Deep Floyd model types do not support outputting to latents.'
                 )
@@ -5386,12 +5399,12 @@ class DiffusionPipelineWrapper:
         if args.images and any(_torchutil.is_tensor(i) for i in args.images):
             # validation that input type is not mixed happens in _get_pipeline_defaults
 
-            if _enums.model_type_is_floyd(self.model_type):
+            if _enums.model_type_is_floyd_family(self.model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Deep Floyd model types do not support accepting latents as input.'
                 )
 
-            if _enums.model_type_is_s_cascade(self.model_type):
+            if _enums.model_type_is_s_cascade_family(self.model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Stable Cascade does not support accepting latents as input.'
                 )
@@ -5962,7 +5975,7 @@ class DiffusionPipelineWrapper:
             if latents.device != vae.device:
                 latents = latents.to(self._device)
 
-            if _enums.model_type_is_sdxl(self.model_type) or _enums.model_type_is_kolors(self.model_type):
+            if _enums.model_type_is_sdxl_family(self.model_type) or _enums.model_type_is_kolors(self.model_type):
                 # SDXL and Kolors
                 has_latents_mean = \
                     hasattr(vae.config, "latents_mean") and \
@@ -5986,15 +5999,15 @@ class DiffusionPipelineWrapper:
                 else:
                     latents = latents / vae.config.scaling_factor
                 decoded_images = vae.decode(latents).sample
-            elif _enums.model_type_is_sd15(self.model_type) or _enums.model_type_is_sd2(self.model_type):
+            elif _enums.model_type_is_sd15_family(self.model_type) or _enums.model_type_is_sd2_family(self.model_type):
                 # SD15 and SD2
                 latents = latents / vae.config.scaling_factor
                 decoded_images = vae.decode(latents).sample
-            elif _enums.model_type_is_sd3(self.model_type):
+            elif _enums.model_type_is_sd3_family(self.model_type):
                 # SD3
                 latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
                 decoded_images = vae.decode(latents).sample
-            elif _enums.model_type_is_flux(self.model_type) or _enums.model_type_is_z_image_family(self.model_type):
+            elif _enums.model_type_is_flux_family(self.model_type) or _enums.model_type_is_z_image_family(self.model_type):
                 # Flux.1 and Z-Image: spatial latents with scale/shift.
                 latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
                 decoded_images = vae.decode(latents).sample
@@ -6077,7 +6090,7 @@ class DiffusionPipelineWrapper:
             refiner=self._sdxl_refiner_uri is not None)
         spectrum_token = _spectrum.push(self._spectrum_settings(copy_args))
         try:
-            if _enums.model_type_is_video(self._model_type):
+            if _enums.model_type_is_video_family(self._model_type):
                 help_text = self._argument_help_check(copy_args)
                 if help_text:
                     raise DiffusionArgumentsHelpException(help_text)
@@ -6134,14 +6147,14 @@ class DiffusionPipelineWrapper:
 
             try:
                 try:
-                    if self.model_type == _enums.ModelType.S_CASCADE:
+                    if _enums.model_type_is_s_cascade(self.model_type):
                         result = self._call_torch_s_cascade(
                             pipeline_args=pipeline_args,
                             user_args=copy_args)
-                    elif _enums.model_type_is_flux(self.model_type):
+                    elif _enums.model_type_is_flux_family(self.model_type):
                         result = self._call_torch_flux(pipeline_args=pipeline_args,
                                                        user_args=copy_args)
-                    elif _enums.model_type_is_flow_image(self.model_type):
+                    elif _enums.model_type_is_flow_image_family(self.model_type):
                         result = self._call_torch_flow_image(pipeline_args=pipeline_args,
                                                              user_args=copy_args)
                     else:

@@ -272,14 +272,11 @@ def _torch_compile_for_cache(wrapper) -> bool:
     if _pipelines.torch_compile_disabled():
         return False
     model_type = getattr(wrapper, 'model_type', None)
-    if model_type == _enums.ModelType.WAN_ANIMATE_2:
-        return True
-    if isinstance(model_type, str):
-        try:
-            model_type = _enums.get_model_type_enum(model_type)
-        except ValueError:
-            model_type = None
-    if model_type == _enums.ModelType.WAN_ANIMATE_2:
+    try:
+        animate_2 = model_type is not None and _enums.model_type_is_wan_animate_2(model_type)
+    except ValueError:
+        animate_2 = False
+    if animate_2:
         return True
     return bool(getattr(wrapper, 'torch_compile', False))
 

@@ -247,10 +247,10 @@ def _has_path(parsed, name: str) -> bool:
 
 def _resolve_wan_load(model_type, index):
     model_type = _enums.get_model_type_enum(model_type)
-    if model_type == _enums.ModelType.WAN_ANIMATE:
+    if _enums.model_type_is_wan_animate(model_type):
         family = wan_animate_family_from_index(index)
         return family, _wan_pipeline_class('wan-animate', family), False
-    if model_type == _enums.ModelType.WAN_ANIMATE_2:
+    if _enums.model_type_is_wan_animate_2(model_type):
         family = wan_animate_2_family_from_index(index)
         return family, _wan_pipeline_class('wan-animate-2', family), False
     family = wan_family_from_index(index)
@@ -293,10 +293,10 @@ def _wan_pipeline_class(mode: str, family: str = 'wan-t2v'):
 
 def _wan_transformer_class(model_type, family: str = 'wan-t2v'):
     model_type = _enums.get_model_type_enum(model_type)
-    if model_type == _enums.ModelType.WAN_ANIMATE_2 or str(family).startswith('wan-animate-2'):
+    if _enums.model_type_is_wan_animate_2(model_type) or str(family).startswith('wan-animate-2'):
         from diffusers import WanAnimate2Transformer3DModel
         return WanAnimate2Transformer3DModel
-    if model_type == _enums.ModelType.WAN_ANIMATE or family == 'wan-animate':
+    if _enums.model_type_is_wan_animate(model_type) or family == 'wan-animate':
         from diffusers import WanAnimateTransformer3DModel
         return WanAnimateTransformer3DModel
     if family == 'wan-vace':

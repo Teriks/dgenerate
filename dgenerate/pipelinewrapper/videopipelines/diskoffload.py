@@ -73,6 +73,15 @@ _SAFETENSORS_DTYPE = {
     torch.bool: 'BOOL',
 }
 
+# Accelerate's offload loader casts when an index entry names a torch dtype.
+# A float32 checkpoint read as bfloat16 can keep the original file.
+_FLOAT_FILE_DTYPE = {
+    'F64': 'float64',
+    'F32': 'float32',
+    'F16': 'float16',
+    'BF16': 'bfloat16',
+}
+
 
 def format_gib(num_bytes: int) -> str:
     """Format a byte count in gibibytes for log messages."""
@@ -201,16 +210,97 @@ def _safetensors_header(path: str) -> dict | None:
     return header
 
 
-def _index_from_weight_map(folder: str, weight_map: dict, state: dict) -> dict | None:
-    if not weight_map or any(key not in weight_map for key in state):
+def _load_dtype_name(file_dtype: str, tensor: torch.Tensor) -> str | None:
+    """Torch dtype name to record when ``tensor`` is a float cast of the file.
+
+    An empty string means the file dtype already matches. ``None`` means this
+    tensor cannot be read from that file.
+    """
+    expected = _SAFETENSORS_DTYPE.get(tensor.dtype)
+    if expected is None or not isinstance(file_dtype, str):
+        return None
+    if file_dtype == expected:
+        return ''
+    target = _FLOAT_FILE_DTYPE.get(expected)
+    source = _FLOAT_FILE_DTYPE.get(file_dtype)
+    if target is None or source is None:
+        return None
+    return target
+
+
+def _same_shape(entry: dict, tensor: torch.Tensor) -> bool:
+    shape = entry.get('shape')
+    if shape is None:
+        return True
+    try:
+        recorded = tuple(int(dim) for dim in shape)
+    except (TypeError, ValueError):
+        return False
+    return recorded == tuple(tensor.shape)
+
+
+def _renamed_checkpoint_keys(module, file_keys: set[str]) -> dict[str, str]:
+    """Map checkpoint tensor names onto module names when the layout was only renamed.
+
+    A converter that rebuilds a tensor (a split QKV, for example) is left out.
+    The caller then keeps its own copy of that tensor.
+    """
+    try:
+        from transformers.conversion_mapping import get_model_conversion_mapping
+        from transformers.core_model_loading import (
+            WeightConverter,
+            WeightRenaming,
+            rename_source_key,
+        )
+        mapping = get_model_conversion_mapping(module, None, None)
+    except Exception as error:
+        _messages.debug_log(f'Checkpoint key rename was not applied: {error}')
+        return {key: key for key in file_keys}
+    renamings = [item for item in mapping if isinstance(item, WeightRenaming)]
+    converters = [item for item in mapping if isinstance(item, WeightConverter)]
+    if not renamings and not converters:
+        return {key: key for key in file_keys}
+    renamed = {}
+    # Group renames decide later keys from earlier ones, in sorted order.
+    for key in sorted(file_keys):
+        new, pattern = rename_source_key(key, renamings, converters)
+        if pattern is None:
+            renamed[key] = new
+    return renamed
+
+
+def _align_state_keys(module, file_keys: set[str], state: dict) -> dict[str, str] | None:
+    """Return ``state key -> checkpoint tensor name`` when every tensor can be read as stored."""
+    if file_keys and all(key in file_keys for key in state):
+        return {key: key for key in state}
+    inverse: dict[str, str] = {}
+    for file_key, state_key in _renamed_checkpoint_keys(module, file_keys).items():
+        if state_key not in state:
+            continue
+        previous = inverse.get(state_key)
+        if previous is not None and previous != file_key:
+            return None
+        inverse[state_key] = file_key
+    if any(key not in inverse for key in state):
+        return None
+    return inverse
+
+
+def _index_from_weight_map(folder: str,
+                           weight_map: dict,
+                           state: dict,
+                           file_names: dict[str, str] | None = None) -> dict | None:
+    if file_names is None:
+        file_names = {key: key for key in state}
+    if not weight_map or any(key not in file_names for key in state):
+        return None
+    if any(file_names[key] not in weight_map for key in state):
         return None
     headers: dict[str, dict] = {}
     index = {}
     for key, value in state.items():
-        expected = _SAFETENSORS_DTYPE.get(value.dtype)
-        if expected is None:
-            return None
-        filename = weight_map[key]
+        file_key = file_names[key]
+        filename = weight_map[file_key]
         if not isinstance(filename, str):
             return None
         path = os.path.join(folder, filename)
@@ -220,17 +310,23 @@ def _index_from_weight_map(folder: str, weight_map: dict, state: dict) -> dict |
             if header is None:
                 return None
             headers[path] = header
-        entry = header.get(key)
-        if not isinstance(entry, dict) or entry.get('dtype') != expected:
+        entry = header.get(file_key)
+        if not isinstance(entry, dict) or not _same_shape(entry, value):
             return None
-        index[key] = {
+        dtype_name = _load_dtype_name(entry.get('dtype'), value)
+        if dtype_name is None:
+            return None
+        recorded = {
             'safetensors_file': os.path.abspath(path),
-            'weight_name': key,
+            'weight_name': file_key,
         }
+        if dtype_name:
+            recorded['dtype'] = dtype_name
+        index[key] = recorded
     return index
 
 
-def _reuse_checkpoint_index(folder: str | None, state: dict) -> dict | None:
+def _reuse_checkpoint_index(folder: str | None, module, state: dict) -> dict | None:
     """Point at the checkpoint files when they already match the loaded tensors."""
     if not folder or not os.path.isdir(folder) or not state:
         return None
@@ -247,14 +343,26 @@ def _reuse_checkpoint_index(folder: str | None, state: dict) -> dict | None:
         except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             continue
         weight_map = payload.get('weight_map') if isinstance(payload, dict) else None
-        if isinstance(weight_map, dict):
-            index = _index_from_weight_map(folder, weight_map, state)
-            if index is not None:
-                return index
+        if not isinstance(weight_map, dict):
+            continue
+        file_names = _align_state_keys(module, set(weight_map), state)
+        if file_names is None:
+            continue
+        index = _index_from_weight_map(folder, weight_map, state, file_names)
+        if index is not None:
+            return index
     for name in names:
         if not name.endswith('.safetensors') or name.endswith('.index.json'):
             continue
-        index = _index_from_weight_map(folder, {key: name for key in state}, state)
+        path = os.path.join(folder, name)
+        header = _safetensors_header(path)
+        if header is None:
+            continue
+        file_names = _align_state_keys(module, set(header), state)
+        if file_names is None:
+            continue
+        index = _index_from_weight_map(
+            folder, {key: name for key in header}, state, file_names)
         if index is not None:
             return index
     return None
@@ -377,9 +485,15 @@ def offload_module_weights(module,
     Leave ``module`` weights on disk and drop the RAM copy.
 
     When ``dirty`` is false and ``checkpoint_folder`` already contains
-    matching safetensors, those files are used directly. Otherwise the
-    loaded tensors are written to the persistent disk cache, or under
-    ``offload_dir`` when no cache identity is given.
+    matching safetensors, those files are used directly. A checkpoint
+    whose tensor names were only renamed, such as a Qwen2.5-VL file that
+    still uses ``model.layers`` for a module that calls them
+    ``model.language_model.layers``, is read from those files too. A float
+    tensor whose dtype differs from the file, such as bfloat16 loaded from
+    a float32 checkpoint, is cast when the layer is read. A different shape,
+    or a tensor a converter has to rebuild, still needs its own copy.
+    Otherwise the loaded tensors are written to the persistent disk cache,
+    or under ``offload_dir`` when no cache identity is given.
 
     :param cache_identity: ``(repo, source, loras, fuse_scale)`` for a
         persistent copy. ``source`` identifies the checkpoint that produced
@@ -393,11 +507,21 @@ def offload_module_weights(module,
         return False
     index: dict | str | None = None
     if not dirty:
-        index = _reuse_checkpoint_index(checkpoint_folder, state)
+        index = _reuse_checkpoint_index(checkpoint_folder, module, state)
         if index is not None:
-            _messages.debug_log(
-                f'Using checkpoint files for {type(module).__name__} '
-                'instead of copying them.')
+            cast = ''
+            if isinstance(index, dict):
+                cast = next((
+                    item.get('dtype', '') for item in index.values()
+                    if isinstance(item, dict) and item.get('dtype')), '')
+            if cast:
+                _messages.debug_log(
+                    f'Using checkpoint files for {type(module).__name__}, '
+                    f'casting to {cast} when a layer is loaded.')
+            else:
+                _messages.debug_log(
+                    f'Using checkpoint files for {type(module).__name__} '
+                    'instead of copying them.')
     store = offload_dir
     if index is None and cache_identity is not None:
         repo, source, loras, fuse_scale = cache_identity

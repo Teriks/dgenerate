@@ -22,6 +22,10 @@
 """
 Detect Flux.2, Qwen-Image, Z-Image, LTX 2.5, Kandinsky 5, HunyuanImage 2.1, and Wan GGUF
 checkpoints and adapt ComfyUI layouts so Diffusers can load them without a manual config.
+
+Text-encoder GGUF files (T5, UMT5, Qwen, Mistral, Gemma) are read here too. Their
+llama.cpp tensor names are renamed to Hugging Face names, and the packed weights
+stay packed for ``--text-encoders``.
 """
 
 import contextlib
@@ -808,3 +812,204 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
     if layout.kind == 'wan-flf2v-14B':
         return adapt_wan_flf_checkpoint(checkpoint), config, subfolder, True
     return None, config, subfolder, False
+
+
+# llama.cpp text-encoder architectures. The tensor names are llama.cpp names
+# (``enc.blk.0.attn_q.weight``, ``blk.0.attn_q.weight``), not Hugging Face names.
+_TEXT_GGUF_ARCHITECTURES = frozenset({
+    't5', 't5encoder', 'llama', 'qwen2vl', 'qwen3', 'qwen3vl', 'gemma3',
+})
+
+# Replacements run in order, the same order ComfyUI-GGUF uses. A longer
+# name such as ``attn_q_norm`` has to be replaced before ``attn_q``.
+_T5_GGUF_KEYS = (
+    ('enc.', 'encoder.'),
+    ('.blk.', '.block.'),
+    ('token_embd', 'shared'),
+    ('output_norm', 'final_layer_norm'),
+    ('attn_rel_b', 'layer.0.SelfAttention.relative_attention_bias'),
+    ('attn_q', 'layer.0.SelfAttention.q'),
+    ('attn_k', 'layer.0.SelfAttention.k'),
+    ('attn_v', 'layer.0.SelfAttention.v'),
+    ('attn_o', 'layer.0.SelfAttention.o'),
+    ('attn_norm', 'layer.0.layer_norm'),
+    ('ffn_up', 'layer.1.DenseReluDense.wi_1'),
+    ('ffn_down', 'layer.1.DenseReluDense.wo'),
+    ('ffn_gate', 'layer.1.DenseReluDense.wi_0'),
+    ('ffn_norm', 'layer.1.layer_norm'),
+)
+
+_LLAMA_GGUF_KEYS = (
+    ('blk.', 'model.layers.'),
+    ('attn_q_norm.', 'self_attn.q_norm.'),
+    ('attn_k_norm.', 'self_attn.k_norm.'),
+    ('attn_v_norm.', 'self_attn.v_norm.'),
+    ('attn_q', 'self_attn.q_proj'),
+    ('attn_k', 'self_attn.k_proj'),
+    ('attn_v', 'self_attn.v_proj'),
+    ('attn_output', 'self_attn.o_proj'),
+    ('attn_norm', 'input_layernorm'),
+    ('ffn_up', 'mlp.up_proj'),
+    ('ffn_down', 'mlp.down_proj'),
+    ('ffn_gate', 'mlp.gate_proj'),
+    ('ffn_norm', 'post_attention_layernorm'),
+    ('token_embd', 'model.embed_tokens'),
+    ('output_norm', 'model.norm'),
+    ('output.weight', 'lm_head.weight'),
+)
+
+_GEMMA3_GGUF_KEYS = (
+    ('blk.', 'model.layers.'),
+    ('attn_q_norm.', 'self_attn.q_norm.'),
+    ('attn_k_norm.', 'self_attn.k_norm.'),
+    ('attn_v_norm.', 'self_attn.v_norm.'),
+    ('attn_q', 'self_attn.q_proj'),
+    ('attn_k', 'self_attn.k_proj'),
+    ('attn_v', 'self_attn.v_proj'),
+    ('attn_output', 'self_attn.o_proj'),
+    ('attn_norm', 'input_layernorm'),
+    ('ffn_up', 'mlp.up_proj'),
+    ('ffn_down', 'mlp.down_proj'),
+    ('ffn_gate', 'mlp.gate_proj'),
+    ('ffn_norm', 'pre_feedforward_layernorm'),
+    ('post_ffw_norm', 'post_feedforward_layernorm'),
+    ('post_attention_norm', 'post_attention_layernorm'),
+    ('token_embd', 'model.embed_tokens'),
+    ('output_norm', 'model.norm'),
+    ('output.weight', 'lm_head.weight'),
+)
+
+_GEMMA3_NORM_MARKERS = (
+    'input_layernorm.weight',
+    'post_attention_layernorm.weight',
+    'pre_feedforward_layernorm.weight',
+    'post_feedforward_layernorm.weight',
+    'self_attn.q_norm.weight',
+    'self_attn.k_norm.weight',
+    'model.norm.weight',
+)
+
+
+def _gguf_architecture(path: str) -> str | None:
+    import gguf
+
+    reader = gguf.GGUFReader(path)
+    field = reader.get_field('general.architecture')
+    if field is None or not field.types:
+        return None
+    return str(bytes(field.parts[field.data[-1]]), encoding='utf-8')
+
+
+def _remap_keys(state: dict, key_map: tuple) -> dict:
+    remapped = {}
+    for key, value in state.items():
+        for source, target in key_map:
+            key = key.replace(source, target)
+        remapped[key] = value
+    return remapped
+
+
+def _huggingface_names(keys, architecture: str) -> bool:
+    """True when the file already stores Hugging Face parameter names."""
+    if architecture in {'t5', 't5encoder'}:
+        return any(key.startswith('encoder.block.') or key == 'shared.weight' for key in keys)
+    return any(key.endswith('embed_tokens.weight') or '.self_attn.' in key for key in keys)
+
+
+def logical_tensor_shape(value) -> tuple[int, ...]:
+    """Decoded tensor shape. A packed GGUF weight's ``shape`` is its byte storage."""
+    quant_shape = getattr(value, 'quant_shape', None)
+    if _is_gguf_parameter(value) and quant_shape is not None:
+        return tuple(int(item) for item in quant_shape)
+    return tuple(int(item) for item in value.shape)
+
+
+def permute_llama_attention(state: dict, n_head: int, n_kv: int) -> dict:
+    """Undo the query and key interleave llama.cpp applies when it writes a GGUF.
+
+    Quantized rows stay packed: each row is its own sequence of quant blocks,
+    so moving rows moves the packed bytes the same way it moves a dense matrix.
+    """
+    from diffusers.quantizers.gguf.utils import GGUFParameter
+
+    def permute(value, heads):
+        rows = value.shape[0]
+        if heads <= 0 or rows % (heads * 2) != 0:
+            return value
+        quant_type = getattr(value, 'quant_type', None) if _is_gguf_parameter(value) else None
+        plain = value.as_tensor() if hasattr(value, 'as_tensor') else value.detach()
+        plain = plain.contiguous()
+        permuted = plain.reshape(
+            heads, rows // heads // 2, 2, *plain.shape[1:]).swapaxes(1, 2).reshape(plain.shape).contiguous()
+        if quant_type is None:
+            return permuted
+        return GGUFParameter(permuted, quant_type=quant_type)
+
+    updated = {}
+    for key, value in state.items():
+        language = 'vision' not in key and 'visual' not in key
+        if language and key.endswith(('q_proj.weight', 'q_proj.bias')):
+            value = permute(value, n_head)
+        elif language and key.endswith(('k_proj.weight', 'k_proj.bias')):
+            value = permute(value, n_kv)
+        updated[key] = value
+    return updated
+
+
+def correct_gemma3_norms(state: dict) -> dict:
+    """Subtract the 1 llama.cpp adds to Gemma norms when it writes the GGUF.
+
+    Transformers multiplies by ``1 + weight``. A file converted for llama.cpp
+    stores that sum, so the weight Hugging Face expects is one less.
+    """
+    from diffusers.quantizers.gguf.utils import dequantize_gguf_tensor
+
+    updated = {}
+    for key, value in state.items():
+        if any(marker in key for marker in _GEMMA3_NORM_MARKERS):
+            if _is_gguf_parameter(value):
+                value = dequantize_gguf_tensor(value)
+            value = value.float() - 1.0
+        updated[key] = value
+    return updated
+
+
+def load_text_encoder_gguf(path: str) -> tuple[str, dict]:
+    """
+    Read a text-encoder GGUF and rename llama.cpp tensors to Hugging Face names.
+
+    Packed weights stay :py:class:`diffusers.quantizers.gguf.utils.GGUFParameter`.
+    Float embeddings, norms, and biases stay dense tensors. Gemma 3 norms are
+    converted back to the Hugging Face convention.
+
+    :return: ``(architecture, state dict)``
+    :raises ValueError: The file is not a text-encoder GGUF, or a tensor uses a
+        quantization type Diffusers cannot decode.
+    """
+    from diffusers.models.model_loading_utils import load_gguf_checkpoint
+
+    architecture = _gguf_architecture(path)
+    if architecture not in _TEXT_GGUF_ARCHITECTURES:
+        raise ValueError(
+            f'GGUF file "{path}" has architecture {architecture!r}, which is not a text encoder. '
+            f'Text encoder files use one of: {", ".join(sorted(_TEXT_GGUF_ARCHITECTURES))}.')
+
+    state = load_gguf_checkpoint(path)
+    if architecture in {'t5', 't5encoder'}:
+        key_map = _T5_GGUF_KEYS
+    elif architecture == 'gemma3':
+        key_map = _GEMMA3_GGUF_KEYS
+    else:
+        key_map = _LLAMA_GGUF_KEYS
+
+    converted = not _huggingface_names(state, architecture)
+    if converted:
+        state = _remap_keys(state, key_map)
+    if architecture == 'gemma3' and converted:
+        state = correct_gemma3_norms(state)
+
+    _messages.debug_log(
+        f'GGUF text encoder "{path}" architecture {architecture}'
+        + (' (llama.cpp names)' if converted else ' (Hugging Face names)')
+        + f', {len(state)} tensors.')
+    return architecture, state

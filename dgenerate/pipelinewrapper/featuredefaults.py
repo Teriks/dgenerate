@@ -95,17 +95,17 @@ def video_fps_default(model_type):
     """Frame rate used when ``--video-fps`` is omitted, or ``None`` for a non-video model."""
     if _enums.model_type_is_ltx_family(model_type):
         return 24.0
-    if model_type == _enums.ModelType.WAN:
+    if _enums.model_type_is_wan(model_type):
         return 16.0
-    if model_type == _enums.ModelType.WAN_ANIMATE:
+    if _enums.model_type_is_wan_animate(model_type):
         return 30.0
-    if model_type == _enums.ModelType.WAN_ANIMATE_2:
+    if _enums.model_type_is_wan_animate_2(model_type):
         return 24.0
-    if model_type == _enums.ModelType.HUNYUAN_VIDEO_15:
+    if _enums.model_type_is_hyvideo_15(model_type):
         return 15.0
-    if model_type == _enums.ModelType.MOTIF_VIDEO:
+    if _enums.model_type_is_motif_video(model_type):
         return 24.0
-    if model_type == _enums.ModelType.KANDINSKY5_VIDEO:
+    if _enums.model_type_is_kandinsky5_video(model_type):
         return 24.0
     return None
 
@@ -118,12 +118,13 @@ def omitted_image_seed_strength(model_type, parsed, *,
     ``None`` when this seed does not use img2img strength. Video condition
     strength is a different default and is left to the video path.
     """
-    if parsed is None or _enums.model_type_is_video(model_type):
+    if parsed is None or _enums.model_type_is_video_family(model_type):
         return None
-    if (_enums.model_type_is_upscaler(model_type)
-            or _enums.model_type_is_pix2pix(model_type)
-            or _enums.model_type_is_s_cascade(model_type)
-            or model_type in {_enums.ModelType.FLUX_FILL, _enums.ModelType.FLUX_KONTEXT}):
+    if (_enums.model_type_is_upscaler_family(model_type)
+            or _enums.model_type_is_pix2pix_family(model_type)
+            or _enums.model_type_is_s_cascade_family(model_type)
+            or _enums.model_type_is_flux_fill(model_type)
+            or _enums.model_type_is_flux_kontext(model_type)):
         return None
     images = getattr(parsed, 'images', None)
     masks = getattr(parsed, 'mask_images', None)
@@ -134,7 +135,7 @@ def omitted_image_seed_strength(model_type, parsed, *,
     if (_enums.model_type_image_is_condition(model_type)
             and not adetailer and not masks):
         return None
-    if model_type == _enums.ModelType.IFS and not masks:
+    if _enums.model_type_is_ifs(model_type) and not masks:
         return None
     return _constants.DEFAULT_IMAGE_SEED_STRENGTH
 
@@ -145,11 +146,11 @@ def omitted_upscaler_noise_level(model_type, image_seed=None, mask_images=None):
     ``None`` when this model does not use a noise level. Floyd ``ifs`` inpaint
     is 0 when a mask is present, and 250 otherwise.
     """
-    if model_type == _enums.ModelType.UPSCALER_X4:
+    if _enums.model_type_is_upscaler_x4(model_type):
         return _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL
-    if model_type == _enums.ModelType.IFS_IMG2IMG:
+    if _enums.model_type_is_ifs_img2img(model_type):
         return _constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL
-    if model_type != _enums.ModelType.IFS:
+    if not _enums.model_type_is_ifs(model_type):
         return None
     masks = getattr(image_seed, 'mask_images', None) if image_seed is not None else None
     if not masks:
@@ -161,7 +162,7 @@ def omitted_upscaler_noise_level(model_type, image_seed=None, mask_images=None):
 
 def _wan_video_to_video(model_type, args) -> bool:
     """Same mode choice as the Wan caller: a clip, and not VACE or first-last-frame."""
-    if model_type != _enums.ModelType.WAN:
+    if not _enums.model_type_is_wan(model_type):
         return False
     if (getattr(args, 'vace_video_frames', None)
             or getattr(args, 'vace_mask_frames', None)
@@ -281,17 +282,17 @@ def apply_known_defaults(args, model_type, *, refiner: bool = False,
     if noise is not None:
         _set_missing(args, 'upscaler_noise_level', noise)
 
-    if _enums.model_type_is_pix2pix(model_type):
+    if _enums.model_type_is_pix2pix_family(model_type):
         _set_missing(args, 'image_guidance_scale',
                      _constants.DEFAULT_IMAGE_GUIDANCE_SCALE)
 
-    if model_type == _enums.ModelType.S_CASCADE:
+    if _enums.model_type_is_s_cascade(model_type):
         _set_missing(args, 'second_model_guidance_scale',
                      _constants.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE)
         _set_missing(args, 'second_model_inference_steps',
                      _constants.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS)
 
-    if refiner and (_enums.model_type_is_sdxl(model_type)
+    if refiner and (_enums.model_type_is_sdxl_family(model_type)
                     or _enums.model_type_is_kolors(model_type)):
         _set_missing(args, 'sdxl_high_noise_fraction',
                      _constants.DEFAULT_SDXL_HIGH_NOISE_FRACTION)

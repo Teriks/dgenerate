@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Krea 2 Turbo with ComfyUI's NVFP4 transformer. Blackwell GPUs run NVFP4
+# matmuls, and MPS uses MLX's NVFP4 Metal kernel; other devices decode the
+# 4-bit weights per layer. ComfyUI does not publish a 4-bit Qwen3-VL text
+# encoder for Krea 2; the GGUF example uses Q4_K_M.
+
+krea/Krea-2-Turbo
+--model-type krea2
+--transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_nvfp4.safetensors
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 8
+--guidance-scales 0
+--gen-seeds 1
+--output-path krea2-comfy-quant-turbo-nvfp4
+--output-size 1024
+--prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"

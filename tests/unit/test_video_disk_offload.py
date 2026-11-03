@@ -214,6 +214,73 @@ class TestDiskOffload(unittest.TestCase):
             module.to(torch.device('cpu'))
             self.assertTrue(module.block.linear.weight.is_meta)
 
+    def test_narrower_dtype_reuses_the_checkpoint(self):
+        module = _Net()
+        sample = torch.arange(8, dtype=torch.float32).reshape(2, 4)
+        with tempfile.TemporaryDirectory() as folder:
+            self._save(module, folder)
+            module.to(dtype=torch.bfloat16)
+            expected = module(sample.to(dtype=torch.bfloat16)).detach().clone()
+            offload = os.path.join(folder, 'offload')
+            offload_module_weights(
+                module, folder, offload, torch.device('cpu'), dirty=False)
+            self.assertFalse(os.path.exists(os.path.join(offload, 'weights.safetensors')))
+            result = module(sample.to(dtype=torch.bfloat16))
+            self.assertEqual(result.dtype, torch.bfloat16)
+            self.assertTrue(torch.allclose(result, expected))
+
+    def test_a_changed_shape_is_still_written(self):
+        saved = _Net()
+        module = _Net()
+        module.block.linear = torch.nn.Linear(4, 5)
+        with tempfile.TemporaryDirectory() as folder:
+            self._save(saved, folder)
+            offload = os.path.join(folder, 'offload')
+            offload_module_weights(
+                module, folder, offload, torch.device('cpu'), dirty=False)
+            self.assertTrue(os.path.isfile(os.path.join(offload, 'weights.safetensors')))
+
+    def test_renamed_checkpoint_keys_are_reused(self):
+        module = _Net()
+        sample = torch.arange(8, dtype=torch.float32).reshape(2, 4)
+        expected = module(sample).detach().clone()
+        with tempfile.TemporaryDirectory() as folder:
+            import safetensors.torch
+            stored = {
+                f'text_model.{key}': value
+                for key, value in module.state_dict().items()}
+            stored['vision_model.weight'] = torch.zeros(2)
+            safetensors.torch.save_file(
+                stored, os.path.join(folder, 'model.safetensors'))
+
+            def rename(_module, file_keys):
+                return {key: key.removeprefix('text_model.') for key in file_keys}
+
+            with mock.patch.object(diskoffload, '_renamed_checkpoint_keys', rename):
+                offload_module_weights(
+                    module, folder, os.path.join(folder, 'offload'),
+                    torch.device('cpu'), dirty=False)
+            self.assertFalse(os.path.exists(
+                os.path.join(folder, 'offload', 'weights.safetensors')))
+            self.assertTrue(torch.allclose(module(sample), expected))
+
+    def test_a_rebuilt_tensor_is_still_written(self):
+        module = _Net()
+        with tempfile.TemporaryDirectory() as folder:
+            import safetensors.torch
+            stored = {
+                f'old.{key}': value for key, value in module.state_dict().items()}
+            safetensors.torch.save_file(
+                stored, os.path.join(folder, 'model.safetensors'))
+            with mock.patch.object(
+                    diskoffload, '_renamed_checkpoint_keys',
+                    return_value={}):
+                offload_module_weights(
+                    module, folder, os.path.join(folder, 'offload'),
+                    torch.device('cpu'), dirty=False)
+            self.assertTrue(os.path.isfile(
+                os.path.join(folder, 'offload', 'weights.safetensors')))
+
     def test_dirty_weights_are_the_ones_read_back(self):
         module = _Net()
         with torch.no_grad():

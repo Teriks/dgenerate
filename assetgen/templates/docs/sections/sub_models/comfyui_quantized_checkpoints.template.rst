@@ -45,6 +45,8 @@ This is the simplest way to use one of these files.
 
 @EXAMPLE[@PROJECT_DIR/examples/krea2/comfy-quant/raw-int8-convrot-config.dgen]
 
+@EXAMPLE[@PROJECT_DIR/examples/krea2/comfy-quant/turbo-nvfp4-config.dgen]
+
 Wan 2.2 MoE takes the low noise expert through ``--wan-second-transformer``.
 
 @EXAMPLE[@PROJECT_DIR/examples/wan/comfy-quant/moe-fp8-scaled-config.dgen]
@@ -68,20 +70,48 @@ Text Encoders
 -------------
 
 ComfyUI quantized text encoder files load through ``--text-encoders``, and their
-linears stay packed. Monolithic CLIP and T5 files use the ``mode`` argument as usual.
-T5 keeps its feed-forward output projection dense, as T5 runs it in float32.
+linears stay packed. Monolithic CLIP and Flux / SD3 T5 files use the ``mode``
+argument as usual. ``UMT5EncoderModel`` and the language-model encoders need no
+``mode``: the configuration is matched from the file. T5 keeps its feed-forward
+output projection dense, as T5 runs it in float32.
+
+The same encoders load from a ``.gguf`` file. A city96 T5-XXL or UMT5-XXL file, and
+llama.cpp Qwen, Mistral, and Gemma files, keep their GGUF linears packed. Name the
+encoder class that matches the file and do not set ``quantizer``. See
+:ref:`specifying-text-encoders`.
 
 Language model text encoders (``Qwen3ForCausalLM``, ``Qwen3Model``,
-``Mistral3ForConditionalGeneration``, ``Qwen2_5_VLForConditionalGeneration``, and
-others) load from a single file with no ``mode`` and no ``subfolder``. The model
-configuration is matched from the file against the configurations dgenerate ships
-with. ComfyUI trims some of these files to the layers a pipeline reads, for example
-the Flux.2 dev Mistral encoder keeps 30 of its 40 layers; dgenerate builds the
-trimmed model to match. The ``quantizer`` argument is not supported for these files.
+``Mistral3ForConditionalGeneration``, ``Qwen2_5_VLForConditionalGeneration``,
+``Qwen2_5_VLTextModel``,
+``Gemma3ForConditionalGeneration``, ``Gemma4UnifiedForConditionalGeneration``, and
+others) load from a single file with no ``mode`` and no ``subfolder``. ComfyUI trims
+some of these files to the layers a pipeline reads, for example the Flux.2 dev
+Mistral encoder keeps 30 of its 40 layers; dgenerate builds the trimmed model to
+match. The ``quantizer`` argument is not supported for these files.
 
 @EXAMPLE[@PROJECT_DIR/examples/flux2/comfy-quant/klein-4b-fp8-config.dgen]
 
 @EXAMPLE[@PROJECT_DIR/examples/flux/comfy-quant/kontext-fp8-scaled-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/flux/comfy-quant/text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/wan/comfy-quant/text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/wan/comfy-quant/text-encoder-wan22-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/qwen-image/comfy-quant/text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/qwen-image/comfy-quant/text-encoder-nvfp4-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy-quant/dev-text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy-quant/dev-text-encoder-fp4-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/flux/gguf/text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/wan/gguf/text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/wan/gguf/text-encoder-wan22-config.dgen]
 
 Matrix Multiplication
 ---------------------

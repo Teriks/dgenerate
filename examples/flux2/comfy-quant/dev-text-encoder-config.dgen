@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Flux.2 dev with ComfyUI's FP8 mixed transformer and FP8 Mistral text
+# encoder. The Mistral file keeps 30 of 40 layers, which is what Flux.2
+# reads, and its linears stay packed. No mode and no quantizer.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+black-forest-labs/FLUX.2-dev
+--model-type flux2
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/diffusion_models/flux2_dev_fp8mixed.safetensors
+--text-encoders "Mistral3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/text_encoders/mistral_3_small_flux2_fp8.safetensors"
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 20
+--guidance-scales 4
+--gen-seeds 1
+--output-path flux2-comfy-quant-dev-text-encoder
+--output-size 1024
+--prompts "A cat holding a sign that says hello world"

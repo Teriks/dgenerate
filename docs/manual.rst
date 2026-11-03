@@ -595,6 +595,12 @@ Help Output
             
              The "mode" option is mutually exclusive with "subfolder".
             
+            A pre-quantized text encoder can be loaded with no "mode" and no "quantizer". Point "model" at a
+            .gguf file (a T5-XXL or UMT5-XXL GGUF, or a llama.cpp Qwen, Mistral, or Gemma GGUF) or at a ComfyUI
+            quantized .safetensors file. Name the encoder class that matches the file. The configuration is
+            matched from the file against the configurations dgenerate ships with, and quantized linears stay
+            packed. CLIP and the Flux / SD3 monolithic T5 checkpoints can still use "mode".
+            
             Available encoder classes are:
             
             * CLIPTextModel
@@ -603,11 +609,15 @@ Help Output
             * UMT5EncoderModel (Wan)
             * DistillT5EncoderModel (see: LifuWang/DistillT5)
             * ChatGLMModel (Kolors)
+            * Gemma3ForConditionalGeneration (LTX-2)
             * Gemma4UnifiedForConditionalGeneration (LTX-2.5)
             * Mistral3ForConditionalGeneration (Flux.2)
-            * Qwen2_5_VLForConditionalGeneration (Qwen-Image)
+            * Qwen2_5_VLForConditionalGeneration (Qwen-Image, Kandinsky 5)
+            * Qwen2_5_VLTextModel (HunyuanVideo 1.5)
             * Qwen3ForCausalLM (Flux.2 Klein)
             * Qwen3Model (Z-Image)
+            * Qwen3VLForConditionalGeneration (Qwen-Image 2.1)
+            * Qwen3VLModel (Krea 2)
             
             If you wish to load weights directly from a path on disk, you must point this argument at the folder
             they exist in, which should also contain the config.json file for the Text Encoder. For example, a
@@ -716,6 +726,7 @@ Help Output
             "ConsistencyDecoderVAE;model=huggingface/vae"
             "AutoencoderKLFlux2;model=black-forest-labs/FLUX.2-dev;subfolder=vae"
             "AutoencoderKLQwenImage;model=Qwen/Qwen-Image;subfolder=vae"
+            "AutoencoderKLHunyuanImageRefiner;model=hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers;subfolder=vae"
             "AutoencoderKLWan;model=Wan-AI/Wan2.1-T2V-1.3B-Diffusers;subfolder=vae;dtype=float32"
             "AutoencoderKLLTXVideo;model=Lightricks/LTX-Video;subfolder=vae"
             "AutoencoderKLLTX2Video;model=Lightricks/LTX-2.5-Diffusers;subfolder=vae"
@@ -3129,13 +3140,15 @@ Help Output
             value, dgenerate picks a built-in system prompt. A value is used as that system prompt. file:path
             reads that prompt from a UTF-8 text file (quote the value on the shell when the path contains
             spaces). Image families use the built-in text-to-image prompt. Qwen-Image edit, Qwen-Image layered,
-            Qwen-Image 2.1, and Flux.2 use the built-in edit prompt when the text encoder can see an input
-            image. On LTX-2 this turns on the optional Gemma prompt enhancer. With no value the enhancer is
-            google/gemma-4-E2B-it and LTX-2.5 selects its text-to-video or image-to-video system prompt from the
-            conditioning input. A value replaces that system prompt. --ltx-prompt-enhancer names a different
-            enhancer model. LTX-Video (T5) is not supported. Supported --model-type values: flux2,
-            flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered,
-            qwen-image-21, krea2, and ltx2. Any other --pipeline-prompt-enhance-* option, including
+            Qwen-Image 2.1, Flux.2, and Kandinsky 5 image editing use the built-in edit prompt when the text
+            encoder can see an input image. Kandinsky 5 video uses a shot prompt, and an image-to-video prompt
+            when a first frame is present. On LTX-2 this turns on the optional Gemma prompt enhancer. With no
+            value the enhancer is google/gemma-4-E2B-it and LTX-2.5 selects its text-to-video or image-to-video
+            system prompt from the conditioning input. A value replaces that system prompt.
+            --ltx-prompt-enhancer names a different enhancer model. LTX-Video (T5) is not supported. Supported
+            --model-type values: flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
+            qwen-image-layered, qwen-image-21, hyimage-21, hyimage-21-refiner, kandinsky5-image,
+            kandinsky5-video, krea2, and ltx2. Any other --pipeline-prompt-enhance-* option, including
             --pipeline-prompt-enhance-seeds, turns enhancement on with the built-in system prompt when this flag
             is omitted. This is separate from --prompt-upscaler.
             ----------------------------------------------------
@@ -5646,7 +5659,12 @@ It may not name ``vae``.
 ``.gguf`` file. The Diffusers repository still supplies the VAE and the UMT5
 text encoder. ``--wan-second-transformer`` does the same for the Wan 2.2
 low-noise expert. ``--text-encoders`` replaces UMT5. Use ``+`` to keep the
-checkpoint default, or ``null`` to skip a slot. ``--loras`` loads a Diffusers
+checkpoint default, or ``null`` to skip a slot. Wan 2.2 has that same one
+UMT5 encoder. See
+`examples/wan/gguf/text-encoder-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/gguf/text-encoder-wan22-config.dgen>`_
+and
+`examples/wan/comfy-quant/text-encoder-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/comfy-quant/text-encoder-wan22-config.dgen>`_.
+``--loras`` loads a Diffusers
 LoRA onto the transformer. ``component=transformer_2`` loads one LoRA onto the
 Wan 2.2 low-noise expert instead, so a high-noise and low-noise pair can be
 given together.
@@ -7226,6 +7244,7 @@ Available encoder classes are:
 * ConsistencyDecoderVAE
 * AutoencoderKLFlux2
 * AutoencoderKLQwenImage
+* AutoencoderKLHunyuanImageRefiner
 * AutoencoderKLWan
 * AutoencoderKLLTXVideo
 * AutoencoderKLLTX2Video
@@ -7619,6 +7638,28 @@ This is the simplest way to use one of these files.
     --output-size 1024
     --prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"
 
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Krea 2 Turbo with ComfyUI's NVFP4 transformer. Blackwell GPUs run NVFP4
+    # matmuls, and MPS uses MLX's NVFP4 Metal kernel; other devices decode the
+    # 4-bit weights per layer. ComfyUI does not publish a 4-bit Qwen3-VL text
+    # encoder for Krea 2; the GGUF example uses Q4_K_M.
+    
+    krea/Krea-2-Turbo
+    --model-type krea2
+    --transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_nvfp4.safetensors
+    --dtype bfloat16
+    --model-sequential-offload
+    --inference-steps 8
+    --guidance-scales 0
+    --gen-seeds 1
+    --output-path krea2-comfy-quant-turbo-nvfp4
+    --output-size 1024
+    --prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"
+
 Wan 2.2 MoE takes the low noise expert through ``--wan-second-transformer``.
 
 .. code-block:: jinja
@@ -7727,16 +7768,24 @@ Text Encoders
 -------------
 
 ComfyUI quantized text encoder files load through ``--text-encoders``, and their
-linears stay packed. Monolithic CLIP and T5 files use the ``mode`` argument as usual.
-T5 keeps its feed-forward output projection dense, as T5 runs it in float32.
+linears stay packed. Monolithic CLIP and Flux / SD3 T5 files use the ``mode``
+argument as usual. ``UMT5EncoderModel`` and the language-model encoders need no
+``mode``: the configuration is matched from the file. T5 keeps its feed-forward
+output projection dense, as T5 runs it in float32.
+
+The same encoders load from a ``.gguf`` file. A city96 T5-XXL or UMT5-XXL file, and
+llama.cpp Qwen, Mistral, and Gemma files, keep their GGUF linears packed. Name the
+encoder class that matches the file and do not set ``quantizer``. See
+:ref:`specifying-text-encoders`.
 
 Language model text encoders (``Qwen3ForCausalLM``, ``Qwen3Model``,
-``Mistral3ForConditionalGeneration``, ``Qwen2_5_VLForConditionalGeneration``, and
-others) load from a single file with no ``mode`` and no ``subfolder``. The model
-configuration is matched from the file against the configurations dgenerate ships
-with. ComfyUI trims some of these files to the layers a pipeline reads, for example
-the Flux.2 dev Mistral encoder keeps 30 of its 40 layers; dgenerate builds the
-trimmed model to match. The ``quantizer`` argument is not supported for these files.
+``Mistral3ForConditionalGeneration``, ``Qwen2_5_VLForConditionalGeneration``,
+``Qwen2_5_VLTextModel``,
+``Gemma3ForConditionalGeneration``, ``Gemma4UnifiedForConditionalGeneration``, and
+others) load from a single file with no ``mode`` and no ``subfolder``. ComfyUI trims
+some of these files to the layers a pipeline reads, for example the Flux.2 dev
+Mistral encoder keeps 30 of its 40 layers; dgenerate builds the trimmed model to
+match. The ``quantizer`` argument is not supported for these files.
 
 .. code-block:: jinja
 
@@ -7757,14 +7806,12 @@ trimmed model to match. The ``quantizer`` argument is not supported for these fi
         \exit
     {% endif %}
     
-    \set text_encoder https://huggingface.co/Comfy-Org/flux2-klein-4B/blob/main/split_files/text_encoders/qwen_3_4b_fp4_flux2.safetensors
-    
     black-forest-labs/FLUX.2-klein-4B
     --model-type flux2
     --dtype bfloat16
     --model-cpu-offload
     --transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/blob/main/flux-2-klein-4b-fp8.safetensors
-    --text-encoders Qwen3ForCausalLM;model={{ text_encoder }}
+    --text-encoders Qwen3ForCausalLM;model=https://huggingface.co/Comfy-Org/flux2-klein-4B/blob/main/split_files/text_encoders/qwen_3_4b_fp4_flux2.safetensors
     --scheduler FlowMatchEulerDiscreteScheduler
     --inference-steps 4
     --guidance-scales 1
@@ -7807,6 +7854,299 @@ trimmed model to match. The ``quantizer`` argument is not supported for these fi
     --output-path flux-comfy-quant-kontext
     --output-size 1024
     --prompts "The monalisa wearing a red top hat"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux Dev with Black Forest Labs' FP8 transformer and ComfyUI's scaled FP8
+    # T5-XXL. "+" keeps CLIP from the repository. The T5 file needs no mode:
+    # it is matched from its shapes. Its linears stay packed, except the
+    # feed-forward output projection, which T5 runs in float32.
+    # Do not set quantizer on that URI.
+    # ComfyUI does not publish a 4-bit T5-XXL. The Q4 file is
+    # examples/flux/gguf/text-encoder-config.dgen.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token to run this example.
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.1-dev
+    --model-type flux
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/black-forest-labs/FLUX.1-dev-FP8/blob/main/flux1-dev-fp8.safetensors
+    --text-encoders + "T5EncoderModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp8_e4m3fn_scaled.safetensors"
+    --inference-steps 30
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path flux-comfy-quant-text-encoder
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Wan 2.1 T2V 14B with ComfyUI's scaled FP8 transformer and scaled FP8 UMT5.
+    # UMT5 is a single file and needs no mode. Its linears stay packed, except
+    # the feed-forward output projection, which T5 runs in float32.
+    # Same prompt as examples/wan/comfy-quant/text-to-video-fp8-scaled-config.dgen.
+    # ComfyUI does not publish a 4-bit UMT5. The Q4 file is
+    # examples/wan/gguf/text-encoder-config.dgen.
+    
+    \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+    
+    Wan-AI/Wan2.1-T2V-14B-Diffusers
+    --model-type wan
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_t2v_14B_fp8_scaled.safetensors
+    --text-encoders "UMT5EncoderModel;model=https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+    --inference-steps 30
+    --guidance-scales 5
+    --video-fps 16
+    --gen-seeds 1
+    --output-size 832x480
+    --video-lengths 5
+    --animation-format mp4
+    --output-path wan-comfy-quant-text-encoder
+    --prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Wan 2.2 T2V A14B with both experts from ComfyUI's scaled FP8 files and
+    # ComfyUI's scaled FP8 UMT5. Wan 2.2 has one text encoder. UMT5 is a single
+    # file and needs no mode. Its linears stay packed, except the feed-forward
+    # output projection, which T5 runs in float32.
+    # Same prompt as examples/wan/comfy-quant/moe-fp8-scaled-config.dgen.
+    # ComfyUI does not publish a 4-bit UMT5. The Q4 file is
+    # examples/wan/gguf/text-encoder-wan22-config.dgen.
+    
+    \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+    
+    \set files https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models
+    
+    Wan-AI/Wan2.2-T2V-A14B-Diffusers
+    --model-type wan
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer {{ files }}/wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
+    --wan-second-transformer {{ files }}/wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors
+    --text-encoders "UMT5EncoderModel;model=https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+    --inference-steps 30
+    --guidance-scales 4
+    --wan-low-noise-guidance-scales 3
+    --video-fps 16
+    --gen-seeds 1
+    --output-size 832x480
+    --video-lengths 5
+    --animation-format mp4
+    --output-path wan22-comfy-quant-text-encoder
+    --prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Qwen-Image with ComfyUI's FP8 mixed transformer and scaled FP8 Qwen2.5-VL
+    # text encoder. The text encoder file includes the vision tower, so the same
+    # URI works for image edit. No mode and no quantizer: the linears stay packed.
+    
+    Qwen/Qwen-Image
+    --model-type qwen-image
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_fp8mixed.safetensors
+    --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 20
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path qwen-image-comfy-quant-text-encoder
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Qwen-Image with ComfyUI's NVFP4 transformer and NVFP4 Qwen2.5-VL text
+    # encoder. The text encoder file includes the vision tower, so the same URI
+    # works for image edit. No mode and no quantizer: the linears stay packed.
+    # Blackwell GPUs run NVFP4 matmuls; other devices decode the 4-bit weights
+    # per layer.
+    
+    Qwen/Qwen-Image
+    --model-type qwen-image
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_nvfp4.safetensors
+    --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_nvfp4.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 20
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path qwen-image-comfy-quant-text-encoder-nvfp4
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux.2 dev with ComfyUI's FP8 mixed transformer and FP8 Mistral text
+    # encoder. The Mistral file keeps 30 of 40 layers, which is what Flux.2
+    # reads, and its linears stay packed. No mode and no quantizer.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token.
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.2-dev
+    --model-type flux2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/diffusion_models/flux2_dev_fp8mixed.safetensors
+    --text-encoders "Mistral3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/text_encoders/mistral_3_small_flux2_fp8.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 20
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path flux2-comfy-quant-dev-text-encoder
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux.2 dev with ComfyUI's FP8 mixed transformer and FP4 mixed Mistral
+    # text encoder. The Mistral file keeps 30 of 40 layers, which is what
+    # Flux.2 reads, and its linears stay packed. No mode and no quantizer.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token.
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.2-dev
+    --model-type flux2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/diffusion_models/flux2_dev_fp8mixed.safetensors
+    --text-encoders "Mistral3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/text_encoders/mistral_3_small_flux2_fp4_mixed.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 20
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path flux2-comfy-quant-dev-text-encoder-fp4
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux Dev with a city96 GGUF transformer and a city96 T5-XXL GGUF.
+    # "+" keeps CLIP from the repository. The T5 file is already quantized:
+    # do not set quantizer on that URI. T5's feed-forward output projection
+    # is loaded dense, because T5 runs it in float32.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.1-dev
+    --model-type flux
+    --dtype bfloat16
+    --model-cpu-offload
+    --transformer https://huggingface.co/city96/FLUX.1-dev-gguf/blob/main/flux1-dev-Q4_K_S.gguf
+    --text-encoders + "T5EncoderModel;model=https://huggingface.co/city96/t5-v1_1-xxl-encoder-gguf/blob/main/t5-v1_1-xxl-encoder-Q4_K_S.gguf"
+    --inference-steps 20
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path flux-gguf-text-encoder
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Wan 2.1 T2V 14B with a city96 GGUF transformer and a city96 UMT5-XXL GGUF.
+    # UMT5 needs no mode. The file is already quantized, so quantizer is not set.
+    # Same prompt as examples/wan/gguf/text-to-video-config.dgen.
+    
+    \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+    
+    Wan-AI/Wan2.1-T2V-14B-Diffusers
+    --model-type wan
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/city96/Wan2.1-T2V-14B-gguf/blob/main/wan2.1-t2v-14b-Q4_K_S.gguf
+    --text-encoders "UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q4_K_S.gguf"
+    --inference-steps 30
+    --guidance-scales 5
+    --video-fps 16
+    --gen-seeds 1
+    --output-size 832x480
+    --video-lengths 5
+    --animation-format mp4
+    --output-path wan-gguf-text-encoder
+    --prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Wan 2.2 T2V A14B with both experts as Q4_K_S GGUF and a city96 UMT5-XXL
+    # GGUF. Wan 2.2 has one text encoder, the same UMT5 the 2.1 example uses.
+    # UMT5 needs no mode. The file is already quantized, so quantizer is not set.
+    # Same prompt as examples/wan/gguf/text-to-video-wan22-config.dgen.
+    
+    \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+    
+    Wan-AI/Wan2.2-T2V-A14B-Diffusers
+    --model-type wan
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/HighNoise/Wan2.2-T2V-A14B-HighNoise-Q4_K_S.gguf
+    --wan-second-transformer https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/LowNoise/Wan2.2-T2V-A14B-LowNoise-Q4_K_S.gguf
+    --text-encoders "UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q4_K_S.gguf"
+    --inference-steps 30
+    --guidance-scales 4
+    --wan-low-noise-guidance-scales 3
+    --video-fps 16
+    --gen-seeds 1
+    --output-size 832x480
+    --video-lengths 5
+    --animation-format mp4
+    --output-path wan22-gguf-text-encoder
+    --prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"
 
 Matrix Multiplication
 ---------------------
@@ -9251,6 +9591,8 @@ not all possible combinations are covered in this documentation as it would be h
 
 If you find a combination that behaves strangely or incorrectly, or that should work but doesn't, please submit an issue :)
 
+.. _specifying-text-encoders:
+
 Specifying Text Encoders
 ========================
 
@@ -9313,6 +9655,15 @@ SD3 and SD3.5 specific modes:
 These SD3/SD3.5 specific modes are designed with the correct architecture parameters for
 each model variant.
 
+A pre-quantized text encoder loads with no ``mode`` and no ``quantizer``. Point ``model``
+at a ``.gguf`` file or a ComfyUI quantized ``.safetensors`` file and name the encoder class
+that matches it. dgenerate matches a configuration shipped with it from the file's
+vocabulary, hidden size, and layer count. Quantized linears stay packed. This is how a
+large encoder is loaded without the full-precision weights: a city96 T5-XXL or UMT5-XXL
+GGUF, a llama.cpp Qwen, Mistral, or Gemma GGUF, or a ComfyUI FP8, INT8, or NVFP4
+safetensors file of the same encoders. ``UMT5EncoderModel`` needs no ``mode``. CLIP and
+the Flux / SD3 T5 files can still use ``mode``.
+
 diffusers usually shards T5 / large weights for performance, though monolithic checkpoints
 are often available for use with ComfyUI or distributed on CivitAI. This is for compatibility 
 with other software. The ``mode`` option is mutually exclusive with ``subfolder``.
@@ -9325,11 +9676,15 @@ Available encoder classes are:
 * ``UMT5EncoderModel`` (Wan)
 * ``DistillT5EncoderModel`` (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
 * ``ChatGLMModel`` (Kolors)
+* ``Gemma3ForConditionalGeneration`` (LTX-2)
 * ``Gemma4UnifiedForConditionalGeneration`` (LTX-2.5)
 * ``Mistral3ForConditionalGeneration`` (Flux.2)
-* ``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image)
+* ``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image, Kandinsky 5)
+* ``Qwen2_5_VLTextModel`` (HunyuanVideo 1.5)
 * ``Qwen3ForCausalLM`` (Flux.2 Klein)
 * ``Qwen3Model`` (Z-Image)
+* ``Qwen3VLForConditionalGeneration`` (Qwen-Image 2.1)
+* ``Qwen3VLModel`` (Krea 2)
 
 You can query the text encoder types and position for a model by passing ``help``
 as an argument to ``--text-encoders`` or ``--second-model-text-encoders``. This feature
@@ -9598,14 +9953,966 @@ with additional fine-tuning.
 This can also be utilized with SD3.
 
 Language model text encoders, such as ``Qwen3ForCausalLM`` (Flux.2 Klein),
-``Qwen3Model`` (Z-Image), ``Mistral3ForConditionalGeneration`` (Flux.2), and
-``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image), can be loaded from a single
-``.safetensors`` file as ComfyUI distributes them, with no ``mode`` or ``subfolder``.
-The model configuration is matched from the file.
+``Qwen3Model`` (Z-Image), ``Mistral3ForConditionalGeneration`` (Flux.2),
+``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image, Kandinsky 5),
+``Qwen2_5_VLTextModel`` (HunyuanVideo 1.5), ``Gemma3ForConditionalGeneration``
+(LTX-2), and ``Gemma4UnifiedForConditionalGeneration`` (LTX-2.5), can be loaded from a
+single ``.safetensors`` or ``.gguf`` file, with no ``mode`` or ``subfolder``. The model
+configuration is matched from the file. A ComfyUI file trimmed to fewer decoder layers
+than the full model, such as the Flux.2 Mistral encoder, builds that many layers.
 
-ComfyUI quantized text encoder files (FP8, INT8, NVFP4) work with both of these,
-and with the ``mode`` argument for CLIP and T5. Their linears stay quantized.
-See :ref:`comfyui-quantized-checkpoints`.
+``T5EncoderModel`` and ``UMT5EncoderModel`` load the same way from a ``.gguf`` file or
+from a monolithic ``.safetensors`` file. A GGUF file uses llama.cpp tensor names; those
+are renamed to the Hugging Face names on load. Quantized linears stay packed. T5 keeps
+its feed-forward output projection dense, because T5 runs that projection in float32.
+
+ComfyUI quantized text encoder files (FP8, INT8, NVFP4, FP4, W4A8) work with both
+of these, and with the ``mode`` argument for CLIP and T5. Their linears stay
+quantized. Where ComfyUI publishes a 4-bit file, the examples include it next
+to the FP8 or INT8 file. T5-XXL and UMT5 have no 4-bit ComfyUI file; those
+examples use the Q4_K_S GGUF. See :ref:`comfyui-quantized-checkpoints`.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux Dev with a city96 GGUF transformer and a city96 T5-XXL GGUF.
+    # "+" keeps CLIP from the repository. The T5 file is already quantized:
+    # do not set quantizer on that URI. T5's feed-forward output projection
+    # is loaded dense, because T5 runs it in float32.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.1-dev
+    --model-type flux
+    --dtype bfloat16
+    --model-cpu-offload
+    --transformer https://huggingface.co/city96/FLUX.1-dev-gguf/blob/main/flux1-dev-Q4_K_S.gguf
+    --text-encoders + "T5EncoderModel;model=https://huggingface.co/city96/t5-v1_1-xxl-encoder-gguf/blob/main/t5-v1_1-xxl-encoder-Q4_K_S.gguf"
+    --inference-steps 20
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path flux-gguf-text-encoder
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux Dev with Black Forest Labs' FP8 transformer and ComfyUI's scaled FP8
+    # T5-XXL. "+" keeps CLIP from the repository. The T5 file needs no mode:
+    # it is matched from its shapes. Its linears stay packed, except the
+    # feed-forward output projection, which T5 runs in float32.
+    # Do not set quantizer on that URI.
+    # ComfyUI does not publish a 4-bit T5-XXL. The Q4 file is
+    # examples/flux/gguf/text-encoder-config.dgen.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token to run this example.
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.1-dev
+    --model-type flux
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/black-forest-labs/FLUX.1-dev-FP8/blob/main/flux1-dev-fp8.safetensors
+    --text-encoders + "T5EncoderModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp8_e4m3fn_scaled.safetensors"
+    --inference-steps 30
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path flux-comfy-quant-text-encoder
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # SD3.5 Large with ComfyUI's scaled FP8 transformer and scaled FP8 T5-XXL.
+    # "+ +" keeps both CLIP encoders from the repository. The T5 file is the
+    # same architecture as Flux T5-XXL and needs no mode. Its linears stay
+    # packed, except the feed-forward output projection, which T5 runs in float32.
+    # ComfyUI does not publish a 4-bit T5-XXL. The Q4 file is
+    # examples/stablediffusion3/gguf/text-encoder-config.dgen.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    stabilityai/stable-diffusion-3.5-large
+    --model-type sd3
+    --variant fp16
+    --dtype float16
+    --model-cpu-offload
+    --transformer https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/sd3.5_large_fp8_scaled.safetensors
+    --text-encoders + + "T5EncoderModel;model=https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors"
+    --inference-steps 28
+    --guidance-scales 5
+    --gen-seeds 1
+    --output-path sd3-comfy-quant-text-encoder
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-Video 2B with a city96 Q4_K_S transformer and the same city96 T5-XXL
+    # GGUF Flux and SD3 use. The T5 file is already quantized. Do not set quantizer.
+    # Its feed-forward output projection is loaded dense, because T5 runs it in float32.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-Video
+    --model-type ltx-video
+    --dtype bfloat16
+    --model-cpu-offload
+    --transformer https://huggingface.co/city96/LTX-Video-gguf/blob/main/ltx-video-2b-v0.9-Q4_K_S.gguf
+    --text-encoders "T5EncoderModel;model=https://huggingface.co/city96/t5-v1_1-xxl-encoder-gguf/blob/main/t5-v1_1-xxl-encoder-Q4_K_S.gguf"
+    --inference-steps 50
+    --guidance-scales 3
+    --video-fps 25
+    --gen-seeds 1
+    --output-size 768x512
+    --video-lengths 4.84
+    --animation-format mp4
+    --output-path ltx-video-gguf-text-encoder
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed.; worst quality, inconsistent motion, blurry, jittery, distorted"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Wan 2.1 T2V 14B with a city96 GGUF transformer and a city96 UMT5-XXL GGUF.
+    # UMT5 needs no mode. The file is already quantized, so quantizer is not set.
+    # Same prompt as examples/wan/gguf/text-to-video-config.dgen.
+    
+    \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+    
+    Wan-AI/Wan2.1-T2V-14B-Diffusers
+    --model-type wan
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/city96/Wan2.1-T2V-14B-gguf/blob/main/wan2.1-t2v-14b-Q4_K_S.gguf
+    --text-encoders "UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q4_K_S.gguf"
+    --inference-steps 30
+    --guidance-scales 5
+    --video-fps 16
+    --gen-seeds 1
+    --output-size 832x480
+    --video-lengths 5
+    --animation-format mp4
+    --output-path wan-gguf-text-encoder
+    --prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Wan 2.2 T2V A14B with both experts as Q4_K_S GGUF and a city96 UMT5-XXL
+    # GGUF. Wan 2.2 has one text encoder, the same UMT5 the 2.1 example uses.
+    # UMT5 needs no mode. The file is already quantized, so quantizer is not set.
+    # Same prompt as examples/wan/gguf/text-to-video-wan22-config.dgen.
+    
+    \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+    
+    Wan-AI/Wan2.2-T2V-A14B-Diffusers
+    --model-type wan
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/HighNoise/Wan2.2-T2V-A14B-HighNoise-Q4_K_S.gguf
+    --wan-second-transformer https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/LowNoise/Wan2.2-T2V-A14B-LowNoise-Q4_K_S.gguf
+    --text-encoders "UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q4_K_S.gguf"
+    --inference-steps 30
+    --guidance-scales 4
+    --wan-low-noise-guidance-scales 3
+    --video-fps 16
+    --gen-seeds 1
+    --output-size 832x480
+    --video-lengths 5
+    --animation-format mp4
+    --output-path wan22-gguf-text-encoder
+    --prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Wan 2.1 T2V 14B with ComfyUI's scaled FP8 transformer and scaled FP8 UMT5.
+    # UMT5 is a single file and needs no mode. Its linears stay packed, except
+    # the feed-forward output projection, which T5 runs in float32.
+    # Same prompt as examples/wan/comfy-quant/text-to-video-fp8-scaled-config.dgen.
+    # ComfyUI does not publish a 4-bit UMT5. The Q4 file is
+    # examples/wan/gguf/text-encoder-config.dgen.
+    
+    \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+    
+    Wan-AI/Wan2.1-T2V-14B-Diffusers
+    --model-type wan
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_t2v_14B_fp8_scaled.safetensors
+    --text-encoders "UMT5EncoderModel;model=https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+    --inference-steps 30
+    --guidance-scales 5
+    --video-fps 16
+    --gen-seeds 1
+    --output-size 832x480
+    --video-lengths 5
+    --animation-format mp4
+    --output-path wan-comfy-quant-text-encoder
+    --prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Wan 2.2 T2V A14B with both experts from ComfyUI's scaled FP8 files and
+    # ComfyUI's scaled FP8 UMT5. Wan 2.2 has one text encoder. UMT5 is a single
+    # file and needs no mode. Its linears stay packed, except the feed-forward
+    # output projection, which T5 runs in float32.
+    # Same prompt as examples/wan/comfy-quant/moe-fp8-scaled-config.dgen.
+    # ComfyUI does not publish a 4-bit UMT5. The Q4 file is
+    # examples/wan/gguf/text-encoder-wan22-config.dgen.
+    
+    \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+    
+    \set files https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models
+    
+    Wan-AI/Wan2.2-T2V-A14B-Diffusers
+    --model-type wan
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer {{ files }}/wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
+    --wan-second-transformer {{ files }}/wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors
+    --text-encoders "UMT5EncoderModel;model=https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+    --inference-steps 30
+    --guidance-scales 4
+    --wan-low-noise-guidance-scales 3
+    --video-fps 16
+    --gen-seeds 1
+    --output-size 832x480
+    --video-lengths 5
+    --animation-format mp4
+    --output-path wan22-comfy-quant-text-encoder
+    --prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Qwen-Image with ComfyUI's FP8 mixed transformer and scaled FP8 Qwen2.5-VL
+    # text encoder. The text encoder file includes the vision tower, so the same
+    # URI works for image edit. No mode and no quantizer: the linears stay packed.
+    
+    Qwen/Qwen-Image
+    --model-type qwen-image
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_fp8mixed.safetensors
+    --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 20
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path qwen-image-comfy-quant-text-encoder
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Qwen-Image with ComfyUI's NVFP4 transformer and NVFP4 Qwen2.5-VL text
+    # encoder. The text encoder file includes the vision tower, so the same URI
+    # works for image edit. No mode and no quantizer: the linears stay packed.
+    # Blackwell GPUs run NVFP4 matmuls; other devices decode the 4-bit weights
+    # per layer.
+    
+    Qwen/Qwen-Image
+    --model-type qwen-image
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_nvfp4.safetensors
+    --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_nvfp4.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 20
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path qwen-image-comfy-quant-text-encoder-nvfp4
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux.2 dev with ComfyUI's FP8 mixed transformer and FP8 Mistral text
+    # encoder. The Mistral file keeps 30 of 40 layers, which is what Flux.2
+    # reads, and its linears stay packed. No mode and no quantizer.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token.
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.2-dev
+    --model-type flux2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/diffusion_models/flux2_dev_fp8mixed.safetensors
+    --text-encoders "Mistral3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/text_encoders/mistral_3_small_flux2_fp8.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 20
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path flux2-comfy-quant-dev-text-encoder
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux.2 dev with ComfyUI's FP8 mixed transformer and FP4 mixed Mistral
+    # text encoder. The Mistral file keeps 30 of 40 layers, which is what
+    # Flux.2 reads, and its linears stay packed. No mode and no quantizer.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token.
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.2-dev
+    --model-type flux2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/diffusion_models/flux2_dev_fp8mixed.safetensors
+    --text-encoders "Mistral3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/text_encoders/mistral_3_small_flux2_fp4_mixed.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 20
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path flux2-comfy-quant-dev-text-encoder-fp4
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2 with Lightricks' FP8 transformer and ComfyUI's scaled FP8 Gemma 3
+    # 12B text encoder. This is the LTX-2 checkpoint (Gemma 3), not LTX-2.5
+    # (Gemma 4). The text encoder file includes the vision tower. No mode and
+    # no quantizer: the linears stay packed. The repository still supplies the
+    # connectors and VAEs.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Lightricks/LTX-2/blob/main/ltx-2-19b-dev-fp8.safetensors
+    --text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp8_scaled.safetensors"
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx-comfy-quant-text-encoder
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2 with Lightricks' FP4 transformer and ComfyUI's FP4 mixed Gemma 3
+    # 12B text encoder. This is the LTX-2 checkpoint (Gemma 3), not LTX-2.5
+    # (Gemma 4). The text encoder file includes the vision tower. No mode and
+    # no quantizer: the linears stay packed. The repository still supplies the
+    # connectors and VAEs.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Lightricks/LTX-2/blob/main/ltx-2-19b-dev-fp4.safetensors
+    --text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors"
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx-comfy-quant-text-encoder-fp4
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Krea 2 Raw with a GGUF transformer and the official Qwen3-VL 4B GGUF as
+    # the text encoder. Raw and Turbo share this encoder. The GGUF is the
+    # language tower; its mmproj sidecar is not loaded. Image conditioning
+    # should use the ComfyUI safetensors encoder, which includes the vision
+    # tower: examples/krea2/comfy-quant/text-encoder-config.dgen
+    # The file is already quantized. Do not set quantizer.
+    
+    krea/Krea-2-Raw
+    --model-type krea2
+    --transformer "https://huggingface.co/realrebelai/KREA-2_GGUFs/blob/main/BASE/Krea-2-Base-Q4_K_M.gguf"
+    --text-encoders "Qwen3VLModel;model=https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct-GGUF/blob/main/Qwen3VL-4B-Instruct-Q4_K_M.gguf"
+    --dtype bfloat16
+    --model-cpu-offload
+    --gen-seeds 1
+    --output-path krea-2-gguf-text-encoder
+    --prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Krea 2 Turbo with ComfyUI's scaled FP8 transformer and scaled FP8
+    # Qwen3-VL 4B text encoder. Raw uses the same encoder. The file includes
+    # the vision tower, so image conditioning can use this URI. No mode and
+    # no quantizer: the linears stay packed. ComfyUI does not publish a 4-bit
+    # Qwen3-VL 4B file. The Q4 encoder is examples/krea2/gguf/text-encoder-config.dgen.
+    
+    krea/Krea-2-Turbo
+    --model-type krea2
+    --transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_fp8_scaled.safetensors
+    --text-encoders "Qwen3VLModel;model=https://huggingface.co/Comfy-Org/Krea-2/blob/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors"
+    --dtype bfloat16
+    --model-cpu-offload
+    --inference-steps 8
+    --guidance-scales 0
+    --gen-seeds 1
+    --output-path krea2-comfy-quant-text-encoder
+    --output-size 1024
+    --prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Qwen-Image 2.1 with a GGUF transformer and the official Qwen3-VL 8B GGUF
+    # as the text encoder. Base and Turbo share this encoder. The GGUF is the
+    # language tower; its mmproj sidecar is not loaded, so this is for
+    # text-to-image. Image conditioning should use the ComfyUI safetensors
+    # encoder, which includes the vision tower:
+    # examples/qwen-image-21/comfy-quant/text-encoder-config.dgen
+    # The file is already quantized. Do not set quantizer.
+    
+    Qwen/Qwen-Image-2.1
+    --model-type qwen-image-21
+    --transformer https://huggingface.co/molbal/Qwen-Image-2.1-GGUF/blob/main/qwen_image_2.1_Q4_0.gguf
+    --text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF/blob/main/Qwen3VL-8B-Instruct-Q4_K_M.gguf"
+    --dtype bfloat16
+    --model-sequential-offload
+    --qwen21-resolution 1024
+    --gen-seeds 1
+    --output-path qwen-image-21-gguf-text-encoder
+    --prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Qwen-Image 2.1 with ComfyUI's INT8 ConvRot transformer and INT8 ConvRot
+    # Qwen3-VL 8B text encoder. Base and Turbo share this encoder. The file
+    # includes the vision tower, so image conditioning can use this URI. No
+    # mode and no quantizer: the linears stay packed.
+    
+    Qwen/Qwen-Image-2.1
+    --model-type qwen-image-21
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/diffusion_models/qwen_image_2.1_int8_convrot.safetensors
+    --text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/text_encoders/qwen3vl_8b_int8_convrot.safetensors"
+    --qwen21-resolution 1024
+    --gen-seeds 1
+    --output-path qwen-image-21-comfy-quant-text-encoder
+    --prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Qwen-Image 2.1 with ComfyUI's INT8 ConvRot transformer and W4A8 Qwen3-VL
+    # 8B text encoder (4-bit weights, 8-bit activations). Base and Turbo share
+    # this encoder. The file includes the vision tower, so image conditioning
+    # can use this URI. No mode and no quantizer: the linears stay packed.
+    
+    Qwen/Qwen-Image-2.1
+    --model-type qwen-image-21
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/diffusion_models/qwen_image_2.1_int8_convrot.safetensors
+    --text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/text_encoders/qwen3vl_8b_w4a8.safetensors"
+    --qwen21-resolution 1024
+    --gen-seeds 1
+    --output-path qwen-image-21-comfy-quant-text-encoder-w4a8
+    --prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Qwen-Image Edit with ComfyUI's FP8 transformer and scaled FP8 Qwen2.5-VL.
+    # The text encoder file includes the vision tower, which edit reads. No mode
+    # and no quantizer: the linears stay packed. Same prompt as
+    # examples/qwen-image/comfy-quant/edit-fp8-config.dgen.
+    
+    Qwen/Qwen-Image-Edit
+    --model-type qwen-image-edit
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors
+    --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 50
+    --guidance-scales 4
+    --image-seeds https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/yarn-art-pikachu.png
+    --gen-seeds 1
+    --output-path qwen-image-comfy-quant-edit-text-encoder
+    --output-size 1024
+    --prompts "Make Pikachu hold a sign that says 'Qwen Edit is awesome', yarn art style, detailed, vibrant colors"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Qwen-Image Edit with ComfyUI's FP8 transformer and NVFP4 Qwen2.5-VL.
+    # The edit repository does not publish a 4-bit transformer. The text encoder
+    # file includes the vision tower, which edit reads. No mode and no quantizer:
+    # the linears stay packed. Same prompt as
+    # examples/qwen-image/comfy-quant/edit-fp8-config.dgen.
+    
+    Qwen/Qwen-Image-Edit
+    --model-type qwen-image-edit
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors
+    --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_nvfp4.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 50
+    --guidance-scales 4
+    --image-seeds https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/yarn-art-pikachu.png
+    --gen-seeds 1
+    --output-path qwen-image-comfy-quant-edit-text-encoder-nvfp4
+    --output-size 1024
+    --prompts "Make Pikachu hold a sign that says 'Qwen Edit is awesome', yarn art style, detailed, vibrant colors"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Z-Image Turbo with ComfyUI's INT8 ConvRot transformer and FP8 mixed Qwen3-4B
+    # text encoder. The text encoder is already quantized. Do not set quantizer.
+    # Same Tongyi prompt as examples/z-image/comfy-quant/turbo-int8-convrot-config.dgen.
+    
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if not have_cuda() or gpu_memory_gib <= 16 %}
+        \set offload --model-sequential-offload
+    {% endif %}
+    
+    Tongyi-MAI/Z-Image-Turbo
+    --model-type z-image {{ offload }}
+    --dtype bfloat16
+    --transformer https://huggingface.co/Comfy-Org/z_image_turbo/blob/main/split_files/diffusion_models/z_image_turbo_int8_convrot.safetensors
+    --text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Comfy-Org/z_image_turbo/blob/main/split_files/text_encoders/qwen_3_4b_fp8_mixed.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 9
+    --guidance-scales 0
+    --gen-seeds 1
+    --output-path z-image-comfy-quant-text-encoder
+    --output-size 1024
+    --prompts "Young Chinese woman in red Hanfu, intricate embroidery. Impeccable makeup, red floral forehead pattern. Elaborate high bun, golden phoenix headdress, red flowers, beads. Holds round folding fan with lady, trees, bird. Neon lightning-bolt lamp (⚡️), bright yellow glow, above extended left palm. Soft-lit outdoor night background, silhouetted tiered pagoda, blurred colorful distant lights."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Z-Image Turbo with ComfyUI's NVFP4 transformer and FP4 mixed Qwen3-4B
+    # text encoder. The text encoder is already quantized. Do not set quantizer.
+    # Same Tongyi prompt as examples/z-image/comfy-quant/turbo-int8-convrot-config.dgen.
+    
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if not have_cuda() or gpu_memory_gib <= 16 %}
+        \set offload --model-sequential-offload
+    {% endif %}
+    
+    Tongyi-MAI/Z-Image-Turbo
+    --model-type z-image {{ offload }}
+    --dtype bfloat16
+    --transformer https://huggingface.co/Comfy-Org/z_image_turbo/blob/main/split_files/diffusion_models/z_image_turbo_nvfp4.safetensors
+    --text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Comfy-Org/z_image_turbo/blob/main/split_files/text_encoders/qwen_3_4b_fp4_mixed.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 9
+    --guidance-scales 0
+    --gen-seeds 1
+    --output-path z-image-comfy-quant-text-encoder-fp4
+    --output-size 1024
+    --prompts "Young Chinese woman in red Hanfu, intricate embroidery. Impeccable makeup, red floral forehead pattern. Elaborate high bun, golden phoenix headdress, red flowers, beads. Holds round folding fan with lady, trees, bird. Neon lightning-bolt lamp (⚡️), bright yellow glow, above extended left palm. Soft-lit outdoor night background, silhouetted tiered pagoda, blurred colorful distant lights."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux.2 Klein 9B with an Unsloth GGUF transformer and the official Qwen3-8B
+    # GGUF. Klein 9B is the 8B Qwen3 (hidden size 4096), not the 4B file used by
+    # Klein 4B. Qwen publishes Q4_K_M for this model and not Q4_K_S. Both files
+    # are already quantized. Do not set quantizer. Distilled Klein ignores
+    # guidance above 1. Four steps is the short schedule. The base 9B checkpoint
+    # reads this same encoder and uses its own 50-step schedule.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token.
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.2-klein-9B
+    --model-type flux2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/unsloth/FLUX.2-klein-9B-GGUF/blob/main/flux-2-klein-9b-Q4_K_S.gguf
+    --text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Qwen/Qwen3-8B-GGUF/blob/main/Qwen3-8B-Q4_K_M.gguf"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 4
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-path flux2-gguf-klein-9b-text-encoder
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux.2 Klein 9B with Black Forest Labs' official FP8 transformer and
+    # ComfyUI's FP8 mixed Qwen3-8B text encoder. Klein 4B's Qwen3-4B file does
+    # not match this checkpoint. The text encoder is already quantized. Do not
+    # set quantizer. Distilled Klein ignores guidance above 1.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token.
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.2-klein-9B
+    --model-type flux2
+    --dtype bfloat16
+    --model-cpu-offload
+    --transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-9b-fp8/blob/main/flux-2-klein-9b-fp8.safetensors
+    --text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Comfy-Org/flux2-klein-9B/blob/main/split_files/text_encoders/qwen_3_8b_fp8mixed.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 4
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-path flux2-comfy-quant-klein-9b-text-encoder
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux.2 Klein 9B with Black Forest Labs' official FP8 transformer and
+    # ComfyUI's FP4 mixed Qwen3-8B text encoder. Klein 4B's Qwen3-4B file does
+    # not match this checkpoint. The text encoder is already quantized. Do not
+    # set quantizer. Distilled Klein ignores guidance above 1.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token.
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.2-klein-9B
+    --model-type flux2
+    --dtype bfloat16
+    --model-cpu-offload
+    --transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-9b-fp8/blob/main/flux-2-klein-9b-fp8.safetensors
+    --text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Comfy-Org/flux2-klein-9B/blob/main/split_files/text_encoders/qwen_3_8b_fp4mixed.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 4
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-path flux2-comfy-quant-klein-9b-text-encoder-fp4
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Kandinsky 5 T2V Pro with the Q4_K_S GGUF transformer and ComfyUI's scaled
+    # FP8 Qwen2.5-VL, the same file Qwen-Image uses. "+" keeps the CLIP encoder
+    # from the repository. The file includes the vision tower. No mode and no
+    # quantizer: the linears stay packed. The image checkpoints have no published
+    # quantized transformer.
+    
+    kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers
+    --model-type kandinsky5-video
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer "https://huggingface.co/Ada321/Kandinsky-5.0-T2V-Pro-sft-5s-Q4_K_S.gguf/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf"
+    --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors" +
+    --inference-steps 50
+    --guidance-scales 5
+    --video-lengths 5
+    --video-fps 24
+    --animation-format mp4
+    --gen-seeds 1
+    --output-path kandinsky5-comfy-quant-text-encoder
+    --output-size 1024x768
+    --prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Kandinsky 5 T2V Pro with the Q4_K_S GGUF transformer and ComfyUI's NVFP4
+    # Qwen2.5-VL, the same file Qwen-Image uses. "+" keeps the CLIP encoder
+    # from the repository. The file includes the vision tower. No mode and no
+    # quantizer: the linears stay packed. The image checkpoints have no published
+    # quantized transformer.
+    
+    kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers
+    --model-type kandinsky5-video
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer "https://huggingface.co/Ada321/Kandinsky-5.0-T2V-Pro-sft-5s-Q4_K_S.gguf/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf"
+    --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_nvfp4.safetensors" +
+    --inference-steps 50
+    --guidance-scales 5
+    --video-lengths 5
+    --video-fps 24
+    --animation-format mp4
+    --gen-seeds 1
+    --output-path kandinsky5-comfy-quant-text-encoder-nvfp4
+    --output-size 1024x768
+    --prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # HunyuanVideo 1.5 480p T2V distilled, with ComfyUI's scaled FP8 transformer
+    # and scaled FP8 Qwen2.5-VL. The pipeline class is Qwen2_5_VLTextModel, the
+    # text tower. The ComfyUI file also stores the vision tower; those tensors
+    # are not loaded into this class. "+" keeps the small ByT5 encoder from the
+    # repository. Distilled guidance is 1.
+    
+    hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v_distilled
+    --model-type hyvideo-15
+    --transformer https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/diffusion_models/hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors
+    --text-encoders "Qwen2_5_VLTextModel;model=https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors" +
+    --dtype bfloat16
+    --model-sequential-offload
+    --inference-steps 50
+    --guidance-scales 1
+    --video-lengths 4
+    --video-fps 15
+    --animation-format mp4
+    --gen-seeds 1
+    --output-path hyvideo-15-comfy-quant-text-encoder
+    --output-size 848x480
+    --prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # HunyuanVideo 1.5 480p T2V distilled, with ComfyUI's scaled FP8 transformer
+    # and NVFP4 Qwen2.5-VL. The Hunyuan repository only publishes the FP8 Qwen
+    # file; this is the same encoder from Qwen-Image's ComfyUI pack. The pipeline
+    # class is Qwen2_5_VLTextModel, the text tower. The ComfyUI file also stores
+    # the vision tower; those tensors are not loaded into this class. "+" keeps
+    # the small ByT5 encoder from the repository. Distilled guidance is 1.
+    
+    hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v_distilled
+    --model-type hyvideo-15
+    --transformer https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/diffusion_models/hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors
+    --text-encoders "Qwen2_5_VLTextModel;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_nvfp4.safetensors" +
+    --dtype bfloat16
+    --model-sequential-offload
+    --inference-steps 50
+    --guidance-scales 1
+    --video-lengths 4
+    --video-fps 15
+    --animation-format mp4
+    --gen-seeds 1
+    --output-path hyvideo-15-comfy-quant-text-encoder-nvfp4
+    --output-size 848x480
+    --prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # HunyuanVideo 1.5 480p T2V with a Q4_K_S GGUF transformer and Unsloth's
+    # Qwen2.5-VL GGUF as Qwen2_5_VLTextModel. The GGUF is the language tower.
+    # Its mmproj sidecar is not loaded, which matches this pipeline: it does
+    # not read the vision tower. "+" keeps the small ByT5 encoder. The GGUF
+    # is already quantized. Do not set quantizer.
+    
+    hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v
+    --model-type hyvideo-15
+    --transformer "https://huggingface.co/jayn7/HunyuanVideo-1.5_T2V_480p-GGUF/blob/main/480p/hunyuanvideo1.5_480p_t2v-Q4_K_S.gguf"
+    --text-encoders "Qwen2_5_VLTextModel;model=https://huggingface.co/unsloth/Qwen2.5-VL-7B-Instruct-GGUF/blob/main/Qwen2.5-VL-7B-Instruct-Q4_K_S.gguf" +
+    --dtype bfloat16
+    --model-sequential-offload
+    --inference-steps 50
+    --guidance-scales 6
+    --video-lengths 4
+    --video-fps 15
+    --animation-format mp4
+    --gen-seeds 1
+    --output-path hyvideo-15-gguf-text-encoder
+    --output-size 848x480
+    --prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # HunyuanImage 2.1 with calcuis's GGUF transformer and Unsloth's Qwen2.5-VL GGUF
+    # as the main text encoder. The ByT5 glyph encoder is ComfyUI's split file from
+    # the Hunyuan-Image-2.1 repack (full precision, small). The Qwen GGUF is
+    # language-only; its mmproj sidecar is not loaded. No mode and no quantizer on
+    # either URI. Same prompt as examples/hyimage-21/gguf/config.dgen.
+    
+    hunyuanvideo-community/HunyuanImage-2.1-Diffusers
+    --model-type hyimage-21
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/calcuis/hunyuanimage-gguf/resolve/main/hunyuanimage2.1-q4_k_m.gguf
+    --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/unsloth/Qwen2.5-VL-7B-Instruct-GGUF/blob/main/Qwen2.5-VL-7B-Instruct-Q4_K_S.gguf" "T5EncoderModel;model=https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/blob/main/split_files/text_encoders/byt5_small_glyphxl_fp16.safetensors"
+    --inference-steps 50
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path hyimage21-gguf-text-encoder
+    --output-size 2048
+    --prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # HunyuanImage 2.1 with ComfyUI's FP8 transformer, scaled FP8 Qwen2.5-VL, and
+    # ComfyUI's ByT5 glyph encoder. Qwen linears stay packed. ByT5 is matched from
+    # the file with no mode. Same prompt as examples/hyimage-21/comfy_quant/config.dgen.
+    
+    hunyuanvideo-community/HunyuanImage-2.1-Diffusers
+    --model-type hyimage-21
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/resolve/main/split_files/diffusion_models/hunyuanimage2.1_fp8_e4m3fn.safetensors
+    --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors" "T5EncoderModel;model=https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/blob/main/split_files/text_encoders/byt5_small_glyphxl_fp16.safetensors"
+    --inference-steps 50
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path hyimage21-comfy-quant-text-encoder
+    --output-size 2048
+    --prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # HunyuanImage 2.1 with ComfyUI's FP8 transformer, NVFP4 Qwen2.5-VL, and
+    # ComfyUI's ByT5 glyph encoder. The Hunyuan repository only publishes the
+    # FP8 Qwen file; this is the same Qwen2.5-VL encoder from Qwen-Image's
+    # ComfyUI pack. Qwen linears stay packed. ByT5 is matched from the file
+    # with no mode. Same prompt as examples/hyimage-21/comfy_quant/config.dgen.
+    
+    hunyuanvideo-community/HunyuanImage-2.1-Diffusers
+    --model-type hyimage-21
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/resolve/main/split_files/diffusion_models/hunyuanimage2.1_fp8_e4m3fn.safetensors
+    --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_nvfp4.safetensors" "T5EncoderModel;model=https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/blob/main/split_files/text_encoders/byt5_small_glyphxl_fp16.safetensors"
+    --inference-steps 50
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path hyimage21-comfy-quant-text-encoder-nvfp4
+    --output-size 2048
+    --prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"
 
 .. code-block:: jinja
 
@@ -14514,6 +15821,9 @@ And for ``sdnq``:
 
 A pre-quantized ``.gguf`` transformer is a file format, not a ``--quantizer`` backend.
 Point ``--transformer`` at the ``.gguf`` file or blob link. See :ref:`specifying-a-transformer`.
+A ``.gguf`` text encoder (T5-XXL, UMT5-XXL, Qwen, Mistral, Gemma) is the same kind of
+file: point ``--text-encoders`` at it and name the encoder class. See
+:ref:`specifying-text-encoders`.
 
 ComfyUI quantized ``.safetensors`` files (FP8, INT8 ConvRot, NVFP4) are also file
 formats. They load through ``--transformer``, ``--text-encoders``, or as the model,
@@ -15551,7 +16861,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [93500624042689]
+            Value: [84505443855070]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

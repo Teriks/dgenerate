@@ -222,9 +222,9 @@ class ControlNetUri:
         self._model_type = model_type
 
         if isinstance(mode, str):
-            if _enums.model_type_is_sdxl(model_type):
+            if _enums.model_type_is_sdxl_family(model_type):
                 self._mode = ControlNetUri._sdxl_mode_int_from_str(mode)
-            elif _enums.model_type_is_flux(model_type):
+            elif _enums.model_type_is_flux_family(model_type):
                 self._mode = ControlNetUri._flux_mode_int_from_str(mode)
             else:
                 raise _exceptions.InvalidControlNetUriError(
@@ -294,13 +294,13 @@ class ControlNetUri:
                     model_class = diffusers.ZImageControlNetModel
                 elif _enums.model_type_is_qwen_image(self.model_type):
                     model_class = diffusers.QwenImageControlNetModel
-                elif _enums.model_type_is_flux(self.model_type):
+                elif _enums.model_type_is_flux_family(self.model_type):
                     model_class = diffusers.FluxControlNetModel
-                elif _enums.model_type_is_sd3(self.model_type):
+                elif _enums.model_type_is_sd3_family(self.model_type):
                     model_class = diffusers.SD3ControlNetModel
                 elif _enums.model_type_is_hydit(self.model_type):
                     model_class = diffusers.HunyuanDiT2DControlNetModel
-                elif _enums.model_type_is_sdxl(self.model_type) and self.mode is not None:
+                elif _enums.model_type_is_sdxl_family(self.model_type) and self.mode is not None:
                     model_class = diffusers.ControlNetUnionModel
                 else:
                     model_class = diffusers.ControlNetModel
@@ -470,9 +470,9 @@ class ControlNetUri:
                     f'Torch ControlNet "start" must be less than or equal to "end".')
 
             if mode is not None:
-                if _enums.model_type_is_sdxl(model_type):
+                if _enums.model_type_is_sdxl_family(model_type):
                     mode = ControlNetUri._sdxl_mode_int_from_str(mode)
-                elif _enums.model_type_is_flux(model_type):
+                elif _enums.model_type_is_flux_family(model_type):
                     mode = ControlNetUri._flux_mode_int_from_str(mode)
                 else:
                     raise _exceptions.InvalidControlNetUriError(
