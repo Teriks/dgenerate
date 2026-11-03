@@ -310,6 +310,80 @@ def commits_equal(sha1: str, sha2: str) -> bool:
     return a.startswith(b)
 
 
+def _github_compare(base: str, head: str) -> dict | None:
+    """Return a GitHub compare payload for ``base...head``, or ``None``."""
+    url = (
+        f'https://api.github.com/repos/{_GITHUB_REPO}/compare/'
+        f'{urllib.parse.quote(base, safe="")}...{urllib.parse.quote(head, safe="")}'
+    )
+    try:
+        response = requests.get(url, headers=_GITHUB_API_HEADERS, timeout=2)
+        response.raise_for_status()
+        data = response.json()
+    except (requests.exceptions.RequestException, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
+def check_master_superseding_release(
+        branch: str,
+        installed_version: str,
+) -> LatestReleaseInfo | None:
+    """
+    Return the latest tag on ``master`` when ``master`` has fast-forwarded
+    past ``branch`` and that tag is not an older version than ``installed_version``.
+
+    The installed pre-release branch is fully contained in ``master`` and
+    ``master`` has additional commits. Tags are taken newest-first and the
+    first one contained in ``master`` is used when it is the same version or
+    newer. The same version still counts, so a ``6.0.0`` pre-release moves to
+    the ``v6.0.0`` release. The ``pre-release`` tag is skipped. An older tag,
+    such as ``v5.0.0`` while the install is ``6.0.0`` and ``v6.0.0`` is not
+    tagged yet, is skipped.
+    """
+    branch = (branch or '').strip()
+    if not branch or branch == 'master':
+        return None
+
+    relation = _github_compare(branch, 'master')
+    if relation is None or relation.get('status') != 'ahead':
+        return None
+
+    url = f'https://api.github.com/repos/{_GITHUB_REPO}/tags?per_page=30'
+    try:
+        response = requests.get(url, headers=_GITHUB_API_HEADERS, timeout=2)
+        response.raise_for_status()
+        tags = response.json()
+    except (requests.exceptions.RequestException, ValueError):
+        return None
+    if not isinstance(tags, list):
+        return None
+
+    for tag in tags:
+        if not isinstance(tag, dict):
+            continue
+        name = tag.get('name')
+        if not isinstance(name, str) or not name or name == 'pre-release':
+            continue
+        contained = _github_compare(name, 'master')
+        if contained is None or contained.get('status') not in ('ahead', 'identical'):
+            continue
+        try:
+            comparison = compare_versions(name, installed_version)
+        except ValueError:
+            continue
+        if comparison == VersionComparison.V2_NEWER:
+            continue
+        release_url = (
+            f'https://github.com/{_GITHUB_REPO}/releases/tag/'
+            f'{urllib.parse.quote(name)}')
+        return LatestReleaseInfo(name, name, release_url)
+
+    return None
+
+
 def check_pre_release_branch_update(
         local_commit: str,
         branch: str,

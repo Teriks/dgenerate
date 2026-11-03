@@ -48,6 +48,90 @@ class TestCompareVersions(unittest.TestCase):
         self.assertEqual(result, resources.VersionComparison.V1_NEWER)
 
 
+class TestMasterSupersedingRelease(unittest.TestCase):
+    @mock.patch('dgenerate.resources.requests.get')
+    def test_points_at_newest_tag_on_master(self, mock_get):
+        def respond(url, **kwargs):
+            response = mock.Mock()
+            response.raise_for_status = mock.Mock()
+            if url.endswith('version_6.0.0...master'):
+                response.json.return_value = {'status': 'ahead', 'ahead_by': 4, 'behind_by': 0}
+            elif url.endswith('/tags?per_page=30'):
+                response.json.return_value = [
+                    {'name': 'pre-release'},
+                    {'name': 'v6.0.0'},
+                    {'name': 'v5.0.0'},
+                ]
+            elif url.endswith('v6.0.0...master'):
+                response.json.return_value = {'status': 'identical'}
+            else:
+                response.json.return_value = {'status': 'diverged'}
+            return response
+
+        mock_get.side_effect = respond
+
+        result = resources.check_master_superseding_release('version_6.0.0', '5.0.0')
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.tag_name, 'v6.0.0')
+        self.assertTrue(result.release_url.endswith('/releases/tag/v6.0.0'))
+
+    @mock.patch('dgenerate.resources.requests.get')
+    def test_same_version_tag_moves_to_release(self, mock_get):
+        def respond(url, **kwargs):
+            response = mock.Mock()
+            response.raise_for_status = mock.Mock()
+            if url.endswith('/tags?per_page=30'):
+                response.json.return_value = [
+                    {'name': 'pre-release'},
+                    {'name': 'v6.0.0'},
+                    {'name': 'v5.0.0'},
+                ]
+            elif url.endswith('v6.0.0...master'):
+                response.json.return_value = {'status': 'identical'}
+            else:
+                response.json.return_value = {'status': 'ahead', 'ahead_by': 4, 'behind_by': 0}
+            return response
+
+        mock_get.side_effect = respond
+
+        result = resources.check_master_superseding_release('version_6.0.0', '6.0.0')
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.tag_name, 'v6.0.0')
+
+    @mock.patch('dgenerate.resources.requests.get')
+    def test_older_tag_on_master_is_not_offered(self, mock_get):
+        def respond(url, **kwargs):
+            response = mock.Mock()
+            response.raise_for_status = mock.Mock()
+            if url.endswith('/tags?per_page=30'):
+                response.json.return_value = [
+                    {'name': 'pre-release'},
+                    {'name': 'v5.0.0'},
+                ]
+            elif url.endswith('v5.0.0...master'):
+                response.json.return_value = {'status': 'ahead'}
+            else:
+                response.json.return_value = {'status': 'ahead', 'ahead_by': 4, 'behind_by': 0}
+            return response
+
+        mock_get.side_effect = respond
+
+        self.assertIsNone(
+            resources.check_master_superseding_release('version_6.0.0', '6.0.0'))
+
+    @mock.patch('dgenerate.resources.requests.get')
+    def test_diverged_branch_is_not_superseded(self, mock_get):
+        response = mock.Mock()
+        response.raise_for_status = mock.Mock()
+        response.json.return_value = {'status': 'diverged', 'ahead_by': 2, 'behind_by': 3}
+        mock_get.return_value = response
+
+        self.assertIsNone(resources.check_master_superseding_release('version_6.0.0', '6.0.0'))
+        mock_get.assert_called_once()
+
+
 class TestCheckPreReleaseBranchUpdate(unittest.TestCase):
     @mock.patch('dgenerate.resources.requests.get')
     def test_ahead_by_shows_update(self, mock_get):

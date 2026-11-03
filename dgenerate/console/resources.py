@@ -432,7 +432,34 @@ def add_help_menu_links(menu: tk.Menu, console=None):
         webbrowser.open(
             f'https://dgenerate.readthedocs.io/en/{read_the_docs}/manual.html'))
 
+    def add_newer_release_item(tag_name: str, page_url: str):
+        menu.add_separator()
+        if release_info.network_install and console is not None:
+            menu.add_command(
+                label=f'Newer Release Available! ({tag_name})',
+                command=lambda tag=tag_name, url=page_url: start_network_installer(
+                    console,
+                    tag,
+                    url,
+                    f'A newer release is available ({tag}).\n\n'
+                    'Download and Install closes the Console and opens '
+                    f'the network installer with release {tag} selected.\n\n'
+                    'View Release opens the release page.',
+                    ['-v', tag]))
+        else:
+            menu.add_command(
+                label=f'Newer Release Available! ({tag_name})',
+                command=lambda url=page_url: webbrowser.open(url))
+
     if release_info.pre_release:
+        superseded = None
+        if release_info.branch:
+            superseded = _d_resources.check_master_superseding_release(
+                release_info.branch, installed_version)
+        if superseded is not None:
+            add_newer_release_item(superseded.tag_name, superseded.release_url)
+            return
+
         if release_info.commit and release_info.branch:
             branch_update = _d_resources.check_pre_release_branch_update(
                 release_info.commit, release_info.branch)
@@ -470,22 +497,4 @@ def add_help_menu_links(menu: tk.Menu, console=None):
             compare_result = _d_resources.VersionComparison.SAME
 
         if compare_result == _d_resources.VersionComparison.V1_NEWER:
-            menu.add_separator()
-            page_url = latest_release.release_url
-            if release_info.network_install and console is not None:
-                menu.add_command(
-                    label=f'Newer Release Available! ({latest_release.tag_name})',
-                    command=lambda tag=latest_release.tag_name, url=page_url:
-                    start_network_installer(
-                        console,
-                        tag,
-                        url,
-                        f'A newer release is available ({tag}).\n\n'
-                        'Download and Install closes the Console and opens '
-                        f'the network installer with release {tag} selected.\n\n'
-                        'View Release opens the release page.',
-                        ['-v', tag]))
-            else:
-                menu.add_command(
-                    label=f'Newer Release Available! ({latest_release.tag_name})',
-                    command=lambda url=page_url: webbrowser.open(url))
+            add_newer_release_item(latest_release.tag_name, latest_release.release_url)
