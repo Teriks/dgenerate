@@ -34,7 +34,9 @@ Help Output
 
 @INCLUDE[sections/image_inputs/animated_output.template.rst]
 
-@INCLUDE[sections/image_inputs/video_generation.template.rst]
+@INCLUDE[sections/models/video_generation.template.rst]
+
+@INCLUDE[sections/models/flow_image_models.template.rst]
 
 @INCLUDE[sections/image_inputs/animation_slicing.template.rst]
 
@@ -60,6 +62,8 @@ Help Output
 
 @INCLUDE[sections/sub_models/comfyui_quantized_checkpoints.template.rst]
 
+@INCLUDE[sections/sub_models/gguf_checkpoints.template.rst]
+
 @INCLUDE[sections/sub_models/specifying_sdxl_refiner.template.rst]
 
 @INCLUDE[sections/sub_models/specifying_stable_cascade_decoder.template.rst]
@@ -75,8 +79,6 @@ Help Output
 @INCLUDE[sections/sub_models/sdxl_controlnet_union_mode.template.rst]
 
 @INCLUDE[sections/sub_models/flux_controlnet_union_mode.template.rst]
-
-@INCLUDE[sections/image_inputs/flow_image_models.template.rst]
 
 @INCLUDE[sections/sub_models/specifying_t2i_adapters.template.rst]
 

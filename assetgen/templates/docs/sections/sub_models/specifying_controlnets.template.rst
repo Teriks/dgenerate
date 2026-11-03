@@ -12,6 +12,7 @@ ControlNet models are supported for these model types:
     * ``--model-type kolors``
     * ``--model-type sd3`` (img2img and inpainting not supported)
     * ``--model-type flux``
+    * ``--model-type hydit`` (text-to-image)
     * ``--model-type z-image`` (one ControlNet union; text-to-image and inpaint)
     * ``--model-type qwen-image`` (text-to-image and inpaint; more than one ControlNet is allowed)
 
@@ -49,7 +50,7 @@ in an image seed specification always determines the output FPS of the animation
 Arguments pertaining to the loading of each ControlNet model specified with ``--control-nets`` may be
 declared in the same way as when using ``--vae`` with the addition of a ``scale`` argument.
 
-Available arguments are: ``--model-type`` values are: ``scale``, ``start``, ``end``, ``revision``, ``variant``, ``subfolder``, ``dtype``
+Available arguments are: ``scale``, ``start``, ``end``, ``mode``, ``revision``, ``variant``, ``subfolder``, and ``dtype``
 
 Most named arguments apply to loading from a huggingface repository or folder
 that may or may not be a local git repository on disk, when loading directly from a .safetensors file

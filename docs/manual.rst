@@ -5,9 +5,13 @@
 .. _examples/ltx2/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx2/gguf
 .. _examples/wan_animate: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan_animate
 .. _examples/wan_animate_2: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan_animate_2
-.. _examples/qwen-image/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/qwen-image/gguf
-.. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/version_6.0.0/examples/media/vermeer_canny_edged.png
+.. _examples/wan/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan/gguf
 .. _examples/adetailer/post_processor: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/adetailer/post_processor
+.. _examples/qwen-image/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/qwen-image/gguf
+.. _examples/flux/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/flux/gguf
+.. _examples/flux2/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/flux2/gguf
+.. _examples/z-image/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/z-image/gguf
+.. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/version_6.0.0/examples/media/vermeer_canny_edged.png
 .. _Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy: https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF
 .. _heretic_MiniCPM-V_4.6: https://huggingface.co/heretic-org/MiniCPM-V-4.6-heretic
 .. _Stable_Diffusion_Web_UI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
@@ -5687,12 +5691,417 @@ offload. Group offload streams the full-precision modules, such as the VAE and t
 encoder, and places a GGUF, SDNQ, or bitsandbytes transformer on the run
 device instead of streaming its packed weights.
 
-See `examples/wan/gguf <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan/gguf>`_
+See `examples/wan/gguf <examples/wan/gguf_>`_
 and `examples/wan/lora/lora-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/lora/lora-config.dgen>`_.
 
 Configs are in `examples/wan <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan>`_,
 `examples/wan_animate <examples/wan_animate_>`_,
 and `examples/wan_animate_2 <examples/wan_animate_2_>`_.
+
+.. _flow-matching-models:
+.. _flow-image-models:
+
+Flow Matching Models
+====================
+
+These ``--model-type`` values are the later flow-matching image models:
+
+    * ``flux2``
+    * ``z-image``
+    * ``qwen-image``
+    * ``qwen-image-21``
+    * ``krea2``
+    * ``kandinsky5-image``
+    * ``hyimage-21``
+
+The edit, layered, Omni, Klein KV, and refiner types in the sections below are the same family.
+
+Each model has one text encoder. The prompt is a chat template.
+
+Flux.1 and Stable Diffusion 3 are earlier flow models. They still take CLIP prompts, so they keep ``--second-prompts``, ``--clip-skips``, and ``--prompt-weighter``.
+
+LoRAs use ``--loras`` and fuse the same way as Flux.1.
+
+:ref:`specifying-a-transformer` replaces the diffusion transformer, including a ``.gguf`` file. See :ref:`gguf-checkpoints`.
+
+Pixel width and height snap down to a multiple of 16, because latents are packed into 2x2 patches. Qwen-Image 2.1 and HunyuanImage 2.1 use a 16x VAE, so they snap to 32. 1024 is already aligned. The default sample size is 1024. HunyuanImage 2.1 examples use 2048.
+
+These arguments are rejected:
+
+    * ``--t2i-adapters``
+    * ``--ip-adapters``
+    * ``--pag``
+    * ``--clip-skips``
+    * ``--sdxl-refiner``
+    * ``--prompt-weighter``
+
+``--control-nets`` is accepted on ``z-image`` and ``qwen-image`` only. See `Specifying ControlNets`_.
+
+Adetailer works where an inpaint pipeline exists: Flux.2 Klein, Z-Image, Qwen-Image, and Qwen-Image Edit.
+
+``--adetailer-detectors`` takes an ``--image-seeds`` image and no mask, and inpaints each detection. ``--post-processors adetailer`` does the same on the image just generated.
+
+Full Flux.2, Klein KV, Z-Image Omni, Qwen-Image Layered, and Qwen edit-plus have no inpaint pipeline, so adetailer is rejected there.
+
+Qwen still uses true CFG. Flux.2 Klein still has no negative prompt. A detection crop is aligned to a multiple of 16, which is the size the inpaint call uses. Strength near 1 redraws that crop.
+
+Generated images are under `examples/adetailer/post_processor <examples/adetailer/post_processor_>`_. An image you already have is under `examples/adetailer/arbitrary_image <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/adetailer/arbitrary_image>`_. Flux.2 Klein, Z-Image, and Qwen-Image each have both.
+
+``--model-cpu-offload``, ``--model-sequential-offload``, and ``--model-group-offload`` are mutually exclusive.
+
+Group offload keeps weights in CPU memory, so the pipeline cache still counts them. BitsAndBytes, SDNQ, and other quantized modules stay where they were loaded.
+
+``--torch-compile`` compiles the repeated transformer blocks. Quantized weights stay eager, and dgenerate warns.
+
+Flux.2
+------
+
+``--model-type flux2`` is both full Flux.2 and Flux.2 Klein. ``model_index.json`` selects the pipeline. Klein is not its own ``--model-type``.
+
+Neither pipeline takes a negative prompt. There is no img2img strength and no ControlNet. ``--dtype bfloat16`` and ``FlowMatchEulerDiscreteScheduler`` are the usual settings. Output size 1024.
+
+``--image-seeds`` with no mask are reference images, passed as ``image``. There is no strength, and ``--image-seed-strengths`` is an error on those seeds.
+
+A mask is Klein inpaint only. Full Flux.2 rejects a mask.
+
+Full Flux.2
+~~~~~~~~~~~
+
+``black-forest-labs/FLUX.2-dev`` is gated. Guidance 4 and 50 steps. The text encoder is Mistral.
+
+``--flux2-text-encoder-out-layers`` defaults to ``10,20,30``. ``--flux2-caption-upsample-temperature`` turns on caption upsampling. Klein rejects that argument.
+
+See `examples/flux2/basic/dev-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/basic/dev-config.dgen>`_.
+
+The Turbo LoRA is a normal ``--loras`` load: 8 steps, guidance 2.5, and an explicit sigma list.
+
+``--sigmas`` takes one CSV string, or ``expr:``. It does not take space-separated floats:
+
+.. code-block::
+
+    --loras "fal/FLUX.2-dev-Turbo;weight-name=flux.2-turbo-lora.safetensors;scale=1.0"
+    --inference-steps 8
+    --sigmas "1.0,0.6509,0.4374,0.2932,0.1893,0.1108,0.0495,0.00031"
+    --guidance-scales 2.5
+
+See `examples/flux2/lora/dev-turbo-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/lora/dev-turbo-config.dgen>`_.
+
+A GGUF transformer is ``--transformer`` pointing at a ``.gguf`` file. The parent repository still supplies the VAE and text encoder.
+
+Hidden width 6144 selects the dev config. Do not set ``quantizer=`` on that URI.
+
+See `examples/flux2/gguf/dev-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/gguf/dev-config.dgen>`_.
+
+Flux.2 Klein
+~~~~~~~~~~~~
+
+Klein encodes prompts with Qwen3. ``--flux2-text-encoder-out-layers`` defaults
+to ``9,18,27``.
+
+* Base 9B: ``black-forest-labs/FLUX.2-klein-base-9B``. Gated. Guidance 4, 50 steps.
+* Distilled 4B: ``black-forest-labs/FLUX.2-klein-4B``. Public. Four steps.
+  A distilled Klein checkpoint ignores ``--guidance-scales`` above 1.
+
+Text to image has no image seed. References, when you use them, are ``--image-seeds`` with no mask, the same as full Flux.2.
+
+Inpaint is the same Klein repository with ``--image-seeds "image.png;mask.png"``. White mask pixels are repainted.
+
+The init image also stays packed as a condition every step, so weak edits are normal at low strength. Use ``--image-seed-strengths 1`` and guidance nearer 8.
+
+``reference=`` in that seed is an extra reference image, passed as ``image_reference``. A reference video is zipped with the inpaint clip, one frame at a time.
+
+Full Flux.2 has no inpaint class.
+
+See `examples/flux2/klein/text-to-image-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein/text-to-image-config.dgen>`_
+and `examples/flux2/klein/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein/inpaint-config.dgen>`_.
+
+GGUF width 3072 selects Klein 4B. Width 4096 selects Klein 9B and uses the
+base-9B transformer config.
+
+See `examples/flux2/gguf/klein-4b-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/gguf/klein-4b-config.dgen>`_.
+
+Flux.2 Klein KV
+~~~~~~~~~~~~~~~
+
+``--model-type flux2-klein-kv`` is ``black-forest-labs/FLUX.2-klein-9b-kv``. Gated.
+
+The published ``model_index.json`` class is ``Flux2KleinPipeline``. dgenerate still loads ``Flux2KleinKVPipeline`` when the model type is ``flux2-klein-kv``.
+
+Reference images are ``--image-seeds`` with no mask and no strength. The pipeline caches their attention after the first step.
+
+There is no guidance scale, no inpaint, and no ControlNet. Four steps is the short schedule.
+
+A GGUF of this transformer is also width 4096, so it uses the Klein 9B module config.
+
+See `examples/flux2/klein-kv/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein-kv/config.dgen>`_
+and `examples/flux2/gguf/klein-kv-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/gguf/klein-kv-config.dgen>`_.
+
+Z-Image
+-------
+
+``--model-type z-image`` is text to image, img2img, and inpaint.
+
+A negative prompt is optional. Classifier-free guidance is on when guidance is greater than 0.
+
+* Turbo: ``Tongyi-MAI/Z-Image-Turbo``. 8 steps, ``--guidance-scales 0``. Public.
+* Base: ``Tongyi-MAI/Z-Image``. Public. Guidance around 4, and 28 to 50 steps.
+  The 2-step LoRA is a normal ``--loras`` load, not a new model type:
+
+  .. code-block::
+
+      --loras "alibaba-pai/Z-Image-Fun-Lora-Distill;weight-name=Z-Image-Fun-Lora-Distill-2-Steps-2603.safetensors;scale=1.0"
+      --inference-steps 2
+      --guidance-scales 1
+
+* Set ``--image-seed-strengths 0.6`` for img2img. That is the pipeline's own
+  default. If the option is omitted, dgenerate uses 0.8.
+* Set ``--image-seed-strengths 1`` for inpaint. The mask blends the encoded
+  image. It is not concatenated into the transformer.
+
+Prequantized SDNQ Turbo is ``Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32`` (uint4, SVD rank 32).
+
+Do not pass ``--quantizer sdnq`` to that checkpoint. That quantizes again. A full-precision repo with ``--quantizer sdnq`` still quantizes on load.
+
+``--transformer`` may point at an SDNQ transformer directory. Detection uses that directory, not only the pipeline repo.
+
+A GGUF transformer stays on ``--model-type z-image``. The parent repository supplies the text encoder and VAE.
+
+Base and Turbo share one transformer shape, so a base GGUF still uses the Turbo module config. Sampling stays with the checkpoint: Turbo is 8 steps and guidance 0, base is the longer schedule.
+
+See `examples/z-image <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/z-image>`_.
+
+ControlNet unions are ``--control-nets`` on ``z-image`` only, one model.
+
+Text to image uses ``Z-Image-Turbo-Fun-Controlnet-Union.safetensors`` from ``alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union``.
+
+Inpaint uses ``Z-Image-Turbo-Fun-Controlnet-Union-2.0.safetensors`` from ``alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0``. The inpaint pipeline rejects the 1.0 union. There is no img2img ControlNet class.
+
+The pipeline rebuilds the ControlNet with ``from_transformer`` against the loaded transformer, so both are loaded together.
+
+``scale=0.75`` matches the pipeline default. ``start`` and ``end`` other than ``0`` and ``1`` are an error.
+
+On a Z-Image ControlNet the transformer is offloaded before the ControlNet, because those two objects share modules.
+
+Z-Image Omni
+~~~~~~~~~~~~
+
+``--model-type z-image-omni`` is Z-Image with an optional SigLIP condition image.
+
+``--image-seeds`` with no mask is that image. There is no strength, no mask, and no ControlNet.
+
+The **Z-Image-Omni-Base** checkpoint is not on Hugging Face yet. Tongyi-MAI lists it as to be released. Use a local ``ZImageOmniPipeline`` directory until ``Tongyi-MAI/Z-Image-Omni-Base`` is published.
+
+About 50 steps and ``--guidance-scales`` around 4 match the intended Omni-Base schedule. CFG flags are the same ``--z-image-`` options.
+
+Qwen-Image
+----------
+
+``--model-type qwen-image`` is text to image, img2img, and inpaint on ``Qwen/Qwen-Image``. Public.
+
+50 steps and guidance 4 are the usual settings. ``--dtype bfloat16`` and ``FlowMatchEulerDiscreteScheduler``.
+
+``--guidance-scales`` is true CFG (``true_cfg_scale``). ``--qwen-guidance-scale`` is the distilled guidance embedded in the transformer. Omit it to leave that guidance unset.
+
+True CFG runs when ``--guidance-scales`` is above 1. A negative prompt is optional. If you do not write one and guidance is above 1, dgenerate passes a single space, which is what the pipeline expects.
+
+Img2img and inpaint strength default to 0.6. The inpaint mask is packed and concatenated with the latents.
+
+See `examples/qwen-image/basic/base-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/basic/base-config.dgen>`_,
+`examples/qwen-image/img2img/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/img2img/config.dgen>`_,
+and `examples/qwen-image/inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/inpaint/config.dgen>`_.
+
+The Lightning LoRA is a normal ``--loras`` load. It is trained at guidance 1 and 8 steps:
+
+.. code-block::
+
+    --loras "lightx2v/Qwen-Image-Lightning;weight-name=Qwen-Image-Lightning-8steps-V1.0.safetensors;scale=1.0"
+    --inference-steps 8
+    --guidance-scales 1
+
+See `examples/qwen-image/lora/lightning-8step-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/lora/lightning-8step-config.dgen>`_.
+
+A GGUF transformer uses the same ``--model-type``.
+
+QuantStack files already use Diffusers tensor names. A Comfy file prefixed with ``model.diffusion_model.`` is stripped on load.
+
+Edit uses this same module, so an edit GGUF keeps the Qwen-Image transformer config. Layered is detected separately, below.
+
+See `examples/qwen-image/gguf <examples/qwen-image/gguf_>`_.
+
+ControlNet stays ``--model-type qwen-image`` with ``--control-nets``. More than one ControlNet is allowed.
+
+Text to image uses the seed image as the control image with ``InstantX/Qwen-Image-ControlNet-Union``.
+
+Inpaint uses ``--image-seeds "image.png;mask.png"`` with ``InstantX/Qwen-Image-ControlNet-Inpainting``. That image and mask are ``control_image`` and ``control_mask``.
+
+White mask pixels are repainted. Black are kept. Prefer a small white region. Wiping most of the frame often yields a black fill. The shipped example inverts ``horse1-mask.jpg`` so the horse is painted.
+
+Union ControlNets have ``extra_condition_channels=0`` and cannot be used with a mask. The inpainting ControlNet has ``extra_condition_channels=4``.
+
+``start`` and ``end`` are passed through. ``scale=1`` matches the pipeline default.
+
+See `examples/qwen-image/controlnet/canny-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/canny-config.dgen>`_
+and `examples/qwen-image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/inpaint-config.dgen>`_.
+
+Qwen-Image 2.1
+~~~~~~~~~~~~~~
+
+``--model-type qwen-image-21`` is Qwen-Image 2.1's text-to-image and image-conditioned pipeline.
+
+An image seed is optional. It is a reference, not an img2img start. There is no strength, no img2img, no inpaint, and no ControlNet.
+
+Several reference images use the ``images:`` image-seed syntax.
+
+The default is 40 steps with true CFG off (guidance 1). ``--guidance-scales`` above 1 turns true CFG on. A negative prompt goes after ``;`` in the prompt.
+
+``--qwen21-resolution`` is the pipeline's target-side setting. It is not a width, a height, or a maximum side. The pipeline uses the square of that value as the target area and derives width and height, keeping the reference aspect ratio when conditioning.
+
+Use ``--output-size`` when you need explicit dimensions. The pipeline defaults the target side to 1024. ``--qwen21-no-kv-cache`` disables the prefix key/value cache. That cache is on by default.
+
+The Turbo checkpoint supplies a short sigma schedule. Run it with that schedule, not the base checkpoint's 40 steps.
+
+Qwen-Image 2.1 also supports LoRAs, a GGUF transformer through ``--transformer``, PyTorch latent output and input, and FlowMatch cooperative denoising.
+
+``--max-sequence-length`` is not supported.
+
+* `Basic text-to-image <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/basic/config.dgen>`_
+* `Image-conditioned generation <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/image-conditioned/config.dgen>`_
+* `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/turbo/config.dgen>`_
+* `LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/lora/config.dgen>`_
+* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/gguf/transformer-config.dgen>`_
+* `Cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/qwen-image-21/cooperative-denoising-config.dgen>`_
+
+Krea 2
+~~~~~~
+
+``--model-type krea2`` is text-to-image only. There is no image-seed editing, no inpaint, and no ControlNet.
+
+The two checkpoints use different sampling defaults:
+
+* ``krea/Krea-2-Raw`` uses 28 steps and guidance 4.5. A negative prompt goes after ``;`` in the prompt.
+* ``krea/Krea-2-Turbo`` is distilled. It uses 8 steps and guidance 0. It does not take a negative prompt. Use those short-step settings, not the Raw defaults.
+
+``--output-size`` in the examples is a square 1024 image.
+
+Krea 2 supports transformer LoRAs and a GGUF transformer with ``--transformer``. It also supports PyTorch latent output and input, and FlowMatch cooperative denoising. The cooperative-denoising example uses the Raw model.
+
+* `Raw checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/raw/config.dgen>`_
+* `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/turbo/config.dgen>`_
+* `Turbo LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/lora/turbo-config.dgen>`_
+* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/gguf/transformer-config.dgen>`_
+* `Raw cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/krea2/cooperative-denoising-config.dgen>`_
+
+Kandinsky 5 Image
+~~~~~~~~~~~~~~~~~
+
+``--model-type kandinsky5-image`` is text to image or instruction editing, depending on the checkpoint.
+
+The examples use ``Kandinsky-5.0-T2I-Lite-sft-Diffusers`` for generation and ``Kandinsky-5.0-I2I-Lite-sft-Diffusers`` for editing.
+
+For editing, pass the source image in ``--image-seeds`` and describe the change in the prompt. The image is a condition, not an img2img strength. There is no inpaint and no ControlNet.
+
+A negative prompt goes after ``;`` in the prompt. The defaults are 50 steps and guidance 3.5. ``--max-sequence-length`` adjusts the text token limit. The default is 512.
+
+The examples use ``--output-size 1024x1024``, ``bfloat16``, and sequential CPU offload.
+
+Kandinsky 5 Image supports PyTorch latent output and input, and FlowMatch cooperative denoising. ``--transformer`` can replace the image transformer.
+
+There is no Kandinsky 5 Image GGUF example yet. The Kandinsky 5 Video GGUF is a different transformer and is not an image example.
+
+* `Text-to-image <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text-to-image/config.dgen>`_
+* `Image editing <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/image-edit/config.dgen>`_
+* `Kandinsky 5 Image cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/kandinsky5-image/cooperative-denoising-config.dgen>`_
+
+Qwen-Image Edit
+~~~~~~~~~~~~~~~
+
+``--model-type qwen-image-edit`` is an instruction edit. The image seed is
+required. There is no strength.
+
+* ``Qwen/Qwen-Image-Edit`` takes one image.
+* ``Qwen/Qwen-Image-Edit-2509`` is edit-plus. ``images: a.png, b.png`` passes
+  both images in one call. Edit-plus has no inpaint.
+* A mask on the original edit checkpoint selects edit-inpaint. Strength
+  applies only to that inpaint.
+
+``--guidance-scales`` is still true CFG.
+
+See `examples/qwen-image/edit/base-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit/base-config.dgen>`_,
+`examples/qwen-image/edit-plus/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit-plus/config.dgen>`_,
+and `examples/qwen-image/edit-inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit-inpaint/config.dgen>`_.
+
+Qwen-Image Layered
+~~~~~~~~~~~~~~~~~~
+
+``--model-type qwen-image-layered`` is ``Qwen/Qwen-Image-Layered``. One image in, one file per layer out.
+
+``--qwen-layered-layers`` defaults to 4. ``--qwen-layered-resolution`` is 640 or 1024, and defaults to 640. ``--qwen-layered-cfg-normalize`` and ``--qwen-layered-use-en-prompt`` are off unless you set them.
+
+The layered transformer has an extra ``addition_t_embedding`` and 3D position embeddings. A layered GGUF is recognized from that embedding and loaded with the layered config. A Qwen-Image GGUF is not a substitute.
+
+See `examples/qwen-image/layered/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/layered/config.dgen>`_
+and `examples/qwen-image/gguf/layered-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/gguf/layered-config.dgen>`_.
+
+HunyuanImage 2.1
+~~~~~~~~~~~~~~~~
+
+``--model-type hyimage-21`` is text to image on ``hunyuanvideo-community/HunyuanImage-2.1-Diffusers``.
+
+The examples use 50 steps, guidance 3.5, ``bfloat16``, and ``--output-size 2048``. There is no image seed. Width and height snap to 32.
+
+The distilled checkpoint stays ``hyimage-21`` and uses guidance 3.25 as distilled guidance.
+
+``--model-type hyimage-21-refiner`` is ``hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers``. Its image seed is a condition image, with no strength. The example uses 4 steps and guidance 3.25.
+
+See `examples/hyimage-21/basic/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyimage-21/basic/config.dgen>`_
+and `examples/hyimage-21/refiner/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyimage-21/refiner/config.dgen>`_.
+
+Other call arguments
+--------------------
+
+These are one value. Omitting one leaves the pipeline default, and it does not
+multiply the number of images.
+
+* ``--flux2-caption-upsample-temperature`` is full Flux.2 caption upsampling.
+  Klein rejects it.
+* ``--flux2-text-encoder-out-layers`` selects the text-encoder layers.
+  Full Flux.2 defaults to ``10,20,30``. Klein defaults to ``9,18,27``.
+* ``--z-image-cfg-normalization`` turns on Z-Image CFG normalization.
+  ``--z-image-cfg-truncation`` replaces the default of ``1``.
+* ``--qwen-guidance-scale`` is the distilled guidance embedded in the Qwen-Image
+  transformer. ``--guidance-scales`` stays the true CFG scale.
+* ``--inpaint-crop`` with one padding integer, and without feathering or masked
+  paste, is passed as ``padding_mask_crop`` on Klein and Qwen inpaint. The
+  pipeline then crops and pastes. A two-sided or four-sided padding, a feather,
+  or masked paste stays on dgenerate's crop.
+
+Console recipes
+---------------
+
+The Console UI recipes are:
+
+* ``Flux.2 Dev``
+* ``Flux.2 Klein``
+* ``Flux.2 Klein KV``
+* ``Z-Image Turbo``
+* ``Z-Image Turbo (SDNQ)``
+* ``Z-Image Base (2-step LoRA)``
+* ``Z-Image ControlNet``
+* ``Z-Image Omni``
+* ``Qwen-Image``
+* ``Qwen-Image Edit``
+* ``Qwen-Image Layered``
+* ``Qwen-Image 2.1``
+* ``Qwen-Image 2.1 Turbo``
+* ``Krea 2 Raw``
+* ``Krea 2 Turbo``
+* ``Kandinsky 5 Image``
+* ``Kandinsky 5 Image Edit``
+* ``HunyuanImage 2.1``
+* ``HunyuanImage 2.1 Distilled``
+* ``HunyuanImage 2.1 Refiner``
+
+GGUF recipes for those models set ``--transformer`` to a quantized file and leave the parent repository as the model line.
 
 Animation Slicing
 =================
@@ -7214,21 +7623,38 @@ VAEs are supported for these model types:
     * ``--model-type kolors``
     * ``--model-type sd3``
     * ``--model-type flux``
+    * ``--model-type flux-fill``
+    * ``--model-type flux-kontext``
     * ``--model-type flux2``
-    * ``--model-type qwen-image`` / ``qwen-image-edit`` / ``qwen-image-layered``
+    * ``--model-type flux2-klein-kv``
+    * ``--model-type qwen-image``
+    * ``--model-type qwen-image-edit``
+    * ``--model-type qwen-image-layered``
+    * ``--model-type qwen-image-21``
     * ``--model-type z-image``
+    * ``--model-type z-image-omni``
+    * ``--model-type krea2``
+    * ``--model-type kandinsky5-image``
+    * ``--model-type kandinsky5-video``
+    * ``--model-type hydit``
+    * ``--model-type hyimage-21``
+    * ``--model-type hyimage-21-refiner``
     * ``--model-type ltx2``
     * ``--model-type ltx-video``
     * ``--model-type wan``
     * ``--model-type wan-animate``
     * ``--model-type wan-animate-2``
+    * ``--model-type hyvideo-15``
+    * ``--model-type motif-video``
 
 The URI syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)``
 
 Named arguments when loading a VAE are separated by the ``;`` character and are not positional,
 meaning they can be defined in any order.
 
-Loading arguments available when specifying a VAE are: ``model``, ``revision``, ``variant``, ``subfolder``, and ``dtype``
+Loading arguments available when specifying a VAE are: ``model``, ``revision``, ``variant``, ``subfolder``, ``dtype``, and ``extract``
+
+``extract`` means ``model`` is a combined single-file checkpoint and the VAE should be taken out of it. ``subfolder`` is then the checkpoint key, defaulting to ``vae``.
 
 The only named arguments compatible with loading a .safetensors or other model file
 directly off disk are ``model`` and ``dtype``
@@ -7244,6 +7670,8 @@ Available encoder classes are:
 * ConsistencyDecoderVAE
 * AutoencoderKLFlux2
 * AutoencoderKLQwenImage
+* AutoencoderKLQwenImage21
+* AutoencoderKLHunyuanImage
 * AutoencoderKLHunyuanImageRefiner
 * AutoencoderKLWan
 * AutoencoderKLLTXVideo
@@ -7417,6 +7845,9 @@ UNets are supported for these model types:
 This is useful in particular for using the latent consistency scheduler as well as the
 ``lite`` variants of the unet models used with Stable Cascade.
 
+When ``model`` is a combined single-file checkpoint, ``subfolder`` is the key
+that holds the UNet. The default key is ``unet``.
+
 The first component of the ``--unet`` URI is the model path itself.
 
 You can provide a path to a huggingface repo, or a folder on disk (downloaded huggingface repository).
@@ -7477,8 +7908,40 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--secon
 Specifying a Transformer (SD3, Flux, and later flow models)
 ===========================================================
 
-Stable Diffusion 3, Flux, Flux.2, Z-Image, and Qwen-Image do not use a UNet.
-They use a Transformer in its place. LTX does too; see `Video Generation`_.
+Stable Diffusion 3, Flux, Flux.2, Z-Image, Qwen-Image, Krea 2, Kandinsky 5,
+Hunyuan-DiT, and HunyuanImage 2.1 do not use a UNet.
+They use a Transformer in its place. LTX, Wan, HunyuanVideo 1.5, and Motif do too; see `Video Generation`_.
+
+``--transformer`` is supported for these model types:
+
+    * ``--model-type sd3``
+    * ``--model-type sd3-pix2pix``
+    * ``--model-type flux``
+    * ``--model-type flux-fill``
+    * ``--model-type flux-kontext``
+    * ``--model-type flux2``
+    * ``--model-type flux2-klein-kv``
+    * ``--model-type z-image``
+    * ``--model-type z-image-omni``
+    * ``--model-type qwen-image``
+    * ``--model-type qwen-image-edit``
+    * ``--model-type qwen-image-layered``
+    * ``--model-type qwen-image-21``
+    * ``--model-type krea2``
+    * ``--model-type kandinsky5-image``
+    * ``--model-type kandinsky5-video``
+    * ``--model-type hydit``
+    * ``--model-type hyimage-21``
+    * ``--model-type hyimage-21-refiner``
+    * ``--model-type ltx2``
+    * ``--model-type ltx-video``
+    * ``--model-type wan``
+    * ``--model-type wan-animate``
+    * ``--model-type wan-animate-2``
+    * ``--model-type hyvideo-15``
+    * ``--model-type motif-video``
+
+``--model-type wan`` can also set ``--wan-second-transformer`` to the Wan 2.2 low-noise expert.
 
 A specific transformer model can be specified using the ``--transformer`` argument.
 
@@ -7529,16 +7992,15 @@ Flux Example:
     --output-path output \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
 
-An SD3, Flux, Flux.2, Z-Image, Qwen-Image, or LTX transformer can also be a
-pre-quantized ``.gguf`` file. The repository still supplies the VAE and text
-encoders. Do not set ``quantizer=`` on that URI and do not use ``--quantizer gguf``.
-Flux.2 Klein, Qwen-Image, and LTX 2.5 are recognized from the file, including
-ComfyUI layouts. Quantize the text encoders with ``bnb`` or ``sdnq`` and
-``--quantizer-map`` if needed. See
+An SD3, Flux, Flux.2, Z-Image, Qwen-Image, LTX, Wan, or later transformer can
+also be a pre-quantized ``.gguf`` file. The repository still supplies the VAE
+and text encoders. Do not set ``quantizer=`` on that URI and do not use
+``--quantizer gguf``. The file is recognized from its tensors, including
+ComfyUI layouts. See :ref:`gguf-checkpoints`,
 `examples/stablediffusion3/gguf <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/stablediffusion3/gguf>`_,
-`examples/flux/gguf <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/flux/gguf>`_,
-`examples/flux2/gguf <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/flux2/gguf>`_,
-`examples/z-image/gguf <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/z-image/gguf>`_,
+`examples/flux/gguf <examples/flux/gguf_>`_,
+`examples/flux2/gguf <examples/flux2/gguf_>`_,
+`examples/z-image/gguf <examples/z-image/gguf_>`_,
 `examples/qwen-image/gguf <examples/qwen-image/gguf_>`_,
 and `examples/ltx2/gguf <examples/ltx2/gguf_>`_.
 
@@ -7773,10 +8235,7 @@ argument as usual. ``UMT5EncoderModel`` and the language-model encoders need no
 ``mode``: the configuration is matched from the file. T5 keeps its feed-forward
 output projection dense, as T5 runs it in float32.
 
-The same encoders load from a ``.gguf`` file. A city96 T5-XXL or UMT5-XXL file, and
-llama.cpp Qwen, Mistral, and Gemma files, keep their GGUF linears packed. Name the
-encoder class that matches the file and do not set ``quantizer``. See
-:ref:`specifying-text-encoders`.
+The same encoders load from a ``.gguf`` file. See :ref:`gguf-checkpoints`.
 
 Language model text encoders (``Qwen3ForCausalLM``, ``Qwen3Model``,
 ``Mistral3ForConditionalGeneration``, ``Qwen2_5_VLForConditionalGeneration``,
@@ -8209,6 +8668,391 @@ More examples are under ``examples/*/comfy-quant``, for instance
 `examples/wan/comfy-quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan/comfy-quant>`_,
 and `examples/ltx2/comfy-quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx2/comfy-quant>`_.
 
+.. _gguf-checkpoints:
+
+GGUF Checkpoints
+================
+
+dgenerate loads pre-quantized ``.gguf`` diffusion transformers and text
+encoders, including city96 files and ComfyUI GGUF files. Like a ComfyUI
+quantized ``.safetensors`` file, a GGUF file is a file format, not a
+``--quantizer`` backend: point ``--transformer`` (or the model path,
+``--wan-second-transformer``, or ``--text-encoders``) at the file and it is
+recognized from its tensors. Do not set ``quantizer=`` on that URI, and do
+not use ``--quantizer gguf``. Loading requires the ``gguf`` package.
+
+Quantized linears stay packed, so a transformer needs roughly the size of
+its file. Each matmul dequantizes its weight. On CUDA of compute capability
+7.0 or newer, Diffusers can run that matmul with the ``Isotr0py/ggml`` kernel.
+``dgenerate --sub-command kernel-warmup`` downloads the build for this
+operating system. A machine with no published build dequantizes in PyTorch.
+
+ComfyUI files prefix tensor names with ``model.diffusion_model.``. That
+prefix is removed on load. A Comfy linear stored transposed stays packed and
+is transposed after dequantization.
+
+Transformers
+------------
+
+Point ``--transformer`` at the file or a Hugging Face blob link. The
+repository on the model line still supplies the VAE and text encoders. Wan
+2.2 passes the low-noise expert through ``--wan-second-transformer``.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Replace the Flux DiT with a pre-quantized city96 GGUF file. The Hugging
+    # Face repo still supplies the VAE and text encoders. T5 is quantized
+    # separately with bitsandbytes, or sdnq if bitsandbytes is not available.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
+        \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+    {% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+        \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+    {% endif %}
+    
+    black-forest-labs/FLUX.1-dev
+    --model-type flux {{ te_quant }}
+    --dtype bfloat16
+    --model-cpu-offload
+    --transformer https://huggingface.co/city96/FLUX.1-dev-gguf/blob/main/flux1-dev-Q4_K_S.gguf
+    --inference-steps 20
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path flux-gguf-dev
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux.2 dev with a city96 GGUF transformer. The repository still supplies
+    # the VAE and Mistral text encoder. The file is detected as Flux.2 dev from
+    # its hidden width, so no config is passed on --transformer.
+    
+    # Quantize the text encoder only. The GGUF is already quantized.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token.
+        \exit
+    {% endif %}
+    
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 16 %}
+        \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+    {% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 16 %}
+        \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+    {% endif %}
+    
+    black-forest-labs/FLUX.2-dev
+    --model-type flux2 {{ te_quant }}
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/city96/FLUX.2-dev-gguf/blob/main/flux2-dev-Q4_K_S.gguf
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 20
+    --guidance-scales 4
+    --gen-seeds 1
+    --output-path flux2-gguf-dev
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Wan transformer as a GGUF. Same Diffusers T2V prompt as
+    # examples/wan/basic/text-to-video-config.dgen.
+    
+    \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+    
+    Wan-AI/Wan2.1-T2V-14B-Diffusers
+    --model-type wan
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/city96/Wan2.1-T2V-14B-gguf/blob/main/wan2.1-t2v-14b-Q4_K_S.gguf
+    --inference-steps 30
+    --guidance-scales 5
+    --video-fps 16
+    --gen-seeds 1
+    --output-size 832x480
+    --video-lengths 5
+    --animation-format mp4
+    --output-path wan-gguf
+    --prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"
+
+As the Model
+------------
+
+A transformer-only ``.gguf`` can be the model itself. dgenerate reads the
+tensor names and shapes, picks the Diffusers repository below, and loads the
+text encoders, tokenizers, and VAE from there. ``--text-encoders`` and
+``--vae`` still override that. ``+`` keeps a detected encoder and ``null``
+skips one. A file that already contains text encoders keeps those encoders.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # The GGUF transformer is the model. Text encoders and the VAE load from
+    # black-forest-labs/FLUX.1-dev. The repository plus --transformer form in
+    # flux-dev-config.dgen still works, and --text-encoders / --vae still override
+    # the detected modules. "+" keeps a detected encoder; "null" skips one.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
+        \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+    {% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+        \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+    {% endif %}
+    
+    https://huggingface.co/city96/FLUX.1-dev-gguf/blob/main/flux1-dev-Q4_K_S.gguf
+    --model-type flux {{ te_quant }}
+    --dtype bfloat16
+    --model-cpu-offload
+    --inference-steps 20
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path flux-gguf-dev-as-model
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # The GGUF DiT is the model. CLIP-L, CLIP-G, T5, and the VAE load from
+    # stabilityai/stable-diffusion-3-medium-diffusers. sd3-medium-config.dgen is
+    # the same run with the repository as the model and --transformer for the file.
+    # --text-encoders "+ + null" keeps both CLIPs and skips T5; see
+    # text_encoders/without-t5-as-model-config.dgen.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
+        \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder_3
+    {% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+        \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder_3
+    {% endif %}
+    
+    https://huggingface.co/city96/stable-diffusion-3-medium-gguf/blob/main/sd3_medium-Q4_K_S.gguf
+    --model-type sd3 {{ te_quant }}
+    --variant fp16
+    --dtype float16
+    --model-cpu-offload
+    --inference-steps 28
+    --guidance-scales 5
+    --gen-seeds 1
+    --output-path sd3-gguf-medium-as-model
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+The repository is chosen from the tensors. ``--model-type`` picks a sibling
+when those tensors match more than one pipeline. The file name picks a
+sibling when the tensors do not: ``turbo`` selects a distilled Z-Image,
+Krea 2, or Qwen-Image 2.1 repository, and a Wan or HunyuanVideo 1.5 name
+selects task and resolution.
+
+* SD3, SD3.5 medium, and SD3.5 large use the Diffusers fingerprint.
+* Flux.1 dev, schnell, and fill use the Diffusers fingerprint.
+  ``--model-type flux-kontext`` selects Kontext.
+* Flux.2 dev is hidden width 6144, ``black-forest-labs/FLUX.2-dev``.
+  Klein 4B is width 3072. Klein 9B is width 4096,
+  ``black-forest-labs/FLUX.2-klein-base-9B``. ``--model-type flux2-klein-kv``
+  selects Klein KV from that same width.
+* Z-Image is recognized from ``cap_embedder`` and ``adaLN``. Base and Turbo
+  share one shape, so the module config is Turbo. A file name that says
+  Z-Image and does not say turbo uses ``Tongyi-MAI/Z-Image``.
+* Qwen-Image is recognized from ``time_text_embed``. Edit uses this same
+  module. ``--model-type qwen-image-edit`` selects edit, and ``2509`` in the
+  file name selects edit-plus. ``addition_t_embedding`` selects
+  ``Qwen/Qwen-Image-Layered``. A Qwen-Image file is not a layered file.
+* Qwen-Image 2.1 is recognized from ``txt_in.text_norm``. The config is
+  ``Qwen/Qwen-Image-2.1``, or the Turbo repository when the file name says
+  turbo.
+* Krea 2 is recognized from ``txtfusion`` or ``first.weight``. The config is
+  ``krea/Krea-2-Raw``, or Turbo when the file name says turbo.
+* Kandinsky 5 video is recognized from ``visual_transformer_blocks``. Hidden
+  width 1792 is Lite and 4096 is Pro.
+* LTX 2.5 is recognized from ``keyframes_abs_pos_embedding`` or
+  ``audio_patchify_proj``, and uses ``Lightricks/LTX-2.5-Diffusers``.
+  LTX-Video 0.9.1, 0.9.5, and 0.9.7 use the Diffusers fingerprint.
+* HunyuanVideo 1.5 is recognized from ``cond_type_embedding``. The file name
+  selects 480p or 720p, and text-to-video or image-to-video.
+* HunyuanImage 2.1 is recognized from ``txt_in.input_embedder`` and
+  ``img_in.proj``. ``byt5_in`` with guidance selects the distilled config.
+  Guidance without ``byt5_in`` selects the refiner. Otherwise the config is
+  the base model.
+* Motif-Video is recognized from a text cross-attention on the single stream,
+  and uses ``Motif-Technologies/Motif-Video-2B``.
+* Wan is recognized from ``patch_embedding`` width, plus VACE, Animate,
+  Animate-2, and first-last-frame keys. Wan 2.1 image-to-video keeps an image
+  embedder. Wan 2.2 image-to-video does not. A Wan 2.2 file name selects the
+  mixture-of-experts repository.
+
+Text Encoders
+-------------
+
+Point ``--text-encoders`` at a ``.gguf`` file and name the encoder class.
+There is no ``mode`` and no ``subfolder``. The configuration is matched from
+the file's vocabulary, hidden size, and layer count. Do not set ``quantizer``.
+
+llama.cpp architectures ``t5``, ``t5encoder``, ``llama``, ``qwen2vl``,
+``qwen3``, ``qwen3vl``, and ``gemma3`` are accepted. Their tensor names are
+renamed to Hugging Face names, and the quantized linears stay packed. T5
+keeps its feed-forward output projection dense, because T5 runs that
+projection in float32. Gemma 3 norms written by llama.cpp are converted back
+to the Hugging Face values.
+
+The class is the one the pipeline expects: ``T5EncoderModel`` and
+``UMT5EncoderModel`` for T5 and UMT5, and the language-model class for Qwen,
+Mistral, and Gemma. See :ref:`specifying-text-encoders`.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux Dev with a city96 GGUF transformer and a city96 T5-XXL GGUF.
+    # "+" keeps CLIP from the repository. The T5 file is already quantized:
+    # do not set quantizer on that URI. T5's feed-forward output projection
+    # is loaded dense, because T5 runs it in float32.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.1-dev
+    --model-type flux
+    --dtype bfloat16
+    --model-cpu-offload
+    --transformer https://huggingface.co/city96/FLUX.1-dev-gguf/blob/main/flux1-dev-Q4_K_S.gguf
+    --text-encoders + "T5EncoderModel;model=https://huggingface.co/city96/t5-v1_1-xxl-encoder-gguf/blob/main/t5-v1_1-xxl-encoder-Q4_K_S.gguf"
+    --inference-steps 20
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path flux-gguf-text-encoder
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Wan 2.1 T2V 14B with a city96 GGUF transformer and a city96 UMT5-XXL GGUF.
+    # UMT5 needs no mode. The file is already quantized, so quantizer is not set.
+    # Same prompt as examples/wan/gguf/text-to-video-config.dgen.
+    
+    \setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+    
+    Wan-AI/Wan2.1-T2V-14B-Diffusers
+    --model-type wan
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/city96/Wan2.1-T2V-14B-gguf/blob/main/wan2.1-t2v-14b-Q4_K_S.gguf
+    --text-encoders "UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q4_K_S.gguf"
+    --inference-steps 30
+    --guidance-scales 5
+    --video-fps 16
+    --gen-seeds 1
+    --output-size 832x480
+    --video-lengths 5
+    --animation-format mp4
+    --output-path wan-gguf-text-encoder
+    --prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Flux.2 Klein 4B with an Unsloth GGUF transformer and the official Qwen3-4B
+    # GGUF as the text encoder. Both files are already quantized. Do not set
+    # quantizer. Distilled Klein ignores guidance above 1. Four steps is the
+    # short schedule.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or pass --auth-token.
+        \exit
+    {% endif %}
+    
+    black-forest-labs/FLUX.2-klein-4B
+    --model-type flux2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/unsloth/FLUX.2-klein-4B-GGUF/blob/main/flux-2-klein-4b-Q4_K_S.gguf
+    --text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Qwen/Qwen3-4B-GGUF/blob/main/Qwen3-4B-Q4_K_M.gguf"
+    --scheduler FlowMatchEulerDiscreteScheduler
+    --inference-steps 4
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-path flux2-gguf-klein-4b-text-encoder
+    --output-size 1024
+    --prompts "A cat holding a sign that says hello world"
+
+Other Options
+-------------
+
+``--loras`` load on top of the packed weights. The adapters stay active
+instead of being fused into the weights. ``--lora-disk-fuse`` cannot merge
+into a GGUF transformer.
+
+``--model-cpu-offload`` and ``--model-sequential-offload`` move a GGUF
+transformer. ``--model-group-offload`` does not stream its packed weights. It
+places the transformer on the run device and still streams the other modules,
+such as the VAE. ``--torch-compile`` leaves GGUF weights eager and warns.
+
+A ``--quantizer`` on a full-precision text encoder still applies. It does not
+apply to the GGUF file.
+
+More examples are under ``examples/*/gguf``, for instance
+`examples/flux/gguf <examples/flux/gguf_>`_,
+`examples/flux2/gguf <examples/flux2/gguf_>`_,
+`examples/z-image/gguf <examples/z-image/gguf_>`_,
+`examples/qwen-image/gguf <examples/qwen-image/gguf_>`_,
+`examples/ltx2/gguf <examples/ltx2/gguf_>`_,
+and `examples/wan/gguf <examples/wan/gguf_>`_.
+
 Specifying an SDXL Refiner
 ==========================
 
@@ -8381,18 +9225,36 @@ LoRAs are supported for these model types:
     * ``--model-type sd3``
     * ``--model-type flux``
     * ``--model-type flux-fill``
+    * ``--model-type flux-kontext``
+    * ``--model-type flux2``
+    * ``--model-type flux2-klein-kv``
+    * ``--model-type z-image``
+    * ``--model-type z-image-omni``
+    * ``--model-type qwen-image``
+    * ``--model-type qwen-image-edit``
+    * ``--model-type qwen-image-layered``
+    * ``--model-type qwen-image-21``
+    * ``--model-type krea2``
+    * ``--model-type kandinsky5-image``
+    * ``--model-type kandinsky5-video``
+    * ``--model-type hydit``
     * ``--model-type ltx2``
     * ``--model-type ltx-video``
+    * ``--model-type wan``
+    * ``--model-type wan-animate``
+    * ``--model-type wan-animate-2``
     * ``--model-type hyvideo-15``
     * ``--model-type motif-video``
 
 When multiple specifications are given, all mentioned models will be fused together
 into one set of weights at their individual scale, and then those weights will be
 fused into the main model at the scale value of ``--lora-fuse-scale``, which
-defaults to 1.0. See :ref:`video-generation` for LTX adapters.
+defaults to 1.0. With ``--quantizer``, or when the weights are already packed
+(GGUF, ComfyUI, bitsandbytes, or SDNQ), the LoRA stays active instead.
+``--lora-disk-fuse`` fuses and caches a copy to disk before quantization. See :ref:`video-generation` for LTX adapters.
 
-You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
-Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.
+You can provide a huggingface repository slug, blob link, raw http/https URL,
+.pt, .pth, .bin, .ckpt, or .safetensors file, or a model folder.
 
 The individual LoRA scale for each provided model can be specified after the model path
 by placing a ``;`` (semicolon) and then using the named argument ``scale``
@@ -8500,9 +9362,10 @@ Textual inversions are supported for these model types:
     * ``--model-type sdxl-pix2pix``
     * ``--model-type flux`` (``txt2img``, ``txt2img + ControlNets``, ``inpainting + ControlNets`` only)
     * ``--model-type flux-fill`` (``inpainting`` only)
+    * ``--model-type flux-kontext``
 
-You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
-Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.
+You can provide a huggingface repository slug, blob link, raw http/https URL,
+.pt, .pth, .bin, .ckpt, or .safetensors file, or a model folder.
 
 Arguments pertaining to the loading of each textual inversion model may be specified in the same
 way as when using ``--loras`` minus the scale argument.
@@ -8609,6 +9472,7 @@ ControlNet models are supported for these model types:
     * ``--model-type kolors``
     * ``--model-type sd3`` (img2img and inpainting not supported)
     * ``--model-type flux``
+    * ``--model-type hydit`` (text-to-image)
     * ``--model-type z-image`` (one ControlNet union; text-to-image and inpaint)
     * ``--model-type qwen-image`` (text-to-image and inpaint; more than one ControlNet is allowed)
 
@@ -8646,7 +9510,7 @@ in an image seed specification always determines the output FPS of the animation
 Arguments pertaining to the loading of each ControlNet model specified with ``--control-nets`` may be
 declared in the same way as when using ``--vae`` with the addition of a ``scale`` argument.
 
-Available arguments are: ``--model-type`` values are: ``scale``, ``start``, ``end``, ``revision``, ``variant``, ``subfolder``, ``dtype``
+Available arguments are: ``scale``, ``start``, ``end``, ``mode``, ``revision``, ``variant``, ``subfolder``, and ``dtype``
 
 Most named arguments apply to loading from a huggingface repository or folder
 that may or may not be a local git repository on disk, when loading directly from a .safetensors file
@@ -8928,392 +9792,6 @@ You can specify multiple instances of this controlnet URI with different modes i
 Everything else about controlnet URI usage, such as URI arguments, is unchanged from
 what is described in the main `Specifying ControlNets`_ section.
 
-.. _flow-image-models:
-
-Flux.2, Z-Image, and Qwen-Image
-===============================
-
-``--model-type flux2``, ``z-image``, and ``qwen-image``, and the edit, layered,
-Omni, and Klein KV types below, are flow-matching image models. Each has one
-text encoder. LoRAs use ``--loras`` and fuse the same way as Flux.1.
-:ref:`specifying-a-transformer` replaces the
-diffusion transformer, including a ``.gguf`` file. Pixel width and height snap
-down to a multiple of 16, because latents are packed into 2x2 patches. 1024 is
-already aligned. The default sample size is 1024.
-
-``--t2i-adapters``, ``--ip-adapters``, ``--pag``, ``--clip-skips``,
-``--sdxl-refiner``, and ``--prompt-weighter`` are rejected. ``--control-nets``
-is accepted on ``z-image`` and ``qwen-image`` only. See
-`Specifying ControlNets`_.
-
-Adetailer works where an inpaint pipeline exists: Flux.2 Klein, Z-Image,
-Qwen-Image, and Qwen-Image Edit. ``--adetailer-detectors`` takes an
-``--image-seeds`` image and no mask, and inpaints each detection.
-``--post-processors adetailer`` does the same on the image just generated.
-Full Flux.2, Klein KV, Z-Image Omni, Qwen-Image Layered, and Qwen edit-plus
-have no inpaint pipeline, so adetailer is rejected. Qwen still uses true CFG.
-Flux.2 Klein still has no negative prompt. A detection crop is aligned to
-a multiple of 16, which is the size the inpaint call uses. Strength near 1
-redraws that crop. Generated images are under
-`examples/adetailer/post_processor <examples/adetailer/post_processor_>`_.
-An image you already have is under
-`examples/adetailer/arbitrary_image <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/adetailer/arbitrary_image>`_.
-Flux.2 Klein, Z-Image, and Qwen-Image each have both.
-
-``--model-cpu-offload``, ``--model-sequential-offload``, and
-``--model-group-offload`` are mutually exclusive. Group offload keeps weights
-in CPU memory, so the pipeline cache still counts them. BitsAndBytes, SDNQ,
-and other quantized modules stay where they were loaded.
-``--torch-compile`` compiles the repeated transformer blocks. Quantized
-weights stay eager, and dgenerate warns.
-
-Flux.2
-------
-
-``--model-type flux2`` is both full Flux.2 and Flux.2 Klein. ``model_index.json``
-selects the pipeline. Klein is not its own ``--model-type``. Neither pipeline
-takes a negative prompt. There is no img2img strength and no ControlNet.
-``--dtype bfloat16`` and ``FlowMatchEulerDiscreteScheduler`` are the usual
-settings. Output size 1024.
-
-``--image-seeds`` with no mask are reference images, passed as ``image``.
-There is no strength, and ``--image-seed-strengths`` is an error on those
-seeds. A mask is Klein inpaint only. Full Flux.2 rejects a mask.
-
-Full Flux.2
-~~~~~~~~~~~
-
-``black-forest-labs/FLUX.2-dev`` is gated. Guidance 4 and 50 steps.
-The text encoder is Mistral. ``--flux2-text-encoder-out-layers`` defaults to
-``10,20,30``. ``--flux2-caption-upsample-temperature`` turns on caption
-upsampling. Klein rejects that argument.
-
-See `examples/flux2/basic/dev-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/basic/dev-config.dgen>`_.
-
-The Turbo LoRA is a normal ``--loras`` load, 8 steps, guidance 2.5, with an
-explicit sigma list. ``--sigmas`` takes one CSV string (or ``expr:``), not
-space-separated floats:
-
-.. code-block::
-
-    --loras "fal/FLUX.2-dev-Turbo;weight-name=flux.2-turbo-lora.safetensors;scale=1.0"
-    --inference-steps 8
-    --sigmas "1.0,0.6509,0.4374,0.2932,0.1893,0.1108,0.0495,0.00031"
-    --guidance-scales 2.5
-
-See `examples/flux2/lora/dev-turbo-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/lora/dev-turbo-config.dgen>`_.
-
-A GGUF transformer is ``--transformer`` pointing at a ``.gguf`` file. The
-parent repository still supplies the VAE and text encoder. Hidden width 6144
-selects the dev config. Do not set ``quantizer=`` on that URI.
-
-See `examples/flux2/gguf/dev-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/gguf/dev-config.dgen>`_.
-
-Flux.2 Klein
-~~~~~~~~~~~~
-
-Klein encodes prompts with Qwen3. ``--flux2-text-encoder-out-layers`` defaults
-to ``9,18,27``.
-
-* Base 9B: ``black-forest-labs/FLUX.2-klein-base-9B``. Gated. Guidance 4, 50 steps.
-* Distilled 4B: ``black-forest-labs/FLUX.2-klein-4B``. Public. Four steps.
-  A distilled Klein checkpoint ignores ``--guidance-scales`` above 1.
-
-Text to image has no image seed. References, when you use them, are
-``--image-seeds`` with no mask, the same as full Flux.2.
-
-Inpaint is the same Klein repository with ``--image-seeds "image.png;mask.png"``.
-White mask pixels are repainted. The init image also stays packed as a
-condition every step, so weak edits are normal at low strength. Use
-``--image-seed-strengths 1`` and guidance nearer 8. ``reference=`` in that
-seed is an extra reference image, passed as ``image_reference``. A reference
-video is zipped with the inpaint clip, one frame at a time. Full Flux.2 has
-no inpaint class.
-
-See `examples/flux2/klein/text-to-image-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein/text-to-image-config.dgen>`_
-and `examples/flux2/klein/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein/inpaint-config.dgen>`_.
-
-GGUF width 3072 selects Klein 4B. Width 4096 selects Klein 9B and uses the
-base-9B transformer config.
-
-See `examples/flux2/gguf/klein-4b-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/gguf/klein-4b-config.dgen>`_.
-
-Flux.2 Klein KV
-~~~~~~~~~~~~~~~
-
-``--model-type flux2-klein-kv`` is ``black-forest-labs/FLUX.2-klein-9b-kv``.
-Gated. The published ``model_index.json`` class is ``Flux2KleinPipeline``;
-dgenerate still loads ``Flux2KleinKVPipeline`` when the model type is
-``flux2-klein-kv``.
-
-Reference images are ``--image-seeds`` with no mask and no strength. The
-pipeline caches their attention after the first step. There is no guidance
-scale, no inpaint, and no ControlNet. Four steps is the short schedule.
-A GGUF of this transformer is also width 4096, so it uses the Klein 9B
-module config.
-
-See `examples/flux2/klein-kv/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein-kv/config.dgen>`_
-and `examples/flux2/gguf/klein-kv-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/gguf/klein-kv-config.dgen>`_.
-
-Z-Image
--------
-
-``--model-type z-image`` is text to image, img2img, and inpaint. A negative
-prompt is optional. Classifier-free guidance is on when guidance is greater
-than 0.
-
-* Turbo: ``Tongyi-MAI/Z-Image-Turbo``. 8 steps, ``--guidance-scales 0``. Public.
-* Base: ``Tongyi-MAI/Z-Image``. Public. Guidance around 4, and 28 to 50 steps.
-  The 2-step LoRA is a normal ``--loras`` load, not a new model type:
-
-  .. code-block::
-
-      --loras "alibaba-pai/Z-Image-Fun-Lora-Distill;weight-name=Z-Image-Fun-Lora-Distill-2-Steps-2603.safetensors;scale=1.0"
-      --inference-steps 2
-      --guidance-scales 1
-
-* Set ``--image-seed-strengths 0.6`` for img2img. That is the pipeline's own
-  default. If the option is omitted, dgenerate uses 0.8.
-* Set ``--image-seed-strengths 1`` for inpaint. The mask blends the encoded
-  image. It is not concatenated into the transformer.
-
-Prequantized SDNQ Turbo is ``Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32``
-(uint4, SVD rank 32). Do not pass ``--quantizer sdnq`` to it. That quantizes
-again. A full-precision repo with ``--quantizer sdnq`` still quantizes on load.
-``--transformer`` may point at an SDNQ transformer directory; detection uses
-that directory, not only the pipeline repo.
-
-A GGUF transformer stays on ``--model-type z-image``. The parent repository
-supplies the text encoder and VAE. Base and Turbo share one transformer shape,
-so a base GGUF still uses the Turbo module config. Sampling stays with the
-checkpoint: Turbo is 8 steps and guidance 0, base is the longer schedule.
-
-See `examples/z-image <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/z-image>`_.
-
-ControlNet unions are ``--control-nets`` on ``z-image`` only, one model.
-Text to image uses
-``Z-Image-Turbo-Fun-Controlnet-Union.safetensors`` from
-``alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union``. Inpaint uses
-``Z-Image-Turbo-Fun-Controlnet-Union-2.0.safetensors`` from
-``alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0``. The inpaint pipeline
-rejects the 1.0 union. There is no img2img ControlNet class. The pipeline
-rebuilds the ControlNet with ``from_transformer`` against the loaded
-transformer, so both are loaded together. ``scale=0.75`` matches the pipeline
-default. ``start`` and ``end`` other than ``0`` and ``1`` are an error.
-On a Z-Image ControlNet the transformer is offloaded before the ControlNet,
-because those two objects share modules.
-
-Z-Image Omni
-~~~~~~~~~~~~
-
-``--model-type z-image-omni`` is Z-Image with an optional SigLIP condition
-image. ``--image-seeds`` with no mask is that image. There is no strength,
-no mask, and no ControlNet. The **Z-Image-Omni-Base** checkpoint is not on
-Hugging Face yet (listed as to be released on the Tongyi-MAI model zoo). Use a
-local ``ZImageOmniPipeline`` directory until ``Tongyi-MAI/Z-Image-Omni-Base`` is
-published. About 50 steps and ``--guidance-scales`` around 4 match the intended
-Omni-Base schedule. CFG flags are the same ``--z-image-`` options.
-
-Qwen-Image
-----------
-
-``--model-type qwen-image`` is text to image, img2img, and inpaint on
-``Qwen/Qwen-Image``. Public. 50 steps and guidance 4 are the usual settings.
-``--dtype bfloat16`` and ``FlowMatchEulerDiscreteScheduler``.
-
-``--guidance-scales`` is true CFG (``true_cfg_scale``). ``--qwen-guidance-scale``
-is the distilled guidance embedded in the transformer. Omit it to leave that
-guidance unset. True CFG runs when ``--guidance-scales`` is above 1.
-A negative prompt is optional. If you do not write one and guidance is above 1,
-dgenerate passes a single space, which is what the pipeline expects.
-
-Img2img and inpaint strength default to 0.6. The inpaint mask is packed and
-concatenated with the latents.
-
-See `examples/qwen-image/basic/base-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/basic/base-config.dgen>`_,
-`examples/qwen-image/img2img/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/img2img/config.dgen>`_,
-and `examples/qwen-image/inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/inpaint/config.dgen>`_.
-
-The Lightning LoRA is a normal ``--loras`` load. It is trained at guidance 1
-and 8 steps:
-
-.. code-block::
-
-    --loras "lightx2v/Qwen-Image-Lightning;weight-name=Qwen-Image-Lightning-8steps-V1.0.safetensors;scale=1.0"
-    --inference-steps 8
-    --guidance-scales 1
-
-See `examples/qwen-image/lora/lightning-8step-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/lora/lightning-8step-config.dgen>`_.
-
-A GGUF transformer uses the same ``--model-type``. QuantStack files already
-use Diffusers tensor names. A Comfy file prefixed with ``model.diffusion_model.``
-is stripped on load. Edit uses this same module, so an edit GGUF keeps the
-Qwen-Image transformer config. Layered is detected separately, below.
-
-See `examples/qwen-image/gguf <examples/qwen-image/gguf_>`_.
-
-ControlNet stays ``--model-type qwen-image`` with ``--control-nets``.
-More than one ControlNet is allowed. Text to image uses the seed image as
-the control image with ``InstantX/Qwen-Image-ControlNet-Union``. Inpaint
-uses ``--image-seeds "image.png;mask.png"`` with one inpainting ControlNet
-(``InstantX/Qwen-Image-ControlNet-Inpainting``): that image and mask are
-``control_image`` and ``control_mask``. White mask pixels are repainted;
-black are kept. Prefer a small white region — wiping most of the frame
-often yields a black fill. The shipped example inverts ``horse1-mask.jpg``
-so the horse is painted. Union ControlNets have
-``extra_condition_channels=0`` and cannot be used with a mask; the
-inpainting ControlNet has ``extra_condition_channels=4``. ``start`` and
-``end`` are passed through. ``scale=1`` matches the pipeline default.
-
-See `examples/qwen-image/controlnet/canny-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/canny-config.dgen>`_
-and `examples/qwen-image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/inpaint-config.dgen>`_.
-
-Qwen-Image 2.1
-~~~~~~~~~~~~~~
-
-``--model-type qwen-image-21`` selects Qwen-Image 2.1's unified text-to-image
-and image-conditioned pipeline. An image seed is optional and acts as a
-reference condition, not as an img2img starting image: there is no strength
-control, img2img mode, inpaint mode, or ControlNet support. Multiple reference
-images can be passed with the ``images:`` image-seed syntax.
-
-The default is 40 steps with true CFG disabled (guidance 1). Setting
-``--guidance-scales`` above 1 enables true CFG; a negative prompt can be given
-after ``;`` in the prompt. ``--qwen21-resolution`` is the pipeline's
-target-side setting, not a width, height, or maximum-side option. It uses the
-square of that value as the target image area and derives width and height,
-preserving the reference image aspect ratio when conditioning. Use
-``--output-size`` when you need explicit dimensions. The pipeline defaults the
-target side to 1024. ``--qwen21-no-kv-cache`` disables the prefix key/value
-cache, which is enabled by default.
-
-The Turbo checkpoint supplies a short sigma schedule and is intended to run
-with that schedule rather than the base checkpoint's 40-step setting. Qwen-Image
-2.1 also supports LoRAs, compatible GGUF transformer weights through
-``--transformer``, PyTorch latent output/input, and FlowMatch cooperative
-denoising. ``--max-sequence-length`` is not supported by this pipeline.
-
-* `Basic text-to-image <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/basic/config.dgen>`_
-* `Image-conditioned generation <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/image-conditioned/config.dgen>`_
-* `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/turbo/config.dgen>`_
-* `LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/lora/config.dgen>`_
-* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/gguf/transformer-config.dgen>`_
-* `Cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/qwen-image-21/cooperative-denoising-config.dgen>`_
-
-Krea 2
-~~~~~~
-
-``--model-type krea2`` is text-to-image only. It has no image-seed editing or
-inpainting pipeline and does not support ControlNet. The two supplied
-checkpoints use different sampling defaults:
-
-* ``krea/Krea-2-Raw`` uses 28 steps and guidance 4.5.
-* ``krea/Krea-2-Turbo`` is distilled, uses 8 steps, and runs without guidance
-  (scale 0). It does not use a negative prompt; use the Turbo checkpoint's
-  intended short-step settings rather than the Raw defaults.
-
-Krea 2 Raw accepts a negative prompt after ``;`` in the prompt. The Turbo
-checkpoint does not expose negative-prompt guidance.
-
-``--output-size`` defaults to a square 1024-pixel image in the examples. Krea 2
-supports transformer LoRAs and compatible GGUF transformer files with
-``--transformer``. It also supports PyTorch latent output/input and FlowMatch
-cooperative denoising; the cooperative-denoising example uses the Raw model.
-
-* `Raw checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/raw/config.dgen>`_
-* `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/turbo/config.dgen>`_
-* `Turbo LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/lora/turbo-config.dgen>`_
-* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/gguf/transformer-config.dgen>`_
-* `Raw cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/krea2/cooperative-denoising-config.dgen>`_
-
-Kandinsky 5 Image
-~~~~~~~~~~~~~~~~~
-
-``--model-type kandinsky5-image`` selects text-to-image or instruction-based
-image editing according to the checkpoint. The examples use
-``Kandinsky-5.0-T2I-Lite-sft-Diffusers`` for generation and
-``Kandinsky-5.0-I2I-Lite-sft-Diffusers`` for editing. For editing, pass the
-source image in ``--image-seeds`` and describe the requested change in the
-prompt. The image is a condition, not an img2img strength input; there is no
-inpaint or ControlNet mode. Negative prompts are supported after ``;`` in the
-prompt. The defaults are 50 steps and guidance 3.5; ``--max-sequence-length``
-can adjust the text token limit (default 512).
-
-The examples use ``--output-size 1024x1024`` and ``bfloat16`` with sequential
-CPU offload. Kandinsky 5 Image supports PyTorch latent output/input and FlowMatch
-cooperative denoising. ``--transformer`` can replace the image transformer,
-but there is currently no Kandinsky 5 Image GGUF example in the examples
-directory; the Kandinsky 5 Video GGUF is a different transformer/checkpoint
-family and is not an image GGUF example.
-
-* `Text-to-image <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text-to-image/config.dgen>`_
-* `Image editing <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/image-edit/config.dgen>`_
-* `Kandinsky 5 Image cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/kandinsky5-image/cooperative-denoising-config.dgen>`_
-
-Qwen-Image Edit
-~~~~~~~~~~~~~~~
-
-``--model-type qwen-image-edit`` is an instruction edit. The image seed is
-required. There is no strength.
-
-* ``Qwen/Qwen-Image-Edit`` takes one image.
-* ``Qwen/Qwen-Image-Edit-2509`` is edit-plus. ``images: a.png, b.png`` passes
-  both images in one call. Edit-plus has no inpaint.
-* A mask on the original edit checkpoint selects edit-inpaint. Strength
-  applies only to that inpaint.
-
-``--guidance-scales`` is still true CFG.
-
-See `examples/qwen-image/edit/base-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit/base-config.dgen>`_,
-`examples/qwen-image/edit-plus/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit-plus/config.dgen>`_,
-and `examples/qwen-image/edit-inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit-inpaint/config.dgen>`_.
-
-Qwen-Image Layered
-~~~~~~~~~~~~~~~~~~
-
-``--model-type qwen-image-layered`` is ``Qwen/Qwen-Image-Layered``. One image
-in, one file per layer out. ``--qwen-layered-layers`` defaults to 4.
-``--qwen-layered-resolution`` is 640 or 1024, and defaults to 640.
-``--qwen-layered-cfg-normalize`` and ``--qwen-layered-use-en-prompt`` are off
-unless you set them.
-
-The layered transformer has an extra ``addition_t_embedding`` and 3D position
-embeddings. A layered GGUF is recognized from that embedding and loaded with
-the layered config. A Qwen-Image GGUF is not a substitute.
-
-See `examples/qwen-image/layered/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/layered/config.dgen>`_
-and `examples/qwen-image/gguf/layered-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/gguf/layered-config.dgen>`_.
-
-Other call arguments
---------------------
-
-These are one value. Omitting one leaves the pipeline default, and it does not
-multiply the number of images.
-
-* ``--flux2-caption-upsample-temperature`` is full Flux.2 caption upsampling.
-  Klein rejects it.
-* ``--flux2-text-encoder-out-layers`` selects the text-encoder layers.
-  Full Flux.2 defaults to ``10,20,30``. Klein defaults to ``9,18,27``.
-* ``--z-image-cfg-normalization`` turns on Z-Image CFG normalization.
-  ``--z-image-cfg-truncation`` replaces the default of ``1``.
-* ``--qwen-guidance-scale`` is the distilled guidance embedded in the Qwen-Image
-  transformer. ``--guidance-scales`` stays the true CFG scale.
-* ``--inpaint-crop`` with one padding integer, and without feathering or masked
-  paste, is passed as ``padding_mask_crop`` on Klein and Qwen inpaint. The
-  pipeline then crops and pastes. A two-sided or four-sided padding, a feather,
-  or masked paste stays on dgenerate's crop.
-
-Console recipes
----------------
-
-The Console UI recipes are ``Flux.2 Dev``, ``Flux.2 Klein``, ``Flux.2 Klein KV``,
-``Z-Image Turbo``, ``Z-Image Turbo (SDNQ)``, ``Z-Image Base (2-step LoRA)``,
-``Z-Image ControlNet``, ``Z-Image Omni``, ``Qwen-Image``, ``Qwen-Image Edit``,
-``Qwen-Image Layered``, ``Qwen-Image 2.1``, ``Qwen-Image 2.1 Turbo``,
-``Krea 2 Raw``, ``Krea 2 Turbo``, ``Kandinsky 5 Image``, and
-``Kandinsky 5 Image Edit``. GGUF recipes for those models set ``--transformer``
-to a quantized file and leave the parent repository as the model line.
-
 Specifying T2I Adapters
 =======================
 
@@ -9441,7 +9919,10 @@ IP Adapters are supported for these model types:
     * ``--model-type pix2pix``
     * ``--model-type sdxl``
     * ``--model-type kolors``
+    * ``--model-type sd3``
     * ``--model-type flux`` (basic adapter image specification only)
+    * ``--model-type flux-kontext`` (basic adapter image specification only)
+    * ``--model-type hydit``
 
 Here is a brief example of loading an IP Adapter in the most basic way and passing it an image via ``--image-seeds``.
 
@@ -9970,7 +10451,8 @@ ComfyUI quantized text encoder files (FP8, INT8, NVFP4, FP4, W4A8) work with bot
 of these, and with the ``mode`` argument for CLIP and T5. Their linears stay
 quantized. Where ComfyUI publishes a 4-bit file, the examples include it next
 to the FP8 or INT8 file. T5-XXL and UMT5 have no 4-bit ComfyUI file; those
-examples use the Q4_K_S GGUF. See :ref:`comfyui-quantized-checkpoints`.
+examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
+:ref:`comfyui-quantized-checkpoints`.
 
 .. code-block:: jinja
 
@@ -15549,7 +16031,7 @@ folder, or the pipeline repo, contains ``quantization_config.json``, or
 dgenerate imports ``sdnq`` before that load so the quantizer class is
 registered, and it does not pass a second SDNQ config. ``--quantizer sdnq``
 on that repo is an error. ``Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32`` is one
-of these checkpoints. See `Flux.2, Z-Image, and Qwen-Image <flow-image-models_>`_.
+of these checkpoints. See `Flow Matching Models <flow-matching-models_>`_.
 
 ``--model-group-offload`` does not move a quantized module. BitsAndBytes,
 SDNQ, GGUF, and any module that carries a quantization config stay on the
@@ -15819,11 +16301,9 @@ And for ``sdnq``:
     
     ==============================================================================================================
 
-A pre-quantized ``.gguf`` transformer is a file format, not a ``--quantizer`` backend.
-Point ``--transformer`` at the ``.gguf`` file or blob link. See :ref:`specifying-a-transformer`.
-A ``.gguf`` text encoder (T5-XXL, UMT5-XXL, Qwen, Mistral, Gemma) is the same kind of
-file: point ``--text-encoders`` at it and name the encoder class. See
-:ref:`specifying-text-encoders`.
+A pre-quantized ``.gguf`` transformer or text encoder is a file format, not a
+``--quantizer`` backend. Point ``--transformer`` or ``--text-encoders`` at the
+file. See :ref:`gguf-checkpoints`.
 
 ComfyUI quantized ``.safetensors`` files (FP8, INT8 ConvRot, NVFP4) are also file
 formats. They load through ``--transformer``, ``--text-encoders``, or as the model,

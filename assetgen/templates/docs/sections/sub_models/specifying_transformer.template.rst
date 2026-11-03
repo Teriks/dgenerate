@@ -3,8 +3,40 @@
 Specifying a Transformer (SD3, Flux, and later flow models)
 ===========================================================
 
-Stable Diffusion 3, Flux, Flux.2, Z-Image, and Qwen-Image do not use a UNet.
-They use a Transformer in its place. LTX does too; see `Video Generation`_.
+Stable Diffusion 3, Flux, Flux.2, Z-Image, Qwen-Image, Krea 2, Kandinsky 5,
+Hunyuan-DiT, and HunyuanImage 2.1 do not use a UNet.
+They use a Transformer in its place. LTX, Wan, HunyuanVideo 1.5, and Motif do too; see `Video Generation`_.
+
+``--transformer`` is supported for these model types:
+
+    * ``--model-type sd3``
+    * ``--model-type sd3-pix2pix``
+    * ``--model-type flux``
+    * ``--model-type flux-fill``
+    * ``--model-type flux-kontext``
+    * ``--model-type flux2``
+    * ``--model-type flux2-klein-kv``
+    * ``--model-type z-image``
+    * ``--model-type z-image-omni``
+    * ``--model-type qwen-image``
+    * ``--model-type qwen-image-edit``
+    * ``--model-type qwen-image-layered``
+    * ``--model-type qwen-image-21``
+    * ``--model-type krea2``
+    * ``--model-type kandinsky5-image``
+    * ``--model-type kandinsky5-video``
+    * ``--model-type hydit``
+    * ``--model-type hyimage-21``
+    * ``--model-type hyimage-21-refiner``
+    * ``--model-type ltx2``
+    * ``--model-type ltx-video``
+    * ``--model-type wan``
+    * ``--model-type wan-animate``
+    * ``--model-type wan-animate-2``
+    * ``--model-type hyvideo-15``
+    * ``--model-type motif-video``
+
+``--model-type wan`` can also set ``--wan-second-transformer`` to the Wan 2.2 low-noise expert.
 
 A specific transformer model can be specified using the ``--transformer`` argument.
 
@@ -55,12 +87,11 @@ Flux Example:
     --output-path output \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
 
-An SD3, Flux, Flux.2, Z-Image, Qwen-Image, or LTX transformer can also be a
-pre-quantized ``.gguf`` file. The repository still supplies the VAE and text
-encoders. Do not set ``quantizer=`` on that URI and do not use ``--quantizer gguf``.
-Flux.2 Klein, Qwen-Image, and LTX 2.5 are recognized from the file, including
-ComfyUI layouts. Quantize the text encoders with ``bnb`` or ``sdnq`` and
-``--quantizer-map`` if needed. See
+An SD3, Flux, Flux.2, Z-Image, Qwen-Image, LTX, Wan, or later transformer can
+also be a pre-quantized ``.gguf`` file. The repository still supplies the VAE
+and text encoders. Do not set ``quantizer=`` on that URI and do not use
+``--quantizer gguf``. The file is recognized from its tensors, including
+ComfyUI layouts. See :ref:`gguf-checkpoints`,
 `examples/stablediffusion3/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/stablediffusion3/gguf>`_,
 `examples/flux/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/flux/gguf>`_,
 `examples/flux2/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/flux2/gguf>`_,

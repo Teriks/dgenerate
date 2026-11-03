@@ -11,7 +11,10 @@ IP Adapters are supported for these model types:
     * ``--model-type pix2pix``
     * ``--model-type sdxl``
     * ``--model-type kolors``
+    * ``--model-type sd3``
     * ``--model-type flux`` (basic adapter image specification only)
+    * ``--model-type flux-kontext`` (basic adapter image specification only)
+    * ``--model-type hydit``
 
 Here is a brief example of loading an IP Adapter in the most basic way and passing it an image via ``--image-seeds``.
 

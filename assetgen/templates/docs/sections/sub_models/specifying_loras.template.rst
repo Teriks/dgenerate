@@ -14,18 +14,36 @@ LoRAs are supported for these model types:
     * ``--model-type sd3``
     * ``--model-type flux``
     * ``--model-type flux-fill``
+    * ``--model-type flux-kontext``
+    * ``--model-type flux2``
+    * ``--model-type flux2-klein-kv``
+    * ``--model-type z-image``
+    * ``--model-type z-image-omni``
+    * ``--model-type qwen-image``
+    * ``--model-type qwen-image-edit``
+    * ``--model-type qwen-image-layered``
+    * ``--model-type qwen-image-21``
+    * ``--model-type krea2``
+    * ``--model-type kandinsky5-image``
+    * ``--model-type kandinsky5-video``
+    * ``--model-type hydit``
     * ``--model-type ltx2``
     * ``--model-type ltx-video``
+    * ``--model-type wan``
+    * ``--model-type wan-animate``
+    * ``--model-type wan-animate-2``
     * ``--model-type hyvideo-15``
     * ``--model-type motif-video``
 
 When multiple specifications are given, all mentioned models will be fused together
 into one set of weights at their individual scale, and then those weights will be
 fused into the main model at the scale value of ``--lora-fuse-scale``, which
-defaults to 1.0. See :ref:`video-generation` for LTX adapters.
+defaults to 1.0. With ``--quantizer``, or when the weights are already packed
+(GGUF, ComfyUI, bitsandbytes, or SDNQ), the LoRA stays active instead.
+``--lora-disk-fuse`` fuses and caches a copy to disk before quantization. See :ref:`video-generation` for LTX adapters.
 
-You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
-Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.
+You can provide a huggingface repository slug, blob link, raw http/https URL,
+.pt, .pth, .bin, .ckpt, or .safetensors file, or a model folder.
 
 The individual LoRA scale for each provided model can be specified after the model path
 by placing a ``;`` (semicolon) and then using the named argument ``scale``

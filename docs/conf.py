@@ -78,7 +78,16 @@ release = __setup.VERSION
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.viewcode', 'sphinx.ext.autodoc', 'sphinx_rtd_theme']
+extensions = [
+    'sphinx_copybutton',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.autodoc',
+    'sphinx_rtd_theme',
+]
+
+# Omit shebang / shell prompt lines when copying code blocks.
+copybutton_prompt_text = r'#!.*|>>> |\.\.\. |\$ '
+copybutton_line_continuation_character = '\\'
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']

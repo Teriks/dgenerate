@@ -177,7 +177,8 @@ ComfyUI quantized text encoder files (FP8, INT8, NVFP4, FP4, W4A8) work with bot
 of these, and with the ``mode`` argument for CLIP and T5. Their linears stay
 quantized. Where ComfyUI publishes a 4-bit file, the examples include it next
 to the FP8 or INT8 file. T5-XXL and UMT5 have no 4-bit ComfyUI file; those
-examples use the Q4_K_S GGUF. See :ref:`comfyui-quantized-checkpoints`.
+examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
+:ref:`comfyui-quantized-checkpoints`.
 
 @EXAMPLE[@PROJECT_DIR/examples/flux/gguf/text-encoder-config.dgen]
 

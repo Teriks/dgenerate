@@ -22,7 +22,7 @@ folder, or the pipeline repo, contains ``quantization_config.json``, or
 dgenerate imports ``sdnq`` before that load so the quantizer class is
 registered, and it does not pass a second SDNQ config. ``--quantizer sdnq``
 on that repo is an error. ``Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32`` is one
-of these checkpoints. See `Flux.2, Z-Image, and Qwen-Image <flow-image-models_>`_.
+of these checkpoints. See `Flow Matching Models <flow-matching-models_>`_.
 
 ``--model-group-offload`` does not move a quantized module. BitsAndBytes,
 SDNQ, GGUF, and any module that carries a quantization config stay on the
@@ -193,11 +193,9 @@ And for ``sdnq``:
 
 @COMMAND_OUTPUT[dgenerate --no-stdin --quantizer-help sdnq]
 
-A pre-quantized ``.gguf`` transformer is a file format, not a ``--quantizer`` backend.
-Point ``--transformer`` at the ``.gguf`` file or blob link. See :ref:`specifying-a-transformer`.
-A ``.gguf`` text encoder (T5-XXL, UMT5-XXL, Qwen, Mistral, Gemma) is the same kind of
-file: point ``--text-encoders`` at it and name the encoder class. See
-:ref:`specifying-text-encoders`.
+A pre-quantized ``.gguf`` transformer or text encoder is a file format, not a
+``--quantizer`` backend. Point ``--transformer`` or ``--text-encoders`` at the
+file. See :ref:`gguf-checkpoints`.
 
 ComfyUI quantized ``.safetensors`` files (FP8, INT8 ConvRot, NVFP4) are also file
 formats. They load through ``--transformer``, ``--text-encoders``, or as the model,

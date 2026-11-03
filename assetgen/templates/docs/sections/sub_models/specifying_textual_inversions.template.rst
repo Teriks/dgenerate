@@ -12,9 +12,10 @@ Textual inversions are supported for these model types:
     * ``--model-type sdxl-pix2pix``
     * ``--model-type flux`` (``txt2img``, ``txt2img + ControlNets``, ``inpainting + ControlNets`` only)
     * ``--model-type flux-fill`` (``inpainting`` only)
+    * ``--model-type flux-kontext``
 
-You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
-Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.
+You can provide a huggingface repository slug, blob link, raw http/https URL,
+.pt, .pth, .bin, .ckpt, or .safetensors file, or a model folder.
 
 Arguments pertaining to the loading of each textual inversion model may be specified in the same
 way as when using ``--loras`` minus the scale argument.

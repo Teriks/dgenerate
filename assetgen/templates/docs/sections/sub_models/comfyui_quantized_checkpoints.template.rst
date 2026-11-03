@@ -75,10 +75,7 @@ argument as usual. ``UMT5EncoderModel`` and the language-model encoders need no
 ``mode``: the configuration is matched from the file. T5 keeps its feed-forward
 output projection dense, as T5 runs it in float32.
 
-The same encoders load from a ``.gguf`` file. A city96 T5-XXL or UMT5-XXL file, and
-llama.cpp Qwen, Mistral, and Gemma files, keep their GGUF linears packed. Name the
-encoder class that matches the file and do not set ``quantizer``. See
-:ref:`specifying-text-encoders`.
+The same encoders load from a ``.gguf`` file. See :ref:`gguf-checkpoints`.
 
 Language model text encoders (``Qwen3ForCausalLM``, ``Qwen3Model``,
 ``Mistral3ForConditionalGeneration``, ``Qwen2_5_VLForConditionalGeneration``,

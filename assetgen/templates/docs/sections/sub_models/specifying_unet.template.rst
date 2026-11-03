@@ -21,6 +21,9 @@ UNets are supported for these model types:
 This is useful in particular for using the latent consistency scheduler as well as the
 ``lite`` variants of the unet models used with Stable Cascade.
 
+When ``model`` is a combined single-file checkpoint, ``subfolder`` is the key
+that holds the UNet. The default key is ``unet``.
+
 The first component of the ``--unet`` URI is the model path itself.
 
 You can provide a path to a huggingface repo, or a folder on disk (downloaded huggingface repository).

@@ -295,7 +295,14 @@ def _exclude_requires(name):
 
 
 _pyinstaller_requires = 'pyinstaller==6.22.3'
-_sphinx_requires = 'sphinx-rtd-theme==3.1.0'
+_sphinx_package_requires = 'sphinx==9.2.0'
+_sphinx_copybutton_requires = 'sphinx-copybutton==0.5.2'
+_sphinx_theme_requires = 'sphinx-rtd-theme==3.1.0'
+_sphinx_docs_requires = [
+    _sphinx_package_requires,
+    _sphinx_theme_requires,
+    _sphinx_copybutton_requires,
+]
 _poetry_requires = 'poetry~=2.5.1'
 
 _pyopengltk_requires = 'pyopengltk' + requires.pop('pyopengltk')
@@ -318,9 +325,9 @@ extras: dict[str, list[str]] = {
     # CUDA, ROCm, and Vulkan wheels are the same package name on other indexes.
     # installer/network_installer/xllamacppinstall.py replaces this wheel when a GPU build applies.
     'xllamacpp': ['xllamacpp' + _xllamacpp_requires_spec],
-    'dev': [_sphinx_requires,
+    'dev': [*_sphinx_docs_requires,
             _poetry_requires],
-    'readthedocs': _sphinx_requires
+    'readthedocs': _sphinx_docs_requires
 }
 
 # pyopengltk has no macOS frame. The Mac preview is Metal.

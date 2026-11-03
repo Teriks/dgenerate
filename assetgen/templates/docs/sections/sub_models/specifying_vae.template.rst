@@ -14,21 +14,38 @@ VAEs are supported for these model types:
     * ``--model-type kolors``
     * ``--model-type sd3``
     * ``--model-type flux``
+    * ``--model-type flux-fill``
+    * ``--model-type flux-kontext``
     * ``--model-type flux2``
-    * ``--model-type qwen-image`` / ``qwen-image-edit`` / ``qwen-image-layered``
+    * ``--model-type flux2-klein-kv``
+    * ``--model-type qwen-image``
+    * ``--model-type qwen-image-edit``
+    * ``--model-type qwen-image-layered``
+    * ``--model-type qwen-image-21``
     * ``--model-type z-image``
+    * ``--model-type z-image-omni``
+    * ``--model-type krea2``
+    * ``--model-type kandinsky5-image``
+    * ``--model-type kandinsky5-video``
+    * ``--model-type hydit``
+    * ``--model-type hyimage-21``
+    * ``--model-type hyimage-21-refiner``
     * ``--model-type ltx2``
     * ``--model-type ltx-video``
     * ``--model-type wan``
     * ``--model-type wan-animate``
     * ``--model-type wan-animate-2``
+    * ``--model-type hyvideo-15``
+    * ``--model-type motif-video``
 
 The URI syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)``
 
 Named arguments when loading a VAE are separated by the ``;`` character and are not positional,
 meaning they can be defined in any order.
 
-Loading arguments available when specifying a VAE are: ``model``, ``revision``, ``variant``, ``subfolder``, and ``dtype``
+Loading arguments available when specifying a VAE are: ``model``, ``revision``, ``variant``, ``subfolder``, ``dtype``, and ``extract``
+
+``extract`` means ``model`` is a combined single-file checkpoint and the VAE should be taken out of it. ``subfolder`` is then the checkpoint key, defaulting to ``vae``.
 
 The only named arguments compatible with loading a .safetensors or other model file
 directly off disk are ``model`` and ``dtype``
@@ -44,6 +61,8 @@ Available encoder classes are:
 * ConsistencyDecoderVAE
 * AutoencoderKLFlux2
 * AutoencoderKLQwenImage
+* AutoencoderKLQwenImage21
+* AutoencoderKLHunyuanImage
 * AutoencoderKLHunyuanImageRefiner
 * AutoencoderKLWan
 * AutoencoderKLLTXVideo
