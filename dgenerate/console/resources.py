@@ -25,8 +25,11 @@ import os
 import platform
 import shutil
 import subprocess
+import tempfile
 import tkinter
 import tkinter as tk
+import tkinter.messagebox as messagebox
+import tkinter.ttk as ttk
 import webbrowser
 import json
 
@@ -278,14 +281,125 @@ def supported_torch_model_formats_open() -> list[str]:
     return ['safetensors', 'pt', 'pth', 'cpkt', 'bin']
 
 
-def add_help_menu_links(menu: tk.Menu):
+def _prepare_installer(installer_path: str):
+    if platform.system() == 'Darwin':
+        subprocess.run(
+            ['xattr', '-d', 'com.apple.quarantine', installer_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False)
+    if platform.system() != 'Windows':
+        os.chmod(installer_path, os.stat(installer_path).st_mode | 0o111)
+
+
+def _choose_update_action(parent, message: str) -> str:
+    """
+    Ask whether to download the installer, open the release page, or cancel.
+
+    :return: ``install``, ``view``, or ``cancel``.
+    """
+    choice = {'value': 'cancel'}
+    dialog = tk.Toplevel(parent)
+    dialog.title('Update')
+    dialog.resizable(False, False)
+    dialog.transient(parent)
+    dialog.grab_set()
+
+    frame = ttk.Frame(dialog, padding=16)
+    frame.pack(fill=tk.BOTH, expand=True)
+    ttk.Label(frame, text=message, justify=tk.LEFT, wraplength=440).pack(anchor=tk.W)
+
+    buttons = ttk.Frame(frame)
+    buttons.pack(anchor=tk.E, pady=(12, 0))
+
+    def choose(value):
+        choice['value'] = value
+        dialog.destroy()
+
+    ttk.Button(
+        buttons, text='Download and Install',
+        command=lambda: choose('install')).pack(side=tk.LEFT, padx=(0, 6))
+    ttk.Button(
+        buttons, text='View Release',
+        command=lambda: choose('view')).pack(side=tk.LEFT, padx=(0, 6))
+    ttk.Button(
+        buttons, text='Cancel',
+        command=lambda: choose('cancel')).pack(side=tk.LEFT)
+
+    dialog.protocol('WM_DELETE_WINDOW', lambda: choose('cancel'))
+    dialog.update_idletasks()
+    parent.update_idletasks()
+    x = parent.winfo_rootx() + max(0, (parent.winfo_width() - dialog.winfo_width()) // 2)
+    y = parent.winfo_rooty() + max(0, (parent.winfo_height() - dialog.winfo_height()) // 2)
+    dialog.geometry(f'+{x}+{y}')
+    parent.wait_window(dialog)
+    return choice['value']
+
+
+def start_network_installer(console, tag: str, page_url: str, message: str):
+    """
+    Offer a download of the platform installer for ``tag``, or the release page.
+
+    Download and Install launches the installer GUI and closes the Console UI.
+    A self-managed install opens ``page_url`` instead of this dialog.
+    """
+    if not _d_resources.get_release_info().network_install:
+        webbrowser.open(page_url)
+        return
+
+    action = _choose_update_action(console, message)
+    if action == 'view':
+        webbrowser.open(page_url)
+        return
+    if action != 'install':
+        return
+
+    download = _d_resources.fetch_release_installer_download(tag)
+    if download is None:
+        messagebox.showerror(
+            'Update',
+            'Could not find an installer for this platform, '
+            'or the release could not be reached.\n\n'
+            f'See {page_url}')
+        return
+
+    asset_name, download_url = download
+    install_dir = tempfile.mkdtemp(prefix='dgenerate_install_')
+    installer_path = os.path.join(install_dir, asset_name)
+
+    try:
+        console.config(cursor='watch')
+        console.update_idletasks()
+        if not _d_resources.download_release_installer(download_url, installer_path):
+            messagebox.showerror(
+                'Update',
+                f'Download failed. Try again later or install manually from {page_url}')
+            return
+    finally:
+        try:
+            console.config(cursor='')
+        except tk.TclError:
+            pass
+
+    _prepare_installer(installer_path)
+
+    popen_kwargs = {}
+    if platform.system() == 'Windows':
+        popen_kwargs['cwd'] = os.path.expanduser('~')
+
+    subprocess.Popen([installer_path], **popen_kwargs)
+    console.destroy()
+
+
+def add_help_menu_links(menu: tk.Menu, console=None):
     release_info = _d_resources.get_release_info()
+    installed_version = release_info.version or _d_resources.version()
 
     if release_info.pre_release:
         git_tree = release_info.commit
         read_the_docs = release_info.branch
     else:
-        git_tree = 'v' + _d_resources.version()
+        git_tree = 'v' + installed_version.lstrip('vV')
         read_the_docs = git_tree
 
     menu.add_command(
@@ -315,22 +429,57 @@ def add_help_menu_links(menu: tk.Menu):
             f'https://dgenerate.readthedocs.io/en/{read_the_docs}/manual.html'))
 
     if release_info.pre_release:
+        if release_info.commit and release_info.branch:
+            branch_update = _d_resources.check_pre_release_branch_update(
+                release_info.commit, release_info.branch)
+            if branch_update is not None and branch_update.ahead_by > 0:
+                menu.add_separator()
+                page_url = branch_update.pre_release_release_url
+                if release_info.network_install and console is not None:
+                    menu.add_command(
+                        label='Pre-Release Update Available!',
+                        command=lambda url=page_url: start_network_installer(
+                            console,
+                            'pre-release',
+                            url,
+                            'A newer pre-release build is available.\n\n'
+                            'Download and Install closes the Console and runs '
+                            'the network installer. Choose Development Branch '
+                            'and your development branch (for example '
+                            'version_6.0.0).\n\n'
+                            'View Release opens the pre-release page.'))
+                else:
+                    menu.add_command(
+                        label='Pre-Release Update Available!',
+                        command=lambda url=page_url: webbrowser.open(url))
         return
 
-    release_info = _d_resources.check_latest_release()
+    latest_release = _d_resources.check_latest_release()
 
-    if release_info is not None:
+    if latest_release is not None:
         try:
-            compare_result = _d_resources.compare_versions(release_info.tag_name, git_tree)
-        except:
+            compare_result = _d_resources.compare_versions(
+                latest_release.tag_name, installed_version)
+        except Exception:
             # do not kill the UI just for this.
             compare_result = _d_resources.VersionComparison.SAME
 
         if compare_result == _d_resources.VersionComparison.V1_NEWER:
             menu.add_separator()
-
-            menu.add_command(
-                label=f'Newer Release Available! ({release_info.tag_name})',
-                command=lambda:
-                webbrowser.open(
-                    release_info.release_url))
+            page_url = latest_release.release_url
+            if release_info.network_install and console is not None:
+                menu.add_command(
+                    label=f'Newer Release Available! ({latest_release.tag_name})',
+                    command=lambda tag=latest_release.tag_name, url=page_url:
+                    start_network_installer(
+                        console,
+                        tag,
+                        url,
+                        f'A newer release is available ({tag}).\n\n'
+                        'Download and Install closes the Console and runs '
+                        'the network installer. Choose Latest Release.\n\n'
+                        'View Release opens the release page.'))
+            else:
+                menu.add_command(
+                    label=f'Newer Release Available! ({latest_release.tag_name})',
+                    command=lambda url=page_url: webbrowser.open(url))

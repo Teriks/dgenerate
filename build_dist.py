@@ -45,7 +45,8 @@ def with_release_data(directory, pre_release: bool, git_commit_and_branch: tuple
         'version': version,
         'commit': commit,
         'branch': branch,
-        'pre_release': pre_release
+        'pre_release': pre_release,
+        'network_install': False,
     }
 
     with open(dgenerate_release_data, 'w') as switch_file:

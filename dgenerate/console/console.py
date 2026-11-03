@@ -280,7 +280,7 @@ class DgenerateConsole(tk.Tk):
 
         self._help_menu = tk.Menu(self._menu_bar, tearoff=0)
 
-        _resources.add_help_menu_links(self._help_menu)
+        _resources.add_help_menu_links(self._help_menu, self)
 
         # Add sub menus to main menu
 

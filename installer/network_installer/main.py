@@ -102,6 +102,9 @@ def run_silent_install(version=None, branch=None, extras=None):
 
         print(f"Source downloaded to: {source_dir}")
 
+        commit_hash, release_branch, is_pre_release = _silent_release_info(
+            github_client, version=version, branch=branch)
+
         # Create installer
         installer = installer_class(log_callback=print, source_dir=source_dir)
 
@@ -121,6 +124,9 @@ def run_silent_install(version=None, branch=None, extras=None):
             extras = _default_extras(source_dir)
         result = installer.install(
             selected_extras=extras,
+            commit_hash=commit_hash,
+            branch=release_branch,
+            is_pre_release=is_pre_release,
             skip_existing_check=True  # Already handled above
         )
         if not result.success:
@@ -134,6 +140,37 @@ def run_silent_install(version=None, branch=None, extras=None):
         print(f"ERROR: {e}")
         print(traceback.format_exc())
         return False
+
+
+def _short_commit(github_client, ref: str) -> str | None:
+    info = github_client.get_commit_info(ref)
+    sha = info.get('sha') if isinstance(info, dict) else None
+    if isinstance(sha, str) and sha:
+        return sha[:7]
+    print(f"Warning: could not resolve commit for {ref}")
+    return None
+
+
+def _silent_release_info(github_client, version: str | None, branch: str | None):
+    """
+    Commit, branch, and pre-release flag written into release.json.
+
+    Matches the GUI installer: a branch install is a pre-release, a version
+    install follows that release's prerelease flag, and the default install
+    tracks master as a stable release.
+    """
+    if branch:
+        print(f"Resolving commit for branch {branch}...")
+        return _short_commit(github_client, branch), branch, True
+
+    if version:
+        print(f"Resolving commit for release {version}...")
+        release = github_client.get_release_by_tag(version)
+        is_pre_release = bool(release.get('prerelease', False)) if release else False
+        return _short_commit(github_client, version), 'master', is_pre_release
+
+    print("Resolving commit for master...")
+    return _short_commit(github_client, 'master'), 'master', False
 
 
 def _default_extras(source_dir: str) -> list[str]:

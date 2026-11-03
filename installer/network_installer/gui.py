@@ -1684,6 +1684,12 @@ class DGenerateInstallerGUI:
         """
         Handle window close event (cancellation).
         """
+        if hasattr(self, 'next_button'):
+            label = self.next_button.cget("text")
+            if label in ("Close", "Finish"):
+                self.root.quit()
+                return
+
         if self._show_centered_messagebox('yesno', "Cancel Installation",
                                           "Are you sure you want to cancel the installation?"):
             # Clean up global state

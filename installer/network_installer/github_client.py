@@ -28,6 +28,7 @@ import os
 import ssl
 import tempfile
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 
@@ -305,6 +306,23 @@ class GitHubClient:
                 return json.loads(response.read().decode('utf-8'))
         except urllib.error.URLError as e:
             print(f"Error getting commit info: {e}")
+            return None
+
+    def get_release_by_tag(self, tag: str) -> dict | None:
+        """Get one release by tag name, including pre-releases."""
+        try:
+            url = f"{self.repo_url}/releases/tags/{urllib.parse.quote(tag, safe='')}"
+            req = urllib.request.Request(url)
+            req.add_header('User-Agent', 'dgenerate-network-installer/1.0')
+            with urllib.request.urlopen(req, context=self._ssl_context) as response:
+                return json.loads(response.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            print(f"Error getting release {tag}: {e}")
+            return None
+        except urllib.error.URLError as e:
+            print(f"Error getting release {tag}: {e}")
             return None
 
     def search_releases(self, query: str) -> list[dict]:

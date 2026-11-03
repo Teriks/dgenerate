@@ -185,11 +185,10 @@ class UvInstaller:
                 self.log_callback("Failed to create virtual environment with any available Python version")
                 return InstallationResult.failure_result("Failed to create virtual environment")
 
-            # Step 6: Generate release.json if commit and branch info provided
-            if commit_hash and branch:
-                self.log_callback("Generating release.json...")
-                if not self.generate_release_json(commit_hash, branch, is_pre_release):
-                    self.log_callback("Warning: Failed to generate release.json, continuing with installation")
+            # Step 6: Write release.json, including network_install, before packaging.
+            self.log_callback("Generating release.json...")
+            if not self.generate_release_json(commit_hash, branch, is_pre_release):
+                self.log_callback("Warning: Failed to generate release.json, continuing with installation")
 
             # Step 6.5: Apply platform-specific patches
             self.log_callback("Applying platform-specific patches...")
@@ -281,7 +280,8 @@ class UvInstaller:
             is_pre_release: bool = False
     ) -> bool:
         """
-        Generate release.json file with version, commit, branch, and pre_release information.
+        Generate release.json file with version, commit, branch, pre_release,
+        and ``network_install`` for the network installer.
 
         :param commit_hash: Git commit hash (short)
         :param branch: Git branch name
@@ -304,7 +304,8 @@ class UvInstaller:
                 "version": version,
                 "commit": commit_hash,
                 "branch": branch,
-                "pre_release": is_pre_release
+                "pre_release": is_pre_release,
+                "network_install": True,
             }
 
             # Create the release.json file in the dgenerate/dgenerate directory
@@ -320,6 +321,7 @@ class UvInstaller:
             self.log_callback(f"  Commit: {commit_hash}")
             self.log_callback(f"  Branch: {branch}")
             self.log_callback(f"  Pre-release: {is_pre_release}")
+            self.log_callback("  Network install: True")
 
             return True
 
