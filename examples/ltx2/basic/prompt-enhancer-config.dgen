@@ -6,7 +6,7 @@
 # --ltx-prompt-enhancer replaces that default model.
 # A value on --pipeline-prompt-enhance replaces the built-in system prompt.
 # Sampling options and a custom system prompt are in
-# examples/ltx2/pipeline_prompt_enhance/config.dgen.
+# examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen.
 
 \set token %HF_TOKEN%
 

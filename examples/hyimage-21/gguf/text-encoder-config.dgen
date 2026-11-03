@@ -5,7 +5,7 @@
 # as the main text encoder. The ByT5 glyph encoder is ComfyUI's split file from
 # the Hunyuan-Image-2.1 repack (full precision, small). The Qwen GGUF is
 # language-only; its mmproj sidecar is not loaded. No mode and no quantizer on
-# either URI. Same prompt as examples/hyimage-21/gguf/config.dgen.
+# either URI. Same prompt as examples/hyimage-21/gguf/transformer-config.dgen.
 
 hunyuanvideo-community/HunyuanImage-2.1-Diffusers
 --model-type hyimage-21

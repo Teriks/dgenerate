@@ -2,7 +2,7 @@
 #! dgenerate 6.0.0
 
 # Motif-Video GGUF as the model. The text encoder and Wan VAE load from
-# Motif-Technologies/Motif-Video-2B. config.dgen uses --transformer.
+# Motif-Technologies/Motif-Video-2B. text-to-video-config.dgen uses --transformer.
 
 https://huggingface.co/Motif-Technologies/Motif-Video-2B-GGUF/blob/main/motifv-2b-dev-Q4_K_M.gguf
 --model-type motif-video

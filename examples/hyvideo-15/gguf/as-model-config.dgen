@@ -3,7 +3,7 @@
 
 # HunyuanVideo 1.5 480p T2V GGUF as the model. "t2v" in the file name selects
 # hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v. "i2v", "720", and
-# "distilled" select those repositories. config.dgen passes the file to
+# "distilled" select those repositories. text-to-video-config.dgen passes the file to
 # --transformer on a repository you name yourself.
 
 https://huggingface.co/jayn7/HunyuanVideo-1.5_T2V_480p-GGUF/blob/main/480p/hunyuanvideo1.5_480p_t2v-Q4_K_S.gguf

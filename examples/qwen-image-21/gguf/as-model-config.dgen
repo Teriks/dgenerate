@@ -2,7 +2,7 @@
 #! dgenerate 6.0.0
 
 # Qwen-Image 2.1 GGUF as the model. Encoders and the VAE load from
-# Qwen/Qwen-Image-2.1. config.dgen passes the same file to --transformer.
+# Qwen/Qwen-Image-2.1. transformer-config.dgen passes the same file to --transformer.
 
 https://huggingface.co/molbal/Qwen-Image-2.1-GGUF/blob/main/qwen_image_2.1_Q4_0.gguf
 --model-type qwen-image-21

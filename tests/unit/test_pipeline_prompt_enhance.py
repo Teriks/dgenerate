@@ -856,14 +856,14 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         required: dict[str, tuple[str, ...]] = {
             'flux2': (
-                'examples/flux2/pipeline_prompt_enhance/config.dgen',
+                'examples/flux2/pipeline_prompt_enhance/text-to-image-config.dgen',
                 'examples/flux2/pipeline_prompt_enhance/image-conditioned-config.dgen',
             ),
             'flux2-klein-kv': (
                 'examples/flux2/pipeline_prompt_enhance/klein-kv-config.dgen',
             ),
             'z-image': ('examples/z-image/pipeline_prompt_enhance/config.dgen',),
-            'qwen-image': ('examples/qwen-image/pipeline_prompt_enhance/config.dgen',),
+            'qwen-image': ('examples/qwen-image/pipeline_prompt_enhance/text-to-image-config.dgen',),
             'qwen-image-edit': (
                 'examples/qwen-image/edit/pipeline_prompt_enhance/config.dgen',
             ),
@@ -871,15 +871,15 @@ class TestPipelinePromptEnhance(unittest.TestCase):
                 'examples/qwen-image/pipeline_prompt_enhance/layered-config.dgen',
             ),
             'qwen-image-21': (
-                'examples/qwen-image-21/pipeline_prompt_enhance/config.dgen',
+                'examples/qwen-image-21/pipeline_prompt_enhance/text-to-image-config.dgen',
                 'examples/qwen-image-21/pipeline_prompt_enhance/image-conditioned-config.dgen',
             ),
-            'hyimage-21': ('examples/hyimage-21/pipeline_prompt_enhance/config.dgen',),
+            'hyimage-21': ('examples/hyimage-21/pipeline_prompt_enhance/base-config.dgen',),
             'hyimage-21-refiner': (
                 'examples/hyimage-21/pipeline_prompt_enhance/refiner-config.dgen',
             ),
             'kandinsky5-image': (
-                'examples/kandinsky5/pipeline_prompt_enhance/config.dgen',
+                'examples/kandinsky5/pipeline_prompt_enhance/text-to-image-config.dgen',
                 'examples/kandinsky5/pipeline_prompt_enhance/image-edit-config.dgen',
             ),
             'kandinsky5-video': (
@@ -889,7 +889,7 @@ class TestPipelinePromptEnhance(unittest.TestCase):
             'krea2': ('examples/krea2/pipeline_prompt_enhance/config.dgen',),
             'ltx2': (
                 'examples/ltx2/basic/prompt-enhancer-config.dgen',
-                'examples/ltx2/pipeline_prompt_enhance/config.dgen',
+                'examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen',
                 'examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen',
             ),
         }

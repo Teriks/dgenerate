@@ -3,7 +3,7 @@
 
 # Krea 2 base GGUF as the model. The file name does not say "turbo", so the
 # text encoder and VAE load from krea/Krea-2-Raw. A file whose name contains
-# "turbo" uses krea/Krea-2-Turbo. config.dgen is the repository plus
+# "turbo" uses krea/Krea-2-Turbo. transformer-config.dgen is the repository plus
 # --transformer form.
 
 https://huggingface.co/realrebelai/KREA-2_GGUFs/blob/main/BASE/Krea-2-Base-Q4_K_M.gguf

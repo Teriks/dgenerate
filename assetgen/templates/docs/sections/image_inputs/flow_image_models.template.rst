@@ -100,7 +100,7 @@ seed is an extra reference image, passed as ``image_reference``. A reference
 video is zipped with the inpaint clip, one frame at a time. Full Flux.2 has
 no inpaint class.
 
-See `examples/flux2/klein/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux2/klein/config.dgen>`_
+See `examples/flux2/klein/text-to-image-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux2/klein/text-to-image-config.dgen>`_
 and `examples/flux2/klein/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux2/klein/inpaint-config.dgen>`_.
 
 GGUF width 3072 selects Klein 4B. Width 4096 selects Klein 9B and uses the
@@ -200,7 +200,7 @@ dgenerate passes a single space, which is what the pipeline expects.
 Img2img and inpaint strength default to 0.6. The inpaint mask is packed and
 concatenated with the latents.
 
-See `examples/qwen-image/basic/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/basic/config.dgen>`_,
+See `examples/qwen-image/basic/base-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/basic/base-config.dgen>`_,
 `examples/qwen-image/img2img/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/img2img/config.dgen>`_,
 and `examples/qwen-image/inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/inpaint/config.dgen>`_.
 
@@ -235,7 +235,7 @@ so the horse is painted. Union ControlNets have
 inpainting ControlNet has ``extra_condition_channels=4``. ``start`` and
 ``end`` are passed through. ``scale=1`` matches the pipeline default.
 
-See `examples/qwen-image/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/controlnet/config.dgen>`_
+See `examples/qwen-image/controlnet/canny-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/controlnet/canny-config.dgen>`_
 and `examples/qwen-image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/controlnet/inpaint-config.dgen>`_.
 
 Qwen-Image 2.1
@@ -267,7 +267,7 @@ denoising. ``--max-sequence-length`` is not supported by this pipeline.
 * `Image-conditioned generation <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/image-conditioned/config.dgen>`_
 * `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/turbo/config.dgen>`_
 * `LoRA <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/lora/config.dgen>`_
-* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/gguf/config.dgen>`_
+* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/gguf/transformer-config.dgen>`_
 * `Cooperative denoising <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/latents_interchange/qwen-image-21/cooperative-denoising-config.dgen>`_
 
 Krea 2
@@ -293,7 +293,7 @@ cooperative denoising; the cooperative-denoising example uses the Raw model.
 * `Raw checkpoint <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/krea2/raw/config.dgen>`_
 * `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/krea2/turbo/config.dgen>`_
 * `Turbo LoRA <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/krea2/lora/turbo-config.dgen>`_
-* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/krea2/gguf/config.dgen>`_
+* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/krea2/gguf/transformer-config.dgen>`_
 * `Raw cooperative denoising <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/latents_interchange/krea2/cooperative-denoising-config.dgen>`_
 
 Kandinsky 5 Image
@@ -334,7 +334,7 @@ required. There is no strength.
 
 ``--guidance-scales`` is still true CFG.
 
-See `examples/qwen-image/edit/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/edit/config.dgen>`_,
+See `examples/qwen-image/edit/base-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/edit/base-config.dgen>`_,
 `examples/qwen-image/edit-plus/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/edit-plus/config.dgen>`_,
 and `examples/qwen-image/edit-inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/edit-inpaint/config.dgen>`_.
 

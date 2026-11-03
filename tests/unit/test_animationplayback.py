@@ -14,6 +14,8 @@ from dgenerate.console.animationplayback import (
     PcmPlayer,
     _MiniaudioPlayer,
     _SmoothPlaybackClock,
+    _SoundDevicePlayer,
+    _take_playback,
     control_hit,
     control_layout,
     format_clock,
@@ -466,42 +468,102 @@ class TestAnimationFiles(unittest.TestCase):
 
 class TestPreviewAudioRestart(unittest.TestCase):
 
-    def test_loop_flushes_and_restarts_the_device(self):
-        """A loop must drop queued ending samples before the new start plays."""
+    def test_loop_wraps_without_stopping_the_device(self):
+        """The end of a loop is the next callback, not a device flush."""
+        samples = np.arange(8, dtype=np.int16).reshape(8, 1)
+        piece, cursor, advance = _take_playback(samples, 6, 4, True, 8)
+        self.assertEqual(piece.reshape(-1).tolist(), [6, 7, 0, 1])
+        self.assertEqual(cursor, 2)
+        self.assertEqual(advance, 4)
+        # A short soundtrack pads with silence out to the picture length, then wraps.
+        padded, cursor, advance = _take_playback(samples[:4], 2, 4, True, 6)
+        self.assertEqual(padded.reshape(-1).tolist(), [2, 3, 0, 0])
+        self.assertEqual(cursor, 0)
+        self.assertEqual(advance, 4)
+        tail, cursor, advance = _take_playback(samples, 6, 4, False, 8)
+        self.assertEqual(tail.reshape(-1).tolist(), [6, 7, 0, 0])
+        self.assertEqual(advance, 2)
+        self.assertEqual(cursor, 8)
+
         player = _MiniaudioPlayer.__new__(_MiniaudioPlayer)
-        player._miniaudio = None
+        player._samples = samples
         player._channels = 1
-        player._cursor = 40
-        player._paused_samples = 3
+        player._cursor = 6
         player._running = True
         player._gain = 1.0
+        player._loop = True
+        player._period = 8
         player._clock = _SmoothPlaybackClock(8000)
-        player._started = True
-        player.active = True
-        player._samples = np.ones((80, 1), dtype=np.int16)
+        stopped = []
+        player._device = type('Device', (), {'stop': lambda _self: stopped.append(1)})()
+        generator = player._generator()
+        next(generator)
+        heard = np.frombuffer(generator.send(4), dtype=np.int16)
+        self.assertEqual(heard.tolist(), [6, 7, 0, 1])
+        self.assertEqual(stopped, [])
+        self.assertEqual(player._cursor, 2)
 
-        class Device:
-            def __init__(self):
-                self.starts = 0
-                self.stopped = 0
+        sound = _SoundDevicePlayer.__new__(_SoundDevicePlayer)
+        sound._samples = samples
+        sound._init_loop(8)
+        sound._loop = True
+        sound._period = 8
+        sound._cursor = 6
+        sound._gain = 1.0
+        sound._clock = _SmoothPlaybackClock(8000)
+        out = np.zeros((4, 1), dtype=np.int16)
+        sound._callback(out, 4, None, None)
+        self.assertEqual(out.reshape(-1).tolist(), [6, 7, 0, 1])
 
-            def stop(self):
-                self.stopped += 1
+    def test_clip_loop_does_not_restart_audio(self):
+        frames = [np.full((2, 2, 3), value, np.uint8) for value in (1, 2, 3)]
+        times = np.array([0.0, 0.1, 0.2])
+        clip = AnimationClip('clip', frames, times, 0.3, None, None)
 
-            def start(self, _generator):
-                self.starts += 1
+        class _Transport:
+            active = True
+            finished = False
+            paused = False
+            running = True
+            gain = 1.0
+            looping = True
+            position = 0.0
+            plays = 0
 
-            def close(self):
-                return None
+            def play(self, seconds):
+                self.plays += 1
+                self.position = seconds
 
-        player._device = Device()
-        player.start(np.zeros((80, 1), dtype=np.int16))
-        self.assertEqual(player._device.stopped, 1)
-        self.assertEqual(player._device.starts, 1)
-        self.assertEqual(player._cursor, 0)
-        self.assertTrue(player.active)
-        self.assertTrue(player._running)
-        self.assertTrue(player._started)
+            def pause(self):
+                self.paused = True
+                self.running = False
+
+            def set_gain(self, gain):
+                self.gain = gain
+
+            def set_loop(self, enabled, duration=None):
+                self.looping = bool(enabled)
+
+        audio = _Transport()
+        clip._audio = audio
+        clip.loop = True
+        try:
+            clip.start()
+            self.assertEqual(audio.plays, 1)
+            audio.position = 0.2998
+            self.assertAlmostEqual(clip.time(), 0.2998, places=4)
+            self.assertEqual(audio.plays, 1)
+            self.assertTrue(clip.playing)
+            generation = clip._generation
+            audio.position = 0.01
+            self.assertAlmostEqual(clip.time(), 0.01, places=4)
+            self.assertEqual(audio.plays, 1)
+            self.assertGreater(clip._generation, generation)
+            frame = clip.frame()
+            self.assertEqual(int(frame[0, 0, 0]), 1)
+        finally:
+            clip._audio = None
+            clip.close()
 
     def test_play_drops_a_backend_that_cannot_start(self):
         player = PcmPlayer.__new__(PcmPlayer)
@@ -513,7 +575,7 @@ class TestPreviewAudioRestart(unittest.TestCase):
         class Backend:
             active = False
 
-            def start(self, samples):
+            def start(self, samples, cursor=0):
                 return None
 
             def close(self):

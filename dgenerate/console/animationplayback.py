@@ -27,6 +27,8 @@ playhead so a frame is ready when its timestamp arrives. Audio, when the file
 has any, is the playback clock. The clock follows samples that have reached
 the speaker. Counting samples only as the device accepts a buffer makes the
 picture jump by a whole period (200ms, and several periods at the start).
+A loop wraps inside the playback callback. Stopping the device to flush that
+period runs on the UI thread and freezes the console until the driver returns.
 Volume and mute are stored in ``~/.dgenerate/console_settings.json``.
 """
 
@@ -402,10 +404,33 @@ class PcmPlayer:
             return False
         return bool(getattr(self._backend, 'running', True))
 
+    def set_loop(self, enabled: bool, duration: float | None = None):
+        """Wrap playback at ``duration`` seconds. The device stays running.
+
+        A soundtrack shorter than the clip is padded with silence up to
+        ``duration``, so the wrap lands on the picture loop and not early.
+        """
+        period = len(self._samples)
+        if enabled and duration and self.sample_rate > 0:
+            stretched = int(round(float(duration) * self.sample_rate))
+            if stretched > period:
+                period = stretched
+        if self._backend is not None and hasattr(self._backend, 'set_loop'):
+            self._backend.set_loop(bool(enabled), period)
+
+    @property
+    def looping(self) -> bool:
+        backend = self._backend
+        if backend is None:
+            return False
+        return bool(getattr(backend, 'looping', False))
+
     @property
     def position(self) -> float:
-        if self._backend is None:
+        if self._backend is None or self.sample_rate <= 0:
             return self._offset / self.sample_rate if self.sample_rate else 0.0
+        if hasattr(self._backend, 'timeline_frame'):
+            return self._backend.timeline_frame() / self.sample_rate
         played = self._backend.played_samples()
         return (self._offset + played) / self.sample_rate
 
@@ -414,6 +439,8 @@ class PcmPlayer:
         """The samples handed to the device have all been heard."""
         if not self.active or self._paused or self._backend is None or self.sample_rate <= 0:
             return False
+        if hasattr(self._backend, 'exhausted'):
+            return self._backend.exhausted()
         total = len(self._samples) - self._offset
         return total > 0 and self._backend.played_samples() >= total - 1
 
@@ -422,11 +449,14 @@ class PcmPlayer:
             return
         self._offset = max(0, min(int(seconds * self.sample_rate), len(self._samples)))
         self._paused = False
-        self._start_backend(self._samples[self._offset:])
+        self._start_backend(self._samples, self._offset)
 
     def pause(self):
         if self._backend is not None and not self._paused:
-            self._offset = max(0, min(int(self.position * self.sample_rate), len(self._samples)))
+            if hasattr(self._backend, 'timeline_frame'):
+                self._offset = max(0, int(self._backend.timeline_frame()))
+            else:
+                self._offset = max(0, min(int(self.position * self.sample_rate), len(self._samples)))
             self._backend.pause()
             self._paused = True
 
@@ -434,11 +464,11 @@ class PcmPlayer:
         if self._backend is None or not self._paused:
             return
         self._paused = False
-        self._start_backend(self._samples[self._offset:])
+        self._start_backend(self._samples, self._offset)
 
-    def _start_backend(self, samples: np.ndarray):
+    def _start_backend(self, samples: np.ndarray, cursor: int = 0):
         try:
-            self._backend.start(samples)
+            self._backend.start(samples, cursor)
         except Exception:
             self._drop_backend()
             return
@@ -464,18 +494,134 @@ class PcmPlayer:
             backend.close()
 
 
-class _WaveOutPlayer:
+def _take_playback(samples: np.ndarray, cursor: int, count: int, loop: bool, period: int):
+    """Copy ``count`` frames starting at ``cursor``.
+
+    Returns ``(frames, new_cursor, advance)``. ``advance`` is how far the
+    playhead clock moves. A looping read wraps at ``period`` and counts the
+    silence after the soundtrack, so the clock reaches the clip length and
+    then returns to the start. A read that is not looping stops at the end of
+    ``samples`` and leaves the remainder silent, without moving the clock.
+    """
+    count = int(count)
+    channels = int(samples.shape[1]) if getattr(samples, 'ndim', 1) == 2 else 1
+    if count <= 0:
+        return np.zeros((0, channels), dtype=np.int16), 0, 0
+    total = len(samples)
+    out = np.zeros((count, channels), dtype=np.int16)
+    if total <= 0:
+        return out, 0, 0
+    if not loop:
+        cursor = min(max(0, int(cursor)), total)
+        take = min(count, total - cursor)
+        if take > 0:
+            out[:take] = samples[cursor:cursor + take]
+        return out, cursor + take, take
+    period = max(total, int(period) if period else total, 1)
+    cursor = int(cursor) % period
+    filled = 0
+    while filled < count:
+        if cursor >= period:
+            cursor = 0
+        if cursor < total:
+            take = min(count - filled, total - cursor)
+            out[filled:filled + take] = samples[cursor:cursor + take]
+        else:
+            take = min(count - filled, period - cursor)
+        cursor += take
+        filled += take
+        if cursor >= period:
+            cursor = 0
+    return out, cursor, count
+
+
+class _SampleLoop:
+    """Read cursor for a device that keeps running across a loop."""
+
+    def _init_loop(self, sample_count: int):
+        self._loop = False
+        self._period = max(1, int(sample_count))
+        self._start_frame = 0
+        self._cursor = 0
+
+    def set_loop(self, enabled: bool, period: int | None = None):
+        if period is not None and int(period) > 0:
+            self._period = max(len(getattr(self, '_samples', ())), int(period), 1)
+        self._loop = bool(enabled)
+
+    @property
+    def looping(self) -> bool:
+        return bool(getattr(self, '_loop', False))
+
+    def _begin_span(self, sample_count: int, cursor: int):
+        if not hasattr(self, '_loop'):
+            self._init_loop(sample_count)
+        self._cursor = max(0, int(cursor))
+        if self._loop and self._period > 0:
+            self._cursor %= self._period
+            self._period = max(sample_count, int(self._period), 1)
+        else:
+            if sample_count > 0:
+                self._cursor = min(self._cursor, sample_count)
+            self._period = max(sample_count, 1)
+        self._start_frame = self._cursor
+
+    def timeline_frame(self) -> int:
+        heard = self.played_samples()
+        raw = self._start_frame + heard
+        if self._loop and self._period > 0:
+            return int(raw % self._period)
+        return int(raw)
+
+    def exhausted(self) -> bool:
+        if self._loop:
+            return False
+        total = len(self._samples)
+        if total <= 0:
+            return True
+        return self._start_frame + self.played_samples() >= total - 1
+
+
+class _WaveSlot:
+    def __init__(self, frames: int, channels: int):
+        self.frames = frames
+        self.buf = ctypes.create_string_buffer(frames * channels * 2)
+        self.header = _WAVEHDR()
+        self.header.lpData = ctypes.cast(self.buf, ctypes.c_char_p)
+        self.header.dwBufferLength = frames * channels * 2
+        self.prepared = False
+        self.queued = False
+
+
+class _WaveOutPlayer(_SampleLoop):
+    """winmm fallback. A feeder refills short buffers off the UI thread.
+
+    A one-second ``waveOutWrite`` buffer makes ``waveOutReset`` block until
+    that second comes back. The loop path never resets: the feeder wraps the
+    read cursor, and a restart only sets a flag the feeder applies.
+    """
+
     def __init__(self, samples: np.ndarray, sample_rate: int, channels: int):
         self.active = False
         self._sample_rate = sample_rate
         self._channels = channels
+        self._samples = np.ascontiguousarray(samples, dtype=np.int16)
+        self._init_loop(len(self._samples))
         self._winmm = ctypes.windll.winmm
-        self._handle = ctypes.c_void_p()
-        self._headers = []
-        self._buffers = []
-        self._lock = threading.Lock()
-        self._played_base = 0
+        self._handle = None
+        self._slots: list[_WaveSlot] = []
+        self._state = threading.Lock()
+        self._winmm_lock = threading.Lock()
         self._gain = 1.0
+        self._feeding = False
+        self._quit = False
+        self._span = 0
+        self._applied = 0
+        self._pending_cursor = 0
+        self._paused_samples = 0
+        self._clock = _SmoothPlaybackClock(sample_rate)
+        self._wake = threading.Event()
+        self._thread = None
         self._open()
 
     def set_gain(self, gain: float):
@@ -520,60 +666,144 @@ class _WaveOutPlayer:
             return
         self._handle = handle
         self.active = True
+        self._thread = threading.Thread(target=self._feeder, name='preview-waveout', daemon=True)
+        self._thread.start()
 
-    def start(self, samples: np.ndarray):
+    def start(self, samples: np.ndarray, cursor: int = 0):
         if not self.active:
             return
-        with self._lock:
-            self._reset_headers()
-            if len(samples) == 0:
-                self._played_base = 0
+        # The feeder applies this, including any waveOutReset. Doing that
+        # reset here blocks the UI thread for whatever is still queued.
+        with self._state:
+            self._samples = np.ascontiguousarray(samples, dtype=np.int16)
+            self._pending_cursor = int(cursor)
+            self._span += 1
+            self._feeding = True
+        self._wake.set()
+
+    def set_loop(self, enabled: bool, period: int | None = None):
+        with self._state:
+            super().set_loop(enabled, period)
+
+    def _feeder(self):
+        while not self._quit:
+            self._wake.wait(0.02)
+            self._wake.clear()
+            if self._quit:
                 return
-            data = np.ascontiguousarray(samples, dtype=np.int16).tobytes()
-            chunk = self._sample_rate * self._channels * 2
-            self._buffers = []
-            self._headers = []
+            with self._state:
+                if self._quit:
+                    return
+                restart = self._span != self._applied
+                span = self._span
+                cursor = self._pending_cursor
+                feeding = self._feeding
+            if restart:
+                with self._winmm_lock:
+                    if self._quit:
+                        return
+                    self._reset_headers()
+                with self._state:
+                    if self._quit or span != self._span:
+                        continue
+                    self._begin_span(len(self._samples), cursor)
+                    self._clock.reset()
+                    self._paused_samples = 0
+                    self._applied = span
+                    self._ensure_slots()
+            if not feeding:
+                continue
+            self._fill()
+
+    def _ensure_slots(self):
+        if self._slots:
+            return
+        frames = max(1, int(self._sample_rate * 0.04))
+        self._slots = [_WaveSlot(frames, self._channels) for _ in range(4)]
+
+    def _fill(self):
+        with self._state:
+            if self._quit or not self._feeding or self._span != self._applied:
+                return
+            samples = self._samples
+            loop = self._loop
+            period = self._period
+            ready = []
+            for slot in self._slots:
+                if slot.queued and (slot.header.dwFlags & 1) == 0:
+                    continue
+                piece, self._cursor, advance = _take_playback(
+                    samples, self._cursor, slot.frames, loop, period)
+                if advance <= 0 and not loop:
+                    continue
+                raw = np.ascontiguousarray(piece, dtype=np.int16).tobytes()
+                ctypes.memmove(slot.buf, raw, min(len(raw), len(slot.buf)))
+                ready.append((slot, advance))
+        if not ready:
+            return
+        with self._winmm_lock:
+            if self._quit or self._handle is None:
+                return
             winmm = self._winmm
-            for start in range(0, len(data), chunk):
-                raw = data[start:start + chunk]
-                buf = ctypes.create_string_buffer(raw)
-                header = _WAVEHDR()
-                header.lpData = ctypes.cast(buf, ctypes.c_char_p)
-                header.dwBufferLength = len(raw)
-                winmm.waveOutPrepareHeader(self._handle, ctypes.byref(header), ctypes.sizeof(header))
-                winmm.waveOutWrite(self._handle, ctypes.byref(header), ctypes.sizeof(header))
-                self._buffers.append(buf)
-                self._headers.append(header)
-            self._played_base = 0
+            for slot, advance in ready:
+                header = slot.header
+                if not slot.prepared:
+                    header.dwBufferLength = len(slot.buf)
+                    header.lpData = ctypes.cast(slot.buf, ctypes.c_char_p)
+                    prepared = winmm.waveOutPrepareHeader(
+                        self._handle, ctypes.byref(header), ctypes.sizeof(header))
+                    if prepared != 0:
+                        self._feeding = False
+                        return
+                    slot.prepared = True
+                wrote = winmm.waveOutWrite(self._handle, ctypes.byref(header), ctypes.sizeof(header))
+                if wrote != 0:
+                    self._feeding = False
+                    return
+                slot.queued = True
+                self._clock.submitted(advance)
 
     def _reset_headers(self):
         winmm = self._winmm
-        if self._headers:
+        if self._handle is not None and self._slots:
             winmm.waveOutReset(self._handle)
-            for header in self._headers:
-                winmm.waveOutUnprepareHeader(self._handle, ctypes.byref(header), ctypes.sizeof(header))
-        self._headers = []
-        self._buffers = []
+            for slot in self._slots:
+                if slot.prepared:
+                    winmm.waveOutUnprepareHeader(
+                        self._handle, ctypes.byref(slot.header), ctypes.sizeof(slot.header))
+        self._slots = []
 
     def pause(self):
-        if self.active:
-            self._winmm.waveOutPause(self._handle)
-
-    def played_samples(self) -> int:
-        if not self.active:
-            return 0
-        time_info = _MMTIME()
-        time_info.wType = 2
-        self._winmm.waveOutGetPosition(self._handle, ctypes.byref(time_info), ctypes.sizeof(time_info))
-        return int(time_info.sample) // self._channels
-
-    def close(self):
         if not self.active:
             return
+        with self._state:
+            self._paused_samples = self._clock.heard()
+            self._feeding = False
+        with self._winmm_lock:
+            if self._handle is not None:
+                self._winmm.waveOutPause(self._handle)
+
+    def played_samples(self) -> int:
+        if self._feeding:
+            return self._clock.heard()
+        return self._paused_samples
+
+    def close(self):
+        was = self.active
+        self._quit = True
+        self._feeding = False
         self.active = False
-        with self._lock:
+        self._wake.set()
+        thread = self._thread
+        self._thread = None
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=1.0)
+        if not was or self._handle is None:
+            return
+        with self._winmm_lock:
             self._reset_headers()
             self._winmm.waveOutClose(self._handle)
+            self._handle = None
 
 
 class _WAVEHDR(ctypes.Structure):
@@ -589,23 +819,15 @@ class _WAVEHDR(ctypes.Structure):
     ]
 
 
-class _MMTIME(ctypes.Structure):
-    _fields_ = [
-        ('wType', ctypes.c_uint),
-        ('sample', ctypes.c_uint),
-        ('pad', ctypes.c_uint),
-    ]
-
-
-class _SoundDevicePlayer:
+class _SoundDevicePlayer(_SampleLoop):
     def __init__(self, samples: np.ndarray, sample_rate: int, channels: int):
         import sounddevice
         self._sounddevice = sounddevice
         self._samples = samples
         self._rate = sample_rate
-        self._offset = 0
         self._paused_samples = 0
         self._gain = 1.0
+        self._init_loop(len(samples))
         self._clock = _SmoothPlaybackClock(sample_rate)
         self._stream = sounddevice.OutputStream(
             samplerate=sample_rate,
@@ -617,18 +839,12 @@ class _SoundDevicePlayer:
 
     def _callback(self, outdata, frames, _time, status):
         del status
-        start = self._offset
-        end = min(start + frames, len(self._samples))
-        count = end - start
-        if count > 0:
-            chunk = self._samples[start:end]
-            if self._gain < 0.999:
-                chunk = np.clip(chunk.astype(np.float32) * self._gain, -32768, 32767).astype(np.int16)
-            outdata[:count] = chunk
-        if count < frames:
-            outdata[count:] = 0
-        self._offset = end
-        self._clock.submitted(count)
+        piece, self._cursor, advance = _take_playback(
+            self._samples, self._cursor, int(frames), self._loop, self._period)
+        if self._gain < 0.999:
+            piece = np.clip(piece.astype(np.float32) * self._gain, -32768, 32767).astype(np.int16)
+        outdata[:] = piece
+        self._clock.submitted(advance)
 
     def set_gain(self, gain: float):
         self._gain = min(1.0, max(0.0, float(gain)))
@@ -637,16 +853,15 @@ class _SoundDevicePlayer:
     def running(self) -> bool:
         return bool(self._stream.active)
 
-    def start(self, samples: np.ndarray):
-        self._samples = np.ascontiguousarray(samples, dtype=np.int16)
-        self._offset = 0
-        self._paused_samples = 0
-        self._clock.reset()
-        # A seek or loop must drop queued output. Restarting the stream with
-        # a new offset while the device still holds the previous ending leaves
-        # the picture at the new time and the speaker on the old one.
+    def start(self, samples: np.ndarray, cursor: int = 0):
+        # An explicit seek restarts the stream. A loop does not: the callback
+        # wraps, and stopping here would block the UI thread on the queued period.
         if self._stream.active:
             self._stream.stop()
+        self._samples = np.ascontiguousarray(samples, dtype=np.int16)
+        self._begin_span(len(self._samples), cursor)
+        self._paused_samples = 0
+        self._clock.reset()
         self._stream.start()
 
     def pause(self):
@@ -661,16 +876,16 @@ class _SoundDevicePlayer:
         self._stream.close()
 
 
-class _MiniaudioPlayer:
+class _MiniaudioPlayer(_SampleLoop):
     def __init__(self, samples: np.ndarray, sample_rate: int, channels: int):
         import miniaudio
         self._miniaudio = miniaudio
         self._samples = samples
         self._channels = channels
-        self._cursor = 0
         self._paused_samples = 0
         self._running = False
         self._gain = 1.0
+        self._init_loop(len(samples))
         self._clock = _SmoothPlaybackClock(sample_rate)
         self._device = miniaudio.PlaybackDevice(
             output_format=miniaudio.SampleFormat.SIGNED16,
@@ -684,19 +899,13 @@ class _MiniaudioPlayer:
         # miniaudio sends the number of frames it wants, not the number of bytes.
         required_frames = yield b''
         while self._running:
-            required_frames = required_frames or 1024
-            start = self._cursor
-            end = min(start + int(required_frames), len(self._samples))
-            piece = self._samples[start:end]
-            self._cursor = end
-            self._clock.submitted(end - start)
+            required_frames = int(required_frames or 1024)
+            piece, self._cursor, advance = _take_playback(
+                self._samples, self._cursor, required_frames, self._loop, self._period)
+            self._clock.submitted(advance)
             if self._gain < 0.999:
                 piece = np.clip(piece.astype(np.float32) * self._gain, -32768, 32767).astype(np.int16)
-            payload = np.ascontiguousarray(piece).tobytes()
-            missing = int(required_frames) - len(piece)
-            if missing > 0:
-                payload += bytes(missing * self._channels * 2)
-            required_frames = yield payload
+            required_frames = yield np.ascontiguousarray(piece).tobytes()
 
     def set_gain(self, gain: float):
         self._gain = min(1.0, max(0.0, float(gain)))
@@ -705,22 +914,25 @@ class _MiniaudioPlayer:
     def running(self) -> bool:
         return bool(self._started and self._running)
 
-    def start(self, samples: np.ndarray):
-        # A loop or seek must flush the device. Leaving the previous ending in
-        # the hardware queue plays it over the new picture start. Stopping and
-        # starting again can return MA_UNAVAILABLE on WASAPI; _reopen handles
-        # that with one new device.
-        self._samples = np.ascontiguousarray(samples, dtype=np.int16)
-        self._cursor = 0
-        self._paused_samples = 0
-        self._clock.reset()
-        self._running = True
+    def start(self, samples: np.ndarray, cursor: int = 0):
+        # A seek restarts the device so the queued ending is not heard at the
+        # new picture time. A loop must not come through here: stop() waits
+        # for the WASAPI period, and that wait freezes the UI thread. The
+        # generator wraps instead. WASAPI can return MA_UNAVAILABLE from a
+        # second start; _reopen replaces the device once.
+        samples = np.ascontiguousarray(samples, dtype=np.int16)
         if self._started:
+            self._running = False
             try:
                 self._device.stop()
             except Exception:
                 pass
             self._started = False
+        self._samples = samples
+        self._begin_span(len(self._samples), cursor)
+        self._paused_samples = 0
+        self._clock.reset()
+        self._running = True
         generator = self._generator()
         next(generator)
         try:
@@ -794,7 +1006,8 @@ class AnimationClip:
                 self.audio_error = str(error)
         self.playing = False
         self._paused_at = 0.0
-        self.loop = True
+        self._loop = True
+        self._audio_mark = None
         self.has_audio = audio is not None and sample_rate is not None
         self._wall_origin = None
         self._lock = threading.Lock()
@@ -810,6 +1023,39 @@ class AnimationClip:
             self._ready = decoder.frame_at(0.0)
             self._thread = threading.Thread(target=self._decode_loop, daemon=True)
             self._thread.start()
+        self._apply_audio_loop()
+
+    @property
+    def loop(self) -> bool:
+        return self._loop
+
+    @loop.setter
+    def loop(self, enabled: bool):
+        enabled = bool(enabled)
+        if self._loop and not enabled and self.playing:
+            # The wall clock takes over once the soundtrack stops wrapping.
+            # Anchor it to the playhead or the picture jumps to the end.
+            here = self._clock()
+            self._paused_at = here
+            self._wall_origin = time.perf_counter() - here
+            self._audio_mark = None
+        self._loop = enabled
+        self._apply_audio_loop()
+
+    def _apply_audio_loop(self) -> None:
+        audio = self._audio
+        if audio is None or not hasattr(audio, 'set_loop'):
+            return
+        audio.set_loop(self._loop, self.duration)
+
+    def _audio_is_looping(self) -> bool:
+        """The callback is wrapping, so the UI must not restart the device."""
+        audio = self._audio
+        if audio is None or not self._loop:
+            return False
+        if not audio.active or not audio.running or audio.finished:
+            return False
+        return bool(getattr(audio, 'looping', False))
 
     def _audio_should_run(self) -> bool:
         """Start the device only when gain is audible.
@@ -841,6 +1087,7 @@ class AnimationClip:
         self.playing = True
         self._paused_at = 0.0
         self._wall_origin = time.perf_counter()
+        self._audio_mark = None
         with self._lock:
             self._wanted = 0.0
         if not already:
@@ -854,6 +1101,7 @@ class AnimationClip:
         self._paused_at = self._clock()
         self.playing = False
         self._wall_origin = None
+        self._audio_mark = None
         self._drop_timer()
         if self._audio is not None:
             self._audio.pause()
@@ -887,13 +1135,8 @@ class AnimationClip:
             seconds = max(0.0, seconds)
         self._paused_at = seconds
         self._wall_origin = time.perf_counter() - seconds
-        with self._lock:
-            self._wanted = seconds
-            self._generation += 1
-            self._buffer.clear()
-        if self._decoder is not None and not self._stop and (self._thread is None or not self._thread.is_alive()):
-            self._thread = threading.Thread(target=self._decode_loop, daemon=True)
-            self._thread.start()
+        self._audio_mark = None
+        self._recycle_picture(seconds)
         if self._audio is None or not self._audio.active:
             return
         if not self.playing:
@@ -916,10 +1159,35 @@ class AnimationClip:
             return self._paused_at
         return time.perf_counter() - self._wall_origin
 
+    def _recycle_picture(self, seconds: float):
+        """Drop decoded frames so the picture follows a new playhead.
+
+        The audio device is left running. Restarting it flushes the queued
+        period on this thread, which is the UI thread during a preview tick.
+        """
+        with self._lock:
+            self._wanted = seconds
+            self._generation += 1
+            self._buffer.clear()
+        if self._decoder is not None and not self._stop and (self._thread is None or not self._thread.is_alive()):
+            self._thread = threading.Thread(target=self._decode_loop, daemon=True)
+            self._thread.start()
+
+    def _note_loop_wrap(self, current: float):
+        mark = self._audio_mark
+        self._audio_mark = current
+        if mark is not None and current < mark:
+            self._recycle_picture(max(0.0, current))
+
     def time(self) -> float:
         if not self.playing:
             return self._paused_at
         current = self._clock()
+        # The callback is already wrapping. seek() would call play(), and
+        # play() stops the device on this thread until the driver flushes.
+        if self._audio_is_looping():
+            self._note_loop_wrap(current)
+            return max(0.0, current)
         if self.duration > 0 and current >= max(0.0, self.duration - 1e-3):
             if self.loop:
                 self.seek(0.0)

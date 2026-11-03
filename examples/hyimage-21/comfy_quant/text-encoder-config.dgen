@@ -3,7 +3,7 @@
 
 # HunyuanImage 2.1 with ComfyUI's FP8 transformer, scaled FP8 Qwen2.5-VL, and
 # ComfyUI's ByT5 glyph encoder. Qwen linears stay packed. ByT5 is matched from
-# the file with no mode. Same prompt as examples/hyimage-21/comfy_quant/config.dgen.
+# the file with no mode. Same prompt as examples/hyimage-21/comfy_quant/fp8-config.dgen.
 
 hunyuanvideo-community/HunyuanImage-2.1-Diffusers
 --model-type hyimage-21

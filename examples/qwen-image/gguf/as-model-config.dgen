@@ -2,7 +2,7 @@
 #! dgenerate 6.0.0
 
 # Qwen-Image GGUF as the model. The text encoder and VAE load from Qwen/Qwen-Image.
-# config.dgen keeps the repository as the model and passes the file to --transformer.
+# base-config.dgen keeps the repository as the model and passes the file to --transformer.
 
 \setp gpu_memory_gib total_memory(unit='gib')
 

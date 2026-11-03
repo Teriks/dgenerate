@@ -61,7 +61,7 @@ the first run can take longer while compilation happens.
 * `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/text-to-video/config.dgen>`_
 * `4-step LoRA <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/lora/lightx2v-4step-config.dgen>`_
 * `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/image-to-video/config.dgen>`_
-* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/gguf/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/gguf/text-to-video-config.dgen>`_
 
 Motif-Video
 -----------
@@ -92,7 +92,7 @@ keeping the parent Diffusers repository as the model path.
 
 * `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/text-to-video/config.dgen>`_
 * `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/image-to-video/config.dgen>`_
-* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/gguf/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/gguf/text-to-video-config.dgen>`_
 * `I2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/image-to-video-gguf/config.dgen>`_
 
 Kandinsky 5.0 Video
@@ -556,7 +556,7 @@ built-in system prompt when ``--pipeline-prompt-enhance`` is omitted.
 on by itself. Its URI accepts ``revision``, ``subfolder``, ``dtype``, and
 ``quantizer``.
 See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/prompt-enhancer-config.dgen>`_,
-`examples/ltx2/pipeline_prompt_enhance/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/config.dgen>`_,
+`examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen>`_,
 and `examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen>`_.
 
 ``--ltx-image-crfs`` recompresses a conditioning still before the VAE encode. Omit it

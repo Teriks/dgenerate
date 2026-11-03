@@ -4829,7 +4829,7 @@ the first run can take longer while compilation happens.
 * `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/text-to-video/config.dgen>`_
 * `4-step LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/lora/lightx2v-4step-config.dgen>`_
 * `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/image-to-video/config.dgen>`_
-* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/gguf/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/gguf/text-to-video-config.dgen>`_
 
 Motif-Video
 -----------
@@ -4860,7 +4860,7 @@ keeping the parent Diffusers repository as the model path.
 
 * `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/text-to-video/config.dgen>`_
 * `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/image-to-video/config.dgen>`_
-* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/gguf/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/gguf/text-to-video-config.dgen>`_
 * `I2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/image-to-video-gguf/config.dgen>`_
 
 Kandinsky 5.0 Video
@@ -5324,7 +5324,7 @@ built-in system prompt when ``--pipeline-prompt-enhance`` is omitted.
 on by itself. Its URI accepts ``revision``, ``subfolder``, ``dtype``, and
 ``quantizer``.
 See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/basic/prompt-enhancer-config.dgen>`_,
-`examples/ltx2/pipeline_prompt_enhance/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/config.dgen>`_,
+`examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen>`_,
 and `examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen>`_.
 
 ``--ltx-image-crfs`` recompresses a conditioning still before the VAE encode. Omit it
@@ -9030,7 +9030,7 @@ seed is an extra reference image, passed as ``image_reference``. A reference
 video is zipped with the inpaint clip, one frame at a time. Full Flux.2 has
 no inpaint class.
 
-See `examples/flux2/klein/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein/config.dgen>`_
+See `examples/flux2/klein/text-to-image-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein/text-to-image-config.dgen>`_
 and `examples/flux2/klein/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein/inpaint-config.dgen>`_.
 
 GGUF width 3072 selects Klein 4B. Width 4096 selects Klein 9B and uses the
@@ -9130,7 +9130,7 @@ dgenerate passes a single space, which is what the pipeline expects.
 Img2img and inpaint strength default to 0.6. The inpaint mask is packed and
 concatenated with the latents.
 
-See `examples/qwen-image/basic/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/basic/config.dgen>`_,
+See `examples/qwen-image/basic/base-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/basic/base-config.dgen>`_,
 `examples/qwen-image/img2img/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/img2img/config.dgen>`_,
 and `examples/qwen-image/inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/inpaint/config.dgen>`_.
 
@@ -9165,7 +9165,7 @@ so the horse is painted. Union ControlNets have
 inpainting ControlNet has ``extra_condition_channels=4``. ``start`` and
 ``end`` are passed through. ``scale=1`` matches the pipeline default.
 
-See `examples/qwen-image/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/config.dgen>`_
+See `examples/qwen-image/controlnet/canny-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/canny-config.dgen>`_
 and `examples/qwen-image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/inpaint-config.dgen>`_.
 
 Qwen-Image 2.1
@@ -9197,7 +9197,7 @@ denoising. ``--max-sequence-length`` is not supported by this pipeline.
 * `Image-conditioned generation <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/image-conditioned/config.dgen>`_
 * `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/turbo/config.dgen>`_
 * `LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/lora/config.dgen>`_
-* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/gguf/config.dgen>`_
+* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/gguf/transformer-config.dgen>`_
 * `Cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/qwen-image-21/cooperative-denoising-config.dgen>`_
 
 Krea 2
@@ -9223,7 +9223,7 @@ cooperative denoising; the cooperative-denoising example uses the Raw model.
 * `Raw checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/raw/config.dgen>`_
 * `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/turbo/config.dgen>`_
 * `Turbo LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/lora/turbo-config.dgen>`_
-* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/gguf/config.dgen>`_
+* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/krea2/gguf/transformer-config.dgen>`_
 * `Raw cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/krea2/cooperative-denoising-config.dgen>`_
 
 Kandinsky 5 Image
@@ -9264,7 +9264,7 @@ required. There is no strength.
 
 ``--guidance-scales`` is still true CFG.
 
-See `examples/qwen-image/edit/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit/config.dgen>`_,
+See `examples/qwen-image/edit/base-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit/base-config.dgen>`_,
 `examples/qwen-image/edit-plus/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit-plus/config.dgen>`_,
 and `examples/qwen-image/edit-inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit-inpaint/config.dgen>`_.
 
@@ -10853,7 +10853,7 @@ examples use the Q4_K_S GGUF. See :ref:`comfyui-quantized-checkpoints`.
     # as the main text encoder. The ByT5 glyph encoder is ComfyUI's split file from
     # the Hunyuan-Image-2.1 repack (full precision, small). The Qwen GGUF is
     # language-only; its mmproj sidecar is not loaded. No mode and no quantizer on
-    # either URI. Same prompt as examples/hyimage-21/gguf/config.dgen.
+    # either URI. Same prompt as examples/hyimage-21/gguf/transformer-config.dgen.
     
     hunyuanvideo-community/HunyuanImage-2.1-Diffusers
     --model-type hyimage-21
@@ -10875,7 +10875,7 @@ examples use the Q4_K_S GGUF. See :ref:`comfyui-quantized-checkpoints`.
     
     # HunyuanImage 2.1 with ComfyUI's FP8 transformer, scaled FP8 Qwen2.5-VL, and
     # ComfyUI's ByT5 glyph encoder. Qwen linears stay packed. ByT5 is matched from
-    # the file with no mode. Same prompt as examples/hyimage-21/comfy_quant/config.dgen.
+    # the file with no mode. Same prompt as examples/hyimage-21/comfy_quant/fp8-config.dgen.
     
     hunyuanvideo-community/HunyuanImage-2.1-Diffusers
     --model-type hyimage-21
@@ -10899,7 +10899,7 @@ examples use the Q4_K_S GGUF. See :ref:`comfyui-quantized-checkpoints`.
     # ComfyUI's ByT5 glyph encoder. The Hunyuan repository only publishes the
     # FP8 Qwen file; this is the same Qwen2.5-VL encoder from Qwen-Image's
     # ComfyUI pack. Qwen linears stay packed. ByT5 is matched from the file
-    # with no mode. Same prompt as examples/hyimage-21/comfy_quant/config.dgen.
+    # with no mode. Same prompt as examples/hyimage-21/comfy_quant/fp8-config.dgen.
     
     hunyuanvideo-community/HunyuanImage-2.1-Diffusers
     --model-type hyimage-21
@@ -16861,7 +16861,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [84505443855070]
+            Value: [40286099687655]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
