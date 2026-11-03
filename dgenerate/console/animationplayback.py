@@ -148,6 +148,13 @@ def load_preview_audio(path: pathlib.Path | None = None) -> tuple[float, bool]:
     return volume, bool(data.get('preview_muted', False))
 
 
+def effective_preview_gain(volume: float, muted: bool, *, visible: bool) -> float:
+    """Device gain from saved volume/mute and whether the preview widget is on screen."""
+    if muted or not visible:
+        return 0.0
+    return min(1.0, max(0.0, float(volume)))
+
+
 def save_preview_audio(volume: float, muted: bool, path: pathlib.Path | None = None) -> None:
     """Store preview volume and mute without dropping the other console settings."""
     settings = path or preview_audio_settings_path()
@@ -161,6 +168,42 @@ def save_preview_audio(volume: float, muted: bool, path: pathlib.Path | None = N
     data['preview_muted'] = bool(muted)
     settings.parent.mkdir(parents=True, exist_ok=True)
     settings.write_text(json.dumps(data), encoding='utf-8')
+
+
+_preview_audio_live: tuple[float, bool] | None = None
+_preview_audio_watchers: list = []
+
+
+def current_preview_audio() -> tuple[float, bool]:
+    """Volume and user mute shared by every preview pane and window."""
+    global _preview_audio_live
+    if _preview_audio_live is None:
+        _preview_audio_live = load_preview_audio()
+    return _preview_audio_live
+
+
+def watch_preview_audio(callback) -> None:
+    """``callback(volume, muted)`` runs when the shared preview mute or volume changes."""
+    _preview_audio_watchers.append(callback)
+
+
+def unwatch_preview_audio(callback) -> None:
+    try:
+        _preview_audio_watchers.remove(callback)
+    except ValueError:
+        return
+
+
+def publish_preview_audio(volume: float, muted: bool, *, persist: bool = False) -> None:
+    """Update the shared preview mute and volume, then tell every open preview."""
+    global _preview_audio_live
+    volume = min(1.0, max(0.0, float(volume)))
+    muted = bool(muted)
+    _preview_audio_live = (volume, muted)
+    if persist:
+        save_preview_audio(volume, muted)
+    for callback in list(_preview_audio_watchers):
+        callback(volume, muted)
 
 
 def volume_on_slider(x: int, width: int, height: int) -> float:
@@ -634,7 +677,7 @@ class _WaveOutPlayer(_SampleLoop):
 
     @property
     def running(self) -> bool:
-        return bool(self.active and self._headers)
+        return bool(self.active and self._feeding)
 
     def _open(self):
         winmm = self._winmm
@@ -1277,10 +1320,22 @@ class AnimationClip:
                 continue
             request = wanted if last_time is None else last_time + step
             try:
-                frame = self._decoder.frame_at(request)
-                stamp = self._decoder.time
+                decoder = self._decoder
+                if decoder is None:
+                    return
+                frame = decoder.frame_at(request)
+                stamp = decoder.time
             except Exception:
-                return
+                # One bad frame must not end this thread. Repeat the last
+                # picture at this timestamp so the next request moves on.
+                if self._stop or self._decoder is None:
+                    return
+                stamp = request
+                with self._lock:
+                    frame = self._buffer[-1][1] if self._buffer else self._ready
+                if frame is None:
+                    time.sleep(0.02)
+                    continue
             if self._stop:
                 return
             stale = False

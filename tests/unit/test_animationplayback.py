@@ -14,21 +14,27 @@ from dgenerate.console.animationplayback import (
     PcmPlayer,
     _MiniaudioPlayer,
     _SmoothPlaybackClock,
+    _WaveOutPlayer,
     _SoundDevicePlayer,
     _take_playback,
     control_hit,
     control_layout,
+    current_preview_audio,
+    effective_preview_gain,
     format_clock,
     frame_index_at,
     load_preview_audio,
     open_animation,
+    publish_preview_audio,
     _pcm_matrix,
     picture_height,
     playback_tick_delay_ms,
     speaker_icon,
     save_preview_audio,
     time_on_track,
+    unwatch_preview_audio,
     volume_on_slider,
+    watch_preview_audio,
 )
 
 
@@ -65,6 +71,34 @@ class TestAnimationTimeline(unittest.TestCase):
             with open(path, encoding='utf-8') as handle:
                 saved = __import__('json').loads(handle.read())
             self.assertEqual(saved['theme'], 'dgenerate')
+
+    def test_effective_preview_gain_respects_mute_and_visibility(self):
+        self.assertEqual(effective_preview_gain(0.8, False, visible=True), 0.8)
+        self.assertEqual(effective_preview_gain(0.8, False, visible=False), 0.0)
+        self.assertEqual(effective_preview_gain(0.8, True, visible=True), 0.0)
+
+    def test_preview_mute_is_shared_by_every_watcher(self):
+        previous = current_preview_audio()
+        pane = []
+        window = []
+
+        def on_pane(volume, muted):
+            pane.append((volume, muted))
+
+        def on_window(volume, muted):
+            window.append((volume, muted))
+
+        watch_preview_audio(on_pane)
+        watch_preview_audio(on_window)
+        try:
+            publish_preview_audio(0.6, True)
+            self.assertEqual(pane[-1], (0.6, True))
+            self.assertEqual(window[-1], (0.6, True))
+            self.assertEqual(current_preview_audio(), (0.6, True))
+        finally:
+            unwatch_preview_audio(on_pane)
+            unwatch_preview_audio(on_window)
+            publish_preview_audio(*previous)
 
     def test_speaker_icon_is_a_flared_cone_with_waves_or_an_x(self):
         rect = control_layout(800, 600)['mute']
@@ -427,6 +461,50 @@ class TestAnimationFiles(unittest.TestCase):
             self.assertAlmostEqual(second / 60.0, clip.time(), delta=0.2)
         finally:
             clip.close()
+
+    def test_stream_decode_error_keeps_the_thread_alive(self):
+        class Decoder:
+            def __init__(self):
+                self.step = 0.05
+                self.calls = 0
+                self._time = 0.0
+
+            @property
+            def time(self):
+                return self._time
+
+            def frame_at(self, seconds):
+                self.calls += 1
+                if self.calls == 2:
+                    raise RuntimeError('bad frame')
+                self._time = seconds
+                return np.full((2, 2, 3), min(255, self.calls), np.uint8)
+
+            def close(self):
+                pass
+
+        clip = AnimationClip(
+            'gap.mp4', None, np.zeros(0, np.float64), 2.0, None, None, decoder=Decoder())
+        try:
+            clip.start()
+            deadline = time.perf_counter() + 2.0
+            while clip._decoder.calls < 4 and time.perf_counter() < deadline:
+                time.sleep(0.01)
+            self.assertGreaterEqual(clip._decoder.calls, 4)
+            self.assertTrue(clip._thread.is_alive())
+        finally:
+            clip.close()
+
+    def test_waveout_running_follows_feeding(self):
+        player = _WaveOutPlayer.__new__(_WaveOutPlayer)
+        player.active = True
+        player._feeding = True
+        self.assertTrue(player.running)
+        player._feeding = False
+        self.assertFalse(player.running)
+        player.active = False
+        player._feeding = True
+        self.assertFalse(player.running)
 
     def test_mp4_frames_and_audio(self):
         av = __import__('av')

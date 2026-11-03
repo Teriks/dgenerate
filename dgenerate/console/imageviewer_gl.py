@@ -130,7 +130,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         self._scrubbing = False
         self._resume_after_scrub = False
         self._volume_dragging = False
-        self._preview_volume, self._preview_muted = _animationplayback.load_preview_audio()
+        self._preview_volume, self._preview_muted = _animationplayback.current_preview_audio()
+        _animationplayback.watch_preview_audio(self._apply_shared_preview_audio)
 
         # Bind events
         _mousewheelbind.bind_mousewheel(self.bind, self._on_mouse_wheel)
@@ -145,6 +146,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         self.bind('<ButtonRelease-2>', self._on_middle_release)
         self.bind('<Key>', self._on_key_press)
         self.bind('<Configure>', self._on_configure)
+        self.bind('<Unmap>', self._on_unmap)
         self.focus_set()
 
         self._setup_keyboard_shortcuts()
@@ -248,7 +250,11 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         super().tkMap(evt)
         # Try to apply pending view state when widget becomes visible
         self._try_apply_pending_view_state()
+        self._push_preview_gain()
         self.redraw()
+
+    def _on_unmap(self, _event):
+        self._push_preview_gain()
 
     def tkExpose(self, evt):
         """Called on <Expose>"""
@@ -1192,10 +1198,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 self.redraw()
                 return "break"
             if hit == 'mute':
-                self._preview_muted = not self._preview_muted
-                self._push_preview_gain()
-                _animationplayback.save_preview_audio(self._preview_volume, self._preview_muted)
-                self.redraw()
+                _animationplayback.publish_preview_audio(
+                    self._preview_volume, not self._preview_muted, persist=True)
                 return "break"
             if hit == 'volume':
                 self._volume_dragging = True
@@ -1274,8 +1278,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         if self._volume_dragging:
             self._set_volume_from_x(event.x)
             self._volume_dragging = False
-            _animationplayback.save_preview_audio(self._preview_volume, self._preview_muted)
-            self.redraw()
+            _animationplayback.publish_preview_audio(
+                self._preview_volume, self._preview_muted, persist=True)
             return "break"
 
         if self._scrubbing:
@@ -1591,22 +1595,38 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         if self._timeline_visible():
             self.redraw()
 
+    def _preview_is_visible(self) -> bool:
+        return (
+            self.winfo_ismapped()
+            and self.winfo_width() > 1
+            and self.winfo_height() > 1
+        )
+
     def _preview_gain(self) -> float:
-        if self._preview_muted:
-            return 0.0
-        return self._preview_volume
+        return _animationplayback.effective_preview_gain(
+            self._preview_volume,
+            self._preview_muted,
+            visible=self._preview_is_visible(),
+        )
 
     def _push_preview_gain(self):
         if self._animation is not None:
             self._animation.set_gain(self._preview_gain())
 
-    def _set_volume_from_x(self, widget_x: int):
-        self._preview_volume = _animationplayback.volume_on_slider(
-            widget_x, self.winfo_width(), self.winfo_height())
-        if self._preview_volume > 0:
-            self._preview_muted = False
+    def _apply_shared_preview_audio(self, volume: float, muted: bool):
+        self._preview_volume = volume
+        self._preview_muted = muted
         self._push_preview_gain()
-        self.redraw()
+        try:
+            self.redraw()
+        except Exception:
+            return
+
+    def _set_volume_from_x(self, widget_x: int):
+        volume = _animationplayback.volume_on_slider(
+            widget_x, self.winfo_width(), self.winfo_height())
+        muted = False if volume > 0 else self._preview_muted
+        _animationplayback.publish_preview_audio(volume, muted)
 
     def _scrub_to(self, widget_x: int):
         clip = self._animation
@@ -1839,6 +1859,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
     def cleanup(self):
         """Clean up resources"""
+        _animationplayback.unwatch_preview_audio(self._apply_shared_preview_audio)
         self._stop_animation()
         # Only attempt OpenGL cleanup if OpenGL was initialized
         gl_was_initialized = hasattr(self, '_gl_initialized') and self._gl_initialized

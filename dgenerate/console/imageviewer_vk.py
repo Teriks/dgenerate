@@ -1597,7 +1597,8 @@ class ImageViewerVulkan(tk.Frame):
         self._scrubbing = False
         self._resume_after_scrub = False
         self._volume_dragging = False
-        self._preview_volume, self._preview_muted = _animationplayback.load_preview_audio()
+        self._preview_volume, self._preview_muted = _animationplayback.current_preview_audio()
+        _animationplayback.watch_preview_audio(self._apply_shared_preview_audio)
         _mousewheelbind.bind_mousewheel(self.bind, self._on_mouse_wheel)
         self.bind('<Button-1>', self._on_left_click)
         self.bind('<B1-Motion>', self._on_left_drag)
@@ -1611,6 +1612,7 @@ class ImageViewerVulkan(tk.Frame):
         self.bind('<Key>', self._on_key_press)
         self.bind('<Configure>', self._on_configure)
         self.bind('<Map>', self._on_map)
+        self.bind('<Unmap>', self._on_unmap)
         self.bind('<Control-equal>', lambda e: self._zoom_by_factor(self._zoom_step))
         self.bind('<Control-minus>', lambda e: self._zoom_by_factor((1 / self._zoom_step)))
         self.focus_set()
@@ -1918,7 +1920,7 @@ class ImageViewerVulkan(tk.Frame):
             # something else, such as a sash drag, presents once more.
             self._schedule_settled_present()
             if self._animation is not None:
-                self._animation.set_gain(0.0 if self._preview_muted else self._preview_volume)
+                self._animation.set_gain(self._preview_gain())
                 self._animation.start()
                 self._schedule_animation()
         except Exception as error:
@@ -1929,8 +1931,38 @@ class ImageViewerVulkan(tk.Frame):
     def _on_map(self, _event):
         # The present from before this pane was hidden does not survive being unmapped.
         self._presented_key = None
+        self._push_preview_gain()
         if not self._finish_pending_load():
             self._show_current_picture()
+        return
+
+    def _on_unmap(self, _event):
+        self._push_preview_gain()
+        return
+
+    def _preview_is_visible(self):
+        return self.winfo_ismapped() and self.winfo_width() > 1 and self.winfo_height() > 1
+
+    def _preview_gain(self):
+        return _animationplayback.effective_preview_gain(
+            self._preview_volume,
+            self._preview_muted,
+            visible=self._preview_is_visible(),
+        )
+
+    def _push_preview_gain(self):
+        if self._animation is not None:
+            self._animation.set_gain(self._preview_gain())
+        return
+
+    def _apply_shared_preview_audio(self, volume, muted):
+        self._preview_volume = volume
+        self._preview_muted = muted
+        self._push_preview_gain()
+        try:
+            self.redraw()
+        except Exception:
+            return
         return
 
     def _show_current_picture(self):
@@ -2077,10 +2109,8 @@ class ImageViewerVulkan(tk.Frame):
                         self.redraw()
                         return 'break'
                     if (hit == 'mute'):
-                        self._preview_muted = (not self._preview_muted)
-                        self._animation.set_gain((0.0 if self._preview_muted else self._preview_volume))
-                        _animationplayback.save_preview_audio(self._preview_volume, self._preview_muted)
-                        self.redraw()
+                        _animationplayback.publish_preview_audio(
+                            self._preview_volume, not self._preview_muted, persist=True)
                         return 'break'
                     if (hit == 'volume'):
                         self._volume_dragging = True
@@ -2138,7 +2168,8 @@ class ImageViewerVulkan(tk.Frame):
         if self._volume_dragging:
             self._set_volume_from_x(event.x)
             self._volume_dragging = False
-            _animationplayback.save_preview_audio(self._preview_volume, self._preview_muted)
+            _animationplayback.publish_preview_audio(
+                self._preview_volume, self._preview_muted, persist=True)
             return 'break'
         if self._scrubbing:
             self._scrub_to(event.x)
@@ -2159,12 +2190,9 @@ class ImageViewerVulkan(tk.Frame):
         return
 
     def _set_volume_from_x(self, widget_x):
-        self._preview_volume = _animationplayback.volume_on_slider(widget_x, self.winfo_width(), self.winfo_height())
-        if (self._preview_volume > 0):
-            self._preview_muted = False
-        if (self._animation is not None):
-            self._animation.set_gain((0.0 if self._preview_muted else self._preview_volume))
-        self.redraw()
+        volume = _animationplayback.volume_on_slider(widget_x, self.winfo_width(), self.winfo_height())
+        muted = False if volume > 0 else self._preview_muted
+        _animationplayback.publish_preview_audio(volume, muted)
         return
 
     def _scrub_to(self, widget_x):
@@ -2322,6 +2350,7 @@ class ImageViewerVulkan(tk.Frame):
         return
 
     def cleanup(self):
+        _animationplayback.unwatch_preview_audio(self._apply_shared_preview_audio)
         self._stop_animation()
         if (self._gpu is not None):
             self._gpu.destroy()
