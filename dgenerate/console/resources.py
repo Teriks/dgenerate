@@ -355,6 +355,14 @@ def start_network_installer(console, tag: str, page_url: str, message: str,
     if action != 'install':
         return
 
+    # The installer download runs on the UI thread, and the window is not
+    # destroyed until it finishes. Stop the shell first, including anything
+    # it spawned, so a live download cannot hold the window open.
+    # restart=True only kills now. If the download fails and this call
+    # returns to the main loop, the shell is started again. A successful
+    # install destroys the window before that can happen.
+    console.kill_shell_process(restart=True)
+
     download = _d_resources.fetch_release_installer_download(tag)
     if download is None:
         messagebox.showerror(

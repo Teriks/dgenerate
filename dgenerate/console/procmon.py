@@ -95,12 +95,55 @@ class ProcessMonitor:
         self._read_stderr_thread.start()
         self._read_stdout_thread.start()
 
+    def _kill_process_tree(self):
+        """
+        Stop the shell and every process it started.
+
+        ``kill`` on the top process leaves descendants running. A download
+        or other child keeps the console's pipes open and the window alive
+        until that child finishes.
+        """
+        proc = self._process
+        if proc is None:
+            return
+
+        try:
+            descendants = proc.children(recursive=True)
+        except psutil.Error:
+            descendants = []
+
+        for child in descendants:
+            try:
+                child.kill()
+            except psutil.Error:
+                pass
+
+        try:
+            proc.kill()
+        except psutil.Error:
+            pass
+
+        try:
+            proc.wait(timeout=1)
+        except psutil.TimeoutExpired:
+            pass
+
+        # Drop our pipe ends so the reader threads are not stuck in read()
+        # after the shell and its children are gone.
+        for stream in (proc.stdout, proc.stderr):
+            if stream is None:
+                continue
+            try:
+                stream.close()
+            except OSError:
+                pass
+
     def restart(self):
-        self._process.kill()
+        self._kill_process_tree()
 
     def close(self):
         self._closed = True
-        self._process.kill()
+        self._kill_process_tree()
 
     def process_events(self):
         return_code = None
@@ -170,15 +213,22 @@ class ProcessMonitor:
     def _read_stderr(self):
         line_reader = TerminalLineReader(self._process.stderr)
 
-        while self._process.poll() is None:
-            line = line_reader.readline()
-            if line is not None and line != b'':
-                self._stderr_queue.put(line)
+        try:
+            while self._process.poll() is None:
+                line = line_reader.readline()
+                if line is not None and line != b'':
+                    self._stderr_queue.put(line)
+        except (OSError, ValueError):
+            # The pipe is closed when the process tree is killed.
+            return
 
     def _read_stdout(self):
         line_reader = TerminalLineReader(self._process.stdout)
 
-        while self._process.poll() is None:
-            line = line_reader.readline()
-            if line is not None and line != b'':
-                self._stdout_queue.put(line)
+        try:
+            while self._process.poll() is None:
+                line = line_reader.readline()
+                if line is not None and line != b'':
+                    self._stdout_queue.put(line)
+        except (OSError, ValueError):
+            return
