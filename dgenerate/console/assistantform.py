@@ -215,9 +215,15 @@ class _AssistantForm(tk.Toplevel):
         self._theme_text_boxes()
         _themetext.listen(self._theme_text_boxes)
 
-        self.minsize(560, 420)
         _appearance.install(self)
-        _util.position_toplevel(master, self, size=size if size else (720, 520), position=position)
+        self.update_idletasks()
+        # The options row is wider than the old 560 minimum. A saved or
+        # dragged size below the requested width clips Default and Max.
+        min_width = self.winfo_reqwidth()
+        self.minsize(min_width, 420)
+        open_size = size if size else (720, 520)
+        open_size = (max(open_size[0], min_width), open_size[1])
+        _util.position_toplevel(master, self, size=open_size, position=position)
 
         self._request_text.text.focus_set()
 

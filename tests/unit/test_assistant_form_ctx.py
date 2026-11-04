@@ -1,5 +1,6 @@
 import json
 import tempfile
+import tkinter.ttk as ttk
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -13,6 +14,15 @@ except Exception:
     _ROOT = None
 
 from dgenerate.console.assistantform import _DEFAULT_CTX, _MAX_CTX, ctx_value
+
+
+def _named_buttons(widget, names: set[str]) -> list:
+    found = []
+    for child in widget.winfo_children():
+        if isinstance(child, ttk.Button) and str(child.cget('text')) in names:
+            found.append(child)
+        found.extend(_named_buttons(child, names))
+    return found
 
 
 class TestContextValue(unittest.TestCase):
@@ -44,6 +54,13 @@ class TestGenerateCodeContextField(unittest.TestCase):
                     master=_ROOT)
                 try:
                     form.withdraw()
+                    form.update_idletasks()
+                    self.assertEqual(form.minsize()[0], form.winfo_reqwidth())
+                    edge = form.winfo_rootx() + form.winfo_reqwidth()
+                    buttons = _named_buttons(form, {'Default', 'Max'})
+                    self.assertEqual(sorted(b.cget('text') for b in buttons), ['Default', 'Max'])
+                    for button in buttons:
+                        self.assertLessEqual(button.winfo_rootx() + button.winfo_reqwidth(), edge)
                     form._ctx_var.set('65536')
                     command = form._command()
                     saved = json.loads(settings.read_text(encoding='utf-8'))
@@ -51,6 +68,28 @@ class TestGenerateCodeContextField(unittest.TestCase):
                     form.destroy()
         self.assertEqual(command[command.index('--ctx') + 1], '65536')
         self.assertEqual(saved['assistant_ctx'], 65536)
+
+    def test_a_narrow_saved_size_is_widened_to_fit_the_buttons(self):
+        from dgenerate.console.assistantform import _AssistantForm
+
+        with tempfile.TemporaryDirectory() as directory:
+            settings = Path(directory) / 'console_settings.json'
+            with patch('dgenerate.console.assistantform._settings_path', return_value=settings):
+                form = _AssistantForm(
+                    populate=lambda _text: None,
+                    dgenerate_exe='dgenerate',
+                    get_cwd=lambda: None,
+                    get_offline=lambda: False,
+                    get_editor=lambda: '',
+                    master=_ROOT,
+                    size=(400, 420))
+                try:
+                    form.update_idletasks()
+                    # A saved width of 400 cannot pull the minimum under the options row.
+                    self.assertGreaterEqual(form.minsize()[0], form.winfo_reqwidth())
+                    self.assertGreater(form.minsize()[0], 400)
+                finally:
+                    form.destroy()
 
     def test_default_and_max_buttons_set_the_window(self):
         from dgenerate.console.assistantform import _AssistantForm
