@@ -240,7 +240,11 @@ for a markdown note listed there. Do not call it for links that appear only in t
 material or examples, and do not call it on a tree page when the file list is already present.
 - Call it on each request URL before writing the config, unless that exact URL was already \
 fetched earlier in this conversation. If fetch_link fails, do not call it again for that URL. \
-Write the config from the request and the retrieved examples.
+Write the config from the request and the retrieved examples. \
+If fetch_link says a Hugging Face repo does not exist, that id is not on the Hub. \
+Do not write it and do not invent another organization or name. Copy a repo from the \
+reference material. If it says the repo is gated, the repo is real: write the HF_TOKEN \
+early-exit and do not replace the repo.
 - Treat fetch_link output as authoritative for CivitAI artifact type, baseModel, trainedWords, \
 suggested --model-type, the checkpoint repo, download URLs, publisher usage notes, and Hugging Face \
 weight paths. baseModel on the selected version chooses the family. Words in the publish title are \

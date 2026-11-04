@@ -805,11 +805,14 @@ def _format_huggingface(
             'For the subject in the request, call fetch_link once on the raw URL of the '
             f'markdown note listed beside that weight: https://huggingface.co/{repo_id}/raw/main/<note path>. '
             'Use the trigger word in that note. Do not fetch the tree page.')
-    lines += [
-        f'pipeline_tag: {pipeline or "(none)"}',
-        f'gated: {bool(gated)}',
-        f'tags: {", ".join(tags) if tags else "(none)"}',
-    ]
+    lines.append(f'pipeline_tag: {pipeline or "(none)"}')
+    if gated:
+        lines.append(
+            'gated: yes. This repository exists and is gated. '
+            'Write the HF_TOKEN early-exit. Do not replace it with another repo.')
+    else:
+        lines.append('gated: no. This repository is public. Do not add an HF_TOKEN block.')
+    lines.append(f'tags: {", ".join(tags) if tags else "(none)"}')
     if suggested:
         lines.append(f'Suggested dgenerate --model-type: {suggested}')
     copyable = weights
@@ -883,7 +886,53 @@ def fetch_huggingface_link(url: str) -> str:
             pipeline=pipeline, gated=gated, tags=tags, card_text=card_text,
             files=files, texts=texts, suggested=suggested)
     except Exception as e:
-        return f'Failed to fetch Hugging Face repo {repo_id}: {e}'
+        return _huggingface_failure(repo_id, e)
+
+
+def _huggingface_failure(repo_id: str, error: Exception) -> str:
+    """
+    Tell the model whether the repo is missing or gated.
+
+    A guessed GGUF id raises repository-not-found. A gated repo raises
+    ``GatedRepoError``, which is a subclass of that, so the gated check
+    comes first. Other failures stay a retry warning.
+    """
+    try:
+        from huggingface_hub.errors import (
+            DisabledRepoError,
+            GatedRepoError,
+            RepositoryNotFoundError,
+            RevisionNotFoundError,
+        )
+    except ImportError:
+        return (
+            f'Failed to fetch Hugging Face repo {repo_id}: {error}. '
+            'Do not call fetch_link on this URL again. Write the config from the '
+            'request and the retrieved examples.')
+
+    if isinstance(error, GatedRepoError):
+        return (
+            f'Hugging Face repo {repo_id} exists and is gated. '
+            'Access was refused. The repo is real. Write the HF_TOKEN early-exit. '
+            'Do not call fetch_link on this URL again. Do not replace it with another repo.')
+    if isinstance(error, RevisionNotFoundError):
+        return (
+            f'Hugging Face repo {repo_id} exists, but that revision does not. '
+            'Do not call fetch_link on this URL again.')
+    if isinstance(error, RepositoryNotFoundError):
+        return (
+            f'Hugging Face repo {repo_id} does not exist. '
+            'Do not use this repo id. Do not invent a replacement organization or name. '
+            'Copy a repo from the reference material. '
+            'Do not call fetch_link on this URL again.')
+    if isinstance(error, DisabledRepoError):
+        return (
+            f'Hugging Face repo {repo_id} is disabled by its author. '
+            'Do not use it. Do not call fetch_link on this URL again.')
+    return (
+        f'Failed to fetch Hugging Face repo {repo_id}: {error}. '
+        'Do not call fetch_link on this URL again. Write the config from the '
+        'request and the retrieved examples.')
 
 
 _FETCH_CACHE: dict[str, str] = {}

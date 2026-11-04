@@ -40,6 +40,7 @@ import dgenerate.assistant.catalog as _catalog
 import dgenerate.console.combobox as _combobox
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.scrolledtext as _scrolledtext
+import dgenerate.console.spinbox as _spinbox
 import dgenerate.console.terminaltext as _terminaltext
 import dgenerate.console.themetext as _themetext
 import dgenerate.console.util as _util
@@ -52,9 +53,15 @@ _POLL_MS = 100
 
 _SETTINGS_CHAT = 'assistant_chat_model'
 _SETTINGS_EMBED = 'assistant_embed_model'
+_SETTINGS_CTX = 'assistant_ctx'
 _SETTINGS_THINK = 'assistant_think'
 _SETTINGS_EFFORT = 'assistant_reasoning_effort'
 _SETTINGS_EDIT = 'assistant_editor_in_context'
+# Same default as assistant --ctx. The upper bound is Qwen3.8-27B's native
+# context (qwen35.context_length). Past that needs YaRN, which this command
+# does not enable.
+_DEFAULT_CTX = 32768
+_MAX_CTX = 262144
 _EFFORT_LABELS = {'low': 'Low', 'medium': 'Medium', 'xhigh': 'Extra high'}
 
 _PROMPT_HISTORY_FILE = 'assistant_prompt_history.json'
@@ -73,6 +80,29 @@ def _saved_model(key: str, default: str) -> str:
         return default
     value = data.get(key) if isinstance(data, dict) else None
     return value if isinstance(value, str) and value.strip() else default
+
+
+def ctx_value(text: str) -> int:
+    """Context tokens from the Generate Code field. Invalid text uses the default."""
+    try:
+        value = int(str(text).strip())
+    except ValueError:
+        return _DEFAULT_CTX
+    if value < 1 or value > _MAX_CTX:
+        return _DEFAULT_CTX
+    return value
+
+
+def _saved_int(key: str, default: int) -> int:
+    try:
+        with _settings_path().open(encoding='utf-8') as handle:
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return default
+    value = data.get(key) if isinstance(data, dict) else None
+    if isinstance(value, bool) or not isinstance(value, int):
+        return default
+    return ctx_value(str(value))
 
 
 def _saved_bool(key: str, default: bool = False) -> bool:
@@ -287,6 +317,19 @@ class _AssistantForm(tk.Toplevel):
         self._effort_var.set(_EFFORT_LABELS[saved_effort])
         self._effort_var.trace_add('write', lambda *_: _remember(_SETTINGS_EFFORT, self._selected_effort()))
         self._set_effort_enabled()
+
+        ttk.Label(reason, text='Context tokens').grid(row=0, column=3, sticky=tk.E, padx=(18, 6))
+        self._ctx_var = tk.StringVar(value=str(_saved_int(_SETTINGS_CTX, _DEFAULT_CTX)))
+        self._ctx_entry = _spinbox.IntSpinbox(
+            reason, textvariable=self._ctx_var,
+            from_=1, to=_MAX_CTX, increment=1024, width=8)
+        self._ctx_entry.grid(row=0, column=4, sticky=tk.W)
+        self._ctx_entry.create_spin_buttons(reason).grid(row=0, column=5, sticky=tk.W, padx=(2, 0))
+        self._ctx_var.trace_add('write', self._remember_ctx)
+        ttk.Button(reason, text='Default', command=self._set_default_ctx).grid(
+            row=0, column=6, sticky=tk.W, padx=(8, 0))
+        ttk.Button(reason, text='Max', command=self._set_max_ctx).grid(
+            row=0, column=7, sticky=tk.W, padx=(4, 0))
 
         self._edit_var = tk.BooleanVar(value=_saved_bool(_SETTINGS_EDIT))
         self._edit_check = ttk.Checkbutton(
@@ -578,7 +621,8 @@ class _AssistantForm(tk.Toplevel):
         if self._get_offline():
             command.append('--offline-mode')
         command += ['--sub-command', 'assistant', '--model', self._selected_model(),
-                    '--embed-model', self._selected_embed_model()]
+                    '--embed-model', self._selected_embed_model(),
+                    '--ctx', str(self._selected_ctx())]
         if edit_path:
             command += ['--edit', edit_path]
         if self._think_var.get():
@@ -593,6 +637,22 @@ class _AssistantForm(tk.Toplevel):
                 os.unlink(path)
             except OSError:
                 pass
+
+    def _selected_ctx(self) -> int:
+        return ctx_value(self._ctx_var.get())
+
+    def _set_default_ctx(self):
+        self._ctx_var.set(str(_DEFAULT_CTX))
+
+    def _set_max_ctx(self):
+        self._ctx_var.set(str(_MAX_CTX))
+
+    def _remember_ctx(self, *_):
+        raw = self._ctx_var.get().strip()
+        value = ctx_value(raw)
+        if raw != str(value):
+            return
+        _remember(_SETTINGS_CTX, value)
 
     def _remember_think(self, *_):
         _remember(_SETTINGS_THINK, bool(self._think_var.get()))

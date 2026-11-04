@@ -45,6 +45,18 @@ def log(*args):
     print(*args, file=sys.stderr, flush=True)
 
 
+def _context_too_small(n_ctx: int, needed: int, *, retrieved: bool) -> str:
+    if retrieved:
+        detail = 'This prompt is about'
+        when = ' once the examples are included'
+    else:
+        detail = 'The instructions need about'
+        when = ' before any examples are retrieved'
+    return (
+        f'error: the context window is {n_ctx} tokens. {detail} {needed} tokens{when}, '
+        'including room for the reply. Raise --ctx.')
+
+
 def deep_check(config: str, run_dir: str) -> dict:
     """
     Run :mod:`dgenerate.assistant.check` in a subprocess so the config runner's
@@ -263,23 +275,43 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
     run_dir = os.path.dirname(output) if output else os.getcwd()
     os.makedirs(run_dir, exist_ok=True)
 
+    editor = None
+    if args.edit:
+        try:
+            with open(args.edit, encoding='utf-8') as handle:
+                editor = handle.read()
+        except OSError as e:
+            log(f'error: could not read the config to edit: {e}')
+            return 1
+        if not editor.strip():
+            log('error: the config to edit is empty.')
+            return 2
+
+    files = _prompt.request_files(request, os.getcwd(), run_dir)
+    link_text = request + ('\n' + editor if editor else '')
+    request_links = _link_tools.find_link_urls(link_text)
+    # Tools replace streaming. The config check is always offered; fetch_link only with a URL.
+    use_link_tools = not args.offline and not args.no_link_tools and bool(request_links)
+    use_check_tool = not args.no_check
+    tools = _link_tools.tool_definitions(fetch=use_link_tools, check=use_check_tool)
+    machine = _prompt.machine_report()
+    system = _prompt.system_message(
+        version, link_tools=use_link_tools, machine=machine, check_tool=use_check_tool)
+    # The instructions are the smallest prompt this command sends. Retrieved
+    # examples are added after the embedding model, and checked again there.
+    reserve = args.max_tokens if args.max_tokens > 0 else _models.REPLY_RESERVE
+    tool_text = json.dumps(tools) if tools else ''
+    needed = _models.context_tokens_needed(
+        system, _prompt.user_message(request, '', files, editor=editor), tool_text, reserve=reserve)
+    if needed > args.ctx:
+        log(_context_too_small(args.ctx, needed, retrieved=False))
+        return 1
+
     try:
         log('Loading the embedding model')
         embedder = _models.Embedder(_models.resolve_gguf(args.embed_model, args.offline),
                                     gpu_layers=args.gpu_layers, verbose=args.verbose)
         index = _index.load_index(embedder, log=log)
-        editor = None
-        if args.edit:
-            try:
-                with open(args.edit, encoding='utf-8') as handle:
-                    editor = handle.read()
-            except OSError as e:
-                log(f'error: could not read the config to edit: {e}')
-                return 1
-            if not editor.strip():
-                log('error: the config to edit is empty.')
-                return 2
-        files = _prompt.request_files(request, os.getcwd(), run_dir)
         query = _corpus.strip_media_names(request)
         if editor:
             mentioned = ' '.join(re.findall(r'--model-type\s+(\S+)', editor))
@@ -296,16 +328,14 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
             log(context)
         log(f'Retrieved {len(context)} characters of context')
 
-        link_text = request + ('\n' + editor if editor else '')
-        request_links = _link_tools.find_link_urls(link_text)
-        # Tools replace streaming. The config check is always offered; fetch_link only with a URL.
-        use_link_tools = not args.offline and not args.no_link_tools and bool(request_links)
-        use_check_tool = not args.no_check
-        tools = _link_tools.tool_definitions(fetch=use_link_tools, check=use_check_tool)
         if use_link_tools:
             log(f'Link tool enabled ({len(request_links)} URL(s) in the request). The model can call fetch_link.')
 
-        machine = _prompt.machine_report()
+        user = _prompt.user_message(request, context, files, editor=editor)
+        needed = _models.context_tokens_needed(system, user, tool_text, reserve=reserve)
+        if needed > args.ctx:
+            log(_context_too_small(args.ctx, needed, retrieved=True))
+            return 1
 
         log(f'Loading {os.path.basename(args.model)}')
         chat = _models.ChatModel(_models.resolve_gguf(args.model, args.offline), n_ctx=args.ctx,
@@ -313,9 +343,8 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
                                  verbose=args.verbose)
 
         messages = [
-            {'role': 'system', 'content': _prompt.system_message(
-                version, link_tools=use_link_tools, machine=machine, check_tool=use_check_tool)},
-            {'role': 'user', 'content': _prompt.user_message(request, context, files, editor=editor)},
+            {'role': 'system', 'content': system},
+            {'role': 'user', 'content': user},
         ]
 
         def log_tool(line: str) -> None:

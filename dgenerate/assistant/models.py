@@ -70,6 +70,32 @@ def answer_text(content: str, reasoning: str = '') -> str:
     return rest
 
 
+# Qwen tokenizes these instructions at about 3 to 4 characters per token.
+# The low end is the count used below, so a window that cannot hold the
+# prompt is refused before a model is loaded.
+_CHARS_PER_TOKEN = 3
+# A reply still has to fit. This is the room kept when --max-tokens is 0.
+REPLY_RESERVE = 1024
+
+
+def prompt_token_estimate(text: str) -> int:
+    """Token count from character length, rounded up."""
+    count = len(text or '')
+    if count == 0:
+        return 0
+    return (count + _CHARS_PER_TOKEN - 1) // _CHARS_PER_TOKEN
+
+
+def context_tokens_needed(*parts: str, reserve: int = REPLY_RESERVE) -> int:
+    """
+    Tokens the prompt will occupy, plus room for the reply.
+
+    Compare the result with the context window. A larger number means the
+    prompt cannot be sent.
+    """
+    return sum(prompt_token_estimate(part) for part in parts) + max(0, reserve)
+
+
 def reply_token_limit(n_ctx: int, requested: int = 0) -> int:
     """
     How many tokens the reply may use.

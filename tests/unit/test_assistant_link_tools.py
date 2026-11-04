@@ -316,6 +316,46 @@ class TestLinkTools(unittest.TestCase):
         named = link_tools._guess_model_type('Flux.1 D', 'Flux Kontext dev', '')
         self.assertEqual(named, 'flux-kontext')
 
+    def test_missing_huggingface_repo_is_not_a_real_model(self):
+        import httpx
+        from huggingface_hub.errors import RepositoryNotFoundError
+
+        url = 'https://huggingface.co/someone/FLUX.1-dev-Q4-GGUF'
+        response = httpx.Response(404, request=httpx.Request('GET', url))
+
+        class Api:
+            def __init__(self, headers=None):
+                pass
+
+            def model_info(self, repo_id, revision=None):
+                raise RepositoryNotFoundError('404 Repository not found', response=response)
+
+        with patch('huggingface_hub.HfApi', Api):
+            text = link_tools.fetch_huggingface_link(url)
+        self.assertIn('someone/FLUX.1-dev-Q4-GGUF does not exist', text)
+        self.assertIn('Do not invent', text)
+        self.assertNotIn('gated', text.lower())
+
+    def test_gated_huggingface_refusal_says_the_repo_is_real(self):
+        import httpx
+        from huggingface_hub.errors import GatedRepoError
+
+        url = 'https://huggingface.co/black-forest-labs/FLUX.1-dev'
+        response = httpx.Response(403, request=httpx.Request('GET', url))
+
+        class Api:
+            def __init__(self, headers=None):
+                pass
+
+            def model_info(self, repo_id, revision=None):
+                raise GatedRepoError('403 gated', response=response)
+
+        with patch('huggingface_hub.HfApi', Api):
+            text = link_tools.fetch_huggingface_link(url)
+        self.assertIn('exists and is gated', text)
+        self.assertIn('HF_TOKEN', text)
+        self.assertNotIn('does not exist', text)
+
     def test_huggingface_dataset_is_not_a_model_repo(self):
         text = link_tools.fetch_huggingface_link(
             'https://huggingface.co/datasets/huggingface/documentation-images')
@@ -357,6 +397,15 @@ class TestLinkTools(unittest.TestCase):
         self.assertIn('README.md:', text)
         self.assertIn('--model-type: krea2', text)
         self.assertIn('raw/main/', text)
+        self.assertIn('gated: no', text)
+        self.assertIn('Do not add an HF_TOKEN block', text)
+        gated = link_tools._format_huggingface(
+            'https://huggingface.co/black-forest-labs/FLUX.1-dev',
+            'black-forest-labs/FLUX.1-dev',
+            kind='repo', path='', pipeline='text-to-image', gated=True,
+            tags=[], card_text='', files=['README.md'], texts={}, suggested='flux')
+        self.assertIn('gated: yes', gated)
+        self.assertIn('Write the HF_TOKEN early-exit', gated)
 
     def test_huggingface_note_url_returns_that_note_and_a_quoted_lora(self):
         files = [

@@ -1,7 +1,8 @@
 import unittest
 
 from dgenerate.assistant.corpus import Chunk
-from dgenerate.assistant.models import answer_text, reply_token_limit
+from dgenerate.assistant.models import (
+    REPLY_RESERVE, answer_text, context_tokens_needed, prompt_token_estimate, reply_token_limit)
 from dgenerate.assistant.prompt import (
     extract_config,
     first_draft_recipes,
@@ -49,6 +50,21 @@ class TestAnswerText(unittest.TestCase):
 
     def test_reply_limit_does_not_exceed_the_window(self):
         self.assertEqual(reply_token_limit(8192, 9000), 8192)
+
+    def test_prompt_estimate_rounds_up_at_three_characters(self):
+        self.assertEqual(prompt_token_estimate(''), 0)
+        self.assertEqual(prompt_token_estimate('ab'), 1)
+        self.assertEqual(prompt_token_estimate('abcd'), 2)
+
+    def test_instructions_need_more_than_a_5000_token_window(self):
+        from dgenerate.assistant.prompt import system_message, user_message
+
+        needed = context_tokens_needed(
+            system_message('6.0.0', check_tool=True),
+            user_message('a fox', '', []),
+            reserve=REPLY_RESERVE)
+        self.assertGreater(needed, 5000)
+        self.assertLess(needed, 32768)
 
 
 class TestThoughtDisplay(unittest.TestCase):
@@ -421,6 +437,23 @@ class TestAssistantWithoutXllamacpp(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn('xllamacpp is not installed', err.getvalue())
         self.assertNotIn('Loading the embedding model', err.getvalue())
+
+    def test_small_context_stops_before_the_embedding_model(self):
+        import io
+        from contextlib import redirect_stderr
+        from unittest.mock import patch
+
+        import dgenerate.assistant.cli as cli
+
+        err = io.StringIO()
+        with patch.object(cli._catalog, 'xllamacpp_installed', return_value=True), redirect_stderr(err):
+            code = cli.main(['--ctx', '5000', 'a fox eating waffles'])
+        text = err.getvalue()
+        self.assertEqual(code, 1)
+        self.assertIn('context window is 5000 tokens', text)
+        self.assertIn('before any examples are retrieved', text)
+        self.assertNotIn('Loading the embedding model', text)
+        self.assertNotIn('Loading Qwen', text)
 
 
 if __name__ == '__main__':

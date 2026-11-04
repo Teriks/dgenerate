@@ -14258,7 +14258,9 @@ repeat penalty is 1 either way. ``--temperature``, ``--top-p``, ``--top-k``,
 ``--min-p``, ``--presence-penalty``, and ``--repeat-penalty`` each override that
 one default when you pass them. ``--max-tokens`` limits the reply. ``0``,
 the default, uses whatever room is left in the context window and does not allocate
-a larger cache.
+a larger cache. If the instructions cannot fit in ``--ctx``, with room left for
+the reply, the command stops before loading a model. If the retrieved examples
+make the prompt longer than the window, it stops before loading the chat model.
 
 ``--think`` lets the model reason before it writes the config, which is slower.
 ``--reasoning-effort`` is ``low``, ``medium``, or ``xhigh``, and only applies with
@@ -14278,7 +14280,9 @@ exits with status 1.
 ``-v`` / ``--verbose`` shows llama.cpp output on stderr.
 
 The Console UI Generate Code menu runs this sub-command. Its model list is the
-same set of Qwen GGUFs.
+same set of Qwen GGUFs. The Context tokens field is ``--ctx``, saved with the
+other Generate Code options, and 32768 by default. It can be raised up to the
+model's native 262144 tokens.
 
 .. code-block:: bash
 
