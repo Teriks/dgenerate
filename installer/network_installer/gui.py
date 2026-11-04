@@ -30,6 +30,7 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 import tkinter as tk
 import traceback
 from datetime import datetime
@@ -140,6 +141,8 @@ class DGenerateInstallerGUI:
 
     def _hide_progress_bar(self):
         """Hide the progress bar when not needed."""
+        self.progress_bar.stop()
+        self.progress_bar.configure(mode='determinate')
         self.progress_bar.grid_remove()
         self.progress_var.set(0)
         # Re-enable next button when download completes
@@ -1327,11 +1330,18 @@ class DGenerateInstallerGUI:
         self.back_button.config(state="disabled")
         self.next_button.config(state="disabled", text="Downloading...")
 
+        last_progress_update = [0.0]
+
         def download():
             try:
-                self.status_var.set("Downloading source code...")
-                self._show_progress_bar()
-                self.progress_var.set(0)  # Start at 0%
+                def begin_download_ui():
+                    self.status_var.set("Downloading source code...")
+                    self._show_progress_bar()
+                    self.progress_var.set(0)
+                    self.progress_bar.configure(mode='indeterminate')
+                    self.progress_bar.start(10)
+
+                self.root.after(0, begin_download_ui)
 
                 source_type = self.latest_release_var.get()
 
@@ -1358,17 +1368,32 @@ class DGenerateInstallerGUI:
                 # Create temporary directory
                 temp_dir = tempfile.mkdtemp(prefix="dgenerate_install_")
 
-                # Progress callback for real download progress
                 def progress_callback(downloaded, total):
-                    if total > 0:
-                        percentage = (downloaded / total) * 90  # Use 90% for download, 10% for extraction
-                        self.root.after(0, lambda: self.progress_var.set(percentage))
+                    now = time.monotonic()
+                    if now - last_progress_update[0] < 0.1 and (not total or downloaded < total):
+                        return
+                    last_progress_update[0] = now
 
-                        # Update status with download info
-                        downloaded_mb = downloaded / (1024 * 1024)
+                    downloaded_mb = downloaded / (1024 * 1024)
+                    if total and total > 0:
+                        percentage = (downloaded / total) * 90
                         total_mb = total / (1024 * 1024)
                         status_text = f"Downloading... {downloaded_mb:.1f}MB / {total_mb:.1f}MB"
-                        self.root.after(0, lambda: self.status_var.set(status_text))
+
+                        def update_progress(p=percentage, status=status_text):
+                            self.progress_bar.stop()
+                            self.progress_bar.configure(mode='determinate')
+                            self.progress_var.set(p)
+                            self.status_var.set(status)
+
+                        self.root.after(0, update_progress)
+                    else:
+                        status_text = f"Downloading... {downloaded_mb:.1f}MB"
+
+                        def update_status(status=status_text):
+                            self.status_var.set(status)
+
+                        self.root.after(0, update_status)
 
                 # Download source with progress tracking
                 downloaded_source_dir = self.github_client.download_source_archive(ref, temp_dir, progress_callback)
@@ -1378,6 +1403,9 @@ class DGenerateInstallerGUI:
                     def complete_download():
                         # Set global state - persists across all screens
                         self.source_dir = downloaded_source_dir
+
+                        self.progress_bar.stop()
+                        self.progress_bar.configure(mode='determinate')
 
                         # Show extraction progress
                         self.progress_var.set(95)

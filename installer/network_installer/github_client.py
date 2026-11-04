@@ -210,7 +210,8 @@ class GitHubClient:
         Args:
             ref: Branch, tag, or commit SHA to download
             extract_to: Directory to extract to. If None, creates a temporary directory.
-            progress_callback: Optional callback function(downloaded_bytes, total_bytes)
+            progress_callback: Optional callback function(downloaded_bytes, total_bytes).
+                total_bytes is None when the server uses chunked encoding without Content-Length.
             
         Returns:
             Path to extracted directory, or None if failed
@@ -235,13 +236,12 @@ class GitHubClient:
             with urllib.request.urlopen(req, context=self._ssl_context) as response:
                 zip_path = os.path.join(extract_to, f"{self.repo_name}-{ref}.zip")
 
-                # Get total file size from headers
-                total_size = response.headers.get('content-length')
-                if total_size:
-                    total_size = int(total_size)
+                # GitHub codeload often omits Content-Length (chunked encoding).
+                content_length = response.headers.get('Content-Length')
+                total_size = int(content_length) if content_length else None
 
                 downloaded_size = 0
-                chunk_size = 8192  # 8KB chunks
+                chunk_size = 256 * 1024
 
                 with open(zip_path, 'wb') as f:
                     while True:
@@ -251,8 +251,7 @@ class GitHubClient:
                         f.write(chunk)
                         downloaded_size += len(chunk)
 
-                        # Report progress if callback provided
-                        if progress_callback and total_size:
+                        if progress_callback:
                             progress_callback(downloaded_size, total_size)
 
                 # Extract the ZIP file
