@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image Edit with ComfyUI's FP8 transformer and scaled FP8 Qwen2.5-VL.
+# The text encoder file includes the vision tower, which edit reads. No mode
+# and no quantizer: the linears stay packed. Same prompt as
+# examples/qwen_image/comfy_quant/edit-fp8-config.dgen.
+
+Qwen/Qwen-Image-Edit
+--model-type qwen-image-edit
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors
+--text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors"
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 50
+--guidance-scales 4
+--image-seeds https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/yarn-art-pikachu.png
+--gen-seeds 1
+--output-path qwen-image-comfy-quant-edit-text-encoder
+--output-size 1024
+--prompts "Make Pikachu hold a sign that says 'Qwen Edit is awesome', yarn art style, detailed, vibrant colors"

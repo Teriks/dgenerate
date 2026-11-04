@@ -43,13 +43,13 @@ Point ``--transformer`` at the file or a Hugging Face blob link. The repository
 still supplies the VAE and text encoders. Do not set ``quantizer=`` on that URI.
 This is the simplest way to use one of these files.
 
-@EXAMPLE[@PROJECT_DIR/examples/krea2/comfy-quant/raw-int8-convrot-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/krea2/comfy_quant/raw-int8-convrot-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/krea2/comfy-quant/turbo-nvfp4-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/krea2/comfy_quant/turbo-nvfp4-config.dgen]
 
 Wan 2.2 MoE takes the low noise expert through ``--wan-second-transformer``.
 
-@EXAMPLE[@PROJECT_DIR/examples/wan/comfy-quant/moe-fp8-scaled-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/wan/comfy_quant/moe-fp8-scaled-config.dgen]
 
 As the Model
 ------------
@@ -58,13 +58,13 @@ A ComfyUI file can also be the model itself. An all-in-one checkpoint that
 bundles text encoders and a VAE needs nothing else; its quantized text encoders
 are dequantized as they load.
 
-@EXAMPLE[@PROJECT_DIR/examples/stablediffusion3/comfy-quant/sd3.5-medium-single-file-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/stablediffusion3/comfy_quant/sd3.5-medium-single-file-config.dgen]
 
 A file holding only the transformer loads its text encoders and VAE from the
 matching Diffusers repository. ``--text-encoders`` and ``--vae`` still override
 that, and ``null`` still skips an encoder.
 
-@EXAMPLE[@PROJECT_DIR/examples/z-image/comfy-quant/single-file-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/z_image/comfy_quant/single-file-config.dgen]
 
 Text Encoders
 -------------
@@ -86,23 +86,39 @@ some of these files to the layers a pipeline reads, for example the Flux.2 dev
 Mistral encoder keeps 30 of its 40 layers; dgenerate builds the trimmed model to
 match. The ``quantizer`` argument is not supported for these files.
 
-@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy-quant/klein-4b-fp8-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy_quant/klein-4b-fp8-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/flux/comfy-quant/kontext-fp8-scaled-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/flux/comfy_quant/kontext-fp8-scaled-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/flux/comfy-quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/flux/comfy_quant/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/wan/comfy-quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/wan/comfy_quant/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/wan/comfy-quant/text-encoder-wan22-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/comfy_quant/ltx25-distilled-text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/qwen-image/comfy-quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/comfy_quant/ltx25-distilled-text-encoder-nvfp4-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/qwen-image/comfy-quant/text-encoder-nvfp4-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/comfy_quant/ltx25-dev-text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy-quant/dev-text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/comfy_quant/ltx25-dev-text-encoder-nvfp4-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy-quant/dev-text-encoder-fp4-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/gguf/ltx2-distilled-text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/gguf/ltx2-distilled-text-encoder-fp4-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/gguf/ltx2-dev-text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/gguf/ltx2-dev-text-encoder-fp4-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/wan/comfy_quant/text-encoder-wan22-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/qwen_image/comfy_quant/text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/qwen_image/comfy_quant/text-encoder-nvfp4-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy_quant/dev-text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy_quant/dev-text-encoder-fp4-config.dgen]
 
 @EXAMPLE[@PROJECT_DIR/examples/flux/gguf/text-encoder-config.dgen]
 
@@ -165,8 +181,8 @@ Packed weights are ordinary integer parameters, so ``--model-cpu-offload``,
 ``--model-sequential-offload``, and ``--model-group-offload`` move them like any
 other weights.
 
-More examples are under ``examples/*/comfy-quant``, for instance
-`examples/flux2/comfy-quant <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/flux2/comfy-quant>`_,
-`examples/qwen-image/comfy-quant <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/qwen-image/comfy-quant>`_,
-`examples/wan/comfy-quant <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan/comfy-quant>`_,
-and `examples/ltx2/comfy-quant <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/comfy-quant>`_.
+More examples are under ``examples/*/comfy_quant``, for instance
+`examples/flux2/comfy_quant <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/flux2/comfy_quant>`_,
+`examples/qwen_image/comfy_quant <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/qwen_image/comfy_quant>`_,
+`examples/wan/comfy_quant <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan/comfy_quant>`_,
+and `examples/ltx2/comfy_quant <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/comfy_quant>`_.

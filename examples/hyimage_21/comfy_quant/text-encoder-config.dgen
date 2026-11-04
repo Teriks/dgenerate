@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# HunyuanImage 2.1 with ComfyUI's FP8 transformer, scaled FP8 Qwen2.5-VL, and
+# ComfyUI's ByT5 glyph encoder. Qwen linears stay packed. ByT5 is matched from
+# the file with no mode. Same prompt as examples/hyimage_21/comfy_quant/fp8-config.dgen.
+
+hunyuanvideo-community/HunyuanImage-2.1-Diffusers
+--model-type hyimage-21
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/resolve/main/split_files/diffusion_models/hunyuanimage2.1_fp8_e4m3fn.safetensors
+--text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors" "T5EncoderModel;model=https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/blob/main/split_files/text_encoders/byt5_small_glyphxl_fp16.safetensors"
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path hyimage21-comfy-quant-text-encoder
+--output-size 2048
+--prompts "A glass greenhouse in a rainstorm, reflections on the panes, cinematic photography"

@@ -133,7 +133,7 @@ There is no guidance scale, no inpaint, and no ControlNet. Four steps is the sho
 
 A GGUF of this transformer is also width 4096, so it uses the Klein 9B module config.
 
-See `examples/flux2/klein-kv/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux2/klein-kv/config.dgen>`_
+See `examples/flux2/klein_kv/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux2/klein_kv/config.dgen>`_
 and `examples/flux2/gguf/klein-kv-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux2/gguf/klein-kv-config.dgen>`_.
 
 Z-Image
@@ -168,7 +168,7 @@ A GGUF transformer stays on ``--model-type z-image``. The parent repository supp
 
 Base and Turbo share one transformer shape, so a base GGUF still uses the Turbo module config. Sampling stays with the checkpoint: Turbo is 8 steps and guidance 0, base is the longer schedule.
 
-See `examples/z-image <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/z-image>`_.
+See `examples/z_image <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/z_image>`_.
 
 ControlNet unions are ``--control-nets`` on ``z-image`` only, one model.
 
@@ -206,9 +206,9 @@ True CFG runs when ``--guidance-scales`` is above 1. A negative prompt is option
 
 Img2img and inpaint strength default to 0.6. The inpaint mask is packed and concatenated with the latents.
 
-See `examples/qwen-image/basic/base-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/basic/base-config.dgen>`_,
-`examples/qwen-image/img2img/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/img2img/config.dgen>`_,
-and `examples/qwen-image/inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/inpaint/config.dgen>`_.
+See `examples/qwen_image/basic/base-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/basic/base-config.dgen>`_,
+`examples/qwen_image/img2img/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/img2img/config.dgen>`_,
+and `examples/qwen_image/inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/inpaint/config.dgen>`_.
 
 The Lightning LoRA is a normal ``--loras`` load. It is trained at guidance 1 and 8 steps:
 
@@ -218,7 +218,7 @@ The Lightning LoRA is a normal ``--loras`` load. It is trained at guidance 1 and
     --inference-steps 8
     --guidance-scales 1
 
-See `examples/qwen-image/lora/lightning-8step-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/lora/lightning-8step-config.dgen>`_.
+See `examples/qwen_image/lora/lightning-8step-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/lora/lightning-8step-config.dgen>`_.
 
 A GGUF transformer uses the same ``--model-type``.
 
@@ -226,7 +226,7 @@ QuantStack files already use Diffusers tensor names. A Comfy file prefixed with 
 
 Edit uses this same module, so an edit GGUF keeps the Qwen-Image transformer config. Layered is detected separately, below.
 
-See `examples/qwen-image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/qwen-image/gguf>`_.
+See `examples/qwen_image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/qwen_image/gguf>`_.
 
 ControlNet stays ``--model-type qwen-image`` with ``--control-nets``. More than one ControlNet is allowed.
 
@@ -240,8 +240,8 @@ Union ControlNets have ``extra_condition_channels=0`` and cannot be used with a 
 
 ``start`` and ``end`` are passed through. ``scale=1`` matches the pipeline default.
 
-See `examples/qwen-image/controlnet/canny-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/controlnet/canny-config.dgen>`_
-and `examples/qwen-image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/controlnet/inpaint-config.dgen>`_.
+See `examples/qwen_image/controlnet/canny-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/controlnet/canny-config.dgen>`_
+and `examples/qwen_image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/controlnet/inpaint-config.dgen>`_.
 
 Qwen-Image 2.1
 ~~~~~~~~~~~~~~
@@ -264,12 +264,12 @@ Qwen-Image 2.1 also supports LoRAs, a GGUF transformer through ``--transformer``
 
 ``--max-sequence-length`` is not supported.
 
-* `Basic text-to-image <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/basic/config.dgen>`_
-* `Image-conditioned generation <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/image-conditioned/config.dgen>`_
-* `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/turbo/config.dgen>`_
-* `LoRA <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/lora/config.dgen>`_
-* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image-21/gguf/transformer-config.dgen>`_
-* `Cooperative denoising <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/latents_interchange/qwen-image-21/cooperative-denoising-config.dgen>`_
+* `Basic text-to-image <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image_21/basic/config.dgen>`_
+* `Image-conditioned generation <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image_21/image_conditioned/config.dgen>`_
+* `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image_21/turbo/config.dgen>`_
+* `LoRA <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image_21/lora/config.dgen>`_
+* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image_21/gguf/transformer-config.dgen>`_
+* `Cooperative denoising <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/latents_interchange/qwen_image_21/cooperative-denoising-config.dgen>`_
 
 Krea 2
 ~~~~~~
@@ -308,9 +308,9 @@ Kandinsky 5 Image supports PyTorch latent output and input, and FlowMatch cooper
 
 There is no Kandinsky 5 Image GGUF example yet. The Kandinsky 5 Video GGUF is a different transformer and is not an image example.
 
-* `Text-to-image <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/text-to-image/config.dgen>`_
-* `Image editing <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/image-edit/config.dgen>`_
-* `Kandinsky 5 Image cooperative denoising <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/latents_interchange/kandinsky5-image/cooperative-denoising-config.dgen>`_
+* `Text-to-image <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/text_to_image/config.dgen>`_
+* `Image editing <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/image_edit/config.dgen>`_
+* `Kandinsky 5 Image cooperative denoising <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/latents_interchange/kandinsky5_image/cooperative-denoising-config.dgen>`_
 
 Qwen-Image Edit
 ~~~~~~~~~~~~~~~
@@ -326,9 +326,9 @@ required. There is no strength.
 
 ``--guidance-scales`` is still true CFG.
 
-See `examples/qwen-image/edit/base-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/edit/base-config.dgen>`_,
-`examples/qwen-image/edit-plus/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/edit-plus/config.dgen>`_,
-and `examples/qwen-image/edit-inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/edit-inpaint/config.dgen>`_.
+See `examples/qwen_image/edit/base-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/edit/base-config.dgen>`_,
+`examples/qwen_image/edit_plus/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/edit_plus/config.dgen>`_,
+and `examples/qwen_image/edit_inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/edit_inpaint/config.dgen>`_.
 
 Qwen-Image Layered
 ~~~~~~~~~~~~~~~~~~
@@ -339,8 +339,8 @@ Qwen-Image Layered
 
 The layered transformer has an extra ``addition_t_embedding`` and 3D position embeddings. A layered GGUF is recognized from that embedding and loaded with the layered config. A Qwen-Image GGUF is not a substitute.
 
-See `examples/qwen-image/layered/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/layered/config.dgen>`_
-and `examples/qwen-image/gguf/layered-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/gguf/layered-config.dgen>`_.
+See `examples/qwen_image/layered/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/layered/config.dgen>`_
+and `examples/qwen_image/gguf/layered-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/gguf/layered-config.dgen>`_.
 
 HunyuanImage 2.1
 ~~~~~~~~~~~~~~~~
@@ -353,8 +353,8 @@ The distilled checkpoint stays ``hyimage-21`` and uses guidance 3.25 as distille
 
 ``--model-type hyimage-21-refiner`` is ``hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers``. Its image seed is a condition image, with no strength. The example uses 4 steps and guidance 3.25.
 
-See `examples/hyimage-21/basic/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyimage-21/basic/config.dgen>`_
-and `examples/hyimage-21/refiner/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyimage-21/refiner/config.dgen>`_.
+See `examples/hyimage_21/basic/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyimage_21/basic/config.dgen>`_
+and `examples/hyimage_21/refiner/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyimage_21/refiner/config.dgen>`_.
 
 Other call arguments
 --------------------

@@ -1,0 +1,33 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LTX-2 19B dev transformer as a Comfy GGUF. The parent is Lightricks/LTX-2,
+# which supplies Gemma 3, the 2-layer text connectors, and the video and audio
+# VAEs. This is not LTX-2.5: that checkpoint is Gemma 4 and a different
+# connector stack. The file has audio_patchify_proj and no keyframe embedding
+# or prompt AdaLN, so a single-file load selects the same repository.
+
+# The published scheduler already uses dynamic shifting with shift-terminal
+# 0.1, so --inference-steps applies. Video guidance 4 and audio guidance 4.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2
+--model-type ltx2
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Kijai/LTXV2_comfy/blob/main/diffusion_models/ltx-2-19b-dev_Q4_K_M.gguf
+--inference-steps 30
+--guidance-scales 4
+--ltx-audio-guidance-scales 4
+--gen-seeds 1
+--output-size 640x384
+--video-lengths 2
+--animation-format mp4
+--output-path ltx2-gguf-dev
+--prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."

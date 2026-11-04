@@ -58,10 +58,10 @@ between CPU and GPU. ``--model-cpu-offload`` and ``--model-group-offload`` are
 also available. ``--torch-compile`` compiles the repeated transformer blocks;
 the first run can take longer while compilation happens.
 
-* `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/text-to-video/config.dgen>`_
-* `4-step LoRA <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/lora/lightx2v-4step-config.dgen>`_
-* `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/image-to-video/config.dgen>`_
-* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo-15/gguf/text-to-video-config.dgen>`_
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo_15/text_to_video/config.dgen>`_
+* `4-step LoRA <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo_15/lora/lightx2v-4step-config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo_15/image_to_video/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyvideo_15/gguf/text-to-video-config.dgen>`_
 
 Motif-Video
 -----------
@@ -90,10 +90,10 @@ The standard examples use ``bfloat16``, sequential CPU offload, 50 steps, and
 transformer can be used with either text-to-video or image-to-video while
 keeping the parent Diffusers repository as the model path.
 
-* `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/text-to-video/config.dgen>`_
-* `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/image-to-video/config.dgen>`_
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/text_to_video/config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/image_to_video/config.dgen>`_
 * `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/gguf/text-to-video-config.dgen>`_
-* `I2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/image-to-video-gguf/config.dgen>`_
+* `GGUF as the model <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/gguf/as-model-config.dgen>`_
 
 Kandinsky 5.0 Video
 -------------------
@@ -119,9 +119,9 @@ object-rotation LoRAs for T2V Lite/Pro and I2V Lite/Pro; preserve each LoRA's
 trigger phrase in the prompt. GGUF is currently demonstrated for T2V only; a
 compatible I2V GGUF checkpoint is not provided in these examples.
 
-* `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/text-to-video/config.dgen>`_
-* `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/image-to-video/config.dgen>`_
-* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/text-to-video-gguf/config.dgen>`_
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/text_to_video/config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/image_to_video/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/text_to_video_gguf/config.dgen>`_
 * `Kandinsky 5 video LoRA examples <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/kandinsky5/lora>`_
 
 For all three model types, ``--transformer`` replaces only the denoising
@@ -135,6 +135,20 @@ LTX-2.5 (``ltx2``)
 ------------------
 
 Repository: ``Lightricks/LTX-2.5-Diffusers``.
+
+The same ``--model-type ltx2`` also runs the original 19B checkpoint,
+``Lightricks/LTX-2``. Use that repository for a named 19B, LTX-2.0, or
+Gemma 3 checkpoint. The 19B repository supplies Gemma 3, the 2-layer text
+connectors, and the video and audio VAEs. It has no duration head. Its
+scheduler already uses dynamic shifting. A Comfy GGUF of the 19B dev or
+distilled transformer is ``--transformer``, or the model path. The file is
+told apart from LTX-2.5 by the absence of ``keyframes_abs_pos_embedding``
+and ``prompt_adaln_single``. The distilled 19B file needs
+``--scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=false``
+so the 8-value sigma table is used. See
+`examples/ltx2/gguf/ltx2-dev-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/gguf/ltx2-dev-config.dgen>`_
+and
+`examples/ltx2/gguf/ltx2-distilled-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/gguf/ltx2-distilled-config.dgen>`_.
 
 * No image seed is text to video. Omitting ``--video-lengths`` lets the model's duration head choose the length.
 * One image is the first frame.
@@ -201,12 +215,13 @@ These options are rejected: ``--ltx-audio-guidance-scales``,
 
 The Console UI recipes are ``LTX-Video`` and ``LTX-Video (GGUF)``.
 
-* `examples/ltx_video/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/text-to-video-config.dgen>`_
-* `examples/ltx_video/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/image-to-video-config.dgen>`_
-* `examples/ltx_video/video-extension-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/video-extension-config.dgen>`_
-* `examples/ltx_video/lora-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/lora-config.dgen>`_
-* `examples/ltx_video/gguf-text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/gguf-text-to-video-config.dgen>`_
-* `examples/ltx_video/gguf-image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/gguf-image-to-video-config.dgen>`_
+* `examples/ltx_video/basic/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/basic/text-to-video-config.dgen>`_
+* `examples/ltx_video/image_conditioning/first-frame-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/image_conditioning/first-frame-config.dgen>`_
+* `examples/ltx_video/video_conditioning/video-extension-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/video_conditioning/video-extension-config.dgen>`_
+* `examples/ltx_video/lora/crush-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/lora/crush-config.dgen>`_
+* `examples/ltx_video/gguf/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/gguf/text-to-video-config.dgen>`_
+* `examples/ltx_video/gguf/first-frame-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/gguf/first-frame-config.dgen>`_
+* `examples/ltx_video/gguf/text-encoder-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/gguf/text-encoder-config.dgen>`_
 
 Video conditioning
 ------------------
@@ -288,7 +303,7 @@ Partial strength on a chosen latent frame is described under `Condition placemen
 
 See `examples/ltx2/video_conditioning <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/video_conditioning>`_,
 `examples/ltx2/image_conditioning <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/image_conditioning>`_,
-and `examples/ltx_video/video-extension-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/video-extension-config.dgen>`_.
+and `examples/ltx_video/video_conditioning/video-extension-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/video_conditioning/video-extension-config.dgen>`_.
 
 IC-LoRA control
 ---------------
@@ -485,7 +500,7 @@ See `examples/ltx2/full_transformer/text-to-video-config.dgen <https://github.co
 ``--loras`` loads diffusers-format adapters onto that transformer and fuses them, including
 ``--lora-fuse-scale`` and each URI ``scale``. IC-LoRAs load with ``--ltx-ic-lora`` instead, see `IC-LoRA control`_.
 See `examples/ltx2/lora/cinemagraph-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/lora/cinemagraph-config.dgen>`_
-and `examples/ltx_video/lora-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/lora-config.dgen>`_.
+and `examples/ltx_video/lora/crush-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/lora/crush-config.dgen>`_.
 
 Two-stage generation
 ~~~~~~~~~~~~~~~~~~~~
@@ -664,8 +679,10 @@ Seed processors are limited to two chains, and
 control processors to one.
 ``--quantizer-map`` may only name ``transformer``, ``text_encoder``, or ``connectors``.
 
-LTX-2.5 configs are in `examples/ltx2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2>`_,
-including a distilled Comfy GGUF under `examples/ltx2/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/gguf>`_.
+LTX-2 and LTX-2.5 configs are in `examples/ltx2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2>`_,
+including Comfy GGUFs under `examples/ltx2/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/gguf>`_
+and pre-quantized Gemma 4 text encoders under
+`examples/ltx2/comfy_quant <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/comfy_quant>`_.
 LTX-Video configs are in `examples/ltx_video <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx_video>`_.
 
 Wan (2.1 / 2.2)
@@ -895,7 +912,7 @@ checkpoint default, or ``null`` to skip a slot. Wan 2.2 has that same one
 UMT5 encoder. See
 `examples/wan/gguf/text-encoder-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/gguf/text-encoder-wan22-config.dgen>`_
 and
-`examples/wan/comfy-quant/text-encoder-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/comfy-quant/text-encoder-wan22-config.dgen>`_.
+`examples/wan/comfy_quant/text-encoder-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/wan/comfy_quant/text-encoder-wan22-config.dgen>`_.
 ``--loras`` loads a Diffusers
 LoRA onto the transformer. ``component=transformer_2`` loads one LoRA onto the
 Wan 2.2 low-noise expert instead, so a high-noise and low-noise pair can be

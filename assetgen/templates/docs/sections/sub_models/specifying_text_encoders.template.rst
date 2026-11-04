@@ -167,8 +167,22 @@ Language model text encoders, such as ``Qwen3ForCausalLM`` (Flux.2 Klein),
 single ``.safetensors`` or ``.gguf`` file, with no ``mode`` or ``subfolder``. The model
 configuration is matched from the file. A ComfyUI file trimmed to fewer decoder layers
 than the full model, such as the Flux.2 Mistral encoder, builds that many layers.
-The original LTX-2 single-file checkpoints, including ``ltx-2-19b-dev-fp8`` and the
-ComfyUI Gemma 3 files, are not supported.
+LTX-2.5's pre-quantized Gemma 4 encoder is that class pointed at
+``gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf``,
+``gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors``, or an NVFP4
+file of the same layout. The file is already quantized. Do not set
+``quantizer``. Connector tensors packed into the file are ignored; the
+pipeline repository still supplies the connectors. On the dev transformer,
+keep dynamic shifting, 30 steps, guidance 3, audio guidance 7, STG 1 on
+block 28, and modality guidance 3. LTX-2's pre-quantized
+Gemma 3 encoder is ``Gemma3ForConditionalGeneration`` pointed at
+``gemma_3_12B_it_fp8_scaled.safetensors`` or
+``gemma_3_12B_it_fp4_mixed.safetensors`` from ``Comfy-Org/ltx-2``. The file
+is already quantized. Do not set ``quantizer``. The parent is
+``Lightricks/LTX-2``. On the 19B dev transformer, keep 30 steps, guidance 4,
+and audio guidance 4; that parent scheduler already uses dynamic shifting.
+The original all-in-one LTX-2 checkpoints, including
+``ltx-2-19b-dev-fp8``, are not supported.
 
 ``T5EncoderModel`` and ``UMT5EncoderModel`` load the same way from a ``.gguf`` file or
 from a monolithic ``.safetensors`` file. A GGUF file uses llama.cpp tensor names; those
@@ -184,66 +198,86 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
 
 @EXAMPLE[@PROJECT_DIR/examples/flux/gguf/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/flux/comfy-quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/flux/comfy_quant/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/stablediffusion3/comfy-quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/stablediffusion3/comfy_quant/text-encoder-config.dgen]
 
 @EXAMPLE[@PROJECT_DIR/examples/ltx_video/gguf/text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/comfy_quant/ltx25-distilled-text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/comfy_quant/ltx25-distilled-text-encoder-nvfp4-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/gguf/ltx25-distilled-text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/gguf/ltx25-dev-text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/comfy_quant/ltx25-dev-text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/comfy_quant/ltx25-dev-text-encoder-nvfp4-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/gguf/ltx2-distilled-text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/gguf/ltx2-distilled-text-encoder-fp4-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/gguf/ltx2-dev-text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/ltx2/gguf/ltx2-dev-text-encoder-fp4-config.dgen]
 
 @EXAMPLE[@PROJECT_DIR/examples/wan/gguf/text-encoder-config.dgen]
 
 @EXAMPLE[@PROJECT_DIR/examples/wan/gguf/text-encoder-wan22-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/wan/comfy-quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/wan/comfy_quant/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/wan/comfy-quant/text-encoder-wan22-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/wan/comfy_quant/text-encoder-wan22-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/qwen-image/comfy-quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/qwen_image/comfy_quant/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/qwen-image/comfy-quant/text-encoder-nvfp4-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/qwen_image/comfy_quant/text-encoder-nvfp4-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy-quant/dev-text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy_quant/dev-text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy-quant/dev-text-encoder-fp4-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy_quant/dev-text-encoder-fp4-config.dgen]
 
 @EXAMPLE[@PROJECT_DIR/examples/krea2/gguf/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/krea2/comfy-quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/krea2/comfy_quant/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/qwen-image-21/gguf/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/qwen_image_21/gguf/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/qwen-image-21/comfy-quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/qwen_image_21/comfy_quant/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/qwen-image-21/comfy-quant/text-encoder-w4a8-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/qwen_image_21/comfy_quant/text-encoder-w4a8-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/qwen-image/comfy-quant/edit-text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/qwen_image/comfy_quant/edit-text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/qwen-image/comfy-quant/edit-text-encoder-nvfp4-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/qwen_image/comfy_quant/edit-text-encoder-nvfp4-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/z-image/comfy-quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/z_image/comfy_quant/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/z-image/comfy-quant/text-encoder-fp4-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/z_image/comfy_quant/text-encoder-fp4-config.dgen]
 
 @EXAMPLE[@PROJECT_DIR/examples/flux2/gguf/klein-9b-text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy-quant/klein-9b-text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy_quant/klein-9b-text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy-quant/klein-9b-text-encoder-fp4-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/flux2/comfy_quant/klein-9b-text-encoder-fp4-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/kandinsky5/comfy-quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/kandinsky5/comfy_quant/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/kandinsky5/comfy-quant/text-encoder-nvfp4-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/kandinsky5/comfy_quant/text-encoder-nvfp4-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/hyvideo-15/comfy-quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/hyvideo_15/comfy_quant/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/hyvideo-15/comfy-quant/text-encoder-nvfp4-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/hyvideo_15/comfy_quant/text-encoder-nvfp4-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/hyvideo-15/gguf/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/hyvideo_15/gguf/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/hyimage-21/gguf/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/hyimage_21/gguf/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/hyimage-21/comfy_quant/text-encoder-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/hyimage_21/comfy_quant/text-encoder-config.dgen]
 
-@EXAMPLE[@PROJECT_DIR/examples/hyimage-21/comfy_quant/text-encoder-nvfp4-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/hyimage_21/comfy_quant/text-encoder-nvfp4-config.dgen]
 
 @EXAMPLE[@PROJECT_DIR/examples/stablediffusion3/singlefile/clip-L-G-T5-XXL-monolithic-config.dgen]

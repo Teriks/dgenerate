@@ -437,7 +437,9 @@ Refiner: hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers, --model-type
 the same offload. Distilled: hunyuanvideo-community/HunyuanImage-2.1-Distilled-Diffusers, \
 still --model-type hyimage-21.
 - DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
-- Animate a still or make a clip: Lightricks/LTX-2.5-Diffusers, --model-type ltx2, \
+- Animate a still or make a clip. When the user says ltx2, LTX-2, or LTX, use the LTX-2.5 recipes. \
+Use Lightricks/LTX-2 and Gemma 3 only when they name 19B, LTX-2.0, or Gemma 3. \
+Lightricks/LTX-2.5-Diffusers, --model-type ltx2, \
 --guidance-scales 1, --video-fps 24, --model-sequential-offload, --animation-format mp4. \
 Gated, needs HF_TOKEN. Clip length and frame rate are --video-lengths (seconds) and --video-fps. \
 --video-lengths snaps to 8k+1 frames. Width and height must be divisible by 32. \
@@ -452,7 +454,27 @@ Distilled GGUF: --transformer https://huggingface.co/realrebelai/LTX-2.5_GGUFs/b
 guidance 1, and no --inference-steps. The parent repo stays Lightricks/LTX-2.5-Diffusers. \
 Dev (full) GGUF: --transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF/blob/main/dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf, \
 guidance 3, audio guidance 7, STG 1 on block 28, modality 3, and \
---scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1 with --inference-steps 30.
+--scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1 with --inference-steps 30. \
+LTX-2.5 Gemma 4 text encoder is already quantized: --text-encoders \
+"Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF/blob/main/gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf". \
+Do not set quantizer. INT8 ConvRot of the same encoder: \
+https://huggingface.co/Lightricks/LTX-2.5/blob/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors. \
+NVFP4 of the same encoder: \
+https://huggingface.co/DmitryDB/LTX-2.5-ComfyUI-Quants/blob/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-nvfp4.safetensors. \
+The parent stays Lightricks/LTX-2.5-Diffusers. Connector tensors inside the encoder file are ignored. \
+Use that same encoder with the dev transformer. Keep the dev scheduler, 30 steps, guidance 3, audio guidance 7, STG 1 on block 28, and modality 3. \
+LTX-2 19B is not LTX-2.5. Parent Lightricks/LTX-2 supplies Gemma 3 and the 2-layer connectors. \
+keyframes_abs_pos_embedding or prompt_adaln_single selects the 2.5 repo. audio_patchify_proj without those selects Lightricks/LTX-2. \
+Dev GGUF: --transformer https://huggingface.co/Kijai/LTXV2_comfy/blob/main/diffusion_models/ltx-2-19b-dev_Q4_K_M.gguf, \
+--inference-steps 30, guidance 4, audio guidance 4. The parent scheduler already uses dynamic shifting. \
+Distilled GGUF: --transformer https://huggingface.co/Kijai/LTXV2_comfy/blob/main/diffusion_models/ltx-2-19b-distilled_Q4_K_M.gguf, \
+--scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=false, guidance 1, and no --inference-steps. \
+Gemma 3 text encoder, already quantized, class Gemma3ForConditionalGeneration, no quantizer: \
+https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp8_scaled.safetensors. \
+FP4 of that encoder: \
+https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors. \
+The parent stays Lightricks/LTX-2. \
+Use that same Gemma 3 encoder with the 19B dev GGUF. Keep 30 steps, guidance 4, and audio guidance 4, and leave the parent scheduler as-is.
 - Wan video: Wan-AI/Wan2.1-T2V-1.3B-Diffusers, --model-type wan, --dtype bfloat16, \
 --guidance-scales 5, --video-fps 16, --output-size 832x480, --animation-format mp4. \
 Public, no HF_TOKEN. --video-lengths is seconds and snaps to 4k+1 frames \

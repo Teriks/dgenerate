@@ -1,16 +1,17 @@
 .. _Releases_Page: https://github.com/Teriks/dgenerate/releases
 .. _examples/ltx2: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx2
-.. _examples/ltx_video/video-extension-config.dgen: https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/video-extension-config.dgen
-.. _examples/ltx_video/lora-config.dgen: https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/lora-config.dgen
+.. _examples/ltx_video/video_conditioning/video-extension-config.dgen: https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/video_conditioning/video-extension-config.dgen
+.. _examples/ltx_video/lora/crush-config.dgen: https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/lora/crush-config.dgen
 .. _examples/ltx2/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx2/gguf
+.. _examples/ltx2/comfy_quant: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx2/comfy_quant
 .. _examples/wan_animate: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan_animate
 .. _examples/wan_animate_2: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan_animate_2
 .. _examples/wan/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan/gguf
 .. _examples/adetailer/post_processor: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/adetailer/post_processor
-.. _examples/qwen-image/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/qwen-image/gguf
+.. _examples/qwen_image/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/qwen_image/gguf
 .. _examples/flux/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/flux/gguf
 .. _examples/flux2/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/flux2/gguf
-.. _examples/z-image/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/z-image/gguf
+.. _examples/z_image/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/z_image/gguf
 .. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/version_6.0.0/examples/media/vermeer_canny_edged.png
 .. _Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy: https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF
 .. _heretic_MiniCPM-V_4.6: https://huggingface.co/heretic-org/MiniCPM-V-4.6-heretic
@@ -4830,10 +4831,10 @@ between CPU and GPU. ``--model-cpu-offload`` and ``--model-group-offload`` are
 also available. ``--torch-compile`` compiles the repeated transformer blocks;
 the first run can take longer while compilation happens.
 
-* `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/text-to-video/config.dgen>`_
-* `4-step LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/lora/lightx2v-4step-config.dgen>`_
-* `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/image-to-video/config.dgen>`_
-* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo-15/gguf/text-to-video-config.dgen>`_
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo_15/text_to_video/config.dgen>`_
+* `4-step LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo_15/lora/lightx2v-4step-config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo_15/image_to_video/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo_15/gguf/text-to-video-config.dgen>`_
 
 Motif-Video
 -----------
@@ -4862,10 +4863,10 @@ The standard examples use ``bfloat16``, sequential CPU offload, 50 steps, and
 transformer can be used with either text-to-video or image-to-video while
 keeping the parent Diffusers repository as the model path.
 
-* `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/text-to-video/config.dgen>`_
-* `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/image-to-video/config.dgen>`_
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/text_to_video/config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/image_to_video/config.dgen>`_
 * `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/gguf/text-to-video-config.dgen>`_
-* `I2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/image-to-video-gguf/config.dgen>`_
+* `GGUF as the model <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/gguf/as-model-config.dgen>`_
 
 Kandinsky 5.0 Video
 -------------------
@@ -4891,9 +4892,9 @@ object-rotation LoRAs for T2V Lite/Pro and I2V Lite/Pro; preserve each LoRA's
 trigger phrase in the prompt. GGUF is currently demonstrated for T2V only; a
 compatible I2V GGUF checkpoint is not provided in these examples.
 
-* `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text-to-video/config.dgen>`_
-* `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/image-to-video/config.dgen>`_
-* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text-to-video-gguf/config.dgen>`_
+* `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text_to_video/config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/image_to_video/config.dgen>`_
+* `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text_to_video_gguf/config.dgen>`_
 * `Kandinsky 5 video LoRA examples <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/kandinsky5/lora>`_
 
 For all three model types, ``--transformer`` replaces only the denoising
@@ -4907,6 +4908,20 @@ LTX-2.5 (``ltx2``)
 ------------------
 
 Repository: ``Lightricks/LTX-2.5-Diffusers``.
+
+The same ``--model-type ltx2`` also runs the original 19B checkpoint,
+``Lightricks/LTX-2``. Use that repository for a named 19B, LTX-2.0, or
+Gemma 3 checkpoint. The 19B repository supplies Gemma 3, the 2-layer text
+connectors, and the video and audio VAEs. It has no duration head. Its
+scheduler already uses dynamic shifting. A Comfy GGUF of the 19B dev or
+distilled transformer is ``--transformer``, or the model path. The file is
+told apart from LTX-2.5 by the absence of ``keyframes_abs_pos_embedding``
+and ``prompt_adaln_single``. The distilled 19B file needs
+``--scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=false``
+so the 8-value sigma table is used. See
+`examples/ltx2/gguf/ltx2-dev-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/gguf/ltx2-dev-config.dgen>`_
+and
+`examples/ltx2/gguf/ltx2-distilled-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/gguf/ltx2-distilled-config.dgen>`_.
 
 * No image seed is text to video. Omitting ``--video-lengths`` lets the model's duration head choose the length.
 * One image is the first frame.
@@ -4973,12 +4988,13 @@ These options are rejected: ``--ltx-audio-guidance-scales``,
 
 The Console UI recipes are ``LTX-Video`` and ``LTX-Video (GGUF)``.
 
-* `examples/ltx_video/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/text-to-video-config.dgen>`_
-* `examples/ltx_video/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/image-to-video-config.dgen>`_
-* `examples/ltx_video/video-extension-config.dgen <examples/ltx_video/video-extension-config.dgen_>`_
-* `examples/ltx_video/lora-config.dgen <examples/ltx_video/lora-config.dgen_>`_
-* `examples/ltx_video/gguf-text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/gguf-text-to-video-config.dgen>`_
-* `examples/ltx_video/gguf-image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/gguf-image-to-video-config.dgen>`_
+* `examples/ltx_video/basic/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/basic/text-to-video-config.dgen>`_
+* `examples/ltx_video/image_conditioning/first-frame-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/image_conditioning/first-frame-config.dgen>`_
+* `examples/ltx_video/video_conditioning/video-extension-config.dgen <examples/ltx_video/video_conditioning/video-extension-config.dgen_>`_
+* `examples/ltx_video/lora/crush-config.dgen <examples/ltx_video/lora/crush-config.dgen_>`_
+* `examples/ltx_video/gguf/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/gguf/text-to-video-config.dgen>`_
+* `examples/ltx_video/gguf/first-frame-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/gguf/first-frame-config.dgen>`_
+* `examples/ltx_video/gguf/text-encoder-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/gguf/text-encoder-config.dgen>`_
 
 Video conditioning
 ------------------
@@ -5060,7 +5076,7 @@ Partial strength on a chosen latent frame is described under `Condition placemen
 
 See `examples/ltx2/video_conditioning <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx2/video_conditioning>`_,
 `examples/ltx2/image_conditioning <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx2/image_conditioning>`_,
-and `examples/ltx_video/video-extension-config.dgen <examples/ltx_video/video-extension-config.dgen_>`_.
+and `examples/ltx_video/video_conditioning/video-extension-config.dgen <examples/ltx_video/video_conditioning/video-extension-config.dgen_>`_.
 
 IC-LoRA control
 ---------------
@@ -5257,7 +5273,7 @@ See `examples/ltx2/full_transformer/text-to-video-config.dgen <https://github.co
 ``--loras`` loads diffusers-format adapters onto that transformer and fuses them, including
 ``--lora-fuse-scale`` and each URI ``scale``. IC-LoRAs load with ``--ltx-ic-lora`` instead, see `IC-LoRA control`_.
 See `examples/ltx2/lora/cinemagraph-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/lora/cinemagraph-config.dgen>`_
-and `examples/ltx_video/lora-config.dgen <examples/ltx_video/lora-config.dgen_>`_.
+and `examples/ltx_video/lora/crush-config.dgen <examples/ltx_video/lora/crush-config.dgen_>`_.
 
 Two-stage generation
 ~~~~~~~~~~~~~~~~~~~~
@@ -5436,8 +5452,10 @@ Seed processors are limited to two chains, and
 control processors to one.
 ``--quantizer-map`` may only name ``transformer``, ``text_encoder``, or ``connectors``.
 
-LTX-2.5 configs are in `examples/ltx2 <examples/ltx2_>`_,
-including a distilled Comfy GGUF under `examples/ltx2/gguf <examples/ltx2/gguf_>`_.
+LTX-2 and LTX-2.5 configs are in `examples/ltx2 <examples/ltx2_>`_,
+including Comfy GGUFs under `examples/ltx2/gguf <examples/ltx2/gguf_>`_
+and pre-quantized Gemma 4 text encoders under
+`examples/ltx2/comfy_quant <examples/ltx2/comfy_quant_>`_.
 LTX-Video configs are in `examples/ltx_video <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx_video>`_.
 
 Wan (2.1 / 2.2)
@@ -5667,7 +5685,7 @@ checkpoint default, or ``null`` to skip a slot. Wan 2.2 has that same one
 UMT5 encoder. See
 `examples/wan/gguf/text-encoder-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/gguf/text-encoder-wan22-config.dgen>`_
 and
-`examples/wan/comfy-quant/text-encoder-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/comfy-quant/text-encoder-wan22-config.dgen>`_.
+`examples/wan/comfy_quant/text-encoder-wan22-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/wan/comfy_quant/text-encoder-wan22-config.dgen>`_.
 ``--loras`` loads a Diffusers
 LoRA onto the transformer. ``component=transformer_2`` loads one LoRA onto the
 Wan 2.2 low-noise expert instead, so a high-noise and low-noise pair can be
@@ -5833,7 +5851,7 @@ There is no guidance scale, no inpaint, and no ControlNet. Four steps is the sho
 
 A GGUF of this transformer is also width 4096, so it uses the Klein 9B module config.
 
-See `examples/flux2/klein-kv/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein-kv/config.dgen>`_
+See `examples/flux2/klein_kv/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein_kv/config.dgen>`_
 and `examples/flux2/gguf/klein-kv-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/gguf/klein-kv-config.dgen>`_.
 
 Z-Image
@@ -5868,7 +5886,7 @@ A GGUF transformer stays on ``--model-type z-image``. The parent repository supp
 
 Base and Turbo share one transformer shape, so a base GGUF still uses the Turbo module config. Sampling stays with the checkpoint: Turbo is 8 steps and guidance 0, base is the longer schedule.
 
-See `examples/z-image <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/z-image>`_.
+See `examples/z_image <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/z_image>`_.
 
 ControlNet unions are ``--control-nets`` on ``z-image`` only, one model.
 
@@ -5906,9 +5924,9 @@ True CFG runs when ``--guidance-scales`` is above 1. A negative prompt is option
 
 Img2img and inpaint strength default to 0.6. The inpaint mask is packed and concatenated with the latents.
 
-See `examples/qwen-image/basic/base-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/basic/base-config.dgen>`_,
-`examples/qwen-image/img2img/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/img2img/config.dgen>`_,
-and `examples/qwen-image/inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/inpaint/config.dgen>`_.
+See `examples/qwen_image/basic/base-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/basic/base-config.dgen>`_,
+`examples/qwen_image/img2img/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/img2img/config.dgen>`_,
+and `examples/qwen_image/inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/inpaint/config.dgen>`_.
 
 The Lightning LoRA is a normal ``--loras`` load. It is trained at guidance 1 and 8 steps:
 
@@ -5918,7 +5936,7 @@ The Lightning LoRA is a normal ``--loras`` load. It is trained at guidance 1 and
     --inference-steps 8
     --guidance-scales 1
 
-See `examples/qwen-image/lora/lightning-8step-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/lora/lightning-8step-config.dgen>`_.
+See `examples/qwen_image/lora/lightning-8step-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/lora/lightning-8step-config.dgen>`_.
 
 A GGUF transformer uses the same ``--model-type``.
 
@@ -5926,7 +5944,7 @@ QuantStack files already use Diffusers tensor names. A Comfy file prefixed with 
 
 Edit uses this same module, so an edit GGUF keeps the Qwen-Image transformer config. Layered is detected separately, below.
 
-See `examples/qwen-image/gguf <examples/qwen-image/gguf_>`_.
+See `examples/qwen_image/gguf <examples/qwen_image/gguf_>`_.
 
 ControlNet stays ``--model-type qwen-image`` with ``--control-nets``. More than one ControlNet is allowed.
 
@@ -5940,8 +5958,8 @@ Union ControlNets have ``extra_condition_channels=0`` and cannot be used with a 
 
 ``start`` and ``end`` are passed through. ``scale=1`` matches the pipeline default.
 
-See `examples/qwen-image/controlnet/canny-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/canny-config.dgen>`_
-and `examples/qwen-image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/controlnet/inpaint-config.dgen>`_.
+See `examples/qwen_image/controlnet/canny-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/controlnet/canny-config.dgen>`_
+and `examples/qwen_image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/controlnet/inpaint-config.dgen>`_.
 
 Qwen-Image 2.1
 ~~~~~~~~~~~~~~
@@ -5964,12 +5982,12 @@ Qwen-Image 2.1 also supports LoRAs, a GGUF transformer through ``--transformer``
 
 ``--max-sequence-length`` is not supported.
 
-* `Basic text-to-image <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/basic/config.dgen>`_
-* `Image-conditioned generation <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/image-conditioned/config.dgen>`_
-* `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/turbo/config.dgen>`_
-* `LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/lora/config.dgen>`_
-* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image-21/gguf/transformer-config.dgen>`_
-* `Cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/qwen-image-21/cooperative-denoising-config.dgen>`_
+* `Basic text-to-image <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image_21/basic/config.dgen>`_
+* `Image-conditioned generation <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image_21/image_conditioned/config.dgen>`_
+* `Turbo checkpoint <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image_21/turbo/config.dgen>`_
+* `LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image_21/lora/config.dgen>`_
+* `GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image_21/gguf/transformer-config.dgen>`_
+* `Cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/qwen_image_21/cooperative-denoising-config.dgen>`_
 
 Krea 2
 ~~~~~~
@@ -6008,9 +6026,9 @@ Kandinsky 5 Image supports PyTorch latent output and input, and FlowMatch cooper
 
 There is no Kandinsky 5 Image GGUF example yet. The Kandinsky 5 Video GGUF is a different transformer and is not an image example.
 
-* `Text-to-image <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text-to-image/config.dgen>`_
-* `Image editing <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/image-edit/config.dgen>`_
-* `Kandinsky 5 Image cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/kandinsky5-image/cooperative-denoising-config.dgen>`_
+* `Text-to-image <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text_to_image/config.dgen>`_
+* `Image editing <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/image_edit/config.dgen>`_
+* `Kandinsky 5 Image cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/kandinsky5_image/cooperative-denoising-config.dgen>`_
 
 Qwen-Image Edit
 ~~~~~~~~~~~~~~~
@@ -6026,9 +6044,9 @@ required. There is no strength.
 
 ``--guidance-scales`` is still true CFG.
 
-See `examples/qwen-image/edit/base-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit/base-config.dgen>`_,
-`examples/qwen-image/edit-plus/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit-plus/config.dgen>`_,
-and `examples/qwen-image/edit-inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/edit-inpaint/config.dgen>`_.
+See `examples/qwen_image/edit/base-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/edit/base-config.dgen>`_,
+`examples/qwen_image/edit_plus/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/edit_plus/config.dgen>`_,
+and `examples/qwen_image/edit_inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/edit_inpaint/config.dgen>`_.
 
 Qwen-Image Layered
 ~~~~~~~~~~~~~~~~~~
@@ -6039,8 +6057,8 @@ Qwen-Image Layered
 
 The layered transformer has an extra ``addition_t_embedding`` and 3D position embeddings. A layered GGUF is recognized from that embedding and loaded with the layered config. A Qwen-Image GGUF is not a substitute.
 
-See `examples/qwen-image/layered/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/layered/config.dgen>`_
-and `examples/qwen-image/gguf/layered-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen-image/gguf/layered-config.dgen>`_.
+See `examples/qwen_image/layered/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/layered/config.dgen>`_
+and `examples/qwen_image/gguf/layered-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/gguf/layered-config.dgen>`_.
 
 HunyuanImage 2.1
 ~~~~~~~~~~~~~~~~
@@ -6053,8 +6071,8 @@ The distilled checkpoint stays ``hyimage-21`` and uses guidance 3.25 as distille
 
 ``--model-type hyimage-21-refiner`` is ``hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers``. Its image seed is a condition image, with no strength. The example uses 4 steps and guidance 3.25.
 
-See `examples/hyimage-21/basic/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyimage-21/basic/config.dgen>`_
-and `examples/hyimage-21/refiner/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyimage-21/refiner/config.dgen>`_.
+See `examples/hyimage_21/basic/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyimage_21/basic/config.dgen>`_
+and `examples/hyimage_21/refiner/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyimage_21/refiner/config.dgen>`_.
 
 Other call arguments
 --------------------
@@ -8000,8 +8018,8 @@ ComfyUI layouts. See :ref:`gguf-checkpoints`,
 `examples/stablediffusion3/gguf <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/stablediffusion3/gguf>`_,
 `examples/flux/gguf <examples/flux/gguf_>`_,
 `examples/flux2/gguf <examples/flux2/gguf_>`_,
-`examples/z-image/gguf <examples/z-image/gguf_>`_,
-`examples/qwen-image/gguf <examples/qwen-image/gguf_>`_,
+`examples/z_image/gguf <examples/z_image/gguf_>`_,
+`examples/qwen_image/gguf <examples/qwen_image/gguf_>`_,
 and `examples/ltx2/gguf <examples/ltx2/gguf_>`_.
 
 A transformer-only file can also be the model itself. dgenerate reads the
@@ -8355,7 +8373,7 @@ match. The ``quantizer`` argument is not supported for these files.
     # Wan 2.1 T2V 14B with ComfyUI's scaled FP8 transformer and scaled FP8 UMT5.
     # UMT5 is a single file and needs no mode. Its linears stay packed, except
     # the feed-forward output projection, which T5 runs in float32.
-    # Same prompt as examples/wan/comfy-quant/text-to-video-fp8-scaled-config.dgen.
+    # Same prompt as examples/wan/comfy_quant/text-to-video-fp8-scaled-config.dgen.
     # ComfyUI does not publish a 4-bit UMT5. The Q4 file is
     # examples/wan/gguf/text-encoder-config.dgen.
     
@@ -8382,11 +8400,311 @@ match. The ``quantizer`` argument is not supported for these files.
     #! /usr/bin/env dgenerate --file
     #! dgenerate 6.0.0
     
+    # LTX-2.5 with Lightricks' INT8 ConvRot Gemma 4 text encoder. The class is
+    # Gemma4UnifiedForConditionalGeneration. The file is already quantized. Do
+    # not set quantizer. The parent repository still supplies the text connectors
+    # and both VAEs. Connector tensors packed into this file are ignored.
+    
+    # This is the distilled checkpoint. The published scheduler has no dynamic
+    # shifting, so it uses the distilled 8-value sigma table. Guidance stays at 1.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2.5-Diffusers
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors
+    --text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/Lightricks/LTX-2.5/blob/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors"
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx-comfy-quant-text-encoder
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2.5 with an NVFP4 Gemma 4 text encoder. The class is
+    # Gemma4UnifiedForConditionalGeneration. The file is already quantized. Do
+    # not set quantizer. NVFP4 matmuls need Blackwell; other devices decode the
+    # weights for the matmul. The parent repository still supplies the connectors.
+    
+    # This is the distilled checkpoint. Guidance stays at 1 and --inference-steps
+    # is omitted so the distilled sigma table is used.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2.5-Diffusers
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-nvfp4.safetensors
+    --text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/DmitryDB/LTX-2.5-ComfyUI-Quants/blob/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-nvfp4.safetensors"
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx-comfy-quant-text-encoder-nvfp4
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2.5 full (dev) INT8 ConvRot transformer with Lightricks' INT8 ConvRot
+    # Gemma 4 text encoder. The class is Gemma4UnifiedForConditionalGeneration.
+    # The encoder file is already quantized. Do not set quantizer. The parent
+    # repository still supplies the connectors and both VAEs.
+    
+    # The published scheduler is the distilled 8-value table and would ignore
+    # --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1 make
+    # the step count apply. Video guidance 3, audio guidance 7, STG 1 on block
+    # 28, and modality guidance 3.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2.5-Diffusers
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors
+    --text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/Lightricks/LTX-2.5/blob/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1
+    --inference-steps 30
+    --guidance-scales 3
+    --ltx-audio-guidance-scales 7
+    --ltx-stg-scales 1
+    --ltx-modality-scales 3
+    --ltx-stg-blocks 28
+    --guidance-rescales 0.7
+    --ltx-audio-guidance-rescales 0.7
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx25-comfy-quant-dev-text-encoder
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2.5 full (dev) INT8 ConvRot transformer with an NVFP4 Gemma 4 text
+    # encoder. The class is Gemma4UnifiedForConditionalGeneration. The encoder
+    # file is already quantized. Do not set quantizer. NVFP4 matmuls need
+    # Blackwell; other devices decode the weights for the matmul. The parent
+    # repository still supplies the connectors.
+    
+    # The published scheduler is the distilled 8-value table and would ignore
+    # --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1 make
+    # the step count apply. Video guidance 3, audio guidance 7, STG 1 on block
+    # 28, and modality guidance 3.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2.5-Diffusers
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors
+    --text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/DmitryDB/LTX-2.5-ComfyUI-Quants/blob/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-nvfp4.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1
+    --inference-steps 30
+    --guidance-scales 3
+    --ltx-audio-guidance-scales 7
+    --ltx-stg-scales 1
+    --ltx-modality-scales 3
+    --ltx-stg-blocks 28
+    --guidance-rescales 0.7
+    --ltx-audio-guidance-rescales 0.7
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx25-comfy-quant-dev-text-encoder-nvfp4
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2 19B with Comfy-Org's FP8 Gemma 3 text encoder. The class is
+    # Gemma3ForConditionalGeneration. The file is already quantized. Do not set
+    # quantizer. The parent is Lightricks/LTX-2, which still supplies the
+    # connectors and both VAEs. This is the 19B checkpoint, not LTX-2.5.
+    
+    # The distilled transformer uses the 8-value sigma table. The parent
+    # scheduler is the dev schedule, so use-dynamic-shifting=false selects that
+    # table. Guidance stays at 1.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Kijai/LTXV2_comfy/blob/main/diffusion_models/ltx-2-19b-distilled_Q4_K_M.gguf
+    --text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp8_scaled.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=false
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx2-gguf-text-encoder
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2 19B with Comfy-Org's FP4 Gemma 3 text encoder. The class is
+    # Gemma3ForConditionalGeneration. The file is already quantized. Do not set
+    # quantizer. FP4 matmuls need Blackwell; other devices decode the weights
+    # for the matmul. The parent is Lightricks/LTX-2.
+    
+    # The distilled transformer uses the 8-value sigma table. Guidance stays at 1
+    # and --inference-steps is omitted.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Kijai/LTXV2_comfy/blob/main/diffusion_models/ltx-2-19b-distilled_Q4_K_M.gguf
+    --text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=false
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx2-gguf-text-encoder-fp4
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2 19B dev GGUF with Comfy-Org's FP8 Gemma 3 text encoder. The class is
+    # Gemma3ForConditionalGeneration. The file is already quantized. Do not set
+    # quantizer. The parent is Lightricks/LTX-2, which still supplies the
+    # connectors and both VAEs.
+    
+    # The published scheduler already uses dynamic shifting with shift-terminal
+    # 0.1, so --inference-steps applies. Video guidance 4 and audio guidance 4.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Kijai/LTXV2_comfy/blob/main/diffusion_models/ltx-2-19b-dev_Q4_K_M.gguf
+    --text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp8_scaled.safetensors"
+    --inference-steps 30
+    --guidance-scales 4
+    --ltx-audio-guidance-scales 4
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx2-gguf-dev-text-encoder
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2 19B dev GGUF with Comfy-Org's FP4 Gemma 3 text encoder. The class is
+    # Gemma3ForConditionalGeneration. The file is already quantized. Do not set
+    # quantizer. FP4 matmuls need Blackwell; other devices decode the weights
+    # for the matmul. The parent is Lightricks/LTX-2.
+    
+    # The published scheduler already uses dynamic shifting, so --inference-steps
+    # applies. Video guidance 4 and audio guidance 4.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Kijai/LTXV2_comfy/blob/main/diffusion_models/ltx-2-19b-dev_Q4_K_M.gguf
+    --text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors"
+    --inference-steps 30
+    --guidance-scales 4
+    --ltx-audio-guidance-scales 4
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx2-gguf-dev-text-encoder-fp4
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
     # Wan 2.2 T2V A14B with both experts from ComfyUI's scaled FP8 files and
     # ComfyUI's scaled FP8 UMT5. Wan 2.2 has one text encoder. UMT5 is a single
     # file and needs no mode. Its linears stay packed, except the feed-forward
     # output projection, which T5 runs in float32.
-    # Same prompt as examples/wan/comfy-quant/moe-fp8-scaled-config.dgen.
+    # Same prompt as examples/wan/comfy_quant/moe-fp8-scaled-config.dgen.
     # ComfyUI does not publish a 4-bit UMT5. The Q4 file is
     # examples/wan/gguf/text-encoder-wan22-config.dgen.
     
@@ -8662,11 +8980,11 @@ Packed weights are ordinary integer parameters, so ``--model-cpu-offload``,
 ``--model-sequential-offload``, and ``--model-group-offload`` move them like any
 other weights.
 
-More examples are under ``examples/*/comfy-quant``, for instance
-`examples/flux2/comfy-quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/flux2/comfy-quant>`_,
-`examples/qwen-image/comfy-quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/qwen-image/comfy-quant>`_,
-`examples/wan/comfy-quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan/comfy-quant>`_,
-and `examples/ltx2/comfy-quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx2/comfy-quant>`_.
+More examples are under ``examples/*/comfy_quant``, for instance
+`examples/flux2/comfy_quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/flux2/comfy_quant>`_,
+`examples/qwen_image/comfy_quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/qwen_image/comfy_quant>`_,
+`examples/wan/comfy_quant <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/wan/comfy_quant>`_,
+and `examples/ltx2/comfy_quant <examples/ltx2/comfy_quant_>`_.
 
 .. _gguf-checkpoints:
 
@@ -8908,9 +9226,12 @@ selects task and resolution.
   ``krea/Krea-2-Raw``, or Turbo when the file name says turbo.
 * Kandinsky 5 video is recognized from ``visual_transformer_blocks``. Hidden
   width 1792 is Lite and 4096 is Pro.
-* LTX 2.5 is recognized from ``keyframes_abs_pos_embedding`` or
-  ``audio_patchify_proj``, and uses ``Lightricks/LTX-2.5-Diffusers``.
-  LTX-Video 0.9.1, 0.9.5, and 0.9.7 use the Diffusers fingerprint.
+* LTX-2 and LTX-2.5 both have ``audio_patchify_proj``.
+  ``keyframes_abs_pos_embedding`` or ``prompt_adaln_single`` selects
+  ``Lightricks/LTX-2.5-Diffusers``. Without those tensors the file is the
+  19B LTX-2 transformer and uses ``Lightricks/LTX-2`` (Gemma 3 and the
+  2-layer connectors). LTX-Video 0.9.1, 0.9.5, and 0.9.7 use the Diffusers
+  fingerprint.
 * HunyuanVideo 1.5 is recognized from ``cond_type_embedding``. The file name
   selects 480p or 720p, and text-to-video or image-to-video.
 * HunyuanImage 2.1 is recognized from ``txt_in.input_embedder`` and
@@ -8932,11 +9253,13 @@ There is no ``mode`` and no ``subfolder``. The configuration is matched from
 the file's vocabulary, hidden size, and layer count. Do not set ``quantizer``.
 
 llama.cpp architectures ``t5``, ``t5encoder``, ``llama``, ``qwen2vl``,
-``qwen3``, ``qwen3vl``, and ``gemma3`` are accepted. Their tensor names are
-renamed to Hugging Face names, and the quantized linears stay packed. T5
-keeps its feed-forward output projection dense, because T5 runs that
-projection in float32. Gemma 3 norms written by llama.cpp are converted back
-to the Hugging Face values.
+``qwen3``, ``qwen3vl``, ``gemma3``, and ``gemma4`` are accepted. llama.cpp
+tensor names are renamed to Hugging Face names, and the quantized linears
+stay packed. A file that already stores Hugging Face or ComfyUI names,
+including the LTX-2.5 Gemma 4 GGUF, is loaded as stored. T5 keeps its
+feed-forward output projection dense, because T5 runs that projection in
+float32. Gemma norms written by llama.cpp are converted back to the
+Hugging Face values.
 
 The class is the one the pipeline expects: ``T5EncoderModel`` and
 ``UMT5EncoderModel`` for T5 and UMT5, and the language-model class for Qwen,
@@ -9048,8 +9371,8 @@ apply to the GGUF file.
 More examples are under ``examples/*/gguf``, for instance
 `examples/flux/gguf <examples/flux/gguf_>`_,
 `examples/flux2/gguf <examples/flux2/gguf_>`_,
-`examples/z-image/gguf <examples/z-image/gguf_>`_,
-`examples/qwen-image/gguf <examples/qwen-image/gguf_>`_,
+`examples/z_image/gguf <examples/z_image/gguf_>`_,
+`examples/qwen_image/gguf <examples/qwen_image/gguf_>`_,
 `examples/ltx2/gguf <examples/ltx2/gguf_>`_,
 and `examples/wan/gguf <examples/wan/gguf_>`_.
 
@@ -10441,8 +10764,22 @@ Language model text encoders, such as ``Qwen3ForCausalLM`` (Flux.2 Klein),
 single ``.safetensors`` or ``.gguf`` file, with no ``mode`` or ``subfolder``. The model
 configuration is matched from the file. A ComfyUI file trimmed to fewer decoder layers
 than the full model, such as the Flux.2 Mistral encoder, builds that many layers.
-The original LTX-2 single-file checkpoints, including ``ltx-2-19b-dev-fp8`` and the
-ComfyUI Gemma 3 files, are not supported.
+LTX-2.5's pre-quantized Gemma 4 encoder is that class pointed at
+``gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf``,
+``gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors``, or an NVFP4
+file of the same layout. The file is already quantized. Do not set
+``quantizer``. Connector tensors packed into the file are ignored; the
+pipeline repository still supplies the connectors. On the dev transformer,
+keep dynamic shifting, 30 steps, guidance 3, audio guidance 7, STG 1 on
+block 28, and modality guidance 3. LTX-2's pre-quantized
+Gemma 3 encoder is ``Gemma3ForConditionalGeneration`` pointed at
+``gemma_3_12B_it_fp8_scaled.safetensors`` or
+``gemma_3_12B_it_fp4_mixed.safetensors`` from ``Comfy-Org/ltx-2``. The file
+is already quantized. Do not set ``quantizer``. The parent is
+``Lightricks/LTX-2``. On the 19B dev transformer, keep 30 steps, guidance 4,
+and audio guidance 4; that parent scheduler already uses dynamic shifting.
+The original all-in-one LTX-2 checkpoints, including
+``ltx-2-19b-dev-fp8``, are not supported.
 
 ``T5EncoderModel`` and ``UMT5EncoderModel`` load the same way from a ``.gguf`` file or
 from a monolithic ``.safetensors`` file. A GGUF file uses llama.cpp tensor names; those
@@ -10589,6 +10926,384 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     #! /usr/bin/env dgenerate --file
     #! dgenerate 6.0.0
     
+    # LTX-2.5 with Lightricks' INT8 ConvRot Gemma 4 text encoder. The class is
+    # Gemma4UnifiedForConditionalGeneration. The file is already quantized. Do
+    # not set quantizer. The parent repository still supplies the text connectors
+    # and both VAEs. Connector tensors packed into this file are ignored.
+    
+    # This is the distilled checkpoint. The published scheduler has no dynamic
+    # shifting, so it uses the distilled 8-value sigma table. Guidance stays at 1.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2.5-Diffusers
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors
+    --text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/Lightricks/LTX-2.5/blob/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors"
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx-comfy-quant-text-encoder
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2.5 with an NVFP4 Gemma 4 text encoder. The class is
+    # Gemma4UnifiedForConditionalGeneration. The file is already quantized. Do
+    # not set quantizer. NVFP4 matmuls need Blackwell; other devices decode the
+    # weights for the matmul. The parent repository still supplies the connectors.
+    
+    # This is the distilled checkpoint. Guidance stays at 1 and --inference-steps
+    # is omitted so the distilled sigma table is used.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2.5-Diffusers
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-nvfp4.safetensors
+    --text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/DmitryDB/LTX-2.5-ComfyUI-Quants/blob/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-nvfp4.safetensors"
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx-comfy-quant-text-encoder-nvfp4
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2.5 distilled GGUF transformer with the Q4_K_M Gemma 4 text encoder.
+    # The class is Gemma4UnifiedForConditionalGeneration. The encoder file is
+    # already quantized and stores ComfyUI tensor names. Do not set quantizer.
+    # The parent repository still supplies the connectors and both VAEs.
+    
+    # This is the distilled checkpoint. Guidance stays at 1 and --inference-steps
+    # is omitted so the distilled sigma table is used.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2.5-Diffusers
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/realrebelai/LTX-2.5_GGUFs/blob/main/LTX-2.5-Distilled-Q4_K_S.gguf
+    --text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF/blob/main/gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf"
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx-gguf-text-encoder
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2.5 full (dev) GGUF transformer with the Q4_K_M Gemma 4 text encoder.
+    # The class is Gemma4UnifiedForConditionalGeneration. The encoder file is
+    # already quantized. Do not set quantizer. The parent repository still
+    # supplies the connectors and both VAEs.
+    
+    # The published scheduler is the distilled 8-value table and would ignore
+    # --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1 make
+    # the step count apply. Video guidance 3, audio guidance 7, STG 1 on block
+    # 28, and modality guidance 3.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2.5-Diffusers
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF/blob/main/dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf
+    --text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF/blob/main/gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf"
+    --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1
+    --inference-steps 30
+    --guidance-scales 3
+    --ltx-audio-guidance-scales 7
+    --ltx-stg-scales 1
+    --ltx-modality-scales 3
+    --ltx-stg-blocks 28
+    --guidance-rescales 0.7
+    --ltx-audio-guidance-rescales 0.7
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx25-gguf-dev-text-encoder
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2.5 full (dev) INT8 ConvRot transformer with Lightricks' INT8 ConvRot
+    # Gemma 4 text encoder. The class is Gemma4UnifiedForConditionalGeneration.
+    # The encoder file is already quantized. Do not set quantizer. The parent
+    # repository still supplies the connectors and both VAEs.
+    
+    # The published scheduler is the distilled 8-value table and would ignore
+    # --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1 make
+    # the step count apply. Video guidance 3, audio guidance 7, STG 1 on block
+    # 28, and modality guidance 3.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2.5-Diffusers
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors
+    --text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/Lightricks/LTX-2.5/blob/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1
+    --inference-steps 30
+    --guidance-scales 3
+    --ltx-audio-guidance-scales 7
+    --ltx-stg-scales 1
+    --ltx-modality-scales 3
+    --ltx-stg-blocks 28
+    --guidance-rescales 0.7
+    --ltx-audio-guidance-rescales 0.7
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx25-comfy-quant-dev-text-encoder
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2.5 full (dev) INT8 ConvRot transformer with an NVFP4 Gemma 4 text
+    # encoder. The class is Gemma4UnifiedForConditionalGeneration. The encoder
+    # file is already quantized. Do not set quantizer. NVFP4 matmuls need
+    # Blackwell; other devices decode the weights for the matmul. The parent
+    # repository still supplies the connectors.
+    
+    # The published scheduler is the distilled 8-value table and would ignore
+    # --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1 make
+    # the step count apply. Video guidance 3, audio guidance 7, STG 1 on block
+    # 28, and modality guidance 3.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2.5-Diffusers
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors
+    --text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/DmitryDB/LTX-2.5-ComfyUI-Quants/blob/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-nvfp4.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1
+    --inference-steps 30
+    --guidance-scales 3
+    --ltx-audio-guidance-scales 7
+    --ltx-stg-scales 1
+    --ltx-modality-scales 3
+    --ltx-stg-blocks 28
+    --guidance-rescales 0.7
+    --ltx-audio-guidance-rescales 0.7
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx25-comfy-quant-dev-text-encoder-nvfp4
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2 19B with Comfy-Org's FP8 Gemma 3 text encoder. The class is
+    # Gemma3ForConditionalGeneration. The file is already quantized. Do not set
+    # quantizer. The parent is Lightricks/LTX-2, which still supplies the
+    # connectors and both VAEs. This is the 19B checkpoint, not LTX-2.5.
+    
+    # The distilled transformer uses the 8-value sigma table. The parent
+    # scheduler is the dev schedule, so use-dynamic-shifting=false selects that
+    # table. Guidance stays at 1.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Kijai/LTXV2_comfy/blob/main/diffusion_models/ltx-2-19b-distilled_Q4_K_M.gguf
+    --text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp8_scaled.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=false
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx2-gguf-text-encoder
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2 19B with Comfy-Org's FP4 Gemma 3 text encoder. The class is
+    # Gemma3ForConditionalGeneration. The file is already quantized. Do not set
+    # quantizer. FP4 matmuls need Blackwell; other devices decode the weights
+    # for the matmul. The parent is Lightricks/LTX-2.
+    
+    # The distilled transformer uses the 8-value sigma table. Guidance stays at 1
+    # and --inference-steps is omitted.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Kijai/LTXV2_comfy/blob/main/diffusion_models/ltx-2-19b-distilled_Q4_K_M.gguf
+    --text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors"
+    --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=false
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx2-gguf-text-encoder-fp4
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2 19B dev GGUF with Comfy-Org's FP8 Gemma 3 text encoder. The class is
+    # Gemma3ForConditionalGeneration. The file is already quantized. Do not set
+    # quantizer. The parent is Lightricks/LTX-2, which still supplies the
+    # connectors and both VAEs.
+    
+    # The published scheduler already uses dynamic shifting with shift-terminal
+    # 0.1, so --inference-steps applies. Video guidance 4 and audio guidance 4.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Kijai/LTXV2_comfy/blob/main/diffusion_models/ltx-2-19b-dev_Q4_K_M.gguf
+    --text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp8_scaled.safetensors"
+    --inference-steps 30
+    --guidance-scales 4
+    --ltx-audio-guidance-scales 4
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx2-gguf-dev-text-encoder
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # LTX-2 19B dev GGUF with Comfy-Org's FP4 Gemma 3 text encoder. The class is
+    # Gemma3ForConditionalGeneration. The file is already quantized. Do not set
+    # quantizer. FP4 matmuls need Blackwell; other devices decode the weights
+    # for the matmul. The parent is Lightricks/LTX-2.
+    
+    # The published scheduler already uses dynamic shifting, so --inference-steps
+    # applies. Video guidance 4 and audio guidance 4.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2
+    --model-type ltx2
+    --dtype bfloat16
+    --model-sequential-offload
+    --transformer https://huggingface.co/Kijai/LTXV2_comfy/blob/main/diffusion_models/ltx-2-19b-dev_Q4_K_M.gguf
+    --text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors"
+    --inference-steps 30
+    --guidance-scales 4
+    --ltx-audio-guidance-scales 4
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --animation-format mp4
+    --output-path ltx2-gguf-dev-text-encoder-fp4
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
     # Wan 2.1 T2V 14B with a city96 GGUF transformer and a city96 UMT5-XXL GGUF.
     # UMT5 needs no mode. The file is already quantized, so quantizer is not set.
     # Same prompt as examples/wan/gguf/text-to-video-config.dgen.
@@ -10649,7 +11364,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     # Wan 2.1 T2V 14B with ComfyUI's scaled FP8 transformer and scaled FP8 UMT5.
     # UMT5 is a single file and needs no mode. Its linears stay packed, except
     # the feed-forward output projection, which T5 runs in float32.
-    # Same prompt as examples/wan/comfy-quant/text-to-video-fp8-scaled-config.dgen.
+    # Same prompt as examples/wan/comfy_quant/text-to-video-fp8-scaled-config.dgen.
     # ComfyUI does not publish a 4-bit UMT5. The Q4 file is
     # examples/wan/gguf/text-encoder-config.dgen.
     
@@ -10680,7 +11395,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     # ComfyUI's scaled FP8 UMT5. Wan 2.2 has one text encoder. UMT5 is a single
     # file and needs no mode. Its linears stay packed, except the feed-forward
     # output projection, which T5 runs in float32.
-    # Same prompt as examples/wan/comfy-quant/moe-fp8-scaled-config.dgen.
+    # Same prompt as examples/wan/comfy_quant/moe-fp8-scaled-config.dgen.
     # ComfyUI does not publish a 4-bit UMT5. The Q4 file is
     # examples/wan/gguf/text-encoder-wan22-config.dgen.
     
@@ -10823,7 +11538,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     # the text encoder. Raw and Turbo share this encoder. The GGUF is the
     # language tower; its mmproj sidecar is not loaded. Image conditioning
     # should use the ComfyUI safetensors encoder, which includes the vision
-    # tower: examples/krea2/comfy-quant/text-encoder-config.dgen
+    # tower: examples/krea2/comfy_quant/text-encoder-config.dgen
     # The file is already quantized. Do not set quantizer.
     
     krea/Krea-2-Raw
@@ -10870,7 +11585,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     # language tower; its mmproj sidecar is not loaded, so this is for
     # text-to-image. Image conditioning should use the ComfyUI safetensors
     # encoder, which includes the vision tower:
-    # examples/qwen-image-21/comfy-quant/text-encoder-config.dgen
+    # examples/qwen_image_21/comfy_quant/text-encoder-config.dgen
     # The file is already quantized. Do not set quantizer.
     
     Qwen/Qwen-Image-2.1
@@ -10934,7 +11649,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     # Qwen-Image Edit with ComfyUI's FP8 transformer and scaled FP8 Qwen2.5-VL.
     # The text encoder file includes the vision tower, which edit reads. No mode
     # and no quantizer: the linears stay packed. Same prompt as
-    # examples/qwen-image/comfy-quant/edit-fp8-config.dgen.
+    # examples/qwen_image/comfy_quant/edit-fp8-config.dgen.
     
     Qwen/Qwen-Image-Edit
     --model-type qwen-image-edit
@@ -10960,7 +11675,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     # The edit repository does not publish a 4-bit transformer. The text encoder
     # file includes the vision tower, which edit reads. No mode and no quantizer:
     # the linears stay packed. Same prompt as
-    # examples/qwen-image/comfy-quant/edit-fp8-config.dgen.
+    # examples/qwen_image/comfy_quant/edit-fp8-config.dgen.
     
     Qwen/Qwen-Image-Edit
     --model-type qwen-image-edit
@@ -10984,7 +11699,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     
     # Z-Image Turbo with ComfyUI's INT8 ConvRot transformer and FP8 mixed Qwen3-4B
     # text encoder. The text encoder is already quantized. Do not set quantizer.
-    # Same Tongyi prompt as examples/z-image/comfy-quant/turbo-int8-convrot-config.dgen.
+    # Same Tongyi prompt as examples/z_image/comfy_quant/turbo-int8-convrot-config.dgen.
     
     \setp gpu_memory_gib total_memory(unit='gib')
     
@@ -11012,7 +11727,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     
     # Z-Image Turbo with ComfyUI's NVFP4 transformer and FP4 mixed Qwen3-4B
     # text encoder. The text encoder is already quantized. Do not set quantizer.
-    # Same Tongyi prompt as examples/z-image/comfy-quant/turbo-int8-convrot-config.dgen.
+    # Same Tongyi prompt as examples/z_image/comfy_quant/turbo-int8-convrot-config.dgen.
     
     \setp gpu_memory_gib total_memory(unit='gib')
     
@@ -11273,7 +11988,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     # as the main text encoder. The ByT5 glyph encoder is ComfyUI's split file from
     # the Hunyuan-Image-2.1 repack (full precision, small). The Qwen GGUF is
     # language-only; its mmproj sidecar is not loaded. No mode and no quantizer on
-    # either URI. Same prompt as examples/hyimage-21/gguf/transformer-config.dgen.
+    # either URI. Same prompt as examples/hyimage_21/gguf/transformer-config.dgen.
     
     hunyuanvideo-community/HunyuanImage-2.1-Diffusers
     --model-type hyimage-21
@@ -11295,7 +12010,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     
     # HunyuanImage 2.1 with ComfyUI's FP8 transformer, scaled FP8 Qwen2.5-VL, and
     # ComfyUI's ByT5 glyph encoder. Qwen linears stay packed. ByT5 is matched from
-    # the file with no mode. Same prompt as examples/hyimage-21/comfy_quant/fp8-config.dgen.
+    # the file with no mode. Same prompt as examples/hyimage_21/comfy_quant/fp8-config.dgen.
     
     hunyuanvideo-community/HunyuanImage-2.1-Diffusers
     --model-type hyimage-21
@@ -11319,7 +12034,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     # ComfyUI's ByT5 glyph encoder. The Hunyuan repository only publishes the
     # FP8 Qwen file; this is the same Qwen2.5-VL encoder from Qwen-Image's
     # ComfyUI pack. Qwen linears stay packed. ByT5 is matched from the file
-    # with no mode. Same prompt as examples/hyimage-21/comfy_quant/fp8-config.dgen.
+    # with no mode. Same prompt as examples/hyimage_21/comfy_quant/fp8-config.dgen.
     
     hunyuanvideo-community/HunyuanImage-2.1-Diffusers
     --model-type hyimage-21

@@ -181,6 +181,67 @@ class TextEncoderFileTest(unittest.TestCase):
         decoded = dequantize_gguf_tensor(state['model.layers.0.self_attn.q_proj.weight']).float()
         self.assertTrue(torch.allclose(decoded, permuted))
 
+    def test_gemma4_gguf_skips_integer_sidecar_tensors(self):
+        path = self._temp('.gguf')
+        writer = gguf.GGUFWriter(path, 'gemma4')
+        writer.add_tensor('model.embed_tokens.weight', np.zeros((4, 4), dtype=np.float32))
+        writer.add_tensor('model.layers.0.self_attn.q_proj.weight', np.zeros((4, 4), dtype=np.float32))
+        writer.add_tensor('hf_asset__chat_template.jinja', np.zeros((8,), dtype=np.int16))
+        writer.add_tensor('tokenizer_json', np.zeros((8,), dtype=np.int16))
+        writer.write_header_to_file()
+        writer.write_kv_data_to_file()
+        writer.write_tensors_to_file()
+        writer.close()
+        _, state = _ggufcompat.load_text_encoder_gguf(path)
+        self.assertIn('model.embed_tokens.weight', state)
+        self.assertNotIn('hf_asset__chat_template.jinja', state)
+        self.assertNotIn('tokenizer_json', state)
+
+    def test_gemma4_comfy_gguf_keeps_its_names(self):
+        path = self._temp('.gguf')
+        _write_gguf(path, 'gemma4', {
+            'model.embed_tokens.weight': torch.zeros(16, 4),
+            'model.layers.0.self_attn.q_proj.weight': torch.zeros(4, 4),
+            'vision_model.patch_dense.weight': torch.zeros(4, 4),
+            'model.layers.0.input_layernorm.weight': torch.ones(4),
+        })
+        architecture, state = _ggufcompat.load_text_encoder_gguf(path)
+        self.assertEqual(architecture, 'gemma4')
+        self.assertIn('model.embed_tokens.weight', state)
+        self.assertIn('vision_model.patch_dense.weight', state)
+        self.assertTrue(torch.equal(
+            state['model.layers.0.input_layernorm.weight'], torch.ones(4)))
+
+    def test_gguf_assign_copies_a_layer_scalar(self):
+        class Encoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.proj = torch.nn.Linear(4, 4, bias=False)
+                self.layer_scalar = torch.nn.Buffer(torch.zeros(1))
+
+            def tie_weights(self):
+                return None
+
+        loaded = textencoderuri._assign_gguf_text_encoder(
+            Encoder(),
+            {'proj.weight': torch.ones(4, 4), 'layer_scalar': torch.tensor([2.5])},
+            torch.float32,
+            rename=lambda key: key,
+            trimmed=False)
+        self.assertEqual(loaded.layer_scalar.item(), 2.5)
+
+    def test_gemma4_llama_cpp_names_are_converted(self):
+        path = self._temp('.gguf')
+        _write_gguf(path, 'gemma4', {
+            'token_embd.weight': torch.zeros(16, 4),
+            'blk.0.attn_q.weight': torch.zeros(4, 4),
+            'blk.0.attn_norm.weight': torch.ones(4),
+        })
+        _, state = _ggufcompat.load_text_encoder_gguf(path)
+        self.assertIn('model.layers.0.self_attn.q_proj.weight', state)
+        self.assertTrue(torch.equal(
+            state['model.layers.0.input_layernorm.weight'], torch.zeros(4)))
+
     def test_gemma3_norm_correction(self):
         corrected = _ggufcompat.correct_gemma3_norms({
             'model.layers.0.input_layernorm.weight': torch.ones(4),
@@ -369,6 +430,37 @@ class TextEncoderFileTest(unittest.TestCase):
         self.assertEqual(
             rename('multi_modal_projector.mm_input_projection_weight'),
             'model.multi_modal_projector.mm_input_projection_weight')
+
+    def test_gemma4_ltx_comfy_names_resolve(self):
+        model_keys = {
+            'model.language_model.embed_tokens.weight',
+            'model.embed_vision.patch_dense.weight',
+            'model.embed_vision.multimodal_embedder.embedding_projection.weight',
+            'model.embed_audio.embedding_projection.weight',
+        }
+        model_keys.update(
+            f'model.language_model.layers.{index}.self_attn.q_proj.weight'
+            for index in range(12))
+        checkpoint = [
+            'model.embed_tokens.weight',
+            'vision_model.patch_dense.weight',
+            'multi_modal_projector.embedding_projection.weight',
+            'audio_projector.embedding_projection.weight',
+            'text_embedding_projection.video_aggregate_embed.weight',
+        ]
+        checkpoint.extend(
+            f'model.layers.{index}.self_attn.q_proj.weight' for index in range(12))
+        rename = textencoderuri._language_model_rename(model_keys, checkpoint)
+        self.assertEqual(rename('model.layers.0.self_attn.q_proj.weight'),
+                         'model.language_model.layers.0.self_attn.q_proj.weight')
+        self.assertEqual(rename('vision_model.patch_dense.weight'),
+                         'model.embed_vision.patch_dense.weight')
+        self.assertEqual(rename('multi_modal_projector.embedding_projection.weight'),
+                         'model.embed_vision.multimodal_embedder.embedding_projection.weight')
+        self.assertEqual(rename('audio_projector.embedding_projection.weight'),
+                         'model.embed_audio.embedding_projection.weight')
+        self.assertEqual(rename('text_embedding_projection.video_aggregate_embed.weight'),
+                         'text_embedding_projection.video_aggregate_embed.weight')
 
     def test_qwen3_vl_comfy_names_resolve_for_both_wrappers(self):
         # Krea 2's Qwen3VLModel keeps the language model beside the vision tower.

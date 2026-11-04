@@ -95,8 +95,8 @@ ComfyUI layouts. See :ref:`gguf-checkpoints`,
 `examples/stablediffusion3/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/stablediffusion3/gguf>`_,
 `examples/flux/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/flux/gguf>`_,
 `examples/flux2/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/flux2/gguf>`_,
-`examples/z-image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/z-image/gguf>`_,
-`examples/qwen-image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/qwen-image/gguf>`_,
+`examples/z_image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/z_image/gguf>`_,
+`examples/qwen_image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/qwen_image/gguf>`_,
 and `examples/ltx2/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/gguf>`_.
 
 A transformer-only file can also be the model itself. dgenerate reads the

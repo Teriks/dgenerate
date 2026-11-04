@@ -1,0 +1,31 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LTX-2.5 distilled GGUF transformer with the Q4_K_M Gemma 4 text encoder.
+# The class is Gemma4UnifiedForConditionalGeneration. The encoder file is
+# already quantized and stores ComfyUI tensor names. Do not set quantizer.
+# The parent repository still supplies the connectors and both VAEs.
+
+# This is the distilled checkpoint. Guidance stays at 1 and --inference-steps
+# is omitted so the distilled sigma table is used.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx2
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/realrebelai/LTX-2.5_GGUFs/blob/main/LTX-2.5-Distilled-Q4_K_S.gguf
+--text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF/blob/main/gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf"
+--guidance-scales 1
+--gen-seeds 1
+--output-size 640x384
+--video-lengths 2
+--animation-format mp4
+--output-path ltx-gguf-text-encoder
+--prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."

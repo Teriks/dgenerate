@@ -1,0 +1,32 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LTX-2 19B with Comfy-Org's FP4 Gemma 3 text encoder. The class is
+# Gemma3ForConditionalGeneration. The file is already quantized. Do not set
+# quantizer. FP4 matmuls need Blackwell; other devices decode the weights
+# for the matmul. The parent is Lightricks/LTX-2.
+
+# The distilled transformer uses the 8-value sigma table. Guidance stays at 1
+# and --inference-steps is omitted.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2
+--model-type ltx2
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Kijai/LTXV2_comfy/blob/main/diffusion_models/ltx-2-19b-distilled_Q4_K_M.gguf
+--text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors"
+--scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=false
+--guidance-scales 1
+--gen-seeds 1
+--output-size 640x384
+--video-lengths 2
+--animation-format mp4
+--output-path ltx2-gguf-text-encoder-fp4
+--prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."

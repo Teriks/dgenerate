@@ -145,11 +145,11 @@ Flux.2 Cooperative Denoising:
 
 Qwen-Image Cooperative Denoising:
 
-@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/qwen-image/cooperative-denoising-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/qwen_image/cooperative-denoising-config.dgen]
 
 Qwen-Image 2.1 Cooperative Denoising:
 
-@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/qwen-image-21/cooperative-denoising-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/qwen_image_21/cooperative-denoising-config.dgen]
 
 Krea 2 Cooperative Denoising:
 
@@ -157,11 +157,11 @@ Krea 2 Cooperative Denoising:
 
 Kandinsky 5 Image Cooperative Denoising:
 
-@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/kandinsky5-image/cooperative-denoising-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/kandinsky5_image/cooperative-denoising-config.dgen]
 
 Z-Image Cooperative Denoising:
 
-@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/z-image/cooperative-denoising-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/z_image/cooperative-denoising-config.dgen]
 
 Hunyuan-DiT Cooperative Denoising:
 
@@ -169,11 +169,11 @@ Hunyuan-DiT Cooperative Denoising:
 
 HunyuanImage 2.1 Cooperative Denoising:
 
-@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/hyimage-21/cooperative-denoising-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/hyimage_21/cooperative-denoising-config.dgen]
 
 HunyuanImage 2.1 Refiner Cooperative Denoising:
 
-@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/hyimage-21-refiner/cooperative-denoising-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/hyimage_21_refiner/cooperative-denoising-config.dgen]
 
 SDXL and Kolors models handle latents interchange differently than other model families.
 For SDXL or Kolors cooperative denoising, latents are passed directly as img2img input without

@@ -862,21 +862,21 @@ class TestPipelinePromptEnhance(unittest.TestCase):
             'flux2-klein-kv': (
                 'examples/flux2/pipeline_prompt_enhance/klein-kv-config.dgen',
             ),
-            'z-image': ('examples/z-image/pipeline_prompt_enhance/config.dgen',),
-            'qwen-image': ('examples/qwen-image/pipeline_prompt_enhance/text-to-image-config.dgen',),
+            'z-image': ('examples/z_image/pipeline_prompt_enhance/config.dgen',),
+            'qwen-image': ('examples/qwen_image/pipeline_prompt_enhance/text-to-image-config.dgen',),
             'qwen-image-edit': (
-                'examples/qwen-image/edit/pipeline_prompt_enhance/config.dgen',
+                'examples/qwen_image/edit/pipeline_prompt_enhance/config.dgen',
             ),
             'qwen-image-layered': (
-                'examples/qwen-image/pipeline_prompt_enhance/layered-config.dgen',
+                'examples/qwen_image/pipeline_prompt_enhance/layered-config.dgen',
             ),
             'qwen-image-21': (
-                'examples/qwen-image-21/pipeline_prompt_enhance/text-to-image-config.dgen',
-                'examples/qwen-image-21/pipeline_prompt_enhance/image-conditioned-config.dgen',
+                'examples/qwen_image_21/pipeline_prompt_enhance/text-to-image-config.dgen',
+                'examples/qwen_image_21/pipeline_prompt_enhance/image-conditioned-config.dgen',
             ),
-            'hyimage-21': ('examples/hyimage-21/pipeline_prompt_enhance/base-config.dgen',),
+            'hyimage-21': ('examples/hyimage_21/pipeline_prompt_enhance/base-config.dgen',),
             'hyimage-21-refiner': (
-                'examples/hyimage-21/pipeline_prompt_enhance/refiner-config.dgen',
+                'examples/hyimage_21/pipeline_prompt_enhance/refiner-config.dgen',
             ),
             'kandinsky5-image': (
                 'examples/kandinsky5/pipeline_prompt_enhance/text-to-image-config.dgen',

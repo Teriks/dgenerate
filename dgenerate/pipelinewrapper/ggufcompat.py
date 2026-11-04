@@ -20,7 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Detect Flux.2, Qwen-Image, Z-Image, LTX 2.5, Kandinsky 5, HunyuanImage 2.1, and Wan GGUF
+Detect Flux.2, Qwen-Image, Z-Image, LTX-2, LTX 2.5, Kandinsky 5, HunyuanImage 2.1, and Wan GGUF
 checkpoints and adapt ComfyUI layouts so Diffusers can load them without a manual config.
 
 Text-encoder GGUF files (T5, UMT5, Qwen, Mistral, Gemma) are read here too. Their
@@ -110,11 +110,23 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
     """
     comfy = any(name.startswith(_COMFY_PREFIX) for name in shapes)
 
-    if _has(shapes, 'keyframes_abs_pos_embedding', 'audio_patchify_proj.weight',
+    # LTX-2 and LTX-2.5 both have audio_patchify_proj. The keyframe embedding
+    # and prompt AdaLN are 2.5-only; without them the file is the 19B LTX-2
+    # transformer and needs Lightricks/LTX-2 (Gemma 3, 2-layer connectors).
+    if _has(shapes, 'keyframes_abs_pos_embedding',
+            'prompt_adaln_single.linear.weight',
+            'prompt_adaln_single.emb.timestep_embedder.linear_1.weight',
             _COMFY_PREFIX + 'keyframes_abs_pos_embedding',
-            _COMFY_PREFIX + 'audio_patchify_proj.weight'):
+            _COMFY_PREFIX + 'prompt_adaln_single.linear.weight',
+            _COMFY_PREFIX + 'prompt_adaln_single.emb.timestep_embedder.linear_1.weight'):
         return GGUFLayout(
             'ltx-2.5', 'Lightricks/LTX-2.5-Diffusers', comfy=comfy, adapt=True)
+    if _has(shapes, 'audio_patchify_proj.weight',
+            'av_ca_a2v_gate_adaln_single.emb.timestep_embedder.linear_1.weight',
+            _COMFY_PREFIX + 'audio_patchify_proj.weight',
+            _COMFY_PREFIX + 'av_ca_a2v_gate_adaln_single.emb.timestep_embedder.linear_1.weight'):
+        return GGUFLayout(
+            'ltx-2', 'Lightricks/LTX-2', comfy=comfy, adapt=True)
 
     # Motif single-stream blocks carry a text cross-attention Flux does not.
     if _has(shapes, 'single_transformer_blocks.0.cross_attn.to_q.weight',
@@ -393,7 +405,7 @@ def adapt_ltx25_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
     missing = [name for name in targets if name not in aligned]
     if missing:
         _messages.debug_log(
-            f'LTX 2.5 GGUF is missing {len(missing)} Diffusers tensors, '
+            f'LTX GGUF is missing {len(missing)} Diffusers tensors, '
             f'for example {missing[:4]}.')
     return aligned
 
@@ -784,7 +796,7 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
     from diffusers.models.model_loading_utils import load_gguf_checkpoint
     install_gguf_patches()
     checkpoint = load_gguf_checkpoint(path)
-    if layout.kind == 'ltx-2.5':
+    if layout.kind in {'ltx-2', 'ltx-2.5'}:
         checkpoint = adapt_ltx25_checkpoint(
             checkpoint, config, subfolder or 'transformer',
             token=token, local_files_only=local_files_only)
@@ -817,7 +829,7 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
 # llama.cpp text-encoder architectures. The tensor names are llama.cpp names
 # (``enc.blk.0.attn_q.weight``, ``blk.0.attn_q.weight``), not Hugging Face names.
 _TEXT_GGUF_ARCHITECTURES = frozenset({
-    't5', 't5encoder', 'llama', 'qwen2vl', 'qwen3', 'qwen3vl', 'gemma3',
+    't5', 't5encoder', 'llama', 'qwen2vl', 'qwen3', 'qwen3vl', 'gemma3', 'gemma4',
 })
 
 # Replacements run in order, the same order ComfyUI-GGUF uses. A longer
@@ -974,30 +986,66 @@ def correct_gemma3_norms(state: dict) -> dict:
     return updated
 
 
+def _gguf_model_tensor(name: str) -> bool:
+    """A tensor the text encoder consumes, rather than a packed tokenizer or config."""
+    return name.endswith(('.weight', '.bias', 'layer_scalar', 'pos_embedding'))
+
+
+def _read_text_encoder_gguf(path: str) -> dict:
+    """Read model tensors. Skip sidecar tensors Diffusers cannot decode."""
+    import gguf
+    from diffusers.quantizers.gguf.utils import SUPPORTED_GGUF_QUANT_TYPES, GGUFParameter
+    from gguf import GGUFReader
+
+    reader = GGUFReader(path)
+    plain = {gguf.GGMLQuantizationType.F32, gguf.GGMLQuantizationType.F16}
+    state = {}
+    skipped = []
+    for tensor in reader.tensors:
+        quant_type = tensor.tensor_type
+        if quant_type not in plain and quant_type not in SUPPORTED_GGUF_QUANT_TYPES:
+            if _gguf_model_tensor(tensor.name):
+                supported = ', '.join(str(int(item)) for item in SUPPORTED_GGUF_QUANT_TYPES)
+                raise ValueError(
+                    f'{tensor.name} has quantization type {int(quant_type)}, which Diffusers '
+                    f'cannot decode. Supported types: {supported}.')
+            skipped.append(tensor.name)
+            continue
+        weights = torch.from_numpy(tensor.data.copy())
+        state[tensor.name] = (
+            weights if quant_type in plain else GGUFParameter(weights, quant_type=quant_type))
+    if skipped:
+        _messages.debug_log(
+            f'GGUF text encoder "{path}" skipped {len(skipped)} sidecar tensors '
+            f'(for example {skipped[0]}).')
+    return state
+
+
 def load_text_encoder_gguf(path: str) -> tuple[str, dict]:
     """
     Read a text-encoder GGUF and rename llama.cpp tensors to Hugging Face names.
 
     Packed weights stay :py:class:`diffusers.quantizers.gguf.utils.GGUFParameter`.
-    Float embeddings, norms, and biases stay dense tensors. Gemma 3 norms are
-    converted back to the Hugging Face convention.
+    Float embeddings, norms, and biases stay dense tensors. A file that already
+    stores Hugging Face or ComfyUI names, including the LTX-2.5 Gemma 4 GGUF,
+    is left as-is. Gemma norms written by llama.cpp are converted back to the
+    Hugging Face values. Sidecar tensors such as a packed tokenizer are skipped
+    when Diffusers cannot decode their type.
 
     :return: ``(architecture, state dict)``
-    :raises ValueError: The file is not a text-encoder GGUF, or a tensor uses a
-        quantization type Diffusers cannot decode.
+    :raises ValueError: The file is not a text-encoder GGUF, or a model weight
+        uses a quantization type Diffusers cannot decode.
     """
-    from diffusers.models.model_loading_utils import load_gguf_checkpoint
-
     architecture = _gguf_architecture(path)
     if architecture not in _TEXT_GGUF_ARCHITECTURES:
         raise ValueError(
             f'GGUF file "{path}" has architecture {architecture!r}, which is not a text encoder. '
             f'Text encoder files use one of: {", ".join(sorted(_TEXT_GGUF_ARCHITECTURES))}.')
 
-    state = load_gguf_checkpoint(path)
+    state = _read_text_encoder_gguf(path)
     if architecture in {'t5', 't5encoder'}:
         key_map = _T5_GGUF_KEYS
-    elif architecture == 'gemma3':
+    elif architecture in {'gemma3', 'gemma4'}:
         key_map = _GEMMA3_GGUF_KEYS
     else:
         key_map = _LLAMA_GGUF_KEYS
@@ -1005,7 +1053,7 @@ def load_text_encoder_gguf(path: str) -> tuple[str, dict]:
     converted = not _huggingface_names(state, architecture)
     if converted:
         state = _remap_keys(state, key_map)
-    if architecture == 'gemma3' and converted:
+    if architecture in {'gemma3', 'gemma4'} and converted:
         state = correct_gemma3_norms(state)
 
     _messages.debug_log(

@@ -5,7 +5,7 @@
 # the text encoder. Raw and Turbo share this encoder. The GGUF is the
 # language tower; its mmproj sidecar is not loaded. Image conditioning
 # should use the ComfyUI safetensors encoder, which includes the vision
-# tower: examples/krea2/comfy-quant/text-encoder-config.dgen
+# tower: examples/krea2/comfy_quant/text-encoder-config.dgen
 # The file is already quantized. Do not set quantizer.
 
 krea/Krea-2-Raw

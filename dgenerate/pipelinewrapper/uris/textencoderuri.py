@@ -228,8 +228,12 @@ _LANGUAGE_MODEL_PREFIXES = (
     ('model.', 'language_model.model.'),
     ('visual.', 'model.visual.'),
     # ComfyUI Gemma 3 stores the tower as ``vision_model.``; transformers uses
-    # ``model.vision_tower.``.
+    # ``model.vision_tower.``. Gemma 4 (LTX-2.5) uses ``model.embed_vision.``
+    # and ``model.embed_audio.`` for the same Comfy names.
+    ('vision_model.', 'model.embed_vision.'),
     ('vision_model.', 'model.vision_tower.'),
+    ('audio_projector.', 'model.embed_audio.'),
+    ('multi_modal_projector.', 'model.embed_vision.multimodal_embedder.'),
 )
 
 
@@ -1184,11 +1188,13 @@ def _assign_gguf_text_encoder(model, state: dict, dtype: torch.dtype, rename, tr
             consumed.add(bias_key)
 
     for key, value in state.items():
-        if key in consumed or not key.endswith(('.weight', '.bias')):
+        if key in consumed:
             continue
         target = rename_weight(key)
         if target not in model_keys:
             continue
+        # Gemma 4 stores per-layer ``layer_scalar`` buffers and a vision
+        # position embedding. Those names do not end in ``.weight``.
         module_name = target.rsplit('.', 1)[0] if '.' in target else ''
         short = module_name.rsplit('.', 1)[-1]
         value = _dequantize_encoder_tensor(value)

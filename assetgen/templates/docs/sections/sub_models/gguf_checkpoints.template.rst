@@ -74,9 +74,12 @@ selects task and resolution.
   ``krea/Krea-2-Raw``, or Turbo when the file name says turbo.
 * Kandinsky 5 video is recognized from ``visual_transformer_blocks``. Hidden
   width 1792 is Lite and 4096 is Pro.
-* LTX 2.5 is recognized from ``keyframes_abs_pos_embedding`` or
-  ``audio_patchify_proj``, and uses ``Lightricks/LTX-2.5-Diffusers``.
-  LTX-Video 0.9.1, 0.9.5, and 0.9.7 use the Diffusers fingerprint.
+* LTX-2 and LTX-2.5 both have ``audio_patchify_proj``.
+  ``keyframes_abs_pos_embedding`` or ``prompt_adaln_single`` selects
+  ``Lightricks/LTX-2.5-Diffusers``. Without those tensors the file is the
+  19B LTX-2 transformer and uses ``Lightricks/LTX-2`` (Gemma 3 and the
+  2-layer connectors). LTX-Video 0.9.1, 0.9.5, and 0.9.7 use the Diffusers
+  fingerprint.
 * HunyuanVideo 1.5 is recognized from ``cond_type_embedding``. The file name
   selects 480p or 720p, and text-to-video or image-to-video.
 * HunyuanImage 2.1 is recognized from ``txt_in.input_embedder`` and
@@ -98,11 +101,13 @@ There is no ``mode`` and no ``subfolder``. The configuration is matched from
 the file's vocabulary, hidden size, and layer count. Do not set ``quantizer``.
 
 llama.cpp architectures ``t5``, ``t5encoder``, ``llama``, ``qwen2vl``,
-``qwen3``, ``qwen3vl``, and ``gemma3`` are accepted. Their tensor names are
-renamed to Hugging Face names, and the quantized linears stay packed. T5
-keeps its feed-forward output projection dense, because T5 runs that
-projection in float32. Gemma 3 norms written by llama.cpp are converted back
-to the Hugging Face values.
+``qwen3``, ``qwen3vl``, ``gemma3``, and ``gemma4`` are accepted. llama.cpp
+tensor names are renamed to Hugging Face names, and the quantized linears
+stay packed. A file that already stores Hugging Face or ComfyUI names,
+including the LTX-2.5 Gemma 4 GGUF, is loaded as stored. T5 keeps its
+feed-forward output projection dense, because T5 runs that projection in
+float32. Gemma norms written by llama.cpp are converted back to the
+Hugging Face values.
 
 The class is the one the pipeline expects: ``T5EncoderModel`` and
 ``UMT5EncoderModel`` for T5 and UMT5, and the language-model class for Qwen,
@@ -132,7 +137,7 @@ apply to the GGUF file.
 More examples are under ``examples/*/gguf``, for instance
 `examples/flux/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/flux/gguf>`_,
 `examples/flux2/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/flux2/gguf>`_,
-`examples/z-image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/z-image/gguf>`_,
-`examples/qwen-image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/qwen-image/gguf>`_,
+`examples/z_image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/z_image/gguf>`_,
+`examples/qwen_image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/qwen_image/gguf>`_,
 `examples/ltx2/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/gguf>`_,
 and `examples/wan/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/wan/gguf>`_.

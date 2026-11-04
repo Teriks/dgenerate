@@ -490,15 +490,17 @@ gguf files
 A ``.gguf`` file replaces the diffusion transformer or UNet, not the
 whole pipeline. The first line is still the Hugging Face repo, which
 supplies the VAE and text encoders. Pass the file with
-``--transformer``. Never put the ``.gguf`` path on the model line.
+``--transformer``. Keep the Hugging Face repo on the model line.
+A single-file load is the exception: the model line can be the GGUF when
+the tensors select the pipeline repo, as with an LTX-2 or LTX-2.5 file.
 Do not set ``quantizer=`` on that URI and do not use
 ``--quantizer gguf``. Quantize the text encoder separately with
 ``bnb`` or ``sdnq`` and ``--quantizer-map text_encoder``.
 ``--model-sequential-offload`` works with these GGUF transformers.
 
-Flux, SD3, Flux.2, Z-Image, Qwen-Image, LTX-2.5, and Wan all take a GGUF
+Flux, SD3, Flux.2, Z-Image, Qwen-Image, LTX-2, LTX-2.5, and Wan all take a GGUF
 transformer. The Wan 2.2 low-noise expert uses ``--wan-second-transformer``
-the same way. Flux.2 Klein, Qwen-Image, Z-Image, LTX-2.5, and Wan are
+the same way. Flux.2 Klein, Qwen-Image, Z-Image, LTX-2, LTX-2.5, and Wan are
 recognized from the file, including ComfyUI layouts, so
 ``--transformer`` needs no ``config=``. Flux.2 hidden width picks the
 config: 3072 is Klein 4B (``black-forest-labs/FLUX.2-klein-4B``,
@@ -510,14 +512,35 @@ repo is the checkpoint you want: ``Tongyi-MAI/Z-Image`` for base
 for Turbo (8 steps, guidance 0).
 
 See ``examples/flux/gguf``, ``examples/stablediffusion3/gguf``,
-``examples/flux2/gguf``, ``examples/z-image/gguf``,
-``examples/qwen-image/gguf``, ``examples/ltx2/gguf``,
+``examples/flux2/gguf``, ``examples/z_image/gguf``,
+``examples/qwen_image/gguf``, ``examples/ltx2/gguf``,
 and ``examples/wan/gguf``.
+When the user says ltx2, LTX-2, or LTX, write an LTX-2.5 recipe.
+Use ``Lightricks/LTX-2`` and Gemma 3 only when they name 19B, LTX-2.0, or Gemma 3.
 The distilled LTX-2.5 GGUF keeps guidance at 1 and omits
 ``--inference-steps``. The dev GGUF is the full transformer: guidance 3,
 audio guidance 7, and
 ``FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1``
-so ``--inference-steps`` applies. Qwen-Image Edit uses the same transformer
+so ``--inference-steps`` applies. A pre-quantized LTX-2.5 Gemma 4 text
+encoder is ``--text-encoders``
+``Gemma4UnifiedForConditionalGeneration`` pointed at
+``gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf`` from
+``elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF``, or the INT8 ConvRot and NVFP4
+safetensors of that layout. Do not set ``quantizer`` on it. The parent
+stays ``Lightricks/LTX-2.5-Diffusers``. The same encoder is used with the
+dev transformer: keep the dev scheduler, 30 steps, guidance 3, audio
+guidance 7, STG 1 on block 28, and modality 3.
+An LTX-2 19B GGUF is a different checkpoint: ``keyframes_abs_pos_embedding``
+or ``prompt_adaln_single`` selects LTX-2.5, and ``audio_patchify_proj``
+without those selects ``Lightricks/LTX-2`` (Gemma 3). The 19B dev file
+uses that parent as-is with guidance 4. The 19B distilled file sets
+``use-dynamic-shifting=false`` and guidance 1. Its pre-quantized Gemma 3
+encoder is ``--text-encoders`` ``Gemma3ForConditionalGeneration`` pointed at
+``gemma_3_12B_it_fp8_scaled.safetensors`` or
+``gemma_3_12B_it_fp4_mixed.safetensors`` from ``Comfy-Org/ltx-2``. Do not
+set ``quantizer`` on it. The same Gemma 3 encoder is used with the 19B
+dev GGUF: 30 steps, guidance 4, audio guidance 4, and the parent
+scheduler left as-is. Qwen-Image Edit uses the same transformer
 module as Qwen-Image. Qwen-Image Layered is selected by its extra
 ``addition_t_embedding``. Klein KV is width 4096, the same module as Klein 9B.
 

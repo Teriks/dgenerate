@@ -1,0 +1,32 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan 2.2 T2V A14B with both experts from ComfyUI's scaled FP8 files and
+# ComfyUI's scaled FP8 UMT5. Wan 2.2 has one text encoder. UMT5 is a single
+# file and needs no mode. Its linears stay packed, except the feed-forward
+# output projection, which T5 runs in float32.
+# Same prompt as examples/wan/comfy_quant/moe-fp8-scaled-config.dgen.
+# ComfyUI does not publish a 4-bit UMT5. The Q4 file is
+# examples/wan/gguf/text-encoder-wan22-config.dgen.
+
+\setp neg "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
+
+\set files https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models
+
+Wan-AI/Wan2.2-T2V-A14B-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--transformer {{ files }}/wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
+--wan-second-transformer {{ files }}/wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors
+--text-encoders "UMT5EncoderModel;model=https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+--inference-steps 30
+--guidance-scales 4
+--wan-low-noise-guidance-scales 3
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 5
+--animation-format mp4
+--output-path wan22-comfy-quant-text-encoder
+--prompts "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window.;{{ neg }}"

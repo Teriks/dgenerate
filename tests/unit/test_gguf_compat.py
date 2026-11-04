@@ -184,6 +184,21 @@ class TestGGUFCompat(unittest.TestCase):
         self.assertEqual(ltx.config_repo, 'Lightricks/LTX-2.5-Diffusers')
         self.assertTrue(ltx.adapt)
 
+        ltx2 = _ggufcompat.detect_gguf_layout({
+            'model.diffusion_model.audio_patchify_proj.weight': (128, 2048),
+            'model.diffusion_model.patchify_proj.weight': (128, 128),
+        })
+        self.assertEqual(ltx2.kind, 'ltx-2')
+        self.assertEqual(ltx2.config_repo, 'Lightricks/LTX-2')
+        self.assertTrue(ltx2.comfy)
+        self.assertTrue(ltx2.adapt)
+
+        ltx2_gate = _ggufcompat.detect_gguf_layout({
+            'av_ca_a2v_gate_adaln_single.emb.timestep_embedder.linear_1.weight': (2048, 256),
+        })
+        self.assertEqual(ltx2_gate.kind, 'ltx-2')
+        self.assertEqual(ltx2_gate.config_repo, 'Lightricks/LTX-2')
+
     def test_krea2_gguf_layout(self):
         layout = _ggufcompat.detect_gguf_layout({
             'txtfusion.projector.weight': (12,),

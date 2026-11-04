@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image 2.1 unguided generation; enhancement runs on the text encoder first.
+# With no input image this uses the text-to-image system prompt.
+# Reference-image rewrite is examples/qwen_image_21/pipeline_prompt_enhance/image-conditioned-config.dgen.
+
+Qwen/Qwen-Image-2.1
+--model-type qwen-image-21
+--dtype bfloat16
+--model-sequential-offload
+--qwen21-resolution 1024
+--pipeline-prompt-enhance
+--gen-seeds 1
+--output-path output
+--prompts "A small red fox beside a mossy forest stream"
