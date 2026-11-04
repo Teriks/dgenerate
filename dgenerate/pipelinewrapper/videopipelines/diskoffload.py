@@ -146,6 +146,38 @@ def uncounted_component_names(index, extra_dirs=(), load_kwargs=None, replaced=(
     return names
 
 
+def _component_cache_gate(name: str):
+    """Object-cache memory gate for a pipeline component, if it has one."""
+    if name in ('transformer', 'transformer_2'):
+        return _uris.TransformerUri._enforce_cache_size
+    if name == 'unet':
+        return _uris.UNetUri._enforce_cache_size
+    if name == 'vae':
+        return _uris.VAEUri._enforce_cache_size
+    if name == 'image_encoder':
+        return _uris.ImageEncoderUri._enforce_cache_size
+    if name.startswith('text_encoder'):
+        return _uris.TextEncoderUri._enforce_cache_size
+    return None
+
+
+def enforce_component_cache_gates(sizes: dict[str, int]) -> None:
+    """
+    Let component caches drop a previous model before a disk-offload decision.
+
+    A config can chain several models. The transformer, VAE, and text encoder
+    from the previous one stay in their object caches until those gates run.
+    Measuring free memory first would count that memory as still taken.
+    """
+    for name, size in sizes.items():
+        if not size:
+            continue
+        gate = _component_cache_gate(name)
+        if gate is None:
+            continue
+        gate(int(size))
+
+
 def _uses_packed_weights(*uris) -> bool:
     for uri in uris:
         if not uri:
@@ -677,7 +709,8 @@ def load_video_pipeline_low_ram(pipeline_class,
                                 lora_fuse_scale,
                                 prepare_module=None,
                                 weight_sources=None,
-                                defer_lora_fusion: bool = False):
+                                defer_lora_fusion: bool = False,
+                                pending_modules=None):
     """
     Load ``pipeline_class`` without holding every component in RAM at once.
 
@@ -695,6 +728,11 @@ def load_video_pipeline_low_ram(pipeline_class,
         weights. Replacement URIs belong here. Components omitted from the
         map are identified by the pipeline repository, revision, and variant.
     :param defer_lora_fusion: Keep LoRA targets resident instead of fusing them.
+    :param pending_modules: ``(name, loader)`` pairs. Each loader runs after the
+        memory warning. A component whose weights move to disk is released
+        before the next one is read. A component that has to stay resident
+        (a deferred LoRA, or packed weights) is kept, and the remaining
+        loaders wait until the repository components have been released.
     """
     available = int(_memory.get_available_commit_memory('b'))
     notice = (
@@ -738,7 +776,7 @@ def load_video_pipeline_low_ram(pipeline_class,
     try:
         def finish(name, module, reuse_folder, injected):
             if not isinstance(module, torch.nn.Module):
-                return
+                return False
             loras = _loras_for_component(name, lora_uris)
             if defer_lora_fusion and loras:
                 # Packed weights cannot take a fused write, and a full-precision
@@ -748,18 +786,18 @@ def load_video_pipeline_low_ram(pipeline_class,
                     prepare_module(name, module)
                 _messages.debug_log(
                     f'Leaving "{name}" in memory so its LoRA stays active.')
-                return
+                return False
             if _pipelines.module_skips_group_offload(module):
                 _messages.debug_log(
                     f'Leaving "{name}" in memory because its weights are packed.')
-                return
+                return False
             if loras:
                 _fuse_loras(
                     pipeline_class, module, loras, lora_fuse_scale,
                     token, local_files_only)
             if prepare_module is not None:
                 prepare_module(name, module)
-            offload_module_weights(
+            return offload_module_weights(
                 module,
                 None if injected or loras else reuse_folder,
                 os.path.join(offload_root, name),
@@ -773,17 +811,44 @@ def load_video_pipeline_low_ram(pipeline_class,
                 ),
             )
 
+        seen = set()
+        offloaded = set()
+        waiting = []
+
+        def release(name, module, injected) -> bool:
+            if name in seen:
+                return name in offloaded
+            seen.add(name)
+            if not isinstance(module, torch.nn.Module):
+                return True
+            folder = os.path.join(cached_folder, name)
+            if not finish(name, module, folder if os.path.isdir(folder) else None, injected):
+                return False
+            offloaded.add(name)
+            _release_cpu_cache()
+            return True
+
+        pending = list(pending_modules or ())
+        for position, (name, loader) in enumerate(pending):
+            _messages.log(f'Loading {name}.')
+            module = loader()
+            load_kwargs[name] = module
+            if release(name, module, True):
+                continue
+            waiting = pending[position + 1:]
+            break
+        waiting_names = {name for name, _loader in waiting}
+
         for name, module in list(load_kwargs.items()):
+            if name in waiting_names:
+                continue
             if _component_spec((index or {}).get(name)) is None:
                 continue
-            if not isinstance(module, torch.nn.Module):
-                continue
-            folder = os.path.join(cached_folder, name)
-            finish(name, module, folder if os.path.isdir(folder) else None, True)
+            release(name, module, True)
 
         for name, spec in (index or {}).items():
             parsed = _component_spec(spec)
-            if parsed is None or name in load_kwargs:
+            if parsed is None or name in load_kwargs or name in waiting_names:
                 continue
             library_name, class_name = parsed
             _messages.log(f'Loading {name} ({class_name}).')
@@ -791,9 +856,13 @@ def load_video_pipeline_low_ram(pipeline_class,
                 pipeline_class, name, library_name, class_name,
                 cached_folder, torch_dtype, model_variants)
             load_kwargs[name] = module
-            folder = os.path.join(cached_folder, name)
-            finish(name, module, folder if os.path.isdir(folder) else None, False)
-            _release_cpu_cache()
+            release(name, module, False)
+
+        for name, loader in waiting:
+            _messages.log(f'Loading {name}.')
+            module = loader()
+            load_kwargs[name] = module
+            release(name, module, True)
 
         pipe = pipeline_class.from_pretrained(pretrained_repo, **load_kwargs)
     except Exception:

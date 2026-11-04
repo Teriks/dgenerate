@@ -263,6 +263,22 @@ class TestAuxRepoPipelineEstimate(unittest.TestCase):
                 )
             self.assertEqual(size, 0)
 
+    def test_repo_estimate_skips_a_replaced_text_encoder(self):
+        with tempfile.TemporaryDirectory() as directory, patch(
+                'dgenerate.pipelinewrapper.pipelines._util.estimate_model_memory_use',
+                return_value=10) as estimate:
+            size = estimate_pipeline_cache_footprint(
+                model_path=directory,
+                model_type=ModelType.LTX2,
+                include_text_encoders=True,
+                extra_args={'text_encoder': None},
+            )
+        self.assertEqual(size, 10)
+        kwargs = estimate.call_args.kwargs
+        self.assertFalse(kwargs['include_text_encoder'])
+        self.assertTrue(kwargs['include_text_encoder_2'])
+        self.assertTrue(kwargs['include_text_encoder_3'])
+
 
 if __name__ == '__main__':
     unittest.main()

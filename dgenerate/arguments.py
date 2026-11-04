@@ -1782,7 +1782,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     * UMT5EncoderModel (Wan)
                     * DistillT5EncoderModel (see: LifuWang/DistillT5)
                     * ChatGLMModel (Kolors)
-                    * Gemma3ForConditionalGeneration (LTX-2)
+                    * Gemma3ForConditionalGeneration
                     * Gemma4UnifiedForConditionalGeneration (LTX-2.5)
                     * Mistral3ForConditionalGeneration (Flux.2)
                     * Qwen2_5_VLForConditionalGeneration (Qwen-Image, Kandinsky 5)

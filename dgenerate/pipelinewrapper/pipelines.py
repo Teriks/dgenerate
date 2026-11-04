@@ -1070,6 +1070,9 @@ def estimate_pipeline_cache_footprint(
     if extra_args is None:
         extra_args = dict()
 
+    def _kept(name: str) -> bool:
+        return not (name in extra_args and extra_args[name] is None)
+
     if component_repo:
         usage = 0
         if include_unet_or_transformer and os.path.isfile(model_path):
@@ -1077,9 +1080,6 @@ def estimate_pipeline_cache_footprint(
             _messages.debug_log(
                 'Estimate Considering:',
                 os.path.basename(model_path) + f', Size: {usage} Bytes')
-
-        def _kept(name: str) -> bool:
-            return not (name in extra_args and extra_args[name] is None)
 
         usage += _util.estimate_model_memory_use(
             repo_id=component_repo,
@@ -1104,11 +1104,11 @@ def estimate_pipeline_cache_footprint(
             variant=variant,
             subfolder=subfolder,
             include_unet_or_transformer=include_unet_or_transformer,
-            include_vae=include_vae,
+            include_vae=include_vae and _kept('vae'),
             safety_checker=safety_checker and 'safety_checker' not in extra_args,
-            include_text_encoder=include_text_encoders,
-            include_text_encoder_2=include_text_encoders,
-            include_text_encoder_3=include_text_encoders,
+            include_text_encoder=include_text_encoders and _kept('text_encoder'),
+            include_text_encoder_2=include_text_encoders and _kept('text_encoder_2'),
+            include_text_encoder_3=include_text_encoders and _kept('text_encoder_3'),
             include_directories=include_directories,
             auth_token=auth_token,
             local_files_only=local_files_only,

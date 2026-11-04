@@ -525,11 +525,20 @@ def fetch_model_files_with_size(repo_id: str,
                 return None
         return found
 
-    def enumerate_directory(d):
-        files = glob.iglob(os.path.join(d,
-                                        '**' if not subfolder else subfolder,
-                                        '*' if not weight_name else weight_name),
-                           recursive=True)
+    def enumerate_directory(d, *, at_snapshot_root=True):
+        # ``d`` is the snapshot root when a repo directory or a cached unet
+        # folder was found. ``subfolder`` is joined once from there. The
+        # cache hit for one named file is already inside that subfolder, so
+        # joining it again looks for a directory that does not exist.
+        if at_snapshot_root:
+            middle = '**' if not subfolder else subfolder
+            leaf = '*' if not weight_name else weight_name
+            pattern = os.path.join(d, middle, leaf)
+        elif weight_name:
+            pattern = os.path.join(d, weight_name)
+        else:
+            pattern = os.path.join(d, '**', '*')
+        files = glob.iglob(pattern, recursive=True)
         for file in files:
             if os.path.isfile(file) and post_discover_check(file):
                 yield os.path.join(subfolder if subfolder else '',
@@ -646,10 +655,13 @@ def fetch_model_files_with_size(repo_id: str,
             yield from yield_with_check(
                 enumerate_file(top_level_weights))
         elif other:
-            # Everything in the folder where config.json
-            # or was found, or whatever weight_name was found
-            yield from yield_with_check(
-                enumerate_directory(os.path.dirname(other)))
+            # config.json: the whole folder. A named weight: that file.
+            # ``other`` is already inside ``subfolder`` when one was set.
+            if weight_name:
+                yield from yield_with_check(enumerate_file(other))
+            else:
+                yield from yield_with_check(
+                    enumerate_directory(os.path.dirname(other), at_snapshot_root=False))
         elif not local_files_only:
             # Nothing matching what we are expecting in the
             # huggingface cache, ask the API
@@ -889,8 +901,8 @@ def estimate_model_memory_use(repo_id: str,
                                                               '.bin'},
                                                   sentencepiece=sentencepiece,
                                                   watermarker=watermarker):
-        d = os.path.dirname(file)
-        d = '.' if not d else d
+        d = os.path.dirname(file).replace('\\', '/').strip('/')
+        d = '.' if not d or d == '.' else d
 
         file = os.path.relpath(file, d)
 
@@ -986,7 +998,8 @@ def estimate_model_memory_use(repo_id: str,
 
             return size_sum
         else:
-            directory = '.' if not subfolder else subfolder
+            directory = '.' if not subfolder else subfolder.replace('\\', '/').strip('/')
+            directory = '.' if not directory else directory
             directory_entry = directories.get(directory)
 
             if not directory_entry:

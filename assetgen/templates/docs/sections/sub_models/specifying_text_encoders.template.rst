@@ -83,7 +83,7 @@ Available encoder classes are:
 * ``UMT5EncoderModel`` (Wan)
 * ``DistillT5EncoderModel`` (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
 * ``ChatGLMModel`` (Kolors)
-* ``Gemma3ForConditionalGeneration`` (LTX-2)
+* ``Gemma3ForConditionalGeneration``
 * ``Gemma4UnifiedForConditionalGeneration`` (LTX-2.5)
 * ``Mistral3ForConditionalGeneration`` (Flux.2)
 * ``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image, Kandinsky 5)
@@ -162,11 +162,13 @@ This can also be utilized with SD3.
 Language model text encoders, such as ``Qwen3ForCausalLM`` (Flux.2 Klein),
 ``Qwen3Model`` (Z-Image), ``Mistral3ForConditionalGeneration`` (Flux.2),
 ``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image, Kandinsky 5),
-``Qwen2_5_VLTextModel`` (HunyuanVideo 1.5), ``Gemma3ForConditionalGeneration``
-(LTX-2), and ``Gemma4UnifiedForConditionalGeneration`` (LTX-2.5), can be loaded from a
+``Qwen2_5_VLTextModel`` (HunyuanVideo 1.5) and
+``Gemma4UnifiedForConditionalGeneration`` (LTX-2.5), can be loaded from a
 single ``.safetensors`` or ``.gguf`` file, with no ``mode`` or ``subfolder``. The model
 configuration is matched from the file. A ComfyUI file trimmed to fewer decoder layers
 than the full model, such as the Flux.2 Mistral encoder, builds that many layers.
+The original LTX-2 single-file checkpoints, including ``ltx-2-19b-dev-fp8`` and the
+ComfyUI Gemma 3 files, are not supported.
 
 ``T5EncoderModel`` and ``UMT5EncoderModel`` load the same way from a ``.gguf`` file or
 from a monolithic ``.safetensors`` file. A GGUF file uses llama.cpp tensor names; those
@@ -203,10 +205,6 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
 @EXAMPLE[@PROJECT_DIR/examples/flux2/comfy-quant/dev-text-encoder-config.dgen]
 
 @EXAMPLE[@PROJECT_DIR/examples/flux2/comfy-quant/dev-text-encoder-fp4-config.dgen]
-
-@EXAMPLE[@PROJECT_DIR/examples/ltx2/comfy-quant/text-encoder-config.dgen]
-
-@EXAMPLE[@PROJECT_DIR/examples/ltx2/comfy-quant/text-encoder-fp4-config.dgen]
 
 @EXAMPLE[@PROJECT_DIR/examples/krea2/gguf/text-encoder-config.dgen]
 

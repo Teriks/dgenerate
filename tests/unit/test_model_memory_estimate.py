@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 import dgenerate.pipelinewrapper.util as _util
 
@@ -70,3 +71,26 @@ class TestEstimateModelMemoryUse(unittest.TestCase):
                 json.dump({'weight_map': weight_map}, handle)
             size = _util.estimate_model_memory_use(root, local_files_only=True)
         self.assertEqual(size, 400)
+
+    def test_cached_subfolder_weight_is_counted_once(self):
+        with tempfile.TemporaryDirectory() as root:
+            folder = os.path.join(root, 'split_files', 'text_encoders')
+            os.makedirs(folder)
+            path = os.path.join(folder, 'gemma.safetensors')
+            with open(path, 'wb') as handle:
+                handle.write(b'0' * 128)
+
+            def cached(repo_id, revision, filename):
+                name = filename.replace('\\', '/')
+                if name == 'split_files/text_encoders/gemma.safetensors':
+                    return path
+                return None
+
+            with mock.patch.object(
+                    _util, '_hf_try_to_load_from_cache', side_effect=cached):
+                size = _util.estimate_model_memory_use(
+                    'org/model',
+                    subfolder='split_files/text_encoders',
+                    weight_name='gemma.safetensors',
+                    local_files_only=True)
+        self.assertEqual(size, 128)

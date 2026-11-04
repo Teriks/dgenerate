@@ -347,3 +347,152 @@ class TestDiskOffload(unittest.TestCase):
                 module, folder, offload, torch.device('cpu'), dirty=False)
             self.assertFalse(os.path.exists(offload))
             self.assertTrue(torch.allclose(module(sample), expected))
+
+
+class TestChainedDiskOffload(unittest.TestCase):
+    def test_component_gates_drop_a_previous_model_before_the_decision(self):
+        calls = []
+
+        def remember(label):
+            def gate(size):
+                calls.append((label, size))
+            return gate
+
+        with mock.patch.object(
+                diskoffload._uris.TransformerUri, '_enforce_cache_size',
+                remember('transformer')), \
+                mock.patch.object(
+                    diskoffload._uris.VAEUri, '_enforce_cache_size',
+                    remember('vae')), \
+                mock.patch.object(
+                    diskoffload._uris.TextEncoderUri, '_enforce_cache_size',
+                    remember('text_encoder')):
+            diskoffload.enforce_component_cache_gates({
+                'transformer': 27,
+                'transformer_2': 14,
+                'vae': 0,
+                'text_encoder': 3,
+                'scheduler': 1,
+            })
+        self.assertEqual(calls, [
+            ('transformer', 27),
+            ('transformer', 14),
+            ('text_encoder', 3),
+        ])
+
+    def test_pending_components_load_after_the_warning_one_at_a_time(self):
+        order = []
+
+        class Pipe:
+            @staticmethod
+            def download(repo, **kwargs):
+                order.append('download')
+                return tempfile.gettempdir()
+
+            @classmethod
+            def from_pretrained(cls, repo, **kwargs):
+                order.append('pipeline')
+                return mock.Mock()
+
+        def loader(label):
+            def load():
+                order.append(label)
+                return _Net()
+            return load
+
+        def offload(module, *args, **kwargs):
+            order.append('release')
+
+        index = {
+            'transformer': ['diffusers', 'LTX2VideoTransformer3DModel'],
+            'vae': ['diffusers', 'AutoencoderKLLTX2Video'],
+        }
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.object(diskoffload, '_offload_directory', return_value=folder), \
+                mock.patch.object(diskoffload, 'offload_module_weights', side_effect=offload), \
+                mock.patch.object(
+                    diskoffload._messages, 'warning',
+                    side_effect=lambda *args, **kwargs: order.append('warning')), \
+                mock.patch(
+                    'diffusers.pipelines.pipeline_loading_utils._identify_model_variants',
+                    return_value={}):
+            diskoffload.load_video_pipeline_low_ram(
+                Pipe, 'org/model',
+                {'torch_dtype': torch.float32},
+                index, 1, 'cpu', None, 1.0,
+                pending_modules=[
+                    ('transformer', loader('transformer')),
+                    ('vae', loader('vae')),
+                ])
+        self.assertEqual(order, [
+            'warning', 'download',
+            'transformer', 'release',
+            'vae', 'release',
+            'pipeline',
+        ])
+
+    def test_a_resident_component_waits_to_load_the_rest(self):
+        order = []
+
+        class Pipe:
+            @staticmethod
+            def download(repo, **kwargs):
+                order.append('download')
+                return tempfile.gettempdir()
+
+            @classmethod
+            def from_pretrained(cls, repo, **kwargs):
+                order.append('pipeline')
+                return mock.Mock()
+
+        def stay():
+            order.append('transformer')
+            module = _Net()
+            module.stay = True
+            return module
+
+        def loader(label):
+            def load():
+                order.append(label)
+                return _Net()
+            return load
+
+        def offload(module, *args, **kwargs):
+            order.append('release')
+            return True
+
+        index = {
+            'transformer': ['diffusers', 'LTX2VideoTransformer3DModel'],
+            'text_encoder': ['transformers', 'Gemma'],
+            'vae': ['diffusers', 'AutoencoderKLLTX2Video'],
+        }
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.object(diskoffload, '_offload_directory', return_value=folder), \
+                mock.patch.object(diskoffload, 'offload_module_weights', side_effect=offload), \
+                mock.patch.object(
+                    diskoffload._pipelines, 'module_skips_group_offload',
+                    side_effect=lambda module: getattr(module, 'stay', False)), \
+                mock.patch.object(
+                    diskoffload, '_load_one_component',
+                    side_effect=lambda *args, **kwargs: loader('text_encoder')()), \
+                mock.patch.object(
+                    diskoffload._messages, 'warning',
+                    side_effect=lambda *args, **kwargs: order.append('warning')), \
+                mock.patch(
+                    'diffusers.pipelines.pipeline_loading_utils._identify_model_variants',
+                    return_value={}):
+            diskoffload.load_video_pipeline_low_ram(
+                Pipe, 'org/model',
+                {'torch_dtype': torch.float32},
+                index, 1, 'cpu', None, 1.0,
+                pending_modules=[
+                    ('transformer', stay),
+                    ('vae', loader('vae')),
+                ])
+        self.assertEqual(order, [
+            'warning', 'download',
+            'transformer',
+            'text_encoder', 'release',
+            'vae', 'release',
+            'pipeline',
+        ])

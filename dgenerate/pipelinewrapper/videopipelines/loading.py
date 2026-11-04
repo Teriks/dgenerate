@@ -337,6 +337,38 @@ def _text_encoder_slots(index: dict | None) -> list[str]:
     ]
 
 
+def _load_video_text_encoder(name, uri, dtype, auth_token, local_files_only,
+                             device, offload, force_unquantized):
+    parsed = _uris.TextEncoderUri.parse(uri)
+    if force_unquantized:
+        parsed.quantizer = None
+    # Global --quantizer only applies when the slot is left as +.
+    # Put quantizer= on the URI to quantize a replacement encoder.
+    device_map = (
+        _quantization._quantized_device_map(device, offload, parsed.quantizer)
+        if parsed.quantizer else None)
+    return parsed.load(
+        dtype_fallback=dtype,
+        auth_token=auth_token,
+        local_files_only=local_files_only,
+        device_map=device_map)
+
+
+def _check_video_text_encoder_uris(index, text_encoder_uris) -> None:
+    """Reject --text-encoders values this checkpoint cannot place."""
+    if not text_encoder_uris:
+        return
+    slots = _text_encoder_slots(index)
+    if not slots:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            '--text-encoders cannot be used with this video model; '
+            'the checkpoint has no text encoder.')
+    if len(text_encoder_uris) > len(slots):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'Too many --text-encoders values for this video model '
+            f'(got {len(text_encoder_uris)}, max {len(slots)}).')
+
+
 def _inject_video_text_encoders(index,
                                 text_encoder_uris,
                                 dtype,
@@ -353,16 +385,9 @@ def _inject_video_text_encoders(index,
     """
     if not text_encoder_uris:
         return {}
+    _check_video_text_encoder_uris(index, text_encoder_uris)
     slots = _text_encoder_slots(index)
-    if not slots:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            '--text-encoders cannot be used with this video model; '
-            'the checkpoint has no text encoder.')
     uris = list(text_encoder_uris)
-    if len(uris) > len(slots):
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Too many --text-encoders values for this video model '
-            f'(got {len(uris)}, max {len(slots)}).')
     injected = {}
     for name, uri in zip(slots, uris):
         if _pipelines._text_encoder_default(uri):
@@ -371,21 +396,126 @@ def _inject_video_text_encoders(index,
             injected[name] = None
             _messages.debug_log(f'Video pipeline skipping "{name}" (--text-encoders null).')
             continue
-        parsed = _uris.TextEncoderUri.parse(uri)
-        if name in force_unquantized:
-            parsed.quantizer = None
-        # Global --quantizer only applies when the slot is left as +.
-        # Put quantizer= on the URI to quantize a replacement encoder.
-        device_map = (
-            _quantization._quantized_device_map(device, offload, parsed.quantizer)
-            if parsed.quantizer else None)
-        injected[name] = parsed.load(
-            dtype_fallback=dtype,
-            auth_token=auth_token,
-            local_files_only=local_files_only,
-            device_map=device_map)
+        injected[name] = _load_video_text_encoder(
+            name, uri, dtype, auth_token, local_files_only, device, offload,
+            name in force_unquantized)
         _messages.debug_log(f'Video pipeline using --text-encoders for "{name}": "{uri}".')
     return injected
+
+
+def _weight_bytes(path,
+                  auth_token,
+                  local_files_only,
+                  revision='main',
+                  variant=None,
+                  subfolder=None,
+                  directory=None) -> int:
+    """Byte size of a checkpoint file or one component directory. Zero if unknown."""
+    if path and os.path.isfile(path):
+        return os.path.getsize(path)
+    if not path:
+        return 0
+    if variant == 'null':
+        variant = None
+    try:
+        return _util.estimate_model_memory_use(
+            path,
+            revision=revision or 'main',
+            variant=variant,
+            subfolder=subfolder,
+            include_unet_or_transformer=False,
+            include_vae=False,
+            include_text_encoder=False,
+            include_text_encoder_2=False,
+            include_text_encoder_3=False,
+            include_directories=[directory] if directory else None,
+            auth_token=auth_token,
+            local_files_only=local_files_only)
+    except Exception as error:
+        _messages.debug_log(f'Could not estimate "{path}" ({directory}): {error}')
+        return 0
+
+
+def _parsed_weight_bytes(uri_cls, uri, auth_token, local_files_only) -> int:
+    parsed = uri_cls.parse(uri)
+    return _weight_bytes(
+        parsed.model,
+        auth_token,
+        local_files_only,
+        revision=parsed.revision,
+        variant=getattr(parsed, 'variant', None),
+        subfolder=getattr(parsed, 'subfolder', None))
+
+
+def _chained_component_sizes(pretrained_repo,
+                             index,
+                             revision,
+                             variant,
+                             subfolder,
+                             auth_token,
+                             local_files_only,
+                             transformer_uri=None,
+                             second_transformer_uri=None,
+                             vae_uri=None,
+                             text_encoder_slots=(),
+                             text_encoder_uris=()) -> tuple[dict[str, int], int]:
+    """
+    Sizes used to gate component caches before a disk-offload decision.
+
+    The previous model in a chained config is still resident until the cache
+    that holds it is checked against the size of the component about to load.
+    The integer is the replacement-file total. The repository estimate does
+    not include those files, and the fit check has to.
+    """
+    import dgenerate.pipelinewrapper.videopipelines.diskoffload as _diskoffload
+
+    replacements = {}
+    if transformer_uri:
+        replacements['transformer'] = (
+            _uris.TransformerUri, transformer_uri)
+    if second_transformer_uri:
+        replacements['transformer_2'] = (
+            _uris.TransformerUri, second_transformer_uri)
+    if vae_uri:
+        replacements['vae'] = (_uris.VAEUri, vae_uri)
+    for slot, uri in zip(text_encoder_slots, text_encoder_uris):
+        if (not uri
+                or _pipelines._text_encoder_default(uri)
+                or _pipelines._text_encoder_null(uri)):
+            continue
+        replacements[slot] = (_uris.TextEncoderUri, uri)
+
+    names = set(replacements)
+    replaced_bytes = 0
+    for name, spec in (index or {}).items():
+        if (_diskoffload._component_spec(spec) is not None
+                and _diskoffload._component_cache_gate(name) is not None
+                and name not in replacements):
+            # A null encoder is intentionally absent.
+            slot_uri = dict(zip(text_encoder_slots, text_encoder_uris)).get(name)
+            if slot_uri and _pipelines._text_encoder_null(slot_uri):
+                continue
+            names.add(name)
+
+    sizes = {}
+    for name in names:
+        if name in replacements:
+            uri_cls, uri = replacements[name]
+            size = _parsed_weight_bytes(uri_cls, uri, auth_token, local_files_only)
+        else:
+            size = _weight_bytes(
+                pretrained_repo,
+                auth_token,
+                local_files_only,
+                revision=revision,
+                variant=variant,
+                subfolder=subfolder,
+                directory=name)
+        if size:
+            sizes[name] = size
+            if name in replacements:
+                replaced_bytes += size
+    return sizes, replaced_bytes
 
 
 def _preflight_video_loras(lora_uris, component_quantizers, lora_disk_fuse) -> bool:
@@ -478,6 +608,7 @@ def _create_cached_video_pipeline(model_path,
             dtype = detected_dtype
     te_slots = _text_encoder_slots(index)
     te_uris = list(text_encoder_uris or ())
+    _check_video_text_encoder_uris(index, te_uris)
     lora_components, lora_component_quantizers = _lora._video_lora_component_quantizers(
         pipeline_class, quantizer_uri, quantizer_map, transformer_uri,
         wan_second_transformer_uri, te_slots, te_uris)
@@ -496,6 +627,13 @@ def _create_cached_video_pipeline(model_path,
         # The Gemma prompt enhancer is passed as None and is not loaded.
         estimate_directories = [
             name for name in extra_dirs if name not in _quantization._LTX_SKIP_OPTIONAL_MODULES]
+    # A slot that is null or replaced is not loaded from the repository.
+    # Leave it out so the fit check does not add that directory and the
+    # replacement file.
+    omitted_modules = {
+        slot: None
+        for slot, uri in zip(te_slots, te_uris)
+        if uri and not _pipelines._text_encoder_default(uri)}
     estimate = _pipelines.estimate_pipeline_cache_footprint(
         model_path=pretrained_repo,
         model_type=model_type,
@@ -508,78 +646,24 @@ def _create_cached_video_pipeline(model_path,
         lora_uris=all_lora_uris,
         include_directories=estimate_directories,
         auth_token=auth_token,
-        local_files_only=local_files_only)
-    if aux_repo and os.path.isfile(model_path):
-        estimate += os.path.getsize(model_path)
-    _pipelines._enforce_pipeline_cache_size(estimate)
+        local_files_only=local_files_only,
+        extra_args=omitted_modules)
+    # A single-file checkpoint is the transformer (or --transformer replaces
+    # it). Its size is replacement_bytes below. Adding it here as well makes
+    # the fit check count the file twice.
 
     load_kwargs = _pretrained_kwargs(
         revision, variant, load_subfolder, local_files_only, auth_token, dtype,
         include_dtype=True)
     if family == 'ltx2':
         load_kwargs.update(_quantization._LTX_SKIP_OPTIONAL_MODULES)
+    # Null encoders are not weights. Record them before the memory decision
+    # so their folders are not counted, without loading anything else.
+    for slot, uri in zip(te_slots, te_uris):
+        if uri and _pipelines._text_encoder_null(uri):
+            load_kwargs[slot] = None
 
     offload = bool(model_cpu_offload or sequential_cpu_offload or model_group_offload)
-    injected = {}
-    if transformer_uri:
-        force_unquantized = preflight_loras and 'transformer' in lora_component_quantizers
-        injected['transformer'] = _load_replacement_transformer(
-            model_type, transformer_uri, dtype, variant, auth_token, local_files_only,
-            quantizer_uri=quantizer_uri, quantizer_map=quantizer_map, device=device,
-            offload=offload, config_repo=pretrained_repo, family=family,
-            force_unquantized=force_unquantized)
-        load_kwargs['transformer'] = injected['transformer']
-    if wan_second_transformer_uri:
-        force_unquantized = preflight_loras and 'transformer_2' in lora_component_quantizers
-        injected['transformer_2'] = _load_replacement_transformer(
-            model_type, wan_second_transformer_uri, dtype, variant, auth_token, local_files_only,
-            quantizer_uri=quantizer_uri, quantizer_map=quantizer_map, device=device,
-            offload=offload, component_name='transformer_2', config_repo=pretrained_repo,
-            family=family, force_unquantized=force_unquantized)
-        load_kwargs['transformer_2'] = injected['transformer_2']
-    if vae_uri:
-        parsed_vae = _uris.VAEUri.parse(vae_uri)
-        # The Wan VAE defaults to float32 even when replaced via --vae, unless
-        # the URI sets dtype= explicitly.
-        vae_dtype_fallback = dtype
-        if (_enums.model_type_uses_wan_vae(model_type)
-                and parsed_vae.dtype is None):
-            vae_dtype_fallback = _constants.DEFAULT_WAN_VAE_DTYPE
-        injected['vae'] = parsed_vae.load(
-            dtype_fallback=vae_dtype_fallback,
-            auth_token=auth_token,
-            local_files_only=local_files_only)
-        load_kwargs['vae'] = injected['vae']
-        _messages.debug_log(f'Video pipeline using --vae "{vae_uri}".')
-    injected.update(_inject_video_text_encoders(
-        index, te_uris, dtype, auth_token, local_files_only, device, offload,
-        force_unquantized=(lora_component_quantizers if preflight_loras else ())))
-    load_kwargs.update(injected)
-    fused_lora_components = {}
-    if preflight_loras:
-        fused_lora_cache = _lora._preflight_quantized_video_loras(
-            pipeline_class, pretrained_repo, load_kwargs, injected, model_type,
-            all_lora_uris, lora_fuse_scale, auth_token, local_files_only, family,
-            component_uris=_lora._video_lora_component_uri_cache_key(
-                lora_components, transformer_uri, wan_second_transformer_uri,
-                te_slots, te_uris),
-            components=lora_components)
-        fused_lora_components, fused_lora_manifest = fused_lora_cache
-        for component_name, component_path in fused_lora_components.items():
-            load_kwargs.pop(component_name, None)
-            injected.pop(component_name, None)
-            injected[component_name] = _lora._load_fused_video_component(
-                component_name, component_path, fused_lora_manifest[component_name],
-                dtype, lora_component_quantizers.get(component_name),
-                auth_token, local_files_only,
-                device, offload)
-        load_kwargs.update(injected)
-    injected.update(_quantization._quantized_classic_modules(
-        pretrained_repo, revision, variant, load_subfolder, dtype, quantizer_uri, quantizer_map,
-        auth_token, local_files_only, device, offload,
-        skip_names=frozenset(load_kwargs)))
-    load_kwargs.update(injected)
-    _messages.debug_log(f'Loading {pipeline_class.__name__} from "{pretrained_repo}".')
     import dgenerate.pipelinewrapper.videopipelines.diskoffload as _diskoffload
     replaced = set()
     if transformer_uri:
@@ -605,16 +689,121 @@ def _create_cached_video_pipeline(model_path,
             include_directories=missing,
             auth_token=auth_token,
             local_files_only=local_files_only)
+    # A chained config may still hold the previous model. Component caches
+    # and the pipeline cache have to be able to drop it before available
+    # memory is measured, and before any of this model's weights are read.
+    component_sizes, replacement_bytes = _chained_component_sizes(
+        pretrained_repo, index, revision, variant, load_subfolder,
+        auth_token, local_files_only,
+        transformer_uri=transformer_uri,
+        second_transformer_uri=wan_second_transformer_uri,
+        vae_uri=vae_uri,
+        text_encoder_slots=te_slots,
+        text_encoder_uris=te_uris)
+    _diskoffload.enforce_component_cache_gates(component_sizes)
+    _pipelines._enforce_pipeline_cache_size(footprint)
+    # ``footprint`` is the repository pipeline. A replacement transformer,
+    # VAE, or text encoder is not in that sum, including a single-file
+    # transformer counted once in ``replacement_bytes``.
+    load_bytes = footprint + replacement_bytes
     stream_from_disk = (
         not str(family).startswith('wan-animate-2')
         and _diskoffload.should_stream_weights_from_disk(
-            footprint,
+            load_bytes,
             quantizer_uri=quantizer_uri,
             quantizer_map=quantizer_map,
             model_path=model_path,
             transformer_uri=transformer_uri,
             second_transformer_uri=wan_second_transformer_uri,
             vae_uri=vae_uri))
+    _messages.debug_log(f'Loading {pipeline_class.__name__} from "{pretrained_repo}".')
+
+    def _stage_loader(name, loader, injected, pending):
+        # Disk offload reads the loader after the memory warning. Every other
+        # path needs the module now, which is still after the cache gates.
+        if stream_from_disk:
+            pending.append((name, loader))
+            return
+        module = loader()
+        injected[name] = module
+        load_kwargs[name] = module
+
+    injected = {}
+    pending_modules = []
+    if transformer_uri:
+        force_unquantized = preflight_loras and 'transformer' in lora_component_quantizers
+        _stage_loader(
+            'transformer',
+            lambda _force=force_unquantized: _load_replacement_transformer(
+                model_type, transformer_uri, dtype, variant, auth_token, local_files_only,
+                quantizer_uri=quantizer_uri, quantizer_map=quantizer_map, device=device,
+                offload=offload, config_repo=pretrained_repo, family=family,
+                force_unquantized=_force),
+            injected, pending_modules)
+    if wan_second_transformer_uri:
+        force_unquantized = preflight_loras and 'transformer_2' in lora_component_quantizers
+        _stage_loader(
+            'transformer_2',
+            lambda _force=force_unquantized: _load_replacement_transformer(
+                model_type, wan_second_transformer_uri, dtype, variant, auth_token,
+                local_files_only,
+                quantizer_uri=quantizer_uri, quantizer_map=quantizer_map, device=device,
+                offload=offload, component_name='transformer_2', config_repo=pretrained_repo,
+                family=family, force_unquantized=_force),
+            injected, pending_modules)
+    if vae_uri:
+        def _load_vae():
+            parsed_vae = _uris.VAEUri.parse(vae_uri)
+            # The Wan VAE defaults to float32 even when replaced via --vae, unless
+            # the URI sets dtype= explicitly.
+            vae_dtype_fallback = dtype
+            if (_enums.model_type_uses_wan_vae(model_type)
+                    and parsed_vae.dtype is None):
+                vae_dtype_fallback = _constants.DEFAULT_WAN_VAE_DTYPE
+            _messages.debug_log(f'Video pipeline using --vae "{vae_uri}".')
+            return parsed_vae.load(
+                dtype_fallback=vae_dtype_fallback,
+                auth_token=auth_token,
+                local_files_only=local_files_only)
+        _stage_loader('vae', _load_vae, injected, pending_modules)
+    text_force = lora_component_quantizers if preflight_loras else ()
+    for slot, uri in zip(te_slots, te_uris):
+        if (not uri
+                or _pipelines._text_encoder_default(uri)
+                or _pipelines._text_encoder_null(uri)):
+            continue
+        _stage_loader(
+            slot,
+            lambda _slot=slot, _uri=uri: _load_video_text_encoder(
+                _slot, _uri, dtype, auth_token, local_files_only, device, offload,
+                _slot in text_force),
+            injected, pending_modules)
+    fused_lora_components = {}
+    if not stream_from_disk and preflight_loras:
+        fused_lora_cache = _lora._preflight_quantized_video_loras(
+            pipeline_class, pretrained_repo, load_kwargs, injected, model_type,
+            all_lora_uris, lora_fuse_scale, auth_token, local_files_only, family,
+            component_uris=_lora._video_lora_component_uri_cache_key(
+                lora_components, transformer_uri, wan_second_transformer_uri,
+                te_slots, te_uris),
+            components=lora_components)
+        fused_lora_components, fused_lora_manifest = fused_lora_cache
+        for component_name, component_path in fused_lora_components.items():
+            load_kwargs.pop(component_name, None)
+            injected.pop(component_name, None)
+            injected[component_name] = _lora._load_fused_video_component(
+                component_name, component_path, fused_lora_manifest[component_name],
+                dtype, lora_component_quantizers.get(component_name),
+                auth_token, local_files_only,
+                device, offload)
+        load_kwargs.update(injected)
+    if not stream_from_disk:
+        injected.update(_quantization._quantized_classic_modules(
+            pretrained_repo, revision, variant, load_subfolder, dtype, quantizer_uri,
+            quantizer_map, auth_token, local_files_only, device, offload,
+            skip_names=frozenset(load_kwargs)))
+        load_kwargs.update(injected)
+
     with _hfhub.with_hf_errors_as_model_not_found():
         if str(family).startswith('wan-animate-2'):
             import dgenerate.pipelinewrapper.videopipelines.wan as wan
@@ -642,10 +831,11 @@ def _create_cached_video_pipeline(model_path,
             for component_name, component_path in fused_lora_components.items():
                 weight_sources[component_name] = str(component_path)
             pipe = _diskoffload.load_video_pipeline_low_ram(
-                pipeline_class, pretrained_repo, load_kwargs, index, footprint, device,
+                pipeline_class, pretrained_repo, load_kwargs, index, load_bytes, device,
                 all_lora_uris, lora_fuse_scale, prepare_module=prepare_module,
                 weight_sources=weight_sources,
-                defer_lora_fusion=not lora_disk_fuse)
+                defer_lora_fusion=not lora_disk_fuse,
+                pending_modules=pending_modules)
         else:
             pipe = pipeline_class.from_pretrained(pretrained_repo, **load_kwargs)
     if _attach_video_loras_after_load(

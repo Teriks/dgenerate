@@ -10157,7 +10157,7 @@ Available encoder classes are:
 * ``UMT5EncoderModel`` (Wan)
 * ``DistillT5EncoderModel`` (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
 * ``ChatGLMModel`` (Kolors)
-* ``Gemma3ForConditionalGeneration`` (LTX-2)
+* ``Gemma3ForConditionalGeneration``
 * ``Gemma4UnifiedForConditionalGeneration`` (LTX-2.5)
 * ``Mistral3ForConditionalGeneration`` (Flux.2)
 * ``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image, Kandinsky 5)
@@ -10436,11 +10436,13 @@ This can also be utilized with SD3.
 Language model text encoders, such as ``Qwen3ForCausalLM`` (Flux.2 Klein),
 ``Qwen3Model`` (Z-Image), ``Mistral3ForConditionalGeneration`` (Flux.2),
 ``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image, Kandinsky 5),
-``Qwen2_5_VLTextModel`` (HunyuanVideo 1.5), ``Gemma3ForConditionalGeneration``
-(LTX-2), and ``Gemma4UnifiedForConditionalGeneration`` (LTX-2.5), can be loaded from a
+``Qwen2_5_VLTextModel`` (HunyuanVideo 1.5) and
+``Gemma4UnifiedForConditionalGeneration`` (LTX-2.5), can be loaded from a
 single ``.safetensors`` or ``.gguf`` file, with no ``mode`` or ``subfolder``. The model
 configuration is matched from the file. A ComfyUI file trimmed to fewer decoder layers
 than the full model, such as the Flux.2 Mistral encoder, builds that many layers.
+The original LTX-2 single-file checkpoints, including ``ltx-2-19b-dev-fp8`` and the
+ComfyUI Gemma 3 files, are not supported.
 
 ``T5EncoderModel`` and ``UMT5EncoderModel`` load the same way from a ``.gguf`` file or
 from a monolithic ``.safetensors`` file. A GGUF file uses llama.cpp tensor names; those
@@ -10811,70 +10813,6 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     --output-path flux2-comfy-quant-dev-text-encoder-fp4
     --output-size 1024
     --prompts "A cat holding a sign that says hello world"
-
-.. code-block:: jinja
-
-    #! /usr/bin/env dgenerate --file
-    #! dgenerate 6.0.0
-    
-    # LTX-2 with Lightricks' FP8 transformer and ComfyUI's scaled FP8 Gemma 3
-    # 12B text encoder. This is the LTX-2 checkpoint (Gemma 3), not LTX-2.5
-    # (Gemma 4). The text encoder file includes the vision tower. No mode and
-    # no quantizer: the linears stay packed. The repository still supplies the
-    # connectors and VAEs.
-    
-    \set token %HF_TOKEN%
-    
-    {% if not token.strip() and not '--auth-token' in injected_args %}
-        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
-        \exit
-    {% endif %}
-    
-    Lightricks/LTX-2
-    --model-type ltx2
-    --dtype bfloat16
-    --model-sequential-offload
-    --transformer https://huggingface.co/Lightricks/LTX-2/blob/main/ltx-2-19b-dev-fp8.safetensors
-    --text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp8_scaled.safetensors"
-    --guidance-scales 1
-    --gen-seeds 1
-    --output-size 640x384
-    --video-lengths 2
-    --animation-format mp4
-    --output-path ltx-comfy-quant-text-encoder
-    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
-
-.. code-block:: jinja
-
-    #! /usr/bin/env dgenerate --file
-    #! dgenerate 6.0.0
-    
-    # LTX-2 with Lightricks' FP4 transformer and ComfyUI's FP4 mixed Gemma 3
-    # 12B text encoder. This is the LTX-2 checkpoint (Gemma 3), not LTX-2.5
-    # (Gemma 4). The text encoder file includes the vision tower. No mode and
-    # no quantizer: the linears stay packed. The repository still supplies the
-    # connectors and VAEs.
-    
-    \set token %HF_TOKEN%
-    
-    {% if not token.strip() and not '--auth-token' in injected_args %}
-        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
-        \exit
-    {% endif %}
-    
-    Lightricks/LTX-2
-    --model-type ltx2
-    --dtype bfloat16
-    --model-sequential-offload
-    --transformer https://huggingface.co/Lightricks/LTX-2/blob/main/ltx-2-19b-dev-fp4.safetensors
-    --text-encoders "Gemma3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/ltx-2/blob/main/split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors"
-    --guidance-scales 1
-    --gen-seeds 1
-    --output-size 640x384
-    --video-lengths 2
-    --animation-format mp4
-    --output-path ltx-comfy-quant-text-encoder-fp4
-    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
 
 .. code-block:: jinja
 
