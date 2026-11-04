@@ -72,6 +72,7 @@ class ConsoleSchemaBuilder:
             self._build_mediaformats_schema()
             self._build_arguments_schema()
             self._build_sub_models_schema()
+            self._build_text_encoders_schema()
 
             print("✓ Console schemas built successfully")
         except Exception as e:
@@ -206,6 +207,14 @@ class ConsoleSchemaBuilder:
 
         with open(schema_file, 'w') as file:
             json.dump(schema, file)
+
+    def _build_text_encoders_schema(self):
+        """Build per-model-type text encoder slot schema."""
+        import dgenerate.pipelinewrapper.textencoderschema as _text_encoder_schema
+
+        schema_file = self.schemas_dir / 'textencoders.json'
+        with open(schema_file, 'w') as file:
+            json.dump(_text_encoder_schema.text_encoder_schema(), file)
 
     def _build_directives_schema(self):
         """Build directives schema."""

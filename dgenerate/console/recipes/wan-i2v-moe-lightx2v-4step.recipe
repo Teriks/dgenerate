@@ -12,7 +12,7 @@ title: Wan 2.2 Image to Video (4-step LoRA)
 
 \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
-\setp first_frame "@file[{"label":"First Frame", "optional":false, "mode":"input", "file-types":["images-in"]}]"
+\setp first_frame "@file[{"id":"image-seed", "label":"First Frame", "optional":false, "mode":"input", "file-types":["images-in"]}]"
 
 \set image_seeds {{ format_image_seed(seed_images=first_frame) }}
 \set image_seeds {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}
@@ -27,13 +27,14 @@ title: Wan 2.2 Image to Video (4-step LoRA)
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
-@quantizer[{"model-type":"wan", "divider-after":true}]
---loras @submodelbuilder[{"label":"High-noise LoRA", "help-arg":"--loras", "model": "LoRA", "optional":false, "default":"lightx2v/Wan2.2-Distill-Loras;scale=1.0;weight-name=wan2.2_i2v_A14b_high_noise_lora_rank64_lightx2v_4step_1022.safetensors"}] @submodelbuilder[{"label":"Low-noise LoRA", "help-arg":"--loras", "model": "LoRA", "optional":false, "default":"lightx2v/Wan2.2-Distill-Loras;scale=1.0;weight-name=wan2.2_i2v_A14b_low_noise_lora_rank64_lightx2v_4step_1022.safetensors;component=transformer_2"}]
-@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0,"divider-after":true}]
-@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse"}]
+@quantizer[{"model-type":"wan"}]
+@textencoders[{"model-type":"wan","arg":"--text-encoders", "divider-after":true}]
+--loras @submodelbuilder[{"id":"lora", "label":"High-noise LoRA", "help-arg":"--loras", "model": "LoRA", "optional":false, "default":"lightx2v/Wan2.2-Distill-Loras;scale=1.0;weight-name=wan2.2_i2v_A14b_high_noise_lora_rank64_lightx2v_4step_1022.safetensors"}] @submodelbuilder[{"id":"lora-2", "label":"Low-noise LoRA", "help-arg":"--loras", "model": "LoRA", "optional":false, "default":"lightx2v/Wan2.2-Distill-Loras;scale=1.0;weight-name=wan2.2_i2v_A14b_low_noise_lora_rank64_lightx2v_4step_1022.safetensors;component=transformer_2"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0,"divider-after":true, "enabled-when":{"any":[{"id":"lora","not-empty":true},{"id":"lora-2","not-empty":true}]}}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"any":[{"id":"lora","not-empty":true},{"id":"lora-2","not-empty":true}]}}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer"}]
 @submodelbuilder[{"label":"Second Transformer (MoE)", "arg":"--wan-second-transformer", "model": "Transformer", "divider-after":true}]
-@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]
+@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true, "enabled-when":{"id":"image-seed","not-empty":true}}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]
 @float[{"label":"Low-Noise Guidance Scale", "arg":"--wan-low-noise-guidance-scales", "min":0}]

@@ -80,14 +80,14 @@ class _UriWithFloatEntry(_urientry._UriEntry):
         return self.hide_float or self.float_entry.is_valid()
 
     def invalid(self):
-        if not self.optional and not self.uri_entry():
+        if not self.optional and not self.uri_entry.get().strip():
             _entry.invalid_colors(self.uri_entry)
 
         if not self.hide_float and not self.float_entry.is_valid():
             _entry.invalid_colors(self.float_entry)
 
     def valid(self):
-        if not self.optional and self.uri_entry():
+        if self.optional or self.uri_entry.get().strip():
             _entry.valid_colors(self.uri_entry)
 
         if not self.hide_float and self.float_entry.is_valid():

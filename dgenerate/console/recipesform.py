@@ -171,6 +171,12 @@ class _RecipesForm(tk.Toplevel):
             else:
                 entry.valid()
 
+        if self._image_seeds_missing():
+            for entry in self._image_seed_entries():
+                if not entry._row_inactive:
+                    entry.invalid()
+            missing_fields = True
+
         if not missing_fields:
             self._content = content
             value = ('\n'.join(line.lstrip() for line in self._content.splitlines())).strip()
@@ -423,15 +429,17 @@ class _RecipesForm(tk.Toplevel):
             if getattr(entry, name, None) is not None
         ]
         variables.extend(getattr(entry, 'bool_vars', []))
+        variables.extend(getattr(entry, 'uri_vars', []))
         return variables
 
     def _bind_refresh(self) -> None:
         """
         Re-evaluate conditions and exclusions on any entry value change.
 
-        'enabled-when' / 'visible-when' conditions read ``text_var`` or
-        ``bool_var`` of their source entry, which are traced here too, so a
-        single refresh path applies conditions before exclusions.
+        'enabled-when' / 'visible-when' conditions read ``text_var``,
+        ``bool_var``, or ``uri_var`` of their source entry, which are traced
+        here too, so a single refresh path applies conditions before exclusions.
+        A condition may be ``{"all": [...]}`` or ``{"any": [...]}``.
         """
         traced = set()
         for entry in self._entries:
@@ -444,18 +452,27 @@ class _RecipesForm(tk.Toplevel):
     def _matches_condition(self, condition) -> bool:
         if 'all' in condition:
             return all(self._matches_condition(item) for item in condition['all'])
+        if 'any' in condition:
+            return any(self._matches_condition(item) for item in condition['any'])
 
         source = self._id_map.get(condition.get('id'))
         if source is None:
             return False
 
-        variable = getattr(source, 'text_var', None)
-        if variable is None:
-            variable = getattr(source, 'bool_var', None)
+        variable = None
+        for name in ('text_var', 'bool_var', 'uri_var'):
+            variable = getattr(source, name, None)
+            if variable is not None:
+                break
         if variable is None:
             return False
 
         value = variable.get()
+        if condition.get('not-empty'):
+            if isinstance(value, bool):
+                return value
+            return bool(str(value).strip())
+
         equals = condition.get('equals', '')
         if isinstance(value, bool):
             return value == (str(equals).lower() == 'true')
@@ -494,6 +511,59 @@ class _RecipesForm(tk.Toplevel):
         # own widget states are not reset on every refresh.
         for entry in self._entries:
             entry.set_row_enabled(enabled[entry])
+        self._sync_image_seed_requirement()
+
+    _GUIDANCE_ARGS = {
+        '--control-nets',
+        '--control-loras',
+        '--t2i-adapters',
+        '--ip-adapters',
+    }
+
+    def _image_seed_entries(self):
+        """Fields that produce ``--image-seeds``."""
+        entries = []
+        for entry in self._entries:
+            entry_id = entry.config.get('id') or ''
+            if entry.config.get('arg') == '--image-seeds' or entry_id == 'image-seed' \
+                    or entry_id.startswith('image-seed-'):
+                entries.append(entry)
+        return entries
+
+    def _guidance_requires_image_seed(self) -> bool:
+        """Control Net, Control LoRA, T2I, and IP Adapter need an image seed to run."""
+        for entry in self._entries:
+            if entry._row_inactive or entry.config.get('arg') not in self._GUIDANCE_ARGS:
+                continue
+            if not self._entry_blank(entry):
+                return True
+        return False
+
+    def _entry_blank(self, entry) -> bool:
+        """Value used by conditions. The entry widget can lag its variable during a trace."""
+        for name in ('text_var', 'uri_var'):
+            variable = getattr(entry, name, None)
+            if variable is not None:
+                return not str(variable.get()).strip()
+        return entry.is_empty()
+
+    def _image_seeds_missing(self) -> bool:
+        seeds = [entry for entry in self._image_seed_entries() if not entry._row_inactive]
+        if not seeds or not self._guidance_requires_image_seed():
+            return False
+        return all(self._entry_blank(entry) for entry in seeds)
+
+    def _sync_image_seed_requirement(self) -> None:
+        """Drop the Optional label while a guidance model is set and no seed is filled in."""
+        required = self._image_seeds_missing()
+        for entry in self._image_seed_entries():
+            # Keep this set. The highlight only paints a field whose optional flag is false.
+            entry.optional = False if required else entry.config.get('optional', True)
+            label = getattr(entry, 'uri_label', None) or getattr(entry, 'label_widget', None)
+            if label is not None:
+                label.configure(text=entry.get_label(''))
+            if not required:
+                entry.valid()
 
     def destroy(self) -> None:
         if self._filter_after_id is not None:

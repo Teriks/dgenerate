@@ -50,6 +50,7 @@ from .imageformatentry import _ImageFormatEntry
 from .submodelentry import _SubModelEntry
 from .submodelbuilderentry import  _SubModelBuilderEntry
 from .submodelbuilderswitchentry import _SubModelBuilderSwitchEntry
+from .textencodersentry import _TextEncodersEntry
 from .dypeentry import _DyPEEntry
 from .regioneentry import _RegionEEntry
 from .spectrumentry import _SpectrumEntry

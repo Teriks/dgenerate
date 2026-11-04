@@ -11,8 +11,8 @@ title: Wan 2.1 First-Last Frame (ComfyUI Quant)
 
 \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
-\setp first_frame "@file[{"label":"First Frame", "optional":false, "mode":"input", "file-types":["images-in"]}]"
-\setp last_frame "@file[{"label":"Last Frame", "optional":false, "mode":"input", "file-types":["images-in"], "divider-after":true}]"
+\setp first_frame "@file[{"id":"image-seed", "label":"First Frame", "optional":false, "mode":"input", "file-types":["images-in"]}]"
+\setp last_frame "@file[{"id":"image-seed-2", "label":"Last Frame", "optional":false, "mode":"input", "file-types":["images-in"], "divider-after":true}]"
 
 \set image_seeds {{ format_image_seed(seed_images=first_frame, end_image=last_frame) }}
 \set image_seeds {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}
@@ -26,14 +26,15 @@ title: Wan 2.1 First-Last Frame (ComfyUI Quant)
 @dype[{"exclude":["cd", "sp"],"divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
-@quantizer[{"model-type":"wan", "divider-after":true, "map-default":"text_encoder"}]
+@quantizer[{"model-type":"wan", "map-default":"text_encoder"}]
+@textencoders[{"model-type":"wan","arg":"--text-encoders", "divider-after":true}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
-@submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
-@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
-@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse"}]
+@submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors"}]
 @submodelbuilder[{"label":"Second Transformer (MoE)", "arg":"--wan-second-transformer", "model": "Transformer", "divider-after":true}]
-@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]
+@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true, "enabled-when":{"any":[{"id":"image-seed","not-empty":true},{"id":"image-seed-2","not-empty":true}]}}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
 @float[{"label":"Low-Noise Guidance Scale", "arg":"--wan-low-noise-guidance-scales", "min":0}]

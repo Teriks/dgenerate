@@ -12,9 +12,9 @@ title: LTX-2.5 Non-distilled
 
 \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
-\setp first_frame "@file[{"label":"First Frame / Opening Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
-\setp last_frame "@file[{"label":"Last Frame / Closing Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
-\setp control_clip "@file[{"label":"IC-LoRA Control Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"], "divider-after":true}]"
+\setp first_frame "@file[{"id":"image-seed", "label":"First Frame / Opening Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
+\setp last_frame "@file[{"id":"image-seed-3", "label":"Last Frame / Closing Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
+\setp control_clip "@file[{"id":"image-seed-2", "label":"IC-LoRA Control Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"], "divider-after":true}]"
 
 \set image_seeds {{ format_image_seed(seed_images=first_frame, end_image=last_frame, control_images=control_clip, preserve_control=True) }}
 \set image_seeds {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}
@@ -33,15 +33,16 @@ title: LTX-2.5 Non-distilled
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
-@quantizer[{"model-type":"ltx2", "divider-after":true}]
-@submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
-@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0}]
-@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse"}]
-@submodelbuilder[{"label":"Stage LoRA", "arg":"--ltx-stage-loras", "model": "LoRA"}]
-@submodelbuilder[{"label":"IC-LoRA", "arg":"--ltx-ic-lora", "model": "IC-LoRA"}]
-@imageprocessor[{"arg":"--control-image-processors", "label":"IC-LoRA Control Clip Processor"}]
+@quantizer[{"model-type":"ltx2"}]
+@textencoders[{"model-type":"ltx2","arg":"--text-encoders", "divider-after":true}]
+@submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"any":[{"id":"lora","not-empty":true},{"id":"stage-lora","not-empty":true},{"id":"ic-lora","not-empty":true}]}}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"any":[{"id":"lora","not-empty":true},{"id":"ic-lora","not-empty":true}]}}]
+@submodelbuilder[{"id":"stage-lora", "label":"Stage LoRA", "arg":"--ltx-stage-loras", "model": "LoRA"}]
+@submodelbuilder[{"id":"ic-lora", "label":"IC-LoRA", "arg":"--ltx-ic-lora", "model": "IC-LoRA"}]
+@imageprocessor[{"arg":"--control-image-processors", "label":"IC-LoRA Control Clip Processor", "enabled-when":{"all":[{"id":"ic-lora","not-empty":true},{"any":[{"id":"image-seed","not-empty":true},{"id":"image-seed-2","not-empty":true},{"id":"image-seed-3","not-empty":true}]}]}}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"Lightricks/LTX-2.5-Diffusers;subfolder=transformer_full", "divider-after":true}]
-@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]
+@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true, "enabled-when":{"any":[{"id":"image-seed","not-empty":true},{"id":"image-seed-2","not-empty":true},{"id":"image-seed-3","not-empty":true}]}}]
 @int[{"id":"is","label":"Inference Steps","arg":"--inference-steps","default":30,"min":1,"exclude":["ts"]}]
 @string[{"id":"ts","label":"Timesteps (override)","arg":"--timesteps","default":"","exclude":["is"]}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":3, "min":0}]

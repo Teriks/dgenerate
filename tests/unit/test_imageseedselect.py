@@ -149,6 +149,34 @@ class TestImageSeedSelect(unittest.TestCase):
         finally:
             self._close(root, dialog)
 
+    def test_required_empty_image_seed_highlights_red(self):
+        from dgenerate.console.formentries.imageseedentry import _ImageSeedEntry
+
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            entry = _ImageSeedEntry(
+                form=object(),
+                master=tk.Frame(root),
+                row=0,
+                config={
+                    'label': 'Image Seed',
+                    'arg': '--image-seeds',
+                    'optional': True,
+                    'file-types': ['images-in'],
+                    'float-label': 'Image Seed Strength',
+                    'float-arg': '--image-seed-strengths',
+                },
+                placeholder='PLACE')
+            entry.optional = False
+            entry.invalid()
+            self.assertEqual(int(entry.uri_entry.cget('highlightthickness')), 2)
+            entry.optional = True
+            entry.valid()
+            self.assertEqual(int(entry.uri_entry.cget('highlightthickness')), 0)
+        finally:
+            root.destroy()
+
 
 if __name__ == '__main__':
     unittest.main()
