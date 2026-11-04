@@ -412,7 +412,9 @@ exits with status 1.
 The Console UI Generate Code menu runs this sub-command. Its model list is the
 same set of Qwen GGUFs. The Context tokens field is ``--ctx``, saved with the
 other Generate Code options, and 32768 by default. It can be raised up to the
-model's native 262144 tokens.
+model's native 262144 tokens. Extra VRAM, beside that field, is the additional
+video memory the context cache needs at the current token count. It updates as
+the field changes. 32768 tokens is 2 GiB, and 262144 tokens is 16 GiB.
 
 .. code-block:: bash
 

@@ -61,6 +61,11 @@ CHAT_MODELS = [
 ]
 
 
+# Qwen3.8-27B keeps a growing f16 KV cache on 16 full-attention layers
+# (4 KV heads, head dim 256). The other 48 layers are linear attention and
+# stay a fixed size. 16 * 2 * 4 * 256 * 2 = 65536 bytes per token.
+CONTEXT_VRAM_BYTES_PER_TOKEN = 16 * 2 * 4 * 256 * 2
+
 DEFAULT_EMBED_MODEL = 'Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf'
 
 # Qwen3.8 template values. Extra high is what the model uses when effort is omitted.
@@ -124,6 +129,32 @@ def chat_model_specs() -> tuple[str, ...]:
 def embed_model_specs() -> tuple[str, ...]:
     """Hugging Face paths of the embedding models that have a packaged index."""
     return tuple(spec for spec, _size, _note in EMBED_MODELS)
+
+
+def context_vram_bytes(n_ctx: int) -> int:
+    """Extra VRAM for an f16 KV cache of ``n_ctx`` tokens. Not the model weights."""
+    return max(0, int(n_ctx)) * CONTEXT_VRAM_BYTES_PER_TOKEN
+
+
+def format_context_vram(n_ctx: int) -> str:
+    """
+    Extra context VRAM in a short form, such as ``+2 GiB`` or ``+64 MiB``.
+
+    The value is the f16 KV cache for Qwen3.8-27B. It grows with the context
+    window and does not include the GGUF weights.
+    """
+    return '+' + _format_vram_bytes(context_vram_bytes(n_ctx))
+
+
+def _format_vram_bytes(byte_count: int) -> str:
+    byte_count = max(0, int(byte_count))
+    for size, name in ((1024 ** 3, 'GiB'), (1024 ** 2, 'MiB'), (1024, 'KiB')):
+        if byte_count >= size:
+            scaled = byte_count / size
+            if abs(scaled - round(scaled)) < 0.05:
+                return f'{round(scaled):.0f} {name}'
+            return f'{scaled:.1f} {name}'
+    return f'{byte_count} B'
 
 
 def xllamacpp_installed() -> bool:

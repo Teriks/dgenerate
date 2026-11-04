@@ -217,8 +217,8 @@ class _AssistantForm(tk.Toplevel):
 
         _appearance.install(self)
         self.update_idletasks()
-        # The options row is wider than the old 560 minimum. A saved or
-        # dragged size below the requested width clips Default and Max.
+        # A saved or dragged size below the requested width clips the options.
+        # Context tokens sit on their own row so that request stays with the text panes.
         min_width = self.winfo_reqwidth()
         self.minsize(min_width, 420)
         open_size = size if size else (720, 520)
@@ -304,17 +304,37 @@ class _AssistantForm(tk.Toplevel):
         self._embed_var.set(self._embed_labels[self._embed_specs.index(embed_chosen)])
         self._embed_var.trace_add('write', lambda *_: _remember(_SETTINGS_EMBED, self._selected_embed_model()))
 
-        reason = ttk.Frame(options)
-        reason.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
+        ttk.Label(options, text='Context tokens').grid(row=2, column=0, sticky=tk.E, padx=(0, 8), pady=2)
+        context = ttk.Frame(options)
+        context.grid(row=2, column=1, sticky=tk.W, pady=2)
+        self._ctx_var = tk.StringVar(value=str(_saved_int(_SETTINGS_CTX, _DEFAULT_CTX)))
+        self._ctx_entry = _spinbox.IntSpinbox(
+            context, textvariable=self._ctx_var,
+            from_=1, to=_MAX_CTX, increment=1024, width=8)
+        self._ctx_entry.grid(row=0, column=0, sticky=tk.W)
+        self._ctx_entry.create_spin_buttons(context).grid(row=0, column=1, sticky=tk.W, padx=(2, 0))
+        self._ctx_var.trace_add('write', self._on_ctx_changed)
+        ttk.Button(context, text='Default', command=self._set_default_ctx).grid(
+            row=0, column=2, sticky=tk.W, padx=(8, 0))
+        ttk.Button(context, text='Max', command=self._set_max_ctx).grid(
+            row=0, column=3, sticky=tk.W, padx=(4, 0))
+        ttk.Label(context, text='Extra VRAM').grid(row=0, column=4, sticky=tk.E, padx=(18, 6))
+        self._ctx_vram_var = tk.StringVar()
+        ttk.Label(context, textvariable=self._ctx_vram_var, width=10, anchor=tk.W).grid(
+            row=0, column=5, sticky=tk.W)
+        self._update_ctx_vram()
+
+        checks = ttk.Frame(options)
+        checks.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
         self._think_var = tk.BooleanVar(value=_saved_bool(_SETTINGS_THINK))
         self._think_check = ttk.Checkbutton(
-            reason, text='Reason before answering (slower)', variable=self._think_var)
+            checks, text='Reason before answering (slower)', variable=self._think_var)
         self._think_check.grid(row=0, column=0, sticky=tk.W)
         self._think_var.trace_add('write', self._remember_think)
-        ttk.Label(reason, text='Effort').grid(row=0, column=1, sticky=tk.E, padx=(18, 6))
+        ttk.Label(checks, text='Reasoning Effort').grid(row=0, column=1, sticky=tk.E, padx=(18, 6))
         self._effort_var = tk.StringVar()
         self._effort_combo = _combobox.ComboBox(
-            reason, textvariable=self._effort_var, width=12,
+            checks, textvariable=self._effort_var, width=12,
             values=[_EFFORT_LABELS[name] for name in _catalog.REASONING_EFFORTS])
         self._effort_combo.grid(row=0, column=2, sticky=tk.W)
         saved_effort = _saved_model(_SETTINGS_EFFORT, _catalog.DEFAULT_REASONING_EFFORT)
@@ -324,23 +344,10 @@ class _AssistantForm(tk.Toplevel):
         self._effort_var.trace_add('write', lambda *_: _remember(_SETTINGS_EFFORT, self._selected_effort()))
         self._set_effort_enabled()
 
-        ttk.Label(reason, text='Context tokens').grid(row=0, column=3, sticky=tk.E, padx=(18, 6))
-        self._ctx_var = tk.StringVar(value=str(_saved_int(_SETTINGS_CTX, _DEFAULT_CTX)))
-        self._ctx_entry = _spinbox.IntSpinbox(
-            reason, textvariable=self._ctx_var,
-            from_=1, to=_MAX_CTX, increment=1024, width=8)
-        self._ctx_entry.grid(row=0, column=4, sticky=tk.W)
-        self._ctx_entry.create_spin_buttons(reason).grid(row=0, column=5, sticky=tk.W, padx=(2, 0))
-        self._ctx_var.trace_add('write', self._remember_ctx)
-        ttk.Button(reason, text='Default', command=self._set_default_ctx).grid(
-            row=0, column=6, sticky=tk.W, padx=(8, 0))
-        ttk.Button(reason, text='Max', command=self._set_max_ctx).grid(
-            row=0, column=7, sticky=tk.W, padx=(4, 0))
-
         self._edit_var = tk.BooleanVar(value=_saved_bool(_SETTINGS_EDIT))
         self._edit_check = ttk.Checkbutton(
-            options, text='Editor in context (edit mode)', variable=self._edit_var)
-        self._edit_check.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
+            checks, text='Editor in context (edit mode)', variable=self._edit_var)
+        self._edit_check.grid(row=1, column=0, sticky=tk.W, pady=(4, 0))
         self._edit_var.trace_add('write', self._sync_edit_mode)
 
         ttk.Label(self, text='Progress', anchor=tk.W).grid(row=3, column=0, sticky=tk.EW)
@@ -653,7 +660,14 @@ class _AssistantForm(tk.Toplevel):
     def _set_max_ctx(self):
         self._ctx_var.set(str(_MAX_CTX))
 
-    def _remember_ctx(self, *_):
+    def _on_ctx_changed(self, *_):
+        self._update_ctx_vram()
+        self._remember_ctx()
+
+    def _update_ctx_vram(self):
+        self._ctx_vram_var.set(_catalog.format_context_vram(self._selected_ctx()))
+
+    def _remember_ctx(self):
         raw = self._ctx_var.get().strip()
         value = ctx_value(raw)
         if raw != str(value):
