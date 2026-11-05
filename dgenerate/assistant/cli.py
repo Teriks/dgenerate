@@ -426,7 +426,10 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
                 if getattr(chat, 'showed', False):
                     log_model_close(rule)
             messages.append({'role': 'assistant', 'content': reply})
-            config = _prompt.apply_request_files(_prompt.extract_config(reply, version), files)
+            draft, used_reply = _prompt.take_draft(config, reply, version)
+            if not used_reply:
+                log('warning: the repair reply was not a config, so the previous draft was kept.')
+            config = _prompt.apply_request_files(draft, files)
 
             if args.no_check:
                 break
@@ -469,7 +472,8 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
             if attempt == args.max_repairs:
                 log('warning: the config still has problems, review it before running.')
                 break
-            messages.append({'role': 'user', 'content': _prompt.repair_message(problems, suggested, index)})
+            messages.append({'role': 'user', 'content': _prompt.repair_message(
+                problems, suggested, index, config or '')})
 
         if report:
             for warning in report.get('warnings', []):

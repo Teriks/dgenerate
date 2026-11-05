@@ -9,7 +9,10 @@ from dgenerate.assistant.prompt import (
     lift_comments_between_options,
     offload_plan,
     prefer_weighting_examples,
+    repair_message,
+    reply_has_config,
     system_message,
+    take_draft,
     user_message,
     wants_prompt_weighting,
 )
@@ -389,6 +392,37 @@ class TestAssistantPrompt(unittest.TestCase):
         self.assertEqual(lines[second_model + 3], '--prompts "a fox"')
         self.assertEqual(lines[0], '#! /usr/bin/env dgenerate --file')
         self.assertEqual(lines[1], '#! dgenerate 6.0.0')
+
+    def test_repair_keeps_the_draft_when_the_reply_is_prose(self):
+        draft = (
+            '#! /usr/bin/env dgenerate --file\n'
+            '#! dgenerate 6.0.0\n'
+            '\n'
+            'krea/Krea-2-Raw\n'
+            '--model-type krea2\n'
+            '--text-encoders "Qwen3VLModel;model=encoder.gguf"\n')
+        prose = (
+            'I don\'t have the original config text in this conversation. '
+            'The error mentions `--text-encoders`.\n')
+        self.assertFalse(reply_has_config(prose))
+        kept, used = take_draft(draft, prose, '6.0.0')
+        self.assertFalse(used)
+        self.assertIn('--text-encoders', kept)
+        self.assertNotIn("don't have", kept)
+
+    def test_repair_message_includes_the_rejected_config(self):
+        class Index:
+            def argument(self, option):
+                return None
+
+        draft = 'krea/Krea-2-Raw\n--text-encoders "Qwen3VLModel;model=encoder.gguf"\n'
+        text = repair_message(
+            ['--text-encers is not a dgenerate option, did you mean --text-encoders?'],
+            [], Index(), draft)
+        self.assertIn('```dgen', text)
+        self.assertIn('krea/Krea-2-Raw', text)
+        self.assertIn('--text-encoders', text)
+        self.assertIn('complete corrected config', text)
 
     def test_z_image_words_get_the_flag_on_its_own_line(self):
         plan = offload_plan(True, 16, True, False)

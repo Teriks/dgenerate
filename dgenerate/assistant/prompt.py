@@ -509,7 +509,7 @@ dgenerate rejected the config:
 
 {problems}
 
-{references}Fix these problems and reply with the complete corrected config in one ```dgen code block."""
+{config}{references}Fix these problems and reply with the complete corrected config in one ```dgen code block."""
 
 
 def options_in(text: str) -> list[str]:
@@ -1573,7 +1573,39 @@ def unknown_options(config: str, known: list[str]) -> list[tuple[str, list[str]]
     return result
 
 
-def repair_message(problems: list[str], suggested: list[str], index: _index.Index) -> str:
+def reply_has_config(reply: str) -> bool:
+    """
+    Whether a reply contains a config rather than an explanation.
+
+    A repair that only says it cannot see the script must not replace the draft.
+    The check would parse that prose, and the next repair would try to fix the
+    essay instead of the invocation.
+    """
+    if _FENCE.search(reply or ''):
+        return True
+    for line in (reply or '').splitlines():
+        if _OPTION_LINE.match(line):
+            return True
+        if re.match(r'^[\w.-]+/[\w.-]+$', line.strip()):
+            return True
+    return False
+
+
+def take_draft(previous: str | None, reply: str, version: str) -> tuple[str, bool]:
+    """
+    Use ``reply`` as the next draft when it contains a config.
+
+    Returns the text to keep and whether it came from this reply. A prose
+    repair leaves the previous draft in place.
+    """
+    extracted = extract_config(reply, version)
+    if reply_has_config(reply) or not (previous or '').strip():
+        return extracted, True
+    return previous, False
+
+
+def repair_message(problems: list[str], suggested: list[str], index: _index.Index,
+                   config: str = '') -> str:
     references = []
     for option in suggested:
         chunk = index.argument(option)
@@ -1581,4 +1613,13 @@ def repair_message(problems: list[str], suggested: list[str], index: _index.Inde
             references.append(_section(chunk, MAX_ARGUMENT_CHARS))
     reference_text = ('Help for options that may be what you meant:\n\n' + '\n\n'.join(references) + '\n\n') \
         if references else ''
-    return REPAIR_PROMPT.format(problems='\n'.join(f'- {p}' for p in problems), references=reference_text)
+    script = ''
+    if config.strip():
+        # The retry after a context overflow keeps only this message, so the
+        # rejected script has to be in it. The conversation that held the draft
+        # is gone by then.
+        script = 'The rejected config:\n\n```dgen\n' + config.strip() + '\n```\n\n'
+    return REPAIR_PROMPT.format(
+        problems='\n'.join(f'- {p}' for p in problems),
+        config=script,
+        references=reference_text)

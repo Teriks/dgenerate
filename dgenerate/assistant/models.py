@@ -397,6 +397,27 @@ def _is_context_overflow(failure) -> bool:
     return 'exceeds the available context' in text or 'larger than the max context size' in text
 
 
+def _overflow_messages(messages: list[dict]) -> list[dict]:
+    """
+    The messages to resend after a context overflow.
+
+    The first user message holds the retrieved examples and is what made the
+    request too long. A later repair instruction does not repeat the draft, so
+    keep the latest assistant reply when that instruction has no config of its own.
+    """
+    last_user = next((m for m in reversed(messages) if m.get('role') == 'user'), messages[-1])
+    kept = [messages[0]]
+    if '```' not in (last_user.get('content') or ''):
+        previous = next(
+            (m for m in reversed(messages)
+             if m.get('role') == 'assistant' and (m.get('content') or '').strip() and m is not last_user),
+            None)
+        if previous is not None:
+            kept.append({'role': 'assistant', 'content': previous.get('content') or ''})
+    kept.append(last_user)
+    return kept
+
+
 def _tools_rejected(failure) -> bool:
     """Whether a server error means this build cannot accept a tools request."""
     if _is_context_overflow(failure):
@@ -475,6 +496,7 @@ class ChatModel:
                  on_tool: typing.Callable[[str], None] | None = None,
                  max_tool_rounds: int = 6,
                  _shrink: bool = False,
+                 _dropped: bool = False,
                  _nested: bool = False) -> str:
         # A retry keeps showed from text already written on this turn.
         if not _nested:
@@ -502,18 +524,21 @@ class ChatModel:
                 on_tool=on_tool,
                 max_tool_rounds=max_tool_rounds,
                 tools=active,
-                _shrink=_shrink)
+                _shrink=_shrink,
+                _dropped=_dropped)
         return self._complete_streaming(
             messages,
             max_tokens=max_tokens,
             sampling=sampling,
-            _shrink=_shrink)
+            _shrink=_shrink,
+            _dropped=_dropped)
 
     def _complete_streaming(self,
                             messages: list[dict],
                             max_tokens: int,
                             sampling: dict,
-                            _shrink: bool = False) -> str:
+                            _shrink: bool = False,
+                            _dropped: bool = False) -> str:
         template_kwargs = {'enable_thinking': self.think}
         if self.think:
             template_kwargs['reasoning_effort'] = self.effort
@@ -546,7 +571,7 @@ class ChatModel:
         if 'value' in error:
             return self._raise_or_shrink(
                 messages, max_tokens, sampling, _shrink, error['value'],
-                link_tools=False)
+                link_tools=False, _dropped=_dropped)
         answer = display.finish()
         self.showed = self.showed or display.shown
         return answer
@@ -558,7 +583,8 @@ class ChatModel:
                                   on_tool: typing.Callable[[str], None] | None,
                                   max_tool_rounds: int,
                                   tools: list,
-                                  _shrink: bool) -> str:
+                                  _shrink: bool,
+                                  _dropped: bool = False) -> str:
         # Tool turns are appended to the caller's list so a later repair still has the fetch.
         template_kwargs = {'enable_thinking': self.think}
         if self.think:
@@ -578,7 +604,8 @@ class ChatModel:
             except Exception as e:
                 if _round == 0 and _tools_rejected(e):
                     _warn_tools(e)
-                    return self._complete_streaming(messages, max_tokens, sampling, _shrink=_shrink)
+                    return self._complete_streaming(
+                        messages, max_tokens, sampling, _shrink=_shrink, _dropped=_dropped)
                 raise ModelError(f'Chat completion failed: {e}') from e
             try:
                 response = _parse_completion_response(raw)
@@ -588,10 +615,12 @@ class ChatModel:
                 if _is_context_overflow(e):
                     return self._raise_or_shrink(
                         messages, max_tokens, sampling, _shrink, e,
-                        tools=tools, on_tool=on_tool, max_tool_rounds=max_tool_rounds)
+                        tools=tools, on_tool=on_tool, max_tool_rounds=max_tool_rounds,
+                        _dropped=_dropped)
                 if _round == 0 and _tools_rejected(e):
                     _warn_tools(e)
-                    return self._complete_streaming(messages, max_tokens, sampling, _shrink=_shrink)
+                    return self._complete_streaming(
+                        messages, max_tokens, sampling, _shrink=_shrink, _dropped=_dropped)
                 raise
             choices = response.get('choices') or []
             if not choices:
@@ -641,19 +670,24 @@ class ChatModel:
                          link_tools: bool = False,
                          tools: list | None = None,
                          on_tool: typing.Callable[[str], None] | None = None,
-                         max_tool_rounds: int = 6):
+                         max_tool_rounds: int = 6,
+                         _dropped: bool = False):
         message = _error_text(failure)
         if _is_context_overflow(failure):
-            if len(messages) > 2:
-                last_user = next((m for m in reversed(messages) if m['role'] == 'user'), messages[-1])
+            if len(messages) > 2 and not _dropped:
+                sys.stderr.write(
+                    progress_style('plain') +
+                    'warning: the request exceeded the context window, so the retry '
+                    'drops the earlier conversation and keeps the latest message.\n')
+                sys.stderr.flush()
                 return self.complete(
-                    [messages[0], last_user],
+                    _overflow_messages(messages),
                     max_tokens=max_tokens,
                     link_tools=link_tools,
                     tools=tools,
                     on_tool=on_tool,
                     max_tool_rounds=max_tool_rounds,
-                    _shrink=_shrink, _nested=True, **sampling)
+                    _shrink=_shrink, _dropped=True, _nested=True, **sampling)
             if not _shrink and messages[-1].get('role') == 'user' and len(messages[-1].get('content') or '') > 12000:
                 user = dict(messages[-1])
                 user['content'] = user['content'][:12000] + '\n[... truncated]'

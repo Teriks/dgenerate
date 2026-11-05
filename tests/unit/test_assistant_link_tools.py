@@ -685,6 +685,58 @@ class TestChatModelToolLoop(unittest.TestCase):
         self.assertIn('FLUX.1-schnell', reply)
         self.assertEqual(seen, [True, True])
 
+    def test_context_overflow_on_repair_keeps_the_draft(self):
+        chat = ChatModel.__new__(ChatModel)
+        chat.think = False
+        chat.effort = 'medium'
+        bodies = []
+
+        class Server:
+            def handle_chat_completions(self, body, on_chunk=None):
+                bodies.append(body)
+                if len(bodies) == 1:
+                    return {'error': {'message': 'request exceeds the available context size'}}
+                return {'choices': [{'message': {'content': '```dgen\nkrea/Krea-2-Raw\n--text-encoders x\n```'}}]}
+
+        chat._server = Server()
+        draft = '```dgen\nkrea/Krea-2-Raw\n--text-encers x\n```'
+        reply = chat.complete([
+            {'role': 'system', 'content': 'rules'},
+            {'role': 'user', 'content': 'x' * 40000},
+            {'role': 'assistant', 'content': draft},
+            {'role': 'user', 'content': 'Fix --text-encers and reply with the complete corrected config.'},
+        ], link_tools=True)
+        self.assertIn('--text-encoders', reply)
+        resent = [m.get('content') for m in bodies[1]['messages']]
+        self.assertEqual(resent[0], 'rules')
+        self.assertIn('--text-encers', resent[1])
+        self.assertIn('Fix --text-encers', resent[2])
+        self.assertNotIn('x' * 40000, ''.join(resent))
+
+    def test_context_overflow_repair_with_config_does_not_also_resend_the_draft(self):
+        chat = ChatModel.__new__(ChatModel)
+        chat.think = False
+        chat.effort = 'medium'
+        bodies = []
+
+        class Server:
+            def handle_chat_completions(self, body, on_chunk=None):
+                bodies.append(body)
+                if len(bodies) == 1:
+                    return {'error': {'message': 'request exceeds the available context size'}}
+                return {'choices': [{'message': {'content': 'ok'}}]}
+
+        chat._server = Server()
+        chat.complete([
+            {'role': 'system', 'content': 'rules'},
+            {'role': 'user', 'content': 'retrieved examples'},
+            {'role': 'assistant', 'content': '```dgen\nkrea/Krea-2-Raw\n```'},
+            {'role': 'user', 'content': 'The rejected config:\n\n```dgen\nkrea/Krea-2-Raw\n```\n\nFix it.'},
+        ], link_tools=True)
+        resent = bodies[1]['messages']
+        self.assertEqual(len(resent), 2)
+        self.assertIn('The rejected config', resent[1]['content'])
+
 
 if __name__ == '__main__':
     unittest.main()
