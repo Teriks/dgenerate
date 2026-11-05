@@ -430,6 +430,70 @@ def _weight_name_problem(repo: str, weight_name: str | None, subfolder: str | No
     return f'The Hugging Face repo "{repo}" has no file "{path}". Its weight files are: {shown or "none"}.'
 
 
+# Repo names that the model-type detector can tell apart, but that the
+# assistant swaps because the names share a vendor or a prefix. A mismatch
+# is reported only when the repo and the written type are different members
+# of one of these groups. Versions that share one --model-type, such as
+# LTX-2 and LTX-2.5, are not in here.
+_TYPE_GROUPS = (
+    frozenset({'ltx2', 'ltx-video'}),
+    frozenset({
+        'krea2', 'flux', 'flux-fill', 'flux-kontext',
+        'flux2', 'flux2-klein-kv'}),
+    frozenset({'hydit', 'hyvideo-15', 'hyimage-21', 'hyimage-21-refiner'}),
+    frozenset({'wan', 'wan-animate', 'wan-animate-2'}),
+    frozenset({
+        'qwen-image', 'qwen-image-edit',
+        'qwen-image-layered', 'qwen-image-21'}),
+    frozenset({'sdxl', 'sdxl-pix2pix', 'pix2pix'}),
+)
+
+
+def _model_type_mismatch(model_path: str, model_type: str) -> str | None:
+    """
+    The repo name implies one ``--model-type`` and the config writes another
+    from the same family.
+    """
+    from dgenerate.assistant.link_tools import (
+        _BASE_CHECKPOINT, _specific_model_type)
+
+    implied = _specific_model_type(model_path or '')
+    if not implied or not model_type or implied == model_type:
+        return None
+    if not any(implied in group and model_type in group for group in _TYPE_GROUPS):
+        return None
+    message = (
+        f'"{model_path}" uses --model-type {implied}, not {model_type}. '
+        'Keep that repo and change the type, or use a repo for the written type.')
+    canonical = _BASE_CHECKPOINT.get(model_type)
+    if canonical and canonical.lower() != (model_path or '').strip().lower():
+        message += f' For --model-type {model_type} the model path is {canonical}.'
+    return message
+
+
+def _argv_type_mismatch(argv) -> str | None:
+    """
+    The same family check from raw arguments, for an invocation that
+    ``parse_args`` rejects before the config object exists.
+    """
+    model_path = ''
+    model_type = ''
+    args = list(argv)
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg in ('-mt', '--model-type') and index + 1 < len(args):
+            model_type = args[index + 1].strip('"\'')
+            index += 2
+            continue
+        if arg.startswith('--model-type=') or arg.startswith('-mt='):
+            model_type = arg.split('=', 1)[1].strip('"\'')
+        elif not arg.startswith('-') and not model_path:
+            model_path = arg.strip('"\'')
+        index += 1
+    return _model_type_mismatch(model_path, model_type)
+
+
 def _model_path_problem(path: str) -> str | None:
     """
     An error message for a model path that is not a repo id, an existing path, a URL, or a file.
@@ -917,181 +981,201 @@ def check_config(text: str, memory: tuple | None = None) -> dict:
         try:
             with _quiet():
                 config = _arguments.parse_args(argv, throw=True, log_error=False)
-            if config.plugin_module_paths:
-                uri_checker.load_plugin_modules(config.plugin_module_paths)
-            for problem in uri_checker.invocation(config):
-                errors.append({'line': line, 'message': problem})
-            for problem in _model_uri_syntax(config):
-                errors.append({'line': line, 'message': problem})
-            for repo, weight_name, subfolder in _uri_repos(config):
-                uri_problem = _repo_problem(repo, repo_problems) or \
-                    _weight_name_problem(repo, weight_name, subfolder, repo_files)
-                if uri_problem:
-                    errors.append({'line': line, 'message': uri_problem})
-            model_path = config.model_path or ''
-            if model_path.lower().endswith('.gguf'):
-                errors.append({
-                    'line': line,
-                    'message': 'A .gguf file is a transformer or UNet replacement, not the '
-                               'model path. Use the Hugging Face repo as the first line and '
-                               '--transformer path/to/file.gguf (see the Flux, Flux.2, SD3, '
-                               'Z-Image, Qwen-Image, LTX, and Wan GGUF examples).',
-                })
-            problem = _model_path_problem(model_path) or \
-                _repo_problem(model_path, repo_problems) or \
-                _variant_problem(model_path, config.variant, repo_files)
-            if problem:
-                errors.append({'line': line, 'message': problem})
-            mt = _model_type_str(config)
-            import dgenerate.assistant.prompt as _prompt
-            cuda, gib, bitsandbytes, sdnq = memory
-            problem = _prompt.memory_problem(
-                mt, model_path,
-                transformer=config.transformer_uri,
-                text_encoders=config.text_encoder_uris,
-                control_loras=config.control_lora_uris,
-                quantizer=config.quantizer_uri,
-                quantizer_map=config.quantizer_map,
-                sequential=bool(config.model_sequential_offload),
-                cpu=bool(config.model_cpu_offload),
-                group=bool(config.model_group_offload),
-                second_sequential=bool(config.second_model_sequential_offload),
-                second_cpu=bool(config.second_model_cpu_offload),
-                cuda=cuda, gib=gib, bitsandbytes=bitsandbytes, sdnq=sdnq)
-            if problem:
-                errors.append({'line': line, 'message': problem})
-            if mt == 'z-image-omni':
-                errors.append({
-                    'line': line,
-                    'message': 'Z-Image-Omni-Base is not released on Hugging Face yet. '
-                               'Use --model-type z-image with Tongyi-MAI/Z-Image or '
-                               'Tongyi-MAI/Z-Image-Turbo instead.',
-                })
-            seeds = [str(s) for s in (config.image_seeds or [])]
-            if _missing_weight_marks(config, config.prompt_weighter_uri,
-                                     ('prompts', 'second_prompts', 'third_prompts')) \
-                    or _missing_weight_marks(config, config.second_model_prompt_weighter_uri,
-                                             ('second_model_prompts', 'second_model_second_prompts')):
-                errors.append({
-                    'line': line,
-                    'message': '--prompt-weighter is set but the prompt has no weighting '
-                               'syntax, so it does nothing. With sd-embed write '
-                               '(creatures:1.3) or ((creatures)); with compel write '
-                               'creatures+ or (creatures)++. Drop --prompt-weighter if '
-                               'you do not want weights.',
-                })
-            if mt in _FLUX_NO_NEGATIVE:
-                for prompt in config.prompts or []:
-                    if getattr(prompt, 'negative', None):
-                        errors.append({
-                            'line': line,
-                            'message': f'--model-type {mt} does not use a negative prompt. '
-                                       f'Remove the ; and everything after it from --prompts.',
-                        })
-                        break
-            if _is_inpaint_unet(model_path, inpaint_unets) or mt in _NEED_MASK_TYPES \
-                    or 'inpaint' in model_path.lower():
-                if not _has_mask(config.image_seeds):
-                    errors.append({
-                        'line': line,
-                        'message': f'"{model_path or mt}" is an inpainting model, it needs '
-                                   f'--image-seeds with an image and a mask, like '
-                                   f'"image.png;mask.png". Generate from a prompt alone with a '
-                                   f'model that is not for inpainting.',
-                    })
-            if mt in _NEED_SEEDS and not seeds:
-                errors.append({
-                    'line': line,
-                    'message': f'--model-type {mt} needs --image-seeds.',
-                })
-            if mt in _IMAGE_MODEL_TYPES:
-                for seed in seeds:
-                    if 'last_animations' in seed or (
-                            prev_animation and prev_animation.replace('\\', '/')
-                            in seed.replace('\\', '/')):
-                        errors.append({
-                            'line': line,
-                            'message': f'--model-type {mt} is an image model. Use last_images '
-                                       f'or the user photo as --image-seeds, not last_animations.',
-                        })
-                        break
-            if mt in ('ltx2', 'ltx-video', 'wan') and not prev_was_video:
-                for seed in seeds:
-                    if 'last_animations' in seed or (
-                            prev_animation and prev_animation.replace('\\', '/')
-                            in seed.replace('\\', '/')):
-                        errors.append({
-                            'line': line,
-                            'message': 'Image-to-video uses last_images (the still), not '
-                                       'last_animations. last_animations is a video file from '
-                                       'the previous step.',
-                        })
-                        break
-            if prev_image_format in _LATENT_FORMATS and any(
-                    a in ('-iss', '--image-seed-strengths') for a in argv):
-                if seeds and not any(s.startswith('latents:') for s in seeds):
-                    errors.append({
-                        'line': line,
-                        'message': 'The previous invocation wrote latents (--image-format pt). '
-                                   '--image-seed-strengths is for img2img on images. Write a '
-                                   'PNG or JPEG in the first step (omit --image-format pt), then '
-                                   'img2img with --image-seed-strengths. For a latent handoff to '
-                                   'a refiner, use --denoising-start instead of strengths.',
-                    })
-            if 'refiner' in model_path.lower() and seeds and not config.denoising_start:
-                if not any(s.startswith('latents:') or s.endswith('.pt') for s in seeds):
-                    errors.append({
-                        'line': line,
-                        'message': 'The SDXL refiner as its own invocation needs the previous '
-                                   'step to write latents (--image-format pt --denoising-end) '
-                                   'and this step to use --denoising-start. A PNG --image-seeds '
-                                   'without --denoising-start is ordinary img2img. Prefer '
-                                   '--sdxl-refiner on the base invocation.',
-                    })
-            cur_size = _size_px(config.output_size)
-            if mt.startswith('upscaler'):
-                if not seeds:
-                    errors.append({
-                        'line': line,
-                        'message': 'An upscaler needs --image-seeds of the image to enlarge.',
-                    })
-                if prev_size and cur_size and cur_size < prev_size:
-                    errors.append({
-                        'line': line,
-                        'message': f'The previous image is about {prev_size}px. --output-size '
-                                   f'{cur_size} shrinks it before the {mt} upscaler, so the '
-                                   f'result is not larger. Set --output-size to the previous '
-                                   f'image size, or omit it. --output-size is the size fed in, '
-                                   f'not the final size.',
-                    })
-                factor = 4 if mt == 'upscaler-x4' else 2
-                prev_size = (cur_size or prev_size or 0) * factor or prev_size
-            elif cur_size:
-                prev_size = cur_size
-            for uri in (config.scheduler_uri or []) + (config.second_model_scheduler_uri or []):
-                if _help.scheduler_is_help(uri):
-                    errors.append({
-                        'line': line,
-                        'message': '--schedulers help only prints scheduler names; it is not a '
-                                   'generation. Remove this invocation or use a real scheduler '
-                                   'class name.',
-                    })
-                    continue
-                try:
-                    _schedulers.check_scheduler_uri(uri)
-                except _schedulers.SchedulerLoadError as e:
-                    errors.append({'line': line, 'message': str(e).strip()})
-            prev_image_format = config.image_format
-            prev_was_video = mt in _video_model_types()
-            _img, prev_animation = _placeholder_outputs(list(argv))
         except SystemExit:
             errors.append({'line': line, 'message': 'dgenerate exited while parsing the invocation.'})
         except Exception as e:
-            entry = {'line': line, 'message': _explain_parse_error(str(e).strip())}
-            if not _MISSING_FILE.search(entry['message']):
-                errors.append(entry)
-            elif not any(path in entry['message'] for path in generated):
-                warnings.append(entry)
+            # The written type can fail its own requirements (Wan-Animate
+            # without a pose, Qwen-Image-Edit without a seed) before the
+            # repo is compared with that type.
+            mismatch = _argv_type_mismatch(argv)
+            if mismatch:
+                errors.append({'line': line, 'message': mismatch})
+            else:
+                entry = {'line': line, 'message': _explain_parse_error(str(e).strip())}
+                if not _MISSING_FILE.search(entry['message']):
+                    errors.append(entry)
+                elif not any(path in entry['message'] for path in generated):
+                    warnings.append(entry)
+        else:
+            try:
+                if config.plugin_module_paths:
+                    uri_checker.load_plugin_modules(config.plugin_module_paths)
+                for problem in uri_checker.invocation(config):
+                    errors.append({'line': line, 'message': problem})
+                for problem in _model_uri_syntax(config):
+                    errors.append({'line': line, 'message': problem})
+                for repo, weight_name, subfolder in _uri_repos(config):
+                    uri_problem = _repo_problem(repo, repo_problems) or \
+                        _weight_name_problem(repo, weight_name, subfolder, repo_files)
+                    if uri_problem:
+                        errors.append({'line': line, 'message': uri_problem})
+                model_path = config.model_path or ''
+                if model_path.lower().endswith('.gguf'):
+                    errors.append({
+                        'line': line,
+                        'message': 'A .gguf file is a transformer or UNet replacement, not the '
+                                   'model path. Use the Hugging Face repo as the first line and '
+                                   '--transformer path/to/file.gguf (see the Flux, Flux.2, SD3, '
+                                   'Z-Image, Qwen-Image, LTX, and Wan GGUF examples).',
+                    })
+                problem = _model_path_problem(model_path) or \
+                    _repo_problem(model_path, repo_problems) or \
+                    _variant_problem(model_path, config.variant, repo_files)
+                if problem:
+                    errors.append({'line': line, 'message': problem})
+                mt = _model_type_str(config)
+                import dgenerate.assistant.prompt as _prompt
+                cuda, gib, bitsandbytes, sdnq = memory
+                problem = _prompt.memory_problem(
+                    mt, model_path,
+                    transformer=config.transformer_uri,
+                    text_encoders=config.text_encoder_uris,
+                    control_loras=config.control_lora_uris,
+                    quantizer=config.quantizer_uri,
+                    quantizer_map=config.quantizer_map,
+                    sequential=bool(config.model_sequential_offload),
+                    cpu=bool(config.model_cpu_offload),
+                    group=bool(config.model_group_offload),
+                    second_sequential=bool(config.second_model_sequential_offload),
+                    second_cpu=bool(config.second_model_cpu_offload),
+                    cuda=cuda, gib=gib, bitsandbytes=bitsandbytes, sdnq=sdnq)
+                if problem:
+                    errors.append({'line': line, 'message': problem})
+                problem = _model_type_mismatch(model_path, mt)
+                if problem:
+                    errors.append({'line': line, 'message': problem})
+                if mt == 'z-image-omni':
+                    errors.append({
+                        'line': line,
+                        'message': 'Z-Image-Omni-Base is not released on Hugging Face yet. '
+                                   'Use --model-type z-image with Tongyi-MAI/Z-Image or '
+                                   'Tongyi-MAI/Z-Image-Turbo instead.',
+                    })
+                seeds = [str(s) for s in (config.image_seeds or [])]
+                if _missing_weight_marks(config, config.prompt_weighter_uri,
+                                         ('prompts', 'second_prompts', 'third_prompts')) \
+                        or _missing_weight_marks(config, config.second_model_prompt_weighter_uri,
+                                                 ('second_model_prompts', 'second_model_second_prompts')):
+                    errors.append({
+                        'line': line,
+                        'message': '--prompt-weighter is set but the prompt has no weighting '
+                                   'syntax, so it does nothing. With sd-embed write '
+                                   '(creatures:1.3) or ((creatures)); with compel write '
+                                   'creatures+ or (creatures)++. Drop --prompt-weighter if '
+                                   'you do not want weights.',
+                    })
+                if mt in _FLUX_NO_NEGATIVE:
+                    for prompt in config.prompts or []:
+                        if getattr(prompt, 'negative', None):
+                            errors.append({
+                                'line': line,
+                                'message': f'--model-type {mt} does not use a negative prompt. '
+                                           f'Remove the ; and everything after it from --prompts.',
+                            })
+                            break
+                if _is_inpaint_unet(model_path, inpaint_unets) or mt in _NEED_MASK_TYPES \
+                        or 'inpaint' in model_path.lower():
+                    if not _has_mask(config.image_seeds):
+                        errors.append({
+                            'line': line,
+                            'message': f'"{model_path or mt}" is an inpainting model, it needs '
+                                       f'--image-seeds with an image and a mask, like '
+                                       f'"image.png;mask.png". Generate from a prompt alone with a '
+                                       f'model that is not for inpainting.',
+                        })
+                if mt in _NEED_SEEDS and not seeds:
+                    errors.append({
+                        'line': line,
+                        'message': f'--model-type {mt} needs --image-seeds.',
+                    })
+                if mt in _IMAGE_MODEL_TYPES:
+                    for seed in seeds:
+                        if 'last_animations' in seed or (
+                                prev_animation and prev_animation.replace('\\', '/')
+                                in seed.replace('\\', '/')):
+                            errors.append({
+                                'line': line,
+                                'message': f'--model-type {mt} is an image model. Use last_images '
+                                           f'or the user photo as --image-seeds, not last_animations.',
+                            })
+                            break
+                if mt in ('ltx2', 'ltx-video', 'wan') and not prev_was_video:
+                    for seed in seeds:
+                        if 'last_animations' in seed or (
+                                prev_animation and prev_animation.replace('\\', '/')
+                                in seed.replace('\\', '/')):
+                            errors.append({
+                                'line': line,
+                                'message': 'Image-to-video uses last_images (the still), not '
+                                           'last_animations. last_animations is a video file from '
+                                           'the previous step.',
+                            })
+                            break
+                if prev_image_format in _LATENT_FORMATS and any(
+                        a in ('-iss', '--image-seed-strengths') for a in argv):
+                    if seeds and not any(s.startswith('latents:') for s in seeds):
+                        errors.append({
+                            'line': line,
+                            'message': 'The previous invocation wrote latents (--image-format pt). '
+                                       '--image-seed-strengths is for img2img on images. Write a '
+                                       'PNG or JPEG in the first step (omit --image-format pt), then '
+                                       'img2img with --image-seed-strengths. For a latent handoff to '
+                                       'a refiner, use --denoising-start instead of strengths.',
+                        })
+                if 'refiner' in model_path.lower() and seeds and not config.denoising_start:
+                    if not any(s.startswith('latents:') or s.endswith('.pt') for s in seeds):
+                        errors.append({
+                            'line': line,
+                            'message': 'The SDXL refiner as its own invocation needs the previous '
+                                       'step to write latents (--image-format pt --denoising-end) '
+                                       'and this step to use --denoising-start. A PNG --image-seeds '
+                                       'without --denoising-start is ordinary img2img. Prefer '
+                                       '--sdxl-refiner on the base invocation.',
+                        })
+                cur_size = _size_px(config.output_size)
+                if mt.startswith('upscaler'):
+                    if not seeds:
+                        errors.append({
+                            'line': line,
+                            'message': 'An upscaler needs --image-seeds of the image to enlarge.',
+                        })
+                    if prev_size and cur_size and cur_size < prev_size:
+                        errors.append({
+                            'line': line,
+                            'message': f'The previous image is about {prev_size}px. --output-size '
+                                       f'{cur_size} shrinks it before the {mt} upscaler, so the '
+                                       f'result is not larger. Set --output-size to the previous '
+                                       f'image size, or omit it. --output-size is the size fed in, '
+                                       f'not the final size.',
+                        })
+                    factor = 4 if mt == 'upscaler-x4' else 2
+                    prev_size = (cur_size or prev_size or 0) * factor or prev_size
+                elif cur_size:
+                    prev_size = cur_size
+                for uri in (config.scheduler_uri or []) + (config.second_model_scheduler_uri or []):
+                    if _help.scheduler_is_help(uri):
+                        errors.append({
+                            'line': line,
+                            'message': '--schedulers help only prints scheduler names; it is not a '
+                                       'generation. Remove this invocation or use a real scheduler '
+                                       'class name.',
+                        })
+                        continue
+                    try:
+                        _schedulers.check_scheduler_uri(uri)
+                    except _schedulers.SchedulerLoadError as e:
+                        errors.append({'line': line, 'message': str(e).strip()})
+                prev_image_format = config.image_format
+                prev_was_video = mt in _video_model_types()
+                _img, prev_animation = _placeholder_outputs(list(argv))
+            except SystemExit:
+                errors.append({'line': line, 'message': 'dgenerate exited while parsing the invocation.'})
+            except Exception as e:
+                entry = {'line': line, 'message': _explain_parse_error(str(e).strip())}
+                if not _MISSING_FILE.search(entry['message']):
+                    errors.append(entry)
+                elif not any(path in entry['message'] for path in generated):
+                    warnings.append(entry)
         for path in _missing_local_files(argv, generated):
             warnings.append({'line': line, 'message': f'Local file "{path}" does not exist.'})
 

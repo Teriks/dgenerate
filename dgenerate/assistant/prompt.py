@@ -130,7 +130,13 @@ matching line unless they also named an offload. Follow the documented \
 constraints on output size, frame counts, and guidance.
 - Copy Hugging Face repo names (org/name) exactly as they appear in the reference material. \
 Never invent a repo or change its organization or name. Do not use --model-type z-image-omni; \
-Z-Image-Omni-Base is not released on Hugging Face yet.
+Z-Image-Omni-Base is not released on Hugging Face yet. A repo and a --model-type from \
+different families is rejected: Krea 2 (krea/Krea-2-Raw, krea2) is not FLUX.1-Krea-dev (flux). \
+Hunyuan-DiT (hydit), HunyuanVideo 1.5 (hyvideo-15), and HunyuanImage 2.1 (hyimage-21) do not \
+share a type. Wan-Animate and Wan-Animate-2 are not --model-type wan. Qwen-Image-Edit, \
+Qwen-Image-Layered, and Qwen-Image-2.1 are not --model-type qwen-image. FLUX.1-Fill-dev is \
+flux-fill and FLUX.1-Kontext-dev is flux-kontext, not flux. \
+diffusers/sdxl-instructpix2pix-768 is --model-type sdxl-pix2pix, not sdxl.
 - Inpainting models (repos with "inpainting" in the name) only work with --image-seeds \
 "image.png;mask.png". A step that generates from a prompt alone needs a regular model of the \
 same family, for example stabilityai/stable-diffusion-xl-base-1.0 for SDXL.
@@ -449,7 +455,9 @@ omit --video-lengths so the duration head chooses it. \
 --ltx-latent-upscale is the two-stage pass in that same generation; --output-size must be divisible by 64. \
 The last frame is last-frame= on --image-seeds, at strength 1. strength= is the condition weight. \
 --image-seed-strengths fills LTX groups that omit strength=. \
-Describe the sound in the prompt. Lightricks/LTX-Video is the older video-only model; use it only when the user names it. \
+Describe the sound in the prompt. Lightricks/LTX-Video is the older video-only model; use it only when the user names it, and then --model-type is ltx-video. \
+Never write Lightricks/LTX-Video with --model-type ltx2. --model-type ltx2 belongs on Lightricks/LTX-2.5-Diffusers, and also on Lightricks/LTX-2.3 and Lightricks/LTX-2. \
+Never write Lightricks/LTX-2, Lightricks/LTX-2.3, or Lightricks/LTX-2.5-Diffusers with --model-type ltx-video. \
 Distilled GGUF: --transformer https://huggingface.co/realrebelai/LTX-2.5_GGUFs/blob/main/LTX-2.5-Distilled-Q4_K_S.gguf, \
 guidance 1, and no --inference-steps. The parent repo stays Lightricks/LTX-2.5-Diffusers. \
 Dev (full) GGUF: --transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF/blob/main/dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf, \
@@ -651,8 +659,11 @@ def first_draft_recipes(request: str, editor: str | None = None,
     if re.search(r'\b(animat\w*|video|ltx|wan|clip)\b', request, re.IGNORECASE):
         lines += [
             'Unless the user names Wan or LTX-Video, animate with Lightricks/LTX-2.5-Diffusers, '
-            '--guidance-scales 1, --video-fps 24, --model-sequential-offload, --animation-format mp4. '
-            'Width and height must be divisible by 32.',
+            '--model-type ltx2, --guidance-scales 1, --video-fps 24, --model-sequential-offload, '
+            '--animation-format mp4. Width and height must be divisible by 32.',
+            'Lightricks/LTX-Video is --model-type ltx-video only. Do not write --model-type ltx2 on that repo.',
+            'Lightricks/LTX-2, Lightricks/LTX-2.3, and Lightricks/LTX-2.5-Diffusers are --model-type ltx2. '
+            'Do not write --model-type ltx-video on those repos. Keep a 2.3 repo when that is the one written.',
             'Wan text or image to video is --model-type wan, a Wan-AI repo, --guidance-scales 5, '
             '--video-fps 16, --output-size 832x480, and a negative prompt after ;. Public, no HF_TOKEN. '
             'Wan-Animate is --model-type wan-animate. Wan-Animate-2 is --model-type wan-animate-2. '

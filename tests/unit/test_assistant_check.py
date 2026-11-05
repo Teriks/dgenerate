@@ -13,6 +13,268 @@ def _messages(report: dict) -> str:
 
 class TestAssistantCheck(unittest.TestCase):
 
+    def test_ltx_video_repo_is_not_ltx2(self):
+        report = check_config(_cfg(
+            'Lightricks/LTX-Video',
+            '--model-type ltx2',
+            '--prompts "A horse walks across a field."',
+        ))
+        self.assertFalse(report['ok'], report)
+        text = _messages(report)
+        self.assertIn('LTX-Video', text)
+        self.assertIn('--model-type ltx-video', text)
+        self.assertIn('Lightricks/LTX-2.5-Diffusers', text)
+
+    def test_ltx25_repo_is_not_ltx_video(self):
+        report = check_config(_cfg(
+            'Lightricks/LTX-2.5-Diffusers',
+            '--model-type ltx-video',
+            '--prompts "A horse walks across a field."',
+        ))
+        self.assertFalse(report['ok'], report)
+        text = _messages(report)
+        self.assertIn('--model-type ltx2', text)
+        self.assertIn('not ltx-video', text)
+
+    def test_ltx23_repo_is_not_ltx_video(self):
+        report = check_config(_cfg(
+            'Lightricks/LTX-2.3',
+            '--model-type ltx-video',
+            '--prompts "A horse walks across a field."',
+        ))
+        self.assertFalse(report['ok'], report)
+        text = _messages(report)
+        self.assertIn('LTX-2.3', text)
+        self.assertIn('not ltx-video', text)
+        self.assertIn('Keep that repo', text)
+
+    def test_ltx23_repo_with_ltx2_is_not_a_family_mismatch(self):
+        report = check_config(_cfg(
+            'Lightricks/LTX-2.3',
+            '--model-type ltx2',
+            '--prompts "A horse walks across a field."',
+        ))
+        self.assertNotIn('not ltx-video', _messages(report))
+
+    def test_ltx25_repo_with_ltx2_is_not_a_family_mismatch(self):
+        report = check_config(_cfg(
+            'Lightricks/LTX-2.5-Diffusers',
+            '--model-type ltx2',
+            '--prompts "A horse walks across a field."',
+        ))
+        self.assertNotIn('is LTX-Video', _messages(report))
+        self.assertNotIn('not ltx-video', _messages(report))
+
+    def test_krea2_repo_is_not_flux(self):
+        report = check_config(_cfg(
+            'krea/Krea-2-Raw',
+            '--model-type flux',
+            '--prompts "a fox"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type krea2, not flux', text)
+        self.assertIn('black-forest-labs/FLUX.1-dev', text)
+        self.assertIn('Keep that repo', text)
+
+    def test_flux_krea_dev_is_not_krea2(self):
+        report = check_config(_cfg(
+            'black-forest-labs/FLUX.1-Krea-dev',
+            '--model-type krea2',
+            '--prompts "a fox"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type flux, not krea2', text)
+        self.assertIn('krea/Krea-2-Raw', text)
+
+    def test_krea2_repo_with_krea2_is_not_a_family_mismatch(self):
+        report = check_config(_cfg(
+            'krea/Krea-2-Turbo',
+            '--model-type krea2',
+            '--prompts "a fox"',
+        ))
+        self.assertNotIn('uses --model-type', _messages(report))
+
+    def test_hunyuan_dit_is_not_video(self):
+        report = check_config(_cfg(
+            'Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers',
+            '--model-type hyvideo-15',
+            '--prompts "a fox"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type hydit, not hyvideo-15', text)
+        self.assertIn('HunyuanVideo-1.5', text)
+
+    def test_hunyuan_video_is_not_dit(self):
+        report = check_config(_cfg(
+            'hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v',
+            '--model-type hydit',
+            '--prompts "a fox"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type hyvideo-15, not hydit', text)
+        self.assertIn('HunyuanDiT', text)
+
+    def test_hunyuan_image_is_not_dit(self):
+        report = check_config(_cfg(
+            'hunyuanvideo-community/HunyuanImage-2.1-Diffusers',
+            '--model-type hydit',
+            '--prompts "a fox"',
+        ))
+        self.assertIn(
+            'uses --model-type hyimage-21, not hydit', _messages(report))
+
+    def test_hunyuan_image_refiner_keeps_its_type(self):
+        report = check_config(_cfg(
+            'hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers',
+            '--model-type hyimage-21',
+            '--prompts "a fox"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type hyimage-21-refiner, not hyimage-21', text)
+        self.assertIn('Keep that repo', text)
+
+    def test_wan_animate_is_not_wan(self):
+        report = check_config(_cfg(
+            'Wan-AI/Wan2.2-Animate-14B-Diffusers',
+            '--model-type wan',
+            '--prompts "a dancer"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type wan-animate, not wan', text)
+        self.assertIn('Wan2.1-T2V-1.3B-Diffusers', text)
+
+    def test_wan_animate_2_is_not_wan_animate(self):
+        report = check_config(_cfg(
+            'Wan-AI/Wan2.2-Animate-2-14B-Diffusers',
+            '--model-type wan-animate',
+            '--prompts "a dancer"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type wan-animate-2, not wan-animate', text)
+        self.assertIn('Keep that repo', text)
+
+    def test_wan_t2v_is_not_animate(self):
+        report = check_config(_cfg(
+            'Wan-AI/Wan2.1-T2V-1.3B-Diffusers',
+            '--model-type wan-animate',
+            '--prompts "a fox runs"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type wan, not wan-animate', text)
+        self.assertIn('Wan2.2-Animate-14B-Diffusers', text)
+
+    def test_wan_t2v_with_wan_is_not_a_family_mismatch(self):
+        report = check_config(_cfg(
+            'Wan-AI/Wan2.1-T2V-1.3B-Diffusers',
+            '--model-type wan --dtype bfloat16',
+            '--model-sequential-offload',
+            '--video-lengths 2',
+            '--prompts "a fox runs"',
+        ))
+        self.assertNotIn('uses --model-type', _messages(report))
+
+    def test_qwen_image_edit_is_not_qwen_image(self):
+        report = check_config(_cfg(
+            'Qwen/Qwen-Image-Edit',
+            '--model-type qwen-image',
+            '--prompts "a fox"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type qwen-image-edit, not qwen-image', text)
+        self.assertIn('Qwen/Qwen-Image', text)
+        self.assertIn('Keep that repo', text)
+
+    def test_qwen_image_is_not_edit(self):
+        report = check_config(_cfg(
+            'Qwen/Qwen-Image',
+            '--model-type qwen-image-edit',
+            '--prompts "a fox"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type qwen-image, not qwen-image-edit', text)
+        self.assertIn('Qwen/Qwen-Image-Edit', text)
+
+    def test_qwen_image_layered_and_21(self):
+        layered = check_config(_cfg(
+            'Qwen/Qwen-Image-Layered',
+            '--model-type qwen-image',
+            '--prompts "a fox"',
+        ))
+        self.assertIn(
+            'uses --model-type qwen-image-layered, not qwen-image',
+            _messages(layered))
+        newer = check_config(_cfg(
+            'Qwen/Qwen-Image-2.1',
+            '--model-type qwen-image',
+            '--prompts "a fox"',
+        ))
+        self.assertIn(
+            'uses --model-type qwen-image-21, not qwen-image',
+            _messages(newer))
+
+    def test_flux_fill_is_not_flux_or_kontext(self):
+        fill = check_config(_cfg(
+            'black-forest-labs/FLUX.1-Fill-dev',
+            '--model-type flux',
+            '--prompts "a fox"',
+        ))
+        text = _messages(fill)
+        self.assertIn('uses --model-type flux-fill, not flux', text)
+        self.assertIn('black-forest-labs/FLUX.1-dev', text)
+        swapped = check_config(_cfg(
+            'black-forest-labs/FLUX.1-Fill-dev',
+            '--model-type flux-kontext',
+            '--prompts "a fox"',
+        ))
+        self.assertIn(
+            'uses --model-type flux-fill, not flux-kontext', _messages(swapped))
+
+    def test_flux_kontext_is_not_flux(self):
+        report = check_config(_cfg(
+            'black-forest-labs/FLUX.1-Kontext-dev',
+            '--model-type flux',
+            '--prompts "a fox"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type flux-kontext, not flux', text)
+        self.assertIn('black-forest-labs/FLUX.1-dev', text)
+
+    def test_flux_dev_with_flux_is_not_a_family_mismatch(self):
+        report = check_config(_cfg(
+            'black-forest-labs/FLUX.1-dev',
+            '--model-type flux --dtype bfloat16',
+            '--prompts "a fox"',
+        ))
+        self.assertNotIn('uses --model-type', _messages(report))
+
+    def test_sdxl_pix2pix_is_not_sdxl(self):
+        report = check_config(_cfg(
+            'diffusers/sdxl-instructpix2pix-768',
+            '--model-type sdxl',
+            '--prompts "a fox"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type sdxl-pix2pix, not sdxl', text)
+        self.assertIn('stabilityai/stable-diffusion-xl-base-1.0', text)
+        self.assertIn('Keep that repo', text)
+
+    def test_instruct_pix2pix_is_not_sdxl(self):
+        report = check_config(_cfg(
+            'timbrooks/instruct-pix2pix',
+            '--model-type sdxl',
+            '--prompts "a fox"',
+        ))
+        text = _messages(report)
+        self.assertIn('uses --model-type pix2pix, not sdxl', text)
+        self.assertIn('stabilityai/stable-diffusion-xl-base-1.0', text)
+
+    def test_sdxl_base_with_sdxl_is_not_a_family_mismatch(self):
+        report = check_config(_cfg(
+            'stabilityai/stable-diffusion-xl-base-1.0',
+            '--model-type sdxl --prompts "a fox"',
+        ))
+        self.assertNotIn('uses --model-type', _messages(report))
+
     def test_inpaint_without_mask_templated_seed(self):
         report = check_config(_cfg(
             'stabilityai/stable-diffusion-xl-base-1.0',
