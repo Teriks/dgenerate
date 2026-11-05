@@ -4,6 +4,7 @@ from dgenerate.assistant.corpus import Chunk
 from dgenerate.assistant.models import (
     REPLY_RESERVE, answer_text, context_tokens_needed, prompt_token_estimate, reply_token_limit)
 from dgenerate.assistant.prompt import (
+    MODEL_TABLE,
     extract_config,
     first_draft_recipes,
     lift_comments_between_options,
@@ -173,6 +174,65 @@ class TestControlCode(unittest.TestCase):
 
 
 class TestAssistantPrompt(unittest.TestCase):
+
+    def test_wan_gguf_stays_with_its_parent(self):
+        prompt = MODEL_TABLE
+        i2v = prompt.index('Wan-AI/Wan2.1-I2V-14B-480P-Diffusers')
+        i2v_gguf = prompt.index('wan2.1-i2v-14b-480p-Q4_K_S.gguf')
+        t2v_gguf = prompt.index('wan2.1-t2v-14b-Q4_K_S.gguf')
+        self.assertLess(i2v, i2v_gguf)
+        self.assertLess(i2v_gguf, t2v_gguf)
+        self.assertIn('Wan-AI/Wan2.1-T2V-14B-Diffusers', prompt[t2v_gguf:t2v_gguf + 400])
+        self.assertIn('A Wan GGUF or FP8 file loads only on the parent named with it.', prompt)
+        self.assertLess(i2v, prompt.index('wan2.1_i2v_480p_14B_fp8_scaled.safetensors'))
+        self.assertLess(
+            prompt.index('Wan-AI/Wan2.1-T2V-14B-Diffusers'),
+            prompt.index('wan2.1_t2v_14B_fp8_scaled.safetensors'))
+
+    def test_quant_file_stays_in_its_bullet(self):
+        prompt = MODEL_TABLE
+        bullets = prompt.split('\n- ')
+        pairs = (
+            ('black-forest-labs/FLUX.1-schnell', 'flux1-schnell-Q4_K_S.gguf'),
+            ('black-forest-labs/FLUX.1-dev', 'flux1-dev-fp8.safetensors'),
+            ('black-forest-labs/FLUX.1-Fill-dev', 'flux1-fill-dev-Q4_K_S.gguf'),
+            ('black-forest-labs/FLUX.1-Kontext-dev', 'flux1-kontext-dev-Q4_K_S.gguf'),
+            ('krea/Krea-2-Turbo', 'krea2_turbo_nvfp4.safetensors'),
+            ('krea/Krea-2-Raw', 'Krea-2-Base-Q4_K_M.gguf'),
+            ('FLUX.2-klein-9B', 'flux-2-klein-9b-Q4_K_S.gguf'),
+            ('FLUX.2-klein-base-9B', 'flux-2-klein-base-9b-Q4_K_S.gguf'),
+            ('Tongyi-MAI/Z-Image-Turbo', 'z_image_turbo_int8_convrot.safetensors'),
+            ('Tongyi-MAI/Z-Image', 'z_image_int8_convrot.safetensors'),
+            ('Qwen/Qwen-Image-Edit-2509', 'qwen_image_edit_2509_int8_convrot.safetensors'),
+            ('Qwen/Qwen-Image-2.1-Turbo', 'qwen_image_2.1_turbo_int8_convrot.safetensors'),
+            ('Qwen/Qwen-Image-2.1', 'qwen_image_2.1_Q4_0.gguf'),
+            ('stable-diffusion-3-medium-diffusers', 'sd3_medium-Q4_K_S.gguf'),
+            ('stable-diffusion-3.5-large', 'sd3.5_large_fp8_scaled.safetensors'),
+            ('stable-diffusion-3.5-medium', 'sd3.5_medium-Q4_K_S.gguf'),
+            ('HunyuanImage-2.1-Distilled-Diffusers', 'hunyuanimage2.1_distilled_fp8_e4m3fn.safetensors'),
+            ('HunyuanImage-2.1-Diffusers', 'hunyuanimage2.1-q4_k_m.gguf'),
+            ('480p_t2v_distilled', 'hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors'),
+            ('480p_t2v', 'hunyuanvideo1.5_480p_t2v-Q4_K_S.gguf'),
+            ('Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers', 'kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf'),
+            ('ltx-2.5-22b-distilled-transformer-nvfp4.safetensors', 'LTX-2.5-Distilled-Q4_K_S.gguf'),
+        )
+        for parent, filename in pairs:
+            hits = [bullet for bullet in bullets if parent in bullet and filename in bullet]
+            self.assertTrue(hits, f'{filename} is not with {parent}')
+        self.assertLess(
+            prompt.index('hunyuanvideo1.5_480p_t2v-Q4_K_S.gguf'),
+            prompt.index('HunyuanVideo-1.5-Diffusers-480p_i2v'))
+        self.assertLess(
+            prompt.index('kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf'),
+            prompt.index('Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers'))
+        t2v22 = prompt.index('Wan-AI/Wan2.2-T2V-A14B-Diffusers')
+        i2v22 = prompt.index('Wan-AI/Wan2.2-I2V-A14B-Diffusers')
+        self.assertLess(t2v22, prompt.index('Wan2.2-T2V-A14B-HighNoise-Q4_K_S.gguf'))
+        self.assertLess(prompt.index('Wan2.2-T2V-A14B-HighNoise-Q4_K_S.gguf'), i2v22)
+        self.assertLess(i2v22, prompt.index('Wan2.2-I2V-A14B-HighNoise-Q4_K_S.gguf'))
+        self.assertLess(
+            prompt.index('Wan2.2-I2V-A14B-HighNoise-Q4_K_S.gguf'),
+            prompt.index('Wan2.2-I2V-A14B-LowNoise-Q4_K_S.gguf'))
 
     def test_wants_prompt_weighting(self):
         self.assertTrue(wants_prompt_weighting('use prompt weighting'))

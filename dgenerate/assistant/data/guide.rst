@@ -451,15 +451,35 @@ Wan 2.1 / 2.2 is ``--model-type wan`` with a public ``Wan-AI`` repo, no
 ``--video-lengths`` is seconds and snaps to ``4k+1`` frames. Five seconds
 at 16 fps is 81 frames. Width and height must be divisible by 16.
 Put the negative after ``;`` in ``--prompts``.
+HunyuanVideo 1.5 is ``--model-type hyvideo-15``. Text to video is
+``hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v``. Its GGUF
+is ``hunyuanvideo1.5_480p_t2v-Q4_K_S.gguf``. The distilled FP8 stays on
+``HunyuanVideo-1.5-Diffusers-480p_t2v_distilled`` at guidance 1. A still
+is ``HunyuanVideo-1.5-Diffusers-480p_i2v`` with that repository's transformer.
+Kandinsky 5 video is ``--model-type kandinsky5-video``. Text-to-video Lite
+is ``Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers``. The Pro GGUF
+``kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf`` stays on
+``Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers``. A still is
+``Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers``.
 A still is image-to-video on ``Wan-AI/Wan2.1-I2V-14B-480P-Diffusers``.
+Its GGUF is ``wan2.1-i2v-14b-480p-Q4_K_S.gguf`` from
+``city96/Wan2.1-I2V-14B-480P-gguf`` on that same parent.
 ``last-frame=`` is first-last-frame and needs
-``Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers`` at ``1280x720``. A Wan 2.1 I2V
+``Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers`` at ``1280x720`` and
+``wan2.1-flf2v-14b-720p-Q4_K_S.gguf`` from
+``city96/Wan2.1-FLF2V-14B-720P-gguf``. A Wan 2.1 I2V
 checkpoint only embeds the first frame. A video seed is video-to-video and
 rejects ``--video-lengths``; trim with ``frame-end=``.
 ``control=``, ``mask=``, and ``reference=`` are VACE on
 ``Wan-AI/Wan2.1-VACE-1.3B-diffusers``.
-Wan 2.2 MoE is ``Wan-AI/Wan2.2-T2V-A14B-Diffusers`` with
-``--wan-low-noise-guidance-scales``.
+Wan 2.2 text-to-video and video-to-video are ``Wan-AI/Wan2.2-T2V-A14B-Diffusers``,
+guidance 4 and ``--wan-low-noise-guidance-scales 3``. Its GGUF experts are
+``Wan2.2-T2V-A14B-HighNoise-Q4_K_S.gguf`` on ``--transformer`` and
+``Wan2.2-T2V-A14B-LowNoise-Q4_K_S.gguf`` on ``--wan-second-transformer``,
+both from ``QuantStack/Wan2.2-T2V-A14B-GGUF``. A Wan 2.2 still is
+``Wan-AI/Wan2.2-I2V-A14B-Diffusers`` with that same guidance. Its GGUF
+experts are ``Wan2.2-I2V-A14B-HighNoise-Q4_K_S.gguf`` and
+``Wan2.2-I2V-A14B-LowNoise-Q4_K_S.gguf`` from ``QuantStack/Wan2.2-I2V-A14B-GGUF``.
 The Wan VAE defaults to ``float32``; override with ``--vae`` and
 ``AutoencoderKLWan`` plus ``dtype=``. The VAE is not a
 ``--quantizer-map`` target.
@@ -500,7 +520,34 @@ Do not set ``quantizer=`` on that URI and do not use
 
 Flux, SD3, Flux.2, Z-Image, Qwen-Image, LTX-2, LTX-2.5, and Wan all take a GGUF
 transformer. The Wan 2.2 low-noise expert uses ``--wan-second-transformer``
-the same way. Flux.2 Klein, Qwen-Image, Z-Image, LTX-2, LTX-2.5, and Wan are
+the same way. A Wan GGUF loads on the parent in its example. Text to video
+uses ``wan2.1-t2v-14b-Q4_K_S.gguf`` on ``Wan-AI/Wan2.1-T2V-14B-Diffusers``.
+Image to video uses ``wan2.1-i2v-14b-480p-Q4_K_S.gguf`` on
+``Wan-AI/Wan2.1-I2V-14B-480P-Diffusers``. Wan 2.2 text-to-video experts
+stay on ``Wan-AI/Wan2.2-T2V-A14B-Diffusers`` and Wan 2.2 image-to-video
+experts stay on ``Wan-AI/Wan2.2-I2V-A14B-Diffusers``. The high-noise file
+is ``--transformer`` and the low-noise file is ``--wan-second-transformer``.
+The Comfy FP8 files follow the same parents: ``wan2.1_t2v_14B_fp8_scaled``
+and ``wan2.1_i2v_480p_14B_fp8_scaled``, and the Wan 2.2 high-noise and
+low-noise FP8 pair for T2V or I2V. HunyuanVideo 1.5 text-to-video GGUF
+``hunyuanvideo1.5_480p_t2v-Q4_K_S.gguf`` stays on
+``HunyuanVideo-1.5-Diffusers-480p_t2v``. The distilled FP8 stays on
+``480p_t2v_distilled``. A still uses
+``HunyuanVideo-1.5-Diffusers-480p_i2v`` with that repository's transformer.
+Kandinsky 5 Pro text-to-video GGUF stays on
+``Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers``. A still uses
+``Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers``.
+Flux Dev, Schnell, Fill, Kontext, and Flux Krea Dev each keep their own
+GGUF and FP8 file. Flux.2 dev, Klein 4B, Klein 9B distilled, Klein 9B
+base, and Klein KV do too. Z-Image base and Turbo, Krea 2 Raw and Turbo,
+Qwen-Image, Qwen-Image-Edit, Qwen-Image-Edit-2509, Qwen-Image-Layered,
+and Qwen-Image 2.1 base and Turbo do too. SD3 Medium, SD3.5 Medium, and
+SD3.5 Large do too. HunyuanImage 2.1 base GGUF and FP8 stay on
+``HunyuanImage-2.1-Diffusers``. The distilled FP8 stays on
+``HunyuanImage-2.1-Distilled-Diffusers``. LTX-2.5 distilled INT8 and
+NVFP4 stay with the distilled schedule, and the dev INT8 stays with the
+dev schedule.
+Flux.2 Klein, Qwen-Image, Z-Image, LTX-2, LTX-2.5, and Wan are
 recognized from the file, including ComfyUI layouts, so
 ``--transformer`` needs no ``config=``. Flux.2 hidden width picks the
 config: 3072 is Klein 4B (``black-forest-labs/FLUX.2-klein-4B``,

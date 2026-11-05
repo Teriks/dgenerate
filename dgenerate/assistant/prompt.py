@@ -361,43 +361,70 @@ PROMPT_GUIDES = {
 MODEL_TABLE = """\
 ### reference: models
 The standard Hugging Face repo for each model family. Use the one the request names, and the \
-examples for everything else it needs.
+examples for everything else it needs. \
+A GGUF or Comfy quantized transformer loads only on the parent named with it.
 - Stable Diffusion 1.5: stable-diffusion-v1-5/stable-diffusion-v1-5, --model-type sd (the default). Public, no HF_TOKEN.
 - Stable Diffusion 2.1: sd2-community/stable-diffusion-2-1, --model-type sd. Public, no HF_TOKEN.
 - SDXL: stabilityai/stable-diffusion-xl-base-1.0, --model-type sdxl --variant fp16 --dtype float16. \
 Public, no HF_TOKEN. Refine in the same invocation with --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
 - SDXL inpainting (needs --image-seeds "image;mask"): diffusers/stable-diffusion-xl-1.0-inpainting-0.1, \
 --model-type sdxl --variant fp16 --dtype float16. Public, no HF_TOKEN.
-- Stable Diffusion 3 Medium: stabilityai/stable-diffusion-3-medium-diffusers, --model-type sd3 --variant fp16. Gated, needs HF_TOKEN.
-- Stable Diffusion 3.5: stabilityai/stable-diffusion-3.5-large or stabilityai/stable-diffusion-3.5-medium, --model-type sd3. Gated, needs HF_TOKEN.
+- Stable Diffusion 3 Medium: stabilityai/stable-diffusion-3-medium-diffusers, --model-type sd3 --variant fp16. Gated, needs HF_TOKEN. \
+GGUF: --transformer https://huggingface.co/city96/stable-diffusion-3-medium-gguf/blob/main/sd3_medium-Q4_K_S.gguf.
+- Stable Diffusion 3.5 Large: stabilityai/stable-diffusion-3.5-large, --model-type sd3. Gated, needs HF_TOKEN. \
+GGUF: --transformer https://huggingface.co/city96/stable-diffusion-3.5-large-gguf/blob/main/sd3.5_large-Q4_0.gguf. \
+FP8: --transformer https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/sd3.5_large_fp8_scaled.safetensors.
+- Stable Diffusion 3.5 Medium: stabilityai/stable-diffusion-3.5-medium, --model-type sd3. Gated, needs HF_TOKEN. \
+GGUF: --transformer https://huggingface.co/city96/stable-diffusion-3.5-medium-gguf/blob/main/sd3.5_medium-Q4_K_S.gguf.
 - Stable Cascade: stabilityai/stable-cascade-prior, --model-type s-cascade, \
 with --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16". Public, no HF_TOKEN.
-- Flux Schnell: black-forest-labs/FLUX.1-schnell, 4 steps, guidance 0, --model-type flux --dtype bfloat16. Public, no HF_TOKEN.
-- Flux Dev: black-forest-labs/FLUX.1-dev, --model-type flux --dtype bfloat16. Gated, needs HF_TOKEN.
+- Flux Schnell: black-forest-labs/FLUX.1-schnell, 4 steps, guidance 0, --model-type flux --dtype bfloat16. Public, no HF_TOKEN. \
+GGUF: --transformer https://huggingface.co/city96/FLUX.1-schnell-gguf/blob/main/flux1-schnell-Q4_K_S.gguf. \
+FP8: --transformer https://huggingface.co/Kijai/flux-fp8/blob/main/flux1-schnell-fp8-e4m3fn.safetensors.
+- Flux Dev: black-forest-labs/FLUX.1-dev, --model-type flux --dtype bfloat16. Gated, needs HF_TOKEN. \
+GGUF: --transformer https://huggingface.co/city96/FLUX.1-dev-gguf/blob/main/flux1-dev-Q4_K_S.gguf. \
+FP8: --transformer https://huggingface.co/black-forest-labs/FLUX.1-dev-FP8/blob/main/flux1-dev-fp8.safetensors.
 - Flux Krea Dev: black-forest-labs/FLUX.1-Krea-dev, --model-type flux --dtype bfloat16, guidance 4.5, 28 steps. \
 Photographic, aesthetic finetune of Flux Dev. Gated, needs HF_TOKEN. \
+GGUF: --transformer https://huggingface.co/QuantStack/FLUX.1-Krea-dev-GGUF/blob/main/flux1-krea-dev-Q4_K_S.gguf. \
+FP8: --transformer https://huggingface.co/Comfy-Org/FLUX.1-Krea-dev_ComfyUI/blob/main/split_files/diffusion_models/flux1-krea-dev_fp8_scaled.safetensors. \
 This is not Krea 2.
 - Krea 2: krea/Krea-2-Raw, --model-type krea2 --dtype bfloat16. Public, no HF_TOKEN. \
-A Krea 2 LoRA uses this repo on the invocation line and the LoRA on --loras. \
+GGUF: --transformer https://huggingface.co/realrebelai/KREA-2_GGUFs/blob/main/BASE/Krea-2-Base-Q4_K_M.gguf. \
+INT8: --transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_raw_int8_convrot.safetensors. \
+Turbo is krea/Krea-2-Turbo, 8 steps, guidance 0. \
+FP8: --transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_fp8_scaled.safetensors. \
+NVFP4: --transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_nvfp4.safetensors. \
+A Krea 2 LoRA uses the matching repo on the invocation line and the LoRA on --loras. \
 Not FLUX.1-Krea-dev, and not Flux.2.
-- Flux inpainting and outpainting: black-forest-labs/FLUX.1-Fill-dev, --model-type flux-fill. Gated, needs HF_TOKEN.
-- Flux image editing: black-forest-labs/FLUX.1-Kontext-dev, --model-type flux-kontext. Gated, needs HF_TOKEN.
+- Flux inpainting and outpainting: black-forest-labs/FLUX.1-Fill-dev, --model-type flux-fill. Gated, needs HF_TOKEN. \
+GGUF: --transformer https://huggingface.co/YarvixPA/FLUX.1-Fill-dev-GGUF/blob/main/flux1-fill-dev-Q4_K_S.gguf.
+- Flux image editing: black-forest-labs/FLUX.1-Kontext-dev, --model-type flux-kontext. Gated, needs HF_TOKEN. \
+GGUF: --transformer https://huggingface.co/QuantStack/FLUX.1-Kontext-dev-GGUF/blob/main/flux1-kontext-dev-Q4_K_S.gguf. \
+FP8: --transformer https://huggingface.co/Comfy-Org/flux1-kontext-dev_ComfyUI/blob/main/split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors.
 - Flux.2: black-forest-labs/FLUX.2-dev, --model-type flux2 --dtype bfloat16, guidance 4, 50 steps. \
 Gated, needs HF_TOKEN. --image-seeds with no mask are reference images, not img2img, and have no strength. \
 Output size snaps to a multiple of 16. \
-GGUF: --transformer https://huggingface.co/city96/FLUX.2-dev-gguf/blob/main/flux2-dev-Q4_K_S.gguf (hidden width 6144).
+GGUF: --transformer https://huggingface.co/city96/FLUX.2-dev-gguf/blob/main/flux2-dev-Q4_K_S.gguf (hidden width 6144). \
+FP8: --transformer https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/diffusion_models/flux2_dev_fp8mixed.safetensors. \
+NVFP4: --transformer https://huggingface.co/black-forest-labs/FLUX.2-dev-NVFP4/blob/main/flux2-dev-nvfp4-mixed.safetensors.
 - Flux.2 Klein 9B distilled: black-forest-labs/FLUX.2-klein-9B, --model-type flux2 --dtype bfloat16. \
 Gated, needs HF_TOKEN. 4 steps, guidance 1. This is not FLUX.2-klein-base-9B. \
 A CivitAI base "Flux.2 Klein 9B" uses this repo. \
+GGUF: --transformer https://huggingface.co/unsloth/FLUX.2-klein-9B-GGUF/blob/main/flux-2-klein-9b-Q4_K_S.gguf. \
+FP8: --transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-9b-fp8/blob/main/flux-2-klein-9b-fp8.safetensors. \
 - Flux.2 Klein 9B base: black-forest-labs/FLUX.2-klein-base-9B, --model-type flux2 --dtype bfloat16. \
 Gated, needs HF_TOKEN. Guidance 4, 50 steps. \
 Text-to-image references are --image-seeds with no mask. \
 Inpaint uses --image-seeds with a mask, and reference= is image_reference. \
 Distilled Klein ignores guidance above 1. Caption upsampling is full Flux.2 only. \
 Klein 4B is public: black-forest-labs/FLUX.2-klein-4B, no HF_TOKEN, 4 steps. \
-GGUF width 3072: --transformer https://huggingface.co/unsloth/FLUX.2-klein-4B-GGUF/blob/main/flux-2-klein-4b-Q4_K_S.gguf. \
-GGUF width 4096: --transformer https://huggingface.co/unsloth/FLUX.2-klein-base-9B-GGUF/blob/main/flux-2-klein-base-9b-Q4_K_S.gguf \
-with parent black-forest-labs/FLUX.2-klein-base-9B.
+GGUF width 3072: --transformer https://huggingface.co/unsloth/FLUX.2-klein-4B-GGUF/blob/main/flux-2-klein-4b-Q4_K_S.gguf \
+on black-forest-labs/FLUX.2-klein-4B. \
+FP8: --transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/blob/main/flux-2-klein-4b-fp8.safetensors. \
+NVFP4: --transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-nvfp4/blob/main/flux-2-klein-4b-nvfp4.safetensors. \
+Klein 9B base GGUF, hidden width 4096: --transformer https://huggingface.co/unsloth/FLUX.2-klein-base-9B-GGUF/blob/main/flux-2-klein-base-9b-Q4_K_S.gguf \
+on black-forest-labs/FLUX.2-klein-base-9B.
 - Z-Image Turbo: Tongyi-MAI/Z-Image-Turbo, --model-type z-image --dtype bfloat16, 8 steps, guidance 0. \
 Public, no HF_TOKEN. Img2img strength 0.6. Inpaint strength 1.
 - Z-Image Turbo SDNQ: Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32, --model-type z-image --dtype bfloat16, \
@@ -407,10 +434,13 @@ Public, no HF_TOKEN. \
 The 2-step LoRA is --loras "alibaba-pai/Z-Image-Fun-Lora-Distill;weight-name=Z-Image-Fun-Lora-Distill-2-Steps-2603.safetensors;scale=1", \
 2 steps, guidance 1. \
 GGUF: --transformer https://huggingface.co/jayn7/Z-Image-GGUF/blob/main/z_image-Q4_K_S.gguf. \
+INT8: --transformer https://huggingface.co/Comfy-Org/Z-Image/blob/main/split_files/diffusion_models/z_image_int8_convrot.safetensors. \
 The loader uses the Turbo transformer config because the shapes match.
 - Z-Image Turbo GGUF: parent Tongyi-MAI/Z-Image-Turbo, \
 --transformer https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/blob/main/z_image_turbo-Q4_K_S.gguf, \
-8 steps, guidance 0. Public, no HF_TOKEN.
+8 steps, guidance 0. Public, no HF_TOKEN. \
+INT8: --transformer https://huggingface.co/Comfy-Org/z_image_turbo/blob/main/split_files/diffusion_models/z_image_turbo_int8_convrot.safetensors. \
+NVFP4: --transformer https://huggingface.co/Comfy-Org/z_image_turbo/blob/main/split_files/diffusion_models/z_image_turbo_nvfp4.safetensors.
 - Z-Image ControlNet union: --control-nets on z-image, one union file, scale 0.75. \
 Text-to-image uses https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union/resolve/main/Z-Image-Turbo-Fun-Controlnet-Union.safetensors \
 with Tongyi-MAI/Z-Image-Turbo. Inpaint uses the 2.0 file from \
@@ -419,7 +449,9 @@ alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0. No img2img ControlNet.
 Public, no HF_TOKEN. --guidance-scales is true_cfg_scale. Img2img and inpaint strength 0.6. \
 ControlNet text-to-image is --control-nets InstantX/Qwen-Image-ControlNet-Union. \
 Inpaint is image;mask with InstantX/Qwen-Image-ControlNet-Inpainting (not Union). \
-GGUF: --transformer https://huggingface.co/QuantStack/Qwen-Image-GGUF/blob/main/Qwen_Image-Q4_K_S.gguf.
+GGUF: --transformer https://huggingface.co/QuantStack/Qwen-Image-GGUF/blob/main/Qwen_Image-Q4_K_S.gguf. \
+FP8: --transformer https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_fp8mixed.safetensors. \
+NVFP4: --transformer https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_nvfp4.safetensors.
 - Flux.2 Klein KV: black-forest-labs/FLUX.2-klein-9b-kv, --model-type flux2-klein-kv --dtype bfloat16. \
 Gated, needs HF_TOKEN. Reference images are --image-seeds with no mask and no strength. No guidance scale. \
 GGUF: --transformer https://huggingface.co/QuantStack/FLUX.2-Klein-9B-KV-GGUF/blob/main/Flux-2-Klein-9B-KV-Q4_K_S.gguf. \
@@ -427,21 +459,50 @@ Width 4096 uses the Klein 9B transformer config, which matches this checkpoint.
 - Qwen-Image Edit: Qwen/Qwen-Image-Edit, --model-type qwen-image-edit. The image seed is required. \
 Qwen/Qwen-Image-Edit-2509 is edit-plus. A mask on the edit checkpoint is edit-inpaint. \
 GGUF: --transformer https://huggingface.co/QuantStack/Qwen-Image-Edit-GGUF/blob/main/Qwen_Image_Edit-Q4_K_S.gguf. \
-Edit uses the same transformer module as Qwen-Image.
+FP8: --transformer https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors. \
+Edit-plus Qwen/Qwen-Image-Edit-2509 uses --transformer https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_edit_2509_int8_convrot.safetensors. \
+Edit uses the same transformer module as Qwen-Image. The edit file still stays on the edit parent.
 - Qwen-Image Layered: Qwen/Qwen-Image-Layered, --model-type qwen-image-layered. One image in, several layers out. \
 --qwen-layered-layers 4 and --qwen-layered-resolution 640 are the defaults. \
 GGUF: --transformer https://huggingface.co/unsloth/Qwen-Image-Layered-GGUF/blob/main/qwen-image-layered-Q4_K_S.gguf. \
 The extra addition embedding selects the layered config.
+- Qwen-Image 2.1: Qwen/Qwen-Image-2.1, --model-type qwen-image-21 --dtype bfloat16, \
+--model-sequential-offload, --qwen21-resolution 1024. Public, no HF_TOKEN. \
+GGUF: --transformer https://huggingface.co/molbal/Qwen-Image-2.1-GGUF/blob/main/qwen_image_2.1_Q4_0.gguf. \
+INT8: --transformer https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/diffusion_models/qwen_image_2.1_int8_convrot.safetensors. \
+Turbo is Qwen/Qwen-Image-2.1-Turbo and keeps the checkpoint sigma schedule, so omit --inference-steps. \
+Its INT8 is --transformer https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors. \
+This is not Qwen/Qwen-Image.
 - Kolors: Kwai-Kolors/Kolors-diffusers, --model-type kolors --variant fp16. Public, no HF_TOKEN.
 - Hunyuan-DiT: Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers, --model-type hydit --dtype float16, \
 guidance 5, 50 steps, 1024. Public, no HF_TOKEN. No quantizer and no offload. \
 This is not HunyuanVideo (--model-type hyvideo-15) and not HunyuanImage.
 - HunyuanImage 2.1: hunyuanvideo-community/HunyuanImage-2.1-Diffusers, --model-type hyimage-21 \
---dtype bfloat16, guidance 3.5, 50 steps, 2048, --model-sequential-offload. No quantizer, \
-including a GGUF or FP8 transformer. Public, no HF_TOKEN. \
+--dtype bfloat16, guidance 3.5, 50 steps, 2048, --model-sequential-offload. Public, no HF_TOKEN. \
+GGUF: --transformer https://huggingface.co/calcuis/hunyuanimage-gguf/resolve/main/hunyuanimage2.1-q4_k_m.gguf. \
+FP8: --transformer https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/resolve/main/split_files/diffusion_models/hunyuanimage2.1_fp8_e4m3fn.safetensors. \
 Refiner: hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers, --model-type hyimage-21-refiner, \
 the same offload. Distilled: hunyuanvideo-community/HunyuanImage-2.1-Distilled-Diffusers, \
-still --model-type hyimage-21.
+still --model-type hyimage-21, guidance 3.25, \
+--transformer https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/resolve/main/split_files/diffusion_models/hunyuanimage2.1_distilled_fp8_e4m3fn.safetensors.
+- HunyuanVideo 1.5: --model-type hyvideo-15, --dtype bfloat16, --model-sequential-offload, \
+guidance 6, 50 steps, --video-fps 15, --output-size 848x480. Public, no HF_TOKEN. \
+Text-to-video is hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v. \
+Its GGUF is --transformer https://huggingface.co/jayn7/HunyuanVideo-1.5_T2V_480p-GGUF/blob/main/480p/hunyuanvideo1.5_480p_t2v-Q4_K_S.gguf. \
+Distilled text-to-video is hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v_distilled, guidance 1, \
+--transformer https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/diffusion_models/hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors. \
+A still is hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v and keeps that repository transformer.
+- Kandinsky 5 video: --model-type kandinsky5-video, --dtype bfloat16, --model-sequential-offload, \
+guidance 5, 50 steps, --video-fps 24. Public, no HF_TOKEN. \
+Text-to-video Lite is kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers at 768x512. \
+Text-to-video Pro is kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers at 1024x768. \
+Its GGUF is --transformer https://huggingface.co/Ada321/Kandinsky-5.0-T2V-Pro-sft-5s-Q4_K_S.gguf/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf \
+on that Pro parent. \
+A still is kandinskylab/Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers at 768x512 and keeps that repository transformer. \
+Lite image-to-video is kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers.
+- Kandinsky 5 image: --model-type kandinsky5-image. \
+Text-to-image is kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers, guidance 3.5, 50 steps, 1024. \
+An edit is kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers with --image-seeds. Public, no HF_TOKEN.
 - DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
 - Animate a still or make a clip. When the user says ltx2, LTX-2, or LTX, use the LTX-2.5 recipes. \
 Use Lightricks/LTX-2 and Gemma 3 only when they name 19B, LTX-2.0, or Gemma 3. \
@@ -460,9 +521,12 @@ Never write Lightricks/LTX-Video with --model-type ltx2. --model-type ltx2 belon
 Never write Lightricks/LTX-2, Lightricks/LTX-2.3, or Lightricks/LTX-2.5-Diffusers with --model-type ltx-video. \
 Distilled GGUF: --transformer https://huggingface.co/realrebelai/LTX-2.5_GGUFs/blob/main/LTX-2.5-Distilled-Q4_K_S.gguf, \
 guidance 1, and no --inference-steps. The parent repo stays Lightricks/LTX-2.5-Diffusers. \
+Distilled INT8: --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors. \
+Distilled NVFP4: --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-nvfp4.safetensors. \
 Dev (full) GGUF: --transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF/blob/main/dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf, \
 guidance 3, audio guidance 7, STG 1 on block 28, modality 3, and \
 --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1 with --inference-steps 30. \
+Dev INT8: --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors. \
 LTX-2.5 Gemma 4 text encoder is already quantized: --text-encoders \
 "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF/blob/main/gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf". \
 Do not set quantizer. INT8 ConvRot of the same encoder: \
@@ -489,14 +553,33 @@ Public, no HF_TOKEN. --video-lengths is seconds and snaps to 4k+1 frames \
 (5 seconds at 16 fps is 81). Width and height must be divisible by 16. \
 Put the negative after ; in --prompts. \
 A still is image-to-video on Wan-AI/Wan2.1-I2V-14B-480P-Diffusers. \
-last-frame= needs Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers at 1280x720. \
+Its GGUF is --transformer https://huggingface.co/city96/Wan2.1-I2V-14B-480P-gguf/blob/main/wan2.1-i2v-14b-480p-Q4_K_S.gguf \
+on that same parent. \
+Its FP8 is --transformer https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_i2v_480p_14B_fp8_scaled.safetensors. \
+last-frame= needs Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers at 1280x720 \
+and --transformer https://huggingface.co/city96/Wan2.1-FLF2V-14B-720P-gguf/blob/main/wan2.1-flf2v-14b-720p-Q4_K_S.gguf \
+or https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors. \
 A Wan 2.1 I2V repo only embeds the first frame. \
 A video seed path is video-to-video and rejects --video-lengths; trim with frame-end=. \
-control=, mask=, and reference= are VACE on Wan-AI/Wan2.1-VACE-1.3B-diffusers. \
-Wan 2.2 MoE is Wan-AI/Wan2.2-T2V-A14B-Diffusers with --wan-low-noise-guidance-scales. \
+control=, mask=, and reference= are VACE. The full checkpoint is Wan-AI/Wan2.1-VACE-1.3B-diffusers. \
+The 14B quant files stay on Wan-AI/Wan2.1-VACE-14B-diffusers: \
+--transformer https://huggingface.co/QuantStack/Wan2.1_14B_VACE-GGUF/blob/main/Wan2.1_14B_VACE-Q4_K_S.gguf \
+or https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_vace_14B_fp16.safetensors. \
+Wan 2.2 text-to-video and video-to-video are Wan-AI/Wan2.2-T2V-A14B-Diffusers, guidance 4, --wan-low-noise-guidance-scales 3. \
+Its GGUF experts are --transformer https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/HighNoise/Wan2.2-T2V-A14B-HighNoise-Q4_K_S.gguf \
+and --wan-second-transformer https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/LowNoise/Wan2.2-T2V-A14B-LowNoise-Q4_K_S.gguf. \
+Its FP8 experts are --transformer https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors \
+and --wan-second-transformer https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors. \
+A Wan 2.2 still is Wan-AI/Wan2.2-I2V-A14B-Diffusers with that same guidance. \
+Its GGUF experts are --transformer https://huggingface.co/QuantStack/Wan2.2-I2V-A14B-GGUF/blob/main/HighNoise/Wan2.2-I2V-A14B-HighNoise-Q4_K_S.gguf \
+and --wan-second-transformer https://huggingface.co/QuantStack/Wan2.2-I2V-A14B-GGUF/blob/main/LowNoise/Wan2.2-I2V-A14B-LowNoise-Q4_K_S.gguf. \
+Its FP8 experts are --transformer https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors \
+and --wan-second-transformer https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors. \
 The VAE stays float32 and is not a --quantizer-map target. \
-GGUF: --transformer https://huggingface.co/city96/Wan2.1-T2V-14B-gguf/blob/main/wan2.1-t2v-14b-Q4_K_S.gguf \
+Text-to-video GGUF: --transformer https://huggingface.co/city96/Wan2.1-T2V-14B-gguf/blob/main/wan2.1-t2v-14b-Q4_K_S.gguf \
 with parent Wan-AI/Wan2.1-T2V-14B-Diffusers. \
+Its FP8 is --transformer https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_t2v_14B_fp8_scaled.safetensors. \
+A Wan GGUF or FP8 file loads only on the parent named with it. \
 Wan-Animate is --model-type wan-animate, Wan-AI/Wan2.2-Animate-14B-Diffusers, a character still plus \
 wan-pose= and wan-face=, or wan-driving= with --wan-animate-preprocess. --video-fps 30. \
 Omitting steps uses 20 and omitting guidance uses 1 (WanAnimatePipeline). --video-lengths is rejected. \
