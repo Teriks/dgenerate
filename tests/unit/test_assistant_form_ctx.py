@@ -72,7 +72,13 @@ class TestGenerateCodeContextField(unittest.TestCase):
                     saved = json.loads(settings.read_text(encoding='utf-8'))
                 finally:
                     form.destroy()
+        from dgenerate.console.assistantform import (
+            _PROGRESS_PLAIN, _PROGRESS_TALK, _PROGRESS_THOUGHT, _PROGRESS_TOOL)
         self.assertEqual(command[command.index('--ctx') + 1], '65536')
+        self.assertEqual(command[command.index('--progress-plain') + 1], _PROGRESS_PLAIN)
+        self.assertEqual(command[command.index('--progress-thought') + 1], _PROGRESS_THOUGHT)
+        self.assertEqual(command[command.index('--progress-talk') + 1], _PROGRESS_TALK)
+        self.assertEqual(command[command.index('--progress-tool') + 1], _PROGRESS_TOOL)
         self.assertEqual(saved['assistant_ctx'], 65536)
 
     def test_a_narrow_saved_size_is_widened_to_fit_the_buttons(self):

@@ -44,6 +44,10 @@ class TerminalText:
     stdout and stderr arrive through separate pipes and their relative order is
     lost. When output switches streams mid-line, the new stream starts on a
     fresh line at the bottom instead of writing over the other stream's line.
+
+    Unknown escape sequences are dropped. Subclasses can claim one from
+    :meth:`_handle_csi`, and can replace the tag on inserted text from
+    :meth:`_active_tags`.
     """
 
     MARK = 'terminal_cursor'
@@ -78,6 +82,7 @@ class TerminalText:
             if self._stream is not None:
                 self._to_fresh_line()
             self._stream = stream
+            self._stream_changed()
 
         tags = (tag,) if tag else ()
         for match in _TOKEN.finditer(data):
@@ -121,7 +126,7 @@ class TerminalText:
         overwrite = min(len(chars), self._line_length(line) - col)
         if overwrite > 0:
             self._text.delete(self.MARK, f'{self.MARK}+{overwrite}c')
-        self._text.insert(self.MARK, chars, tags)
+        self._text.insert(self.MARK, chars, self._active_tags(tags))
 
     def _control(self, char: str):
         line, col = self._cursor()
@@ -157,6 +162,59 @@ class TerminalText:
             elif mode == 2:
                 self._text.delete(f'{line}.0', f'{line}.end')
                 self._move(line, col)
+        else:
+            self._handle_csi(final, count)
+
+    def _stream_changed(self) -> None:
+        """Called when :meth:`write` switches to a different stream."""
+
+    def _active_tags(self, tags: tuple) -> tuple:
+        """Tags for the next inserted run. ``tags`` is the ``write`` tag."""
+        return tags
+
+    def _handle_csi(self, final: str, count: int | None) -> None:
+        """
+        Handle a CSI sequence the cursor commands do not use.
+
+        ``final`` is the last byte. ``count`` is the first numeric parameter,
+        or ``None`` when the sequence has none. The sequence is dropped when
+        this does nothing.
+        """
 
 
-__all__ = ['TerminalText']
+class StyledTerminalText(TerminalText):
+    """
+    :class:`TerminalText` that maps ``ESC [ <n> t`` to a text tag.
+
+    ``styles`` maps the parameter ``n`` to a tag name. A parameter that is not
+    in the map, including 0, clears the tag, and so does a stream change.
+    The main console uses :class:`TerminalText`, which ignores these sequences.
+    """
+
+    def __init__(self, text: tk.Text, styles: dict[int, str]):
+        """
+        :param text: the output widget, its state must be ``NORMAL`` while writing
+        :param styles: CSI parameter to text-tag name
+        """
+        self._styles = styles
+        self._style_tag = None
+        super().__init__(text)
+
+    def reset(self):
+        super().reset()
+        self._style_tag = None
+
+    def _stream_changed(self) -> None:
+        self._style_tag = None
+
+    def _active_tags(self, tags: tuple) -> tuple:
+        if self._style_tag:
+            return (self._style_tag,)
+        return tags
+
+    def _handle_csi(self, final: str, count: int | None) -> None:
+        if final == 't':
+            self._style_tag = self._styles.get(count or 0)
+
+
+__all__ = ['TerminalText', 'StyledTerminalText']

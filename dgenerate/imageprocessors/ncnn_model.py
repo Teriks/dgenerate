@@ -19,13 +19,45 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import atexit
 import gc
 import typing
+import weakref
 
 import ncnn
 import numpy
 
 import dgenerate.types as _types
+
+# The Vulkan device is process-global. Its static destructor crashes if it
+# runs at interpreter shutdown, and deleting a Net after the device is gone
+# crashes in the weight allocator. Drop every GPU net first, then destroy
+# the device while the process is still shutting down normally.
+_live_gpu_models = weakref.WeakSet()
+_gpu_instance_active = False
+
+
+def _mark_gpu_instance_active(model: 'NCNNUpscaleModel'):
+    global _gpu_instance_active
+    _gpu_instance_active = True
+    _live_gpu_models.add(model)
+
+
+def _destroy_gpu_instance_if_idle():
+    global _gpu_instance_active
+    if not _gpu_instance_active or _live_gpu_models:
+        return
+    ncnn.destroy_gpu_instance()
+    _gpu_instance_active = False
+
+
+def _release_vulkan_at_exit():
+    for model in list(_live_gpu_models):
+        model.close()
+    _destroy_gpu_instance_if_idle()
+
+
+atexit.register(_release_vulkan_at_exit)
 
 
 class NCNNException(Exception):
@@ -147,6 +179,7 @@ class NCNNUpscaleModel:
 
             self.net.opt.use_vulkan_compute = True
             self.net.set_vulkan_device(self.gpu_index)
+            _mark_gpu_instance_active(self)
         else:
             self.net.opt.num_threads = self.threads
             self.net.opt.use_winograd_convolution = self.use_winograd_convolution
@@ -271,37 +304,51 @@ class NCNNUpscaleModel:
         results = []
         for img in images:
             ex = self.net.create_extractor()
+            try:
+                img = self._convert_to_uint8(img.transpose((1, 2, 0)))
 
-            img = self._convert_to_uint8(img.transpose((1, 2, 0)))
+                mat_in = ncnn.Mat.from_pixels(
+                    img,
+                    ncnn.Mat.PixelType.PIXEL_RGB,
+                    img.shape[1],
+                    img.shape[0]
+                )
 
-            mat_in = ncnn.Mat.from_pixels(
-                img,
-                ncnn.Mat.PixelType.PIXEL_RGB,
-                img.shape[1],
-                img.shape[0]
-            )
+                mean_vals = []
+                norm_vals = [1 / 255.0, 1 / 255.0, 1 / 255.0]
+                mat_in.substract_mean_normalize(mean_vals, norm_vals)
 
-            mean_vals = []
-            norm_vals = [1 / 255.0, 1 / 255.0, 1 / 255.0]
-            mat_in.substract_mean_normalize(mean_vals, norm_vals)
+                ex.input(self.input_layer_name, mat_in)
+                ret, mat_out = ex.extract(self.output_layer_name)
 
-            ex.input(self.input_layer_name, mat_in)
-            ret, mat_out = ex.extract(self.output_layer_name)
+                if ret != 0:
+                    raise NCNNExtractionFailure(
+                        "NCNN extraction failed, GPU out of memory.")
 
-            if ret != 0:
-                raise NCNNExtractionFailure(
-                    "NCNN extraction failed, GPU out of memory.")
-
-            results.append(numpy.clip(mat_out, 0.0, 1.0, dtype=numpy.float32))
-
-            del ex, mat_in, mat_out
+                results.append(numpy.clip(mat_out, 0.0, 1.0, dtype=numpy.float32))
+            finally:
+                del ex
             gc.collect()
 
         return numpy.array(results)
 
+    def close(self):
+        """Drop this net. When no GPU nets remain, destroy the Vulkan device.
+
+        The net is destroyed first. The device is destroyed only after every
+        GPU net is gone, so the same process can load another model later.
+        """
+        net = getattr(self, 'net', None)
+        if net is None:
+            return
+        self.net = None
+        del net
+        if getattr(self, 'use_gpu', False):
+            _live_gpu_models.discard(self)
+            _destroy_gpu_instance_if_idle()
+
     def __del__(self):
-        if hasattr(self, 'net'):
-            del self.net
+        self.close()
 
 
 __all__ = _types.module_all()

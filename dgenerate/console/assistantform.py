@@ -67,6 +67,15 @@ _EFFORT_LABELS = {'low': 'Low', 'medium': 'Medium', 'xhigh': 'Extra high'}
 _PROMPT_HISTORY_FILE = 'assistant_prompt_history.json'
 _DEFAULT_PROMPT_HISTORY = 500
 
+# CSI the progress pane maps to theme tags. 0 clears the tag. The assistant
+# writes these only because this dialog passes them. ESC [ 1 t and ESC [ 2 t
+# are also xterm window commands.
+_PROGRESS_PLAIN = '\x1b[0t'
+_PROGRESS_THOUGHT = '\x1b[1t'
+_PROGRESS_TALK = '\x1b[2t'
+_PROGRESS_TOOL = '\x1b[3t'
+_LOG_STYLE_TAGS = {1: 'assistant_thought', 2: 'assistant_talk', 3: 'assistant_tool'}
+
 
 def _settings_path() -> pathlib.Path:
     return pathlib.Path.home() / '.dgenerate' / 'console_settings.json'
@@ -352,10 +361,18 @@ class _AssistantForm(tk.Toplevel):
 
         ttk.Label(self, text='Progress', anchor=tk.W).grid(row=3, column=0, sticky=tk.EW)
         self._log_text = _scrolledtext.ScrolledText(self)
-        self._log_text.disable_word_wrap()
         self._log_text.text.configure(height=8, state=tk.DISABLED)
         self._log_text.grid(row=4, column=0, sticky=tk.NSEW, pady=(2, 8))
-        self._log_terminal = _terminaltext.TerminalText(self._log_text.text)
+        self._log_terminal = _terminaltext.StyledTerminalText(
+            self._log_text.text, _LOG_STYLE_TAGS)
+        self._log_context_menu = self._create_log_context_menu()
+        self._log_text.text.bind(
+            '<Button-3>',
+            lambda e: self._show_log_context_menu(e))
+        self._log_text.text.bind(
+            '<Control-c>', lambda e: (self._log_copy(), 'break')[1])
+        self._log_text.text.bind(
+            '<Control-a>', lambda e: (self._log_select_all(), 'break')[1])
 
         buttons = ttk.Frame(self)
         buttons.grid(row=5, column=0)
@@ -566,6 +583,63 @@ class _AssistantForm(tk.Toplevel):
         finally:
             self._request_context_menu.grab_release()
 
+    def _log_copy(self):
+        text_widget = self._log_text.text
+        try:
+            if text_widget.tag_ranges(tk.SEL):
+                selected = text_widget.get(tk.SEL_FIRST, tk.SEL_LAST)
+                text_widget.clipboard_clear()
+                text_widget.clipboard_append(selected)
+        except tk.TclError:
+            pass
+
+    def _log_select_all(self):
+        text_widget = self._log_text.text
+        if not text_widget.get('1.0', 'end-1c'):
+            return
+        text_widget.focus_set()
+        text_widget.tag_remove(tk.SEL, '1.0', tk.END)
+        text_widget.tag_add(tk.SEL, '1.0', 'end-1c')
+        text_widget.mark_set('insert', '1.0')
+        text_widget.see('insert')
+
+    def _update_log_context_menu(self):
+        text_widget = self._log_text.text
+        has_selection = bool(text_widget.tag_ranges(tk.SEL))
+        has_content = bool(text_widget.get('1.0', 'end-1c'))
+        self._log_context_menu.entryconfigure(
+            'Copy', state=tk.NORMAL if has_selection else tk.DISABLED)
+        self._log_context_menu.entryconfigure(
+            'Select All', state=tk.NORMAL if has_content else tk.DISABLED)
+
+    def _create_log_context_menu(self) -> tk.Menu:
+        menu = tk.Menu(self._log_text, tearoff=0)
+        menu.add_command(label='Copy', accelerator='Ctrl+C', command=self._log_copy)
+        menu.add_command(label='Select All', accelerator='Ctrl+A', command=self._log_select_all)
+        menu.configure(postcommand=self._update_log_context_menu)
+        return menu
+
+    def _show_log_context_menu(self, event):
+        self._log_text.text.focus_set()
+        try:
+            self._log_context_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            self._log_context_menu.grab_release()
+
+    def _syntax_color(self, *tags: str) -> str:
+        fallback = self._log_text.text.cget('fg')
+        editor = getattr(self.master, '_input_text', None)
+        if editor is None or not getattr(editor, '_highlighting', False):
+            return fallback
+        for tag in tags:
+            try:
+                color = editor.text.tag_cget(tag, 'foreground')
+            except tk.TclError:
+                continue
+            if color:
+                return color
+        return fallback
+
     def _theme_text_boxes(self):
         if not self.winfo_exists():
             return
@@ -574,6 +648,16 @@ class _AssistantForm(tk.Toplevel):
                 text.configure(insertbackground=text.cget('fg'))
             except tk.TclError:
                 return
+        log = self._log_text.text
+        log.tag_configure(
+            'assistant_thought',
+            foreground=self._syntax_color('Token.Comment.Single', 'Token.Comment'))
+        log.tag_configure(
+            'assistant_talk',
+            foreground=self._syntax_color('Token.Literal.String.Double', 'Token.Literal.String'))
+        log.tag_configure(
+            'assistant_tool',
+            foreground=self._syntax_color('Token.Name.Builtin'))
 
     def _add_embed_model(self, spec: str, label: str):
         if _catalog.is_downloaded(spec):
@@ -635,7 +719,11 @@ class _AssistantForm(tk.Toplevel):
             command.append('--offline-mode')
         command += ['--sub-command', 'assistant', '--model', self._selected_model(),
                     '--embed-model', self._selected_embed_model(),
-                    '--ctx', str(self._selected_ctx())]
+                    '--ctx', str(self._selected_ctx()),
+                    '--progress-plain', _PROGRESS_PLAIN,
+                    '--progress-thought', _PROGRESS_THOUGHT,
+                    '--progress-talk', _PROGRESS_TALK,
+                    '--progress-tool', _PROGRESS_TOOL]
         if edit_path:
             command += ['--edit', edit_path]
         if self._think_var.get():

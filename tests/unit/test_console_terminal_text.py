@@ -12,7 +12,7 @@ except Exception:
 from dgenerate.files import TerminalLineReader
 
 if _ROOT is not None:
-    from dgenerate.console.terminaltext import TerminalText
+    from dgenerate.console.terminaltext import StyledTerminalText, TerminalText
 
 # stderr of nested tqdm bars through a pipe on Windows, captured from a real process
 NESTED_TQDM = (
@@ -36,11 +36,13 @@ def _chunks(data: str):
         yield line.decode('utf-8')
 
 
-@unittest.skipIf(_ROOT is None, 'Tk is not available')
-class TestTerminalText(unittest.TestCase):
+class _TerminalFeed:
+    def make_terminal(self, text):
+        return TerminalText(text)
+
     def setUp(self):
         self.text = tk.Text(_ROOT)
-        self.terminal = TerminalText(self.text)
+        self.terminal = self.make_terminal(self.text)
 
     def tearDown(self):
         self.text.destroy()
@@ -88,6 +90,35 @@ class TestTerminalText(unittest.TestCase):
         self.text.delete('1.0', '2.0')
         self.feed('\rbar 2\n')
         self.assertEqual(self.lines(), ['b', 'bar 2', ''])
+
+
+@unittest.skipIf(_ROOT is None, 'Tk is not available')
+class TestTerminalText(_TerminalFeed, unittest.TestCase):
+    def test_style_sequences_are_ignored(self):
+        self.feed('\x1b[1tthought line\n\x1b[3ttool line\n')
+        self.assertEqual(self.lines(), ['thought line', 'tool line', ''])
+        self.assertNotIn('assistant_thought', self.text.tag_names('1.0'))
+        self.assertNotIn('assistant_tool', self.text.tag_names('2.0'))
+
+
+@unittest.skipIf(_ROOT is None, 'Tk is not available')
+class TestStyledTerminalText(_TerminalFeed, unittest.TestCase):
+    def make_terminal(self, text):
+        return StyledTerminalText(text, {1: 'assistant_thought', 3: 'assistant_tool'})
+
+    def test_progress_styles_select_theme_tags(self):
+        self.feed('\x1b[1tthought line\n\x1b[0tplain line\n\x1b[3ttool line\n')
+        self.assertEqual(self.lines(), ['thought line', 'plain line', 'tool line', ''])
+        self.assertIn('assistant_thought', self.text.tag_names('1.0'))
+        self.assertNotIn('assistant_thought', self.text.tag_names('2.0'))
+        self.assertNotIn('assistant_tool', self.text.tag_names('2.0'))
+        self.assertIn('assistant_tool', self.text.tag_names('3.0'))
+
+    def test_a_stream_change_returns_to_plain_text(self):
+        self.feed('\x1b[1tthought', stream='stderr')
+        self.feed('status\n', stream='status')
+        self.assertIn('assistant_thought', self.text.tag_names('1.0'))
+        self.assertNotIn('assistant_thought', self.text.tag_names('2.0'))
 
 
 if __name__ == '__main__':

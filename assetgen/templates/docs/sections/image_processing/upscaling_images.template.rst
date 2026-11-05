@@ -142,17 +142,11 @@ will be evacuated entirely before this processor runs if they exist on the same 
 as the processor, this is to prevent catastrophic interaction between the Vulkan
 and Torch cuda allocators.
 
-Once a Vulkan allocator exists on a specific GPU it cannot be destroyed except
-via the process exiting due to issues with the ncnn python binding.  If you
-create this processor on a GPU you intend to perform diffusion on, you are
-going to run into memory errors after the first image generation and
-there on out until the process exits.
-
-When the process exits it is very likely to exit with a non-zero return
-code after using this processor even if the upscale operations were successful,
-this is due to problems with the ncnn python binding creating a segfault at exit.
-If you are using dgenerate interactively in shell mode or from the Console UI,
-this will occur without consequence when the interpreter process exits.
+The Vulkan device is shared by every GPU NCNN model in the process. It is
+created when the first model loads and destroyed when the last model is
+released, which frees that memory. The processor can be loaded again later
+in the same process, and a Torch run in this process can use that GPU
+after the processor is released.
 
 Note that if any other process runs diffusion / inference via torch on
 the same GPU as this image processor while ncnn is performing inference,

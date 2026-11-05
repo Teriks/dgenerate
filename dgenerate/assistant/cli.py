@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
+import codecs
 import json
 import os
 import re
@@ -41,8 +42,34 @@ import dgenerate.assistant.link_tools as _link_tools
 _PACKAGE_PARENT = os.path.dirname(os.path.dirname(os.path.abspath(dgenerate.__file__)))
 
 
-def log(*args):
-    print(*args, file=sys.stderr, flush=True)
+def log(*args, style='plain'):
+    sys.stderr.write(_models.progress_style(style) + ' '.join(str(arg) for arg in args) + '\n')
+    sys.stderr.flush()
+
+
+def _control_code(value: str) -> str:
+    """Turn ``\\033`` and ``\\x1b`` into the characters they name. A real ESC is kept."""
+    if '\\' not in value:
+        return value
+    cooked = value.replace('\\e', '\\x1b').replace('\\E', '\\x1b')
+    try:
+        return codecs.decode(cooked.encode('ascii'), 'unicode_escape')
+    except UnicodeError:
+        return value
+
+
+def log_model_open(title: str) -> str:
+    """The title and its ``=`` rule. A blank line is left for the model to open."""
+    log(title)
+    rule = '=' * len(title)
+    log(rule)
+    return rule
+
+
+def log_model_close(rule: str) -> None:
+    """A blank line then ``=`` after the model's own output."""
+    log('')
+    log(rule)
 
 
 def _context_too_small(n_ctx: int, needed: int, *, retrieved: bool) -> str:
@@ -233,6 +260,15 @@ def create_parser(prog: str) -> _b_util.DirectiveArgumentParser:
     parser.add_argument('--offline', action='store_true', help='Only use models already in the Hugging Face cache.')
     parser.add_argument('--no-link-tools', action='store_true',
                         help='Do not offer fetch_link; the model cannot request CivitAI or Hugging Face lookups.')
+    parser.add_argument('--progress-plain', default='', type=_control_code, metavar='CODE',
+                        help='Terminal color before status text. Off by default. '
+                             r'Reset with \033[0m.')
+    parser.add_argument('--progress-thought', default='', type=_control_code, metavar='CODE',
+                        help=r'Terminal color before reasoning. Off by default. Green is \033[32m.')
+    parser.add_argument('--progress-talk', default='', type=_control_code, metavar='CODE',
+                        help=r"Terminal color before the model's reply. Off by default. Cyan is \033[36m.")
+    parser.add_argument('--progress-tool', default='', type=_control_code, metavar='CODE',
+                        help=r'Terminal color before a tool call. Off by default. Yellow is \033[33m.')
     parser.add_argument('-v', '--verbose', action='store_true', help='Show llama.cpp output.')
     return parser
 
@@ -254,6 +290,8 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
     args = parser.parse_args(argv)
     if parser.return_code is not None:
         return parser.return_code
+    _models.set_progress_styles(
+        args.progress_plain, args.progress_thought, args.progress_tool, args.progress_talk)
     args.offline = args.offline or local_files_only
     if not _catalog.xllamacpp_installed():
         log('error: xllamacpp is not installed. Install it with: pip install dgenerate[xllamacpp]')
@@ -348,10 +386,8 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
         ]
 
         def log_tool(line: str) -> None:
-            if line.startswith('  ->'):
-                log(line)
-            else:
-                log(f'Tool {line}')
+            text = line if line.startswith('  ->') else f'Tool {line}'
+            log(text, style='tool')
 
         config, report = None, None
         raised_placeholders = set()
@@ -373,14 +409,22 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
             return kept
 
         sampling = sampling_from_args(args)
+        elapsed = None
+        closed = False
+        accepted = False
         for attempt in range(args.max_repairs + 1):
             limit = _models.reply_token_limit(args.ctx, args.max_tokens)
-            log('Writing the config' if attempt == 0 else f'Fixing the config (attempt {attempt})')
-            log('  up to the rest of the context window' if limit < 0 else f'  up to {limit} tokens')
+            action = 'Writing the config' if attempt == 0 else f'Fixing the config (attempt {attempt})'
+            room = 'up to the rest of the context window' if limit < 0 else f'up to {limit} tokens'
+            rule = log_model_open(f'{action}: {room}')
             started = time.time()
-            reply = chat.complete(messages, max_tokens=limit, tools=tools or None,
-                                  on_tool=log_tool if tools else None, **sampling)
-            log(f'  done in {time.time() - started:.1f}s')
+            try:
+                reply = chat.complete(messages, max_tokens=limit, tools=tools or None,
+                                      on_tool=log_tool if tools else None, **sampling)
+            finally:
+                elapsed = time.time() - started
+                if getattr(chat, 'showed', False):
+                    log_model_close(rule)
             messages.append({'role': 'assistant', 'content': reply})
             config = _prompt.apply_request_files(_prompt.extract_config(reply, version), files)
 
@@ -405,6 +449,8 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
                 log('Checking the config with dgenerate')
                 report = deep_check(config, run_dir)
                 if report.get('ok') is None:
+                    log(f'Done in {elapsed:.1f}s')
+                    closed = True
                     log(f'warning: could not run the dgenerate check: {report.get("failure")}')
                     break
                 problems = keep_new(
@@ -414,7 +460,10 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
                 suggested = [o for p in problems for o in _prompt.options_in(p) if index.argument(o)]
 
             if not problems:
+                accepted = True
                 break
+            log(f'Done in {elapsed:.1f}s')
+            closed = True
             for p in problems:
                 log(f'  {p}')
             if attempt == args.max_repairs:
@@ -425,8 +474,11 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
         if report:
             for warning in report.get('warnings', []):
                 log(f'note: {_problem(warning)}')
-            if report.get('ok'):
-                log(f'dgenerate accepted the config ({report["invocations"]} invocation(s)).')
+        if accepted and report and report.get('ok'):
+            log(f'Done in {elapsed:.1f}s: dgenerate accepted the config '
+                f'({report["invocations"]} invocation(s)).')
+        elif elapsed is not None and not closed:
+            log(f'Done in {elapsed:.1f}s')
 
     except (_models.ModelError, _index.AssistantIndexError) as e:
         log(f'error: {e}')

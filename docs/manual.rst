@@ -614,7 +614,7 @@ Help Output
             * UMT5EncoderModel (Wan)
             * DistillT5EncoderModel (see: LifuWang/DistillT5)
             * ChatGLMModel (Kolors)
-            * Gemma3ForConditionalGeneration (LTX-2)
+            * Gemma3ForConditionalGeneration
             * Gemma4UnifiedForConditionalGeneration (LTX-2.5)
             * Mistral3ForConditionalGeneration (Flux.2)
             * Qwen2_5_VLForConditionalGeneration (Qwen-Image, Kandinsky 5)
@@ -14928,6 +14928,10 @@ Status 0 means a config was written. A missing model or a failure while loading 
 exits with status 1.
 
 ``--show-context`` prints the retrieved examples and documentation to stderr.
+``--progress-plain``, ``--progress-thought``, ``--progress-talk``, and ``--progress-tool``
+are terminal color sequences written before status text, reasoning, the model's reply,
+and tool calls. They are off by default. ``\033[0m`` resets the color, ``\033[32m``
+is green, ``\033[36m`` is cyan, and ``\033[33m`` is yellow.
 ``--offline`` uses only models already on disk or in the Hugging Face cache.
 ``dgenerate --offline-mode --sub-command assistant`` does the same thing.
 ``-v`` / ``--verbose`` shows llama.cpp output on stderr.
@@ -14970,7 +14974,8 @@ The help output of ``assistant`` is as follows:
                      [--temperature TEMPERATURE] [--top-p TOP_P] [--top-k TOP_K] [--min-p MIN_P]
                      [--presence-penalty PRESENCE_PENALTY] [--repeat-penalty REPEAT_PENALTY]
                      [--max-tokens MAX_TOKENS] [--no-check] [--max-repairs MAX_REPAIRS] [--show-context]
-                     [--offline] [--no-link-tools] [-v]
+                     [--offline] [--no-link-tools] [--progress-plain CODE] [--progress-thought CODE]
+                     [--progress-talk CODE] [--progress-tool CODE] [-v]
                      [request ...]
     
     Write a dgenerate config from a plain language request, using a local Qwen model with retrieval over the
@@ -15080,6 +15085,18 @@ The help output of ``assistant`` is as follows:
       --no-link-tools
             Do not offer fetch_link; the model cannot request CivitAI or Hugging Face lookups.
             ----------------------------------------------------------------------------------
+      --progress-plain CODE
+            Terminal color before status text. Off by default. Reset with \033[0m.
+            ----------------------------------------------------------------------
+      --progress-thought CODE
+            Terminal color before reasoning. Off by default. Green is \033[32m.
+            -------------------------------------------------------------------
+      --progress-talk CODE
+            Terminal color before the model's reply. Off by default. Cyan is \033[36m.
+            --------------------------------------------------------------------------
+      --progress-tool CODE
+            Terminal color before a tool call. Off by default. Yellow is \033[33m.
+            ----------------------------------------------------------------------
       -v, --verbose
             Show llama.cpp output.
             ----------------------
@@ -15266,17 +15283,11 @@ will be evacuated entirely before this processor runs if they exist on the same 
 as the processor, this is to prevent catastrophic interaction between the Vulkan
 and Torch cuda allocators.
 
-Once a Vulkan allocator exists on a specific GPU it cannot be destroyed except
-via the process exiting due to issues with the ncnn python binding.  If you
-create this processor on a GPU you intend to perform diffusion on, you are
-going to run into memory errors after the first image generation and
-there on out until the process exits.
-
-When the process exits it is very likely to exit with a non-zero return
-code after using this processor even if the upscale operations were successful,
-this is due to problems with the ncnn python binding creating a segfault at exit.
-If you are using dgenerate interactively in shell mode or from the Console UI,
-this will occur without consequence when the interpreter process exits.
+The Vulkan device is shared by every GPU NCNN model in the process. It is
+created when the first model loads and destroyed when the last model is
+released, which frees that memory. The processor can be loaded again later
+in the same process, and a Torch run in this process can use that GPU
+after the processor is released.
 
 Note that if any other process runs diffusion / inference via torch on
 the same GPU as this image processor while ncnn is performing inference,
@@ -18000,7 +18011,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [40286099687655]
+            Value: [71543047417053]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

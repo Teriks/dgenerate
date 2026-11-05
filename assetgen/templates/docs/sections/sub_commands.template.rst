@@ -405,6 +405,10 @@ Status 0 means a config was written. A missing model or a failure while loading 
 exits with status 1.
 
 ``--show-context`` prints the retrieved examples and documentation to stderr.
+``--progress-plain``, ``--progress-thought``, ``--progress-talk``, and ``--progress-tool``
+are terminal color sequences written before status text, reasoning, the model's reply,
+and tool calls. They are off by default. ``\033[0m`` resets the color, ``\033[32m``
+is green, ``\033[36m`` is cyan, and ``\033[33m`` is yellow.
 ``--offline`` uses only models already on disk or in the Hugging Face cache.
 ``dgenerate --offline-mode --sub-command assistant`` does the same thing.
 ``-v`` / ``--verbose`` shows llama.cpp output on stderr.

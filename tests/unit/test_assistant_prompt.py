@@ -68,6 +68,14 @@ class TestAnswerText(unittest.TestCase):
 
 
 class TestThoughtDisplay(unittest.TestCase):
+    def setUp(self):
+        from dgenerate.assistant.models import set_progress_styles
+        set_progress_styles('<plain>', '<thought>', '<tool>', '<talk>')
+
+    def tearDown(self):
+        from dgenerate.assistant.models import set_progress_styles
+        set_progress_styles()
+
     def test_thought_streams_and_the_config_stays_out(self):
         from io import StringIO
 
@@ -80,9 +88,85 @@ class TestThoughtDisplay(unittest.TestCase):
         display.add('', closer + '\n```dgen\nblack-forest-labs/FLUX.1-dev\n```')
         text = display.finish()
         shown = out.getvalue()
+        self.assertIn('Thinking:\n=========\n', shown)
         self.assertIn('wallpaper', shown)
         self.assertNotIn('FLUX.1-dev', shown)
         self.assertIn('FLUX.1-dev', text)
+
+    def test_talk_before_the_fence_is_shown_and_the_config_is_not(self):
+        from io import StringIO
+
+        from dgenerate.assistant.models import _ThoughtDisplay
+
+        out = StringIO()
+        display = _ThoughtDisplay(True, out)
+        display.add('plan a wide frame', '')
+        display.add('', 'Using a wide frame.\n```dgen\nblack-forest-labs/FLUX.1-dev\n```')
+        text = display.finish()
+        shown = out.getvalue()
+        self.assertLess(shown.index('<thought>'), shown.index('plan a wide frame'))
+        self.assertLess(shown.index('plan a wide frame'), shown.index('<talk>'))
+        self.assertLess(shown.index('<talk>'), shown.index('Using a wide frame.'))
+        self.assertIn('Using a wide frame.', shown)
+        self.assertNotIn('FLUX.1-dev', shown)
+        self.assertNotIn('```', shown)
+        self.assertIn('FLUX.1-dev', text)
+
+    def test_a_reply_without_thinking_is_talk_until_the_fence(self):
+        from io import StringIO
+
+        from dgenerate.assistant.models import _ThoughtDisplay
+
+        out = StringIO()
+        display = _ThoughtDisplay(False, out)
+        display.add('', 'Here is the config.\n```dgen\norg/model\n```')
+        display.finish()
+        shown = out.getvalue()
+        self.assertIn('Here is the config.', shown)
+        self.assertNotIn('Thinking:', shown)
+        self.assertNotIn('org/model', shown)
+        self.assertTrue(display.shown)
+
+    def test_style_markers_are_whatever_was_configured(self):
+        from io import StringIO
+
+        from dgenerate.assistant.models import _ThoughtDisplay, set_progress_styles
+
+        set_progress_styles()
+        plain = StringIO()
+        display = _ThoughtDisplay(True, plain)
+        display.add('plan a wide frame', '')
+        display.finish()
+        self.assertNotIn('<thought>', plain.getvalue())
+        self.assertIn('Thinking:', plain.getvalue())
+
+        green = '\033[32m'
+        set_progress_styles(thought=green)
+        colored = StringIO()
+        display = _ThoughtDisplay(True, colored)
+        display.add('plan a wide frame', '')
+        display.finish()
+        self.assertIn(green, colored.getvalue())
+
+    def test_a_config_alone_is_not_shown(self):
+        from io import StringIO
+
+        from dgenerate.assistant.models import _ThoughtDisplay
+
+        display = _ThoughtDisplay(False, StringIO())
+        display.add('', '```dgen\norg/model\n```')
+        display.finish()
+        self.assertFalse(display.shown)
+
+
+class TestControlCode(unittest.TestCase):
+    def test_backslash_escapes_become_the_named_characters(self):
+        from dgenerate.assistant.cli import _control_code
+
+        self.assertEqual(_control_code(r'\033[32m'), '\033[32m')
+        self.assertEqual(_control_code(r'\x1b[1t'), '\x1b[1t')
+        self.assertEqual(_control_code(r'\e[0m'), '\x1b[0m')
+        self.assertEqual(_control_code('\x1b[0t'), '\x1b[0t')
 
 
 class TestAssistantPrompt(unittest.TestCase):

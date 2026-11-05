@@ -44,6 +44,21 @@ _THINK_BLOCK = re.compile(
 _THINK_OPEN = re.compile(r'<(?:think|redacted_thinking)>', re.IGNORECASE)
 _CONFIG_MARK = re.compile(r'```|^[ \t]*[\w.-]+/[\w.-]+', re.MULTILINE)
 
+_progress = {'plain': '', 'thought': '', 'talk': '', 'tool': ''}
+
+
+def set_progress_styles(plain: str = '', thought: str = '', tool: str = '', talk: str = '') -> None:
+    """Control sequences written before status, reasoning, reply, and tool lines."""
+    _progress['plain'] = plain
+    _progress['thought'] = thought
+    _progress['talk'] = talk
+    _progress['tool'] = tool
+
+
+def progress_style(name: str) -> str:
+    """The configured sequence for ``plain``, ``thought``, ``talk``, or ``tool``."""
+    return _progress[name]
+
 
 def answer_text(content: str, reasoning: str = '') -> str:
     """
@@ -127,7 +142,10 @@ def _chunk_dict(chunk) -> dict | None:
 
 class _ThoughtDisplay:
     """
-    Streams the thought to the status stream and keeps the answer for the config.
+    Streams reasoning and any reply before the config fence to the status stream.
+
+    Reasoning is marked as a thought. Text before the fence is talk.
+    The fenced config stays out of the status stream and is returned for stdout.
     """
 
     _CLOSERS = ('</' + 'think>', '</' + 'redacted_thinking>')
@@ -142,10 +160,30 @@ class _ThoughtDisplay:
         self._saw_reasoning = False
         self._pending = ''
         self._announced = False
+        self._style = None
+        self._answer_carry = ''
+        self._in_fence = False
+        self.shown = False
 
-    def _emit(self, text: str) -> None:
-        if self._thinking and not self._announced:
-            self._out.write('Thinking:\n')
+    def _set_style(self, style: str) -> None:
+        if style == self._style:
+            return
+        self._flush_pending()
+        self._out.write(progress_style(style))
+        self._style = style
+        self._out.flush()
+
+    def _emit(self, text: str, style: str) -> None:
+        visible = bool(text.strip()) or (style == 'thought' and not self._announced)
+        if visible and not self.shown:
+            # The opening rule has no blank line after it unless the model speaks.
+            self._out.write('\n')
+            self._out.flush()
+        self.shown = self.shown or visible
+        self._set_style(style)
+        if style == 'thought' and not self._announced:
+            heading = 'Thinking:'
+            self._out.write(heading + '\n' + ('=' * len(heading)) + '\n')
             self._announced = True
         self._pending += text
         while True:
@@ -167,15 +205,32 @@ class _ThoughtDisplay:
             self._pending = ''
             self._out.flush()
 
+    def _feed_answer(self, text: str) -> None:
+        if self._in_fence or not text:
+            return
+        self._answer_carry += text
+        while True:
+            newline = self._answer_carry.find('\n')
+            if newline < 0:
+                return
+            line = self._answer_carry[:newline + 1]
+            self._answer_carry = self._answer_carry[newline + 1:]
+            if line.lstrip().startswith('```'):
+                self._in_fence = True
+                self._answer_carry = ''
+                return
+            self._emit(line, 'talk')
+
     def add(self, reasoning: str, content: str) -> None:
         if reasoning:
             self._saw_reasoning = True
             self._reasoning.append(reasoning)
-            self._emit(reasoning)
+            self._emit(reasoning, 'thought')
         if not content:
             return
         self._content.append(content)
-        if self._closed or self._saw_reasoning:
+        if self._saw_reasoning or self._closed:
+            self._feed_answer(content)
             return
         self._carry += content
         lower = self._carry.lower()
@@ -183,20 +238,29 @@ class _ThoughtDisplay:
             at = lower.find(closer)
             if at == -1:
                 continue
-            self._emit(self._carry[:at] + '\n')
+            thought = self._carry[:at]
+            rest = self._carry[at + len(closer):]
             self._carry = ''
             self._closed = True
+            if thought:
+                self._emit(thought + '\n', 'thought')
+            self._feed_answer(rest)
             return
-        hold = 24
+        hold = max(len(closer) for closer in self._CLOSERS)
         if len(self._carry) > hold:
-            self._emit(self._carry[:-hold])
+            self._emit(self._carry[:-hold], 'thought')
             self._carry = self._carry[-hold:]
 
     def finish(self) -> str:
-        if self._thinking and self._carry and not self._closed:
-            self._emit(self._carry)
+        if not self._closed and self._carry:
+            self._emit(self._carry, 'thought')
             self._carry = ''
+        if not self._in_fence and self._answer_carry and not self._answer_carry.lstrip().startswith('```'):
+            self._emit(self._answer_carry, 'talk')
+        self._answer_carry = ''
         self._flush_pending()
+        if self._style not in (None, 'plain'):
+            self._set_style('plain')
         return answer_text(''.join(self._content), ''.join(self._reasoning)).strip()
 
 
@@ -343,7 +407,9 @@ def _tools_rejected(failure) -> bool:
 
 
 def _warn_tools(reason) -> None:
-    sys.stderr.write(f'warning: link tools unavailable ({_error_text(reason)}); continuing without them.\n')
+    sys.stderr.write(
+        progress_style('plain') +
+        f'warning: link tools unavailable ({_error_text(reason)}); continuing without them.\n')
     sys.stderr.flush()
 
 
@@ -408,7 +474,11 @@ class ChatModel:
                  tools: list | None = None,
                  on_tool: typing.Callable[[str], None] | None = None,
                  max_tool_rounds: int = 6,
-                 _shrink: bool = False) -> str:
+                 _shrink: bool = False,
+                 _nested: bool = False) -> str:
+        # A retry keeps showed from text already written on this turn.
+        if not _nested:
+            self.showed = False
         # None keeps the Qwen3.8 recommendation for this thinking mode.
         sampling = resolve_sampling(
             self.think,
@@ -472,11 +542,14 @@ class ChatModel:
                         delta.get('content') or '')
 
         self._server.handle_chat_completions(body, on_chunk)
+        self.showed = self.showed or display.shown
         if 'value' in error:
             return self._raise_or_shrink(
                 messages, max_tokens, sampling, _shrink, error['value'],
                 link_tools=False)
-        return display.finish()
+        answer = display.finish()
+        self.showed = self.showed or display.shown
+        return answer
 
     def _complete_with_link_tools(self,
                                   messages: list[dict],
@@ -526,12 +599,15 @@ class ChatModel:
             message = choices[0].get('message') or {}
             tool_calls = message.get('tool_calls') or []
             content, reasoning = _message_text(message)
-            if self.think and reasoning.strip():
-                sys.stderr.write('Thinking:\n')
-                sys.stderr.write(reasoning.strip() + '\n')
-                sys.stderr.flush()
+            display = _ThoughtDisplay(self.think, sys.stderr)
+            display.add(reasoning, content)
+            answer = display.finish()
+            self.showed = self.showed or display.shown or bool(tool_calls)
             if not tool_calls:
-                return answer_text(content, reasoning).strip()
+                return answer
+            if not display.shown:
+                sys.stderr.write('\n')
+                sys.stderr.flush()
             messages.append({'role': 'assistant', 'content': message.get('content') or None,
                              'tool_calls': tool_calls})
             submitted = None
@@ -577,7 +653,7 @@ class ChatModel:
                     tools=tools,
                     on_tool=on_tool,
                     max_tool_rounds=max_tool_rounds,
-                    _shrink=_shrink, **sampling)
+                    _shrink=_shrink, _nested=True, **sampling)
             if not _shrink and messages[-1].get('role') == 'user' and len(messages[-1].get('content') or '') > 12000:
                 user = dict(messages[-1])
                 user['content'] = user['content'][:12000] + '\n[... truncated]'
@@ -588,7 +664,7 @@ class ChatModel:
                     tools=tools,
                     on_tool=on_tool,
                     max_tool_rounds=max_tool_rounds,
-                    _shrink=True, **sampling)
+                    _shrink=True, _nested=True, **sampling)
         raise ModelError(f'Chat completion failed: {message}')
 
 
