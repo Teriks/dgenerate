@@ -699,7 +699,9 @@ class DgenerateConsole(tk.Tk):
             dgenerate_exe=DGENERATE_EXE,
             get_cwd=lambda: self._shell_procmon.cwd(deep=True),
             get_offline=self._offline_mode_var.get,
-            get_editor=lambda: self._input_text.text.get('1.0', 'end-1c')
+            get_editor=lambda: self._input_text.text.get('1.0', 'end-1c'),
+            release_shell_memory=lambda done: _assistantform.release_shell_device_cache(
+                self._shell_procmon, self.after, done),
         )
 
     def _input_text_insert_recipe(self):

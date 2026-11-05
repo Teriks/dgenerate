@@ -52,6 +52,11 @@ class ProcessMonitor:
         self.process_restarting_callback = lambda: None
         self.process_restarted_callback = lambda: None
 
+    @property
+    def process(self) -> psutil.Popen | None:
+        """The shell process, or ``None`` before it is started."""
+        return self._process
+
     def cwd(self, deep=False):
         try:
             if deep:

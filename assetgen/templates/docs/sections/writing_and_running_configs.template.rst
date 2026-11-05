@@ -39,8 +39,8 @@ for instance ``\clear_object_cache unet`` clears all cached ``unet`` objects.
 
 See: ``\list_object_caches`` for a list of object cache names.
 
-To clear any models cached in VRAM, use ``\clear_device_cache DEVICE_NAME1 DEVICE_NAME2``, where ``DEVICE_NAME``
-is the name of a torch device, i.g: ``cuda:0``, ``cuda:1`` etc.
+To clear models cached in VRAM on every device, use ``\clear_device_cache`` with no arguments.
+To clear specific devices, pass their torch names: ``\clear_device_cache cuda:0 cuda:1``.
 
 dgenerate uses heuristics to clear the in memory cache automatically when needed, including a size estimation
 of models before they enter system memory, however by default it will use system memory very aggressively

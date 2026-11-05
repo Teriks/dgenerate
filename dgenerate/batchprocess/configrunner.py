@@ -306,20 +306,20 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
         Clear any objects cached by dgenerate that may actively exist on an accelerator device.
 
-        You must specify the device or devices as arguments.
+        With no arguments, every device is cleared. Otherwise each argument is a
+        torch device name, for example ``cuda:0`` or ``cuda:1``.
         """
 
-        if len(args) < 1:
-            raise _batchprocessor.BatchProcessError(
-                f'\\clear_device_cache must receive at least one argument, for example: cuda:0')
+        if not args:
+            _devicecache.clear_device_cache()
+        else:
+            for arg in args:
+                if not _torchutil.is_valid_device_string(arg):
+                    raise _batchprocessor.BatchProcessError(
+                        f'\\clear_device_cache invalid device, {_torchutil.invalid_device_message(arg, cap=False)}')
 
-        for arg in args:
-            if not _torchutil.is_valid_device_string(arg):
-                raise _batchprocessor.BatchProcessError(
-                    f'\\clear_device_cache invalid device, {_torchutil.invalid_device_message(arg, cap=False)}')
-
-        for arg in set(args):
-            _devicecache.clear_device_cache(arg)
+            for arg in set(args):
+                _devicecache.clear_device_cache(arg)
 
         _memory.torch_gc()
 

@@ -54,7 +54,9 @@ def clear_device_cache(device: torch.device | str | None = None):
     :param device: The device the objects are cached on, specifying ``None`` clears all devices.
     """
 
-    device = torch.device(device)
+    # None means every device. Eviction methods already treat that as "all".
+    if device is not None:
+        device = torch.device(device)
 
     for method in __eviction_methods:
         method(device)

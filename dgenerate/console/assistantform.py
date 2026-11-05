@@ -29,6 +29,7 @@ import sys
 import tempfile
 import threading
 import tkinter as tk
+import uuid
 import tkinter.ttk as ttk
 
 import dgenerate.console.appearance as _appearance
@@ -57,6 +58,10 @@ _SETTINGS_CTX = 'assistant_ctx'
 _SETTINGS_THINK = 'assistant_think'
 _SETTINGS_EFFORT = 'assistant_reasoning_effort'
 _SETTINGS_EDIT = 'assistant_editor_in_context'
+_SETTINGS_FREE_SHELL = 'assistant_free_shell_memory'
+_FREE_SHELL_MESSAGE = (
+    'Freeing CPU/GPU memory used by the dgenerate shell process. '
+    'If you are generating something and do not want to wait, manually kill the shell.')
 # Same default as assistant --ctx. The upper bound is Qwen3.8-27B's native
 # context (qwen35.context_length). Past that needs YaRN, which this command
 # does not enable.
@@ -194,6 +199,7 @@ class _AssistantForm(tk.Toplevel):
                  get_cwd: typing.Callable[[], str | None],
                  get_offline: typing.Callable[[], bool],
                  get_editor: typing.Callable[[], str],
+                 release_shell_memory: typing.Callable[[typing.Callable[[], None]], None] | None = None,
                  master=None,
                  position: tuple[int, int] = None,
                  size: tuple[int, int] = None):
@@ -207,7 +213,10 @@ class _AssistantForm(tk.Toplevel):
         self._get_cwd = get_cwd
         self._get_offline = get_offline
         self._get_editor = get_editor
+        self._release_shell_memory = release_shell_memory
         self._edit_file: str | None = None
+        self._preparing = False
+        self._launch_token = 0
 
         self._process: subprocess.Popen | None = None
         self._stderr_queue: queue.Queue = queue.Queue()
@@ -327,10 +336,17 @@ class _AssistantForm(tk.Toplevel):
             row=0, column=2, sticky=tk.W, padx=(8, 0))
         ttk.Button(context, text='Max', command=self._set_max_ctx).grid(
             row=0, column=3, sticky=tk.W, padx=(4, 0))
-        ttk.Label(context, text='Extra VRAM').grid(row=0, column=4, sticky=tk.E, padx=(18, 6))
+        ttk.Label(context, text='Extra VRAM').grid(row=0, column=4, sticky=tk.E, padx=(8, 4))
         self._ctx_vram_var = tk.StringVar()
-        ttk.Label(context, textvariable=self._ctx_vram_var, width=10, anchor=tk.W).grid(
+        ttk.Label(context, textvariable=self._ctx_vram_var, width=8, anchor=tk.W).grid(
             row=0, column=5, sticky=tk.W)
+        self._free_shell_var = tk.BooleanVar(value=_saved_bool(_SETTINGS_FREE_SHELL, True))
+        self._free_shell_check = ttk.Checkbutton(
+            context, text='Free shell CPU/GPU memory before generating',
+            variable=self._free_shell_var)
+        self._free_shell_check.grid(row=0, column=6, sticky=tk.W, padx=(4, 0))
+        self._free_shell_var.trace_add(
+            'write', lambda *_: _remember(_SETTINGS_FREE_SHELL, bool(self._free_shell_var.get())))
         self._update_ctx_vram()
 
         checks = ttk.Frame(options)
@@ -777,7 +793,7 @@ class _AssistantForm(tk.Toplevel):
         return _catalog.DEFAULT_REASONING_EFFORT
 
     def _generate(self):
-        if self._process is not None:
+        if self._process is not None or self._preparing:
             return
         request = self._request_text.text.get('1.0', 'end-1c').strip()
         if not request:
@@ -801,7 +817,25 @@ class _AssistantForm(tk.Toplevel):
             self._edit_file = edit_path
 
         cwd = self._get_cwd() or os.getcwd()
+        self._preparing = True
+        self._launch_token += 1
+        token = self._launch_token
+        self._clear_log()
+        self._set_running(True)
 
+        def launch():
+            if token != self._launch_token:
+                return
+            self._preparing = False
+            self._launch(request, edit_path, cwd)
+
+        if self._release_shell_memory is None or not self._free_shell_var.get():
+            launch()
+            return
+        self._log(_FREE_SHELL_MESSAGE)
+        self._release_shell_memory(launch)
+
+    def _launch(self, request: str, edit_path: str | None, cwd: str):
         env = os.environ.copy()
         env['PYTHONIOENCODING'] = 'utf-8'
         env['PYTHONUNBUFFERED'] = '1'
@@ -815,7 +849,6 @@ class _AssistantForm(tk.Toplevel):
         if platform.system() == 'Windows':
             kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
 
-        self._clear_log()
         self._stdout_chunks = []
         self._stderr_queue = queue.Queue()
 
@@ -826,10 +859,9 @@ class _AssistantForm(tk.Toplevel):
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs)
         except OSError as e:
             self._clear_edit_file()
+            self._set_running(False)
             self._log(f'Could not start dgenerate: {e}')
             return
-
-        self._set_running(True)
 
         process = self._process
         process.stdin.write(request.encode('utf-8'))
@@ -896,6 +928,8 @@ class _AssistantForm(tk.Toplevel):
         self._process = None
 
     def _cancel(self):
+        self._launch_token += 1
+        self._preparing = False
         self._kill()
         self._clear_edit_file()
         self._set_running(False)
@@ -903,10 +937,66 @@ class _AssistantForm(tk.Toplevel):
         self._log('Cancelled.')
 
     def destroy(self):
+        self._launch_token += 1
+        self._preparing = False
         _themetext.unlisten(self._theme_text_boxes)
         self._kill()
         self._clear_edit_file()
         super().destroy()
+
+
+def release_shell_device_cache(procmon, schedule, done) -> None:
+    """
+    Ask the shell to drop every cached model off the GPU, then call ``done``.
+
+    ``\\clear_device_cache`` with no device clears every GPU cache, then
+    ``\\clear_object_cache`` drops the CPU-side model cache. A following
+    ``\\print`` is how this process knows the shell has finished; that line is
+    not written to the console. If the shell is gone, ``done`` runs immediately
+    so the assistant is not left waiting.
+    """
+    process = getattr(procmon, 'process', None)
+    pipe = getattr(procmon, 'stdin_pipe', None)
+    if process is None or pipe is None or process.poll() is not None:
+        done()
+        return
+
+    marker = f'dgenerate-device-cache-cleared-{uuid.uuid4().hex}'
+    previous = procmon.stdout_callback
+    state = {'done': False}
+
+    def finish():
+        if state['done']:
+            return
+        state['done'] = True
+        if procmon.stdout_callback is wrapped:
+            procmon.stdout_callback = previous
+        done()
+
+    def wrapped(data):
+        text = data.decode('utf-8', errors='replace') if isinstance(data, (bytes, bytearray)) else str(data)
+        if marker in text:
+            finish()
+            return
+        previous(data)
+
+    def poll():
+        if state['done']:
+            return
+        current = getattr(procmon, 'process', None)
+        if current is not process or current is None or current.poll() is not None:
+            finish()
+            return
+        schedule(200, poll)
+
+    procmon.stdout_callback = wrapped
+    try:
+        pipe.write(
+            f'\\clear_device_cache\n\\clear_object_cache\n\\print {marker}\n\n'.encode('utf-8'))
+    except Exception:
+        finish()
+        return
+    schedule(200, poll)
 
 
 def request_config(master,
@@ -914,7 +1004,8 @@ def request_config(master,
                    dgenerate_exe: str,
                    get_cwd: typing.Callable[[], str | None],
                    get_offline: typing.Callable[[], bool],
-                   get_editor: typing.Callable[[], str]):
+                   get_editor: typing.Callable[[], str],
+                   release_shell_memory: typing.Callable[[typing.Callable[[], None]], None] | None = None):
     """
     Open the assistant dialog, or focus it if it is already open.
 
@@ -924,6 +1015,11 @@ def request_config(master,
     :param get_cwd: Returns the directory the config will run from.
     :param get_offline: Returns whether the console is in offline mode.
     :param get_editor: Returns the config currently in the editor.
+    :param release_shell_memory: Called with a continuation that starts the
+        assistant. The console uses this to run ``\\clear_device_cache`` and
+        ``\\clear_object_cache`` in the shell first, so models already loaded
+        are gone before xllamacpp loads. The form can skip this when its
+        free-shell-memory option is off.
     """
     return _util.create_singleton_dialog(
         master=master,
@@ -933,5 +1029,6 @@ def request_config(master,
                        'dgenerate_exe': dgenerate_exe,
                        'get_cwd': get_cwd,
                        'get_offline': get_offline,
-                       'get_editor': get_editor}
+                       'get_editor': get_editor,
+                       'release_shell_memory': release_shell_memory}
     )
