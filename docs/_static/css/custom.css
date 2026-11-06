@@ -7,6 +7,10 @@
     display: none;
 }
 
+.dgenerate-nav-backdrop {
+    display: none;
+}
+
 @media screen and (max-width: 768px) {
     .dgenerate-nav-toggle {
         display: flex;
@@ -37,6 +41,68 @@
         height: 2px;
         margin: 2px 0;
         background: #fff;
+    }
+
+    /*
+     iOS Safari kills the tab ("A problem repeatedly occurred") when a
+     long page promotes too much of the document to composited layers.
+     The theme keeps the sidebar as a fixed layer while it is closed,
+     and opening the menu sets the entire content column to
+     position:fixed. Skip both of those.
+    */
+    .wy-nav-side:not(.shift) {
+        display: none;
+    }
+
+    .wy-nav-side.shift {
+        display: block;
+        z-index: 300;
+        width: min(85%, 18rem);
+    }
+
+    .wy-nav-content-wrap.shift {
+        position: static;
+        left: 0;
+        min-width: 0;
+        height: auto;
+        overflow: visible;
+    }
+
+    .dgenerate-nav-backdrop:not([hidden]) {
+        display: block;
+        position: fixed;
+        z-index: 250;
+        inset: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: rgba(0, 0, 0, 0.45);
+    }
+
+    body.dgenerate-drawer-open {
+        overflow: hidden;
+    }
+
+    .wy-nav-content {
+        max-width: 100%;
+    }
+
+    .rst-content .highlight,
+    .rst-content table.docutils:not(.field-list) {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    /* opacity: 0 on every copy button is its own layer. The manual has hundreds. */
+    button.copybtn {
+        opacity: 1;
+        transition: none;
+    }
+
+    /* Lay out only the sections near the viewport. */
+    .rst-content section {
+        content-visibility: auto;
+        contain-intrinsic-size: auto 32rem;
     }
 }
 

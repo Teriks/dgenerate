@@ -16,6 +16,44 @@
         return !!(node && node.classList.contains('shift'));
     }
 
+    function addBackdrop() {
+        if (document.querySelector('.dgenerate-nav-backdrop')) {
+            return;
+        }
+        var backdrop = document.createElement('button');
+        backdrop.type = 'button';
+        backdrop.className = 'dgenerate-nav-backdrop';
+        backdrop.hidden = true;
+        backdrop.setAttribute('aria-label', 'Close contents');
+        backdrop.addEventListener('click', function () {
+            closeDrawer();
+            syncDrawer();
+        });
+        document.body.appendChild(backdrop);
+    }
+
+    function syncDrawer() {
+        var open = drawerOpen();
+        document.body.classList.toggle('dgenerate-drawer-open', open);
+        var backdrop = document.querySelector('.dgenerate-nav-backdrop');
+        if (backdrop) {
+            backdrop.hidden = !open;
+        }
+        var button = document.querySelector('.dgenerate-nav-toggle');
+        if (button) {
+            button.setAttribute('aria-expanded', open ? 'true' : 'false');
+            button.setAttribute('aria-label', open ? 'Close contents' : 'Open contents');
+        }
+        if (open) {
+            var current = document.querySelector('.wy-menu-vertical a.current');
+            var scroller = document.querySelector('.wy-side-scroll');
+            if (current && scroller) {
+                var delta = current.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+                scroller.scrollTop += delta - (scroller.clientHeight / 2);
+            }
+        }
+    }
+
     function addToggle() {
         if (document.querySelector('.dgenerate-nav-toggle')) {
             return;
@@ -29,20 +67,12 @@
         button.className = 'dgenerate-nav-toggle';
         button.innerHTML = '<span></span><span></span><span></span>';
 
-        function label() {
-            var open = drawerOpen();
-            button.setAttribute('aria-expanded', open ? 'true' : 'false');
-            button.setAttribute('aria-label', open ? 'Close contents' : 'Open contents');
-        }
-
         button.addEventListener('click', function () {
             themeToggle.click();
-            label();
+            syncDrawer();
         });
         document.body.appendChild(button);
-        label();
         watchBanner(button);
-        return label;
     }
 
     function watchBanner(button) {
@@ -61,24 +91,47 @@
         apply(rect.bottom > 0 && rect.top < window.innerHeight && rect.width > 0);
     }
 
-    function bind() {
-        var menu = document.querySelector('.wy-menu-vertical');
-        var label = addToggle();
-        if (!menu) {
+    function revealHash() {
+        if (!location.hash || window.matchMedia('(min-width: 769px)').matches) {
             return;
         }
-        menu.addEventListener('click', function (event) {
-            if (event.target.closest('.toctree-expand')) {
+        var id = location.hash.slice(1);
+        try {
+            id = decodeURIComponent(id);
+        } catch (error) {
+            return;
+        }
+        var target = document.getElementById(id);
+        if (target && target.scrollIntoView) {
+            target.scrollIntoView();
+        }
+    }
+
+    function bind() {
+        addBackdrop();
+        addToggle();
+        syncDrawer();
+        var menu = document.querySelector('.wy-menu-vertical');
+        if (menu) {
+            menu.addEventListener('click', function (event) {
+                if (event.target.closest('.toctree-expand')) {
+                    return;
+                }
+                if (!event.target.closest('a')) {
+                    return;
+                }
+                closeDrawer();
+                syncDrawer();
+            });
+        }
+        document.addEventListener('click', function (event) {
+            if (!event.target.closest("[data-toggle='wy-nav-top']")) {
                 return;
             }
-            if (!event.target.closest('a')) {
-                return;
-            }
-            closeDrawer();
-            if (label) {
-                label();
-            }
+            syncDrawer();
         });
+        window.addEventListener('hashchange', revealHash);
+        revealHash();
     }
 
     if (document.readyState === 'loading') {
