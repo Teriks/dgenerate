@@ -291,7 +291,7 @@ def download(url: str,
     NOWRAP!
     \\setp my_variable download('https://modelhost.com/model.safetensors')
 
-    A Hugging Face model ``/blob/`` or ``/resolve/`` link with no output path
+    A Hugging Face model "/blob/" or "/resolve/" link with no output path
     is stored in the Hugging Face cache. Every other URL uses the web cache.
 
     When an "output" path is specified, if the file already exists it
@@ -300,7 +300,7 @@ def download(url: str,
     always be downloaded.
 
     An interrupted download is kept beside the destination with an
-    ``.unfinished`` suffix and continued on the next call.
+    ".unfinished" suffix and continued on the next call.
 
     "overwrite=True" can also be used to overwrite cached
     files in the dgenerate web cache.
