@@ -91,20 +91,85 @@
         apply(rect.bottom > 0 && rect.top < window.innerHeight && rect.width > 0);
     }
 
-    function revealHash() {
-        if (!location.hash || window.matchMedia('(min-width: 769px)').matches) {
+    // Off-screen sections stay at the 32rem placeholder until they are
+    // close to the viewport. Their real height then pushes the hash
+    // target off screen. Remember the measured height before scrolling.
+    var lockedForWidth = 0;
+
+    function clearSectionHeights() {
+        document.querySelectorAll('.rst-content section').forEach(function (section) {
+            section.style.containIntrinsicBlockSize = '';
+            section.style.containIntrinsicHeight = '';
+        });
+        lockedForWidth = 0;
+    }
+
+    function contentBoxHeight(section) {
+        var style = window.getComputedStyle(section);
+        var extra = (parseFloat(style.paddingTop) || 0)
+            + (parseFloat(style.paddingBottom) || 0)
+            + (parseFloat(style.borderTopWidth) || 0)
+            + (parseFloat(style.borderBottomWidth) || 0);
+        return Math.max(0, section.offsetHeight - extra);
+    }
+
+    function lockSectionHeights(force) {
+        if (!force && lockedForWidth === window.innerWidth) {
             return;
+        }
+        var sections = document.querySelectorAll('.rst-content section');
+        if (!sections.length) {
+            return;
+        }
+        sections.forEach(function (section) {
+            section.style.contentVisibility = 'visible';
+        });
+        var heights = [];
+        sections.forEach(function (section) {
+            heights.push(contentBoxHeight(section));
+        });
+        sections.forEach(function (section, index) {
+            var px = heights[index] + 'px';
+            section.style.containIntrinsicBlockSize = px;
+            section.style.containIntrinsicHeight = px;
+            section.style.contentVisibility = '';
+        });
+        lockedForWidth = window.innerWidth;
+    }
+
+    function hashTarget() {
+        if (!location.hash || window.matchMedia('(min-width: 769px)').matches) {
+            return null;
         }
         var id = location.hash.slice(1);
         try {
             id = decodeURIComponent(id);
         } catch (error) {
+            return null;
+        }
+        return document.getElementById(id);
+    }
+
+    function revealHash(force) {
+        var target = hashTarget();
+        if (!target || !target.scrollIntoView) {
             return;
         }
-        var target = document.getElementById(id);
-        if (target && target.scrollIntoView) {
-            target.scrollIntoView();
+        lockSectionHeights(force);
+        // Lay the target out even when its section is still skipped.
+        var forced = [];
+        var node = target;
+        while (node && node !== document.documentElement) {
+            if (window.getComputedStyle(node).contentVisibility === 'auto') {
+                node.style.contentVisibility = 'visible';
+                forced.push(node);
+            }
+            node = node.parentNode;
         }
+        target.scrollIntoView();
+        forced.forEach(function (el) {
+            el.style.contentVisibility = '';
+        });
     }
 
     function bind() {
@@ -130,8 +195,23 @@
             }
             syncDrawer();
         });
-        window.addEventListener('hashchange', revealHash);
-        revealHash();
+        window.addEventListener('hashchange', function () {
+            revealHash(false);
+        });
+        window.addEventListener('load', function () {
+            revealHash(true);
+        });
+        window.addEventListener('resize', function () {
+            if (!lockedForWidth || window.innerWidth === lockedForWidth) {
+                return;
+            }
+            clearSectionHeights();
+            revealHash(true);
+        });
+        revealHash(false);
+        requestAnimationFrame(function () {
+            revealHash(false);
+        });
     }
 
     if (document.readyState === 'loading') {

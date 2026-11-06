@@ -99,7 +99,12 @@
         transition: none;
     }
 
-    /* Lay out only the sections near the viewport. */
+    /*
+     Lay out only the sections near the viewport. Until a section has
+     been shown, the placeholder is 32rem, which is rarely its real
+     height. mobile-nav.js records real heights before a hash jump so
+     the heading does not move once those sections lay out.
+    */
     .rst-content section {
         content-visibility: auto;
         contain-intrinsic-size: auto 32rem;
