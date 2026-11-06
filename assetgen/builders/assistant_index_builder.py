@@ -42,7 +42,8 @@ class AssistantIndexBuilder:
         """
         self.project_dir = project_dir or Path.cwd()
         self.force = force
-        self.output_file = self.project_dir / 'dgenerate' / 'assistant' / 'data' / 'index.npz'
+        self.output_file = (
+            self.project_dir / 'dgenerate' / 'assistant' / 'data' / 'Qwen3-Embedding-0.6B-Q8_0.npz')
 
     def build(self):
         """Build an assistant index for every selectable embedding model."""

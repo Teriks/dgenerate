@@ -34,8 +34,9 @@ import dgenerate.assistant.corpus as _corpus
 
 INDEX_VERSION = 18
 
-SHIPPED_INDEX = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'index.npz')
-"""The index built by ``python -m assetgen.build --target assistant-index`` and packaged with dgenerate."""
+_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+SHIPPED_INDEX = os.path.join(_DATA_DIR, 'Qwen3-Embedding-0.6B-Q8_0.npz')
+"""The default embedding model's index, built by ``python -m assetgen.build --target assistant-index``."""
 
 # Option names like --ltx-ic-lora stay whole so exact flag mentions score in BM25.
 _TOKEN = re.compile(r'--?[a-z0-9][a-z0-9-]*|[a-z0-9]+(?:[._][a-z0-9]+)*')
@@ -201,19 +202,10 @@ class Index:
 
 def shipped_index_path(embed_basename: str) -> str:
     """
-    The packaged index for an embedding model. The default model keeps the
-    historical name ``index.npz``. Every other packaged model is
-    ``{model}.npz`` in the same directory.
+    The packaged index for an embedding model, ``{model}.npz`` beside the guide.
     """
-    data = os.path.dirname(SHIPPED_INDEX)
     stem = embed_basename[:-5] if embed_basename.lower().endswith('.gguf') else embed_basename
-    named = os.path.join(data, stem + '.npz')
-    if os.path.isfile(named):
-        return named
-    meta = Index.read_meta(SHIPPED_INDEX) if os.path.isfile(SHIPPED_INDEX) else None
-    if meta and meta.get('embed_model') == embed_basename:
-        return SHIPPED_INDEX
-    return named
+    return os.path.join(_DATA_DIR, stem + '.npz')
 
 
 _PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

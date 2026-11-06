@@ -33,10 +33,10 @@ class TestChooseIndex(unittest.TestCase):
         self.assertEqual(meta['version'], INDEX_VERSION)
         self.assertEqual(meta['embed_model'], os.path.basename(DEFAULT_EMBED_MODEL))
 
-    def test_default_embedder_file_is_index_npz(self):
-        self.assertEqual(
-            os.path.normcase(shipped_index_path(os.path.basename(DEFAULT_EMBED_MODEL))),
-            os.path.normcase(SHIPPED_INDEX))
+    def test_default_embedder_file_is_named_for_the_model(self):
+        path = shipped_index_path(os.path.basename(DEFAULT_EMBED_MODEL))
+        self.assertTrue(path.endswith('Qwen3-Embedding-0.6B-Q8_0.npz'))
+        self.assertEqual(os.path.normcase(path), os.path.normcase(SHIPPED_INDEX))
 
     def test_other_embedder_file_is_named_for_the_model(self):
         path = shipped_index_path('Qwen3-Embedding-4B-Q8_0.gguf')
