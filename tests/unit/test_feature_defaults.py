@@ -23,8 +23,18 @@ class TestFeatureDefaultsInStepText(unittest.TestCase):
         self.assertIn('SADA Max Downsample: 0', text)
         self.assertIn('SADA SX: 0', text)
         self.assertIn('SADA Max Interval: 8', text)
+        self.assertIn('SADA Acc Range:', text)
+        self.assertNotIn('SADA Acc Range: auto', text)
         self.assertIsNone(args.sada_sx)
         self.assertIsNone(args.sada_max_downsample)
+
+        omitted = self._args()
+        omitted.inference_steps = None
+        omitted.sada = True
+        text = omitted.describe_pipeline_wrapper_args(_pipelinewrapper.ModelType.FLUX)
+        self.assertIn('SADA Acc Range: auto', text)
+        self.assertIn('SADA Lagrange Step: auto', text)
+        self.assertIn('SADA Max Downsample: 0', text)
 
     def test_omitted_features_stay_out_of_the_step_text(self):
         text = self._args().describe_pipeline_wrapper_args(
@@ -260,7 +270,188 @@ class TestFeatureDefaultsInStepText(unittest.TestCase):
         sada.model_type = _pipelinewrapper.ModelType.SD
         sada.sada = True
         sada.fill_defaults()
-        self.assertEqual(sada.sada_acc_ranges, [(10, 47)])
+        self.assertIsNone(sada.sada_acc_ranges)
+        self.assertIsNone(sada.sada_lagrange_steps)
+
+        counted = _renderloopconfig.RenderLoopConfig()
+        counted.model_type = _pipelinewrapper.ModelType.SD
+        counted.sada = True
+        counted.inference_steps = [50]
+        counted.fill_defaults()
+        self.assertEqual(counted.sada_acc_ranges, [(10, 47)])
+        self.assertEqual(counted.sada_lagrange_steps, [24])
+
+        short = _renderloopconfig.RenderLoopConfig()
+        short.model_type = _pipelinewrapper.ModelType.FLUX
+        short.sada = True
+        short.inference_steps = [28]
+        short.fill_defaults()
+        self.assertEqual(short.sada_acc_ranges, [(6, 25)])
+        self.assertEqual(short.sada_lagrange_steps, [12])
+
+    def test_krea2_spectrum_defaults_follow_the_schedule(self):
+        import dgenerate.pipelinewrapper.arguments as _arguments
+        import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+
+        flux = _arguments.DiffusionArguments()
+        flux.spectrum = True
+        _featuredefaults.apply_known_defaults(flux, _pipelinewrapper.ModelType.FLUX)
+        self.assertIsNone(flux.spectrum_flex_window)
+        self.assertIsNone(flux.spectrum_warmup_steps)
+
+        flux_steps = _arguments.DiffusionArguments()
+        flux_steps.spectrum = True
+        flux_steps.inference_steps = 28
+        _featuredefaults.apply_known_defaults(flux_steps, _pipelinewrapper.ModelType.FLUX)
+        self.assertEqual(flux_steps.spectrum_warmup_steps, 4)
+        self.assertEqual(flux_steps.spectrum_flex_window, 0.0)
+
+        long_cfg = _arguments.DiffusionArguments()
+        long_cfg.spectrum = True
+        long_cfg.inference_steps = 50
+        long_cfg.guidance_scale = 5
+        _featuredefaults.apply_known_defaults(long_cfg, _pipelinewrapper.ModelType.SDXL)
+        self.assertEqual(long_cfg.spectrum_warmup_steps, 5)
+        self.assertEqual(long_cfg.spectrum_flex_window, 0.0)
+
+        long_plain = _arguments.DiffusionArguments()
+        long_plain.spectrum = True
+        long_plain.inference_steps = 50
+        long_plain.guidance_scale = 1
+        _featuredefaults.apply_known_defaults(long_plain, _pipelinewrapper.ModelType.SDXL)
+        self.assertEqual(long_plain.spectrum_flex_window, 0.75)
+
+        hyimage = _arguments.DiffusionArguments()
+        hyimage.spectrum = True
+        hyimage.inference_steps = 50
+        hyimage.guidance_scale = 3.25
+        _featuredefaults.apply_known_defaults(
+            hyimage, _pipelinewrapper.ModelType.HYIMAGE_21)
+        self.assertEqual(hyimage.spectrum_warmup_steps, 5)
+        self.assertIsNone(hyimage.spectrum_flex_window)
+
+        raw = _arguments.DiffusionArguments()
+        raw.spectrum = True
+        _featuredefaults.apply_known_defaults(
+            raw, _pipelinewrapper.ModelType.KREA2, distilled=False)
+        self.assertEqual(raw.spectrum_warmup_steps, 4)
+        self.assertEqual(raw.spectrum_flex_window, 0.0)
+        self.assertEqual(raw.spectrum_window_size, 2.0)
+
+        turbo = _arguments.DiffusionArguments()
+        turbo.spectrum = True
+        turbo.inference_steps = 8
+        _featuredefaults.apply_known_defaults(
+            turbo, _pipelinewrapper.ModelType.KREA2, distilled=False)
+        self.assertEqual(turbo.spectrum_warmup_steps, 2)
+        self.assertEqual(turbo.spectrum_flex_window, 0.0)
+
+        distilled = _arguments.DiffusionArguments()
+        distilled.spectrum = True
+        _featuredefaults.apply_known_defaults(
+            distilled, _pipelinewrapper.ModelType.KREA2, distilled=True)
+        self.assertEqual(distilled.spectrum_warmup_steps, 2)
+
+        kept = _arguments.DiffusionArguments()
+        kept.spectrum = True
+        kept.spectrum_flex_window = 0.75
+        _featuredefaults.apply_known_defaults(
+            kept, _pipelinewrapper.ModelType.KREA2, distilled=True)
+        self.assertEqual(kept.spectrum_flex_window, 0.75)
+
+        unknown = self._args()
+        unknown.inference_steps = None
+        unknown.guidance_scale = None
+        unknown.spectrum = True
+        text = unknown.describe_pipeline_wrapper_args(_pipelinewrapper.ModelType.KREA2)
+        self.assertIn('Inference Steps: auto', text)
+        self.assertIn('Guidance Scale: auto', text)
+        self.assertIn('Spectrum Warmup Steps: auto', text)
+        self.assertIn('Spectrum Flex Window: auto', text)
+        self.assertNotIn('Inference Steps: 8', text)
+        self.assertNotIn('Inference Steps: 28', text)
+        self.assertNotIn('Guidance Scale: 0', text)
+        self.assertNotIn('Guidance Scale: 4.5', text)
+        self.assertNotIn('Spectrum Warmup Steps: 2', text)
+        self.assertNotIn('Spectrum Warmup Steps: 4', text)
+        self.assertIsNone(unknown.spectrum_warmup_steps)
+        self.assertIsNone(unknown.spectrum_flex_window)
+
+        counted = self._args()
+        counted.spectrum = True
+        counted.inference_steps = 28
+        text = counted.describe_pipeline_wrapper_args(_pipelinewrapper.ModelType.KREA2)
+        self.assertIn('Spectrum Warmup Steps: 4', text)
+
+        flux_args = self._args()
+        flux_args.spectrum = True
+        flux_text = flux_args.describe_pipeline_wrapper_args(_pipelinewrapper.ModelType.FLUX)
+        self.assertIn('Spectrum Warmup Steps: 4', flux_text)
+        self.assertIn('Spectrum Flex Window: 0.0', flux_text)
+        self.assertNotIn('Spectrum Warmup Steps: auto', flux_text)
+
+        scheduled = _renderloopconfig.RenderLoopConfig()
+        scheduled.model_type = _pipelinewrapper.ModelType.KREA2
+        scheduled.spectrum = True
+        scheduled.inference_steps = [8]
+        scheduled.fill_defaults()
+        self.assertEqual(scheduled.spectrum_warmup_steps, [2])
+        self.assertEqual(scheduled.spectrum_flex_windows, [0.0])
+
+        import types
+        loaded = _renderloopconfig.RenderLoopConfig()
+        loaded.model_type = _pipelinewrapper.ModelType.KREA2
+        loaded.spectrum = True
+        loaded.fill_defaults(pipeline=types.SimpleNamespace(
+            config={'is_distilled': True}))
+        self.assertEqual(loaded.spectrum_warmup_steps, [2])
+        self.assertEqual(loaded.spectrum_flex_windows, [0.0])
+
+        unlabeled = _renderloopconfig.RenderLoopConfig()
+        unlabeled.model_type = _pipelinewrapper.ModelType.KREA2
+        unlabeled.spectrum = True
+        unlabeled.fill_defaults(pipeline=types.SimpleNamespace(config={}))
+        self.assertIsNone(unlabeled.spectrum_warmup_steps)
+        self.assertIsNone(unlabeled.spectrum_flex_windows)
+        self.assertIsNone(unlabeled.inference_steps)
+        self.assertIsNone(unlabeled.guidance_scales)
+
+    def test_qwen21_omitted_steps_stay_auto_until_the_checkpoint_schedule(self):
+        import types
+
+        import dgenerate.pipelinewrapper.wrapper as _wrapper
+
+        omitted = self._args()
+        omitted.inference_steps = None
+        omitted.guidance_scale = None
+        omitted.spectrum = True
+        text = omitted.describe_pipeline_wrapper_args(
+            _pipelinewrapper.ModelType.QWEN_IMAGE_21)
+        self.assertIn('Spectrum Warmup Steps: auto', text)
+        self.assertIn('Spectrum Flex Window: auto', text)
+        self.assertIn('Inference Steps: auto', text)
+
+        turbo = _arguments.DiffusionArguments()
+        _wrapper._resolve_omitted_sampling(
+            turbo, _pipelinewrapper.ModelType.QWEN_IMAGE_21,
+            types.SimpleNamespace(config={'sample_sigmas': [1.0, 0.8, 0.5, 0.2,
+                                                            0.1, 0.05, 0.02, 0.01]}))
+        self.assertEqual(turbo.inference_steps, 8)
+
+        base = _arguments.DiffusionArguments()
+        _wrapper._resolve_omitted_sampling(
+            base, _pipelinewrapper.ModelType.QWEN_IMAGE_21,
+            types.SimpleNamespace(config={}))
+        self.assertEqual(base.inference_steps, 40)
+
+    def test_sada_schedule_follows_a_numeric_sigma_list(self):
+        args = self._args()
+        args.sada = True
+        args.inference_steps = 50
+        args.sigmas = [1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1, 0.05]
+        _featuredefaults.apply_known_defaults(args, _pipelinewrapper.ModelType.FLUX)
+        self.assertEqual(args.sada_acc_range, (3, 5))
+        self.assertEqual(args.sada_lagrange_step, 4)
 
 
 if __name__ == '__main__':

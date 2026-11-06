@@ -2850,7 +2850,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Starting step must be at least 3 as SADA leverages third-order dynamics.
             
-            Defaults to "10,47".
+            On a 50-step run this is "10,47" (steps 10 through 46). A shorter run
+            keeps the same head and tail. Omitted until --inference-steps is known.
             
             Supply ranges as comma seperated values, for example: --sada-acc-ranges "10,47" "12,40"
             
@@ -3313,12 +3314,16 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      NOWRAP!
                      See: https://github.com/hanjq17/Spectrum
 
-                     The defaults ({_pipelinewrapper.constants.DEFAULT_SPECTRUM_WINDOW_SIZE:g} step
-                     window, flex {_pipelinewrapper.constants.DEFAULT_SPECTRUM_FLEX_WINDOW:g}, blend
-                     {_pipelinewrapper.constants.DEFAULT_SPECTRUM_WEIGHT:g}) are the paper's moderate
-                     schedule. ``--spectrum-flex-windows 3`` is the aggressive schedule.
+                     The paper's moderate schedule is a {_pipelinewrapper.constants.DEFAULT_SPECTRUM_WINDOW_SIZE:g} step
+                     window, flex {_pipelinewrapper.constants.DEFAULT_SPECTRUM_FLEX_WINDOW:g}, and blend
+                     {_pipelinewrapper.constants.DEFAULT_SPECTRUM_WEIGHT:g}.
+                     ``--spectrum-flex-windows 3`` is the aggressive schedule.
                      Qwen-Image edit drifts more than text-to-image; raise
                      ``--spectrum-warmup-steps`` or lower the flex window there.
+                     When warmup and flex are omitted they follow the step count:
+                     50 or more uses warmup 5 and flex 0.75, shorter runs hold flex
+                     at 0, and classifier-free guidance above 1 also holds flex at 0.
+                     The step text shows auto until that step count or guidance is known.
 
                      This is supported for: --model-type {_textprocessing.oxford_comma(_pipelinewrapper.SPECTRUM_MODEL_TYPES, "and")}.
                      """
@@ -3379,11 +3384,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help=f"""Leading full denoiser passes before Spectrum may predict a step.
 
                      Each value is tried in turn. The paper uses 5 with 50 inference
-                     steps. Shorter schedules can use 2.
+                     steps. When omitted, 50 or more steps use 5, 9 to 49 steps use 4,
+                     5 to 8 steps use 2, and 4 or fewer stay on a real pass every step.
+                     Omitted values show as auto until the step count is known.
 
                      Supplying any values implies --spectrum.
 
-                     (default: {_pipelinewrapper.constants.DEFAULT_SPECTRUM_WARMUP_STEPS})
+                     (default: chosen from the step count)
                      """
         )
     )
@@ -3412,11 +3419,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help=f"""Amounts added to the Spectrum skip interval after each full pass.
 
                      0 keeps the interval fixed. 0.75 is the paper's moderate schedule
-                     and 3 is the aggressive one. Each value is tried in turn.
+                     and 3 is the aggressive one. When omitted, flex is 0.75 at 50 or
+                     more steps and 0 on a shorter run or when classifier-free guidance
+                     is above 1. Omitted values show as auto until that is known.
+                     Each value is tried in turn.
 
                      Supplying any values implies --spectrum.
 
-                     (default: {_pipelinewrapper.constants.DEFAULT_SPECTRUM_FLEX_WINDOW:g})
+                     (default: chosen from the step count and guidance)
                      """
         )
     )
@@ -5383,8 +5393,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     change image content.
 
                     Omitting this lets the pipeline choose. RegionE uses 28.
-                    Qwen-Image 2.1 uses 40. Krea 2 uses 8 when the checkpoint is distilled
-                    and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the refiner.
+                    Qwen-Image 2.1 uses 40, or the length of the checkpoint's sample
+                    sigma list when it has one. Krea 2 uses 8 when the checkpoint is
+                    distilled and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the
+                    refiner.
                     Kandinsky 5 Image uses 50.
                     
                     For --model-type ltx-video, omitted values follow the loaded

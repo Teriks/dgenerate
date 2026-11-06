@@ -2151,13 +2151,20 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
             settings = _spectrum.active_settings()
             if settings is None:
                 return pipeline(**call_kwargs)
-            steps = call_kwargs.get('num_inference_steps', settings.fallback_steps)
+            sigmas = call_kwargs.get('sigmas')
+            if isinstance(sigmas, (list, tuple)) and sigmas and not isinstance(sigmas[0], str):
+                steps = len(sigmas)
+            else:
+                steps = call_kwargs.get('num_inference_steps', settings.fallback_steps)
+                try:
+                    steps = int(steps)
+                except (TypeError, ValueError):
+                    steps = settings.fallback_steps
+            cfg = _spectrum.cfg_multiplier(pipeline, call_kwargs)
+            settings = _spectrum.resolve_settings(settings, steps, cfg)
+            _spectrum.warn_schedule(pipeline, steps, settings, cfg=cfg)
             try:
-                steps = int(steps)
-            except (TypeError, ValueError):
-                steps = settings.fallback_steps
-            try:
-                with _spectrum.apply(pipeline, steps, settings):
+                with _spectrum.apply(pipeline, steps, settings, cfg):
                     return pipeline(**call_kwargs)
             except _spectrum.SpectrumUnsupported as error:
                 raise UnsupportedPipelineConfigError(str(error)) from error

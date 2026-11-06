@@ -222,6 +222,14 @@ Z-Image ControlNet takes scale only; start and end other than 0 and 1 are an err
 Do not pass --quantizer sdnq to Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32; \
 that checkpoint is already quantized. --prompt-weighter is not supported \
 on flux2, z-image, or qwen-image.
+- Spectrum and SADA use their automatic defaults. Write --spectrum or --sada \
+and leave the step-dependent fields unset. Do not copy --spectrum-warmup-steps, \
+--spectrum-flex-windows, --sada-acc-ranges, or --sada-lagrange-steps from an \
+example or from the sample numbers in the manual, such as warmup 2 or 5, flex \
+0.75 or 3, range 10,47, or Lagrange step 24 or 20. Do not expand --sada into \
+the listed max-downsample, sx, sy, Lagrange term, interval, or max-fix values. \
+--sada already selects those for the model. Write one of those flags only when \
+the user names that value.
 - Add short # comments explaining the choices that matter, above the model path, \
 never between options. Never repeat the same comment. If you are unsure how to \
 finish a step, write the invocation anyway; do not stall in a comment loop.
@@ -755,6 +763,11 @@ def first_draft_recipes(request: str, editor: str | None = None,
         'CIVIT_AI_TOKEN from the environment. Copy the download URL without a token query. '
         'A trigger word goes in --prompts, never as token= on --loras.',
         'Neither token \\print contains the word "example".',
+        'Spectrum and SADA stay on their automatic defaults. Write --spectrum or --sada alone. '
+        'Do not copy --spectrum-warmup-steps, --spectrum-flex-windows, --sada-acc-ranges, '
+        'or --sada-lagrange-steps from an example or from the manual samples. '
+        'Do not expand --sada into the sample parameter list. '
+        'Add one of those flags only when the user names that value.',
     ]
     if re.search(r'\b(animat\w*|video|ltx|wan|clip)\b', request, re.IGNORECASE):
         lines += [

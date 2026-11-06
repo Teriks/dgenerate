@@ -462,8 +462,13 @@ def _resolve_omitted_sampling(
             source = None
 
     if user_args.inference_steps is None:
-        if _enums.model_type_is_qwen_image_21(model_type):
-            user_args.inference_steps = 40
+        sigmas = user_args.sigmas
+        if isinstance(sigmas, (list, tuple)) and sigmas and not isinstance(sigmas[0], str):
+            user_args.inference_steps = len(sigmas)
+        elif _enums.model_type_is_qwen_image_21(model_type):
+            import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+            sample = _featuredefaults.configured_sample_sigmas(pipeline)
+            user_args.inference_steps = len(sample) if sample else 40
         elif _enums.model_type_is_krea2(model_type):
             distilled = bool(_loaded_pipeline_config_flag(pipeline, 'is_distilled', False))
             user_args.inference_steps = 8 if distilled else 28
@@ -473,9 +478,6 @@ def _resolve_omitted_sampling(
             user_args.inference_steps = 50
         elif _enums.model_type_is_kandinsky5_image(model_type):
             user_args.inference_steps = 50
-        elif isinstance(user_args.sigmas, (list, tuple)) and user_args.sigmas \
-                and not isinstance(user_args.sigmas[0], str):
-            user_args.inference_steps = len(user_args.sigmas)
         else:
             _sampling.resolved_inference_steps(source, user_args)
 
@@ -3371,8 +3373,19 @@ class DiffusionPipelineWrapper:
             pipeline_args, 'use_kv_cache', user_args.qwen21_use_kv_cache,
             '--qwen21-no-kv-cache is only supported by Qwen-Image 2.1.')
 
-        if _enums.model_type_is_qwen_image_21(self._model_type) and user_args.inference_steps is None:
-            pipeline_args['num_inference_steps'] = 40
+        if _enums.model_type_is_qwen_image_21(self._model_type):
+            # A configured sample_sigmas list replaces num_inference_steps.
+            # A step count the user set has to be passed as sigmas or the
+            # checkpoint schedule still runs, and Spectrum would count the
+            # other length.
+            import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+            sample = _featuredefaults.configured_sample_sigmas(self._pipeline)
+            if (sample and user_args.sigmas is None
+                    and user_args.inference_steps is not None
+                    and len(sample) != int(user_args.inference_steps)):
+                steps = int(user_args.inference_steps)
+                pipeline_args['sigmas'] = numpy.linspace(1.0, 1.0 / steps, steps).tolist()
+                pipeline_args['num_inference_steps'] = steps
         elif _enums.model_type_is_krea2(self._model_type):
             distilled = bool(self._pipeline.config.get('is_distilled', False))
             if user_args.inference_steps is None:
@@ -5563,13 +5576,14 @@ class DiffusionPipelineWrapper:
             # Validate Lagrangian interpolation parameters
             sada_args = self._get_sada_args(args)
             if sada_args['lagrange_term'] != 0:
-                if (sada_args['lagrange_int'] is None or
-                        sada_args['lagrange_step'] is None):
+                if sada_args['lagrange_int'] is None or (
+                        sada_args['lagrange_step'] is None and args.inference_steps is not None):
                     raise _pipelines.UnsupportedPipelineConfigError(
                         'When using SADA Lagrangian interpolation (lagrange_term != 0), '
                         'both lagrange_int and lagrange_step must be specified'
                     )
-                if sada_args['lagrange_step'] % sada_args['lagrange_int'] != 0:
+                if (sada_args['lagrange_step'] is not None
+                        and sada_args['lagrange_step'] % sada_args['lagrange_int'] != 0):
                     raise _pipelines.UnsupportedPipelineConfigError(
                         'SADA lagrange_step must be divisible by lagrange_int'
                     )
@@ -5767,19 +5781,36 @@ class DiffusionPipelineWrapper:
                 'RegionE cannot be used simultaneously with '
                 f'{_textprocessing.oxford_comma(conflicts, "or")}.')
 
+    def _krea2_distilled(self) -> bool | None:
+        """Whether the loaded Krea 2 checkpoint is distilled.
+
+        ``None`` until the pipeline exists. Treating a missing pipeline as the
+        raw checkpoint would pin the 28-step Spectrum schedule onto Turbo.
+        """
+        if not _enums.model_type_is_krea2(self._model_type):
+            return None
+        import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+        return _featuredefaults.pipeline_config_bool(self._pipeline, 'is_distilled')
+
     def _spectrum_settings(self, args: _arguments.DiffusionArguments) -> _spectrum.SpectrumSettings | None:
         if not args.spectrum:
             return None
+        import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+        defaults = _featuredefaults.spectrum_defaults(
+            self._model_type,
+            distilled=DiffusionPipelineWrapper._krea2_distilled(self),
+            inference_steps=args.inference_steps,
+            guidance_scale=args.guidance_scale)
+        warmup = _types.default(args.spectrum_warmup_steps, defaults['warmup_steps'])
+        flex = _types.default(args.spectrum_flex_window, defaults['flex_window'])
         return _spectrum.SpectrumSettings(
-            weight=float(_types.default(args.spectrum_weight, _constants.DEFAULT_SPECTRUM_WEIGHT)),
-            order=int(_types.default(args.spectrum_order, _constants.DEFAULT_SPECTRUM_ORDER)),
-            lam=float(_types.default(args.spectrum_lambda, _constants.DEFAULT_SPECTRUM_LAMBDA)),
-            warmup_steps=int(_types.default(
-                args.spectrum_warmup_steps, _constants.DEFAULT_SPECTRUM_WARMUP_STEPS)),
+            weight=float(_types.default(args.spectrum_weight, defaults['weight'])),
+            order=int(_types.default(args.spectrum_order, defaults['order'])),
+            lam=float(_types.default(args.spectrum_lambda, defaults['lam'])),
+            warmup_steps=None if warmup is None else int(warmup),
             window_size=float(_types.default(
-                args.spectrum_window_size, _constants.DEFAULT_SPECTRUM_WINDOW_SIZE)),
-            flex_window=float(_types.default(
-                args.spectrum_flex_window, _constants.DEFAULT_SPECTRUM_FLEX_WINDOW)),
+                args.spectrum_window_size, defaults['window_size'])),
+            flex_window=None if flex is None else float(flex),
             fallback_steps=int(_types.default(
                 args.inference_steps, _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)),
         )
@@ -6087,7 +6118,8 @@ class DiffusionPipelineWrapper:
         import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
         _featuredefaults.apply_known_defaults(
             copy_args, self._model_type,
-            refiner=self._sdxl_refiner_uri is not None)
+            refiner=self._sdxl_refiner_uri is not None,
+            distilled=self._krea2_distilled())
         spectrum_token = _spectrum.push(self._spectrum_settings(copy_args))
         try:
             if _enums.model_type_is_video_family(self._model_type):

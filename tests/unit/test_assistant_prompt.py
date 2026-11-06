@@ -270,6 +270,9 @@ class TestAssistantPrompt(unittest.TestCase):
         self.assertIn('Do not add CIVIT_AI_TOKEN', recipes)
         self.assertIn('(main subject:1.3)', recipes)
         self.assertNotIn('--prompt-weighter compel', recipes)
+        self.assertIn('Write --spectrum or --sada alone', recipes)
+        self.assertIn('Do not copy --spectrum-warmup-steps', recipes)
+        self.assertIn('--sada already selects those', system_message('6.0.0'))
 
     def test_public_checkpoint_omits_hf_token(self):
         sdxl = first_draft_recipes('sdxl photo of a horse')

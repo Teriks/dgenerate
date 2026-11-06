@@ -12,6 +12,11 @@ from dgenerate.extras.spectrum.runtime import (
     apply,
     pop,
     push,
+    cfg_multiplier,
+    resolve_settings,
+    schedule_counts,
+    schedule_for,
+    warn_schedule,
 )
 
 __all__ = [
@@ -22,4 +27,9 @@ __all__ = [
     'apply',
     'pop',
     'push',
+    'cfg_multiplier',
+    'resolve_settings',
+    'schedule_counts',
+    'schedule_for',
+    'warn_schedule',
 ]

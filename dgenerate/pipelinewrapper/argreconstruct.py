@@ -30,6 +30,7 @@ import collections.abc
 import typing
 
 import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.prompt as _prompt
@@ -542,16 +543,20 @@ def reconstruct_dgenerate_opts(
             args.spectrum_lambda != _constants.DEFAULT_SPECTRUM_LAMBDA:
         opts.append(('--spectrum-lambdas', args.spectrum_lambda))
 
-    if args.spectrum_warmup_steps is not None and \
-            args.spectrum_warmup_steps != _constants.DEFAULT_SPECTRUM_WARMUP_STEPS:
-        opts.append(('--spectrum-warmup-steps', args.spectrum_warmup_steps))
-
     if args.spectrum_window_size is not None and \
             args.spectrum_window_size != _constants.DEFAULT_SPECTRUM_WINDOW_SIZE:
         opts.append(('--spectrum-window-sizes', args.spectrum_window_size))
 
-    if args.spectrum_flex_window is not None and \
-            args.spectrum_flex_window != _constants.DEFAULT_SPECTRUM_FLEX_WINDOW:
+    spectrum_expected = _featuredefaults.spectrum_defaults(
+        wrapper.model_type,
+        distilled=wrapper._krea2_distilled(),
+        inference_steps=_featuredefaults.schedule_step_count(args),
+        guidance_scale=args.guidance_scale)
+    if (args.spectrum_warmup_steps is not None
+            and args.spectrum_warmup_steps != spectrum_expected['warmup_steps']):
+        opts.append(('--spectrum-warmup-steps', args.spectrum_warmup_steps))
+    if (args.spectrum_flex_window is not None
+            and args.spectrum_flex_window != spectrum_expected['flex_window']):
         opts.append(('--spectrum-flex-windows', args.spectrum_flex_window))
 
     if args.regione:
@@ -743,18 +748,34 @@ def reconstruct_dgenerate_opts(
         opts.append(
             ('--sdxl-refiner-negative-crops-coords-top-left', args.sdxl_refiner_negative_crops_coords_top_left))
 
-    # SADA arguments - only include if they differ from model-specific defaults
+    # SADA arguments - only include if they differ from model-specific defaults.
+    # The acceleration range and Lagrange step also follow the step count.
     model_defaults = _util.get_sada_model_defaults(wrapper.model_type)
-    
+    sada_steps = _featuredefaults.schedule_step_count(args)
+    if sada_steps is None:
+        sada_range, sada_step = None, None
+    else:
+        sada_range, sada_step = _featuredefaults.sada_for_steps(
+            sada_steps, model_defaults['lagrange_step'], model_defaults['lagrange_int'])
+
+    def _sada_matches(value, computed, static) -> bool:
+        if value is None:
+            return True
+        if computed is not None:
+            if isinstance(computed, tuple):
+                return tuple(value) == tuple(computed)
+            return value == computed
+        return value == static
+
     # Check if all SADA parameters match their model defaults (treating None as default)
     sada_params_match_defaults = (
         (args.sada_max_downsample is None or args.sada_max_downsample == model_defaults['max_downsample']) and
         (args.sada_sx is None or args.sada_sx == model_defaults['sx']) and
         (args.sada_sy is None or args.sada_sy == model_defaults['sy']) and
-        (args.sada_acc_range is None or args.sada_acc_range == model_defaults['acc_range']) and
+        _sada_matches(args.sada_acc_range, sada_range, model_defaults['acc_range']) and
         (args.sada_lagrange_term is None or args.sada_lagrange_term == model_defaults['lagrange_term']) and
         (args.sada_lagrange_int is None or args.sada_lagrange_int == model_defaults['lagrange_int']) and
-        (args.sada_lagrange_step is None or args.sada_lagrange_step == model_defaults['lagrange_step']) and
+        _sada_matches(args.sada_lagrange_step, sada_step, model_defaults['lagrange_step']) and
         (args.sada_max_fix is None or args.sada_max_fix == model_defaults['max_fix']) and
         (args.sada_max_interval is None or args.sada_max_interval == model_defaults['max_interval'])
     )
@@ -774,8 +795,10 @@ def reconstruct_dgenerate_opts(
     )
     
     if sada_enabled:
-        if args.sada or sada_params_match_defaults:
-            # Use the simple --sada flag if all parameters match defaults
+        if sada_params_match_defaults:
+            # Use the simple --sada flag if all parameters match defaults.
+            # A set --sada flag must not hide a range or Lagrange step that
+            # differs from the schedule for this step count.
             opts.append(('--sada',))
         else:
             # Include individual parameters that differ from defaults
@@ -788,7 +811,8 @@ def reconstruct_dgenerate_opts(
             if args.sada_sy is not None and args.sada_sy != model_defaults['sy']:
                 opts.append(('--sada-sys', args.sada_sy))
             
-            if args.sada_acc_range is not None and args.sada_acc_range != model_defaults['acc_range']:
+            if args.sada_acc_range is not None and not _sada_matches(
+                    args.sada_acc_range, sada_range, model_defaults['acc_range']):
                 opts.append(('--sada-acc-ranges', ','.join(map(str, args.sada_acc_range))))
 
             if args.sada_lagrange_term is not None and args.sada_lagrange_term != model_defaults['lagrange_term']:
@@ -797,7 +821,8 @@ def reconstruct_dgenerate_opts(
             if args.sada_lagrange_int is not None and args.sada_lagrange_int != model_defaults['lagrange_int']:
                 opts.append(('--sada-lagrange-ints', args.sada_lagrange_int))
             
-            if args.sada_lagrange_step is not None and args.sada_lagrange_step != model_defaults['lagrange_step']:
+            if args.sada_lagrange_step is not None and not _sada_matches(
+                    args.sada_lagrange_step, sada_step, model_defaults['lagrange_step']):
                 opts.append(('--sada-lagrange-steps', args.sada_lagrange_step))
             
             if args.sada_max_fix is not None and args.sada_max_fix != model_defaults['max_fix']:

@@ -1419,7 +1419,8 @@ Help Output
             
             Starting step must be at least 3 as SADA leverages third-order dynamics.
             
-            Defaults to "10,47".
+            On a 50-step run this is "10,47" (steps 10 through 46). A shorter run keeps the same head and tail.
+            Omitted until --inference-steps is known.
             
             Supply ranges as comma seperated values, for example: --sada-acc-ranges "10,47" "12,40"
             
@@ -1717,9 +1718,12 @@ Help Output
             
             See: https://github.com/hanjq17/Spectrum
             
-            The defaults (2 step window, flex 0.75, blend 0.5) are the paper's moderate schedule.
+            The paper's moderate schedule is a 2 step window, flex 0.75, and blend 0.5.
             ``--spectrum-flex-windows 3`` is the aggressive schedule. Qwen-Image edit drifts more than
-            text-to-image; raise ``--spectrum-warmup-steps`` or lower the flex window there.
+            text-to-image; raise ``--spectrum-warmup-steps`` or lower the flex window there. When warmup and
+            flex are omitted they follow the step count: 50 or more uses warmup 5 and flex 0.75, shorter runs
+            hold flex at 0, and classifier-free guidance above 1 also holds flex at 0. The step text shows auto
+            until that step count or guidance is known.
             
             This is supported for: --model-type sd3, sd3-pix2pix, sdxl, sdxl-pix2pix, kolors, flux, flux-fill,
             flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
@@ -1757,12 +1761,14 @@ Help Output
       --spectrum-warmup-steps [INT ...]
             Leading full denoiser passes before Spectrum may predict a step.
             
-            Each value is tried in turn. The paper uses 5 with 50 inference steps. Shorter schedules can use 2.
+            Each value is tried in turn. The paper uses 5 with 50 inference steps. When omitted, 50 or more
+            steps use 5, 9 to 49 steps use 4, 5 to 8 steps use 2, and 4 or fewer stay on a real pass every step.
+            Omitted values show as auto until the step count is known.
             
             Supplying any values implies --spectrum.
             
-            (default: 2)
-            ------------
+            (default: chosen from the step count)
+            -------------------------------------
       --spectrum-window-sizes [FLOAT ...]
             Initial Spectrum skip intervals to try when --spectrum is enabled.
             
@@ -1776,13 +1782,14 @@ Help Output
       --spectrum-flex-windows [FLOAT ...]
             Amounts added to the Spectrum skip interval after each full pass.
             
-            0 keeps the interval fixed. 0.75 is the paper's moderate schedule and 3 is the aggressive one. Each
-            value is tried in turn.
+            0 keeps the interval fixed. 0.75 is the paper's moderate schedule and 3 is the aggressive one. When
+            omitted, flex is 0.75 at 50 or more steps and 0 on a shorter run or when classifier-free guidance is
+            above 1. Omitted values show as auto until that is known. Each value is tried in turn.
             
             Supplying any values implies --spectrum.
             
-            (default: 0.75)
-            ---------------
+            (default: chosen from the step count and guidance)
+            --------------------------------------------------
       --regione
             Enable RegionE region-aware acceleration for instruction editing?
             
@@ -2940,9 +2947,9 @@ Help Output
             content of the image. Values between 30-40 produce good results, higher values may improve image
             quality and or change image content.
             
-            Omitting this lets the pipeline choose. RegionE uses 28. Qwen-Image 2.1 uses 40. Krea 2 uses 8 when
-            the checkpoint is distilled and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the refiner.
-            Kandinsky 5 Image uses 50.
+            Omitting this lets the pipeline choose. RegionE uses 28. Qwen-Image 2.1 uses 40, or the length of
+            the checkpoint's sample sigma list when it has one. Krea 2 uses 8 when the checkpoint is distilled
+            and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the refiner. Kandinsky 5 Image uses 50.
             
             For --model-type ltx-video, omitted values follow the loaded LTXPipeline __call__ defaults
             (typically guidance 3 and 50 steps). A value you set is passed as written.
@@ -18020,7 +18027,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [24676812530908]
+            Value: [51986638377387]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -18379,8 +18386,8 @@ The dgenerate specific jinja2 functions/filters are:
     
         \setp my_variable download('https://modelhost.com/model.safetensors')
     
-        A Hugging Face model "/blob/" or "/resolve/" link with no output path is stored in the Hugging Face
-        cache. Every other URL uses the web cache.
+        A Hugging Face model "/blob/" or "/resolve/" link with no output path is stored in the Hugging Face cache.
+        Every other URL uses the web cache.
     
         When an "output" path is specified, if the file already exists it will be reused by default (simple
         caching behavior), this can be disabled with the argument "overwrite=True" indicating that the file should

@@ -30,10 +30,8 @@ _PRESETS = {
         'max_downsample': 1,
         'sx': 3,
         'sy': 3,
-        'acc_range': '10,47',
         'terms': 4,
         'interval': 4,
-        'step': 24,
         'max_fix': 5120,
         'max_interval': 4,
     },
@@ -41,10 +39,8 @@ _PRESETS = {
         'max_downsample': 2,
         'sx': 3,
         'sy': 3,
-        'acc_range': '10,47',
         'terms': 4,
         'interval': 4,
-        'step': 24,
         'max_fix': 10240,
         'max_interval': 4,
     },
@@ -52,10 +48,8 @@ _PRESETS = {
         'max_downsample': 0,
         'sx': 0,
         'sy': 0,
-        'acc_range': '10,47',
         'terms': 3,
         'interval': 4,
-        'step': 20,
         'max_fix': 0,
         'max_interval': 4,
     },
@@ -92,7 +86,7 @@ class _SADAEntry(_FeatureToggleEntry):
         self._add_int_row(
             'Spatial Downsample Y', self.sy_var, '--sada-sys', from_=0)
 
-        self.acc_var = tk.StringVar(value=preset['acc_range'])
+        self.acc_var = tk.StringVar(value='')
         self._add_string_row(
             'Acceleration Range', self.acc_var, '--sada-acc-ranges')
 
@@ -104,7 +98,7 @@ class _SADAEntry(_FeatureToggleEntry):
         self._add_int_row(
             'Lagrange Interval', self.lagrange_interval_var, '--sada-lagrange-ints', from_=0)
 
-        self.lagrange_step_var = tk.StringVar(value=str(preset['step']))
+        self.lagrange_step_var = tk.StringVar(value='')
         self._add_int_row(
             'Lagrange Step', self.lagrange_step_var, '--sada-lagrange-steps', from_=0)
 
@@ -127,13 +121,13 @@ class _SADAEntry(_FeatureToggleEntry):
         self._append_int(arguments, '--sada-sxs', self.sx_var, preset['sx'])
         self._append_int(arguments, '--sada-sys', self.sy_var, preset['sy'])
         self._append_text(
-            arguments, '--sada-acc-ranges', self.acc_var, preset['acc_range'])
+            arguments, '--sada-acc-ranges', self.acc_var, None)
         self._append_int(
             arguments, '--sada-lagrange-terms', self.terms_var, preset['terms'])
         self._append_int(
             arguments, '--sada-lagrange-ints', self.lagrange_interval_var, preset['interval'])
         self._append_int(
-            arguments, '--sada-lagrange-steps', self.lagrange_step_var, preset['step'])
+            arguments, '--sada-lagrange-steps', self.lagrange_step_var, None)
         self._append_int(
             arguments, '--sada-max-fixes', self.max_fix_var, preset['max_fix'])
         self._append_int(

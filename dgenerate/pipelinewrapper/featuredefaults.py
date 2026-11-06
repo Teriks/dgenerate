@@ -66,19 +66,212 @@ def _set_missing(args, name: str, value):
         setattr(args, name, value)
 
 
+def pipeline_config_bool(pipeline, name: str) -> bool | None:
+    """A bool stored on a loaded pipeline config, or ``None`` when it is absent.
+
+    A missing key is not the same as false. Krea 2's ``is_distilled`` flag is
+    how Turbo is told from Raw, and it is not known until that config exists.
+    """
+    config = getattr(pipeline, 'config', None)
+    if config is None:
+        return None
+    if hasattr(config, 'get'):
+        try:
+            present = name in config
+        except TypeError:
+            present = False
+        if not present:
+            return None
+        return bool(config.get(name))
+    if hasattr(config, name):
+        return bool(getattr(config, name))
+    return None
+
+
+def _optional_int(value):
+    if isinstance(value, (list, tuple)):
+        if not value:
+            return None
+        value = value[0]
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _guidance_effect(model_type) -> str:
+    """How guidance relates to the Spectrum schedule.
+
+    ``embed`` is one forward, so the guidance number does not change flex.
+    ``cfg`` multiplies a pair of forecasts. ``checkpoint`` is HunyuanImage,
+    which uses an embedding or a guider depending on the loaded weights, so
+    flex stays unset until the pipeline exists.
+    """
+    if (_enums.model_type_is_flux_family(model_type)
+            or _enums.model_type_is_flux2_family(model_type)):
+        return 'embed'
+    if _enums.model_type_is_hyimage_21_family(model_type):
+        return 'checkpoint'
+    return 'cfg'
+
+
+def _known_sampling(model_type, *, distilled=None, inference_steps=None,
+                    guidance_scale=None) -> tuple[int | None, float | None]:
+    """Step count and guidance already fixed by the user or by this model type.
+
+    ``None`` means the value is still omitted and this model type does not
+    have its own fixed default.
+    """
+    steps = _optional_int(inference_steps)
+    guidance = guidance_scale
+    if isinstance(guidance, (list, tuple)):
+        guidance = guidance[0] if guidance else None
+    if guidance is not None:
+        try:
+            guidance = float(guidance)
+        except (TypeError, ValueError):
+            guidance = None
+    if steps is None and _enums.model_type_is_krea2(model_type) and distilled is not None:
+        steps = 8 if distilled else 28
+    if guidance is None and _enums.model_type_is_krea2(model_type) and distilled is not None:
+        guidance = 0.0 if distilled else 4.5
+    if steps is None and _enums.model_type_is_hyimage_21_refiner(model_type):
+        steps = 4
+    if steps is None and _enums.model_type_is_hyimage_21(model_type):
+        steps = 50
+    if steps is None and _enums.model_type_is_kandinsky5_image(model_type):
+        steps = 50
+    if guidance is None and _enums.model_type_is_kandinsky5_image(model_type):
+        guidance = 3.5
+    return steps, guidance
+
+
+def spectrum_defaults(model_type, *, distilled=None, inference_steps=None,
+                      guidance_scale=None) -> dict:
+    """Spectrum parameters for one model, before any value the user set.
+
+    Warmup and flex follow the step count. Fifty steps or more use warmup 5
+    and flex 0.75. Shorter schedules hold flex at 0, with warmup 4, or warmup
+    2 at 8 steps or fewer, or a full warmup when there are 4 steps or fewer.
+    Classifier-free guidance above 1 also holds flex at 0. When the step count
+    or that guidance value is still omitted, the dependent field is ``None``
+    so step text can show ``auto``.
+    """
+    import dgenerate.extras.spectrum as _spectrum
+
+    defaults = {
+        'weight': _constants.DEFAULT_SPECTRUM_WEIGHT,
+        'order': _constants.DEFAULT_SPECTRUM_ORDER,
+        'lam': _constants.DEFAULT_SPECTRUM_LAMBDA,
+        'warmup_steps': None,
+        'window_size': _constants.DEFAULT_SPECTRUM_WINDOW_SIZE,
+        'flex_window': None,
+    }
+    steps, guidance = _known_sampling(
+        model_type, distilled=distilled, inference_steps=inference_steps,
+        guidance_scale=guidance_scale)
+    if steps is None:
+        return defaults
+    effect = _guidance_effect(model_type)
+    if steps >= 50 and (effect == 'checkpoint' or (effect == 'cfg' and guidance is None)):
+        defaults['warmup_steps'] = 5
+        return defaults
+    cfg = guidance if effect == 'cfg' and guidance is not None and guidance > 1 else None
+    warmup, flex = _spectrum.schedule_for(steps, cfg)
+    defaults['warmup_steps'] = warmup
+    defaults['flex_window'] = flex
+    return defaults
+
+
+def sada_for_steps(num_steps: int, lagrange_step: int, lagrange_int: int) -> tuple[tuple[int, int], int]:
+    """Place the 50-step acceleration window and Lagrange step on ``num_steps``.
+
+    The demo window is steps 10 through 46 (``range(10, 47)``), a head of 10
+    and a tail of 3. The Lagrange step stays a multiple of ``lagrange_int``.
+    """
+    steps = max(int(num_steps), 1)
+    reference = 50
+    start = max(3, round(10 * steps / reference))
+    end = steps - (reference - 47)
+    if end <= start:
+        start, end = 3, 3
+    interval = max(int(lagrange_int), 1)
+    target = (lagrange_step / reference) * steps
+    inside = [multiple for multiple in range(interval, end, interval) if multiple >= start]
+    if inside:
+        step = min(inside, key=lambda candidate: (abs(candidate - target), candidate))
+    else:
+        step = int(round(target / interval)) * interval
+        if step < interval:
+            step = interval
+        if steps > interval and step >= steps:
+            step = ((steps - 1) // interval) * interval or interval
+    return (start, end), step
+
+
+def configured_sample_sigmas(pipeline) -> list | None:
+    """Author sigma list on a loaded pipeline, excluding the terminal sigma.
+
+    Qwen-Image 2.1 Turbo stores this list. Its length is the step count, and
+    the pipeline uses it instead of ``num_inference_steps``.
+    """
+    config = getattr(pipeline, 'config', None)
+    if config is None or not hasattr(config, 'get'):
+        return None
+    try:
+        present = 'sample_sigmas' in config
+    except TypeError:
+        present = False
+    if not present:
+        return None
+    sigmas = config.get('sample_sigmas')
+    if not isinstance(sigmas, (list, tuple)) or not sigmas:
+        return None
+    return list(sigmas)
+
+
+def schedule_step_count(args) -> int | None:
+    """Step count a Spectrum or SADA schedule can follow.
+
+    A numeric ``--sigmas`` list is the schedule the sampler runs. An omitted
+    step count stays ``None`` so step text can show ``auto``.
+    """
+    sigmas = getattr(args, 'sigmas', None)
+    if isinstance(sigmas, (list, tuple)) and sigmas and not isinstance(sigmas[0], str):
+        return len(sigmas)
+    return _optional_int(getattr(args, 'inference_steps', None))
+
+
 def sada_values(args, model_type) -> dict:
-    """SADA parameters for one step, with model defaults for anything omitted."""
+    """SADA parameters for one step, with model defaults for anything omitted.
+
+    The acceleration range and Lagrange step follow the inference step count,
+    or the length of a numeric ``--sigmas`` list when that is the schedule.
+    They stay ``None`` while that count is omitted.
+    """
     defaults = _util.get_sada_model_defaults(model_type)
+    steps = schedule_step_count(args)
+    acc_range = args.sada_acc_range
+    lagrange_step = args.sada_lagrange_step or None
+    if steps is not None and (acc_range is None or lagrange_step is None):
+        auto_range, auto_step = sada_for_steps(
+            steps, defaults['lagrange_step'], defaults['lagrange_int'])
+        if acc_range is None:
+            acc_range = auto_range
+        if lagrange_step is None:
+            lagrange_step = auto_step
     return {
         'max_downsample': _types.default(
             args.sada_max_downsample, defaults['max_downsample']),
         'sx': _types.default(args.sada_sx, defaults['sx']),
         'sy': _types.default(args.sada_sy, defaults['sy']),
-        'acc_range': _types.default(args.sada_acc_range, defaults['acc_range']),
+        'acc_range': acc_range,
         'lagrange_term': _types.default(
             args.sada_lagrange_term, defaults['lagrange_term']),
         'lagrange_int': args.sada_lagrange_int or defaults['lagrange_int'],
-        'lagrange_step': args.sada_lagrange_step or defaults['lagrange_step'],
+        'lagrange_step': lagrange_step,
         'max_fix': _types.default(args.sada_max_fix, defaults['max_fix']),
         'max_interval': _types.default(
             args.sada_max_interval, defaults['max_interval']),
@@ -174,7 +367,7 @@ def _wan_video_to_video(model_type, args) -> bool:
 
 def apply_known_defaults(args, model_type, *, refiner: bool = False,
                          image_seed=None, control_guidance: bool = False,
-                         adetailer: bool = False) -> None:
+                         adetailer: bool = False, distilled: bool | None = None) -> None:
     """Fill omitted fields that have a known default once their feature is on.
 
     ``args`` is updated in place. Parent flags are left as they are.
@@ -206,15 +399,19 @@ def apply_known_defaults(args, model_type, *, refiner: bool = False,
                      _constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD)
 
     if _feature_on(args, 'spectrum'):
-        _set_missing(args, 'spectrum_weight', _constants.DEFAULT_SPECTRUM_WEIGHT)
-        _set_missing(args, 'spectrum_order', _constants.DEFAULT_SPECTRUM_ORDER)
-        _set_missing(args, 'spectrum_lambda', _constants.DEFAULT_SPECTRUM_LAMBDA)
-        _set_missing(args, 'spectrum_warmup_steps',
-                     _constants.DEFAULT_SPECTRUM_WARMUP_STEPS)
-        _set_missing(args, 'spectrum_window_size',
-                     _constants.DEFAULT_SPECTRUM_WINDOW_SIZE)
-        _set_missing(args, 'spectrum_flex_window',
-                     _constants.DEFAULT_SPECTRUM_FLEX_WINDOW)
+        spectrum = spectrum_defaults(
+            model_type,
+            distilled=distilled,
+            inference_steps=getattr(args, 'inference_steps', None),
+            guidance_scale=getattr(args, 'guidance_scale', None))
+        _set_missing(args, 'spectrum_weight', spectrum['weight'])
+        _set_missing(args, 'spectrum_order', spectrum['order'])
+        _set_missing(args, 'spectrum_lambda', spectrum['lam'])
+        if spectrum['warmup_steps'] is not None:
+            _set_missing(args, 'spectrum_warmup_steps', spectrum['warmup_steps'])
+        _set_missing(args, 'spectrum_window_size', spectrum['window_size'])
+        if spectrum['flex_window'] is not None:
+            _set_missing(args, 'spectrum_flex_window', spectrum['flex_window'])
 
     if _feature_on(args, 'regione'):
         defaults = _regione_defaults(model_type)
@@ -262,10 +459,12 @@ def apply_known_defaults(args, model_type, *, refiner: bool = False,
         args.sada_max_downsample = values['max_downsample']
         args.sada_sx = values['sx']
         args.sada_sy = values['sy']
-        args.sada_acc_range = values['acc_range']
+        if values['acc_range'] is not None:
+            args.sada_acc_range = values['acc_range']
         args.sada_lagrange_term = values['lagrange_term']
         args.sada_lagrange_int = values['lagrange_int']
-        args.sada_lagrange_step = values['lagrange_step']
+        if values['lagrange_step'] is not None:
+            args.sada_lagrange_step = values['lagrange_step']
         args.sada_max_fix = values['max_fix']
         args.sada_max_interval = values['max_interval']
 
@@ -447,10 +646,14 @@ def fill_render_loop_config_defaults(
     prototype = _prototype_from_render_loop_config(config)
     refiner = bool(getattr(config, 'sdxl_refiner_uri', None))
     adetailer = bool(getattr(config, 'adetailer_detector_uris', None))
+    distilled = None
+    if pipeline is not None and _enums.model_type_is_krea2(model_type):
+        distilled = pipeline_config_bool(pipeline, 'is_distilled')
 
     apply_known_defaults(
         prototype, model_type, refiner=refiner, image_seed=image_seed,
-        control_guidance=control_guidance, adetailer=adetailer)
+        control_guidance=control_guidance, adetailer=adetailer,
+        distilled=distilled)
 
     for config_name, arg_name in _RENDER_LOOP_LIST_ARG_FIELDS:
         _write_config_list_default(config, config_name, getattr(prototype, arg_name))

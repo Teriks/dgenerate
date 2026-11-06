@@ -25,12 +25,12 @@ import tkinter as tk
 from dgenerate.console.formentries.featuretoggleentry import _FeatureToggleEntry
 
 # Keep in sync with dgenerate.pipelinewrapper.constants.
-_DEFAULT_WEIGHT = 0.5
-_DEFAULT_ORDER = 4
-_DEFAULT_LAMBDA = 0.1
-_DEFAULT_WARMUP_STEPS = 2
-_DEFAULT_WINDOW_SIZE = 2.0
-_DEFAULT_FLEX_WINDOW = 0.75
+# Warmup and flex are chosen from the step count and guidance, so the
+# fields start empty and are omitted from the recipe.
+_WEIGHT = 0.5
+_ORDER = 4
+_LAMBDA = 0.1
+_WINDOW = 2.0
 
 
 class _SpectrumEntry(_FeatureToggleEntry):
@@ -40,27 +40,27 @@ class _SpectrumEntry(_FeatureToggleEntry):
         super().__init__(*args, **kwargs, widget_rows=7)
         self._build('Use Spectrum', '--spectrum')
 
-        self.weight_var = tk.StringVar(value=str(_DEFAULT_WEIGHT))
+        self.weight_var = tk.StringVar(value=str(_WEIGHT))
         self._add_float_row(
             'Blend Weight', self.weight_var, '--spectrum-weights', from_=0.0, to=1.0)
 
-        self.order_var = tk.StringVar(value=str(_DEFAULT_ORDER))
+        self.order_var = tk.StringVar(value=str(_ORDER))
         self._add_int_row(
             'Chebyshev Order', self.order_var, '--spectrum-orders', from_=1, to=sys.maxsize)
 
-        self.lambda_var = tk.StringVar(value=str(_DEFAULT_LAMBDA))
+        self.lambda_var = tk.StringVar(value=str(_LAMBDA))
         self._add_float_row(
             'Ridge Penalty', self.lambda_var, '--spectrum-lambdas', from_=0.0)
 
-        self.warmup_var = tk.StringVar(value=str(_DEFAULT_WARMUP_STEPS))
+        self.warmup_var = tk.StringVar(value='')
         self._add_int_row(
             'Warmup Steps', self.warmup_var, '--spectrum-warmup-steps', from_=0)
 
-        self.window_var = tk.StringVar(value=str(_DEFAULT_WINDOW_SIZE))
+        self.window_var = tk.StringVar(value=str(_WINDOW))
         self._add_float_row(
             'Window Size', self.window_var, '--spectrum-window-sizes', from_=1.0)
 
-        self.flex_var = tk.StringVar(value=str(_DEFAULT_FLEX_WINDOW))
+        self.flex_var = tk.StringVar(value='')
         self._add_float_row(
             'Flex Window', self.flex_var, '--spectrum-flex-windows', from_=0.0)
 
@@ -69,15 +69,15 @@ class _SpectrumEntry(_FeatureToggleEntry):
     def _feature_arguments(self):
         arguments = []
         self._append_float(
-            arguments, '--spectrum-weights', self.weight_var, _DEFAULT_WEIGHT)
+            arguments, '--spectrum-weights', self.weight_var, _WEIGHT)
         self._append_int(
-            arguments, '--spectrum-orders', self.order_var, _DEFAULT_ORDER)
+            arguments, '--spectrum-orders', self.order_var, _ORDER)
         self._append_float(
-            arguments, '--spectrum-lambdas', self.lambda_var, _DEFAULT_LAMBDA)
+            arguments, '--spectrum-lambdas', self.lambda_var, _LAMBDA)
         self._append_int(
-            arguments, '--spectrum-warmup-steps', self.warmup_var, _DEFAULT_WARMUP_STEPS)
+            arguments, '--spectrum-warmup-steps', self.warmup_var, None)
         self._append_float(
-            arguments, '--spectrum-window-sizes', self.window_var, _DEFAULT_WINDOW_SIZE)
+            arguments, '--spectrum-window-sizes', self.window_var, _WINDOW)
         self._append_float(
-            arguments, '--spectrum-flex-windows', self.flex_var, _DEFAULT_FLEX_WINDOW)
+            arguments, '--spectrum-flex-windows', self.flex_var, None)
         return arguments

@@ -283,14 +283,6 @@
 
     Default ridge penalty for the Spectrum Chebyshev fit.
 
-.. data:: DEFAULT_SPECTRUM_WARMUP_STEPS
-    :annotation: = 2
-
-    Default number of leading denoiser passes Spectrum always runs.
-
-    The paper's 50-step setup uses 5. Two passes is enough to start a forecast on
-    the shorter schedules used here. Raise it when a 50-step sample drifts.
-
 .. data:: DEFAULT_SPECTRUM_WINDOW_SIZE
     :annotation: = 2.0
 
@@ -299,10 +291,8 @@
 .. data:: DEFAULT_SPECTRUM_FLEX_WINDOW
     :annotation: = 0.75
 
-    Default amount added to the Spectrum skip interval after each full pass.
-
-    ``0.75`` is the paper's moderate schedule. ``0`` holds the interval fixed.
-    ``3`` is the paper's aggressive schedule.
+    Paper flex of 0.75. ``0`` holds the skip interval fixed and ``3`` is the
+    aggressive schedule. Omitted flex follows the step count and guidance.
 
 .. data:: DEFAULT_DYPE_METHOD
     :annotation: = 'yarn'

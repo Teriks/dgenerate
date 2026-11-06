@@ -74,6 +74,7 @@ class TestConsoleAccelerationRecipes(unittest.TestCase):
             for config in by_name.get('spectrum', []):
                 self.assertEqual(config.get('id'), 'sp', path.name)
                 self.assertTrue(config.get('divider-after'), path.name)
+                self.assertNotIn('preset', config, path.name)
             self.assertLessEqual(len(by_name.get('spectrum', [])), 1, path.name)
 
             for config in by_name.get('ras', []):
@@ -146,6 +147,17 @@ class TestOptimizationControls(unittest.TestCase):
         self.assertEqual(spectrum.template('SLOT'), '--spectrum-weights 0.9')
         spectrum.enabled_var.set(False)
         self.assertEqual(spectrum.template('keep SLOT here'), 'keep  here')
+
+        spectrum.weight_var.set('0.5')
+        spectrum.warmup_var.set('')
+        spectrum.flex_var.set('')
+        spectrum.enabled_var.set(True)
+        self.assertEqual(spectrum.template('SLOT'), '--spectrum')
+        spectrum.flex_var.set('0')
+        self.assertEqual(spectrum.template('SLOT'), '--spectrum-flex-windows 0.0')
+        spectrum.flex_var.set('')
+        spectrum.warmup_var.set('5')
+        self.assertEqual(spectrum.template('SLOT'), '--spectrum-warmup-steps 5')
 
         sada = self._make(_SADAEntry, {'id': 'sada', 'preset': 'flux'})
         sada.enabled_var.set(True)

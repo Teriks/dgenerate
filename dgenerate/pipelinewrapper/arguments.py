@@ -993,7 +993,9 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Leading full denoiser passes before Spectrum may predict a step.
 
-    Defaults to 2. The paper uses 5 with 50 inference steps.
+    When omitted, 50 or more steps use 5, 9 to 49 steps use 4, 5 to 8 steps
+    use 2, and 4 or fewer stay on a real pass every step. Shown as ``auto``
+    until the step count is known.
 
     Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
     """
@@ -1013,7 +1015,9 @@ class DiffusionArguments(_types.SetFromMixin):
     Amount added to the Spectrum skip interval after each full pass.
 
     ``0`` keeps the interval fixed. ``0.75`` is the moderate schedule and ``3``
-    is the aggressive one. Defaults to 0.75.
+    is the aggressive one. When omitted, flex is 0.75 at 50 or more steps and
+    0 on a shorter run or when classifier-free guidance is above 1. Shown as
+    ``auto`` until that is known.
 
     Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
     """
@@ -1988,6 +1992,36 @@ class DiffusionArguments(_types.SetFromMixin):
                     subsequent_indent=' ' * len(header))
             prompt_format.append(f'{header}"{prompt_val}"')
 
+    def _sada_enabled(self) -> bool:
+        if self.sada:
+            return True
+        return any(getattr(self, name) is not None for name in (
+            'sada_max_downsample', 'sada_sx', 'sada_sy', 'sada_acc_range',
+            'sada_lagrange_term', 'sada_lagrange_int', 'sada_lagrange_step',
+            'sada_max_fix', 'sada_max_interval'))
+
+    def _sada_or_auto(self, value):
+        if value is not None:
+            return value
+        if self._sada_enabled():
+            return 'auto'
+        return None
+
+    def _spectrum_enabled(self) -> bool:
+        if self.spectrum:
+            return True
+        return any(getattr(self, name) is not None for name in (
+            'spectrum_weight', 'spectrum_order', 'spectrum_lambda',
+            'spectrum_warmup_steps', 'spectrum_window_size', 'spectrum_flex_window'))
+
+    def _spectrum_or_auto(self, value):
+        """Concrete Spectrum value, or ``auto`` when the step count or guidance is still omitted."""
+        if value is not None:
+            return value
+        if self._spectrum_enabled():
+            return 'auto'
+        return None
+
     def describe_pipeline_wrapper_args(self, model_type=None, *, refiner=False,
                                        image_seed=None, control_guidance=False,
                                        adetailer=False) -> str:
@@ -1999,7 +2033,12 @@ class DiffusionArguments(_types.SetFromMixin):
             RegionE thresholds, and similar) are applied on a copy used only for
             the description; the arguments object itself is not changed.
             Omitted inference steps and guidance scale are not filled; they are
-            shown as ``auto``. Numeric guidance and step counts are chosen later
+            shown as ``auto``. Spectrum warmup and flex are ``auto`` until the
+            step count, and guidance when it changes the schedule, are known.
+            Krea 2 Turbo and Raw share ``--model-type krea2``. Which schedule
+            applies is the loaded checkpoint's ``is_distilled`` flag, so an
+            omitted step count, guidance scale, warmup, and flex stay ``auto``
+            in this text. Numeric guidance and step counts are chosen later
             when the pipeline wrapper or video pipeline runs the step.
         :param refiner: An SDXL or Kolors refiner is loaded. Used for the high-noise
             fraction default.
@@ -2122,9 +2161,9 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.spectrum_weight, "Spectrum Blend Weight:"),
             (self.spectrum_order, "Spectrum Chebyshev Order:"),
             (self.spectrum_lambda, "Spectrum Ridge Penalty:"),
-            (self.spectrum_warmup_steps, "Spectrum Warmup Steps:"),
+            (self._spectrum_or_auto(self.spectrum_warmup_steps), "Spectrum Warmup Steps:"),
             (self.spectrum_window_size, "Spectrum Window Size:"),
-            (self.spectrum_flex_window, "Spectrum Flex Window:"),
+            (self._spectrum_or_auto(self.spectrum_flex_window), "Spectrum Flex Window:"),
             (self.regione_warmup_step, "RegionE Warmup Steps:"),
             (self.regione_post_step, "RegionE Post Steps:"),
             (self.regione_refresh_step, "RegionE Refresh Step:"),
@@ -2180,10 +2219,10 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.sada_max_downsample, "SADA Max Downsample:"),
             (self.sada_sx, "SADA SX:"),
             (self.sada_sy, "SADA SY:"),
-            (self.sada_acc_range, "SADA Acc Range:"),
+            (self._sada_or_auto(self.sada_acc_range), "SADA Acc Range:"),
             (self.sada_lagrange_term, "SADA Lagrange Term:"),
             (self.sada_lagrange_int, "SADA Lagrange Int:"),
-            (self.sada_lagrange_step, "SADA Lagrange Step:"),
+            (self._sada_or_auto(self.sada_lagrange_step), "SADA Lagrange Step:"),
             (self.sada_max_fix, "SADA Max Fix:"),
             (self.sada_max_interval, "SADA Max Interval:")
         ]

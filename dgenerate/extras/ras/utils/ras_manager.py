@@ -48,10 +48,7 @@ class ras_manager:
                 (self.weight // self.patch_size) // self.vae_size))
         if self.skip_num_step_length == 0:  # static dropping
             self.skip_token_num_list = [avg_skip_token_num for i in range(self.num_steps)]
-            for i in self.error_reset_steps:
-                self.skip_token_num_list[i] = 0
-            for i in range(self.scheduler_start_step):
-                self.skip_token_num_list[i] = 0
+            self._clear_steps_outside_the_run()
             # print("Skip token number list: ", len(self.skip_token_num_list), self.skip_token_num_list)
             return
         for i in range(0, self.num_steps // self.skip_num_step_length + 1):
@@ -62,15 +59,22 @@ class ras_manager:
                         i - (((self.num_steps + self.scheduler_start_step) // self.skip_num_step_length) // 2))
                 temp_skip_num = (temp_skip_num // 64) * 64
                 self.skip_token_num_list.append(temp_skip_num)
-        for i in range(self.scheduler_start_step):
-            self.skip_token_num_list[i] = 0
-        for i in self.error_reset_steps:
-            self.skip_token_num_list[i] = 0
+        self._clear_steps_outside_the_run()
         for i in range(len(self.skip_token_num_list)):
             assert self.skip_token_num_list[i] >= 0, "Skip token number should be positive"
             assert self.skip_token_num_list[i] <= ((self.height // self.patch_size) // self.vae_size) * (
                     (self.weight // self.patch_size) // self.vae_size)
         # print("Skip token number list: ", len(self.skip_token_num_list), self.skip_token_num_list)
+
+    def _clear_steps_outside_the_run(self):
+        # The paper's error-reset steps are 12 and 22 on a 28-step SD3 run.
+        # A shorter run has no such step, so those indexes are left unused.
+        limit = len(self.skip_token_num_list)
+        for i in range(min(self.scheduler_start_step, limit)):
+            self.skip_token_num_list[i] = 0
+        for i in self.error_reset_steps:
+            if 0 <= i < limit:
+                self.skip_token_num_list[i] = 0
 
     def reset_cache(self):
         self.cached_index = None

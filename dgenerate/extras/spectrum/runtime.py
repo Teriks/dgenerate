@@ -30,9 +30,9 @@ class SpectrumSettings(typing.NamedTuple):
     weight: float
     order: int
     lam: float
-    warmup_steps: int
+    warmup_steps: int | None
     window_size: float
-    flex_window: float
+    flex_window: float | None
     fallback_steps: int
 
 
@@ -53,6 +53,171 @@ _RESIDUAL_ARGS = (
 
 def active_settings() -> SpectrumSettings | None:
     return _ACTIVE.get()
+
+
+def schedule_for(num_steps: int, cfg_multiplier: float | None) -> tuple[int, float]:
+    """Warmup and flex for a resolved step count.
+
+    Fifty steps or more use the paper's flex 0.75 and warmup 5, unless
+    guidance multiplies the conditional gap. Shorter schedules hold the skip
+    interval fixed. Four steps or fewer stay on real passes. Classifier-free
+    guidance above 1 also holds the interval fixed, because it multiplies the
+    forecast error. ``cfg_multiplier`` is ``None`` when guidance is an
+    embedding inside one forward.
+    """
+    steps = max(int(num_steps), 1)
+    if steps <= 4:
+        warmup, flex = steps, 0.0
+    elif steps <= 8:
+        warmup, flex = 2, 0.0
+    elif steps < 50:
+        warmup, flex = 4, 0.0
+    else:
+        warmup, flex = 5, 0.75
+    if cfg_multiplier is not None and cfg_multiplier > 1:
+        flex = 0.0
+    return warmup, flex
+
+
+def resolve_settings(
+        settings: SpectrumSettings,
+        num_steps: int,
+        cfg_multiplier: float | None = None) -> SpectrumSettings:
+    """Fill warmup and flex that were left unset until the step count existed."""
+    if settings.warmup_steps is not None and settings.flex_window is not None:
+        return settings
+    warmup, flex = schedule_for(num_steps, cfg_multiplier)
+    return settings._replace(
+        warmup_steps=settings.warmup_steps if settings.warmup_steps is not None else warmup,
+        flex_window=settings.flex_window if settings.flex_window is not None else flex)
+
+
+def schedule_counts(num_steps: int, settings: SpectrumSettings) -> tuple[int, int, int]:
+    """Return full passes, predicted steps, and the closing run of predicted steps.
+
+    Matches :class:`_StepState`: a forecast needs two real passes, and the skip
+    interval grows by the flex window after each full pass.
+    """
+    steps = max(int(num_steps), 1)
+    samples = 0
+    consecutive = 0
+    window = float(settings.window_size)
+    kinds: list[bool] = []
+    for index in range(steps):
+        if index < settings.warmup_steps or samples < 2:
+            actual = True
+        else:
+            width = max(1, math.floor(window))
+            actual = (consecutive + 1) % width == 0
+            if actual:
+                window = round(window + settings.flex_window, 3)
+        kinds.append(actual)
+        if actual:
+            samples += 1
+            consecutive = 0
+        else:
+            consecutive += 1
+    trailing = 0
+    for actual in reversed(kinds):
+        if actual:
+            break
+        trailing += 1
+    full = samples
+    return full, steps - full, trailing
+
+
+_WARNED: set[tuple] = set()
+
+
+def _guidance_embeds(pipeline) -> bool:
+    transformer = getattr(pipeline, 'transformer', None)
+    config = getattr(transformer, 'config', None)
+    if config is None:
+        return False
+    if hasattr(config, 'get'):
+        return bool(config.get('guidance_embeds', False))
+    return bool(getattr(config, 'guidance_embeds', False))
+
+
+def _cfg_scale(pipeline, guidance_scale) -> float | None:
+    """Scale that multiplies the conditional/unconditional gap, when that gap exists.
+
+    Flux-style guidance is an embedding inside one forward, so it does not
+    multiply a pair of forecasts.
+    """
+    if guidance_scale is None or _guidance_embeds(pipeline):
+        return None
+    try:
+        scale = float(guidance_scale)
+    except (TypeError, ValueError):
+        return None
+    if scale > 1:
+        return scale
+    return None
+
+
+def cfg_multiplier(pipeline, call_kwargs: dict | None = None, guidance_scale=None) -> float | None:
+    """Classifier-free guidance scale that multiplies a pair of forecasts.
+
+    Flux-style guidance embeddings return ``None``. Qwen reports the multiplier
+    as ``true_cfg_scale``.
+    """
+    if _guidance_embeds(pipeline):
+        return None
+    scale = guidance_scale
+    if call_kwargs:
+        if call_kwargs.get('true_cfg_scale') is not None:
+            scale = call_kwargs.get('true_cfg_scale')
+        elif scale is None:
+            scale = call_kwargs.get('guidance_scale')
+    if scale is None:
+        guider = getattr(pipeline, 'guider', None)
+        scale = getattr(guider, 'guidance_scale', None)
+    try:
+        value = float(scale)
+    except (TypeError, ValueError):
+        return None
+    if value > 1:
+        return value
+    return None
+
+
+def warn_schedule(pipeline, num_steps: int, settings: SpectrumSettings, guidance_scale=None,
+                  cfg: float | None = None) -> None:
+    """Warn when this schedule guesses several steps in a row at the end.
+
+    Guidance still selects the flex window, and that choice is quiet. A normal
+    classifier-free scale already holds the interval fixed.
+    """
+    if cfg is None:
+        cfg = _cfg_scale(pipeline, guidance_scale)
+    settings = resolve_settings(settings, num_steps, cfg)
+    full, skipped, trailing = schedule_counts(num_steps, settings)
+    if trailing < 4:
+        return
+    key = (
+        int(num_steps),
+        int(settings.warmup_steps),
+        float(settings.window_size),
+        float(settings.flex_window),
+    )
+    if key in _WARNED:
+        return
+    _WARNED.add(key)
+
+    fixes = [f'--spectrum-flex-windows 0 keeps the skip interval at {settings.window_size:g}']
+    paper_flex = any(math.isclose(settings.flex_window, paper, abs_tol=1e-6) for paper in (0.75, 3.0))
+    if num_steps < 50 and paper_flex:
+        fixes.append(
+            '--inference-steps 50 with --spectrum-warmup-steps 5 is the schedule '
+            'this flex was measured on')
+    elif settings.warmup_steps < 5:
+        fixes.append('--spectrum-warmup-steps 5 delays the point where the window starts growing')
+    _messages.warning(
+        f'Spectrum on {num_steps} steps (flex {settings.flex_window:g}, '
+        f'warmup {settings.warmup_steps}) runs {full} full passes and guesses {skipped}. '
+        f'The last {trailing} steps are guessed in a row, and that is where detail is set. '
+        + ' '.join(fixes) + '.')
 
 
 def push(settings: SpectrumSettings | None):
@@ -259,6 +424,9 @@ class _BlockPatch:
         self.module = module
         self.original = module.forward
         self.returns_pair: bool | None = None
+        # 0: the block returns (image, text), as Hunyuan and Motif do.
+        # 1: the block returns (text, image), as Flux, SD3, and Qwen-Image do.
+        self.image_slot: int | None = None
         self.is_cache_point = is_cache_point
         state.patches.append(self)
 
@@ -266,7 +434,7 @@ class _BlockPatch:
             hidden, encoder = _hidden_and_encoder(self.original, args, kwargs)
             if state.actual_forward or self.returns_pair is None or hidden is None:
                 out = self.original(*args, **kwargs)
-                self.returns_pair = isinstance(out, tuple)
+                self._remember(out, hidden)
                 if self.is_cache_point and hidden is not None:
                     feature = _feature_from_output(out, hidden)
                     if feature is not None:
@@ -274,18 +442,67 @@ class _BlockPatch:
                 return out
 
             predicted = state.predict()
+            image = hidden
+            if predicted is not None and predicted.shape == hidden.shape:
+                image = predicted.to(device=hidden.device, dtype=hidden.dtype)
             if self.returns_pair:
-                if predicted is None or predicted.shape != hidden.shape:
-                    return encoder, hidden
-                return encoder, predicted.to(device=hidden.device, dtype=hidden.dtype)
-            if predicted is None or predicted.shape != hidden.shape:
-                return hidden
-            return predicted.to(device=hidden.device, dtype=hidden.dtype)
+                return _pair_with_image(image, encoder, self.image_slot)
+            return image
+
+        module.forward = wrapper
+
+    def _remember(self, out, hidden: torch.Tensor | None) -> None:
+        self.returns_pair = isinstance(out, tuple)
+        if not self.returns_pair or hidden is None:
+            return
+        for index, item in enumerate(out):
+            if torch.is_tensor(item) and item.shape == hidden.shape:
+                self.image_slot = index
+                return
+
+    def restore(self) -> None:
+        self.module.forward = self.original
+
+
+def _pair_with_image(image, encoder, image_slot: int | None):
+    """Put the image stream back in the slot this block uses.
+
+    Slot 0 is Hunyuan and Motif, which unpack ``(image, text)``. Anything else
+    is the Flux order, ``(text, image)``.
+    """
+    if image_slot == 0:
+        return image, encoder
+    return encoder, image
+
+
+class _FaceAdapterPatch:
+    """A predicted step already includes the face residual in the forecast."""
+
+    def __init__(self, module: nn.Module, state: _StepState):
+        self.module = module
+        self.original = module.forward
+
+        def wrapper(*args, **kwargs):
+            if state.actual_forward:
+                return self.original(*args, **kwargs)
+            hidden = args[0] if args else kwargs.get('hidden_states')
+            if not torch.is_tensor(hidden):
+                return self.original(*args, **kwargs)
+            return torch.zeros_like(hidden)
 
         module.forward = wrapper
 
     def restore(self) -> None:
         self.module.forward = self.original
+
+
+def _face_adapters(denoiser: nn.Module) -> list[nn.Module]:
+    listing = getattr(denoiser, 'face_adapter', None)
+    if isinstance(listing, (nn.ModuleList, list, tuple)):
+        return [module for module in listing if isinstance(module, nn.Module)]
+    if isinstance(listing, nn.Module):
+        return [listing]
+    return []
 
 
 def _block_modules(denoiser: nn.Module) -> list[nn.Module]:
@@ -328,6 +545,7 @@ class _DenoiserPatch:
             _BlockPatch(module, state, is_cache_point=(index == len(blocks) - 1))
             for index, module in enumerate(blocks)
         ]
+        self.faces = [_FaceAdapterPatch(module, state) for module in _face_adapters(denoiser)]
 
         def wrapper(*args, **kwargs):
             state.begin(_bind_timestep(self.original, args, kwargs))
@@ -339,6 +557,8 @@ class _DenoiserPatch:
         self.denoiser.forward = self.original
         for block in self.blocks:
             block.restore()
+        for face in self.faces:
+            face.restore()
 
 
 def _bound_argument(original, args, kwargs, name):
@@ -450,8 +670,10 @@ def _denoisers(pipeline) -> list[nn.Module]:
 
 
 @contextlib.contextmanager
-def apply(pipeline, num_inference_steps: int, settings: SpectrumSettings):
+def apply(pipeline, num_inference_steps: int, settings: SpectrumSettings,
+          cfg_multiplier: float | None = None):
     """Forecast ``pipeline``'s denoiser blocks for one sampling call."""
+    settings = resolve_settings(settings, num_inference_steps, cfg_multiplier)
     denoisers = _denoisers(pipeline)
     if not denoisers:
         raise SpectrumUnsupported(

@@ -3,8 +3,10 @@ Chebyshev feature forecaster used by Spectrum.
 
 Adapted from https://github.com/hanjq17/Spectrum (MIT). Each cached denoiser
 feature is treated as a function of normalized diffusion time and fit with
-ridge regression on Chebyshev polynomials. A one-step Newton extrapolation is
-blended in with weight ``w``.
+ridge regression on Chebyshev polynomials. The polynomial degree is lowered
+so two samples remain beyond it, and it never drops below a line. Two or
+three points stay linear, so a short run cannot excite ``T_4``. A one-step
+Newton extrapolation is blended in with weight ``w``.
 """
 
 import torch
@@ -40,6 +42,7 @@ class ChebyshevForecaster(nn.Module):
         self._H_buf: torch.Tensor | None = None
         self._shape: torch.Size | None = None
         self._coef: torch.Tensor | None = None
+        self._degree: int | None = None
 
     @property
     def P(self) -> int:
@@ -49,16 +52,25 @@ class ChebyshevForecaster(nn.Module):
         # Callers pass time already scaled into [0, 1].
         return 2.0 * t - 1.0
 
-    def _build_design(self, taus: torch.Tensor) -> torch.Tensor:
+    def _active_degree(self) -> int:
+        # T_0..T_d needs d + 2 rows. Krea Turbo has only a handful of full
+        # passes, and an underdetermined T_4 rings across that short interval.
+        samples = int(self.t_buf.numel())
+        if samples < 2:
+            return 0
+        return min(self.M, max(1, samples - 2))
+
+    def _build_design(self, taus: torch.Tensor, degree: int | None = None) -> torch.Tensor:
+        degree = self.M if degree is None else degree
         taus = taus.reshape(-1, 1)
         count = taus.shape[0]
         columns = [torch.ones((count, 1), device=taus.device, dtype=taus.dtype)]
-        if self.M == 0:
+        if degree == 0:
             return columns[0]
         columns.append(taus)
-        for _ in range(2, self.M + 1):
+        for _ in range(2, degree + 1):
             columns.append(2 * taus * columns[-1] - columns[-2])
-        return torch.cat(columns[:self.M + 1], dim=1)
+        return torch.cat(columns[:degree + 1], dim=1)
 
     def update(self, t: float, h: torch.Tensor) -> None:
         """Append one observation and drop the fitted coefficients."""
@@ -86,6 +98,7 @@ class ChebyshevForecaster(nn.Module):
                 self.t_buf = self.t_buf[-self.K:]
                 self._H_buf = self._H_buf[-self.K:]
         self._coef = None
+        self._degree = None
 
     def ready(self) -> bool:
         return self.t_buf.numel() >= 2 and self._H_buf is not None
@@ -93,8 +106,9 @@ class ChebyshevForecaster(nn.Module):
     def _fit(self) -> None:
         if self._coef is not None:
             return
+        degree = self._active_degree()
         taus = self._taus(self.t_buf)
-        design = self._build_design(taus).to(torch.float32)
+        design = self._build_design(taus, degree).to(torch.float32)
         history = self._H_buf.to(torch.float32)
         width = design.shape[1]
         gram = design.transpose(0, 1) @ design
@@ -107,6 +121,7 @@ class ChebyshevForecaster(nn.Module):
             factor = torch.linalg.cholesky(
                 gram + jitter * torch.eye(width, device=gram.device, dtype=gram.dtype))
         self._coef = torch.cholesky_solve(right_hand, factor)
+        self._degree = degree
 
     @torch.no_grad()
     def predict(self, t_star: float) -> torch.Tensor:
@@ -115,7 +130,7 @@ class ChebyshevForecaster(nn.Module):
         self._fit()
         device = self.t_buf.device
         t_star = torch.as_tensor(t_star, dtype=torch.float32, device=device)
-        row = self._build_design(self._taus(t_star).reshape(1))
+        row = self._build_design(self._taus(t_star).reshape(1), self._degree)
         flat = row.to(torch.float32) @ self._coef
         return _unflatten(flat, self._shape)
 
@@ -124,6 +139,7 @@ class ChebyshevForecaster(nn.Module):
         self._H_buf = None
         self._shape = None
         self._coef = None
+        self._degree = None
 
 
 class SpectrumPredictor(nn.Module):
