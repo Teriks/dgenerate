@@ -409,8 +409,15 @@ exits with status 1.
 are terminal color sequences written before status text, reasoning, the model's reply,
 and tool calls. They are off by default. ``\033[0m`` resets the color, ``\033[32m``
 is green, ``\033[36m`` is cyan, and ``\033[33m`` is yellow.
-``--offline`` uses only models already on disk or in the Hugging Face cache.
-``dgenerate --offline-mode --sub-command assistant`` does the same thing.
+
+``-ofm`` / ``--offline-mode`` uses only models already on disk or in the Hugging Face cache.
+In this mode, the ``fetch_link`` tool lists Hugging Face files already in that cache and does not call the Hub.
+A quant that is not cached is not listed, so the example file is kept.
+It does not fetch a CivitAI link or any other URL.
+A CivitAI page is not in the local cache, so the config is written from the request
+and the retrieved examples.
+Passing ``-ofm`` / ``--offline-mode`` before ``--sub-command`` does the same thing.
+
 ``-v`` / ``--verbose`` shows llama.cpp output on stderr.
 
 The Console UI Generate Code menu runs this sub-command. Its model list is the

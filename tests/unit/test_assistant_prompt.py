@@ -397,6 +397,22 @@ class TestAssistantPrompt(unittest.TestCase):
             'hydit', 'Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers',
             cuda=True, gib=16, bitsandbytes=True, sdnq=False))
 
+    def test_ltx25_gemma4_gguf_names_the_real_quants(self):
+        self.assertIn('gemma4-12b-with-proj-ltx-2.5-Q2_K.gguf', MODEL_TABLE)
+        self.assertIn('gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf', MODEL_TABLE)
+        self.assertIn('gemma4-12b-with-proj-ltx-2.5-Q5_K_M.gguf', MODEL_TABLE)
+        self.assertIn('There is no Q8_0', MODEL_TABLE)
+        system = system_message('6.0.0', link_tools=True)
+        self.assertIn('Do not change its quant suffix', system)
+        self.assertIn('fp8_scaled Comfy file is not an fp8_e4m3fn', system)
+        self.assertIn('unless the fetch_link tool lists the requested quant', system)
+        self.assertIn('Call fetch_link once on that repo', system)
+        self.assertIn('except once on the repo of the closest example', system)
+        self.assertIn('lists only the files already in the Hugging Face cache', system)
+        bare = system_message('6.0.0', link_tools=False)
+        self.assertNotIn('call fetch_link', bare)
+        self.assertIn('unless the fetch_link tool lists the requested quant', bare)
+
     def test_resolution_is_in_the_system_prompt(self):
         plan = offload_plan(True, 16, True, False)
         self.assertIn('each tier line is for that model\'s usual size', plan)

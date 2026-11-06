@@ -407,6 +407,94 @@ class TestLinkTools(unittest.TestCase):
         self.assertIn('gated: yes', gated)
         self.assertIn('Write the HF_TOKEN early-exit', gated)
 
+    def test_gguf_folder_lists_the_quant_files_to_copy(self):
+        files = [
+            'README.md',
+            'flux1-dev-Q4_K_S.gguf',
+            'flux1-dev-Q5_K_S.gguf',
+            'flux1-dev-Q6_K.gguf',
+            'flux1-dev-Q8_0.gguf',
+        ]
+        text = link_tools._format_huggingface(
+            'https://huggingface.co/city96/FLUX.1-dev-gguf',
+            'city96/FLUX.1-dev-gguf',
+            kind='repo', path='', pipeline='', gated=False, tags=[],
+            card_text='', files=files, texts={}, suggested=None)
+        self.assertIn('Copy one of these quant paths exactly. Do not invent a quant suffix.', text)
+        self.assertIn('flux1-dev-Q5_K_S.gguf', text)
+        self.assertIn('flux1-dev-Q6_K.gguf', text)
+        self.assertNotIn('not a file to copy', text)
+
+    def test_comfy_folder_lists_the_quant_files_to_copy(self):
+        files = [
+            'README.md',
+            'diffusion_models/krea2_raw_bf16.safetensors',
+            'diffusion_models/krea2_raw_int8_convrot.safetensors',
+            'diffusion_models/krea2_turbo_fp8_scaled.safetensors',
+            'diffusion_models/krea2_turbo_fp8mixed.safetensors',
+            'diffusion_models/krea2_turbo_nvfp4.safetensors',
+            'vae/ae.safetensors',
+        ]
+        text = link_tools._format_huggingface(
+            'https://huggingface.co/Comfy-Org/Krea-2',
+            'Comfy-Org/Krea-2',
+            kind='repo', path='', pipeline='', gated=False, tags=[],
+            card_text='', files=files, texts={}, suggested=None)
+        self.assertIn('Copy one of these quant paths exactly. Do not invent a quant suffix.', text)
+        self.assertIn('diffusion_models/krea2_turbo_fp8mixed.safetensors', text)
+        self.assertIn('diffusion_models/krea2_turbo_nvfp4.safetensors', text)
+        self.assertNotIn('not a file to copy', text)
+        quant_at = text.index('Quant files')
+        weights_at = text.index('Weight files')
+        self.assertLess(quant_at, weights_at)
+        quant_block = text[quant_at:weights_at]
+        self.assertNotIn('vae/ae.safetensors', quant_block)
+
+    def test_offline_fetch_lists_the_hub_cache_and_does_not_call_the_hub(self):
+        import os
+        import tempfile
+        from unittest.mock import patch
+
+        import huggingface_hub
+
+        import dgenerate.hfhub as hfhub
+
+        commit = 'abc123'
+        with tempfile.TemporaryDirectory() as cache:
+            snap = os.path.join(
+                cache, 'models--vantagewithai--LTX-2.5-GGUF', 'snapshots', commit, 'dev')
+            os.makedirs(snap)
+            refs = os.path.join(cache, 'models--vantagewithai--LTX-2.5-GGUF', 'refs')
+            os.makedirs(refs)
+            with open(os.path.join(refs, 'main'), 'w', encoding='utf-8') as handle:
+                handle.write(commit + '\n')
+            for name in (
+                    'ltx-2.5-22b-dev-transformer-Q2_K.gguf',
+                    'ltx-2.5-22b-dev-transformer-Q4_K_S.gguf'):
+                with open(os.path.join(snap, name), 'wb') as handle:
+                    handle.write(b'gguf')
+            real_cache = huggingface_hub.constants.HF_HUB_CACHE
+            huggingface_hub.constants.HF_HUB_CACHE = cache
+            link_tools._FETCH_CACHE.clear()
+            try:
+                with hfhub.offline_mode_context(True), \
+                        patch('huggingface_hub.HfApi.model_info', side_effect=AssertionError('network')):
+                    text = link_tools.fetch_huggingface_link(
+                        'https://huggingface.co/vantagewithai/LTX-2.5-GGUF')
+                    missing = link_tools.fetch_huggingface_link(
+                        'https://huggingface.co/elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF')
+                    civit = link_tools.fetch_link('https://civitai.com/models/1')
+            finally:
+                huggingface_hub.constants.HF_HUB_CACHE = real_cache
+                link_tools._FETCH_CACHE.clear()
+        self.assertIn('only the files already in the Hugging Face cache', text)
+        self.assertIn('dev/ltx-2.5-22b-dev-transformer-Q2_K.gguf', text)
+        self.assertIn('gated: unknown while offline', text)
+        self.assertNotIn('gated: no', text)
+        self.assertIn('not in the local cache', missing)
+        self.assertIn('Do not invent a quant suffix', missing)
+        self.assertIn('CivitAI link is not in the local cache', civit)
+
     def test_huggingface_note_url_returns_that_note_and_a_quoted_lora(self):
         files = [
             'README.md',

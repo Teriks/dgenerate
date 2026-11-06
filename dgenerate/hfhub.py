@@ -101,7 +101,9 @@ class NonHFConfigDownloadError(NonHFDownloadError):
 
 class HFBlobLink:
     """
-    Represents the constituents of a huggingface blob link.
+    A Hugging Face model file URL, either ``/blob/`` or ``/resolve/``.
+
+    Every other URL does not parse.
     """
 
     repo_id: str
@@ -126,24 +128,25 @@ class HFBlobLink:
         return str(self)
 
     __REGEX = re.compile(
-        r'(https|http)://(?:www\.)?huggingface\.co/'
-        r'(?P<repo_id>.+)/blob/(?P<revision>.+?)/'
-        r'(?:(?P<subfolder>.+)/)?(?P<weight_name>.+)')
+        r'https?://(?:www\.)?huggingface\.co/'
+        r'(?P<repo_id>(?!datasets/)(?!spaces/)[^/]+/[^/]+)/'
+        r'(?:blob|resolve)/(?P<revision>[^/]+)/'
+        r'(?:(?P<subfolder>.+)/)?(?P<weight_name>[^?#]+)')
 
     @staticmethod
     def parse(blob_link):
         """
-        Attempt to parse a huggingface blob link out of a string.
+        Parse a Hugging Face model ``/blob/`` or ``/resolve/`` URL.
 
-        If the string does not contain a blob link, return None.
+        Every other URL returns ``None``. The query string is not part of the file name.
 
-        :param blob_link: supposed blob link string
+        :param blob_link: supposed blob or resolve link
         :return: :py:class:`.HFBlobLink` or None
         """
 
-        match = HFBlobLink.__REGEX.match(blob_link)
+        match = HFBlobLink.__REGEX.match(blob_link or '')
 
-        if match:
+        if match and match.group('weight_name'):
             result = HFBlobLink(match.group('repo_id'),
                                 match.group('revision'),
                                 match.group('subfolder'),
@@ -194,13 +197,13 @@ def webcache_or_hf_blob_download(url: str,
                                  mimetype_is_supported: typing.Callable[[str], bool] | None = None,
                                  unknown_mimetype_exception: type[Exception] = NonHFDownloadError,
                                  local_files_only: bool = False,
+                                 force_download: bool = False,
                                  auth_token: str | None = None) -> str:
     """
     Download to ``dgenerate`` web cache or Hugging Face cache, depending on the model path.
 
-    If model path is a Hugging Face blob link, it will be downloaded to the Hugging Face cache.
-
-    If not, it will be downloaded to the ``dgenerate`` web cache.
+    A Hugging Face model ``/blob/`` or ``/resolve/`` link is downloaded to the Hugging Face cache.
+    Every other URL is downloaded to the ``dgenerate`` web cache.
 
     TQDM progress bar is used for any download that occurs, TQDM progress bars will differ
     somewhat in appearance depending on whether the file is downloaded to the web cache or Hugging Face cache.
@@ -211,6 +214,7 @@ def webcache_or_hf_blob_download(url: str,
     :param mimetype_is_supported: A function that determines if a mimetype is supported for downloading. (dgenerate webcache)
     :param unknown_mimetype_exception: The exception type to raise when an unknown mimetype is encountered. (dgenerate webcache)
     :param local_files_only: If ``True``, do not attempt to download files, only check cache.
+    :param force_download: Download a model file again even when it is already in the Hugging Face cache.
     :param auth_token: Hugging Face token for a gated blob link or resolve URL.
         When omitted, :py:func:`resolve_auth_token` supplies ``--auth-token``, ``HF_TOKEN``,
         or a saved login.
@@ -251,6 +255,7 @@ def webcache_or_hf_blob_download(url: str,
             subfolder=blob_link.subfolder,
             filename=blob_link.weight_name,
             local_files_only=local_files_only,
+            force_download=force_download,
             token=resolve_auth_token(auth_token)
         )
     return model_path

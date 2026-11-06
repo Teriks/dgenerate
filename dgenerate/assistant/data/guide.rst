@@ -572,8 +572,11 @@ so ``--inference-steps`` applies. A pre-quantized LTX-2.5 Gemma 4 text
 encoder is ``--text-encoders``
 ``Gemma4UnifiedForConditionalGeneration`` pointed at
 ``gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf`` from
-``elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF``, or the INT8 ConvRot and NVFP4
-safetensors of that layout. Do not set ``quantizer`` on it. The parent
+``elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF``. That repo also has
+``gemma4-12b-with-proj-ltx-2.5-Q2_K.gguf`` and
+``gemma4-12b-with-proj-ltx-2.5-Q5_K_M.gguf``. It has no Q8_0 file.
+Copy one of those three names. The INT8 ConvRot and NVFP4
+safetensors are the other packed layouts of that encoder. Do not set ``quantizer`` on it. The parent
 stays ``Lightricks/LTX-2.5-Diffusers``. The same encoder is used with the
 dev transformer: keep the dev scheduler, 30 steps, guidance 3, audio
 guidance 7, STG 1 on block 28, and modality 3.

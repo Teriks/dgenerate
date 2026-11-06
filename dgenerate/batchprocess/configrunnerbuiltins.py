@@ -291,6 +291,9 @@ def download(url: str,
     NOWRAP!
     \\setp my_variable download('https://modelhost.com/model.safetensors')
 
+    A Hugging Face model ``/blob/`` or ``/resolve/`` link with no output path
+    is stored in the Hugging Face cache. Every other URL uses the web cache.
+
     When an "output" path is specified, if the file already exists it
     will be reused by default (simple caching behavior), this can be disabled
     with the argument "overwrite=True" indicating that the file should
@@ -343,7 +346,7 @@ def download(url: str,
 
         blob_link = _hfhub.HFBlobLink.parse(url)
         if blob_link is not None:
-            # /blob/ pages are not the file. Download the resolve URL straight to output.
+            # A blob page is not the file. Download the resolve URL straight to output.
             import huggingface_hub
             url = huggingface_hub.hf_hub_url(
                 repo_id=blob_link.repo_id,
@@ -406,21 +409,32 @@ def download(url: str,
             raise _batchprocessor.BatchProcessError(
                 f'Failed to download "{url}": {e}') from e
     else:
+        import huggingface_hub
+
         class _MimeExcept(Exception):
             pass
 
         try:
-            _, file_path = _webcache.create_web_cache_file(
-                url,
-                mime_acceptable_desc=None if text else 'not text',
-                mimetype_is_supported=mimetype_supported,
-                unknown_mimetype_exception=_MimeExcept,
-                overwrite=overwrite)
+            if _hfhub.HFBlobLink.parse(url) is not None:
+                file_path = _hfhub.webcache_or_hf_blob_download(
+                    url, force_download=overwrite)
+            else:
+                _, file_path = _webcache.create_web_cache_file(
+                    url,
+                    mime_acceptable_desc=None if text else 'not text',
+                    mimetype_is_supported=mimetype_supported,
+                    unknown_mimetype_exception=_MimeExcept,
+                    overwrite=overwrite)
         except _MimeExcept as e:
             raise _batchprocessor.BatchProcessError(
                 f'Encountered text/* mimetype at "{url}" '
                 'without specifying the -t/--text argument.') from e
-        except requests.RequestException as e:
+        except (requests.RequestException,
+                huggingface_hub.errors.HfHubHTTPError,
+                huggingface_hub.errors.LocalEntryNotFoundError,
+                huggingface_hub.errors.EntryNotFoundError,
+                huggingface_hub.errors.OfflineModeIsEnabled,
+                huggingface_hub.errors.HFValidationError) as e:
             raise _batchprocessor.BatchProcessError(f'Failed to download "{url}": {e}') from e
 
     return pathlib.Path(file_path).as_posix()

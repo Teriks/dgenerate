@@ -133,6 +133,9 @@ on a smaller GPU. A quantized file \
 does not remove that cost. Follow the Resolution rule in the Machine section, \
 then the documented constraints on output size, frame counts, and guidance.
 - Copy Hugging Face repo names (org/name) exactly as they appear in the reference material. \
+Copy a blob filename exactly too. Do not change its quant suffix: a Q4_K_M link is not a Q8_0 link, \
+and an fp8_scaled Comfy file is not an fp8_e4m3fn or nvfp4 file. \
+Do not invent a quant suffix. Keep the example file unless the fetch_link tool lists the requested quant. \
 Never invent a repo or change its organization or name. Do not use --model-type z-image-omni; \
 Z-Image-Omni-Base is not released on Hugging Face yet. A repo and a --model-type from \
 different families is rejected: Krea 2 (krea/Krea-2-Raw, krea2) is not FLUX.1-Krea-dev (flux). \
@@ -250,7 +253,12 @@ Link tool:
 - Call fetch_link for CivitAI or Hugging Face URLs in the Request section or the current \
 editor config. After a Hugging Face repo result, you may call it once more on a raw or blob URL \
 for a markdown note listed there. Do not call it for links that appear only in the reference \
-material or examples, and do not call it on a tree page when the file list is already present.
+material or examples, except once on the repo of the closest example's blob or resolve URL \
+when the request asks for a GGUF or Comfy quant that filename does not use. \
+Call fetch_link once on that repo (https://huggingface.co/org/name) and copy a weight path it lists. \
+Keep that repo and folder. Do not call it on a tree page \
+when the file list is already present. Offline, fetch_link lists only the files already in the \
+Hugging Face cache. If the requested quant is not in that list, keep the example file.
 - Call it on each request URL before writing the config, unless that exact URL was already \
 fetched earlier in this conversation. If fetch_link fails, do not call it again for that URL. \
 Write the config from the request and the retrieved examples. \
@@ -534,9 +542,11 @@ Dev (full) GGUF: --transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF
 guidance 3, audio guidance 7, STG 1 on block 28, modality 3, and \
 --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1 with --inference-steps 30. \
 Dev INT8: --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors. \
-LTX-2.5 Gemma 4 text encoder is already quantized: --text-encoders \
+LTX-2.5 Gemma 4 text encoder is already quantized. elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF \
+has gemma4-12b-with-proj-ltx-2.5-Q2_K.gguf, gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf, \
+and gemma4-12b-with-proj-ltx-2.5-Q5_K_M.gguf. There is no Q8_0. The default is --text-encoders \
 "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF/blob/main/gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf". \
-Do not set quantizer. INT8 ConvRot of the same encoder: \
+Copy one of those three filenames. Do not set quantizer. INT8 ConvRot of the same encoder: \
 https://huggingface.co/Lightricks/LTX-2.5/blob/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors. \
 NVFP4 of the same encoder: \
 https://huggingface.co/DmitryDB/LTX-2.5-ComfyUI-Quants/blob/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-nvfp4.safetensors. \

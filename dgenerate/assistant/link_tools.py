@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import functools
 import json
+import os
 import posixpath
 import re
 import urllib.parse
@@ -38,6 +39,11 @@ _LINK_URL = re.compile(
     re.IGNORECASE)
 _HF_PATH_KINDS = frozenset({'tree', 'blob', 'raw', 'resolve'})
 _WEIGHT_SUFFIXES = ('.safetensors', '.bin', '.pt', '.pth', '.ckpt', '.gguf')
+# A GGUF quant (Q4_K_S) or a Comfy quant (fp8, fp8mixed, nvfp4, int8) in the filename.
+_QUANT_NAME = re.compile(
+    r'(?:^|[_\-.])(?:q\d(?:_[0-9a-z]+)*|fp8(?:mixed|scaled)?|fp4(?:mixed|scaled)?|'
+    r'fp16|bf16|nvfp4|int8|e4m3fn|e5m2)(?=[_\-.]|$)',
+    re.IGNORECASE)
 _TEXT_SUFFIXES = ('.md', '.txt', '.json', '.yaml', '.yml')
 # A repo can hold dozens of weights plus a note each. Images and caption
 # dumps are not paths the config can name.
@@ -662,18 +668,69 @@ def _parse_hf_url(url: str) -> dict | None:
     return {'repo_id': f'{org}/{parts[1]}', 'kind': kind, 'revision': revision, 'path': path}
 
 
-def _hf_text_file(repo_id: str, filename: str, revision: str | None, limit: int) -> str:
+def _hf_text_file(repo_id: str, filename: str, revision: str | None, limit: int,
+                  local_files_only: bool = False) -> str:
     try:
         from huggingface_hub import hf_hub_download
 
-        kwargs = {'headers': _browser_headers()}
+        kwargs = {'headers': _browser_headers(), 'local_files_only': local_files_only}
         if revision:
             kwargs['revision'] = revision
         local = hf_hub_download(repo_id, filename, **kwargs)
         with open(local, encoding='utf-8', errors='replace') as handle:
             return _truncate(handle.read(), limit)
     except Exception as e:
+        if local_files_only:
+            return ''
         return f'(could not read {filename}: {e})'
+
+
+def _cached_snapshot_dir(repo_id: str, revision: str | None) -> str | None:
+    """The hub snapshot for this repo. A named revision that is not cached returns None."""
+    import huggingface_hub
+
+    root = os.path.join(
+        huggingface_hub.constants.HF_HUB_CACHE, 'models--' + repo_id.replace('/', '--'))
+    snapshots = os.path.join(root, 'snapshots')
+    if not os.path.isdir(snapshots):
+        return None
+    rev = (revision or 'main').strip()
+    ref_file = os.path.join(root, 'refs', rev)
+    if os.path.isfile(ref_file):
+        with open(ref_file, encoding='utf-8') as handle:
+            commit = handle.read().strip()
+        path = os.path.join(snapshots, commit)
+        if os.path.isdir(path):
+            return path
+    direct = os.path.join(snapshots, rev)
+    if os.path.isdir(direct):
+        return direct
+    if revision:
+        return None
+    candidates = [
+        os.path.join(snapshots, name)
+        for name in os.listdir(snapshots)
+        if os.path.isdir(os.path.join(snapshots, name))]
+    if not candidates:
+        return None
+    return max(candidates, key=os.path.getmtime)
+
+
+def _cached_repo_files(repo_id: str, revision: str | None) -> list[str]:
+    """Weight and note paths already stored in the hub snapshot. This does not download."""
+    snap = _cached_snapshot_dir(repo_id, revision)
+    if not snap:
+        return []
+    files = []
+    for dirpath, dirnames, filenames in os.walk(snap):
+        dirnames[:] = [name for name in dirnames if name != '.cache']
+        for name in filenames:
+            full = os.path.join(dirpath, name)
+            if not os.path.isfile(full):
+                continue
+            files.append(os.path.relpath(full, snap).replace('\\', '/'))
+    files.sort(key=str.casefold)
+    return files
 
 
 def _hf_repo_files(repo_id: str, revision: str | None, info) -> list[str]:
@@ -726,6 +783,16 @@ def _scope_files(files: list[str], kind: str, path: str) -> list[str]:
         folder = posixpath.dirname(path)
         return [name for name in files if posixpath.dirname(name) == folder]
     return files
+
+
+def _quant_paths(paths: list[str]) -> list[str]:
+    """GGUF files and Comfy quant weights. Other safetensors stay out of this list."""
+    found = []
+    for name in paths:
+        base = posixpath.basename(name)
+        if base.lower().endswith('.gguf') or _QUANT_NAME.search(base):
+            found.append(name)
+    return found
 
 
 def _split_listing(files: list[str]) -> tuple[list[str], list[str], str]:
@@ -786,7 +853,8 @@ def _format_huggingface(
         card_text: str,
         files: list[str],
         texts: dict[str, str],
-        suggested: str | None) -> str:
+        suggested: str | None,
+        cache_only: bool = False) -> str:
     scoped = _scope_files(files, kind, path)
     weights, notes, omitted = _split_listing(scoped)
     lines = [
@@ -806,7 +874,13 @@ def _format_huggingface(
             f'markdown note listed beside that weight: https://huggingface.co/{repo_id}/raw/main/<note path>. '
             'Use the trigger word in that note. Do not fetch the tree page.')
     lines.append(f'pipeline_tag: {pipeline or "(none)"}')
-    if gated:
+    if cache_only:
+        lines.append(
+            'Offline. This list is only the files already in the Hugging Face cache, not the whole repo. '
+            'Copy a listed path. If the requested quant is not here, keep the example file.')
+        lines.append(
+            'gated: unknown while offline. Keep the HF_TOKEN block when the closest example has one.')
+    elif gated:
         lines.append(
             'gated: yes. This repository exists and is gated. '
             'Write the HF_TOKEN early-exit. Do not replace it with another repo.')
@@ -821,7 +895,11 @@ def _format_huggingface(
     elif kind == 'tree' and path:
         folder = path.strip('/')
         copyable = [name for name in weights if posixpath.dirname(name) == folder] or weights
-    if len(copyable) == 1 or (path and len(copyable) <= 3):
+    quant = _quant_paths(copyable)
+    if len(quant) >= 2:
+        lines.append('Copy one of these quant paths exactly. Do not invent a quant suffix.')
+        _append_paths(lines, 'Quant files', quant, _PATH_LIST_CHARS)
+    elif len(copyable) == 1 or (path and len(copyable) <= 3):
         lines.append('Copy this --loras value:')
         lines.extend(f'--loras {_weight_uri(repo_id, name)}' for name in copyable[:3])
     elif weights:
@@ -846,6 +924,48 @@ def _format_huggingface(
     return '\n'.join(lines)
 
 
+def _offline_cache_miss(repo_id: str) -> str:
+    return (
+        f'Offline. Hugging Face repo {repo_id} is not in the local cache. '
+        'Keep the example file. Do not invent a quant suffix. '
+        'Do not call fetch_link on this URL again.')
+
+
+def _fetch_huggingface_from_cache(url: str, target: dict) -> str:
+    """List a repo from the hub snapshot. Nothing here reaches the network."""
+    repo_id = target['repo_id']
+    files = _cached_repo_files(repo_id, target['revision'])
+    if not files:
+        return _offline_cache_miss(repo_id)
+    scoped = _scope_files(files, target['kind'], target['path'])
+    _weights, notes, _omitted = _split_listing(scoped)
+    _, all_notes, _all_omitted = _split_listing(files)
+    to_read = _note_paths_to_read(target['kind'], target['path'], notes)
+    readme = _readme_path(all_notes)
+    if readme and readme not in to_read:
+        to_read.append(readme)
+    texts = {}
+    for name in to_read:
+        limit = _README_CHARS if posixpath.basename(name).lower() == 'readme.md' else _NOTE_CHARS
+        body = _hf_text_file(repo_id, name, target['revision'], limit, local_files_only=True)
+        if body:
+            texts[name] = body
+    suggested = _guess_model_type(None, f'{repo_id} {target["path"]}', texts.get('README.md', ''))
+    return _format_huggingface(
+        url, repo_id,
+        kind=target['kind'], path=target['path'],
+        pipeline='', gated=False, tags=[], card_text='',
+        files=files, texts=texts, suggested=suggested, cache_only=True)
+
+
+def _offline_error(error: Exception) -> bool:
+    try:
+        from huggingface_hub.errors import OfflineModeIsEnabled
+    except ImportError:
+        return False
+    return isinstance(error, OfflineModeIsEnabled)
+
+
 def fetch_huggingface_link(url: str) -> str:
     target = _parse_hf_url(url)
     if target is None:
@@ -855,6 +975,9 @@ def fetch_huggingface_link(url: str) -> str:
             f'{redact_url(url)} is a Hugging Face {target["non_model"]} link, not a model repo. '
             'fetch_link only reads model repos.')
     repo_id = target['repo_id']
+    import dgenerate.hfhub as _hfhub
+    if _hfhub.is_offline_mode():
+        return _fetch_huggingface_from_cache(url, target)
     try:
         import huggingface_hub
 
@@ -886,6 +1009,8 @@ def fetch_huggingface_link(url: str) -> str:
             pipeline=pipeline, gated=gated, tags=tags, card_text=card_text,
             files=files, texts=texts, suggested=suggested)
     except Exception as e:
+        if _offline_error(e):
+            return _fetch_huggingface_from_cache(url, target)
         return _huggingface_failure(repo_id, e)
 
 
@@ -950,7 +1075,14 @@ def fetch_link(url: str) -> str:
     if cache_key in _FETCH_CACHE:
         return _FETCH_CACHE[cache_key]
     if _civitai_host(url):
-        text = fetch_civitai_link(url)
+        import dgenerate.hfhub as _hfhub
+        if _hfhub.is_offline_mode():
+            text = (
+                'Offline. A CivitAI link is not in the local cache. '
+                'Write the config from the request and the retrieved examples. '
+                'Do not call fetch_link on this URL again.')
+        else:
+            text = fetch_civitai_link(url)
     elif 'huggingface.co' in url.lower():
         text = fetch_huggingface_link(url)
     else:
@@ -990,7 +1122,9 @@ LINK_TOOL_DEFINITIONS = [{
         'description': (
             'Fetch metadata for a CivitAI (civitai.com or civitai.red) model page or download URL, '
             'or a Hugging Face model, folder, or file URL. A repo URL lists weight and markdown '
-            'paths and includes the README. A raw or blob URL for a markdown note returns that note, '
+            'paths, including other GGUF and Comfy quant files beside an example weight, and includes the README. '
+            'Offline, a Hugging Face URL lists the files already in the local cache. '
+            'A raw or blob URL for a markdown note returns that note, '
             'including its trigger word. Use this for --model-type, base model, trained words, '
             'download URLs, weight paths, or publisher usage notes.'),
         'parameters': {

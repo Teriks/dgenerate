@@ -14932,8 +14932,15 @@ exits with status 1.
 are terminal color sequences written before status text, reasoning, the model's reply,
 and tool calls. They are off by default. ``\033[0m`` resets the color, ``\033[32m``
 is green, ``\033[36m`` is cyan, and ``\033[33m`` is yellow.
-``--offline`` uses only models already on disk or in the Hugging Face cache.
-``dgenerate --offline-mode --sub-command assistant`` does the same thing.
+
+``-ofm`` / ``--offline-mode`` uses only models already on disk or in the Hugging Face cache.
+In this mode, the ``fetch_link`` tool lists Hugging Face files already in that cache and does not call the Hub.
+A quant that is not cached is not listed, so the example file is kept.
+It does not fetch a CivitAI link or any other URL.
+A CivitAI page is not in the local cache, so the config is written from the request
+and the retrieved examples.
+Passing ``-ofm`` / ``--offline-mode`` before ``--sub-command`` does the same thing.
+
 ``-v`` / ``--verbose`` shows llama.cpp output on stderr.
 
 The Console UI Generate Code menu runs this sub-command. Its model list is the
@@ -14969,13 +14976,11 @@ The help output of ``assistant`` is as follows:
 
 .. code-block:: text
 
-    usage: assistant [-h] [-o OUTPUT] [--model MODEL] [--embed-model EMBED_MODEL] [--ctx CTX]
-                     [--gpu-layers GPU_LAYERS] [--edit FILE] [--think] [--reasoning-effort {low,medium,xhigh}]
-                     [--temperature TEMPERATURE] [--top-p TOP_P] [--top-k TOP_K] [--min-p MIN_P]
-                     [--presence-penalty PRESENCE_PENALTY] [--repeat-penalty REPEAT_PENALTY]
-                     [--max-tokens MAX_TOKENS] [--no-check] [--max-repairs MAX_REPAIRS] [--show-context]
-                     [--offline] [--no-link-tools] [--progress-plain CODE] [--progress-thought CODE]
-                     [--progress-talk CODE] [--progress-tool CODE] [-v]
+    usage: assistant [-h] [-o OUTPUT] [-mdl MODEL] [-emb EMBED_MODEL] [-ctx CTX] [-gpu GPU_LAYERS] [-ed FILE]
+                     [-thk] [-eff {low,medium,xhigh}] [-temp TEMPERATURE] [-tp TOP_P] [-tk TOP_K] [-mp MIN_P]
+                     [-pres PRESENCE_PENALTY] [-rpen REPEAT_PENALTY] [-mtok MAX_TOKENS] [-nc]
+                     [-mrep MAX_REPAIRS] [-sctx] [-ofm] [-nlt] [-ppl CODE] [-pth CODE] [-ptk CODE] [-ptl CODE]
+                     [-v]
                      [request ...]
     
     Write a dgenerate config from a plain language request, using a local Qwen model with retrieval over the
@@ -14994,7 +14999,7 @@ The help output of ``assistant`` is as follows:
             Write the config to this file instead of stdout. File paths in the request are relative to the
             current directory and are rewritten relative to this file.
             ----------------------------------------------------------
-      --model MODEL
+      -mdl, --model MODEL
             Chat model. One of these compatible Qwen 3.8 27B GGUFs, smallest download first.
             
             unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_S.gguf (6.2 GB, Qwen 3.8, 8 GB GPUs)
@@ -15024,7 +15029,7 @@ The help output of ``assistant`` is as follows:
             
             Default: unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf
             ------------------------------------------------------------
-      --embed-model EMBED_MODEL
+      -emb, --embed-model EMBED_MODEL
             Embedding model. One of these compatible Qwen3-Embedding GGUFs. Each one has a packaged index.
             
             Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf (0.6 GB, default)
@@ -15033,68 +15038,72 @@ The help output of ``assistant`` is as follows:
             
             Default: Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf
             ----------------------------------------------------------------------
-      --ctx CTX
+      -ctx, --ctx CTX
             Chat context size in tokens. Default: 32768
             -------------------------------------------
-      --gpu-layers GPU_LAYERS
+      -gpu, --gpu-layers GPU_LAYERS
             Layers to put on the GPU, -1 for automatic, 0 for CPU only. Default: -1
             -----------------------------------------------------------------------
-      --edit FILE
+      -ed, --edit FILE
             Revise this existing config instead of writing a new one. The request describes the change.
             -------------------------------------------------------------------------------------------
-      --think
+      -thk, --think
             Let the model reason before answering. Slower.
             ----------------------------------------------
-      --reasoning-effort {low,medium,xhigh}
+      -eff, --reasoning-effort {low,medium,xhigh}
             How long to think when --think is set. Qwen3.8 otherwise uses extra high. Default: medium
             -----------------------------------------------------------------------------------------
-      --temperature TEMPERATURE
+      -temp, --temperature TEMPERATURE
             Sampling temperature. Default: 0.7, or 1.0 with --think.
             --------------------------------------------------------
-      --top-p TOP_P
+      -tp, --top-p TOP_P
             Default: 0.8, or 0.95 with --think.
             -----------------------------------
-      --top-k TOP_K
+      -tk, --top-k TOP_K
             Default: 20.
             ------------
-      --min-p MIN_P
+      -mp, --min-p MIN_P
             Default: 0.0.
             -------------
-      --presence-penalty PRESENCE_PENALTY
+      -pres, --presence-penalty PRESENCE_PENALTY
             Default: 1.5, or 0.0 with --think.
             ----------------------------------
-      --repeat-penalty REPEAT_PENALTY
+      -rpen, --repeat-penalty REPEAT_PENALTY
             Repetition penalty. Default: 1.0.
             ---------------------------------
-      --max-tokens MAX_TOKENS
+      -mtok, --max-tokens MAX_TOKENS
             Maximum reply tokens. 0 uses the rest of the context window and does not increase memory use.
             Default: 0
             ----------
-      --no-check
+      -nc, --no-check
             Skip validating the config with dgenerate.
             ------------------------------------------
-      --max-repairs MAX_REPAIRS
+      -mrep, --max-repairs MAX_REPAIRS
             How many times to ask the model to fix a config dgenerate rejects. Default: 2
             -----------------------------------------------------------------------------
-      --show-context
+      -sctx, --show-context
             Print the retrieved context to stderr.
             --------------------------------------
-      --offline
-            Only use models already in the Hugging Face cache.
-            --------------------------------------------------
-      --no-link-tools
-            Do not offer fetch_link; the model cannot request CivitAI or Hugging Face lookups.
-            ----------------------------------------------------------------------------------
-      --progress-plain CODE
+      -ofm, --offline-mode
+            Only use models already in the Hugging Face cache. The "fetch_link" tool lists Hugging Face files
+            already in that cache and does not call the Hub. A quant that is not cached is not listed, so the
+            example file is kept. The "fetch_link" tool does not fetch a CivitAI link or any other URL. A
+            CivitAI page is not in the local cache, so the config is written from the request and the retrieved
+            examples.
+            ---------
+      -nlt, --no-link-tools
+            Do not offer the "fetch_link" tool; the model cannot request CivitAI or Hugging Face lookups.
+            ---------------------------------------------------------------------------------------------
+      -ppl, --progress-plain CODE
             Terminal color before status text. Off by default. Reset with \033[0m.
             ----------------------------------------------------------------------
-      --progress-thought CODE
+      -pth, --progress-thought CODE
             Terminal color before reasoning. Off by default. Green is \033[32m.
             -------------------------------------------------------------------
-      --progress-talk CODE
+      -ptk, --progress-talk CODE
             Terminal color before the model's reply. Off by default. Cyan is \033[36m.
             --------------------------------------------------------------------------
-      --progress-tool CODE
+      -ptl, --progress-tool CODE
             Terminal color before a tool call. Off by default. Yellow is \033[33m.
             ----------------------------------------------------------------------
       -v, --verbose
@@ -18011,7 +18020,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [19492080412104]
+            Value: [24676812530908]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -18369,6 +18378,9 @@ The dgenerate specific jinja2 functions/filters are:
         \set my_variable {{ download('https://modelhost.com/model.safetensors', output='directory/' }}
     
         \setp my_variable download('https://modelhost.com/model.safetensors')
+    
+        A Hugging Face model ``/blob/`` or ``/resolve/`` link with no output path is stored in the Hugging Face
+        cache. Every other URL uses the web cache.
     
         When an "output" path is specified, if the file already exists it will be reused by default (simple
         caching behavior), this can be disabled with the argument "overwrite=True" indicating that the file should

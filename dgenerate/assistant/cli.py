@@ -217,57 +217,63 @@ def create_parser(prog: str) -> _b_util.DirectiveArgumentParser:
     parser.add_argument('-o', '--output', help='Write the config to this file instead of stdout. '
                                                'File paths in the request are relative to the current '
                                                'directory and are rewritten relative to this file.')
-    parser.add_argument('--model', default=_models.DEFAULT_CHAT_MODEL, type=_supported_chat_model,
+    parser.add_argument('-mdl', '--model', default=_models.DEFAULT_CHAT_MODEL, type=_supported_chat_model,
                         help=_model_choices_help(
                             'Chat model. One of these compatible Qwen 3.8 27B GGUFs, smallest download first.',
                             _catalog.CHAT_MODELS))
-    parser.add_argument('--embed-model', default=_models.DEFAULT_EMBED_MODEL, type=_supported_embed_model,
+    parser.add_argument('-emb', '--embed-model', default=_models.DEFAULT_EMBED_MODEL, type=_supported_embed_model,
                         help=_model_choices_help(
                             'Embedding model. One of these compatible Qwen3-Embedding GGUFs. '
                             'Each one has a packaged index.',
                             _catalog.EMBED_MODELS))
-    parser.add_argument('--ctx', type=int, default=32768, help='Chat context size in tokens. Default: %(default)s')
-    parser.add_argument('--gpu-layers', type=int, default=-1,
+    parser.add_argument('-ctx', '--ctx', type=int, default=32768, help='Chat context size in tokens. Default: %(default)s')
+    parser.add_argument('-gpu', '--gpu-layers', type=int, default=-1,
                         help='Layers to put on the GPU, -1 for automatic, 0 for CPU only. Default: %(default)s')
-    parser.add_argument('--edit', metavar='FILE',
+    parser.add_argument('-ed', '--edit', metavar='FILE',
                         help='Revise this existing config instead of writing a new one. '
                              'The request describes the change.')
-    parser.add_argument('--think', action='store_true', help='Let the model reason before answering. Slower.')
-    parser.add_argument('--reasoning-effort', choices=_catalog.REASONING_EFFORTS,
+    parser.add_argument('-thk', '--think', action='store_true', help='Let the model reason before answering. Slower.')
+    parser.add_argument('-eff', '--reasoning-effort', choices=_catalog.REASONING_EFFORTS,
                         default=_catalog.DEFAULT_REASONING_EFFORT,
                         help='How long to think when --think is set. Qwen3.8 otherwise uses extra high. '
                              'Default: %(default)s')
     # None means "not passed". The value is filled from the Qwen3.8 card after --think is known.
-    parser.add_argument('--temperature', type=float, default=None,
+    parser.add_argument('-temp', '--temperature', type=float, default=None,
                         help='Sampling temperature. Default: 0.7, or 1.0 with --think.')
-    parser.add_argument('--top-p', type=float, default=None,
+    parser.add_argument('-tp', '--top-p', type=float, default=None,
                         help='Default: 0.8, or 0.95 with --think.')
-    parser.add_argument('--top-k', type=int, default=None,
+    parser.add_argument('-tk', '--top-k', type=int, default=None,
                         help='Default: 20.')
-    parser.add_argument('--min-p', type=float, default=None,
+    parser.add_argument('-mp', '--min-p', type=float, default=None,
                         help='Default: 0.0.')
-    parser.add_argument('--presence-penalty', type=float, default=None,
+    parser.add_argument('-pres', '--presence-penalty', type=float, default=None,
                         help='Default: 1.5, or 0.0 with --think.')
-    parser.add_argument('--repeat-penalty', type=float, default=None,
+    parser.add_argument('-rpen', '--repeat-penalty', type=float, default=None,
                         help='Repetition penalty. Default: 1.0.')
-    parser.add_argument('--max-tokens', type=int, default=0,
+    parser.add_argument('-mtok', '--max-tokens', type=int, default=0,
                         help='Maximum reply tokens. 0 uses the rest of the context window and does not '
                              'increase memory use. Default: %(default)s')
-    parser.add_argument('--no-check', action='store_true', help='Skip validating the config with dgenerate.')
-    parser.add_argument('--max-repairs', type=int, default=2,
+    parser.add_argument('-nc', '--no-check', action='store_true', help='Skip validating the config with dgenerate.')
+    parser.add_argument('-mrep', '--max-repairs', type=int, default=2,
                         help='How many times to ask the model to fix a config dgenerate rejects. Default: %(default)s')
-    parser.add_argument('--show-context', action='store_true', help='Print the retrieved context to stderr.')
-    parser.add_argument('--offline', action='store_true', help='Only use models already in the Hugging Face cache.')
-    parser.add_argument('--no-link-tools', action='store_true',
-                        help='Do not offer fetch_link; the model cannot request CivitAI or Hugging Face lookups.')
-    parser.add_argument('--progress-plain', default='', type=_control_code, metavar='CODE',
+    parser.add_argument('-sctx', '--show-context', action='store_true', help='Print the retrieved context to stderr.')
+    parser.add_argument('-ofm', '--offline-mode', action='store_true',
+                        help='Only use models already in the Hugging Face cache. '
+                             'The "fetch_link" tool lists Hugging Face files already in that cache and does not call the Hub. '
+                             'A quant that is not cached is not listed, so the example file is kept. '
+                             'The "fetch_link" tool does not fetch a CivitAI link or any other URL. '
+                             'A CivitAI page is not in the local cache, so the config is written from the request '
+                             'and the retrieved examples.')
+    parser.add_argument('-nlt', '--no-link-tools', action='store_true',
+                        help='Do not offer the "fetch_link" tool; the model cannot request CivitAI or Hugging Face lookups.')
+    parser.add_argument('-ppl', '--progress-plain', default='', type=_control_code, metavar='CODE',
                         help='Terminal color before status text. Off by default. '
                              r'Reset with \033[0m.')
-    parser.add_argument('--progress-thought', default='', type=_control_code, metavar='CODE',
+    parser.add_argument('-pth', '--progress-thought', default='', type=_control_code, metavar='CODE',
                         help=r'Terminal color before reasoning. Off by default. Green is \033[32m.')
-    parser.add_argument('--progress-talk', default='', type=_control_code, metavar='CODE',
+    parser.add_argument('-ptk', '--progress-talk', default='', type=_control_code, metavar='CODE',
                         help=r"Terminal color before the model's reply. Off by default. Cyan is \033[36m.")
-    parser.add_argument('--progress-tool', default='', type=_control_code, metavar='CODE',
+    parser.add_argument('-ptl', '--progress-tool', default='', type=_control_code, metavar='CODE',
                         help=r'Terminal color before a tool call. Off by default. Yellow is \033[33m.')
     parser.add_argument('-v', '--verbose', action='store_true', help='Show llama.cpp output.')
     return parser
@@ -292,7 +298,7 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
         return parser.return_code
     _models.set_progress_styles(
         args.progress_plain, args.progress_thought, args.progress_tool, args.progress_talk)
-    args.offline = args.offline or local_files_only
+    args.offline = args.offline_mode or local_files_only
     if not _catalog.xllamacpp_installed():
         log('error: xllamacpp is not installed. Install it with: pip install dgenerate[xllamacpp]')
         return 1
@@ -328,8 +334,9 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
     files = _prompt.request_files(request, os.getcwd(), run_dir)
     link_text = request + ('\n' + editor if editor else '')
     request_links = _link_tools.find_link_urls(link_text)
-    # Tools replace streaming. The config check is always offered; fetch_link only with a URL.
-    use_link_tools = not args.offline and not args.no_link_tools and bool(request_links)
+    # Tools replace streaming. The config check is always offered. fetch_link stays
+    # available offline and reads the Hugging Face cache.
+    use_link_tools = not args.no_link_tools
     use_check_tool = not args.no_check
     tools = _link_tools.tool_definitions(fetch=use_link_tools, check=use_check_tool)
     machine = _prompt.machine_report()
@@ -366,7 +373,7 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
             log(context)
         log(f'Retrieved {len(context)} characters of context')
 
-        if use_link_tools:
+        if use_link_tools and request_links:
             log(f'Link tool enabled ({len(request_links)} URL(s) in the request). The model can call fetch_link.')
 
         user = _prompt.user_message(request, context, files, editor=editor)

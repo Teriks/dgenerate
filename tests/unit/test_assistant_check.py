@@ -849,6 +849,133 @@ class TestAssistantCheck(unittest.TestCase):
         ), memory=(True, 16.0, True, False))
         self.assertNotIn('memory flags', _messages(report))
 
+    def test_cached_hf_blob_is_not_listed_on_the_hub(self):
+        import dgenerate.assistant.check as assistant_check
+
+        listed = []
+        real_list = assistant_check._repo_file_list
+        real_cached = assistant_check._hub_cache_has
+        real_repo = assistant_check._repo_problem
+
+        def listing(repo, cache):
+            listed.append(repo)
+            cache[repo] = ['gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf']
+            return cache[repo]
+
+        assistant_check._repo_file_list = listing
+        assistant_check._hub_cache_has = lambda repo, revision, path: 'Q4_K_M' in path
+        assistant_check._repo_problem = lambda *args, **kwargs: None
+        try:
+            report = check_config(_cfg(
+                'Lightricks/LTX-2.5-Diffusers',
+                '--model-type ltx2 --dtype bfloat16',
+                '--model-sequential-offload',
+                '--text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF/blob/main/gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf"',
+                '--guidance-scales 1',
+                '--prompts "a fox walks"',
+            ), memory=(True, 24.0, True, False))
+        finally:
+            assistant_check._repo_file_list = real_list
+            assistant_check._hub_cache_has = real_cached
+            assistant_check._repo_problem = real_repo
+        self.assertNotIn('elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF', listed)
+        self.assertNotIn('has no file', _messages(report))
+
+    def test_offline_blob_must_be_in_the_local_cache(self):
+        import dgenerate.assistant.check as assistant_check
+        import dgenerate.assistant.link_tools as link_tools
+        import dgenerate.hfhub as hfhub
+
+        listed = []
+        real_list = assistant_check._repo_file_list
+        real_cached = assistant_check._hub_cache_has
+        real_files = link_tools._cached_repo_files
+
+        assistant_check._repo_file_list = lambda repo, cache: listed.append(repo)
+        assistant_check._hub_cache_has = lambda repo, revision, path: False
+        link_tools._cached_repo_files = lambda repo, revision: [
+            'dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf']
+        try:
+            with hfhub.offline_mode_context(True):
+                missing = check_config(_cfg(
+                    'Lightricks/LTX-2.5-Diffusers',
+                    '--model-type ltx2 --dtype bfloat16',
+                    '--model-sequential-offload',
+                    '--transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF/blob/main/dev/ltx-2.5-22b-dev-transformer-Q5_K_S.gguf',
+                    '--guidance-scales 3',
+                    '--prompts "a fox walks"',
+                ), memory=(True, 24.0, True, False))
+                kept = check_config(_cfg(
+                    'Lightricks/LTX-2.5-Diffusers',
+                    '--model-type ltx2 --dtype bfloat16',
+                    '--model-sequential-offload',
+                    '--transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF/blob/main/dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf',
+                    '--guidance-scales 3',
+                    '--prompts "a fox walks"',
+                ), memory=(True, 24.0, True, False))
+        finally:
+            assistant_check._repo_file_list = real_list
+            assistant_check._hub_cache_has = real_cached
+            link_tools._cached_repo_files = real_files
+        text = _messages(missing)
+        self.assertIn('has no file "dev/ltx-2.5-22b-dev-transformer-Q5_K_S.gguf"', text)
+        self.assertIn('dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf', text)
+        self.assertNotIn('has no file', _messages(kept))
+        self.assertEqual(listed, [])
+
+    def test_huggingface_file_cache_checks_the_hub_cache_only(self):
+        import os
+        import tempfile
+
+        import dgenerate.assistant.check as assistant_check
+        import huggingface_hub
+
+        with tempfile.NamedTemporaryFile(delete=False) as handle:
+            cached_path = handle.name
+        real_hub = huggingface_hub.try_to_load_from_cache
+
+        def hub(repo_id, filename, revision=None, **kwargs):
+            if filename.endswith('Q4_K_M.gguf'):
+                return cached_path
+            return None
+
+        huggingface_hub.try_to_load_from_cache = hub
+        try:
+            self.assertTrue(assistant_check._hub_cache_has(
+                'elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF', 'main',
+                'gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf'))
+            self.assertFalse(assistant_check._hub_cache_has(
+                'elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF', 'main',
+                'gemma4-12b-with-proj-ltx-2.5-Q8_0.gguf'))
+        finally:
+            huggingface_hub.try_to_load_from_cache = real_hub
+            os.remove(cached_path)
+
+    def test_ltx25_gemma4_q8_blob_does_not_exist(self):
+        report = check_config(_cfg(
+            'Lightricks/LTX-2.5-Diffusers',
+            '--model-type ltx2 --dtype bfloat16',
+            '--model-sequential-offload',
+            '--transformer https://huggingface.co/realrebelai/LTX-2.5_GGUFs/blob/main/LTX-2.5-Distilled-Q8_0.gguf',
+            '--text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF/blob/main/gemma4-12b-with-proj-ltx-2.5-Q8_0.gguf"',
+            '--guidance-scales 1 --video-fps 24',
+            '--prompts "a fox walks"',
+        ), memory=(True, 24.0, True, False))
+        text = _messages(report)
+        self.assertIn('has no file "gemma4-12b-with-proj-ltx-2.5-Q8_0.gguf"', text)
+        self.assertIn('gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf', text)
+        self.assertIn('gemma4-12b-with-proj-ltx-2.5-Q5_K_M.gguf', text)
+        self.assertNotIn('has no file "LTX-2.5-Distilled-Q8_0.gguf"', text)
+        kept = check_config(_cfg(
+            'Lightricks/LTX-2.5-Diffusers',
+            '--model-type ltx2 --dtype bfloat16',
+            '--model-sequential-offload',
+            '--text-encoders "Gemma4UnifiedForConditionalGeneration;model=https://huggingface.co/elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF/blob/main/gemma4-12b-with-proj-ltx-2.5-Q4_K_M.gguf"',
+            '--guidance-scales 1',
+            '--prompts "a fox walks"',
+        ), memory=(True, 24.0, True, False))
+        self.assertNotIn('has no file', _messages(kept))
+
     def test_memory_check_always_runs(self):
         report = check_config(_cfg(
             'black-forest-labs/FLUX.2-klein-4B',

@@ -415,6 +415,62 @@ def _repo_file_list(repo: str, cache: dict) -> list[str] | None:
     return cache[repo]
 
 
+_HF_BLOB = re.compile(
+    r'https?://(?:www\.)?huggingface\.co/'
+    r'(?P<repo_id>[\w.-]+/[\w.-]+)/(?P<kind>blob|resolve)/(?P<revision>[^/]+)/'
+    r'(?P<path>[^?\s"\'<>]+)')
+
+
+def _huggingface_blob_files(values) -> list[tuple[str, str, str]]:
+    """(repo id, revision, path) for every Hugging Face blob or resolve URL."""
+    found = []
+    seen = set()
+    for value in values:
+        if not isinstance(value, str) or 'huggingface.co' not in value:
+            continue
+        for match in _HF_BLOB.finditer(value):
+            path = match.group('path').rstrip('/')
+            item = (match.group('repo_id'), match.group('revision'), path)
+            if item not in seen:
+                seen.add(item)
+                found.append(item)
+    return found
+
+
+def _hub_cache_has(repo: str, revision: str, path: str) -> bool:
+    """Whether a model file is already in the Hugging Face hub cache. This does not download."""
+    import huggingface_hub
+    try:
+        found = huggingface_hub.try_to_load_from_cache(
+            repo_id=repo, filename=path, revision=revision or None)
+    except Exception:
+        return False
+    return isinstance(found, str) and os.path.isfile(found)
+
+
+def _offline_cache_problem(repo: str, revision: str, path: str) -> str | None:
+    """
+    Reject a blob or resolve file that is not in the local hub snapshot.
+
+    The snapshot is not the whole repo. The message says the file is not cached.
+    """
+    from dgenerate.assistant.link_tools import _cached_repo_files
+
+    name = path.replace('\\', '/')
+    files = _cached_repo_files(repo, revision or None)
+    if name in files or any(item == name or item.endswith('/' + name) for item in files):
+        return None
+    weights = [item for item in files if item.endswith(('.safetensors', '.bin', '.pt', '.gguf'))]
+    shown = ', '.join(weights[:12]) + (', ...' if len(weights) > 12 else '')
+    if shown:
+        return (
+            f'Offline. The local Hugging Face cache for "{repo}" has no file "{name}". '
+            f'Cached weight files are: {shown}. Keep one of those files.')
+    return (
+        f'Offline. "{name}" is not in the local Hugging Face cache for "{repo}". '
+        'Keep the example file.')
+
+
 def _weight_name_problem(repo: str, weight_name: str | None, subfolder: str | None, cache: dict) -> str | None:
     if not weight_name or os.path.exists(repo):
         return None
@@ -1009,6 +1065,19 @@ def check_config(text: str, memory: tuple | None = None) -> dict:
                         _weight_name_problem(repo, weight_name, subfolder, repo_files)
                     if uri_problem:
                         errors.append({'line': line, 'message': uri_problem})
+                for repo, revision, path in _huggingface_blob_files(argv):
+                    if _hub_cache_has(repo, revision, path):
+                        continue
+                    import dgenerate.hfhub as _hfhub
+                    if _hfhub.is_offline_mode():
+                        offline_problem = _offline_cache_problem(repo, revision, path)
+                        if offline_problem:
+                            errors.append({'line': line, 'message': offline_problem})
+                        continue
+                    subfolder, _, name = path.rpartition('/')
+                    blob_problem = _weight_name_problem(repo, name, subfolder or None, repo_files)
+                    if blob_problem:
+                        errors.append({'line': line, 'message': blob_problem})
                 model_path = config.model_path or ''
                 if model_path.lower().endswith('.gguf'):
                     errors.append({
