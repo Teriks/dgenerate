@@ -126,8 +126,12 @@ and a quantized text encoder use the both-quantized line and its offload, with \
 no --quantizer. If the user names --model-sequential-offload, \
 --model-cpu-offload, or --model-group-offload, write the flag they named. \
 If they name a quantizer, write it, and still write the offload from the \
-matching line unless they also named an offload. Follow the documented \
-constraints on output size, frame counts, and guidance.
+matching line unless they also named an offload. The tier line is the plan \
+for the example size and video length, which is the baseline. A larger \
+resolution or a longer video uses more memory and may need a stronger offload \
+on a smaller GPU. A quantized file \
+does not remove that cost. Follow the Resolution rule in the Machine section, \
+then the documented constraints on output size, frame counts, and guidance.
 - Copy Hugging Face repo names (org/name) exactly as they appear in the reference material. \
 Never invent a repo or change its organization or name. Do not use --model-type z-image-omni; \
 Z-Image-Omni-Base is not released on Hugging Face yet. A repo and a --model-type from \
@@ -170,7 +174,10 @@ URI argument. --loras accepts only scale, revision, subfolder, weight-name, \
 and component. token= is valid only on --textual-inversions.
 - The Machine section is the memory plan for this computer. Use the tier that \
 matches its GiB: 8, 12, 16, 24, or 32 GiB and above. Do not write a total_memory \
-check or an {{% if %}} block that picks the flags. SD3 full checkpoints use \
+check or an {{% if %}} block that picks the flags. The tier line is the plan \
+for the example size and video length, the baseline. A larger resolution or \
+a longer video may need a stronger offload on this GPU. Follow the Resolution \
+rule in that section. SD3 full checkpoints use \
 8-bit, not 4-bit, on the tiers that quantize them. Z-Image full checkpoints are \
 not quantized. Hunyuan-DiT (--model-type hydit) gets no quantizer and no offload. \
 An SDNQ checkpoint does not get a second --quantizer. \
@@ -1375,7 +1382,8 @@ def memory_problem(model_type: str, model_path: str, *,
 
     An offload satisfies a quantizer-only row, because it also fits. A quantizer
     does not satisfy an offload row. Text-encoder-only quantization does not
-    satisfy a global quantizer.
+    satisfy a global quantizer. The row is the example-size baseline. A larger
+    resolution or a longer video is the Resolution rule in the machine plan.
     """
     spec = _memory_spec(memory_kind(model_type, model_path, transformer, text_encoders, control_loras),
                         cuda, gib, bitsandbytes, sdnq)
@@ -1475,10 +1483,24 @@ def offload_plan(cuda: bool, gib: float, bitsandbytes: bool, sdnq: bool) -> str:
         'quantized, for example Q4 GGUF for both: use the both-quantized line. '
         'Write those files and the offload on that line. Do not pass --quantizer.',
         'The user named --model-sequential-offload, --model-cpu-offload, or '
-        '--model-group-offload: write the flag they named. Still follow the quantizer '
+        '--model-group-offload: write the flag they named, unless the Resolution rule '
+        'calls for a stronger one on this GPU. Still follow the quantizer '
         'part of the matching line unless they also named a quantizer or a quantized file.',
         'The user named a quantizer such as bnb or sdnq: write that quantizer, and still '
         'write the offload from the matching line unless they also named an offload.',
+        'Resolution: each tier line is for that model\'s usual size and, for video, its usual '
+        'length. That is the baseline. A larger resolution or a longer video uses more memory. '
+        'Doubling each side is about four times the pixels, and a longer clip keeps those frames '
+        'in memory. Quantizing the weights, including an 8-bit Comfy quant, FP8, NVFP4, or a GGUF, '
+        'does not remove that cost. A file that fits at the baseline can still exceed 16 GiB at a '
+        'larger resolution, such as 2048, or at a longer video length. When the request is above '
+        'the baseline, step the offload up to match this computer. '
+        '--model-sequential-offload is the strongest, then --model-group-offload, then '
+        '--model-cpu-offload. On 8, 12, and 16 GiB, above the baseline usually means the stronger '
+        'offload, often --model-sequential-offload, even when the baseline line is only a quantizer '
+        'or --model-cpu-offload. On 24 GiB and above the tier line often still fits. A still image '
+        'above the baseline also gets --vae-tiling. Video models do not take --vae-tiling, so a '
+        'larger frame or a longer video steps the offload up instead.',
         block('krea2, quantized transformer and quantized text encoder', 'krea2-packed', 'No quantizer.'),
         block(
             'krea2 otherwise, and wan, wan-animate, wan-animate-2, ltx2, hyvideo-15, '

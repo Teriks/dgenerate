@@ -342,6 +342,11 @@ class TestAssistantPrompt(unittest.TestCase):
         self.assertIn('s-cascade', plan)
         self.assertIn('every tier: --model-cpu-offload and --second-model-cpu-offload. No quantizer.', plan)
         self.assertIn('every tier: no quantizer and no offload.', plan)
+        self.assertIn('That is the baseline.', plan)
+        self.assertIn('can still exceed 16 GiB at a larger resolution, such as 2048', plan)
+        self.assertIn('or at a longer video length', plan)
+        self.assertIn('--vae-tiling', plan)
+        self.assertIn('calls for a stronger one', plan)
 
         roomy = offload_plan(True, 32, True, True)
         self.assertIn('This computer has 32.0 GiB, the 32 GiB and above tier.', roomy)
@@ -391,6 +396,25 @@ class TestAssistantPrompt(unittest.TestCase):
         self.assertIsNone(memory_problem(
             'hydit', 'Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers',
             cuda=True, gib=16, bitsandbytes=True, sdnq=False))
+
+    def test_resolution_is_in_the_system_prompt(self):
+        plan = offload_plan(True, 16, True, False)
+        self.assertIn('each tier line is for that model\'s usual size', plan)
+        self.assertIn('A larger resolution or a longer video uses more memory', plan)
+        self.assertIn('--model-sequential-offload is the strongest', plan)
+        self.assertIn('On 24 GiB and above the tier line often still fits', plan)
+        self.assertIn('Video models do not take --vae-tiling', plan)
+        system = system_message('6.0.0', machine='### machine\n' + plan)
+        self.assertIn('example size and video length, which is the baseline', system)
+        self.assertIn('A larger resolution or a longer video uses more memory', system)
+        for request in (
+            'krea 2 at 2048 with the int8 comfy quant',
+            'flux dev at 2048x2048',
+            'sdxl wallpaper, 4k',
+            'wan clip at 1280x720',
+            'qwen image 1536x1536',
+        ):
+            self.assertNotIn('This request is above the example size', first_draft_recipes(request), request)
 
     def test_first_draft_states_the_memory_flags(self):
         klein = first_draft_recipes(
