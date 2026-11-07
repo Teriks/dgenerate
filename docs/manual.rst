@@ -18027,7 +18027,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [51986638377387]
+            Value: [34629655227793]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
