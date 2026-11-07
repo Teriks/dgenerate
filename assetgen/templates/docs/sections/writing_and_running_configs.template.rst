@@ -464,11 +464,8 @@ to an explicit path.
 
 See the directives help output for more details: ``\download --help``
 
-If you plan to download many large models to the web cache in
-this manner you may wish to adjust the global cache expiry time
-so that they exist in the cache longer than the default of 12 hours.
-
-You can see how to do this in the section `File Cache Control`_
+Model files downloaded to the web cache are kept by default. Every other cached file
+expires after 12 hours. You can change this in the section `File Cache Control`_
 
 This directive is primarily intended to download models and or other
 binary file formats such as images and will raise an error if it encounters

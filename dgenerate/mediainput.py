@@ -33,6 +33,7 @@ import av
 import safetensors.torch
 import torch
 
+import dgenerate.filetypes as _filetypes
 import dgenerate.image as _image
 import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.messages as _messages
@@ -616,62 +617,8 @@ def get_supported_animated_image_mimetypes() -> list[str]:
     return ['image/gif', 'image/webp', 'image/apng']
 
 
-def _get_supported_read_video_codecs():
-    supported_codecs = []
-
-    for codec_name in av.codecs_available:
-        try:
-            codec = av.codec.Codec(codec_name, 'r')
-        except:
-            continue
-        if codec.type == 'video':
-            supported_codecs.append(codec_name)
-
-    return supported_codecs
-
-
 def _get_read_video_file_extensions() -> list[str]:
-    common_extensions = {
-        "mp4": ["h264", "hevc", "mpeg4"],
-        "mkv": ["h264", "hevc", "mpeg4", "vp8", "vp9"],
-        "avi": ["mpeg4", "msmpeg4v3"],
-        "mov": ["h264", "mpeg4"],
-        "flv": ["flv1"],
-        "wmv": ["wmv1", "wmv2", "wmv3"],
-        "webm": ["vp8", "vp9"],
-        "m4v": ["h264", "mpeg4"],
-        "ts": ["h264", "hevc", "mpeg2video"],
-        "mpg": ["mpeg1video", "mpeg2video"],
-        "3gp": ["h263"],
-        "ogv": ["theora"],
-        "rm": ["rv10", "rv20", "rv30", "rv40"],
-        "asf": ["msmpeg4v1", "msmpeg4v2", "msmpeg4v3", "wmv1", "wmv2", "wmv3"],
-        "f4v": ["h264"],
-        "h264": ["h264"],
-        "hevc": ["hevc"],
-        "mjpeg": ["mjpeg", "mjpeg2000"],
-        "vp8": ["vp8"],
-        "vp9": ["vp9"],
-        "vob": ["mpeg2video"],
-        "divx": ["mpeg4"],
-        "xvid": ["mpeg4"],
-        "dv": ["dvvideo"],
-        "amv": ["amv"],
-        "mxf": ["mjpeg"],
-        "m2ts": ["h264", "mpeg2video"],
-        "mpeg": ["mpeg1video", "mpeg2video"],
-        "mpv": ["mpeg1video", "mpeg2video"]
-    }
-
-    supported_codecs = _get_supported_read_video_codecs()
-    supported_extensions = set()
-
-    for ext, codecs in common_extensions.items():
-        for codec in codecs:
-            if codec in supported_codecs:
-                supported_extensions.add(ext)
-
-    return list(supported_extensions)
+    return _filetypes.video_read_extensions()
 
 
 def get_supported_animation_reader_formats():
@@ -680,13 +627,7 @@ def get_supported_animation_reader_formats():
 
     :return: list of file extensions.
     """
-    PIL.Image.init()
-
-    return _get_read_video_file_extensions() + [
-        ext for ext in (ext.lstrip('.').lower() for ext, file_format
-                        in PIL.Image.EXTENSION.items() if
-                        file_format in PIL.Image.OPEN) if
-        ext in {'gif', 'webp', 'apng'}]
+    return _filetypes.animation_read_extensions()
 
 
 def get_supported_image_formats():
@@ -697,9 +638,7 @@ def get_supported_image_formats():
 
     :return: list of file extensions
     """
-    PIL.Image.init()
-
-    return [ext.lstrip('.').lower() for ext, fmt in PIL.Image.EXTENSION.items() if fmt in PIL.Image.OPEN]
+    return _filetypes.image_read_extensions()
 
 
 def get_supported_static_image_mimetypes() -> list[str]:
@@ -799,7 +738,7 @@ def get_supported_tensor_formats() -> list[str]:
     
     :return: list of file extensions without periods
     """
-    return ['pt', 'pth', 'safetensors']
+    return _filetypes.tensor_extensions()
 
 
 def get_supported_tensor_mimetypes() -> list[str]:

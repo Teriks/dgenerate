@@ -27,10 +27,8 @@ directive ``\civitai_links`` from a config file or the Console UI.
 
 You can also `(Right Click) -> Copy Link Address` on a CivitAI models download link to get the necessary URL.
 
-If you plan to download many large models to the web cache in this manner you may wish
-to adjust the global cache expiry time so that they exist in the cache longer than the default of 12 hours.
-
-You can see how to change the cache expiry time in this section `File Cache Control`_
+Model files downloaded to the web cache are kept by default. Every other cached file
+expires after 12 hours. You can change this in the section `File Cache Control`_
 
 If you set the environmental variable ``CIVIT_AI_TOKEN``, your token will be appended to
 CivitAI API links automatically, this example appends it manually.

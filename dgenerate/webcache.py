@@ -31,7 +31,11 @@ import dgenerate.filecache as _filecache
 import dgenerate.textprocessing as _textprocessing
 
 # noinspection PyUnresolvedReferences
-from dgenerate.filecache import WebFileCacheOfflineModeException
+from dgenerate.filecache import (
+    WebCacheExpiry,
+    WebCacheExpiryParseError,
+    WebFileCacheOfflineModeException,
+)
 
 __doc__ = """
 Single point of access to the global dgenerate web cache.
@@ -59,15 +63,30 @@ def get_web_cache_directory() -> str:
 
 
 try:
-    cache = _filecache.WebFileCache(
-        os.path.join(get_web_cache_directory(), 'cache.db'),
-        get_web_cache_directory(),
-        expiry_delta=_textprocessing.parse_timedelta(
-            os.environ.get('DGENERATE_WEB_CACHE_EXPIRY_DELTA', 'hours=12').strip('"\'')))
+    _expiry_delta = WebCacheExpiry.parse(
+        os.environ.get(
+            'DGENERATE_WEB_CACHE_EXPIRY_DELTA',
+            _filecache.DEFAULT_WEB_CACHE_EXPIRY))
 except _textprocessing.TimeDeltaParseError as e:
     print(f'DGENERATE_WEB_CACHE_EXPIRY_DELTA environmental variable not parseable: {e}',
           file=sys.stderr, flush=True)
     sys.exit(1)
+
+try:
+    _partial_expiry_delta = _filecache.parse_partial_expiry_delta(
+        os.environ.get(
+            'DGENERATE_WEB_CACHE_PARTIAL_EXPIRY_DELTA',
+            _filecache.DEFAULT_WEB_CACHE_PARTIAL_EXPIRY))
+except _textprocessing.TimeDeltaParseError as e:
+    print(f'DGENERATE_WEB_CACHE_PARTIAL_EXPIRY_DELTA environmental variable not parseable: {e}',
+          file=sys.stderr, flush=True)
+    sys.exit(1)
+
+cache = _filecache.WebFileCache(
+    os.path.join(get_web_cache_directory(), 'cache.db'),
+    get_web_cache_directory(),
+    expiry_delta=_expiry_delta,
+    partial_expiry_delta=_partial_expiry_delta)
 
 
 # civitai.red is a reverse proxy of civitai.com. Downloads on either host

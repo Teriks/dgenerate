@@ -32,6 +32,7 @@ import safetensors.torch
 import torch
 
 import dgenerate.filelock as _filelock
+import dgenerate.filetypes as _filetypes
 
 __doc__ = """
 Media output, handles writing videos, animations, and tensor files (latents). 
@@ -202,11 +203,7 @@ def get_supported_animation_writer_formats():
 
     :return: list of file extensions.
     """
-    PIL.Image.init()
-
-    return ['mp4'] + [ext for ext in (ext.lstrip('.').lower() for ext, file_format
-                                      in PIL.Image.EXTENSION.items() if file_format in PIL.Image.SAVE_ALL) if
-                      ext in {'gif', 'webp', 'apng', 'png'}]
+    return _filetypes.animation_write_extensions()
 
 
 def get_supported_static_image_formats():
@@ -217,9 +214,7 @@ def get_supported_static_image_formats():
 
     :return: list of file extensions
     """
-    PIL.Image.init()
-
-    return [ext.lstrip('.').lower() for ext, fmt in PIL.Image.EXTENSION.items() if fmt in PIL.Image.SAVE]
+    return _filetypes.image_write_extensions()
 
 
 class UnknownAnimationFormatError(Exception):
@@ -464,7 +459,7 @@ def get_supported_tensor_formats() -> list[str]:
     
     :return: List of supported tensor formats
     """
-    return ["pt", "pth", "safetensors"]
+    return _filetypes.tensor_extensions()
 
 
 def save_tensor_file(tensor: torch.Tensor | numpy.ndarray,

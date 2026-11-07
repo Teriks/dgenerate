@@ -366,8 +366,19 @@ _DEFAULT_INIT_DGEN_CONTENT = inspect.cleandoc("""
     # \\env DGENERATE_TORCH_COMPILE=1
     # \\env DGENERATE_OFFLINE_MODE=1
 
-    # Cache expiry (e.g. "days=7;hours=12" or "forever")
-    # \\env DGENERATE_WEB_CACHE_EXPIRY_DELTA=days=7
+    # Cache expiry. The default is "models;forever,other;hours=12":
+    # model files are kept, and every other file expires after 12 hours.
+    # One interval for every file: "days=7", "days=1;hours=6", or "forever".
+    # Rules: "models;forever,images;days=1,videos;days=2,.png;hours=1,other;hours=12"
+    # models, images, and videos match every file of that kind dgenerate can open.
+    # An extension overrides those. other matches anything left over.
+    # A file that matches no rule is kept.
+    # \\env DGENERATE_WEB_CACHE_EXPIRY_DELTA=models;forever,other;hours=12
+
+    # Interrupted downloads of files that would be kept forever.
+    # One interval, not a rule list. The default is "hours=12".
+    # Examples: "hours=12", "days=2", "days=1;hours=6", or "forever".
+    # \\env DGENERATE_WEB_CACHE_PARTIAL_EXPIRY_DELTA=hours=12
 
     # Add your initialization commands below:
 

@@ -14,17 +14,44 @@ files downloaded by the ``\download`` directive, ``download`` template function,
 files used by image processors in the directory ``$DGENERATE_CACHE/web``
 
 Files are cleared from the web cache automatically after an expiry time upon running dgenerate or
-when downloading additional files, the default value is after 12 hours.
+when downloading additional files. The default is ``models;forever,other;hours=12``: model files
+are kept, and every other file is removed after 12 hours.
 
 This can be controlled with the environmental variable ``DGENERATE_WEB_CACHE_EXPIRY_DELTA``.
 
-The value of ``DGENERATE_WEB_CACHE_EXPIRY_DELTA`` is that of the named arguments of pythons
-`datetime.timedelta <https://docs.python.org/3/library/datetime.html#timedelta-objects>`_ class
-seperated by semicolons.
+The value is either one expiry interval for every cached file, or a comma-separated list of rules.
+Intervals use the named arguments of Python's
+`datetime.timedelta <https://docs.python.org/3/library/datetime.html#timedelta-objects>`_ class,
+separated by semicolons. This is the same syntax accepted by
+:py:func:`dgenerate.textprocessing.parse_timedelta`.
 
 For example: ``DGENERATE_WEB_CACHE_EXPIRY_DELTA="days=5;hours=6"``
 
-Specifying ``"forever"`` or an empty string will disable cache expiration for every downloaded file.
+Specifying ``"forever"`` or an empty string disables cache expiration for every downloaded file.
+
+A rule list gives different intervals to different kinds of files. Each rule is a selector,
+a semicolon, and an interval:
+
+``DGENERATE_WEB_CACHE_EXPIRY_DELTA="models;forever,images;days=1,videos;days=2,.png;hours=1,other;hours=12"``
+
+* ``models`` matches every model file dgenerate can open: ``.safetensors``, ``.gguf``,
+  ``.pt``, ``.pth``, ``.bin``, ``.ckpt``, ``.param``, ``.yaml``, and ``.yml``.
+* ``images`` matches every image format dgenerate can read.
+* ``videos`` matches every video format dgenerate can read.
+* An extension such as ``.png`` matches that extension and overrides ``models``, ``images``,
+  and ``videos`` for it. Several timedelta arguments are written with semicolons, for example
+  ``.jpg;days=1;hours=6``.
+* ``other`` matches files that no other rule matched.
+
+A file that matches no rule is left in the cache. ``other`` is how those files receive an expiry.
+When a file matches more than one of ``models``, ``images``, and ``videos``, the earliest of
+those rules is used.
+
+An interrupted download whose finished file would be kept forever is removed after
+``DGENERATE_WEB_CACHE_PARTIAL_EXPIRY_DELTA``. The default is ``hours=12``. The value is one
+interval, such as ``days=2`` or ``days=1;hours=6``, and a rule list is not accepted.
+``forever`` or an empty string keeps that partial. Other interrupted downloads follow the
+rule for their finished file.
 
 spaCy Model Cache
 -----------------

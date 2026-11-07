@@ -38,8 +38,10 @@ import pyrfc6266
 import requests
 import tqdm
 
+import dgenerate.filetypes as _filetypes
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
+import dgenerate.textprocessing as _textprocessing
 
 __doc__ = """
 On disk file cache implementation and primitives.
@@ -422,6 +424,7 @@ class KeyValueStore:
             self.file_lock.acquire()
             try:
                 self.connection = sqlite3.connect(self.db_path)
+                _register_cache_sql(self.connection)
                 self.cursor = self.connection.cursor()
                 self.cursor.execute(
                     "CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT, creation_date TIMESTAMP)")
@@ -561,6 +564,452 @@ class KeyValueStore:
             deleted_rows = self.cursor.fetchall()
             self.cursor.execute("DELETE FROM store WHERE creation_date < ?", (cutoff_date,))
             return deleted_rows
+
+    def delete_matching(self, where_sql: str, params: typing.Sequence) -> list[tuple[str, str]]:
+        """
+        Delete rows matched by a SQL predicate.
+
+        The predicate sees ``key``, ``value``, ``creation_date``, ``eligible``,
+        and ``ext``. ``eligible`` is 0 when ``value`` is not a cache entry.
+        ``ext`` is the file extension stored in that entry.
+
+        :param where_sql: SQL boolean expression.
+        :param params: Values bound to ``where_sql``.
+        :return: The keys and values that were deleted.
+        """
+        extension_sql = _cache_value_extension_sql()
+        select_sql = f"""
+            WITH keyed AS (
+                SELECT key, value, creation_date,
+                    CASE
+                        WHEN value IS NULL THEN 0
+                        WHEN json_valid(value) = 0 THEN 0
+                        WHEN json_type(value) != 'object' THEN 0
+                        WHEN json_type(value, '$.path') IS NULL THEN 0
+                        WHEN json_type(value, '$.metadata') IS NULL THEN 0
+                        ELSE 1
+                    END AS eligible,
+                    {extension_sql} AS ext
+                FROM store
+            )
+            SELECT key, value FROM keyed WHERE {where_sql}
+        """
+        with self:
+            self.cursor.execute(select_sql, params)
+            deleted = self.cursor.fetchall()
+            if deleted:
+                self.cursor.executemany(
+                    "DELETE FROM store WHERE key=?",
+                    [(key,) for key, _ in deleted])
+            return deleted
+
+
+def _stored_datetime(value) -> datetime.datetime | None:
+    if value is None or value == '':
+        return None
+    if isinstance(value, datetime.datetime):
+        return value
+    if isinstance(value, datetime.date):
+        return datetime.datetime.combine(value, datetime.datetime.min.time())
+    try:
+        return datetime.datetime.fromisoformat(str(value).strip())
+    except ValueError:
+        return None
+
+
+def _normalize_extension(ext: str | None) -> str:
+    if not ext:
+        return ''
+    text = str(ext).strip().lower()
+    if text.startswith('*.'):
+        text = text[2:]
+    elif text.startswith('.'):
+        text = text[1:]
+    return text
+
+
+def _extension_from(path: str | None = None,
+                    metadata: dict | None = None,
+                    ext: str | None = None) -> str:
+    if ext:
+        return ext
+    if isinstance(metadata, dict):
+        filename = metadata.get('filename') or ''
+        found = os.path.splitext(str(filename))[1]
+        if found:
+            return found
+    if path:
+        return os.path.splitext(str(path))[1]
+    return ''
+
+
+# str.isspace() ordinals. SQLite trim() otherwise removes only the ASCII space,
+# which is a smaller set than str.strip().
+_SQL_SPACE = '||'.join(
+    f'char({code})' for code in (
+        0x9, 0xa, 0xb, 0xc, 0xd, 0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x85, 0xa0,
+        0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006,
+        0x2007, 0x2008, 0x2009, 0x200a, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000,
+    ))
+
+
+def _sql_lower(value):
+    if value is None:
+        return None
+    return str(value).lower()
+
+
+def _sql_created_before(created, cutoff) -> int:
+    """
+    Whether a stored timestamp is older than ``cutoff``.
+
+    ``cutoff`` is null when the file is kept. An unreadable timestamp is kept.
+    """
+    if cutoff is None:
+        return 0
+    left = _stored_datetime(created)
+    right = _stored_datetime(cutoff)
+    if left is None or right is None:
+        return 0
+    return 1 if left < right else 0
+
+
+def _register_cache_sql(connection: sqlite3.Connection):
+    """Register the functions used by a compiled expiry delete."""
+    connection.create_function('dgenerate_lower', 1, _sql_lower)
+    connection.create_function('dgenerate_before', 2, _sql_created_before)
+
+
+def _cache_name_extension_sql(source: str) -> str:
+    """
+    SQL for ``_normalize_extension(os.path.splitext(source)[1])``.
+
+    The suffix comes from the last path component. A dot in an earlier
+    directory does not give an extensionless file an extension. ``source``
+    is a SQL expression.
+    """
+    norm = f"replace(ifnull({source}, ''), char(92), '/')"
+    base = f"replace({norm}, rtrim({norm}, replace({norm}, '/', '')), '')"
+    trimmed = f"ltrim({base}, '.')"
+    suffix = f"replace({trimmed}, rtrim({trimmed}, replace({trimmed}, '.', '')), '')"
+    dotted = f"trim('.' || {suffix}, {_SQL_SPACE})"
+    folded = f"dgenerate_lower({dotted})"
+    return (
+        "CASE "
+        f"WHEN instr({trimmed}, '.') = 0 THEN '' "
+        f"WHEN substr({folded}, 1, 1) = '.' THEN substr({folded}, 2) "
+        f"ELSE {folded} END"
+    )
+
+
+def _cache_value_extension_sql() -> str:
+    """
+    SQL for the extension of a cache ``value``.
+
+    A metadata filename supplies the extension when it has one. Otherwise the
+    stored path does. The result is empty when neither has an extension.
+    """
+    filename = _cache_name_extension_sql("json_extract(value, '$.metadata.filename')")
+    path = _cache_name_extension_sql("json_extract(value, '$.path')")
+    return (
+        "CASE WHEN json_type(value, '$.metadata') = 'object' "
+        f"THEN COALESCE(NULLIF({filename}, ''), {path}) "
+        f"ELSE {path} END"
+    )
+
+
+def _expiry_cutoff(delta: datetime.timedelta | None,
+                   now: datetime.datetime) -> datetime.datetime | None:
+    if delta is None or delta == datetime.timedelta.max:
+        return None
+    try:
+        return now - delta
+    except OverflowError:
+        return None
+
+
+# Default DGENERATE_WEB_CACHE_EXPIRY_DELTA value.
+# Model files are kept. Every other cached file expires after 12 hours.
+DEFAULT_WEB_CACHE_EXPIRY = 'models;forever,other;hours=12'
+
+# Default DGENERATE_WEB_CACHE_PARTIAL_EXPIRY_DELTA value.
+# An interrupted download of a file kept forever expires after 12 hours.
+DEFAULT_WEB_CACHE_PARTIAL_EXPIRY = 'hours=12'
+
+
+class WebCacheExpiryParseError(_textprocessing.TimeDeltaParseError):
+    """
+    Raised when a web cache expiry expression cannot be parsed.
+
+    This is a :py:class:`dgenerate.textprocessing.TimeDeltaParseError`, so callers
+    that already handle timedelta parse failures handle rule-list failures as well.
+    """
+    pass
+
+
+class WebCacheExpiry:
+    """
+    Expiry policy for :py:class:`WebFileCache`.
+
+    A policy is either one interval for every file, or a list of rules.
+    Intervals are parsed by :py:func:`dgenerate.textprocessing.parse_timedelta`,
+    so ``forever``, an empty interval, and ``datetime.timedelta`` arguments
+    such as ``days=1;hours=6`` are accepted.
+
+    Rule selectors are ``models``, ``images``, ``videos``, ``other``, or a file
+    extension such as ``.png``. ``model``, ``image``, and ``video`` are accepted
+    as the same selectors. An extension rule overrides a category rule. ``other``
+    applies only to files that no other rule matched. A file that matches nothing
+    is not expired.
+
+    ``models`` is every model file dgenerate can open:
+    ``.safetensors``, ``.gguf``, ``.pt``, ``.pth``, ``.bin``, ``.ckpt``,
+    ``.param``, ``.yaml``, and ``.yml``. ``images`` and ``videos`` are the image
+    and video formats dgenerate can read.
+    """
+
+    _CATEGORIES = {
+        'models': 'models',
+        'model': 'models',
+        'images': 'images',
+        'image': 'images',
+        'videos': 'videos',
+        'video': 'videos',
+        'other': 'other',
+    }
+
+    def __init__(self,
+                 uniform: datetime.timedelta | None = None,
+                 extensions: dict[str, datetime.timedelta] | None = None,
+                 categories: dict[str, datetime.timedelta] | None = None,
+                 other: datetime.timedelta | None = None):
+        self.uniform_delta = uniform
+        self._extensions = dict(extensions or {})
+        self._categories = dict(categories or {})
+        self._other = other
+
+    @property
+    def is_uniform(self) -> bool:
+        """
+        ``True`` when one interval applies to every cached file.
+
+        This is the historical ``DGENERATE_WEB_CACHE_EXPIRY_DELTA`` syntax.
+        """
+        return self.uniform_delta is not None
+
+    @classmethod
+    def for_timedelta(cls, delta: datetime.timedelta) -> 'WebCacheExpiry':
+        """
+        Policy that expires every file after ``delta``.
+
+        :param delta: Expiry interval.
+        :return: Uniform policy.
+        """
+        return cls(uniform=delta)
+
+    @classmethod
+    def coerce(cls, value) -> 'WebCacheExpiry':
+        """
+        Accept a policy, a ``datetime.timedelta``, or an expiry expression.
+
+        :param value: Policy value passed to :py:class:`WebFileCache`.
+        :return: Policy.
+        :raises TypeError: If ``value`` is not a supported type.
+        :raises WebCacheExpiryParseError: If a string cannot be parsed.
+        """
+        if isinstance(value, cls):
+            return value
+        if isinstance(value, datetime.timedelta):
+            return cls.for_timedelta(value)
+        if value is None or isinstance(value, str):
+            return cls.parse(value)
+        raise TypeError(
+            'expiry_delta must be a datetime.timedelta, an expiry expression, '
+            'or a WebCacheExpiry.')
+
+    @classmethod
+    def parse(cls, value: str | None) -> 'WebCacheExpiry':
+        """
+        Parse web cache expiry syntax.
+
+        These are one interval for every file:
+
+        * ``days=5;hours=6``
+        * ``hours=12``
+        * ``forever``
+        * an empty string
+
+        A comma-separated rule list assigns intervals by file kind:
+
+        ``models;forever,images;days=1,videos;days=2,other;hours=12``
+
+        ``.png;hours=1,.jpg;days=1;hours=6``
+
+        The text after the first semicolon of a rule is parsed by
+        :py:func:`dgenerate.textprocessing.parse_timedelta`.
+
+        :param value: Environment value or expression. Surrounding quotes are ignored.
+        :return: Policy.
+        :raises WebCacheExpiryParseError: On invalid syntax or an invalid interval.
+        """
+        if value is None:
+            return cls.for_timedelta(_textprocessing.parse_timedelta(None))
+
+        text = str(value).strip().strip('"\'')
+        if _is_legacy_expiry(text):
+            try:
+                return cls.for_timedelta(_textprocessing.parse_timedelta(text))
+            except _textprocessing.TimeDeltaParseError as e:
+                raise WebCacheExpiryParseError(e) from e
+
+        extensions: dict[str, datetime.timedelta] = {}
+        categories: dict[str, datetime.timedelta] = {}
+        other = None
+        for part in (piece.strip() for piece in text.split(',')):
+            if not part:
+                continue
+            selector, separator, spec = part.partition(';')
+            selector = selector.strip()
+            if not separator or not selector:
+                raise WebCacheExpiryParseError(
+                    f'Expiry rule "{part}" must be a selector and an interval '
+                    f'separated by a semicolon, for example "images;days=1" or '
+                    f'".png;hours=1". A single interval for every file has no '
+                    f'comma, for example "days=5;hours=6".')
+            delta = _parse_rule_interval(selector, spec)
+            category = cls._CATEGORIES.get(selector.lower())
+            if category == 'other':
+                other = delta
+                continue
+            if category is not None:
+                categories.pop(category, None)
+                categories[category] = delta
+                continue
+            extension = _selector_extension(selector)
+            extensions.pop(extension, None)
+            extensions[extension] = delta
+
+        return cls(extensions=extensions, categories=categories, other=other)
+
+    def delta_for(self,
+                  path: str | None = None,
+                  metadata: dict | None = None,
+                  ext: str | None = None) -> datetime.timedelta | None:
+        """
+        Expiry interval for a cached file.
+
+        :param path: Cached file path. Its extension is used when ``ext`` and
+            a metadata filename are not available.
+        :param metadata: Cache metadata. ``filename`` supplies the extension
+            when it has one.
+        :param ext: Extension, with or without a leading dot.
+        :return: Interval, or ``None`` when this file is not expired.
+        """
+        if self.is_uniform:
+            return self.uniform_delta
+
+        key = _normalize_extension(_extension_from(path, metadata, ext))
+        if key in self._extensions:
+            return self._extensions[key]
+        for category, delta in self._categories.items():
+            if key and key in _category_extensions(category):
+                return delta
+        return self._other
+
+    def _expired_where(self, now: datetime.datetime) -> tuple[str, list]:
+        """
+        SQL predicate and bound values for rows this policy expires.
+
+        Explicit extensions are tested before categories. Categories keep
+        their written order. ``forever`` and a file with no rule produce a
+        null cutoff, which does not match.
+        """
+        clauses = []
+        params: list = []
+        for extension, delta in self._extensions.items():
+            clauses.append('WHEN ext = ? THEN ?')
+            params.append(extension)
+            params.append(_expiry_cutoff(delta, now))
+        for category, delta in self._categories.items():
+            names = sorted(_category_extensions(category))
+            if not names:
+                continue
+            clauses.append(f"WHEN ext IN ({','.join('?' * len(names))}) THEN ?")
+            params.extend(names)
+            params.append(_expiry_cutoff(delta, now))
+        if clauses:
+            case = 'CASE ' + ' '.join(clauses) + ' ELSE ? END'
+        else:
+            case = 'CASE WHEN 0 THEN NULL ELSE ? END'
+        params.append(_expiry_cutoff(self._other, now))
+        return f'eligible = 1 AND dgenerate_before(creation_date, {case}) = 1', params
+
+
+def _is_legacy_expiry(text: str) -> bool:
+    if not text or text.lower() == 'forever':
+        return True
+    if ',' in text:
+        return False
+    pieces = [piece.strip() for piece in text.split(';') if piece.strip()]
+    if not pieces:
+        return True
+    return all('=' in piece and not piece.startswith('.') for piece in pieces)
+
+
+def parse_partial_expiry_delta(value: str = DEFAULT_WEB_CACHE_PARTIAL_EXPIRY) -> datetime.timedelta:
+    """
+    Parse ``DGENERATE_WEB_CACHE_PARTIAL_EXPIRY_DELTA``.
+
+    The value is one interval in the syntax accepted by
+    :py:func:`dgenerate.textprocessing.parse_timedelta`, such as ``hours=12``,
+    ``days=2``, or ``days=1;hours=6``. ``forever`` and an empty string keep
+    the partial. A rule list is not accepted.
+
+    :param value: Environment value. Surrounding quotes are ignored.
+        The default is :data:`DEFAULT_WEB_CACHE_PARTIAL_EXPIRY`.
+    :return: Expiry interval for an interrupted download whose finished file
+        would be kept forever.
+    :raises WebCacheExpiryParseError: On a rule list or an invalid interval.
+    """
+    text = str(value).strip().strip('"\'')
+    if not _is_legacy_expiry(text):
+        raise WebCacheExpiryParseError(
+            'DGENERATE_WEB_CACHE_PARTIAL_EXPIRY_DELTA accepts one interval, '
+            'for example "hours=12" or "days=2". A rule list is not accepted.')
+    try:
+        return _textprocessing.parse_timedelta(text)
+    except _textprocessing.TimeDeltaParseError as e:
+        raise WebCacheExpiryParseError(e) from e
+
+
+def _parse_rule_interval(selector: str, spec: str) -> datetime.timedelta:
+    try:
+        return _textprocessing.parse_timedelta(spec.strip())
+    except _textprocessing.TimeDeltaParseError as e:
+        raise WebCacheExpiryParseError(
+            f'Invalid expiry interval "{spec.strip()}" for "{selector}": {e}') from e
+
+
+def _selector_extension(selector: str) -> str:
+    if not selector.startswith('.') and not selector.startswith('*.'):
+        raise WebCacheExpiryParseError(
+            f'Unknown expiry selector "{selector}". '
+            f'Use models, images, videos, other, or an extension such as .png.')
+    extension = _normalize_extension(selector)
+    if not extension or any(character in extension for character in '\\/'):
+        raise WebCacheExpiryParseError(
+            f'Expiry extension "{selector}" is not a file extension.')
+    return extension
+
+
+def _category_extensions(category: str) -> frozenset[str]:
+    if category == 'models':
+        return _filetypes.model_extension_set()
+    if category == 'images':
+        return _filetypes.image_read_extension_set()
+    if category == 'videos':
+        return _filetypes.video_read_extension_set()
+    return frozenset()
 
 
 class CachedFile:
@@ -746,18 +1195,38 @@ class WebFileCache(FileCache):
     def __init__(self,
                  db_path: str,
                  cache_dir: str,
-                 expiry_delta: datetime.timedelta = datetime.timedelta(hours=12)):
+                 expiry_delta: datetime.timedelta | str | WebCacheExpiry = DEFAULT_WEB_CACHE_EXPIRY,
+                 partial_expiry_delta: datetime.timedelta | str = DEFAULT_WEB_CACHE_PARTIAL_EXPIRY):
         """
         Initializes the :py:class:`.WebFileCache` object with a key-value store
-        located at ``db_path``, a cache directory at ``cache_dir``, and an expiry delta.
+        located at ``db_path``, a cache directory at ``cache_dir``, and an expiry policy.
         If the cache directory doesn't exist, it creates it. It also attempts to clear old files.
+
+        ``expiry_delta`` accepts a ``datetime.timedelta``, an expiry expression, or a
+        :py:class:`WebCacheExpiry`. The default is ``models;forever,other;hours=12``:
+        model files are kept, and every other file expires after 12 hours.
+        A timedelta or a single interval such as ``days=5;hours=6`` expires every file,
+        which is the historical behavior. Intervals in a rule list are parsed by
+        :py:func:`dgenerate.textprocessing.parse_timedelta`.
 
         :param db_path: The path to the key-value store database.
         :param cache_dir: The directory where the cache files are stored.
-        :param expiry_delta: The time delta for file expiry.
+        :param expiry_delta: Expiry interval or :py:class:`WebCacheExpiry` policy.
+            When the policy is a rule list, :py:attr:`expiry_delta` is ``None`` and
+            :py:attr:`expiry` holds the policy.
+        :param partial_expiry_delta: Interval for an interrupted download whose
+            finished file would be kept forever. A string uses the same single
+            interval syntax as :py:func:`dgenerate.textprocessing.parse_timedelta`.
+            The default is :data:`DEFAULT_WEB_CACHE_PARTIAL_EXPIRY`.
         """
         super().__init__(db_path, cache_dir)
-        self.expiry_delta = expiry_delta
+        self.expiry = WebCacheExpiry.coerce(expiry_delta)
+        # Historical attribute. Uniform policies keep a timedelta here.
+        self.expiry_delta = self.expiry.uniform_delta
+        if isinstance(partial_expiry_delta, datetime.timedelta):
+            self.partial_expiry_delta = partial_expiry_delta
+        else:
+            self.partial_expiry_delta = parse_partial_expiry_delta(partial_expiry_delta)
         self._local_files_only = False
         try:
             self._clear_old_files()
@@ -823,14 +1292,47 @@ class WebFileCache(FileCache):
         with open(partial_path + '.meta', 'w', encoding='utf-8') as handle:
             json.dump(state, handle)
 
+    def _partial_expiry_delta(self, partial_path: str) -> datetime.timedelta | None:
+        if self.expiry.is_uniform:
+            return self.expiry.uniform_delta
+        meta = self._read_partial_state(partial_path)
+        ext = meta.get('ext') if isinstance(meta, dict) else None
+        if not ext and isinstance(meta, dict):
+            metadata = meta.get('metadata')
+            if isinstance(metadata, dict):
+                filename = metadata.get('filename')
+                if filename:
+                    ext = os.path.splitext(str(filename))[1]
+        delta = self.expiry.delta_for(ext=ext)
+        # forever keeps a finished file. The partial is not finished.
+        if delta == datetime.timedelta.max:
+            return self.partial_expiry_delta
+        return delta
+
     def _clear_old_partials(self):
         partial_dir = os.path.join(self.cache_dir, '.partials')
         if not os.path.isdir(partial_dir):
             return
-        cutoff = time.time() - self.expiry_delta.total_seconds()
+        now = time.time()
         stale = []
+        seen = {}
         for entry in os.scandir(partial_dir):
             if not entry.is_file():
+                continue
+            name = entry.name
+            if name.endswith('.meta'):
+                partial_path = os.path.join(partial_dir, name[:-len('.meta')])
+            else:
+                partial_path = entry.path
+            delta = seen.get(partial_path)
+            if partial_path not in seen:
+                delta = self._partial_expiry_delta(partial_path)
+                seen[partial_path] = delta
+            if delta is None:
+                continue
+            try:
+                cutoff = now - delta.total_seconds()
+            except OverflowError:
                 continue
             try:
                 if entry.stat().st_mtime < cutoff:
@@ -866,13 +1368,25 @@ class WebFileCache(FileCache):
 
     def _clear_old_files(self):
         """
-        Clears files that are older than the expiry delta.
+        Clears files that are older than their expiry interval.
+
+        A uniform policy uses one interval for every file. A rule list is one
+        SQL delete: the extension is read from the stored JSON, and rows that
+        match no rule are left in place.
         """
-        for key, cached_file in self.delete_older_than(self.expiry_delta):
-            try:
-                os.unlink(cached_file.path)
-            except FileNotFoundError:
-                pass
+        if self.expiry.is_uniform:
+            for key, cached_file in self.delete_older_than(self.expiry.uniform_delta):
+                try:
+                    os.unlink(cached_file.path)
+                except FileNotFoundError:
+                    pass
+        else:
+            where_sql, params = self.expiry._expired_where(datetime.datetime.now())
+            for key, value in self.kv_store.delete_matching(where_sql, params):
+                try:
+                    os.unlink(CachedFile(json.loads(value)).path)
+                except FileNotFoundError:
+                    pass
         self._clear_old_partials()
 
     def request_mimetype(self, url, local_files_only: bool = False,

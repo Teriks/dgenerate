@@ -21,6 +21,7 @@
 import pathlib
 import platform
 import tkinter as tk
+import tkinter.font as tkfont
 import tkinter.messagebox as messagebox
 import tkinter.ttk as ttk
 import typing
@@ -77,29 +78,51 @@ def open_init_dgen_editor(
     _editor_window = dialog
     dialog.title('Startup Configuration (init.dgen)')
     dialog.transient(parent)
-    dialog.minsize(520, 420)
+    dialog.minsize(560, 480)
     dialog.columnconfigure(0, weight=1)
     dialog.rowconfigure(1, weight=1)
     _resources.set_window_icon(dialog)
 
-    header = ttk.Frame(dialog, padding=(12, 12, 12, 0))
+    header = ttk.Frame(dialog, padding=(12, 12, 12, 8))
     header.grid(row=0, column=0, sticky='ew')
+
+    title_font = tkfont.nametofont('TkDefaultFont').copy()
+    title_font.configure(weight='bold')
+    path_font = tkfont.nametofont('TkDefaultFont').copy()
+    path_size = path_font.cget('size')
+    if isinstance(path_size, int) and path_size > 0:
+        path_font.configure(size=path_size - 1)
+    dialog._header_fonts = (title_font, path_font)
 
     ttk.Label(
         header,
-        text=(
-            'This file runs when dgenerate starts. Uncomment or add '
-            '\\env lines to set HF_TOKEN, CIVIT_AI_TOKEN, cache paths, and more.'
-        ),
-        wraplength=560,
-        justify=tk.LEFT,
+        text='Startup configuration',
+        font=title_font,
     ).pack(anchor=tk.W)
+
+    explanation = ttk.Label(
+        header,
+        text=(
+            'This file runs when dgenerate starts. Uncomment an \\env line, '
+            'or add your own, to set tokens, cache paths, and other options.'
+            '\n\n'
+            'Saving restarts the shell process so the new settings take effect.'
+        ),
+        justify=tk.LEFT,
+        wraplength=560,
+    )
+    explanation.pack(anchor=tk.W, fill=tk.X, pady=(6, 0))
 
     ttk.Label(
         header,
         text=str(init_path),
-        font=('', 9),
-    ).pack(anchor=tk.W, pady=(6, 0))
+        font=path_font,
+    ).pack(anchor=tk.W, pady=(8, 0))
+
+    def fit_explanation(event):
+        explanation.configure(wraplength=max(280, event.width - 24))
+
+    header.bind('<Configure>', fit_explanation)
 
     editor_frame = ttk.Frame(dialog, padding=(12, 0, 12, 0))
     editor_frame.grid(row=1, column=0, sticky='nsew')
@@ -167,7 +190,7 @@ def open_init_dgen_editor(
         if not force and is_dirty():
             choice = messagebox.askyesnocancel(
                 'Startup Configuration',
-                'Save changes before closing?',
+                'Save changes and restart the shell process?',
                 parent=dialog)
             if choice is None:
                 return
@@ -206,7 +229,7 @@ def open_init_dgen_editor(
         command=lambda: close_dialog(force=False)).pack(side=tk.RIGHT, padx=(6, 0))
     ttk.Button(
         button_frame,
-        text='Save',
+        text='Save and Restart',
         command=save_and_apply).pack(side=tk.RIGHT)
 
     button_frame.grid(row=2, column=0, sticky='ew')
@@ -217,8 +240,8 @@ def open_init_dgen_editor(
 
     _appearance.install(dialog)
     dialog.update_idletasks()
-    width = min(680, max(560, parent.winfo_width() * 3 // 5))
-    height = min(480, max(420, parent.winfo_height() * 2 // 5))
+    width = min(720, max(560, parent.winfo_width() * 3 // 5))
+    height = min(560, max(480, parent.winfo_height() * 2 // 5))
     dialog.geometry(
         f'{width}x{height}+'
         f'{parent.winfo_rootx() + (parent.winfo_width() - width) // 2}+'

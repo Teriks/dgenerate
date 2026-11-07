@@ -614,7 +614,7 @@ Help Output
             * UMT5EncoderModel (Wan)
             * DistillT5EncoderModel (see: LifuWang/DistillT5)
             * ChatGLMModel (Kolors)
-            * Gemma3ForConditionalGeneration
+            * Gemma3ForConditionalGeneration (LTX-2)
             * Gemma4UnifiedForConditionalGeneration (LTX-2.5)
             * Mistral3ForConditionalGeneration (Flux.2)
             * Qwen2_5_VLForConditionalGeneration (Qwen-Image, Kandinsky 5)
@@ -1419,8 +1419,7 @@ Help Output
             
             Starting step must be at least 3 as SADA leverages third-order dynamics.
             
-            On a 50-step run this is "10,47" (steps 10 through 46). A shorter run keeps the same head and tail.
-            Omitted until --inference-steps is known.
+            Defaults to "10,47".
             
             Supply ranges as comma seperated values, for example: --sada-acc-ranges "10,47" "12,40"
             
@@ -1718,12 +1717,9 @@ Help Output
             
             See: https://github.com/hanjq17/Spectrum
             
-            The paper's moderate schedule is a 2 step window, flex 0.75, and blend 0.5.
+            The defaults (2 step window, flex 0.75, blend 0.5) are the paper's moderate schedule.
             ``--spectrum-flex-windows 3`` is the aggressive schedule. Qwen-Image edit drifts more than
-            text-to-image; raise ``--spectrum-warmup-steps`` or lower the flex window there. When warmup and
-            flex are omitted they follow the step count: 50 or more uses warmup 5 and flex 0.75, shorter runs
-            hold flex at 0, and classifier-free guidance above 1 also holds flex at 0. The step text shows auto
-            until that step count or guidance is known.
+            text-to-image; raise ``--spectrum-warmup-steps`` or lower the flex window there.
             
             This is supported for: --model-type sd3, sd3-pix2pix, sdxl, sdxl-pix2pix, kolors, flux, flux-fill,
             flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
@@ -1761,14 +1757,12 @@ Help Output
       --spectrum-warmup-steps [INT ...]
             Leading full denoiser passes before Spectrum may predict a step.
             
-            Each value is tried in turn. The paper uses 5 with 50 inference steps. When omitted, 50 or more
-            steps use 5, 9 to 49 steps use 4, 5 to 8 steps use 2, and 4 or fewer stay on a real pass every step.
-            Omitted values show as auto until the step count is known.
+            Each value is tried in turn. The paper uses 5 with 50 inference steps. Shorter schedules can use 2.
             
             Supplying any values implies --spectrum.
             
-            (default: chosen from the step count)
-            -------------------------------------
+            (default: 2)
+            ------------
       --spectrum-window-sizes [FLOAT ...]
             Initial Spectrum skip intervals to try when --spectrum is enabled.
             
@@ -1782,14 +1776,13 @@ Help Output
       --spectrum-flex-windows [FLOAT ...]
             Amounts added to the Spectrum skip interval after each full pass.
             
-            0 keeps the interval fixed. 0.75 is the paper's moderate schedule and 3 is the aggressive one. When
-            omitted, flex is 0.75 at 50 or more steps and 0 on a shorter run or when classifier-free guidance is
-            above 1. Omitted values show as auto until that is known. Each value is tried in turn.
+            0 keeps the interval fixed. 0.75 is the paper's moderate schedule and 3 is the aggressive one. Each
+            value is tried in turn.
             
             Supplying any values implies --spectrum.
             
-            (default: chosen from the step count and guidance)
-            --------------------------------------------------
+            (default: 0.75)
+            ---------------
       --regione
             Enable RegionE region-aware acceleration for instruction editing?
             
@@ -2947,9 +2940,9 @@ Help Output
             content of the image. Values between 30-40 produce good results, higher values may improve image
             quality and or change image content.
             
-            Omitting this lets the pipeline choose. RegionE uses 28. Qwen-Image 2.1 uses 40, or the length of
-            the checkpoint's sample sigma list when it has one. Krea 2 uses 8 when the checkpoint is distilled
-            and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the refiner. Kandinsky 5 Image uses 50.
+            Omitting this lets the pipeline choose. RegionE uses 28. Qwen-Image 2.1 uses 40. Krea 2 uses 8 when
+            the checkpoint is distilled and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the refiner.
+            Kandinsky 5 Image uses 50.
             
             For --model-type ltx-video, omitted values follow the loaded LTXPipeline __call__ defaults
             (typically guidance 3 and 50 steps). A value you set is passed as written.
@@ -13749,10 +13742,8 @@ directive ``\civitai_links`` from a config file or the Console UI.
 
 You can also `(Right Click) -> Copy Link Address` on a CivitAI models download link to get the necessary URL.
 
-If you plan to download many large models to the web cache in this manner you may wish
-to adjust the global cache expiry time so that they exist in the cache longer than the default of 12 hours.
-
-You can see how to change the cache expiry time in this section `File Cache Control`_
+Model files downloaded to the web cache are kept by default. Every other cached file
+expires after 12 hours. You can change this in the section `File Cache Control`_
 
 If you set the environmental variable ``CIVIT_AI_TOKEN``, your token will be appended to
 CivitAI API links automatically, this example appends it manually.
@@ -14983,11 +14974,13 @@ The help output of ``assistant`` is as follows:
 
 .. code-block:: text
 
-    usage: assistant [-h] [-o OUTPUT] [-mdl MODEL] [-emb EMBED_MODEL] [-ctx CTX] [-gpu GPU_LAYERS] [-ed FILE]
-                     [-thk] [-eff {low,medium,xhigh}] [-temp TEMPERATURE] [-tp TOP_P] [-tk TOP_K] [-mp MIN_P]
-                     [-pres PRESENCE_PENALTY] [-rpen REPEAT_PENALTY] [-mtok MAX_TOKENS] [-nc]
-                     [-mrep MAX_REPAIRS] [-sctx] [-ofm] [-nlt] [-ppl CODE] [-pth CODE] [-ptk CODE] [-ptl CODE]
-                     [-v]
+    usage: assistant [-h] [-o OUTPUT] [--model MODEL] [--embed-model EMBED_MODEL] [--ctx CTX]
+                     [--gpu-layers GPU_LAYERS] [--edit FILE] [--think] [--reasoning-effort {low,medium,xhigh}]
+                     [--temperature TEMPERATURE] [--top-p TOP_P] [--top-k TOP_K] [--min-p MIN_P]
+                     [--presence-penalty PRESENCE_PENALTY] [--repeat-penalty REPEAT_PENALTY]
+                     [--max-tokens MAX_TOKENS] [--no-check] [--max-repairs MAX_REPAIRS] [--show-context]
+                     [--offline] [--no-link-tools] [--progress-plain CODE] [--progress-thought CODE]
+                     [--progress-talk CODE] [--progress-tool CODE] [-v]
                      [request ...]
     
     Write a dgenerate config from a plain language request, using a local Qwen model with retrieval over the
@@ -15006,7 +14999,7 @@ The help output of ``assistant`` is as follows:
             Write the config to this file instead of stdout. File paths in the request are relative to the
             current directory and are rewritten relative to this file.
             ----------------------------------------------------------
-      -mdl, --model MODEL
+      --model MODEL
             Chat model. One of these compatible Qwen 3.8 27B GGUFs, smallest download first.
             
             unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_S.gguf (6.2 GB, Qwen 3.8, 8 GB GPUs)
@@ -15036,7 +15029,7 @@ The help output of ``assistant`` is as follows:
             
             Default: unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf
             ------------------------------------------------------------
-      -emb, --embed-model EMBED_MODEL
+      --embed-model EMBED_MODEL
             Embedding model. One of these compatible Qwen3-Embedding GGUFs. Each one has a packaged index.
             
             Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf (0.6 GB, default)
@@ -15045,72 +15038,68 @@ The help output of ``assistant`` is as follows:
             
             Default: Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf
             ----------------------------------------------------------------------
-      -ctx, --ctx CTX
+      --ctx CTX
             Chat context size in tokens. Default: 32768
             -------------------------------------------
-      -gpu, --gpu-layers GPU_LAYERS
+      --gpu-layers GPU_LAYERS
             Layers to put on the GPU, -1 for automatic, 0 for CPU only. Default: -1
             -----------------------------------------------------------------------
-      -ed, --edit FILE
+      --edit FILE
             Revise this existing config instead of writing a new one. The request describes the change.
             -------------------------------------------------------------------------------------------
-      -thk, --think
+      --think
             Let the model reason before answering. Slower.
             ----------------------------------------------
-      -eff, --reasoning-effort {low,medium,xhigh}
+      --reasoning-effort {low,medium,xhigh}
             How long to think when --think is set. Qwen3.8 otherwise uses extra high. Default: medium
             -----------------------------------------------------------------------------------------
-      -temp, --temperature TEMPERATURE
+      --temperature TEMPERATURE
             Sampling temperature. Default: 0.7, or 1.0 with --think.
             --------------------------------------------------------
-      -tp, --top-p TOP_P
+      --top-p TOP_P
             Default: 0.8, or 0.95 with --think.
             -----------------------------------
-      -tk, --top-k TOP_K
+      --top-k TOP_K
             Default: 20.
             ------------
-      -mp, --min-p MIN_P
+      --min-p MIN_P
             Default: 0.0.
             -------------
-      -pres, --presence-penalty PRESENCE_PENALTY
+      --presence-penalty PRESENCE_PENALTY
             Default: 1.5, or 0.0 with --think.
             ----------------------------------
-      -rpen, --repeat-penalty REPEAT_PENALTY
+      --repeat-penalty REPEAT_PENALTY
             Repetition penalty. Default: 1.0.
             ---------------------------------
-      -mtok, --max-tokens MAX_TOKENS
+      --max-tokens MAX_TOKENS
             Maximum reply tokens. 0 uses the rest of the context window and does not increase memory use.
             Default: 0
             ----------
-      -nc, --no-check
+      --no-check
             Skip validating the config with dgenerate.
             ------------------------------------------
-      -mrep, --max-repairs MAX_REPAIRS
+      --max-repairs MAX_REPAIRS
             How many times to ask the model to fix a config dgenerate rejects. Default: 2
             -----------------------------------------------------------------------------
-      -sctx, --show-context
+      --show-context
             Print the retrieved context to stderr.
             --------------------------------------
-      -ofm, --offline-mode
-            Only use models already in the Hugging Face cache. The "fetch_link" tool lists Hugging Face files
-            already in that cache and does not call the Hub. A quant that is not cached is not listed, so the
-            example file is kept. The "fetch_link" tool does not fetch a CivitAI link or any other URL. A
-            CivitAI page is not in the local cache, so the config is written from the request and the retrieved
-            examples.
-            ---------
-      -nlt, --no-link-tools
-            Do not offer the "fetch_link" tool; the model cannot request CivitAI or Hugging Face lookups.
-            ---------------------------------------------------------------------------------------------
-      -ppl, --progress-plain CODE
+      --offline
+            Only use models already in the Hugging Face cache.
+            --------------------------------------------------
+      --no-link-tools
+            Do not offer fetch_link; the model cannot request CivitAI or Hugging Face lookups.
+            ----------------------------------------------------------------------------------
+      --progress-plain CODE
             Terminal color before status text. Off by default. Reset with \033[0m.
             ----------------------------------------------------------------------
-      -pth, --progress-thought CODE
+      --progress-thought CODE
             Terminal color before reasoning. Off by default. Green is \033[32m.
             -------------------------------------------------------------------
-      -ptk, --progress-talk CODE
+      --progress-talk CODE
             Terminal color before the model's reply. Off by default. Cyan is \033[36m.
             --------------------------------------------------------------------------
-      -ptl, --progress-tool CODE
+      --progress-tool CODE
             Terminal color before a tool call. Off by default. Yellow is \033[33m.
             ----------------------------------------------------------------------
       -v, --verbose
@@ -18027,7 +18016,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [34629655227793]
+            Value: [40286099687655]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -18386,14 +18375,11 @@ The dgenerate specific jinja2 functions/filters are:
     
         \setp my_variable download('https://modelhost.com/model.safetensors')
     
-        A Hugging Face model "/blob/" or "/resolve/" link with no output path is stored in the Hugging Face cache.
-        Every other URL uses the web cache.
-    
         When an "output" path is specified, if the file already exists it will be reused by default (simple
         caching behavior), this can be disabled with the argument "overwrite=True" indicating that the file should
         always be downloaded.
     
-        An interrupted download is kept beside the destination with an ".unfinished" suffix and continued on the
+        An interrupted download is kept beside the destination with an ``.unfinished`` suffix and continued on the
         next call.
     
         "overwrite=True" can also be used to overwrite cached files in the dgenerate web cache.
@@ -19885,11 +19871,8 @@ to an explicit path.
 
 See the directives help output for more details: ``\download --help``
 
-If you plan to download many large models to the web cache in
-this manner you may wish to adjust the global cache expiry time
-so that they exist in the cache longer than the default of 12 hours.
-
-You can see how to do this in the section `File Cache Control`_
+Model files downloaded to the web cache are kept by default. Every other cached file
+expires after 12 hours. You can change this in the section `File Cache Control`_
 
 This directive is primarily intended to download models and or other
 binary file formats such as images and will raise an error if it encounters
@@ -20561,17 +20544,44 @@ files downloaded by the ``\download`` directive, ``download`` template function,
 files used by image processors in the directory ``$DGENERATE_CACHE/web``
 
 Files are cleared from the web cache automatically after an expiry time upon running dgenerate or
-when downloading additional files, the default value is after 12 hours.
+when downloading additional files. The default is ``models;forever,other;hours=12``: model files
+are kept, and every other file is removed after 12 hours.
 
 This can be controlled with the environmental variable ``DGENERATE_WEB_CACHE_EXPIRY_DELTA``.
 
-The value of ``DGENERATE_WEB_CACHE_EXPIRY_DELTA`` is that of the named arguments of pythons
-`datetime.timedelta <https://docs.python.org/3/library/datetime.html#timedelta-objects>`_ class
-seperated by semicolons.
+The value is either one expiry interval for every cached file, or a comma-separated list of rules.
+Intervals use the named arguments of Python's
+`datetime.timedelta <https://docs.python.org/3/library/datetime.html#timedelta-objects>`_ class,
+separated by semicolons. This is the same syntax accepted by
+:py:func:`dgenerate.textprocessing.parse_timedelta`.
 
 For example: ``DGENERATE_WEB_CACHE_EXPIRY_DELTA="days=5;hours=6"``
 
-Specifying ``"forever"`` or an empty string will disable cache expiration for every downloaded file.
+Specifying ``"forever"`` or an empty string disables cache expiration for every downloaded file.
+
+A rule list gives different intervals to different kinds of files. Each rule is a selector,
+a semicolon, and an interval:
+
+``DGENERATE_WEB_CACHE_EXPIRY_DELTA="models;forever,images;days=1,videos;days=2,.png;hours=1,other;hours=12"``
+
+* ``models`` matches every model file dgenerate can open: ``.safetensors``, ``.gguf``,
+  ``.pt``, ``.pth``, ``.bin``, ``.ckpt``, ``.param``, ``.yaml``, and ``.yml``.
+* ``images`` matches every image format dgenerate can read.
+* ``videos`` matches every video format dgenerate can read.
+* An extension such as ``.png`` matches that extension and overrides ``models``, ``images``,
+  and ``videos`` for it. Several timedelta arguments are written with semicolons, for example
+  ``.jpg;days=1;hours=6``.
+* ``other`` matches files that no other rule matched.
+
+A file that matches no rule is left in the cache. ``other`` is how those files receive an expiry.
+When a file matches more than one of ``models``, ``images``, and ``videos``, the earliest of
+those rules is used.
+
+An interrupted download whose finished file would be kept forever is removed after
+``DGENERATE_WEB_CACHE_PARTIAL_EXPIRY_DELTA``. The default is ``hours=12``. The value is one
+interval, such as ``days=2`` or ``days=1;hours=6``, and a rule list is not accepted.
+``forever`` or an empty string keeps that partial. Other interrupted downloads follow the
+rule for their finished file.
 
 spaCy Model Cache
 -----------------
@@ -20684,8 +20694,12 @@ Example ``~/.dgenerate/init.dgen`` for setting environment variables:
     \env DGENERATE_TORCH_COMPILE=1
     \env DGENERATE_OFFLINE_MODE=1
     
-    # Cache expiry control
-    \env DGENERATE_WEB_CACHE_EXPIRY_DELTA=days=7
+    # Cache expiry. The default keeps model files and expires every other file after 12 hours.
+    # "models;forever,images;days=1,videos;days=2,.png;hours=1,other;hours=12"
+    \env DGENERATE_WEB_CACHE_EXPIRY_DELTA=models;forever,other;hours=12
+
+    # Interrupted downloads of files kept forever. One interval, not a rule list.
+    \env DGENERATE_WEB_CACHE_PARTIAL_EXPIRY_DELTA=hours=12
 
 The ``~/.dgenerate/`` directory and a default ``init.dgen`` file are created automatically when 
 dgenerate runs for the first time. The default file contains helpful comments and examples.
