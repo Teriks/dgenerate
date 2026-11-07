@@ -3887,43 +3887,43 @@ xml = ["lxml (>=4.9.2)"]
 
 [[package]]
 name = "patchmatch-cython"
-version = "0.2.1"
+version = "1.1.1"
 description = "High-performance PatchMatch implementation for image inpainting using Cython"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "patchmatch_cython-0.2.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:af688612a845c943091b35826b11ff95fa6cabce9e53d4eb5270e1ffedf4281e"},
-    {file = "patchmatch_cython-0.2.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:6a9c27f0fdc489bff92c54fadbd35768a98ad21a727ca0bb10a04a391646172b"},
-    {file = "patchmatch_cython-0.2.1-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:c96f98348f5d31f33d0e5812b1df1180df81914f236507e223de620f988a4318"},
-    {file = "patchmatch_cython-0.2.1-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:8aea740d7ce44af1d83ce359241c2f18992ee16fe158e271fccf0067855081a8"},
-    {file = "patchmatch_cython-0.2.1-cp310-cp310-win32.whl", hash = "sha256:baaf36581d6ab3578f9636ca9b736a7b4bfd6b0bddadc891d535ddda6a7f6fbd"},
-    {file = "patchmatch_cython-0.2.1-cp310-cp310-win_amd64.whl", hash = "sha256:2a69d185f1adbc3c42b789c8a389d9d7ed7c2d2d8f6be8c63a5836eabbb367b0"},
-    {file = "patchmatch_cython-0.2.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:183d2486fc9303a0863eb903a304290aae25e86648b494f323a188b986357413"},
-    {file = "patchmatch_cython-0.2.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:449aaf6b0269da54e7a1275ef1663f0d37a008d068de79985ad70b218476570b"},
-    {file = "patchmatch_cython-0.2.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:7532ce51f32225d1f6d703875a418944010c88fd57efe97d4598317f6d078d31"},
-    {file = "patchmatch_cython-0.2.1-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:4bcc45714faa57eb95836226e040877c90d30a32efb0a6fbc0140d14e1d99dfb"},
-    {file = "patchmatch_cython-0.2.1-cp311-cp311-win32.whl", hash = "sha256:a8ad5e3aa753f6bbb007e51b6e5c2befae719f8f96b0d25ab8e754605f320cdd"},
-    {file = "patchmatch_cython-0.2.1-cp311-cp311-win_amd64.whl", hash = "sha256:2d7bb0f9b3c7695e42583ab81229e0991d5ca699b17531cc8b509ae5b8ce429a"},
-    {file = "patchmatch_cython-0.2.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:658aadb6e082fdfa267c19e7026af0a0f0d9af97d2fd445090b8820d0fca58f9"},
-    {file = "patchmatch_cython-0.2.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:1c18a92b25f1157b72fdcffb9c41fbd9d3ab0027265c03da6de2e5458e5861f2"},
-    {file = "patchmatch_cython-0.2.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4ea16a3da6ddf0863a3d2966047d309c0482cdb0a1e77ce0dc8468e67cc717ec"},
-    {file = "patchmatch_cython-0.2.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:28864b4144c424c22011e728b6e58d7dde38ad48765e62dc64acd0b106b1a507"},
-    {file = "patchmatch_cython-0.2.1-cp312-cp312-win32.whl", hash = "sha256:47d92e6e6d6051ee5f3f30b565b0f21bf5502618860d43720fa36dc12ed97558"},
-    {file = "patchmatch_cython-0.2.1-cp312-cp312-win_amd64.whl", hash = "sha256:ca93e43ef4e590c86fc370bc4dae0b3172041cd77086193042a18545f800ca5e"},
-    {file = "patchmatch_cython-0.2.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:0ff9842bf67bf1443c0af03eb5aa8ac334cd8a867d6a65cfe0cc1809093aabb6"},
-    {file = "patchmatch_cython-0.2.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:2772757ef866d75bafc6f60ca97754cc5a956fc18a23ae9eb0e5d096752a13c3"},
-    {file = "patchmatch_cython-0.2.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b6f53cdbfa5e09ee8a196090e2666571ef37f58b4ccccab11e6af1bb95854c55"},
-    {file = "patchmatch_cython-0.2.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:8532122c8ea8dbe8de8f77e4877caa82d4d897742f4d2af3427325ce10a2a89a"},
-    {file = "patchmatch_cython-0.2.1-cp313-cp313-win32.whl", hash = "sha256:65baca2b741d0e752e946c6d3364f5bd2fafc67d17ad9a8b845f09276d847d24"},
-    {file = "patchmatch_cython-0.2.1-cp313-cp313-win_amd64.whl", hash = "sha256:bc115d62c218ea1fd9732caf52b144c18bcd955623cc43c0eef69b206c220c90"},
-    {file = "patchmatch_cython-0.2.1-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:1fa83ecd33782c953c26f2002ef9d35aef65e534313de9f7f3463c8de3477397"},
-    {file = "patchmatch_cython-0.2.1-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:30a2ce9f5abfbc20716ff70aea060a619be013340b5efc5f4a5ce59db640d775"},
-    {file = "patchmatch_cython-0.2.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:603620d712d02e8f2065a79c420ee5e9501ab4fe2d514ba5be91427520ac2da2"},
-    {file = "patchmatch_cython-0.2.1-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:029ddc709e5f7b1c87490f1532ba7559fe233b850f2a6c8549d0d2c2f517f254"},
-    {file = "patchmatch_cython-0.2.1-cp314-cp314-win32.whl", hash = "sha256:d03a7c13d11649c198ea3c771b95e3ea3df05627a543c19e24d35f0b374d54c5"},
-    {file = "patchmatch_cython-0.2.1-cp314-cp314-win_amd64.whl", hash = "sha256:a91dab143ab49313d777140044d2161bdd2dca8410c9c9c8f0b1e7daf5bc6265"},
-    {file = "patchmatch_cython-0.2.1.tar.gz", hash = "sha256:5b98b80dca177b6a65a8ff1f4192e0ae0833126e1e319332052a95c4c13019bd"},
+    {file = "patchmatch_cython-1.1.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f6198b8427fcbabe5542c9fcbdeeeee045814d29edf5c281b3f9e8d138ee4d65"},
+    {file = "patchmatch_cython-1.1.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:c6d8fc8779e0b6a5ad9dc40b5ddd97ca8dabf55b6fbd29c2764303f918ddbaed"},
+    {file = "patchmatch_cython-1.1.1-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1fb09f245c4d05729a5b7665c6e96e2ea1b570b84830ea504533f2198289ec88"},
+    {file = "patchmatch_cython-1.1.1-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:ef9027fa36bb90811d078aa6b628da82528b4568544cbf1f4c255fabbedbeee2"},
+    {file = "patchmatch_cython-1.1.1-cp310-cp310-win32.whl", hash = "sha256:f929bb516592e3f9a4fac1a924fe8cc8099ece8105039666eb648b4463cb5f61"},
+    {file = "patchmatch_cython-1.1.1-cp310-cp310-win_amd64.whl", hash = "sha256:e154ee5be8bc142d70b96057ea4c58fa3072ce5a11616622d8dde9fa903eabbc"},
+    {file = "patchmatch_cython-1.1.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:c2909440dd4956597a5a01aaad058edc5ffdbaaff9b3f5154ac22e7cd94ae6b7"},
+    {file = "patchmatch_cython-1.1.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:95acc1a65059bb4fb14205f240f3efa380ce3cda1df78181f26ecff37c2a241e"},
+    {file = "patchmatch_cython-1.1.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:820c5a2148e0f62427de2e13443c988cf947195dc34052b7a0d369d654574d8e"},
+    {file = "patchmatch_cython-1.1.1-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:805f5ff575be6bab0504d591872097ba0281ecd6ac8aa03e74b793c4755749d4"},
+    {file = "patchmatch_cython-1.1.1-cp311-cp311-win32.whl", hash = "sha256:f98cdad0edc840e54c150d3cf7cc05b0521f1e9fe778083e15a03cacfb11e716"},
+    {file = "patchmatch_cython-1.1.1-cp311-cp311-win_amd64.whl", hash = "sha256:47f0959b2ac97dcf8e3cab0188a7a042de85843e2d7f22abfa5371edf5719a71"},
+    {file = "patchmatch_cython-1.1.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:f7544a34ec75063471dc7c85c578af4050a3ef6c4b631d53a230d4520b8f7e54"},
+    {file = "patchmatch_cython-1.1.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:25a107b36d54f6e1e000a4614243f73b2e2071251c610a7e3797184a74b53f94"},
+    {file = "patchmatch_cython-1.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6b312fd621c0805fadf73f584fe0699bdd0b7b1ded515991083e2f1476316a7a"},
+    {file = "patchmatch_cython-1.1.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:f6acb947aabe2e00a35d4553f7d2ce0008e84fa190a8f82499eebb2079b52e6a"},
+    {file = "patchmatch_cython-1.1.1-cp312-cp312-win32.whl", hash = "sha256:a46de1c8e4cb76cd58623c48a642a7fc978c815e1085f5445c4f0afbb9d81fbe"},
+    {file = "patchmatch_cython-1.1.1-cp312-cp312-win_amd64.whl", hash = "sha256:d9d61aeceac052bc114ae4fe57ece42587c727d1b1cd5b18a38ef03c1a85a4ae"},
+    {file = "patchmatch_cython-1.1.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:d56224de30f317ab3fd677e866d2c984fe4cbcbee0e35182b52ab9d78dbf0f9e"},
+    {file = "patchmatch_cython-1.1.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:a2c503dcec7a842fb006f489c017982167b7b0cda064aacddb22f026a76be1fc"},
+    {file = "patchmatch_cython-1.1.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6138f65460d32c0fe23ac99c0b3f5eb272cda5ef8deec46e3cb425e25ce084f8"},
+    {file = "patchmatch_cython-1.1.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:61f74f0c6139d1ff8967f95bbfd6fb2f589050eb2abec654ac141b027a0874be"},
+    {file = "patchmatch_cython-1.1.1-cp313-cp313-win32.whl", hash = "sha256:ea38b403e88889fc8e045a2d15c1eb69492a7979f399a1bd452de34da1f4f2a1"},
+    {file = "patchmatch_cython-1.1.1-cp313-cp313-win_amd64.whl", hash = "sha256:663d8a998bbb0f94477b47e5a1bdbd92eec3f8f12af82516adfd1e03a4f15108"},
+    {file = "patchmatch_cython-1.1.1-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:d2b5f683462832dc291d3edbcf4f3c8d6e476ed44519b7595c5ae59ede6ee793"},
+    {file = "patchmatch_cython-1.1.1-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:dd1d133473fec2cbc1d8e4cf33a333fe7bf456779322bf99a9eb591dac71c007"},
+    {file = "patchmatch_cython-1.1.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:c74b02b496f240c5e6cbaf1a9c6aeb43a40ccb187864ec52a72239641a374e94"},
+    {file = "patchmatch_cython-1.1.1-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:f145ab5bfa5741c64aa2649869d0c84893afbc7c53db85c776c3b824d5998a76"},
+    {file = "patchmatch_cython-1.1.1-cp314-cp314-win32.whl", hash = "sha256:ebe14f1a2e8d3bd66687a7ec566c2d4c8e98c1ab317b8d63c8b5802f73b54280"},
+    {file = "patchmatch_cython-1.1.1-cp314-cp314-win_amd64.whl", hash = "sha256:4ab6aa5ab6e22e1482c6fa1eb436fa594b3acc0b12e1f5f2333b0a2dcfa45381"},
+    {file = "patchmatch_cython-1.1.1.tar.gz", hash = "sha256:0e1861f533c981503811700718626989116ff0b87bbecc8efcf0013a1994e580"},
 ]
 
 [package.dependencies]
@@ -7255,4 +7255,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,!=3.14.1,<3.15"
-content-hash = "c6cacdd0645ea5ad0ec62fa1af762899fcef2f0b9f17828d92e8253c95a91d8f"
+content-hash = "d8733c5229bfba606a395daef08e05b8494fe14b73884764c44860ca07beedfa"

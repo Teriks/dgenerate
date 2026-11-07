@@ -33,11 +33,10 @@ import patchmatch_cython
 
 class PatchMatchProcessor(_imageprocessor.ImageProcessor):
     """
-    Inpaint an image with the PatchMatch algorithm (content aware fill).
+    Inpaint an image with a pyramid inpainting algorithm (content aware fill).
     
-    The PatchMatch algorithm is used in this processor for pyramidical inpainting
-    (filling in missing or masked areas) in images. This processor requires either
-    a mask or subject image to be provided via the "mask" or "image" arguments.
+    This processor fills missing or masked areas using "patchmatch-cython".
+    It requires either a mask or subject image via the "mask" or "image" arguments.
     These arguments are mutually exclusive.
     
     When using the "mask" argument, the incoming image is considered the subject
@@ -69,34 +68,53 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
     processor chain defaults to 1, meaning no forced alignment will occur, you
     can force alignment using the "resize" image processor if desired.
     
-    The "patch-size" argument specifies the patch size for the PatchMatch algorithm.
-    It must be an odd positive integer. Larger patch sizes can provide better coherence
-    but may be slower.
+    The "algorithm" argument selects the solver. "barnes" (the default) is the
+    Barnes-style pyramid. "phil" is the Xavier Philippeau pyramid: bidirectional
+    nearest-neighbor fields, a texture-energy channel, split votes on the fine levels,
+    and a short border blend. With "phil", known pixels stay exact.
     
-    The "seed" argument allows you to specify a random number generator seed for 
-    reproducible results.
+    Some options do not work with "algorithm=phil": "em-loops", "edge-weighted",
+    "reverse-search", "poisson-blend", "hole-refine", and "mask-feather". Those arguments
+    are for "algorithm=barnes". Setting any of them to a non-default value together with
+    "algorithm=phil" is an error. "patch-size", "seed", "mask", "image", and
+    "pre-resize" work with both algorithms.
+    
+    The "patch-size" argument is the square patch side for "barnes". It must be
+    an odd positive integer. Larger patch sizes can provide better coherence but may
+    be slower. With "phil", "patch-size" is a radius instead: the patch side
+    is "2 * patch-size + 1", any integer of 1 or greater is valid (including even
+    values), and the default of 5 is a radius (an 11x11 patch). A radius of 15
+    matches the standalone Philippeau default.
+    
+    The "seed" argument sets the random seed. The default is 0, and both algorithms
+    are deterministic: the same image, mask, and arguments always produce the same fill.
     
     The "em-loops" argument controls outer match→paint→rematch loops. On pyramids,
     this is applied at coarse levels only (finest stays 1). Default is 1.
+    This argument does not work with "algorithm=phil".
     
     The "edge-weighted" argument enables structure-aware matching using color plus
     boosted gradient channels. Hole-touching gradients are suppressed so zeroed holes
     do not create fake edges. Default is False (color-only matching).
+    This argument does not work with "algorithm=phil".
     
     The "reverse-search" argument enables a completeness pass after each EM loop that
     tries assigning underused near-hole sources to better queries. Default is False.
+    This argument does not work with "algorithm=phil".
     
     The "poisson-blend" argument softens seams by blending the PatchMatch fill with a
     harmonic membrane near the hole rim. Default is True. Ignored when "mask-feather"
     is greater than 0 (feather supplies the blend band).
+    This argument does not work with "algorithm=phil".
     
     The "hole-refine" argument runs extra full-resolution PatchMatch iterations after
     the main solve (0 disables). Only hole pixels are painted; the user mask is not
-    modified. Default is 0.
+    modified. Default is 0. This argument does not work with "algorithm=phil".
     
     The "mask-feather" argument sets a soft compose width in pixels from the hole
     boundary. Uses a distance ramp toward a harmonic rim pull and does not change
     the mask used for matching. Default is 0.0.
+    This argument does not work with "algorithm=phil".
     
     The "pre-resize" argument determines if the processing occurs before or after dgenerate 
     resizes the image. This defaults to False, meaning the image is processed after 
@@ -104,6 +122,10 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
     """
 
     NAMES = ['patchmatch']
+
+    OPTION_ARGS = {
+        'algorithm': ['barnes', 'phil'],
+    }
 
     FILE_ARGS = {
         'mask': {'mode': 'in', 'filetypes': [('Images', _imageprocessor.ImageProcessor.image_in_filetypes())]},
@@ -133,8 +155,9 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
                  mask_processors: str | None = None,
                  image: str | None = None,
                  image_processors: str | None = None,
+                 algorithm: str = 'barnes',
                  patch_size: int = 5,
-                 seed: int | None = None,
+                 seed: int = 0,
                  em_loops: int = 1,
                  edge_weighted: bool = False,
                  reverse_search: bool = False,
@@ -148,14 +171,25 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
         :param mask_processors: Pre-process ``mask`` with an arbitrary image processor chain.
         :param image: Path to subject image file or URL when incoming image is the mask.
         :param image_processors: Pre-process ``image`` with an arbitrary image processor chain.
-        :param patch_size: Odd positive patch size for PatchMatch algorithm. Default is 5.
-        :param seed: Random number generator seed for reproducible results. If None, uses random seed.
+        :param algorithm: ``barnes`` (Barnes pyramid, default) or ``phil``
+            (Xavier Philippeau pyramid). ``em_loops``, ``edge_weighted``,
+            ``reverse_search``, ``poisson_blend``, ``hole_refine``, and
+            ``mask_feather`` do not work with ``phil``.
+        :param patch_size: Patch side for ``barnes`` (odd, default 5). Radius for
+            ``phil`` (any integer >= 1; default 5).
+        :param seed: Random seed. Default is 0, which is deterministic for both algorithms.
         :param em_loops: Outer match→paint→rematch loops (coarse pyramid levels). Default is 1.
+            Does not work with ``algorithm=phil``.
         :param edge_weighted: Use color + boosted gradient channels for matching. Default is ``False``.
+            Does not work with ``algorithm=phil``.
         :param reverse_search: Enable source→query completeness pass. Default is ``False``.
+            Does not work with ``algorithm=phil``.
         :param poisson_blend: Soften seams with harmonic blending near the hole rim. Default is ``True``.
+            Does not work with ``algorithm=phil``.
         :param hole_refine: Extra full-resolution PatchMatch iterations after the main solve. Default is 0.
+            Does not work with ``algorithm=phil``.
         :param mask_feather: Soft compose width in pixels from the hole boundary. Default is 0.0.
+            Does not work with ``algorithm=phil``.
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
         :param kwargs: forwarded to base class
         """
@@ -186,25 +220,36 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
                 'Cannot use "image-processors" without specifying "image"'
             )
 
-        if patch_size <= 0:
+        algorithm = algorithm.strip().lower()
+        if algorithm not in self.OPTION_ARGS['algorithm']:
+            raise self.argument_error(
+                'Argument "algorithm" must be one of: '
+                f'{", ".join(self.OPTION_ARGS["algorithm"])}.'
+            )
+
+        if patch_size < 1:
             raise self.argument_error('Argument "patch-size" must be a positive integer.')
 
-        if patch_size % 2 == 0:
-            raise self.argument_error('Argument "patch-size" must be an odd integer.')
+        if algorithm == 'barnes' and patch_size % 2 == 0:
+            raise self.argument_error(
+                'Argument "patch-size" must be an odd integer when "algorithm" is "barnes".'
+            )
 
-        if em_loops < 1:
-            raise self.argument_error('Argument "em-loops" must be a positive integer.')
+        if algorithm == 'barnes':
+            if em_loops < 1:
+                raise self.argument_error('Argument "em-loops" must be a positive integer.')
 
-        if hole_refine < 0:
-            raise self.argument_error('Argument "hole-refine" must be a non-negative integer.')
+            if hole_refine < 0:
+                raise self.argument_error('Argument "hole-refine" must be a non-negative integer.')
 
-        if mask_feather < 0:
-            raise self.argument_error('Argument "mask-feather" must be a non-negative number.')
+            if mask_feather < 0:
+                raise self.argument_error('Argument "mask-feather" must be a non-negative number.')
 
         self._mask_path = mask
         self._mask_processors = mask_processors
         self._image_path = image
         self._image_processors = image_processors
+        self._algorithm = algorithm
         self._patch_size = patch_size
         self._seed = seed
         self._em_loops = em_loops
@@ -379,6 +424,10 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             else:
                 mask_array = np.array(incoming_mask_image) > 128
 
+        # Philippeau fills an HxWx3 uint8 image. Barnes accepts other channel counts.
+        if self._algorithm == 'phil' and subject_image.mode != 'RGB':
+            subject_image = subject_image.convert('RGB')
+
         # Convert subject image to numpy array
         image_array = np.array(subject_image)
 
@@ -394,18 +443,36 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
 
         # Perform PatchMatch inpainting
         try:
-            # Use inpaint_pyramid which auto-selects the fastest available solver
+            inpaint_kwargs = {
+                'patch_size': self._patch_size,
+                'seed': self._seed,
+                'algorithm': self._algorithm,
+            }
+            barnes_options = {
+                'em_loops': (self._em_loops, 1),
+                'edge_weighted': (self._edge_weighted, False),
+                'reverse_search': (self._reverse_search, False),
+                'poisson_blend': (self._poisson_blend, True),
+                'hole_refine': (self._hole_refine, 0),
+                'mask_feather': (self._mask_feather, 0.0),
+            }
+            if self._algorithm == 'barnes':
+                inpaint_kwargs.update({
+                    name: value for name, (value, _default) in barnes_options.items()
+                })
+            else:
+                # philippeau rejects these keywords, including at their usual defaults.
+                # Forward only values the user changed so UnsupportedOption can name them.
+                inpaint_kwargs.update({
+                    name: value
+                    for name, (value, default) in barnes_options.items()
+                    if value != default
+                })
+
             result_array = patchmatch_cython.inpaint_pyramid(
                 image_array,
                 mask_array,
-                patch_size=self._patch_size,
-                seed=self._seed,
-                em_loops=self._em_loops,
-                edge_weighted=self._edge_weighted,
-                reverse_search=self._reverse_search,
-                poisson_blend=self._poisson_blend,
-                hole_refine=self._hole_refine,
-                mask_feather=self._mask_feather,
+                **inpaint_kwargs,
             )
 
             # Ensure result array has the same shape as input (fallback for edge cases)
@@ -419,7 +486,18 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             return PIL.Image.fromarray(result_array)
 
         except Exception as e:
-            raise self.argument_error(f'PatchMatch inpainting failed: {e}')
+            unsupported = getattr(patchmatch_cython, 'UnsupportedOption', None)
+            if unsupported is not None and isinstance(e, unsupported):
+                raise self.argument_error(self._unsupported_algorithm_arguments(e)) from e
+            raise self.argument_error(f'PatchMatch inpainting failed: {e}') from e
+
+    @staticmethod
+    def _unsupported_algorithm_arguments(error) -> str:
+        """Name the processor arguments listed on ``UnsupportedOption``."""
+        names = ', '.join(f'"{option.replace("_", "-")}"' for option in error.options)
+        if not names:
+            names = 'those arguments'
+        return 'Argument(s) ' + names + ' do not work with "algorithm=phil".'
 
     def impl_pre_resize(self, image: PIL.Image.Image,
                         resize_resolution: _types.OptionalSize) -> PIL.Image.Image:

@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Remove the horse using the Xavier Philippeau pyramid.
+# "algorithm=phil" selects it. "patch-size" is a radius
+# for this algorithm: 15 is a 31x31 patch, suited to a large hole.
+# The mask is the opposite of what we want for this task, so
+# invert it. "em-loops", "edge-weighted", "reverse-search",
+# "poisson-blend", "hole-refine", and "mask-feather" do not
+# work with this algorithm. The default seed is 0.
+
+
+\image_process ../media/horse1.jpg
+--output patchmatch-phil-horse1.png
+--align 1
+--processors patchmatch;algorithm=phil;patch-size=15;mask=../media/horse1-mask.jpg;mask-processors=invert
