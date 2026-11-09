@@ -60,6 +60,16 @@ frames are closed when the loop moves on.
             event.write(event.suggested_filename)
             event.write(stream)
 
+``PipelineWrapper`` returns the same clip on
+:class:`dgenerate.pipelinewrapper.GenerationResult`. ``result.write`` is that
+mux.
+
+.. code-block:: python
+
+    result = wrapper(args)
+    result.write('clip.mp4')
+    result.write(stream)
+
 ``dgenerate.mediaoutput.write_animation`` is the same mux for frames you
 already have. Examples are under
 `examples/library_usage <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/library_usage>`_.

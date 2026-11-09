@@ -161,6 +161,10 @@ class GenerationArgumentsHelpException(Exception):
 class GenerationResult:
     """
     Images, latents, or a video from one :py:class:`.PipelineWrapper` call.
+
+    A video result keeps the frames in :py:attr:`images`, with :py:attr:`fps`,
+    :py:attr:`audio`, and :py:attr:`audio_sample_rate`. :py:meth:`write` muxes
+    that clip to a path or a binary stream.
     """
     images: _types.MutableImages | None
     latents: _types.MutableTensors | None
@@ -274,6 +278,33 @@ class GenerationResult:
         for i, img in enumerate(self.images):
             grid.paste(img, box=(i % cols * w, i // cols * h))
         return grid
+
+    def write(self, file, animation_format: str | None = None) -> None:
+        """Mux this clip to a path or a binary stream.
+
+        A path's extension selects the container. A stream is mp4 unless
+        ``animation_format`` is set. Audio is muxed into mp4. A seekable stream
+        is rewound when the mux finishes. A non-seekable stream receives a
+        fragmented mp4. A ``.frames`` path writes one PNG per frame.
+
+        :param file: Filesystem path or binary file object.
+        :param animation_format: Container extension without a period.
+        :raise ValueError: this result has no frames or no frame rate.
+        """
+        if not self.images:
+            raise ValueError(
+                'Cannot mux a result that has no frames. '
+                'A latent result has no decoded images.')
+        if not self.fps:
+            raise ValueError('Cannot mux a result that has no frame rate.')
+        import dgenerate.mediaoutput as _mediaoutput
+        _mediaoutput.write_animation(
+            file,
+            self.images,
+            self.fps,
+            animation_format=animation_format,
+            audio=self.audio,
+            audio_sample_rate=self.audio_sample_rate)
 
     def __init__(self,
                  images: _types.Images | None = None,

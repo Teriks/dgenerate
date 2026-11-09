@@ -157,10 +157,16 @@ the closest example has a token block. Public: SD 1.5, SD 2.1, SDXL (base, \
 refiner, inpainting), FLUX.1-schnell, Kolors, Stable Cascade, the upscalers, \
 pix2pix, Tongyi-MAI/Z-Image, Tongyi-MAI/Z-Image-Turbo, \
 Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32, Qwen/Qwen-Image, \
-black-forest-labs/FLUX.2-klein-4B. \
+black-forest-labs/FLUX.2-klein-4B, \
+kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers, \
+kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers, \
+kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers. \
 Gated: FLUX.1-dev, FLUX.1-Krea-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, \
 black-forest-labs/FLUX.2-dev, black-forest-labs/FLUX.2-klein-9B, \
 black-forest-labs/FLUX.2-klein-base-9B, black-forest-labs/FLUX.2-klein-9b-kv, \
+black-forest-labs/flux-3-image-klein, black-forest-labs/flux-3-image-klein-base, \
+black-forest-labs/flux-3-image-klein-comfy, \
+kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, \
 SD3, SD3.5, \
 LTX-2.5, LTX-Video, DeepFloyd IF. For a gated repo, \\set token %HF_TOKEN% once at the top, \
 then {{% if not token.strip() and not '--auth-token' in injected_args %}} \
@@ -351,13 +357,17 @@ PROMPT_GUIDES = {
                        '--image-seeds with no mask are reference images.'),
     'flux3': ('Natural sentences. Distilled black-forest-labs/flux-3-image-klein is 16 steps '
               'and guidance 1 and ignores a negative prompt. Base flux-3-image-klein-base is '
-              '50 steps and guidance 3.5. --image-seeds are reference images, no mask and no '
+              '50 steps and guidance 3.5. Both repos are gated and need HF_TOKEN, and so is '
+              'black-forest-labs/flux-3-image-klein-comfy. --image-seeds are reference images, '
+              'no mask and no '
               'strength. Omit --pipeline-prompt-enhance unless the user asks for a rewrite. '
               'The flag takes no value, or one system prompt for that generation. '
               '--pipeline-prompt-enhance-* sampling options apply to that rewrite.'),
     'kandinsky6-video': ('One paragraph of the action, the look, the camera, and the sound. '
                          'Lite distilled is 10 steps and guidance 1. Full and Pro are 50 steps '
-                         'and guidance 5. --video-fps is 24. --output-size 864x480. One still '
+                         'and guidance 5. Lite, full Lite, and Pro distilled are public. '
+                         'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers is gated and needs HF_TOKEN. '
+                         '--video-fps is 24. --output-size 864x480. One still '
                          'is the first frame. No --loras. Omit --pipeline-prompt-enhance unless '
                          'the user asks for a rewrite. The flag takes no value, or one '
                          'system prompt for that generation. '
@@ -509,9 +519,10 @@ or one system prompt for that generation. --pipeline-prompt-enhance-* sampling o
 It loads the Qwen3.5 upsampler. \
 GGUF: --transformer https://huggingface.co/molbal/Flux-3-Klein-GGUF/blob/main/flux3_image_klein_sd-Q4_K_M.gguf \
 on that distilled parent. \
-Base: black-forest-labs/flux-3-image-klein-base, 50 steps, guidance 3.5. \
+Base: black-forest-labs/flux-3-image-klein-base, 50 steps, guidance 3.5. Gated, needs HF_TOKEN. \
 Its GGUF is --transformer https://huggingface.co/molbal/Flux-3-Klein-GGUF/blob/main/flux3_image_klein_base-Q4_K_M.gguf. \
-INT8 text encoder: --text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/blob/main/text_encoders/qwen3vl_4b_int8_convrot.safetensors". \
+INT8 text encoder from the gated repo black-forest-labs/flux-3-image-klein-comfy: \
+--text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/blob/main/text_encoders/qwen3vl_4b_int8_convrot.safetensors". \
 This is not Flux.2.
 - Qwen-Image Edit: Qwen/Qwen-Image-Edit, --model-type qwen-image-edit. The image seed is required. \
 Qwen/Qwen-Image-Edit-2509 is edit-plus. A mask on the edit checkpoint is edit-inpaint. \
@@ -563,15 +574,15 @@ An edit is kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers with --image-seeds.
 - Kandinsky 6 video: --model-type kandinsky6-video, --dtype bfloat16, --model-sequential-offload, \
 --video-fps 24, --output-size 864x480, 5 seconds, audio included. \
 Lite distilled is kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers, PiflowScheduler, 10 steps, guidance 1. Public, no HF_TOKEN. \
-Full Lite is kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers, 50 steps, guidance 5. \
-Pro distilled is kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers, 10 steps, guidance 1. \
-Pro is kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, 50 steps, guidance 5. The full Pro repo may need HF_TOKEN. \
+Full Lite is kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers, 50 steps, guidance 5. Public, no HF_TOKEN. \
+Pro distilled is kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers, 10 steps, guidance 1. Public, no HF_TOKEN. \
+Pro is kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, 50 steps, guidance 5. Gated, needs HF_TOKEN. \
 One still image is the first frame. No --loras. \
 Omit --pipeline-prompt-enhance unless the user asks for a rewrite. The flag takes no value, \
 or one system prompt for that generation. --pipeline-prompt-enhance-* sampling options apply to that rewrite. \
 It turns on expand_prompts. \
 GGUF: --transformer https://huggingface.co/realrebelai/Kandinsky-6.0-Pro-5s_GGUFs/blob/main/Diffusion Model/Full/Kandinsky-6.0-Pro-5s-Q4_K_S.gguf \
-on the Pro parent, 50 steps, guidance 5. \
+on the Pro parent, 50 steps, guidance 5. That parent is gated, so the config still needs HF_TOKEN. \
 INT8 Lite distilled: --transformer https://huggingface.co/kabachuha/Kandinsky-6.0-Lite-distill-5s-int8-convrot/blob/main/Kandinsky-6.0-Lite-Distilled-5s-int8-convrot.safetensors. \
 This is not Kandinsky 5.
 - DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
@@ -754,6 +765,9 @@ _GATED_HF = re.compile(
     r'flux\.2(?!-klein-(?:base-)?4b)|flux-2(?!-klein-(?:base-)?4b)|'
     r'flux2(?!-klein-(?:base-)?4b)|flux 2(?! klein(?: base)? 4b)|'
     r'klein-9b|klein 9b|'
+    r'flux\.3|flux-3|flux 3|(?<![a-z0-9])flux3(?![a-z0-9])|'
+    r'kandinsky-6\.0-pro-5s|'
+    r'kandinsky-?6(?:\.0)?[- ]pro(?![- ]?(?:distill|pretrain))|'
     r'\bsd3\b|\bsd\s*3|stable-diffusion-3|stable diffusion 3|'
     r'\bltx2\b|\bltx\b|deep\s*floyd',
     re.IGNORECASE)
@@ -792,13 +806,19 @@ def first_draft_recipes(request: str, editor: str | None = None,
         'Hunyuan-DiT (Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers, --model-type hydit), '
         'HunyuanImage 2.1 (hunyuanvideo-community/HunyuanImage-2.1-Diffusers, --model-type hyimage-21). '
         'Krea 2 is not FLUX.1-Krea-dev. Hunyuan-DiT is not HunyuanVideo and not HunyuanImage. '
-        'Klein 4B (black-forest-labs/FLUX.2-klein-4B) is public.',
+        'Klein 4B (black-forest-labs/FLUX.2-klein-4B) is public. '
+        'Kandinsky 6 Lite distilled, full Lite, and Pro distilled are public.',
         'Gated, HF_TOKEN required: FLUX.1-dev, FLUX.1-Krea-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, '
         'black-forest-labs/FLUX.2-dev, black-forest-labs/FLUX.2-klein-9B, '
         'black-forest-labs/FLUX.2-klein-base-9B, black-forest-labs/FLUX.2-klein-9b-kv, '
+        'black-forest-labs/flux-3-image-klein, black-forest-labs/flux-3-image-klein-base, '
+        'black-forest-labs/flux-3-image-klein-comfy, '
+        'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, '
         'SD3, SD3.5, '
         'LTX-2.5, LTX-Video, DeepFloyd IF. '
-        'FLUX.2-klein-9B is the distilled 9B checkpoint. It is gated. It is not the 4B repo and not the base-9B repo.',
+        'FLUX.2-klein-9B is the distilled 9B checkpoint. It is gated. It is not the 4B repo and not the base-9B repo. '
+        'FLUX.3 Klein distilled and base are both gated. The Comfy quant repo is gated. '
+        'Only the full Kandinsky 6 Pro repo is gated. A Pro GGUF still uses that gated parent.',
         'For a gated repo the \\print is exactly:',
         r'    \print Set HF_TOKEN environmental variable or pass --auth-token.',
         'Put the HF_TOKEN \\set and that single {% if %} \\print \\exit {% endif %} block '

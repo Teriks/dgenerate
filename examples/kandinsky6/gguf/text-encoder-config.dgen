@@ -4,6 +4,14 @@
 # Pro GGUF transformer and a W4A8 Qwen2.5-VL encoder.
 # "+" keeps CLIP from the Diffusers repository.
 # The text encoder file includes the vision tower. No quantizer: the linears stay packed.
+# The full Pro repository is gated.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
 
 kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers
 --model-type kandinsky6-video

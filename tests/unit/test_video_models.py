@@ -1435,6 +1435,31 @@ class TestVideoModels(unittest.TestCase):
         self.assertEqual(len(frames), 4)
         self.assertTrue(os.path.isfile(os.path.join(directory, 'clip_frame_4.png')))
 
+    def test_generation_result_write_muxes_the_clip(self):
+        sample_rate = 16000
+        samples = numpy.arange(sample_rate // 2, dtype=numpy.float32) / sample_rate
+        audio = numpy.sin(2 * math.pi * 440 * samples).reshape(1, -1)
+        frames = [PIL.Image.new('RGB', (64, 64), (index * 40, 0, 0)) for index in range(4)]
+        result = _pipelinewrapper.GenerationResult(
+            images=frames, audio=audio, audio_sample_rate=sample_rate, fps=8)
+
+        buffer = io.BytesIO()
+        result.write(buffer)
+        self.assertEqual(buffer.tell(), 0)
+        container = av.open(buffer)
+        try:
+            self.assertEqual(len(container.streams.video), 1)
+            self.assertEqual(len(container.streams.audio), 1)
+        finally:
+            container.close()
+
+        still = _pipelinewrapper.GenerationResult(images=frames[:1])
+        with self.assertRaises(ValueError):
+            still.write(io.BytesIO())
+        latent = _pipelinewrapper.GenerationResult(latents=[torch.zeros(1)])
+        with self.assertRaises(ValueError):
+            latent.write(io.BytesIO())
+
     def test_disabled_writes_keep_the_video_clip_on_the_event(self):
         from dgenerate.renderloop import RenderLoop, VideoGeneratedEvent
 

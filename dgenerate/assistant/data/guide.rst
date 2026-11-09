@@ -444,7 +444,8 @@ rejects ``--prompt-upsampler``.
 FLUX.3 is ``--model-type flux3``, not Flux.2. Distilled is
 ``black-forest-labs/flux-3-image-klein``, 16 steps, guidance 1. Base is
 ``black-forest-labs/flux-3-image-klein-base``, 50 steps, guidance 3.5.
-Both are gated. ``--image-seeds`` are reference images, with no mask and no
+Both are gated and need HF_TOKEN. ``black-forest-labs/flux-3-image-klein-comfy``
+is gated too. ``--image-seeds`` are reference images, with no mask and no
 strength. Omit ``--pipeline-prompt-enhance`` unless the user asks for a rewrite.
 The flag takes no value, or one system prompt for that generation.
 ``--pipeline-prompt-enhance-*`` sampling options apply to that rewrite.
@@ -452,8 +453,10 @@ It loads the Qwen3.5 upsampler.
 Without it the prompt is encoded as given.
 Kandinsky 6 video is ``--model-type kandinsky6-video``, not Kandinsky 5.
 Lite distilled is ``Kandinsky-6.0-Lite-distill-5s-Diffusers``, 10 steps,
-guidance 1, with audio at 864x480 and 24 fps. Pro is
-``Kandinsky-6.0-Pro-5s-Diffusers``, 50 steps, guidance 5. One still is the
+guidance 1, with audio at 864x480 and 24 fps. Lite, full Lite, and Pro
+distilled are public. Pro ``Kandinsky-6.0-Pro-5s-Diffusers`` is gated and
+needs HF_TOKEN, including when a public GGUF replaces its transformer. It is
+50 steps, guidance 5. One still is the
 first frame. No ``--loras``. The same ``--pipeline-prompt-enhance`` flag
 turns on ``expand_prompts``. A value replaces the expansion instruction for
 that generation. ``--pipeline-prompt-enhance-*`` sampling options apply to

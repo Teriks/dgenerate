@@ -576,9 +576,27 @@ class TestAssistantPrompt(unittest.TestCase):
             'krea/Krea-2-Raw',
             'black-forest-labs/FLUX.2-klein-base-4B',
             'FLUX.1-schnell',
+            'kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers',
+            'kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers',
+            'kandinsky 6 pro distill',
+            'Kandinsky-6.0-Pro-distill-5s-Diffusers',
         ):
             self.assertNotIn(
                 'This request uses a gated checkpoint', first_draft_recipes(public_name), public_name)
+        for gated in (
+            'black-forest-labs/flux-3-image-klein',
+            'flux 3 klein base',
+            'black-forest-labs/flux-3-image-klein-base',
+            'black-forest-labs/flux-3-image-klein-comfy',
+            'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers',
+            'kandinsky 6 pro',
+            'Kandinsky-6.0-Pro-5s_GGUFs',
+        ):
+            self.assertIn('gated checkpoint', first_draft_recipes(gated), gated)
+        recipes = first_draft_recipes('flux 3 klein')
+        self.assertIn('black-forest-labs/flux-3-image-klein-base', recipes)
+        self.assertIn('kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers', recipes)
+        self.assertNotIn('may need HF_TOKEN', recipes)
 
     def test_model_is_told_after_the_examples(self):
         system = system_message('6.0.0')
