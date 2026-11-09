@@ -2,6 +2,7 @@ title: Flux.3 Klein (GGUF)
 
 # Public Q4_K_M GGUF of the distilled transformer. The pipeline repo is still gated
 # and supplies the Qwen3-VL encoder, the prompt upsampler, and the Flux.2 VAE.
+# --image-seeds are reference images (up to 10) and take no mask or strength.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 
@@ -19,6 +20,7 @@ title: Flux.3 Klein (GGUF)
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
 @submodelbuilder[{"label":"Transformer GGUF", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/molbal/Flux-3-Klein-GGUF/blob/main/flux3_image_klein_sd-Q4_K_M.gguf", "divider-after":true}]
+@imageseed[{"id":"image-seed", "label":"Reference Images", "arg":"--image-seeds", "file-types":["images-in"], "default":""}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":16, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]
 @submodelbuilder[{"label":"Prompt Upsampler", "arg":"--prompt-upsampler", "model":"Prompt Upsampler", "divider-before":true}]
