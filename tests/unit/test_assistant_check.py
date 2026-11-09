@@ -849,6 +849,74 @@ class TestAssistantCheck(unittest.TestCase):
         ), memory=(True, 16.0, True, False))
         self.assertNotIn('memory flags', _messages(report))
 
+    def test_spaced_blob_folder_is_the_whole_file(self):
+        import dgenerate.assistant.check as assistant_check
+
+        repo = 'realrebelai/Kandinsky-6.0-Pro-5s_GGUFs'
+        transformer = (
+            f'https://huggingface.co/{repo}/blob/main/'
+            'Diffusion Model/Full/Kandinsky-6.0-Pro-5s-Q4_K_S.gguf')
+        encoder = (
+            'Qwen2_5_VLForConditionalGeneration;model='
+            f'https://huggingface.co/{repo}/blob/main/'
+            'Text Encoder/K6-Qwen2.5-VL-7B-w4a8.safetensors')
+        found = assistant_check._huggingface_blob_files([
+            transformer,
+            encoder,
+            transformer + '?download=true',
+            'model=' + transformer + ';revision=main',
+            transformer + ' and then a fox',
+        ])
+        self.assertEqual(
+            [(item[0], item[2]) for item in found],
+            [
+                (repo, 'Diffusion Model/Full/Kandinsky-6.0-Pro-5s-Q4_K_S.gguf'),
+                (repo, 'Text Encoder/K6-Qwen2.5-VL-7B-w4a8.safetensors'),
+            ])
+
+        files = [
+            'Diffusion Model/Full/Kandinsky-6.0-Pro-5s-Q4_K_S.gguf',
+            'Text Encoder/K6-Qwen2.5-VL-7B-w4a8.safetensors',
+        ]
+        real_list = assistant_check._repo_file_list
+        real_cached = assistant_check._hub_cache_has
+        real_repo = assistant_check._repo_problem
+        assistant_check._repo_file_list = lambda repo_id, cache: cache.setdefault(repo_id, files)
+        assistant_check._hub_cache_has = lambda *args: False
+        assistant_check._repo_problem = lambda *args, **kwargs: None
+        try:
+            kept = check_config(_cfg(
+                'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers',
+                '--model-type kandinsky6-video',
+                '--dtype bfloat16',
+                '--model-sequential-offload',
+                f'--transformer "{transformer}"',
+                f'--text-encoders "{encoder}" +',
+                '--inference-steps 50',
+                '--guidance-scales 5',
+                '--video-lengths 5',
+                '--video-fps 24',
+                '--animation-format mp4',
+                '--prompts "a fox"',
+            ), memory=(True, 16.0, True, False))
+            missing = check_config(_cfg(
+                'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers',
+                '--model-type kandinsky6-video',
+                '--dtype bfloat16',
+                '--model-sequential-offload',
+                '--transformer "' + transformer.replace('Q4_K_S', 'Q8_0') + '"',
+                '--prompts "a fox"',
+            ), memory=(True, 16.0, True, False))
+        finally:
+            assistant_check._repo_file_list = real_list
+            assistant_check._hub_cache_has = real_cached
+            assistant_check._repo_problem = real_repo
+        self.assertNotIn('has no file', _messages(kept))
+        self.assertIn(
+            'has no file "Diffusion Model/Full/Kandinsky-6.0-Pro-5s-Q8_0.gguf"',
+            _messages(missing))
+        self.assertNotIn('has no file "Diffusion"', _messages(missing))
+
     def test_cached_hf_blob_is_not_listed_on_the_hub(self):
         import dgenerate.assistant.check as assistant_check
 

@@ -47,7 +47,7 @@ CHAT_MODELS = [
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_M.gguf', 6.7, 'Qwen 3.8, 8 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_XXS.gguf', 7.3, 'Qwen 3.8, 8 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_S.gguf', 8.4, 'Qwen 3.8, 12 GB GPUs'),
-    (DEFAULT_CHAT_MODEL, 9.8, 'Qwen 3.8, 16 GB GPUs, default'),
+    (DEFAULT_CHAT_MODEL, 9.8, 'Qwen 3.8, 12 GB GPUs, default'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf', 10.9, 'Qwen 3.8, 12 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_S.gguf', 12.0, 'Qwen 3.8, 16 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q3_K_XL.gguf', 13.1, 'Qwen 3.8, 16 GB GPUs'),

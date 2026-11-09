@@ -415,10 +415,15 @@ def _repo_file_list(repo: str, cache: dict) -> list[str] | None:
     return cache[repo]
 
 
+# A quoted blob URL keeps spaces in the folder name. The Kandinsky 6 GGUF
+# examples use "Diffusion Model/Full/..." and "Text Encoder/...". The path
+# runs through that filename. ";" starts another URI argument, and words
+# after the file are not part of the path.
 _HF_BLOB = re.compile(
     r'https?://(?:www\.)?huggingface\.co/'
     r'(?P<repo_id>[\w.-]+/[\w.-]+)/(?P<kind>blob|resolve)/(?P<revision>[^/]+)/'
-    r'(?P<path>[^?\s"\'<>]+)')
+    r'(?P<path>[^?;"\'<>]*?\.(?:safetensors|ckpt|gguf|pth|bin|pt))\b',
+    re.IGNORECASE)
 
 
 def _huggingface_blob_files(values) -> list[tuple[str, str, str]]:
