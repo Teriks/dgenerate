@@ -140,6 +140,11 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
 
+   * - ``flux3``
+     - ✅
+     - ❌
+     - ❌
+
    * - ``z-image``
      - ✅
      - ✅
@@ -332,6 +337,13 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
 
+   * - ``flux3``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
    * - ``z-image``
      - ✅
      - ❌
@@ -489,6 +501,10 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
 
+   * - ``flux3``
+     - ❌
+     - ❌
+
    * - ``z-image``
      - ❌
      - ❌
@@ -628,6 +644,11 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``flux2-klein-kv``
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``flux3``
      - ❌
      - ❌
      - ❌
@@ -1011,6 +1032,19 @@ is omitted. Kandinsky 6 still loads its text encoder, because denoising uses it.
    * - ``flux2-klein-kv``
      - ✅
      - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+     - ❌
+
+   * - ``flux3``
+     - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -1475,12 +1509,28 @@ audio in dgenerate.
 Flow Image Model Notes
 ----------------------
 
-``flux2``, ``flux2-klein-kv``, ``z-image-omni``, ``qwen-image-edit``, and
+``flux2``, ``flux2-klein-kv``, ``flux3``, ``z-image-omni``, ``qwen-image-edit``, and
 ``qwen-image-layered`` take an ``--image-seeds`` value with no mask as a
 condition image. That is the Txt2Img column above. There is no img2img
 strength.
 
 ``flux2`` inpainting is Flux.2 Klein only. Full Flux.2 has no inpaint pipeline.
+
+``flux3`` is FLUX.3 Image Klein, distilled and base. ``--image-seeds`` are
+reference images, up to 10, with no mask and no strength. One reference keeps
+its own size unless ``--output-size`` is set. Distilled
+``black-forest-labs/flux-3-image-klein`` uses 16 steps and guidance 1, and a
+negative prompt is ignored. Base ``black-forest-labs/flux-3-image-klein-base``
+uses 50 steps and guidance 3.5. Omit ``--scheduler``; the modular pipeline
+keeps the checkpoint scheduler. ``--loras`` accepts Diffusers-format LoRAs
+trained on Klein Base, and the same file loads on the distilled checkpoint.
+A Comfy-layout GGUF on ``--transformer`` is renamed onto
+``Flux3Transformer2DModel``. Pair a distilled GGUF with the distilled
+repository and a base GGUF with the base repository. The Qwen3.5 prompt
+upsampler loads only when ``--pipeline-prompt-enhance`` or
+``--prompt-upsampler`` is set. Saved latents are unpatchified denoise-space
+tensors in the Flux.2 layout, so cooperative denoising continues them with
+``latents:``. Examples are under ``examples/flux3``.
 
 ``qwen-image-edit`` inpainting is the edit pipeline with a mask. Edit-Plus has
 no inpaint pipeline.
@@ -1493,8 +1543,8 @@ when the loaded pipeline is not an inpaint class. See ``examples/flux/regione`` 
 pipeline. ``hyimage-21`` is text-to-image only. ``hyimage-21-refiner`` requires
 ``--image-seeds`` as the image to refine; that is not img2img strength. ``krea2`` is
 text-to-image only. ``kandinsky5-image`` supports text-to-image and image-to-image
-editing, but not inpainting. ``hydit``, ``hyimage-21``, ``hyimage-21-refiner``, ``qwen-image-21``, ``krea2``, and
-``kandinsky5-image`` support latent interchange and cooperative denoising; see their
+editing, but not inpainting. ``hydit``, ``hyimage-21``, ``hyimage-21-refiner``, ``qwen-image-21``, ``krea2``,
+``kandinsky5-image``, and ``flux3`` support latent interchange and cooperative denoising; see their
 examples under ``examples/latents_interchange``.
 
 ``hydit`` (Hunyuan-DiT) is text-to-image only. It supports LoRA, HunyuanDiT ControlNet
@@ -1514,7 +1564,8 @@ ControlNet on ``z-image`` and ``qwen-image`` is text-to-image and inpaint.
 The model-specific rows above show LoRA, Cache-DiT, DyPE, and Spectrum support. In particular,
 ``qwen-image-21`` and ``hyimage-21`` (including the refiner) support Spectrum but not
 Cache-DiT or DyPE; ``kandinsky5-image`` supports Cache-DiT and Spectrum but not DyPE;
-``krea2`` supports all three. These flow image models do not support textual inversions,
+``krea2`` supports all three; ``flux3`` supports DyPE and Spectrum but not Cache-DiT.
+These flow image models do not support textual inversions,
 IP adapters, T2I adapters, prompt weighters, PAG, DeepCache, TeaCache, SADA, Microsoft RAS,
 or Hi-Diffusion, except where noted for ``hydit`` above.
 
@@ -1552,10 +1603,10 @@ The TeaCache threshold can be specified with the ``--tea-cache-rel-l1-thresholds
 
 SADA cannot be combined with Hi-Diffusion, DeepCache, or TeaCache.
 
-DyPE (``--dype``) adapts spatial RoPE frequencies during denoising. Use ``--dype-methods`` to try ``yarn`` (default), ``ntk``, or the ``base`` RoPE baseline as combinatoric values. The Flux.1 and Qwen-Image adapters follow the upstream architecture; Flux.1 Fill / Kontext, Qwen-Image Edit / Layered, Flux.2, Z-Image, Wan, Wan-Animate, Wan-Animate-2, Krea 2, HunyuanVideo 1.5, and Motif-Video are experimental adapters. Reference long-side defaults are 1024 pixels for Flux.1, Flux.2, and Z-Image, 1328 for Qwen-Image, and 832 for Wan. ``--dype-mscales`` controls the ``yarn`` method's attention magnitude scale: ``constant`` (default), ``decay``, or ``off``. Use ``decay`` or ``off`` if ``yarn`` produces a fine repeating texture, as it does with FLUX.1-dev. ``--dype-axis-scalings`` controls non-square images: ``shared`` (default) applies the long side's scaling to both axes, as ComfyUI-DyPE does; ``independent`` scales each axis separately, as upstream DyPE does. DyPE cannot be combined with Cache-DiT, TeaCache, Spectrum, or SADA, because those features reuse or skip denoiser work from an earlier step. See the `DyPE source <https://github.com/guyyariv/DyPE>`__ and the vendored adapter notes under ``dgenerate/extras/dype``.
+DyPE (``--dype``) adapts spatial RoPE frequencies during denoising. Use ``--dype-methods`` to try ``yarn`` (default), ``ntk``, or the ``base`` RoPE baseline as combinatoric values. The Flux.1 and Qwen-Image adapters follow the upstream architecture; Flux.1 Fill / Kontext, Qwen-Image Edit / Layered, Flux.2, FLUX.3, Z-Image, Wan, Wan-Animate, Wan-Animate-2, Krea 2, HunyuanVideo 1.5, and Motif-Video are experimental adapters. FLUX.3 uses the Flux.2 position-id contract. Reference long-side defaults are 1024 pixels for Flux.1, Flux.2, FLUX.3, and Z-Image, 1328 for Qwen-Image, and 832 for Wan. ``--dype-mscales`` controls the ``yarn`` method's attention magnitude scale: ``constant`` (default), ``decay``, or ``off``. Use ``decay`` or ``off`` if ``yarn`` produces a fine repeating texture, as it does with FLUX.1-dev. ``--dype-axis-scalings`` controls non-square images: ``shared`` (default) applies the long side's scaling to both axes, as ComfyUI-DyPE does; ``independent`` scales each axis separately, as upstream DyPE does. DyPE cannot be combined with Cache-DiT, TeaCache, Spectrum, or SADA, because those features reuse or skip denoiser work from an earlier step. See the `DyPE source <https://github.com/guyyariv/DyPE>`__ and the vendored adapter notes under ``dgenerate/extras/dype``.
 
 
 
 RegionE (``--regione``) accelerates instruction-based image editing on ``--model-type flux-kontext`` and ``qwen-image-edit`` by partitioning edited and unchanged regions. It requires an input image in ``--image-seeds`` and a non-inpaint pipeline (Kontext inpaint and Qwen-Image-Edit inpaint are rejected). RegionE always runs 28 inference steps. Omitting ``--inference-steps`` uses 28. Any other explicit count is changed to 28, with a warning. Pipeline-specific defaults apply to ``--regione-warmup-steps``, ``--regione-post-steps``, ``--regione-refresh-steps``, ``--regione-thresholds``, ``--regione-cache-thresholds``, and ``--regione-erosion-dilation``. RegionE cannot be combined with Cache-DiT, DyPE, TeaCache, Spectrum, SADA, Microsoft RAS, or ADetailer, and it does not support model CPU offloading or group offloading. Examples are under ``examples/flux/regione`` and ``examples/qwen_image/regione``. See `RegionE <https://github.com/Peyton-Chen/RegionE>`__.
 
-Spectrum (``--spectrum``) forecasts denoiser block outputs and skips those blocks on later steps. Transformers skip their blocks. SDXL and Kolors skip the UNet down, mid, and up blocks and still run the output convolution. It is supported on SD3, SDXL, Kolors, Flux.1, Flux.2, Z-Image, Qwen-Image (including 2.1), HunyuanImage 2.1 (base and refiner), Krea 2, Kandinsky 5.0 Image, Wan, Wan-Animate, Wan-Animate-2, HunyuanVideo 1.5, and Motif-Video. The moderate schedule is the default (window ``2``, flex ``0.75``). ``--spectrum-flex-windows 3`` is the paper's aggressive schedule. Details are at `Spectrum <https://github.com/hanjq17/Spectrum>`__.
+Spectrum (``--spectrum``) forecasts denoiser block outputs and skips those blocks on later steps. Transformers skip their blocks. SDXL and Kolors skip the UNet down, mid, and up blocks and still run the output convolution. It is supported on SD3, SDXL, Kolors, Flux.1, Flux.2, FLUX.3, Z-Image, Qwen-Image (including 2.1), HunyuanImage 2.1 (base and refiner), Krea 2, Kandinsky 5.0 Image, Wan, Wan-Animate, Wan-Animate-2, HunyuanVideo 1.5, and Motif-Video. The moderate schedule is the default (window ``2``, flex ``0.75``). ``--spectrum-flex-windows 3`` is the paper's aggressive schedule. Details are at `Spectrum <https://github.com/hanjq17/Spectrum>`__.
