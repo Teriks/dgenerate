@@ -226,7 +226,8 @@ def create_parser(prog: str) -> _b_util.DirectiveArgumentParser:
                             'Embedding model. One of these compatible Qwen3-Embedding GGUFs. '
                             'Each one has a packaged index.',
                             _catalog.EMBED_MODELS))
-    parser.add_argument('-ctx', '--ctx', type=int, default=32768, help='Chat context size in tokens. Default: %(default)s')
+    parser.add_argument('-ctx', '--ctx', type=int, default=_catalog.DEFAULT_CTX,
+                        help='Chat context size in tokens. Default: %(default)s')
     parser.add_argument('-gpu', '--gpu-layers', type=int, default=-1,
                         help='Layers to put on the GPU, -1 for automatic, 0 for CPU only. Default: %(default)s')
     parser.add_argument('-ed', '--edit', metavar='FILE',

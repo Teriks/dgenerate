@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 
+import dgenerate.exceptions
 import dgenerate.hfhub as hfhub
 
 
@@ -47,6 +48,33 @@ class TestHFBlobLink(unittest.TestCase):
             local_files_only=False,
             force_download=False,
             token='token')
+
+
+class TestNamedWeight(unittest.TestCase):
+
+    def test_a_folder_file_becomes_the_model_path(self):
+        import os
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            folder = os.path.join(directory, 'Diffusion Model', 'Full')
+            os.makedirs(folder)
+            weight = os.path.join(folder, 'model.gguf')
+            with open(weight, 'wb') as handle:
+                handle.write(b'gguf')
+            path, component_subfolder = hfhub.materialize_named_weight(
+                directory, weight_name='model.gguf', subfolder='Diffusion Model/Full')
+        self.assertEqual(os.path.normpath(path), os.path.normpath(weight))
+        self.assertIsNone(component_subfolder)
+
+    def test_without_a_weight_name_the_path_is_unchanged(self):
+        path, subfolder = hfhub.materialize_named_weight('org/repo', subfolder='transformer')
+        self.assertEqual(path, 'org/repo')
+        self.assertEqual(subfolder, 'transformer')
+
+    def test_a_file_path_cannot_also_name_a_weight(self):
+        with self.assertRaises(dgenerate.exceptions.ModelNotFoundError):
+            hfhub.materialize_named_weight('model.gguf', weight_name='other.gguf')
 
 
 if __name__ == '__main__':

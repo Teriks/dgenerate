@@ -27,7 +27,8 @@ _ltx_latent_upsampler_uri_parser = _textprocessing.ConceptUriParser(
     'LTX Latent Upsampler', [
         'revision',
         'variant',
-        'subfolder'
+        'subfolder',
+        'weight-name'
     ]
 )
 
@@ -80,11 +81,19 @@ class LTXLatentUpsamplerUri:
         """
         return self._subfolder
 
+    @property
+    def weight_name(self) -> _types.OptionalName:
+        """
+        File name inside a repository or folder.
+        """
+        return self._weight_name
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
-                 subfolder: _types.OptionalPath = None):
+                 subfolder: _types.OptionalPath = None,
+                 weight_name: _types.OptionalName = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
@@ -96,6 +105,7 @@ class LTXLatentUpsamplerUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._weight_name = weight_name
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'LTXLatentUpsamplerUri':
@@ -114,6 +124,7 @@ class LTXLatentUpsamplerUri:
                 model=r.concept,
                 revision=r.args.get('revision', None),
                 variant=r.args.get('variant', None),
-                subfolder=r.args.get('subfolder', None))
+                subfolder=r.args.get('subfolder', None),
+                weight_name=r.args.get('weight-name', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidLTXLatentUpsamplerUriError(e) from e

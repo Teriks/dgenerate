@@ -1783,7 +1783,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     * "clip-g-sd35-large" for SD3.5 large variant CLIP-G checkpoints
                     
                     
-                    The "mode" option is mutually exclusive with "subfolder".
+                    The "mode" option is mutually exclusive with "subfolder", except when "subfolder"
+                    is the directory of a "weight-name" file.
                     
                     A pre-quantized text encoder can be loaded with no "mode" and no "quantizer".
                     Point "model" at a .gguf file (a T5-XXL or UMT5-XXL GGUF, or a llama.cpp Qwen,
@@ -1810,6 +1811,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     * Qwen3Model (Z-Image)
                     * Qwen3VLForConditionalGeneration (Qwen-Image 2.1, FLUX.3)
                     * Qwen3VLModel (Krea 2)
+                    
+                    "weight-name" selects one file in a repository or a folder. "subfolder" is the directory
+                    of that file: "CLIPTextModel;model=org/repo;subfolder=folder;weight-name=encoder.safetensors".
+                    A .gguf text encoder uses the same shape, with no "quantizer".
                     
                     If you wish to load weights directly from a path on disk, you must point this argument at the folder
                     they exist in, which should also contain the config.json file for the Text Encoder.
@@ -1861,7 +1866,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     If you wish to load weights directly from a path on disk, you must point this argument at the folder
                     they exist in, which should also contain the config.json file for the UNet.
-                    For example, a downloaded repository folder from Hugging Face."""
+                    For example, a downloaded repository folder from Hugging Face.
+                    
+                    "weight-name" selects one file in a repository or that folder. "subfolder" is the
+                    directory of the file: "org/repo;subfolder=folder;weight-name=unet.safetensors"."""
         )
     )
 
@@ -1933,10 +1941,15 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     on it, and do not use --quantizer gguf. Keep the parent Hugging Face
                     repository as --model so the VAE and text encoders still load.
                     
-                    If you wish to load a specific weight file from a Hugging Face repository, use the blob link
-                    loading syntax: --transformer
-                    "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/transformer.safetensors",
-                    the "revision" argument may be used with this syntax."""
+                    "weight-name" selects one file in a Hugging Face repository or a folder.
+                    "subfolder" is the directory that contains that file:
+                    
+                    NOWRAP!
+                    --transformer "org/repo;subfolder=folder;weight-name=model.gguf"
+                    
+                    A blob link still names one file directly:
+                    --transformer "https://huggingface.co/UserName/repository-name/blob/main/transformer.safetensors".
+                    The "revision" argument may be used with either syntax."""
         )
     )
 
@@ -2011,9 +2024,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     way is: --vae "AutoencoderKL;my_vae.safetensors", or with a dtype "AutoencoderKL;my_vae.safetensors;dtype=float16".
                     All loading arguments except "dtype" are unused in this case and may produce an error message if used.
                     
-                    If you wish to load a specific weight file from a Hugging Face repository, use the blob link
-                    loading syntax: --vae "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/vae_model.safetensors",
-                    the "revision" argument may be used with this syntax."""
+                    "weight-name" selects one file in a Hugging Face repository or a folder.
+                    "subfolder" is the directory that contains that file:
+                    --vae "AutoencoderKL;model=org/repo;subfolder=folder;weight-name=vae.safetensors".
+                    A blob link still names one file directly:
+                    --vae "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/vae_model.safetensors".
+                    The "revision" argument may be used with either syntax."""
         )
     )
 
@@ -2440,10 +2456,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     all other loading arguments aside from "scale", "start", "end", and "dtype" are unused in this case and may produce
                     an error message if used.
                     
-                    If you wish to load a specific weight file from a Hugging Face repository, use the blob link
-                    loading syntax: --control-nets
-                    "https://huggingface.co/UserName/repository-name/blob/main/controlnet.safetensors",
-                    the "revision" argument may be used with this syntax."""
+                    "weight-name" selects one file in a Hugging Face repository or a folder.
+                    "subfolder" is the directory that contains that file:
+                    --control-nets "org/repo;subfolder=folder;weight-name=controlnet.safetensors".
+                    A blob link still names one file directly:
+                    --control-nets "https://huggingface.co/UserName/repository-name/blob/main/controlnet.safetensors".
+                    The "revision" argument may be used with either syntax."""
         )
     )
 
@@ -2491,10 +2509,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     all other loading arguments aside from "scale" and "dtype" are unused in this case and may produce
                     an error message if used.
                     
-                    If you wish to load a specific weight file from a Hugging Face repository, use the blob link
-                    loading syntax: --t2i-adapters
-                    "https://huggingface.co/UserName/repository-name/blob/main/t2i_adapter.safetensors",
-                    the "revision" argument may be used with this syntax."""
+                    "weight-name" selects one file in a Hugging Face repository or a folder.
+                    "subfolder" is the directory that contains that file:
+                    --t2i-adapters "org/repo;subfolder=folder;weight-name=t2i_adapter.safetensors".
+                    A blob link still names one file directly:
+                    --t2i-adapters "https://huggingface.co/UserName/repository-name/blob/main/t2i_adapter.safetensors".
+                    The "revision" argument may be used with either syntax."""
         )
     )
 
@@ -4041,10 +4061,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     all other loading arguments aside from "dtype" are unused in this case and may produce
                     an error message if used.
                     
-                    If you wish to load a specific weight file from a Hugging Face repository, use the blob link
-                    loading syntax: --s-cascade-decoder
-                    "https://huggingface.co/UserName/repository-name/blob/main/decoder.safetensors",
-                    the "revision" argument may be used with this syntax."""
+                    "weight-name" selects one file in a Hugging Face repository or a folder.
+                    "subfolder" is the directory that contains that file:
+                    --s-cascade-decoder "org/repo;subfolder=folder;weight-name=decoder.safetensors".
+                    A blob link still names one file directly:
+                    --s-cascade-decoder "https://huggingface.co/UserName/repository-name/blob/main/decoder.safetensors".
+                    The "revision" argument may be used with either syntax."""
         )
     )
 
@@ -4082,10 +4104,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     all other loading arguments aside from "dtype" are unused in this case and may produce
                     an error message if used.
                     
-                    If you wish to load a specific weight file from a Hugging Face repository, use the blob link
-                    loading syntax: --sdxl-refiner
-                    "https://huggingface.co/UserName/repository-name/blob/main/refiner_model.safetensors",
-                    the "revision" argument may be used with this syntax."""
+                    "weight-name" selects one file in a Hugging Face repository or a folder.
+                    "subfolder" is the directory that contains that file:
+                    --sdxl-refiner "org/repo;subfolder=folder;weight-name=refiner.safetensors".
+                    A blob link still names one file directly:
+                    --sdxl-refiner "https://huggingface.co/UserName/repository-name/blob/main/refiner_model.safetensors".
+                    The "revision" argument may be used with either syntax."""
 
         )
     )
@@ -5684,7 +5708,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     full size. The same prompt, seed, and image seed are used.
                     If a URI is specified, it is used as the latent upsampler,
                     for example repo/model;subfolder=latent_upsampler.
-                    The URI accepts revision, variant, and subfolder. The upsampler
+                    The URI accepts revision, variant, subfolder, and weight-name.
+                    "weight-name" selects one file; "subfolder" is that file's directory.
+                    The upsampler
                     uses the main model's dtype.
                     Stage-2 sigmas default to the published 3-value table, and
                     stage-2 guidance defaults to 1. See --ltx-stage-sigmas,

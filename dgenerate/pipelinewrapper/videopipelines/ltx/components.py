@@ -216,11 +216,17 @@ def _check_ltx_latent_upsampler_available(wrapper, user_args, temporal: bool = F
     variant = None
     if isinstance(getattr(user_args, 'ltx_latent_upscale', None), str):
         uri = _uris.LTXLatentUpsamplerUri.parse(user_args.ltx_latent_upscale)
-        model_path = uri.model
+        model_path, named_subfolder = _hfhub.materialize_named_weight(
+            uri.model,
+            weight_name=uri.weight_name,
+            revision=uri.revision,
+            subfolder=uri.subfolder,
+            local_files_only=bool(wrapper._local_files_only),
+            auth_token=wrapper._auth_token)
         revision = uri.revision
         variant = uri.variant
-        if uri.subfolder:
-            subfolder = uri.subfolder
+        if named_subfolder:
+            subfolder = named_subfolder
         if _hfhub.is_single_file_model_load(model_path):
             subfolder = ''
 
@@ -332,13 +338,19 @@ def _load_ltx_latent_upsampler(wrapper, user_args, use_custom_uri=True):
                               isinstance(getattr(user_args, 'ltx_latent_upscale', None), str))
     if using_custom_upsampler:
         uri = _uris.LTXLatentUpsamplerUri.parse(user_args.ltx_latent_upscale)
-        model_path = uri.model
+        model_path, named_subfolder = _hfhub.materialize_named_weight(
+            uri.model,
+            weight_name=uri.weight_name,
+            revision=uri.revision,
+            subfolder=uri.subfolder,
+            local_files_only=bool(wrapper._local_files_only),
+            auth_token=wrapper._auth_token)
         if uri.revision is not None:
             load_kwargs['revision'] = uri.revision
         if uri.variant is not None:
             load_kwargs['variant'] = uri.variant
-        if uri.subfolder:
-            load_kwargs['subfolder'] = uri.subfolder
+        if named_subfolder:
+            load_kwargs['subfolder'] = named_subfolder
         if _hfhub.is_single_file_model_load(model_path):
             load_kwargs.pop('subfolder', None)
 

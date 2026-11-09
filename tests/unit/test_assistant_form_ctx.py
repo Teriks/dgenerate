@@ -39,7 +39,7 @@ class TestContextValue(unittest.TestCase):
 
     def test_context_vram_reads_in_whole_units(self):
         self.assertEqual(format_context_vram(1024), '+64 MiB')
-        self.assertEqual(format_context_vram(_DEFAULT_CTX), '+2 GiB')
+        self.assertEqual(format_context_vram(_DEFAULT_CTX), '+3 GiB')
         self.assertEqual(format_context_vram(_MAX_CTX), '+16 GiB')
 
 
@@ -125,7 +125,7 @@ class TestGenerateCodeContextField(unittest.TestCase):
                     self.assertEqual(form._ctx_var.get(), str(_MAX_CTX))
                     form._set_default_ctx()
                     self.assertEqual(form._ctx_var.get(), str(_DEFAULT_CTX))
-                    self.assertEqual(form._ctx_vram_var.get(), '+2 GiB')
+                    self.assertEqual(form._ctx_vram_var.get(), '+3 GiB')
                     saved = json.loads(settings.read_text(encoding='utf-8'))
                     form._ctx_var.set('1024')
                     self.assertEqual(form._ctx_vram_var.get(), '+64 MiB')

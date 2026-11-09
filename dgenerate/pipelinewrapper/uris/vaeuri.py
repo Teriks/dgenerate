@@ -45,6 +45,7 @@ _vae_uri_parser = _textprocessing.ConceptUriParser(
         'revision',
         'variant',
         'subfolder',
+        'weight-name',
         'dtype',
         'compile'
     ]
@@ -94,6 +95,13 @@ class VAEUri:
         Model repo subfolder
         """
         return self._subfolder
+
+    @property
+    def weight_name(self) -> _types.OptionalName:
+        """
+        File name inside a repository or folder.
+        """
+        return self._weight_name
 
     @property
     def compile(self) -> bool:
@@ -161,6 +169,7 @@ class VAEUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
+                 weight_name: _types.OptionalName = None,
                  extract: bool = False,
                  dtype: _enums.DataType | str | None = None,
                  compile: bool = False):
@@ -185,8 +194,9 @@ class VAEUri:
 
         can_single_file_load = hasattr(self._encoders[encoder], 'from_single_file')
         single_file_load_path = _hfhub.is_single_file_model_load(model)
+        named_file = bool(weight_name) and _hfhub.is_single_file_model_load(weight_name)
 
-        if single_file_load_path and not can_single_file_load and not extract:
+        if (single_file_load_path or named_file) and not can_single_file_load and not extract:
             raise _exceptions.InvalidVaeUriError(
                 f'{encoder} is not capable of loading from a single file, '
                 f'must be loaded from a huggingface repository slug or folder on disk.')
@@ -208,6 +218,7 @@ class VAEUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._weight_name = weight_name
         self._compile = bool(compile)
 
         try:
@@ -294,7 +305,13 @@ class VAEUri:
 
         encoder = self._encoders[self.encoder]
 
-        model_path = _hfhub.download_non_hf_slug_model(self.model, local_files_only=local_files_only, auth_token=auth_token)
+        model_path, component_subfolder = _hfhub.materialize_named_weight(
+            self.model,
+            weight_name=self.weight_name,
+            revision=self.revision,
+            subfolder=self.subfolder,
+            local_files_only=local_files_only,
+            auth_token=auth_token)
 
         single_file_load_path = _hfhub.is_single_file_model_load(model_path)
 
@@ -342,7 +359,7 @@ class VAEUri:
                         path=model_path,
                         class_name=self.encoder,
                         library_name='diffusers',
-                        name=self.subfolder if self.subfolder else 'vae',
+                        name=component_subfolder if component_subfolder else 'vae',
                         original_config=original_config,
                         auth_token=auth_token,
                         local_files_only=local_files_only,
@@ -374,7 +391,7 @@ class VAEUri:
                 repo_id=model_path,
                 revision=self.revision,
                 variant=self.variant,
-                subfolder=self.subfolder,
+                subfolder=component_subfolder,
                 local_files_only=local_files_only,
                 auth_token=auth_token
             )
@@ -387,7 +404,7 @@ class VAEUri:
                     revision=self.revision,
                     variant=self.variant,
                     torch_dtype=torch_dtype,
-                    subfolder=self.subfolder,
+                    subfolder=component_subfolder,
                     token=auth_token,
                     local_files_only=local_files_only)
             except OSError as e:
@@ -441,6 +458,7 @@ class VAEUri:
                           variant=r.args.get('variant', None),
                           dtype=dtype,
                           subfolder=r.args.get('subfolder', None),
+                          weight_name=r.args.get('weight-name', None),
                           compile=_util.parse_compile_argument(
                               r.args.get('compile'), _exceptions.InvalidVaeUriError))
         except _textprocessing.ConceptUriParseError as e:

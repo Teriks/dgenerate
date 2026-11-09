@@ -5450,6 +5450,7 @@ def _get_component_cache_key(
                     revision=parsed_uri.revision,
                     variant=parsed_uri.variant,
                     subfolder=parsed_uri.subfolder,
+                    weight_name=parsed_uri.weight_name,
                     dtype=parsed_uri.dtype,
                     quantizer=None
                 )
@@ -5461,6 +5462,7 @@ def _get_component_cache_key(
                     revision=parsed_uri.revision,
                     variant=parsed_uri.variant,
                     subfolder=parsed_uri.subfolder,
+                    weight_name=parsed_uri.weight_name,
                     dtype=parsed_uri.dtype,
                     quantizer=None
                 )
@@ -5473,8 +5475,10 @@ def _get_component_cache_key(
                     revision=parsed_uri.revision,
                     variant=parsed_uri.variant,
                     subfolder=parsed_uri.subfolder,
+                    weight_name=parsed_uri.weight_name,
                     dtype=parsed_uri.dtype,
-                    quantizer=None
+                    quantizer=None,
+                    mode=parsed_uri.mode
                 )
                 manual_uri_part = f"|manual:{str(uri_without_quantizer)}"
             else:
@@ -5723,8 +5727,10 @@ def _create_minimal_pipeline_for_component_extraction(
                 revision=parsed_uri.revision,
                 variant=parsed_uri.variant,
                 subfolder=parsed_uri.subfolder,
+                weight_name=parsed_uri.weight_name,
                 dtype=parsed_uri.dtype,
-                quantizer=None  # Explicitly set to None
+                quantizer=None,  # Explicitly set to None
+                mode=parsed_uri.mode
             )
 
             creation_kwargs[encoder_param] = uri_without_quantizer.load(
@@ -5839,6 +5845,7 @@ def _create_minimal_pipeline_for_component_extraction(
                         revision=parsed_uri.revision,
                         variant=parsed_uri.variant,
                         subfolder=parsed_uri.subfolder,
+                        weight_name=parsed_uri.weight_name,
                         dtype=parsed_uri.dtype,
                         quantizer=None  # Explicitly set to None
                     )
@@ -5869,6 +5876,7 @@ def _create_minimal_pipeline_for_component_extraction(
                         revision=parsed_uri.revision,
                         variant=parsed_uri.variant,
                         subfolder=parsed_uri.subfolder,
+                        weight_name=parsed_uri.weight_name,
                         dtype=parsed_uri.dtype,
                         quantizer=None  # Explicitly set to None
                     )

@@ -4853,11 +4853,18 @@ class PipelineWrapper:
             creation_result = self._recall_main_pipeline()
             self._pipeline = creation_result.pipeline
 
+            decoder_path, decoder_subfolder = _hfhub.materialize_named_weight(
+                self._parsed_s_cascade_decoder_uri.model,
+                weight_name=self._parsed_s_cascade_decoder_uri.weight_name,
+                revision=self._parsed_s_cascade_decoder_uri.revision,
+                subfolder=self._parsed_s_cascade_decoder_uri.subfolder,
+                local_files_only=self._local_files_only,
+                auth_token=self._auth_token)
             self._recall_secondary_pipeline = _pipelines.PipelineFactory(
-                model_path=self._parsed_s_cascade_decoder_uri.model,
+                model_path=decoder_path,
                 model_type=_enums.ModelType.S_CASCADE_DECODER,
                 pipeline_type=_enums.PipelineType.TXT2IMG,
-                subfolder=self._parsed_s_cascade_decoder_uri.subfolder,
+                subfolder=decoder_subfolder,
                 revision=self._parsed_s_cascade_decoder_uri.revision,
                 unet_uri=self._second_model_unet_uri,
                 text_encoder_uris=self._second_model_text_encoder_uris,
@@ -4947,11 +4954,18 @@ class PipelineWrapper:
             else:
                 refiner_extra_modules = self._second_model_extra_modules
 
+            refiner_path, refiner_subfolder = _hfhub.materialize_named_weight(
+                self._parsed_sdxl_refiner_uri.model,
+                weight_name=self._parsed_sdxl_refiner_uri.weight_name,
+                revision=self._parsed_sdxl_refiner_uri.revision,
+                subfolder=self._parsed_sdxl_refiner_uri.subfolder,
+                local_files_only=self._local_files_only,
+                auth_token=self._auth_token)
             self._recall_secondary_pipeline = _pipelines.PipelineFactory(
-                model_path=self._parsed_sdxl_refiner_uri.model,
+                model_path=refiner_path,
                 model_type=_enums.ModelType.SDXL,
                 pipeline_type=refiner_pipeline_type,
-                subfolder=self._parsed_sdxl_refiner_uri.subfolder,
+                subfolder=refiner_subfolder,
                 revision=self._parsed_sdxl_refiner_uri.revision,
                 unet_uri=self._second_model_unet_uri,
                 text_encoder_uris=self._second_model_text_encoder_uris,

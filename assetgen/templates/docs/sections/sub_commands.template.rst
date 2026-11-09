@@ -340,21 +340,21 @@ retrieve documentation.
 
 Supported ``--model`` values are every non-BF16 quant of Unsloth's Qwen 3.8 27B
 chat GGUF, smallest download first. The default is
-``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf``. GPU labels are a rough
+``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q2_K_XL.gguf``. GPU labels are a rough
 fit (file size plus room for context).
 
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_S.gguf`` (6.2 GB, Qwen 3.8, 8 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_M.gguf`` (6.7 GB, Qwen 3.8, 8 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_XXS.gguf`` (7.3 GB, Qwen 3.8, 8 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_S.gguf`` (8.4 GB, Qwen 3.8, 12 GB GPUs)
-* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q2_K_XL.gguf`` (9.8 GB, Qwen 3.8, 12 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q2_K_XL.gguf`` (9.8 GB, Qwen 3.8, 16 GB GPUs, default)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf`` (10.9 GB, Qwen 3.8, 12 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_S.gguf`` (12.0 GB, Qwen 3.8, 16 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q3_K_XL.gguf`` (13.1 GB, Qwen 3.8, 16 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ4_XS.gguf`` (14.3 GB, Qwen 3.8, 16 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_S.gguf`` (15.4 GB, Qwen 3.8, 16 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_0.gguf`` (16.1 GB, Qwen 3.8, 24 GB GPUs)
-* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf`` (16.5 GB, Qwen 3.8, 24 GB GPUs, default)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf`` (16.5 GB, Qwen 3.8, 24 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_1.gguf`` (17.5 GB, Qwen 3.8, 24 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_XL.gguf`` (17.6 GB, Qwen 3.8, 24 GB GPUs)
 * ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q5_K_S.gguf`` (18.7 GB, Qwen 3.8, 24 GB GPUs)
@@ -378,7 +378,7 @@ Supported ``--embed-model`` values. The default is
 The Console UI Generate Code menu offers the same lists and does not accept a
 model file of your own.
 
-``--ctx`` is the chat context size in tokens, 32768 by default. ``--gpu-layers``
+``--ctx`` is the chat context size in tokens, 49152 by default. ``--gpu-layers``
 is how many layers go on the GPU: ``-1`` lets the loader decide, and ``0`` is CPU
 only. Sampling follows the Qwen 3.8 recommendations on the Unsloth model card, and
 the values that differ follow ``--think``. Without it, temperature is 0.7, top-p
@@ -422,10 +422,10 @@ Passing ``-ofm`` / ``--offline-mode`` before ``--sub-command`` does the same thi
 
 The Console UI Generate Code menu runs this sub-command. Its model list is the
 same set of Qwen GGUFs. The Context tokens field is ``--ctx``, saved with the
-other Generate Code options, and 32768 by default. It can be raised up to the
+other Generate Code options, and 49152 by default. It can be raised up to the
 model's native 262144 tokens. Extra VRAM, beside that field, is the additional
 video memory the context cache needs at the current token count. It updates as
-the field changes. 32768 tokens is 2 GiB, and 262144 tokens is 16 GiB.
+the field changes. 49152 tokens is 3 GiB, and 262144 tokens is 16 GiB.
 
 .. code-block:: bash
 

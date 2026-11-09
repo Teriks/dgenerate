@@ -25,7 +25,7 @@ import dgenerate.types as _types
 import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
 
 _s_cascade_decoder_uri_parser = _textprocessing.ConceptUriParser(
-    'Stable Cascade decoder', ['revision', 'variant', 'subfolder', 'dtype'])
+    'Stable Cascade decoder', ['revision', 'variant', 'subfolder', 'weight-name', 'dtype'])
 
 
 class SCascadeDecoderUri:
@@ -80,6 +80,13 @@ class SCascadeDecoderUri:
         return self._subfolder
 
     @property
+    def weight_name(self) -> _types.OptionalName:
+        """
+        File name inside a repository or folder.
+        """
+        return self._weight_name
+
+    @property
     def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
@@ -91,6 +98,7 @@ class SCascadeDecoderUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
+                 weight_name: _types.OptionalName = None,
                  dtype: _enums.DataType | str | None = None):
         """
         :param model: model path
@@ -104,6 +112,7 @@ class SCascadeDecoderUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._weight_name = weight_name
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -137,6 +146,7 @@ class SCascadeDecoderUri:
                 revision=r.args.get('revision', None),
                 variant=r.args.get('variant', None),
                 dtype=dtype,
-                subfolder=r.args.get('subfolder', None))
+                subfolder=r.args.get('subfolder', None),
+                weight_name=r.args.get('weight-name', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidSCascadeDecoderUriError(e) from e

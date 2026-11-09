@@ -29,7 +29,7 @@ import typing
 import numpy as np
 
 from dgenerate.assistant.catalog import (
-    CHAT_MODELS, DEFAULT_CHAT_MODEL, DEFAULT_EMBED_MODEL, is_downloaded, resolve_sampling)
+    CHAT_MODELS, DEFAULT_CHAT_MODEL, DEFAULT_CTX, DEFAULT_EMBED_MODEL, is_downloaded, resolve_sampling)
 from dgenerate.assistant.link_tools import LINK_TOOL_DEFINITIONS, redact_url, run_tool
 
 # Qwen3-Embedding scores 1 to 5 percent lower on retrieval without a query instruction.
@@ -472,7 +472,7 @@ class ChatModel:
 
     def __init__(self,
                  model_path: str,
-                 n_ctx: int = 32768,
+                 n_ctx: int = DEFAULT_CTX,
                  gpu_layers: int = -1,
                  think: bool = False,
                  effort: str = 'medium',

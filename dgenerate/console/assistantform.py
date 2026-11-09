@@ -65,7 +65,7 @@ _FREE_SHELL_MESSAGE = (
 # Same default as assistant --ctx. The upper bound is Qwen3.8-27B's native
 # context (qwen35.context_length). Past that needs YaRN, which this command
 # does not enable.
-_DEFAULT_CTX = 32768
+_DEFAULT_CTX = _catalog.DEFAULT_CTX
 _MAX_CTX = 262144
 _EFFORT_LABELS = {'low': 'Low', 'medium': 'Medium', 'xhigh': 'Extra high'}
 

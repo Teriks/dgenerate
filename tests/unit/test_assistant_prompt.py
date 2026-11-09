@@ -70,6 +70,29 @@ class TestAnswerText(unittest.TestCase):
         self.assertGreater(needed, 5000)
         self.assertLess(needed, 32768)
 
+    def test_default_context_leaves_room_for_a_reply(self):
+        import json
+
+        from dgenerate.assistant.catalog import DEFAULT_CTX
+        from dgenerate.assistant.link_tools import tool_definitions
+        from dgenerate.assistant.prompt import (
+            MAX_EXAMPLE_CHARS, MAX_EXAMPLES, MAX_GUIDE_CHARS, MAX_GUIDES, MODEL_TABLE)
+
+        # The largest first prompt: system text, tool schemas, every example and
+        # guide section the retriever can attach, and the model table.
+        retrieved = (
+            MAX_EXAMPLES * MAX_EXAMPLE_CHARS
+            + MAX_GUIDES * MAX_GUIDE_CHARS
+            + len(MODEL_TABLE)
+            + 8000)
+        needed = context_tokens_needed(
+            system_message(
+                '6.0.0', link_tools=True, machine='### machine\n' + 'x' * 400, check_tool=True),
+            'x' * retrieved,
+            json.dumps(tool_definitions(fetch=True, check=True)),
+            reserve=8192)
+        self.assertLess(needed, DEFAULT_CTX)
+
 
 class TestThoughtDisplay(unittest.TestCase):
     def setUp(self):

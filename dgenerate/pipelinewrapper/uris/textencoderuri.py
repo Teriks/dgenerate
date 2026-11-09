@@ -57,6 +57,7 @@ _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
         'revision',
         'variant',
         'subfolder',
+        'weight-name',
         'dtype',
         'quantizer',
         'mode',
@@ -1311,6 +1312,13 @@ class TextEncoderUri:
         return self._subfolder
 
     @property
+    def weight_name(self) -> _types.OptionalName:
+        """
+        File name inside a repository or folder.
+        """
+        return self._weight_name
+
+    @property
     def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
@@ -1423,6 +1431,7 @@ class TextEncoderUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
+                 weight_name: _types.OptionalName = None,
                  dtype: _enums.DataType | str | None = None,
                  quantizer: _types.OptionalUri = None,
                  mode: _types.OptionalString = None,
@@ -1450,13 +1459,17 @@ class TextEncoderUri:
 
         valid_modes = TextEncoderUri._valid_modes()
 
-        if _hfhub.is_gguf_model(model) and quantizer:
+        if quantizer and (
+                _hfhub.is_gguf_model(model) or (weight_name and _hfhub.is_gguf_model(weight_name))):
             raise _exceptions.InvalidTextEncoderUriError(
                 'A GGUF text encoder file is already quantized. '
                 'Do not set the quantizer argument.')
 
-        if _hfhub.is_single_file_model_load(model):
-            if quantizer and mode not in valid_modes and not _hfhub.is_gguf_model(model):
+        names_file = _hfhub.is_single_file_model_load(model) or (
+            bool(weight_name) and _hfhub.is_single_file_model_load(weight_name))
+        if names_file:
+            if quantizer and mode not in valid_modes and not (
+                    _hfhub.is_gguf_model(model) or (weight_name and _hfhub.is_gguf_model(weight_name))):
                 raise _exceptions.InvalidTextEncoderUriError(
                     'specifying a Text Encoder quantizer URI is only supported for Hugging Face '
                     'repository loads from a repo slug or disk path, single file loads are not supported.')
@@ -1472,10 +1485,10 @@ class TextEncoderUri:
                 if variant is not None:
                     raise _exceptions.InvalidTextEncoderUriError(
                         f'TextEncoder cannot use variant with mode "{mode}", these are incompatible options')
-                if revision is not None:
+                if revision is not None and not weight_name:
                     raise _exceptions.InvalidTextEncoderUriError(
                         f'TextEncoder cannot use revision with mode "{mode}", these are incompatible options')
-                if subfolder is not None:
+                if subfolder is not None and not weight_name:
                     raise _exceptions.InvalidTextEncoderUriError(
                         f'TextEncoder cannot use subfolder with mode "{mode}", these are incompatible options')
 
@@ -1484,6 +1497,7 @@ class TextEncoderUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._weight_name = weight_name
         self._quantizer = quantizer
         self._compile = bool(compile)
         self._mode = mode
@@ -1617,7 +1631,13 @@ class TextEncoderUri:
             raise _exceptions.TextEncoderUriLoadError(
                 f'Encoder "{self.encoder}" does not support loading with mode "{self.mode}".')
 
-        model_path = _hfhub.download_non_hf_slug_model(self.model, local_files_only=local_files_only, auth_token=auth_token)
+        model_path, component_subfolder = _hfhub.materialize_named_weight(
+            self.model,
+            weight_name=self.weight_name,
+            revision=self.revision,
+            subfolder=self.subfolder,
+            local_files_only=local_files_only,
+            auth_token=auth_token)
 
         if self.quantizer:
             quant_uri = _util.get_quantizer_uri_class(
@@ -1850,7 +1870,7 @@ class TextEncoderUri:
                         path=model_path,
                         class_name=self.encoder,
                         library_name=encoder_library,
-                        name=self.subfolder if self.subfolder else 'text_encoder',
+                        name=component_subfolder if component_subfolder else 'text_encoder',
                         auth_token=auth_token,
                         original_config=original_config,
                         local_files_only=local_files_only,
@@ -1883,7 +1903,7 @@ class TextEncoderUri:
                 repo_id=model_path,
                 revision=self.revision,
                 variant=variant,
-                subfolder=self.subfolder,
+                subfolder=component_subfolder,
                 local_files_only=local_files_only,
                 auth_token=auth_token
             )
@@ -1892,7 +1912,7 @@ class TextEncoderUri:
 
             prequantized = _sdnqload.sdnq_config_for_component(
                 model_path,
-                subfolder=self.subfolder,
+                subfolder=component_subfolder,
                 revision=self.revision,
                 token=auth_token,
                 local_files_only=local_files_only)
@@ -1904,7 +1924,7 @@ class TextEncoderUri:
                 revision=self.revision,
                 variant=variant,
                 dtype=torch_dtype,
-                subfolder=self.subfolder if self.subfolder else "",
+                subfolder=component_subfolder if component_subfolder else "",
                 token=auth_token,
                 local_files_only=local_files_only,
                 device_map=device_map)
@@ -1957,6 +1977,7 @@ class TextEncoderUri:
                                   variant=r.args.get('variant', None),
                                   dtype=dtype,
                                   subfolder=r.args.get('subfolder', None),
+                                  weight_name=r.args.get('weight-name', None),
                                   quantizer=r.args.get('quantizer', False),
                                   mode=r.args.get('mode', None),
                                   compile=_util.parse_compile_argument(

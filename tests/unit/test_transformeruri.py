@@ -85,6 +85,17 @@ class TestTransformerUri(unittest.TestCase):
         with self.assertRaises(InvalidTransformerUriError):
             _transformeruri.TransformerUri.parse('model;compile=yes')
 
+    def test_weight_name_selects_a_file_in_a_repository(self):
+        uri = (
+            'realrebelai/Kandinsky-6.0-Pro-5s_GGUFs;subfolder=Diffusion Model/Full;'
+            'weight-name=Kandinsky-6.0-Pro-5s-Q4_K_S.gguf')
+        result = _transformeruri.TransformerUri.parse(uri)
+        self.assertEqual(result.model, 'realrebelai/Kandinsky-6.0-Pro-5s_GGUFs')
+        self.assertEqual(result.subfolder, 'Diffusion Model/Full')
+        self.assertEqual(result.weight_name, 'Kandinsky-6.0-Pro-5s-Q4_K_S.gguf')
+        with self.assertRaises(InvalidTransformerUriError):
+            _transformeruri.TransformerUri.parse(uri + ';quantizer=bnb')
+
     def test_wan_second_transformer_gguf(self):
         result = _transformeruri.TransformerUri.parse(
             'https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/LowNoise/Wan2.2-T2V-A14B-LowNoise-Q4_K_S.gguf')

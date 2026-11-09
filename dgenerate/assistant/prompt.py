@@ -287,6 +287,9 @@ the other versions on that page, not this link. A file marked [selected by fileI
 URL asked for. Copy a download URL with no token= query. dgenerate appends CIVIT_AI_TOKEN from the \
 environment. A Hugging Face repo id is only organization/name. Copy a listed weight as subfolder= \
 and weight-name= inside one quoted value. An unquoted space splits that value into two tokens. \
+weight-name selects that file on --transformer, --text-encoders, --vae, --unet, \
+--control-nets, --t2i-adapters, --sdxl-refiner, --s-cascade-decoder, \
+--ltx-latent-upscale, and the LoRA and embedding URIs. \
 Use the trigger word in --prompts. It is not a URI argument. --loras accepts \
 only scale, revision, subfolder, weight-name, and component. token= is valid \
 only on --textual-inversions.

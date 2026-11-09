@@ -871,7 +871,9 @@ def _format_huggingface(
         lines.append(f'File: {path}')
     lines.append(
         'The repo id is only organization/name. Copy a weight as subfolder= and weight-name= '
-        'inside one quoted value. An unquoted space splits the line into two tokens.')
+        'inside one quoted value. That shape is valid on --transformer, --text-encoders, --vae, '
+        '--unet, --control-nets, --t2i-adapters, and the LoRA and embedding URIs. '
+        'An unquoted space splits the line into two tokens.')
     if kind in ('repo', 'tree') and not (kind == 'tree' and path):
         lines.append(
             'For the subject in the request, call fetch_link once on the raw URL of the '

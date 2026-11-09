@@ -67,6 +67,7 @@ _transformer_uri_parser = _textprocessing.ConceptUriParser(
         'revision',
         'variant',
         'subfolder',
+        'weight-name',
         'dtype',
         'quantizer',
         'compile'
@@ -131,6 +132,13 @@ class TransformerUri:
         return self._subfolder
 
     @property
+    def weight_name(self) -> _types.OptionalName:
+        """
+        File name inside a repository or folder.
+        """
+        return self._weight_name
+
+    @property
     def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
@@ -158,6 +166,7 @@ class TransformerUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
+                 weight_name: _types.OptionalName = None,
                  dtype: _enums.DataType | str | None = None,
                  quantizer: _types.OptionalUri = None,
                  compile: bool = False):
@@ -171,20 +180,22 @@ class TransformerUri:
         :raises InvalidTransformerUriError: If ``dtype`` is passed an invalid data type string.
         """
 
-        if _hfhub.is_single_file_model_load(model):
-            if quantizer:
-                if _hfhub.is_gguf_model(model):
-                    raise _exceptions.InvalidTransformerUriError(
-                        'A GGUF --transformer file is already quantized. '
-                        'Do not set quantizer on the transformer URI.')
+        names_file = _hfhub.is_single_file_model_load(model) or (
+            bool(weight_name) and _hfhub.is_single_file_model_load(weight_name))
+        if names_file and quantizer:
+            if _hfhub.is_gguf_model(model) or (weight_name and _hfhub.is_gguf_model(weight_name)):
                 raise _exceptions.InvalidTransformerUriError(
-                    'specifying a Transformer quantizer URI is only supported for Hugging Face '
-                    'repository loads.')
+                    'A GGUF --transformer file is already quantized. '
+                    'Do not set quantizer on the transformer URI.')
+            raise _exceptions.InvalidTransformerUriError(
+                'specifying a Transformer quantizer URI is only supported for Hugging Face '
+                'repository loads.')
 
         self._model = model
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._weight_name = weight_name
         self._quantizer = quantizer
         self._compile = bool(compile)
 
@@ -301,7 +312,13 @@ class TransformerUri:
         else:
             variant = self.variant
 
-        model_path = _hfhub.download_non_hf_slug_model(self.model, local_files_only=local_files_only, auth_token=auth_token)
+        model_path, component_subfolder = _hfhub.materialize_named_weight(
+            self.model,
+            weight_name=self.weight_name,
+            revision=self.revision,
+            subfolder=self.subfolder,
+            local_files_only=local_files_only,
+            auth_token=auth_token)
 
         gguf_file = _hfhub.is_gguf_model(model_path) or _hfhub.is_gguf_model(self.model)
         if gguf_file:
@@ -328,7 +345,7 @@ class TransformerUri:
         if not gguf_file and not _hfhub.is_single_file_model_load(model_path):
             prequantized_sdnq = _sdnqload.sdnq_config_for_component(
                 model_path,
-                subfolder=self.subfolder,
+                subfolder=component_subfolder,
                 revision=self.revision,
                 token=auth_token,
                 local_files_only=local_files_only)
@@ -403,7 +420,7 @@ class TransformerUri:
                     model_type=model_type)
                 if detected:
                     config = detected
-                    config_subfolder = config_subfolder or self.subfolder or 'transformer'
+                    config_subfolder = config_subfolder or component_subfolder or 'transformer'
             if config:
                 single_file_kwargs['config'] = config
                 if config_subfolder:
@@ -429,7 +446,7 @@ class TransformerUri:
                 repo_id=model_path,
                 revision=self.revision,
                 variant=variant,
-                subfolder=self.subfolder,
+                subfolder=component_subfolder,
                 local_files_only=local_files_only,
                 auth_token=auth_token
             )
@@ -440,7 +457,7 @@ class TransformerUri:
                 revision=self.revision,
                 variant=variant,
                 torch_dtype=torch_dtype,
-                subfolder=self.subfolder if self.subfolder else "",
+                subfolder=component_subfolder if component_subfolder else "",
                 token=auth_token,
                 local_files_only=local_files_only,
                 device_map=device_map)
@@ -486,6 +503,7 @@ class TransformerUri:
                                   variant=r.args.get('variant', None),
                                   dtype=dtype,
                                   subfolder=r.args.get('subfolder', None),
+                                  weight_name=r.args.get('weight-name', None),
                                   quantizer=r.args.get('quantizer', False),
                                   compile=_util.parse_compile_argument(
                                       r.args.get('compile'),

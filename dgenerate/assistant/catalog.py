@@ -27,7 +27,16 @@ import glob
 import importlib.util
 import os
 
-DEFAULT_CHAT_MODEL = 'unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf'
+DEFAULT_CHAT_MODEL = 'unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q2_K_XL.gguf'
+
+# Room for the system prompt, the largest retrieved context, and a reply.
+# At about 3 characters per token the system message with the link and check
+# tools is about 6k tokens, the tool schemas about 0.6k, and the largest
+# retrieved context (four examples, eight guide sections, and the model table)
+# about 27k. 49152 leaves about 16k tokens to write the config and take a tool
+# round. The f16 KV cache for that window is 3 GiB, so the 9.8 GB Q2_K_XL
+# default still fits a 16 GB GPU.
+DEFAULT_CTX = 49152
 
 # Every non-BF16 quant of unsloth's Qwen 3.8 chat GGUF. 3.8's open dense model is the 27B.
 # Left out: BF16 files, 3.8 2.4T (too big), 3.8 Flash-Next (new architecture, folder-split quants).
@@ -38,14 +47,14 @@ CHAT_MODELS = [
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_M.gguf', 6.7, 'Qwen 3.8, 8 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_XXS.gguf', 7.3, 'Qwen 3.8, 8 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_S.gguf', 8.4, 'Qwen 3.8, 12 GB GPUs'),
-    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q2_K_XL.gguf', 9.8, 'Qwen 3.8, 12 GB GPUs'),
+    (DEFAULT_CHAT_MODEL, 9.8, 'Qwen 3.8, 16 GB GPUs, default'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_XXS.gguf', 10.9, 'Qwen 3.8, 12 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ3_S.gguf', 12.0, 'Qwen 3.8, 16 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q3_K_XL.gguf', 13.1, 'Qwen 3.8, 16 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ4_XS.gguf', 14.3, 'Qwen 3.8, 16 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_S.gguf', 15.4, 'Qwen 3.8, 16 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_0.gguf', 16.1, 'Qwen 3.8, 24 GB GPUs'),
-    (DEFAULT_CHAT_MODEL, 16.5, 'Qwen 3.8, 24 GB GPUs, default'),
+    ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf', 16.5, 'Qwen 3.8, 24 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q4_1.gguf', 17.5, 'Qwen 3.8, 24 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_XL.gguf', 17.6, 'Qwen 3.8, 24 GB GPUs'),
     ('unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q5_K_S.gguf', 18.7, 'Qwen 3.8, 24 GB GPUs'),

@@ -42,6 +42,7 @@ _unet_uri_parser = _textprocessing.ConceptUriParser(
         'revision',
         'variant',
         'subfolder',
+        'weight-name',
         'dtype',
         'quantizer',
         'compile'
@@ -106,6 +107,13 @@ class UNetUri:
         return self._subfolder
 
     @property
+    def weight_name(self) -> _types.OptionalName:
+        """
+        File name inside a repository or folder.
+        """
+        return self._weight_name
+
+    @property
     def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
@@ -129,6 +137,7 @@ class UNetUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
+                 weight_name: _types.OptionalName = None,
                  dtype: _enums.DataType | str | None = None,
                  quantizer: _types.OptionalUri = None,
                  compile: bool = False):
@@ -144,15 +153,17 @@ class UNetUri:
             invalid data type string.
         """
 
-        if _hfhub.is_single_file_model_load(model):
-            if quantizer:
-                raise _exceptions.InvalidTextEncoderUriError(
-                    'specifying a UNet quantizer URI is only supported for Hugging Face '
-                    'repository loads from a repo slug or disk path, single file loads are not supported.')
+        names_file = _hfhub.is_single_file_model_load(model) or (
+            bool(weight_name) and _hfhub.is_single_file_model_load(weight_name))
+        if names_file and quantizer:
+            raise _exceptions.InvalidUNetUriError(
+                'specifying a UNet quantizer URI is only supported for Hugging Face '
+                'repository loads from a repo slug or disk path, single file loads are not supported.')
 
         self._model = model
         self._revision = revision
         self._variant = variant
+        self._weight_name = weight_name
         self._quantizer = quantizer
         self._compile = bool(compile)
 
@@ -244,7 +255,13 @@ class UNetUri:
         else:
             variant = self.variant
 
-        model_path = _hfhub.download_non_hf_slug_model(self.model, local_files_only=local_files_only, auth_token=auth_token)
+        model_path, component_subfolder = _hfhub.materialize_named_weight(
+            self.model,
+            weight_name=self.weight_name,
+            revision=self.revision,
+            subfolder=self.subfolder,
+            local_files_only=local_files_only,
+            auth_token=auth_token)
 
         if self.quantizer:
             quant_config = _util.get_quantizer_uri_class(
@@ -277,7 +294,7 @@ class UNetUri:
                     path=model_path,
                     class_name=unet_class.__name__,
                     library_name='diffusers',
-                    name=self.subfolder if self.subfolder else 'unet',
+                    name=component_subfolder if component_subfolder else 'unet',
                     auth_token=auth_token,
                     original_config=original_config,
                     local_files_only=local_files_only,
@@ -303,7 +320,7 @@ class UNetUri:
                 repo_id=model_path,
                 revision=self.revision,
                 variant=variant,
-                subfolder=self.subfolder,
+                subfolder=component_subfolder,
                 local_files_only=local_files_only,
                 auth_token=auth_token
             )
@@ -315,7 +332,7 @@ class UNetUri:
                 revision=self.revision,
                 variant=variant,
                 torch_dtype=torch_dtype,
-                subfolder=self.subfolder,
+                subfolder=component_subfolder,
                 token=auth_token,
                 original_config=original_config,
                 local_files_only=local_files_only,
@@ -362,6 +379,7 @@ class UNetUri:
                 variant=r.args.get('variant', None),
                 dtype=dtype,
                 subfolder=r.args.get('subfolder', None),
+                weight_name=r.args.get('weight-name', None),
                 quantizer=r.args.get('quantizer', None),
                 compile=_util.parse_compile_argument(
                     r.args.get('compile'), _exceptions.InvalidUNetUriError))

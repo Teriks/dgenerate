@@ -35,7 +35,7 @@ import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
 import dgenerate.pipelinewrapper.uris.util as _util
 
 _t2i_adapter_uri_parser = _textprocessing.ConceptUriParser(
-    'T2IAdapter', ['scale', 'revision', 'variant', 'subfolder', 'dtype']
+    'T2IAdapter', ['scale', 'revision', 'variant', 'subfolder', 'weight-name', 'dtype']
 )
 
 _t2i_adapter_cache = _d_memoize.create_object_cache(
@@ -96,6 +96,13 @@ class T2IAdapterUri:
         return self._subfolder
 
     @property
+    def weight_name(self) -> _types.OptionalName:
+        """
+        File name inside a repository or folder.
+        """
+        return self._weight_name
+
+    @property
     def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
@@ -114,6 +121,7 @@ class T2IAdapterUri:
                  revision: _types.OptionalString,
                  variant: _types.OptionalString,
                  subfolder: _types.OptionalPath,
+                 weight_name: _types.OptionalName = None,
                  dtype: _enums.DataType | str | None = None,
                  scale: float = 1.0):
         """
@@ -131,6 +139,7 @@ class T2IAdapterUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._weight_name = weight_name
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -193,7 +202,13 @@ class T2IAdapterUri:
               local_files_only: bool = False,
               no_cache: bool = False) -> diffusers.T2IAdapter:
 
-        model_path = _hfhub.download_non_hf_slug_model(self.model, local_files_only=local_files_only, auth_token=auth_token)
+        model_path, component_subfolder = _hfhub.materialize_named_weight(
+            self.model,
+            weight_name=self.weight_name,
+            revision=self.revision,
+            subfolder=self.subfolder,
+            local_files_only=local_files_only,
+            auth_token=auth_token)
 
         single_file_load_path = _hfhub.is_single_file_model_load(model_path)
 
@@ -223,7 +238,7 @@ class T2IAdapterUri:
                 repo_id=model_path,
                 revision=self.revision,
                 variant=self.variant,
-                subfolder=self.subfolder,
+                subfolder=component_subfolder,
                 auth_token=auth_token,
                 local_files_only=local_files_only
             )
@@ -234,7 +249,7 @@ class T2IAdapterUri:
                 model_path,
                 revision=self.revision,
                 variant=self.variant,
-                subfolder=self.subfolder,
+                subfolder=component_subfolder,
                 torch_dtype=torch_dtype,
                 token=auth_token,
                 local_files_only=local_files_only)
@@ -285,6 +300,7 @@ class T2IAdapterUri:
                 revision=r.args.get('revision', None),
                 variant=r.args.get('variant', None),
                 subfolder=r.args.get('subfolder', None),
+                weight_name=r.args.get('weight-name', None),
                 dtype=dtype,
                 scale=scale)
 

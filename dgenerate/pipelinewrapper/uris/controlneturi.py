@@ -36,7 +36,8 @@ import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
 import dgenerate.pipelinewrapper.uris.util as _util
 
 _controlnet_uri_parser = _textprocessing.ConceptUriParser(
-    'ControlNet', ['scale', 'start', 'end', 'mode', 'revision', 'variant', 'subfolder', 'dtype', 'quantizer', 'compile'])
+    'ControlNet', ['scale', 'start', 'end', 'mode', 'revision', 'variant', 'subfolder', 'weight-name',
+                   'dtype', 'quantizer', 'compile'])
 
 _controlnet_cache = _d_memoize.create_object_cache(
     'controlnet', cache_type=_memory.SizedConstrainedObjectCache
@@ -131,6 +132,13 @@ class ControlNetUri:
         return self._subfolder
 
     @property
+    def weight_name(self) -> _types.OptionalName:
+        """
+        File name inside a repository or folder.
+        """
+        return self._weight_name
+
+    @property
     def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
@@ -189,6 +197,7 @@ class ControlNetUri:
                  revision: _types.OptionalString,
                  variant: _types.OptionalString,
                  subfolder: _types.OptionalPath,
+                 weight_name: _types.OptionalName = None,
                  dtype: _enums.DataType | str | None = None,
                  scale: float = 1.0,
                  start: float = 0.0,
@@ -214,16 +223,18 @@ class ControlNetUri:
             or if ``model`` points to a single file and ``quantizer`` is specified (not supported).
         """
 
-        if _hfhub.is_single_file_model_load(model):
-            if quantizer:
-                raise _exceptions.InvalidControlNetUriError(
-                    'specifying a ControlNet quantizer URI is only supported for Hugging Face '
-                    'repository loads from a repo slug or disk path, single file loads are not supported.')
+        names_file = _hfhub.is_single_file_model_load(model) or (
+            bool(weight_name) and _hfhub.is_single_file_model_load(weight_name))
+        if names_file and quantizer:
+            raise _exceptions.InvalidControlNetUriError(
+                'specifying a ControlNet quantizer URI is only supported for Hugging Face '
+                'repository loads from a repo slug or disk path, single file loads are not supported.')
 
         self._model = model
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._weight_name = weight_name
         self._quantizer = quantizer
         self._compile = bool(compile)
         self._model_type = model_type
@@ -359,7 +370,13 @@ class ControlNetUri:
                     'with non Flux / SDXL ControlNet Union models.'
                 )
 
-        model_path = _hfhub.download_non_hf_slug_model(self.model, local_files_only=local_files_only, auth_token=auth_token)
+        model_path, component_subfolder = _hfhub.materialize_named_weight(
+            self.model,
+            weight_name=self.weight_name,
+            revision=self.revision,
+            subfolder=self.subfolder,
+            local_files_only=local_files_only,
+            auth_token=auth_token)
 
         single_file_load_path = _hfhub.is_single_file_model_load(model_path)
 
@@ -399,7 +416,7 @@ class ControlNetUri:
                 repo_id=model_path,
                 revision=self.revision,
                 variant=self.variant,
-                subfolder=self.subfolder,
+                subfolder=component_subfolder,
                 auth_token=auth_token,
                 local_files_only=local_files_only
             )
@@ -410,7 +427,7 @@ class ControlNetUri:
                 model_path,
                 revision=self.revision,
                 variant=self.variant,
-                subfolder=self.subfolder,
+                subfolder=component_subfolder,
                 torch_dtype=torch_dtype,
                 token=auth_token,
                 local_files_only=local_files_only,
@@ -494,6 +511,7 @@ class ControlNetUri:
                 revision=r.args.get('revision', None),
                 variant=r.args.get('variant', None),
                 subfolder=r.args.get('subfolder', None),
+                weight_name=r.args.get('weight-name', None),
                 dtype=dtype,
                 scale=scale,
                 start=start,

@@ -309,6 +309,56 @@ def download_non_hf_slug_model(model_path: str,
     return model_path
 
 
+def materialize_named_weight(model: str,
+                             weight_name: str | None = None,
+                             revision: str | None = None,
+                             subfolder: str | None = None,
+                             local_files_only: bool = False,
+                             auth_token: str | None = None) -> tuple[str, str | None]:
+    """
+    Return ``(path, component_subfolder)`` for a model URI.
+
+    Without ``weight_name``, ``path`` is ``model`` after a non-Hugging-Face
+    download, and ``component_subfolder`` is ``subfolder``.
+
+    With ``weight_name``, ``path`` is that one file from a Hugging Face
+    repository or a folder on disk, and ``component_subfolder`` is ``None``.
+    ``subfolder`` located the file. It is not also a Diffusers component folder
+    or a checkpoint key.
+
+    :raise dgenerate.exceptions.ModelNotFoundError: The named file is not in a
+        local folder, or ``weight_name`` was combined with a path that already
+        names one file.
+    """
+    if not weight_name:
+        return (
+            download_non_hf_slug_model(
+                model, local_files_only=local_files_only, auth_token=auth_token),
+            subfolder)
+
+    if is_single_file_model_load(model) or HFBlobLink.parse(model) is not None:
+        raise dgenerate.exceptions.ModelNotFoundError(
+            'weight-name selects a file in a repository or folder. '
+            f'"{model}" already names one file.')
+
+    if os.path.isdir(model):
+        path = os.path.join(model, subfolder or '', weight_name)
+        if not os.path.isfile(path):
+            where = f' subfolder "{subfolder}"' if subfolder else ''
+            raise dgenerate.exceptions.ModelNotFoundError(
+                f'Weight file "{weight_name}" was not found in "{model}"{where}.')
+        return path, None
+
+    downloaded = huggingface_hub.hf_hub_download(
+        repo_id=model,
+        filename=weight_name,
+        revision=revision,
+        subfolder=subfolder or None,
+        local_files_only=local_files_only,
+        token=resolve_auth_token(auth_token))
+    return downloaded, None
+
+
 def download_non_hf_slug_config(path: str,
                                 local_files_only: bool = False,
                                 auth_token: str | None = None):
