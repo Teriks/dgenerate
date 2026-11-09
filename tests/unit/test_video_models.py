@@ -1,9 +1,11 @@
 import contextlib
 import inspect
+import io
 import json
 import math
 import os
 import tempfile
+import types
 import unittest
 import unittest.mock
 
@@ -133,7 +135,7 @@ class TestVideoModels(unittest.TestCase):
 
             return Output()
 
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.prompt = _prompt.Prompt('a fox runs')
         args.inference_steps = 4
         args.guidance_scale = 5
@@ -523,7 +525,7 @@ class TestVideoModels(unittest.TestCase):
             frames = [[PIL.Image.new('RGB', (16, 16))]]
             audio = None
 
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.prompt = _prompt.Prompt('a fox')
         args.guidance_scale = 4.25
         args.video_fps = 24
@@ -608,7 +610,7 @@ class TestVideoModels(unittest.TestCase):
 
             return Output()
 
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.prompt = _prompt.Prompt('fox')
         args.inference_steps = 50
         args.guidance_scale = 6
@@ -706,7 +708,7 @@ class TestVideoModels(unittest.TestCase):
 
         def run(guidance, audio):
             captured.clear()
-            args = _pipelinewrapper.DiffusionArguments()
+            args = _pipelinewrapper.GenerationArguments()
             args.prompt = _prompt.Prompt('fox')
             args.guidance_scale = guidance
             args.ltx_audio_guidance_scale = audio
@@ -939,7 +941,7 @@ class TestVideoModels(unittest.TestCase):
         class Wrapper:
             ltx_ic_lora_uri = 'ic.safetensors;attention=0.5'
 
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.reference_video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(30)]
         kwargs = _ltx_conditions._ltx_reference_kwargs(Wrapper(), Pipe(), Held(), args, 49, 512, 512)
         self.assertEqual(kwargs['reference_downscale_factor'], 2)
@@ -947,14 +949,14 @@ class TestVideoModels(unittest.TestCase):
         self.assertEqual(len(kwargs['reference_conditions'][0].frames), 25)
         self.assertEqual(kwargs['reference_conditions'][0].frames[0].size, (512, 512))
 
-        wide = _pipelinewrapper.DiffusionArguments()
+        wide = _pipelinewrapper.GenerationArguments()
         wide.aspect_correct = False
         wide.reference_video_frames = [PIL.Image.new('RGB', (720, 480)) for _ in range(17)]
         wide_kwargs = _ltx_conditions._ltx_reference_kwargs(
             Wrapper(), Pipe(), Held(), wide, 17, 512, 512)
         self.assertEqual(wide_kwargs['reference_conditions'][0].frames[0].size, (512, 512))
 
-        fitted = _pipelinewrapper.DiffusionArguments()
+        fitted = _pipelinewrapper.GenerationArguments()
         fitted.aspect_correct = True
         fitted.reference_video_frames = [PIL.Image.new('RGB', (720, 480)) for _ in range(17)]
         fitted_kwargs = _ltx_conditions._ltx_reference_kwargs(
@@ -1016,7 +1018,7 @@ class TestVideoModels(unittest.TestCase):
 
             return Output()
 
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.prompt = _prompt.Prompt('fox')
         args.video_fps = 24
         args.width = 512
@@ -1364,6 +1366,104 @@ class TestVideoModels(unittest.TestCase):
                 writer.write(frame)
 
         container = av.open(path)
+        try:
+            self.assertEqual(len(container.streams.video), 1)
+            self.assertEqual(len(container.streams.audio), 1)
+        finally:
+            container.close()
+
+    def test_write_animation_muxes_to_a_buffer_or_stream(self):
+        sample_rate = 16000
+        samples = numpy.arange(sample_rate // 2, dtype=numpy.float32) / sample_rate
+        audio = numpy.sin(2 * math.pi * 440 * samples).reshape(1, -1)
+        frames = [PIL.Image.new('RGB', (64, 64), (index * 40, 0, 0)) for index in range(4)]
+
+        buffer = io.BytesIO()
+        _mediaoutput.write_animation(
+            buffer, frames, 8, audio=audio, audio_sample_rate=sample_rate)
+        self.assertEqual(buffer.tell(), 0)
+        container = av.open(buffer)
+        try:
+            self.assertEqual(len(container.streams.video), 1)
+            self.assertEqual(len(container.streams.audio), 1)
+        finally:
+            container.close()
+
+        class Stream:
+            def __init__(self):
+                self.buf = bytearray()
+
+            def write(self, data):
+                self.buf.extend(data)
+                return len(data)
+
+            def seekable(self):
+                return False
+
+        stream = Stream()
+        _mediaoutput.write_animation(
+            stream, frames, 8, audio=audio, audio_sample_rate=sample_rate)
+        container = av.open(io.BytesIO(stream.buf))
+        try:
+            self.assertEqual(len(container.streams.video), 1)
+            self.assertEqual(len(container.streams.audio), 1)
+        finally:
+            container.close()
+
+        gif = io.BytesIO()
+        _mediaoutput.write_animation(gif, frames, 8, animation_format='gif', audio=audio)
+        self.assertTrue(gif.getvalue().startswith(b'GIF'))
+
+        class Stream:
+            def __init__(self):
+                self.buf = bytearray()
+
+            def write(self, data):
+                self.buf.extend(data)
+                return len(data)
+
+            def seekable(self):
+                return False
+
+        gif_stream = Stream()
+        _mediaoutput.write_animation(gif_stream, frames, 8, animation_format='gif')
+        self.assertTrue(bytes(gif_stream.buf).startswith(b'GIF'))
+        directory = tempfile.mkdtemp()
+        frames_path = os.path.join(directory, 'clip.frames')
+        _mediaoutput.write_animation(frames_path, frames, 8)
+        self.assertTrue(os.path.isfile(os.path.join(directory, 'clip_frame_1.png')))
+        self.assertEqual(len(frames), 4)
+        self.assertTrue(os.path.isfile(os.path.join(directory, 'clip_frame_4.png')))
+
+    def test_disabled_writes_keep_the_video_clip_on_the_event(self):
+        from dgenerate.renderloop import RenderLoop, VideoGeneratedEvent
+
+        loop = RenderLoop.__new__(RenderLoop)
+        loop.disable_writes = True
+        loop._generation_step = 0
+        missing = os.path.join(tempfile.gettempdir(), 'dgenerate-video-event-missing')
+        loop._c_config = types.SimpleNamespace(
+            animation_format='mp4',
+            output_path=missing,
+            output_prefix=None,
+            output_configs=False,
+            output_overwrite=True)
+        loop._gen_filename_components_base = lambda args: ['seed']
+        loop._gen_dgenerate_config = lambda *args, **kwargs: 'cfg'
+        loop._gen_dgenerate_command = lambda *args, **kwargs: 'cmd'
+        frames = [PIL.Image.new('RGB', (8, 8), 'red')]
+        audio = numpy.zeros((1, 16), dtype=numpy.float32)
+        result = types.SimpleNamespace(
+            images=frames, fps=12.0, audio=audio, audio_sample_rate=8000)
+        events = list(loop._write_video_clip(types.SimpleNamespace(), result, None))
+        video = [event for event in events if isinstance(event, VideoGeneratedEvent)]
+        self.assertEqual(len(video), 1)
+        self.assertIs(video[0].frames[0], frames[0])
+        self.assertEqual(video[0].audio_sample_rate, 8000)
+        self.assertFalse(os.path.exists(missing))
+        out = io.BytesIO()
+        video[0].write(out)
+        container = av.open(out)
         try:
             self.assertEqual(len(container.streams.video), 1)
             self.assertEqual(len(container.streams.audio), 1)
@@ -1810,7 +1910,63 @@ class TestVideoModels(unittest.TestCase):
             '--model-type', 'sd', 'runwayml/stable-diffusion-v1-5',
             '--torch-compile', '--prompts', 'a cat',
         ], throw=True, log_error=False)
-        self.assertTrue(requested.torch_compile)
+        self.assertIs(requested.torch_compile, True)
+        mapped = _arguments.parse_args([
+            '--model-type', 'sd', 'runwayml/stable-diffusion-v1-5',
+            '--torch-compile', 'text_encoder', 'prompt_upsampler',
+            '--prompts', 'a cat',
+        ], throw=True, log_error=False)
+        self.assertEqual(mapped.torch_compile, ['text_encoder', 'prompt_upsampler'])
+
+    def test_torch_compile_map_limits_components_and_compiles_decoder_layers(self):
+        from dgenerate.pipelinewrapper import pipelines as _pipe_mod
+
+        class _Block(torch.nn.Module):
+            def forward(self, x):
+                return x
+
+        class _Denoiser(torch.nn.Module):
+            _repeated_blocks = ['_Block']
+
+            def __init__(self):
+                super().__init__()
+                self.block = _Block()
+
+        class Qwen3DecoderLayer(torch.nn.Module):
+            def forward(self, x):
+                return x
+
+        class _Upsampler(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.layers = torch.nn.ModuleList(
+                    [Qwen3DecoderLayer(), Qwen3DecoderLayer()])
+
+        pipe = unittest.mock.Mock()
+        pipe.unet = None
+        pipe.transformer = _Denoiser()
+        pipe.transformer_2 = None
+        upsampler = _Upsampler()
+        upsampler._dgenerate_compile = True
+        pipe.prompt_upsampler = upsampler
+        pipe.components = {'prompt_upsampler': upsampler}
+        with unittest.mock.patch('importlib.util.find_spec', return_value=object()):
+            _pipe_mod.apply_torch_compile(pipe, 'cuda', names=('vae',))
+        self.assertFalse(getattr(pipe.transformer.block, '_dgenerate_forward_compiled', False))
+        self.assertTrue(pipe.prompt_upsampler.layers[0]._dgenerate_forward_compiled)
+        self.assertTrue(pipe.prompt_upsampler.layers[1]._dgenerate_forward_compiled)
+
+        alias = _Upsampler()
+        alias_pipe = unittest.mock.Mock()
+        alias_pipe.unet = None
+        alias_pipe.transformer = None
+        alias_pipe.transformer_2 = None
+        alias_pipe.prompt_upsampler = alias
+        alias_pipe.prompt_enhancer = None
+        alias_pipe.components = {'prompt_upsampler': alias}
+        with unittest.mock.patch('importlib.util.find_spec', return_value=object()):
+            _pipe_mod.apply_torch_compile(alias_pipe, 'cuda', names=('prompt_enhancer',))
+        self.assertTrue(alias.layers[0]._dgenerate_forward_compiled)
 
     def test_load_quantized_module_applies_architecture_skips(self):
         import diffusers
@@ -1923,7 +2079,7 @@ class TestVideoModels(unittest.TestCase):
         self.assertFalse(
             _video_quantization._quantize_component('vae', 'sdnq', None))
         self.assertFalse(
-            _video_quantization._quantize_component('ltx_prompt_enhancer', 'sdnq', None))
+            _video_quantization._quantize_component('prompt_upsampler', 'sdnq', None))
         self.assertFalse(
             _video_quantization._quantize_component('connectors', None, None))
         self.assertTrue(
@@ -2012,7 +2168,7 @@ class TestVideoModels(unittest.TestCase):
             'transformer': ['diffusers', 'LTX2VideoTransformer3DModel'],
             'connectors': ['ltx2', 'LTX2TextConnectors'],
             'vae': ['diffusers', 'AutoencoderKLLTX2Video'],
-            'ltx_prompt_enhancer': ['transformers', 'Gemma4ForConditionalGeneration'],
+            'prompt_upsampler': ['transformers', 'Gemma4ForConditionalGeneration'],
         }
         with unittest.mock.patch.object(
                 _videopipelines.loading._util, 'fetch_model_index_dict', return_value=index), \
@@ -2025,7 +2181,7 @@ class TestVideoModels(unittest.TestCase):
         self.assertIn('connectors', modules)
         self.assertIn('transformer', modules)
         self.assertNotIn('vae', modules)
-        self.assertNotIn('ltx_prompt_enhancer', modules)
+        self.assertNotIn('prompt_upsampler', modules)
         self.assertIs(loaded['connectors'], LTX2TextConnectors)
 
     def test_quantized_classic_modules_skips_null_index_slots(self):
@@ -2090,21 +2246,21 @@ class TestVideoModels(unittest.TestCase):
             inspect.signature(_video_loading._create_cached_video_pipeline).parameters)
         self.assertNotIn(
             'scheduler_uri',
-            inspect.signature(_pipeline_mod._create_diffusion_pipeline).parameters)
+            inspect.signature(_pipeline_mod._create_pipeline).parameters)
         video_exceptions = inspect.getclosurevars(
             _video_loading._create_cached_video_pipeline).nonlocals['exceptions']
         still_exceptions = inspect.getclosurevars(
-            _pipeline_mod._create_diffusion_pipeline).nonlocals['exceptions']
+            _pipeline_mod._create_pipeline).nonlocals['exceptions']
         self.assertIn('local_files_only', video_exceptions)
         self.assertIn('local_files_only', still_exceptions)
 
     def test_audio_guidance_writeback(self):
-        source = _pipelinewrapper.DiffusionArguments()
+        source = _pipelinewrapper.GenerationArguments()
         source.guidance_scale = 3.0
         source.inference_steps = 30
         source.ltx_audio_guidance_scale = 7.0
         source.ltx_audio_guidance_rescale = 0.5
-        dest = _pipelinewrapper.DiffusionArguments()
+        dest = _pipelinewrapper.GenerationArguments()
         _videopipelines.apply_video_arg_rewrites(source, dest)
         self.assertEqual(dest.guidance_scale, 3.0)
         self.assertEqual(dest.inference_steps, 30)
@@ -2315,7 +2471,7 @@ class TestVideoModels(unittest.TestCase):
 
         start = [PIL.Image.new('RGB', (8, 8)) for _ in range(30)]
         end = [PIL.Image.new('RGB', (8, 8)) for _ in range(20)]
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.video_frames = start
         args.end_video_frames = end
 
@@ -2338,7 +2494,7 @@ class TestVideoModels(unittest.TestCase):
             vae_temporal_compression_ratio = 8
             duration_head = object()
 
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.end_video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(9)]
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
             _ltx_conditions._ltx_conditions(Pipe(), 'ltx2', args, None)
@@ -2366,7 +2522,7 @@ class TestVideoModels(unittest.TestCase):
         self.assertEqual(
             _videopipelines.classify_video_seed(ltx, placed), 'ltx-condition')
 
-        softened = _pipelinewrapper.DiffusionArguments()
+        softened = _pipelinewrapper.GenerationArguments()
         softened.image_seed_strength = 0.7
         softened.images = [PIL.Image.new('RGB', (8, 8))]
         self.assertEqual(_ltx_conditions._ltx_resolved_strength(None, softened), 0.7)
@@ -2430,7 +2586,7 @@ class TestVideoModels(unittest.TestCase):
         class Held:
             reference_downscale_factor = 1
 
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.aspect_correct = True
         args.ltx_latent_upscale = False
         align = _videopipelines.ltx.conditions._ltx_canvas_align(Pipe(), Held(), 'ltx-image', args)
@@ -2522,7 +2678,7 @@ class TestVideoModels(unittest.TestCase):
             lora_uris = None
             lora_fuse_scale = None
 
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.prompt = _prompt.Prompt('fox')
         args.inference_steps = 8
         args.guidance_scale = 1
@@ -2645,7 +2801,7 @@ class TestVideoModels(unittest.TestCase):
         pipe = Pipe()
         wrapper = Wrapper()
 
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.ltx_stage_lora_uris = ['org/ltx;weight-name=stage.safetensors']
         kwargs = {
             'prompt': 'fox',
@@ -2779,12 +2935,17 @@ class TestVideoModels(unittest.TestCase):
             _auth_token=None, _local_files_only=True, model_cpu_offload=False,
             model_sequential_offload=False, model_group_offload=False)
 
+        config = unittest.mock.Mock(model_type='gemma4')
         with unittest.mock.patch.object(
                 _video_quantization, '_load_quantized_module', return_value=enhancer) as load_model, \
                 unittest.mock.patch.object(
                     _video_quantization, '_quantized_device_map', return_value={'': 'cuda'}), \
                 unittest.mock.patch.object(
                     AutoProcessor, 'from_pretrained', return_value=object()), \
+                unittest.mock.patch(
+                    'transformers.AutoConfig.from_pretrained', return_value=config), \
+                unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.util.estimate_model_memory_use', return_value=1), \
                 unittest.mock.patch.object(
                     _ltx._putil, 'is_loaded_in_8bit_bnb', return_value=False):
             _ltx._ensure_prompt_enhancer(
@@ -3695,7 +3856,7 @@ class TestWanModels(unittest.TestCase):
         ]
         config = _arguments.parse_args(argv, throw=True, log_error=False)
         generated = next(config.iterate_diffusion_args())
-        wrapper = _pipelinewrapper.DiffusionPipelineWrapper(
+        wrapper = _pipelinewrapper.PipelineWrapper(
             model_path=config.model_path,
             model_type=config.model_type,
             dtype=config.dtype,
@@ -3749,7 +3910,7 @@ class TestWanModels(unittest.TestCase):
             pipeline = Pipe()
             family = 'wan-animate-2-distilled'
 
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.prompt = _prompt.Prompt('a dancer')
         args.video_fps = 24
         args.width = 640
@@ -3809,7 +3970,7 @@ class TestWanModels(unittest.TestCase):
             pipeline = Pipe()
             family = 'wan-animate-2'
 
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.prompt = _prompt.Prompt('a kitten')
         args.inference_steps = 10
         args.video_fps = 8
@@ -3871,7 +4032,7 @@ class TestWanModels(unittest.TestCase):
 
             return Output()
 
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.prompt = _prompt.Prompt('a fox runs')
         args.inference_steps = 30
         args.guidance_scale = 5
@@ -3959,7 +4120,7 @@ class TestWanModels(unittest.TestCase):
 
         clip = PIL.Image.new('RGB', (720, 480), (20, 40, 60))
         mask = PIL.Image.new('L', (720, 480), 255)
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.prompt = _prompt.Prompt('a traveler walks the trail')
         args.inference_steps = 4
         args.guidance_scale = 5
@@ -4016,7 +4177,7 @@ class TestWanModels(unittest.TestCase):
         self.assertEqual(args.width, 832)
         self.assertEqual(args.height, 544)
 
-        stretched = _pipelinewrapper.DiffusionArguments()
+        stretched = _pipelinewrapper.GenerationArguments()
         stretched.aspect_correct = False
         stretched.vace_video_frames = [PIL.Image.new('RGB', (720, 480))]
         stretched.vace_mask_frames = [PIL.Image.new('L', (720, 480), 0)]
@@ -4025,7 +4186,7 @@ class TestWanModels(unittest.TestCase):
         self.assertEqual(stretched.vace_video_frames[0].size, (832, 480))
         self.assertEqual(stretched.vace_mask_frames[0].size, (832, 480))
 
-        pose = _pipelinewrapper.DiffusionArguments()
+        pose = _pipelinewrapper.GenerationArguments()
         pose.aspect_correct = True
         pose.wan_pose_video_frames = [PIL.Image.new('RGB', (720, 480))]
         pose.images = [PIL.Image.new('RGB', (400, 600))]

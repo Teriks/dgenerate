@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Kandinsky 6 Lite, 50-step checkpoint. Guidance 5.
+# FlowMatchEulerDiscreteScheduler ships in that repository.
+
+kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers
+--model-type kandinsky6-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 5
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky6-lite
+--output-size 864x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour. Audio: wind and distant surf."

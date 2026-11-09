@@ -32,6 +32,7 @@ import torch
 
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.pipelinewrapper.promptenhance as _promptenhance
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.sampling as _sampling
 import dgenerate.pipelinewrapper.pipelines as _pipelines
@@ -241,7 +242,10 @@ def _call_ltx(wrapper, user_args):
     # start loading the main model weights. These checks do not instantiate
     # either optional component.
     _preflight_ltx_components(wrapper, user_args)
-    pipe, held = _vp._video_pipeline(wrapper, mode, user_args.scheduler_uri)
+    pipe, held = _vp._video_pipeline(
+        wrapper, mode, user_args.scheduler_uri,
+        prompt_upsampler_uri=_promptenhance.separate_prompt_upsampler_uri(
+            wrapper.model_type, user_args))
     family = held.family
     positive, negative = _vp._prompt_text(user_args)
     width, height = _vp._size(user_args)
@@ -434,8 +438,8 @@ def _reject_ltx2_only_options(user_args):
         used.append('--ltx-diffusion-decode-tile')
     if user_args.pipeline_prompt_enhance:
         used.append('--pipeline-prompt-enhance')
-    if user_args.ltx_prompt_enhancer:
-        used.append('--ltx-prompt-enhancer')
+    if user_args.prompt_upsampler:
+        used.append('--prompt-upsampler')
     if user_args.ltx_image_crf is not None:
         used.append('--ltx-image-crfs')
     if user_args.ltx_use_cross_timestep is False:
@@ -458,10 +462,10 @@ def _apply_ltx2_options(wrapper, pipe, user_args, kwargs):
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'This LTX pipeline does not accept {option}.')
 
-    if user_args.ltx_prompt_enhancer or user_args.pipeline_prompt_enhance:
-        uri = user_args.ltx_prompt_enhancer or _constants.DEFAULT_LTX_PROMPT_ENHANCER
+    if user_args.prompt_upsampler or user_args.pipeline_prompt_enhance:
+        uri = user_args.prompt_upsampler or _constants.DEFAULT_LTX_PROMPT_ENHANCER
         _ensure_prompt_enhancer(wrapper, pipe, uri)
-        option = '--ltx-prompt-enhancer' if user_args.ltx_prompt_enhancer else '--pipeline-prompt-enhance'
+        option = '--prompt-upsampler' if user_args.prompt_upsampler else '--pipeline-prompt-enhance'
         require('enable_prompt_enhancement', option)
         kwargs['enable_prompt_enhancement'] = True
         if isinstance(user_args.pipeline_prompt_enhance, str):
@@ -508,39 +512,32 @@ def _apply_ltx2_options(wrapper, pipe, user_args, kwargs):
         kwargs['decode_noise_scale'] = float(user_args.ltx_decode_noise_scale)
 
 
-def _ensure_prompt_enhancer(wrapper, pipe, uri_string):
+def _ensure_prompt_enhancer(wrapper, pipe, uri_string, compile_requested: bool = False):
+    if not uri_string or uri_string == '+':
+        uri_string = _constants.DEFAULT_LTX_PROMPT_ENHANCER
+    uri = _uris.PromptUpsamplerUri.parse(uri_string)
     if (getattr(pipe, '_dgenerate_prompt_enhancer', None) == uri_string
             and getattr(pipe, 'prompt_enhancer', None) is not None):
+        if uri.compile or compile_requested:
+            pipe.prompt_enhancer._dgenerate_compile = True
+            import dgenerate.pipelinewrapper.pipelines as _pipelines
+            _pipelines.apply_torch_compile(pipe, wrapper.device, names=())
         return
-    from transformers import AutoModelForImageTextToText, AutoProcessor
-
-    uri = _uris.LTXPromptEnhancerUri.parse(uri_string)
-    enhancer_dtype = uri.dtype or wrapper._dtype
-    if _enums.get_torch_dtype(enhancer_dtype) is None:
-        enhancer_dtype = _enums.DataType.BFLOAT16
-    dtype = _enums.get_torch_dtype(enhancer_dtype)
-    load = {
-        'token': wrapper._auth_token,
-        'local_files_only': bool(wrapper._local_files_only),
-    }
-    if uri.revision is not None:
-        load['revision'] = uri.revision
-    if uri.subfolder is not None:
-        load['subfolder'] = uri.subfolder
-    _messages.debug_log(f'Loading LTX prompt enhancer "{uri.model}".')
-    if uri.quantizer:
-        pipe.prompt_enhancer = _quantization._load_quantized_module(
-            AutoModelForImageTextToText, uri.model, uri.subfolder, uri.revision,
-            None, enhancer_dtype, uri.quantizer, wrapper._auth_token,
-            wrapper._local_files_only,
-            _quantization._quantized_device_map(wrapper.device, False, uri.quantizer))
-    else:
-        pipe.prompt_enhancer = AutoModelForImageTextToText.from_pretrained(
-            uri.model, torch_dtype=dtype, **load)
-    pipe.processor = AutoProcessor.from_pretrained(uri.model, **load)
+    loaded = uri.load(
+        dtype_fallback=wrapper._dtype,
+        auth_token=wrapper._auth_token,
+        local_files_only=bool(wrapper._local_files_only),
+        device_map=_quantization._quantized_device_map(
+            wrapper.device, False, uri.quantizer))
+    pipe.prompt_enhancer = loaded.model
+    pipe.processor = loaded.processor
     device = 'cpu' if _vp._offload_requested(wrapper) else wrapper.device
     if not _putil.is_loaded_in_8bit_bnb(pipe.prompt_enhancer):
         pipe.prompt_enhancer.to(device)
+    if uri.compile or compile_requested:
+        pipe.prompt_enhancer._dgenerate_compile = True
+        import dgenerate.pipelinewrapper.pipelines as _pipelines
+        _pipelines.apply_torch_compile(pipe, wrapper.device, names=())
     pipe._dgenerate_prompt_enhancer = uri_string
 
 
@@ -670,7 +667,7 @@ def _enhance_ltx_prompt_once(wrapper, pipe, kwargs, user_args):
         with _promptenhance._fast_encoder(
                 enhancer,
                 wrapper.device,
-                _vp._offload_requested(wrapper),
+                True,
                 headroom_bytes=_promptenhance._headroom_bytes(overrides)):
             enhanced = _promptenhance._generate_ltx_enhance(
                 pipe,
@@ -684,7 +681,7 @@ def _enhance_ltx_prompt_once(wrapper, pipe, kwargs, user_args):
                 dedicated_enhancer=True)
     kwargs['prompt'] = enhanced
     kwargs['enable_prompt_enhancement'] = False
-    _messages.log(f'Pipeline prompt enhance: {enhanced}')
+    _promptenhance.log_enhanced_prompt(enhanced)
     enhancer = getattr(pipe, 'prompt_enhancer', None)
     if enhancer is None:
         if torch.cuda.is_available():

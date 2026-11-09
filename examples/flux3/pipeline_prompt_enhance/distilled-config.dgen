@@ -1,0 +1,33 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# --pipeline-prompt-enhance loads the checkpoint Qwen3.5 upsampler and rewrites
+# the prompt before the Qwen3-VL encoder. Without the flag the upsampler is not
+# loaded and the prompt is encoded as given. --prompt-upsampler replaces that
+# default with another prompt-upsampler URI and turns the rewrite on.
+# quantizer= on that URI is
+# examples/flux3/pipeline_prompt_enhance/quantized-upsampler-config.dgen.
+# A custom system prompt and sampling options are
+# examples/flux3/pipeline_prompt_enhance/sampling-config.dgen.
+# A reference edit with the upsampler is
+# examples/flux3/pipeline_prompt_enhance/edit-config.dgen.
+# The checkpoint is gated.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+black-forest-labs/flux-3-image-klein
+--model-type flux3
+--dtype bfloat16
+--model-sequential-offload
+--pipeline-prompt-enhance
+--inference-steps 16
+--guidance-scales 1
+--gen-seeds 1
+--output-path flux3-klein-enhance
+--output-size 1024
+--prompts "A red fox in a snow-covered forest clearing at golden hour"

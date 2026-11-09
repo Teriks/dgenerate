@@ -1251,6 +1251,14 @@ def register_single_file_classes() -> None:
                 'default_subfolder': 'transformer',
             })
 
+    # Kandinsky 6 GGUF files already use Diffusers tensor names.
+    if hasattr(diffusers, 'Kandinsky6Transformer3DModel'):
+        loadable.setdefault(
+            'Kandinsky6Transformer3DModel', {
+                'checkpoint_mapping_fn': lambda checkpoint, **kwargs: checkpoint,
+                'default_subfolder': 'transformer',
+            })
+
     # LTX 2.5 adds prompt modulation tensors Diffusers' LTX 2 conversion
     # leaves unrenamed, so they would stay on the meta device.
     ltx2 = loadable.get('LTX2VideoTransformer3DModel')
@@ -1275,3 +1283,20 @@ def register_single_file_classes() -> None:
                 cls, pretrained_model_link_or_path_or_dict, **kwargs)
 
         diffusers.HunyuanDiT2DModel.from_single_file = _hydit_from_single_file
+
+
+def bind_from_single_file(model_class):
+    """
+    Return ``from_single_file`` bound to ``model_class``.
+
+    Kandinsky 6 does not inherit ``FromOriginalModelMixin``. The mixin's
+    ``from_single_file`` is already a bound classmethod, and ``__get__`` on
+    that bound method does not retarget it. The loader then checks
+    ``FromOriginalModelMixin`` against the architecture table and rejects the
+    checkpoint. Binding the underlying function makes ``cls`` the transformer.
+    """
+    loader = getattr(model_class, 'from_single_file', None)
+    if loader is not None:
+        return loader
+    from diffusers.loaders.single_file_model import FromOriginalModelMixin
+    return FromOriginalModelMixin.from_single_file.__func__.__get__(model_class, model_class)

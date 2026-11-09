@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# --pipeline-prompt-enhance calls Kandinsky6TI2VAPipeline.expand_prompts.
+# The loaded Qwen2.5-VL encoder rewrites the prompt, with a token counter.
+# Without the flag the prompt is encoded as given. A value replaces the
+# expansion instruction for this clip. Sampling options are in
+# examples/kandinsky6/pipeline_prompt_enhance/sampling-config.dgen.
+# A first frame is
+# examples/kandinsky6/pipeline_prompt_enhance/image-to-video-config.dgen.
+
+kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers
+--model-type kandinsky6-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 10
+--guidance-scales 1
+--pipeline-prompt-enhance
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky6-lite-enhance
+--output-size 864x480
+--prompts "a red kite over a meadow"

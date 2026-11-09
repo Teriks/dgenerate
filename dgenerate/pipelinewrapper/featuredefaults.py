@@ -24,7 +24,7 @@
 :func:`apply_known_defaults` fills feature parameters and is also used when
 describing a step (without changing the live arguments). Omitted guidance and
 inference steps stay unset in step text (**auto**); the pipeline wrapper
-resolves them in :meth:`~dgenerate.pipelinewrapper.wrapper.DiffusionPipelineWrapper._get_pipeline_defaults`
+resolves them in :meth:`~dgenerate.pipelinewrapper.wrapper.PipelineWrapper._get_pipeline_defaults`
 once the model is loaded (video models use
 :mod:`dgenerate.pipelinewrapper.videopipelines` instead).
 
@@ -506,7 +506,7 @@ def apply_known_defaults(args, model_type, *, refiner: bool = False,
             args.image_seed_strength = strength
 
 
-# Config list attributes paired with :class:`~dgenerate.pipelinewrapper.DiffusionArguments`
+# Config list attributes paired with :class:`~dgenerate.pipelinewrapper.GenerationArguments`
 # fields filled by :func:`apply_known_defaults` (not guidance or step counts).
 _RENDER_LOOP_LIST_ARG_FIELDS = (
     ('pag_scales', 'pag_scale'),
@@ -586,7 +586,7 @@ def _first_list_value(values):
 def _prototype_from_render_loop_config(config):
     import dgenerate.pipelinewrapper.arguments as _arguments
 
-    args = _arguments.DiffusionArguments()
+    args = _arguments.GenerationArguments()
     args.set_from(config, missing_value_throws=False)
     for config_name, arg_name in _RENDER_LOOP_LIST_ARG_FIELDS:
         setattr(args, arg_name, _first_list_value(getattr(config, config_name, None)))

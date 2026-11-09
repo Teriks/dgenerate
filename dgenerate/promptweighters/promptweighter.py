@@ -166,7 +166,7 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
         This works even if the model you are generating embeds for would
         normally reject these inputs.
 
-        Particularly for arguments that :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`
+        Particularly for arguments that :py:class:`dgenerate.pipelinewrapper.PipelineWrapper`
         will automatically reject based on the underlying pipeline argument signature.
 
         You should return a list of pipeline argument names, the values can be any of the following:
@@ -178,7 +178,7 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
         * ``clip_skip``
 
         If you return a value outside the set of values listed here,
-        a :py:exc:`RuntimeError` will be raised by :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`
+        a :py:exc:`RuntimeError` will be raised by :py:class:`dgenerate.pipelinewrapper.PipelineWrapper`
         upon attempting to consume the values from this method when calling a pipeline.
 
         :return: List of pipeline argument names.

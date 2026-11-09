@@ -56,7 +56,7 @@ def pipeline_call_default(pipeline_or_class, name: str):
 
 def resolved_guidance_scale(
         pipeline,
-        user_args: _arguments.DiffusionArguments,
+        user_args: _arguments.GenerationArguments,
         *,
         fallback: float | None = None) -> float:
     """Return guidance, filling ``user_args`` from the pipeline when omitted."""
@@ -74,7 +74,7 @@ def resolved_guidance_scale(
 
 def resolved_inference_steps(
         pipeline,
-        user_args: _arguments.DiffusionArguments,
+        user_args: _arguments.GenerationArguments,
         *,
         fallback: int | None = None) -> int:
     """Return step count, filling ``user_args`` from the pipeline when omitted."""

@@ -50,9 +50,6 @@ from .exceptions import (
     # LTX Latent Upsampler
     InvalidLTXLatentUpsamplerUriError,
 
-    # LTX Prompt Enhancer
-    InvalidLTXPromptEnhancerUriError,
-
     # LTX Diffusion Decoder
     InvalidLTXDiffusionDecoderUriError,
 
@@ -92,6 +89,10 @@ from .exceptions import (
     TransformerUriLoadError,
     InvalidTransformerUriError,
 
+    # Prompt Upsampler
+    PromptUpsamplerUriLoadError,
+    InvalidPromptUpsamplerUriError,
+
     # BNB Quantizer
     InvalidBNBQuantizerUriError,
 
@@ -108,13 +109,13 @@ from .lorauri import LoRAUri
 from .controllorauri import ControlLoRAUri
 from .iclorauri import ICLoRAUri
 from .ltxlatentupsampleruri import LTXLatentUpsamplerUri
-from .ltxpromptenhanceruri import LTXPromptEnhancerUri
 from .ltxdiffusiondecoderuri import LTXDiffusionDecoderUri
 from .scascadedecoderuri import SCascadeDecoderUri
 from .sdxlrefineruri import SDXLRefinerUri
 from .t2iadapteruri import T2IAdapterUri
 from .textencoderuri import TextEncoderUri
 from .textualinversionuri import TextualInversionUri
+from .promptupsampleruri import LoadedPromptUpsampler, PromptUpsamplerUri
 from .transformeruri import TransformerModel, TransformerUri
 from .uneturi import UNetUri
 from .util import (

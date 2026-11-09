@@ -71,6 +71,7 @@ _ENCODER_REPLACEMENTS = {
     ('flux2', 'text_encoder'): [
         'Mistral3ForConditionalGeneration', 'Qwen3ForCausalLM'],
     ('wan-animate-2', 'text_encoder'): ['UMT5EncoderModel'],
+    ('flux3', 'text_encoder'): ['Qwen3VLForConditionalGeneration'],
 }
 
 _LABELS = {
@@ -97,8 +98,9 @@ _LABELS = {
         ('qwen-image', 'qwen-image-edit', 'qwen-image-layered'),
         {'text_encoder': 'Qwen2.5-VL'}),
     ('qwen-image-21', 'text_encoder'): 'Qwen3-VL',
+    ('flux3', 'text_encoder'): 'Qwen3-VL',
     ('krea2', 'text_encoder'): 'Qwen3-VL',
-    **_copy_slots(('kandinsky5-image', 'kandinsky5-video'), {
+    **_copy_slots(('kandinsky5-image', 'kandinsky5-video', 'kandinsky6-video'), {
         'text_encoder': 'Qwen2.5-VL',
         'text_encoder_2': 'CLIP',
     }),
@@ -192,9 +194,11 @@ def _pipeline_classes() -> dict[str, list[type]]:
         'wan': [diffusers.WanPipeline],
         'wan-animate': [diffusers.WanAnimatePipeline],
         'wan-animate-2': [],
+        'flux3': [],
         'hyvideo-15': [diffusers.HunyuanVideo15Pipeline],
         'motif-video': [diffusers.MotifVideoPipeline],
         'kandinsky5-video': [diffusers.Kandinsky5T2VPipeline],
+        'kandinsky6-video': [diffusers.Kandinsky6TI2VAPipeline],
     }
     missing = [name for name in _enums.supported_model_type_strings() if name not in classes]
     missing += [name for name in ('s-cascade-decoder',) if name not in classes]

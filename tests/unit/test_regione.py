@@ -105,7 +105,7 @@ class TestRegionE(unittest.TestCase):
         self.assertIsNone(config.inference_steps)
         import dgenerate.pipelinewrapper.arguments as _arguments
         import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
-        step = _arguments.DiffusionArguments()
+        step = _arguments.GenerationArguments()
         step.regione = True
         step.inference_steps = _regione.resolve_regione_inference_step_count(
             step.inference_steps)
@@ -116,14 +116,14 @@ class TestRegionE(unittest.TestCase):
         import dgenerate.pipelinewrapper.arguments as _arguments
         import dgenerate.pipelinewrapper.wrapper as _wrapper
 
-        wrapper = object.__new__(_wrapper.DiffusionPipelineWrapper)
+        wrapper = object.__new__(_wrapper.PipelineWrapper)
         wrapper._model_type = _pipelinewrapper.ModelType.QWEN_IMAGE_EDIT
         wrapper._parsed_adetailer_detector_uris = None
         wrapper._model_cpu_offload = False
         wrapper._model_group_offload = False
         wrapper._pipeline = type('QwenImageEditPipeline', (), {})()
 
-        wrong = _arguments.DiffusionArguments()
+        wrong = _arguments.GenerationArguments()
         wrong.regione = True
         wrong.inference_steps = 20
         wrong.images = [self.image_path]
@@ -133,7 +133,7 @@ class TestRegionE(unittest.TestCase):
         self.assertIn('20', warning.call_args[0][0])
         self.assertIn('28', warning.call_args[0][0])
 
-        omitted = _arguments.DiffusionArguments()
+        omitted = _arguments.GenerationArguments()
         omitted.regione = True
         omitted.inference_steps = None
         omitted.images = [self.image_path]
@@ -142,7 +142,7 @@ class TestRegionE(unittest.TestCase):
         self.assertEqual(omitted.inference_steps, 28)
         warning.assert_not_called()
 
-        exact = _arguments.DiffusionArguments()
+        exact = _arguments.GenerationArguments()
         exact.regione = True
         exact.inference_steps = 28
         exact.images = [self.image_path]

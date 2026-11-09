@@ -17,7 +17,7 @@
 .. _heretic_MiniCPM-V_4.6: https://huggingface.co/heretic-org/MiniCPM-V-4.6-heretic
 .. _Stable_Diffusion_Web_UI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
 .. _CivitAI: https://civitai.com/
-.. _DiffusionArguments: https://dgenerate.readthedocs.io/en/version_6.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments
+.. _GenerationArguments: https://dgenerate.readthedocs.io/en/version_6.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.GenerationArguments
 .. _spandrel: https://github.com/chaiNNer-org/spandrel
 .. _ncnn: https://github.com/Tencent/ncnn
 .. _chaiNNer: https://github.com/chaiNNer-org/chaiNNer
@@ -75,9 +75,10 @@ Help Output
                      [-rst INTEGER [INTEGER ...]] [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]]
                      [-rsl INTEGER [INTEGER ...]] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]]
                      [-pagl LAYERS [LAYERS ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
-                     [-rpagl LAYERS [LAYERS ...]] [-mqo | -mco | -mgo] [--torch-compile] [-mqo2 | -mco2 | -mgo2]
-                     [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
-                     [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [-rpagl LAYERS [LAYERS ...]] [-mqo | -mco | -mgo] [--torch-compile [SUBMODULE ...]]
+                     [-mqo2 | -mco2 | -mgo2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
+                     [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
+                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-sizes SIZE [SIZE ...]]
                      [--sdxl-target-sizes SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
@@ -151,7 +152,7 @@ Help Output
                      [--pipeline-prompt-enhance-presence-penalty FLOAT]
                      [--pipeline-prompt-enhance-max-new-tokens INT]
                      [--pipeline-prompt-enhance-min-new-tokens INT] [--pipeline-prompt-enhance-gpu-headroom GIB]
-                     [--ltx-prompt-enhancer URI] [--wan-low-noise-guidance-scales FLOAT [FLOAT ...]]
+                     [--prompt-upsampler URI] [--wan-low-noise-guidance-scales FLOAT [FLOAT ...]]
                      [--wan-boundary-ratios FLOAT [FLOAT ...]] [--wan-expand-timesteps]
                      [--wan-second-transformer TRANSFORMER_URI]
                      [--wan-conditioning-scales FLOAT_OR_CSV [FLOAT_OR_CSV ...]] [--wan-animate-mode MODE]
@@ -279,9 +280,9 @@ Help Output
             kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, sd3-pix2pix, flux,
             flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
             qwen-image-layered, ltx2, ltx-video, wan, wan-animate, wan-animate-2, qwen-image-21, krea2,
-            kandinsky5-image, kandinsky5-video, hyvideo-15, motif-video, hydit, hyimage-21, or
-            hyimage-21-refiner. (default: sd)
-            ---------------------------------
+            kandinsky5-image, kandinsky5-video, hyvideo-15, motif-video, hydit, hyimage-21, hyimage-21-refiner,
+            flux3, or kandinsky6-video. (default: sd)
+            -----------------------------------------
       -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -537,9 +538,10 @@ Help Output
             as the detection area.
             ----------------------
       -te, --text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
-            Specify Text Encoders for the main model using URIs, main models may use one or more text encoders
-            depending on the --model-type value and other dgenerate arguments. See: --text-encoders help for
-            information about what text encoders are needed for your invocation.
+            Specify Text Encoders for the main model using URIs. compile=true compiles that encoder's decoder
+            layers. Main models may use one or more text encoders depending on the --model-type value and other
+            dgenerate arguments. See: --text-encoders help for information about what text encoders are needed
+            for your invocation.
             
             Examples:
             
@@ -614,14 +616,14 @@ Help Output
             * UMT5EncoderModel (Wan)
             * DistillT5EncoderModel (see: LifuWang/DistillT5)
             * ChatGLMModel (Kolors)
-            * Gemma3ForConditionalGeneration (LTX-2)
+            * Gemma3ForConditionalGeneration
             * Gemma4UnifiedForConditionalGeneration (LTX-2.5)
             * Mistral3ForConditionalGeneration (Flux.2)
-            * Qwen2_5_VLForConditionalGeneration (Qwen-Image, Kandinsky 5)
+            * Qwen2_5_VLForConditionalGeneration (Qwen-Image, Kandinsky 5, Kandinsky 6)
             * Qwen2_5_VLTextModel (HunyuanVideo 1.5)
             * Qwen3ForCausalLM (Flux.2 Klein)
             * Qwen3Model (Z-Image)
-            * Qwen3VLForConditionalGeneration (Qwen-Image 2.1)
+            * Qwen3VLForConditionalGeneration (Qwen-Image 2.1, FLUX.3)
             * Qwen3VLModel (Krea 2)
             
             If you wish to load weights directly from a path on disk, you must point this argument at the folder
@@ -632,7 +634,7 @@ Help Output
             --text-encoders but for the SDXL refiner or Stable Cascade decoder model.
             -------------------------------------------------------------------------
       -un, --unet UNET_URI
-            Specify a UNet using a URI.
+            Specify a UNet using a URI. compile=true compiles its repeated blocks.
             
             Examples:
             
@@ -670,11 +672,16 @@ Help Output
             will be used for the SDXL refiner, or Stable Cascade decoder model.
             -------------------------------------------------------------------
       -tf, --transformer TRANSFORMER_URI
-            Specify a Stable Diffusion 3, Flux, Flux.2, Flux.2 Klein KV, Z-Image, Z-Image Omni, Qwen-Image,
-            Qwen-Image edit, Qwen-Image layered, LTX, Wan, or Wan-Animate Transformer model using a URI.
-            ``--model-type ltx2``, ``ltx-video``, ``wan``, ``wan-animate``, and ``wan-animate-2`` accept one
-            replacement diffusion transformer. Wan 2.2 MoE checkpoints can load the low-noise expert with
-            --wan-second-transformer.
+            Specify a replacement diffusion transformer using a URI. compile=true compiles this transformer's
+            repeated blocks. This is accepted for Stable Diffusion 3, Flux, Flux.2, Flux.2 Klein KV, FLUX.3,
+            Z-Image, Z-Image Omni, Qwen-Image, Qwen-Image edit, Qwen-Image layered, Qwen-Image 2.1, Krea 2,
+            Kandinsky 5 image and video, Kandinsky 6 video, Hunyuan-DiT, HunyuanImage 2.1, HunyuanVideo 1.5,
+            Motif-Video, LTX, Wan, and Wan-Animate. ``--model-type ltx2``, ``ltx-video``, ``wan``,
+            ``wan-animate``, ``wan-animate-2``, and ``kandinsky6-video`` accept one replacement diffusion
+            transformer. Wan 2.2 MoE checkpoints can load the low-noise expert with --wan-second-transformer. A
+            FLUX.3 GGUF in Comfy layout is renamed onto Flux3Transformer2DModel. Pair a distilled GGUF with the
+            distilled Klein repository and a base GGUF with the base repository, so flow_map matches the
+            checkpoint.
             
             Examples:
             
@@ -720,8 +727,8 @@ Help Output
             the "revision" argument may be used with this syntax.
             -----------------------------------------------------
       -vae, --vae VAE_URI
-            Specify a VAE using a URI, the URI syntax is: "AutoEncoderClass;model=(Hugging Face repository
-            slug/blob link or file/folder path)".
+            Specify a VAE using a URI. compile=true compiles its repeated blocks. The URI syntax is:
+            "AutoEncoderClass;model=(Hugging Face repository slug/blob link or file/folder path)".
             
             Examples:
             
@@ -810,7 +817,9 @@ Help Output
             ``hyvideo-15`` accepts HunyuanVideo 1.5 LoRAs, including original module names and Musubi
             ``lora_unet_`` files. ``motif-video`` accepts Diffusers-format and Musubi Motif-Video LoRAs.
             ``krea2`` accepts Diffusers-format LoRAs, the reference ``diffusion_model.`` and AI-Toolkit layouts,
-            and Musubi ``lora_unet_`` files.
+            and Musubi ``lora_unet_`` files. ``flux3`` accepts Diffusers-format LoRAs trained on FLUX.3 Klein
+            Base; the same file also loads on the distilled checkpoint. ``kandinsky6-video`` rejects --loras: no
+            Kandinsky 6 LoRA loader or checkpoint is published.
             
             If a LoRA model file exists at a URL which serves the file as a raw download, you may provide an
             http/https link to it and it will be downloaded to dgenerate's web cache.
@@ -901,7 +910,8 @@ Help Output
             "revision", "subfolder", and "weight-name" work the same way they do for --loras.
             ---------------------------------------------------------------------------------
       -ie, --image-encoder IMAGE_ENCODER_URI
-            Specify an Image Encoder using a URI.
+            Specify an Image Encoder using a URI. This URI has no compile argument. Name image_encoder on
+            --torch-compile to compile it.
             
             Image Encoders are used with --ip-adapters models, and must be specified if none of the loaded
             --ip-adapters contain one. An error will be produced in this situation, which requires you to use
@@ -1047,9 +1057,9 @@ Help Output
             disk instead. SD and SDXL fuse into the ControlNet cloned from the UNet.
             ------------------------------------------------------------------------
       -cn, --control-nets CONTROLNET_URI [CONTROLNET_URI ...]
-            Specify one or more ControlNet models using URIs. This should be a Hugging Face repository slug /
-            blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file),
-            or model folder containing model files.
+            Specify one or more ControlNet models using URIs. compile=true compiles that ControlNet's repeated
+            blocks. This should be a Hugging Face repository slug / blob link, path to model file on disk (for
+            example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder containing model files.
             
             If a ControlNet model file exists at a URL which serves the file as a raw download, you may provide
             an http/https link to it and it will be downloaded to dgenerate's web cache.
@@ -1266,6 +1276,11 @@ Help Output
             URI arguments overlay the checkpoint scheduler config. Other scheduler names are rejected. Omitting
             this option keeps the checkpoint scheduler.
             
+            For --model-type kandinsky6-video the accepted names are FlowMatchEulerDiscreteScheduler and
+            PiflowScheduler. A distilled checkpoint ships PiflowScheduler; omitting --scheduler keeps it. For
+            --model-type flux3, omit --scheduler. The modular pipeline keeps the checkpoint scheduler, and other
+            names are not registered.
+            
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
       -sch2, --second-model-scheduler, --second-model-schedulers SCHEDULER_URI [SCHEDULER_URI ...]
@@ -1419,7 +1434,8 @@ Help Output
             
             Starting step must be at least 3 as SADA leverages third-order dynamics.
             
-            Defaults to "10,47".
+            On a 50-step run this is "10,47" (steps 10 through 46). A shorter run keeps the same head and tail.
+            Omitted until --inference-steps is known.
             
             Supply ranges as comma seperated values, for example: --sada-acc-ranges "10,47" "12,40"
             
@@ -1624,16 +1640,17 @@ Help Output
             Enable DyPE's positional scaling methods for supported transformer pipelines.
             
             Flux.1 and Qwen-Image use the upstream architectures. Flux Fill/Kontext, Qwen Edit/Layered, Flux.2,
-            Z-Image, and Wan are experimental adapters. Defaults to a model-specific reference resolution. See
-            --dype-methods to choose position encoding methods, --dype-base-resolutions to override the
-            reference resolution, --dype-mscales to control YARN's attention magnitude scale, and
-            --dype-axis-scalings to control scaling of non-square images. This option cannot be combined with
-            --cache-dit, --tea-cache, --spectrum, or --sada, because those features reuse or skip denoiser work
-            from an earlier step.
+            FLUX.3, Z-Image, Wan, and Kandinsky 6 are experimental adapters. FLUX.3 uses the Flux.2 position-id
+            contract. Kandinsky 6 scales height and width and leaves the time axis on the checkpoint table.
+            Defaults to a model-specific reference resolution. See --dype-methods to choose position encoding
+            methods, --dype-base-resolutions to override the reference resolution, --dype-mscales to control
+            YARN's attention magnitude scale, and --dype-axis-scalings to control scaling of non-square images.
+            This option cannot be combined with --cache-dit, --tea-cache, --spectrum, or --sada, because those
+            features reuse or skip denoiser work from an earlier step.
             
-            This is supported for: --model-type flux, flux-fill, flux-kontext, flux2, flux2-klein-kv,
+            This is supported for: --model-type flux, flux-fill, flux-kontext, flux2, flux2-klein-kv, flux3,
             qwen-image, qwen-image-edit, qwen-image-layered, krea2, z-image, z-image-omni, wan, wan-animate,
-            wan-animate-2, hyvideo-15, and motif-video.
+            wan-animate-2, hyvideo-15, motif-video, and kandinsky6-video.
             
             See: https://github.com/guyyariv/DyPE
             -------------------------------------
@@ -1648,11 +1665,11 @@ Help Output
       --dype-base-resolutions PIXELS [PIXELS ...]
             Reference long-side resolution in pixels for DyPE's positional scaling.
             
-            Defaults to 1024 for Flux/Flux.2/Z-Image, 1328 for Qwen-Image, and 832 for Wan. Values are tried in
-            turn, must be at least 16 pixels. Supplying this option implies --dype.
+            Defaults to 1024 for Flux/Flux.2/FLUX.3/Z-Image, 1328 for Qwen-Image, 864 for Kandinsky 6, and 832
+            for Wan. Values are tried in turn, must be at least 16 pixels. Supplying this option implies --dype.
             
             This option is supported for Flux.1, Flux Fill/Kontext, Qwen-Image, Qwen Edit/Layered, Flux.2,
-            Z-Image, and Wan pipeline families.
+            FLUX.3, Z-Image, Wan, and Kandinsky 6.
             
             See: https://github.com/guyyariv/DyPE
             -------------------------------------
@@ -1717,15 +1734,18 @@ Help Output
             
             See: https://github.com/hanjq17/Spectrum
             
-            The defaults (2 step window, flex 0.75, blend 0.5) are the paper's moderate schedule.
+            The paper's moderate schedule is a 2 step window, flex 0.75, and blend 0.5.
             ``--spectrum-flex-windows 3`` is the aggressive schedule. Qwen-Image edit drifts more than
-            text-to-image; raise ``--spectrum-warmup-steps`` or lower the flex window there.
+            text-to-image; raise ``--spectrum-warmup-steps`` or lower the flex window there. When warmup and
+            flex are omitted they follow the step count: 50 or more uses warmup 5 and flex 0.75, shorter runs
+            hold flex at 0, and classifier-free guidance above 1 also holds flex at 0. The step text shows auto
+            until that step count or guidance is known.
             
             This is supported for: --model-type sd3, sd3-pix2pix, sdxl, sdxl-pix2pix, kolors, flux, flux-fill,
             flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
-            qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, wan, wan-animate, wan-animate-2,
-            hyvideo-15, motif-video, hyimage-21, and hyimage-21-refiner.
-            ------------------------------------------------------------
+            qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, flux3, kandinsky6-video, wan,
+            wan-animate, wan-animate-2, hyvideo-15, motif-video, hyimage-21, and hyimage-21-refiner.
+            ----------------------------------------------------------------------------------------
       --spectrum-weights [FLOAT ...]
             Spectrum Chebyshev blend weights to try when --spectrum is enabled.
             
@@ -1757,12 +1777,14 @@ Help Output
       --spectrum-warmup-steps [INT ...]
             Leading full denoiser passes before Spectrum may predict a step.
             
-            Each value is tried in turn. The paper uses 5 with 50 inference steps. Shorter schedules can use 2.
+            Each value is tried in turn. The paper uses 5 with 50 inference steps. When omitted, 50 or more
+            steps use 5, 9 to 49 steps use 4, 5 to 8 steps use 2, and 4 or fewer stay on a real pass every step.
+            Omitted values show as auto until the step count is known.
             
             Supplying any values implies --spectrum.
             
-            (default: 2)
-            ------------
+            (default: chosen from the step count)
+            -------------------------------------
       --spectrum-window-sizes [FLOAT ...]
             Initial Spectrum skip intervals to try when --spectrum is enabled.
             
@@ -1776,13 +1798,14 @@ Help Output
       --spectrum-flex-windows [FLOAT ...]
             Amounts added to the Spectrum skip interval after each full pass.
             
-            0 keeps the interval fixed. 0.75 is the paper's moderate schedule and 3 is the aggressive one. Each
-            value is tried in turn.
+            0 keeps the interval fixed. 0.75 is the paper's moderate schedule and 3 is the aggressive one. When
+            omitted, flex is 0.75 at 50 or more steps and 0 on a shorter run or when classifier-free guidance is
+            above 1. Omitted values show as auto until that is known. Each value is tried in turn.
             
             Supplying any values implies --spectrum.
             
-            (default: 0.75)
-            ---------------
+            (default: chosen from the step count and guidance)
+            --------------------------------------------------
       --regione
             Enable RegionE region-aware acceleration for instruction editing?
             
@@ -2060,15 +2083,31 @@ Help Output
             the next layer copy with the current one. BitsAndBytes, SDNQ, and other quantized modules are left
             where they were loaded. Mutually exclusive with --model-cpu-offload and --model-sequential-offload
             --------------------------------------------------------------------------------------------------
-      --torch-compile
+      --torch-compile [SUBMODULE ...]
             Compile repeated denoiser, ControlNet, and VAE blocks. The first use of each waits while the graph
             builds. A later change of resolution or frame count compiles once more, then reuses that graph. CUDA
             and XPU need Triton. Quantized modules and models with no repeated blocks stay eager, and dgenerate
-            warns when the flag is set and nothing was compiled. Wan-Animate-2 compiles its transformer and VAE
-            blocks on every load, with or without this flag. DGENERATE_TORCH_COMPILE=0 leaves every model eager,
-            including Wan-Animate-2. TorchDynamo, Inductor, and Triton stay quiet unless -v/--verbose is set.
-            Compile errors still print.
-            ---------------------------
+            warns when this option is set and nothing was compiled.
+            
+            With no module names, the UNet or transformer, ControlNet, and the VAE are compiled. Naming modules
+            compiles only those, for example --torch-compile vae text_encoder. Accepted names are: "unet",
+            "transformer", "transformer_2", "controlnet", "vae", "text_encoder", "text_encoder_2",
+            "text_encoder_3", "image_encoder", "prompt_upsampler", "prompt_enhancer", and "connectors".
+            
+            prompt_upsampler and prompt_enhancer are aliases. Either name compiles the FLUX.3 prompt upsampler
+            or the LTX Gemma enhancer, whichever that pipeline has. Text encoders and that upsampler compile
+            their decoder layers. image_encoder is compiled only when named here. The --image-encoder URI has no
+            compile argument.
+            
+            A submodel URI can also set compile=true, which compiles that module even when this option is
+            omitted, and even when the named modules omit it. --unet, --vae, --text-encoders, --control-nets,
+            --transformer, and --prompt-upsampler accept it. A compiled prompt upsampler is still layer-split
+            for the rewrite, so the first generate() can build the graph again. Weights streamed from disk skip
+            this option, including a URI compile=true. Wan-Animate-2 compiles its transformer and VAE blocks on
+            every load and ignores the module names and a URI compile=true. DGENERATE_TORCH_COMPILE=0 leaves
+            every model eager, including Wan-Animate-2. TorchDynamo, Inductor, and Triton stay quiet unless
+            -v/--verbose is set. Compile errors still print.
+            ------------------------------------------------
       -mqo2, --second-model-sequential-offload
             Force sequential model offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, this may
             drastically reduce memory consumption and allow large models to run when they would otherwise not
@@ -2278,7 +2317,7 @@ Help Output
       -s, --output-size SIZE
             Image output size, for txt2img generation this is the exact output size. The dimensions specified
             for this value must be aligned by 8 or you will receive an error message. Models that require a
-            larger alignment round the size down and print a warning: 16 for Stable Diffusion 3, Flux.2,
+            larger alignment round the size down and print a warning: 16 for Stable Diffusion 3, Flux.2, FLUX.3,
             Z-Image, and Qwen-Image, 128 for Stable Cascade, and the VAE alignment for video models. If an
             --image-seeds URI is used its Seed, Mask, and/or Control component image sources will be resized to
             this dimension with aspect ratio maintained before being used for generation by default, except in
@@ -2638,7 +2677,14 @@ Help Output
             traditional img2img, and will result in an error if attempted. Latent input is also not supported
             for ControlNet/T2I Adapter guidance images, or IP Adapter images, as these guidance models operate
             on images in pixel space.
-            -------------------------
+            
+            For --model-type flux3, --image-seeds are reference images. There is no mask and no img2img
+            strength. Several images are several references, up to 10. One reference keeps its own size unless
+            --output-size is set.
+            
+            For --model-type kandinsky6-video, one still image is the first frame of the clip. A mask, a second
+            image, or a control image is rejected.
+            --------------------------------------
       -sip, --seed-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on the primary img2img image(s) specified by
             --image-seeds.
@@ -2796,7 +2842,9 @@ Help Output
             that omit strength=. 1 keeps the conditioning frame. A lower value lets the generated frames leave
             it. Several values are tried in turn. last-frame= stays at strength 1. LTX does not use the img2img
             default 0.8; omit this option and an omitted strength= stays at 1.
-            ------------------------------------------------------------------
+            
+            --model-type flux3 rejects this option. Its --image-seeds are references and have no strength.
+            ----------------------------------------------------------------------------------------------
       -uns, --upscaler-noise-levels INTEGER [INTEGER ...]
             One or more upscaler noise level values to try when using the super resolution upscaler --model-type
             upscaler-x4 or ifs. Specifying this option for --model-type upscaler-x2 will produce an error
@@ -2860,8 +2908,11 @@ Help Output
             considered. Low values draw more data from images unrelated to text prompt.
             
             Omitting this lets the pipeline choose. Qwen-Image 2.1 uses 1. Krea 2 uses 0 when the checkpoint is
-            distilled and 4.5 otherwise. Kandinsky 5 Image uses 3.5. HunyuanImage 2.1 uses 3.25 when the
-            checkpoint embeds guidance, and for the refiner.
+            distilled and 4.5 otherwise. Kandinsky 5 Image uses 3.5. FLUX.3 uses 1 on the distilled checkpoint
+            and 3.5 on the base checkpoint. The distilled checkpoint has no classifier-free guidance, so a
+            negative prompt is ignored. Kandinsky 6 video uses 1 when the loaded scheduler is PiflowScheduler
+            and 5 otherwise. HunyuanImage 2.1 uses 3.25 when the checkpoint embeds guidance, and for the
+            refiner.
             
             For --model-type ltx-video, omitted values follow the loaded LTXPipeline __call__ defaults
             (typically guidance 3). A value you set is passed as written.
@@ -2902,7 +2953,7 @@ Help Output
             shifting, or the scheduler set_timesteps schedule otherwise. Guidance is used as written; see
             --guidance-scales.
             
-            For --model-type flux, flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni,
+            For --model-type flux, flux-fill, flux-kontext, flux2, flux2-klein-kv, flux3, z-image, z-image-omni,
             qwen-image, qwen-image-edit, and qwen-image-layered, expr: sigmas is the pipeline default schedule:
             evenly spaced values from 1 down to 1/steps. The model applies its resolution-dependent shift to the
             expression result.
@@ -2940,9 +2991,11 @@ Help Output
             content of the image. Values between 30-40 produce good results, higher values may improve image
             quality and or change image content.
             
-            Omitting this lets the pipeline choose. RegionE uses 28. Qwen-Image 2.1 uses 40. Krea 2 uses 8 when
-            the checkpoint is distilled and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the refiner.
-            Kandinsky 5 Image uses 50.
+            Omitting this lets the pipeline choose. RegionE uses 28. Qwen-Image 2.1 uses 40, or the length of
+            the checkpoint's sample sigma list when it has one. Krea 2 uses 8 when the checkpoint is distilled
+            and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the refiner. Kandinsky 5 Image uses 50. FLUX.3
+            uses 16 on the distilled checkpoint and 50 on the base checkpoint. Kandinsky 6 video uses 10 when
+            the loaded scheduler is PiflowScheduler and 50 otherwise.
             
             For --model-type ltx-video, omitted values follow the loaded LTXPipeline __call__ defaults
             (typically guidance 3 and 50 steps). A value you set is passed as written.
@@ -2969,13 +3022,16 @@ Help Output
             2.1). Cannot be used with Wan video-to-video or --model-type wan-animate, where the output follows
             the input clip.
             
+            Kandinsky 6 snaps the same way and is trained for 5 seconds at 24 fps (121 frames). The clip
+            includes audio. There is no separate audio option.
+            
             (default: model chooses)
             ------------------------
       --video-fps FPS [FPS ...]
             One or more output frame rates for video model types. Each value will be tried in turn.
             
-            Defaults to 24 for --model-type ltx2, ltx-video, motif-video, wan-animate-2, and kandinsky5-video;
-            15 for hyvideo-15; 16 for wan; and 30 for wan-animate.
+            Defaults to 24 for --model-type ltx2, ltx-video, motif-video, wan-animate-2, kandinsky5-video, and
+            kandinsky6-video; 15 for hyvideo-15; 16 for wan; and 30 for wan-animate.
             
             (default: model type default)
             -----------------------------
@@ -2983,8 +3039,9 @@ Help Output
             One or more comma-separated timestep schedules or "expr: ..." expressions. Expressions receive the
             scheduler default array as "timesteps". The schedule length sets the inference step count. Supported
             where the pipeline accepts a timestep schedule, for example SD 1.5/2/XL, Kolors, Wan video-to-video,
-            LTX-2, Motif-Video, Hunyuan Video 1.5, and Kandinsky 5 video. Cannot be combined with --sigmas.
-            -----------------------------------------------------------------------------------------------
+            LTX-2, Motif-Video, Hunyuan Video 1.5, Kandinsky 5 video, and Kandinsky 6 video. Cannot be combined
+            with --sigmas.
+            --------------
       --qwen21-no-kv-cache
             Disable the Qwen-Image 2.1 key/value attention cache.
             -----------------------------------------------------
@@ -3147,13 +3204,25 @@ Help Output
             spaces). Image families use the built-in text-to-image prompt. Qwen-Image edit, Qwen-Image layered,
             Qwen-Image 2.1, Flux.2, and Kandinsky 5 image editing use the built-in edit prompt when the text
             encoder can see an input image. Kandinsky 5 video uses a shot prompt, and an image-to-video prompt
-            when a first frame is present. On LTX-2 this turns on the optional Gemma prompt enhancer. With no
-            value the enhancer is google/gemma-4-E2B-it and LTX-2.5 selects its text-to-video or image-to-video
-            system prompt from the conditioning input. A value replaces that system prompt.
-            --ltx-prompt-enhancer names a different enhancer model. LTX-Video (T5) is not supported. Supported
-            --model-type values: flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
-            qwen-image-layered, qwen-image-21, hyimage-21, hyimage-21-refiner, kandinsky5-image,
-            kandinsky5-video, krea2, and ltx2. Any other --pipeline-prompt-enhance-* option, including
+            when a first frame is present. Kandinsky 6 video accepts the flag with no value, or with one system
+            prompt for that generation. The --pipeline-prompt-enhance-* sampling options apply to that rewrite.
+            The flag turns on the pipeline's own expand_prompts, including the first frame when one was given. A
+            token counter is shown while it writes, then the rewritten prompt is logged. With CPU offload, that
+            rewrite keeps on the GPU only the text-encoder layers that fit in free dedicated memory, then
+            restores the offload hooks. --max-sequence-length still applies. The text encoder stays loaded
+            either way, because denoising uses it too. --model-type flux3 runs its Qwen3.5 prompt upsampler only
+            when this flag is set. With no value the upsampler keeps its own system prompt. A value replaces
+            that system prompt for the generation. Omitting the sampling options decodes greedily. Temperature,
+            top-p, top-k, presence penalty, token limits, seeds, and GPU headroom apply to that rewrite when
+            set. A token counter is shown while it writes, then the rewritten prompt is logged. Without the flag
+            the prompt is encoded as given and the upsampler is not loaded. On LTX-2 this turns on the optional
+            Gemma prompt enhancer. With no value the enhancer is google/gemma-4-E2B-it and LTX-2.5 selects its
+            text-to-video or image-to-video system prompt from the conditioning input. A value replaces that
+            system prompt. The rewritten prompt is logged. --prompt-upsampler names a different upsampler for
+            LTX-2 and FLUX.3. LTX-Video (T5) is not supported. Supported --model-type values: flux2,
+            flux2-klein-kv, flux3, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered,
+            qwen-image-21, hyimage-21, hyimage-21-refiner, kandinsky5-image, kandinsky5-video, kandinsky6-video,
+            krea2, and ltx2. Any other --pipeline-prompt-enhance-* option, including
             --pipeline-prompt-enhance-seeds, turns enhancement on with the built-in system prompt when this flag
             is omitted. This is separate from --prompt-upscaler.
             ----------------------------------------------------
@@ -3161,52 +3230,59 @@ Help Output
             One or more seeds for prompt enhancement. Each value is tried in turn with the other arguments,
             including --seeds. These seeds are used only by the enhancer. The image or video still uses --seeds
             or --gen-seeds. When omitted, the enhancer uses that generation seed. Also turns
-            --pipeline-prompt-enhance on when that flag is omitted.
-            -------------------------------------------------------
+            --pipeline-prompt-enhance on when that flag is omitted. FLUX.3 and Kandinsky 6 video apply this to
+            that generation's rewrite.
+            --------------------------
       --pipeline-prompt-enhance-gen-seeds COUNT
             Generate COUNT random seeds for prompt enhancement. This may not be used with
             --pipeline-prompt-enhance-seeds. The generated seeds override --seeds and --gen-seeds for the
-            enhancer only. Also turns --pipeline-prompt-enhance on when that flag is omitted.
-            ---------------------------------------------------------------------------------
+            enhancer only. Also turns --pipeline-prompt-enhance on when that flag is omitted. FLUX.3 and
+            Kandinsky 6 video apply this to that generation's rewrite.
+            ----------------------------------------------------------
       --pipeline-prompt-enhance-temperature FLOAT
             Sampling temperature for --pipeline-prompt-enhance. Image families use the pipeline text encoder.
             LTX-2 passes this to the Gemma enhancer or text-encoder fallback. Omitting it keeps the default for
             that model type. Any --pipeline-prompt-enhance-* option turns prompt enhancement on when the flag
-            itself is omitted.
-            ------------------
+            itself is omitted. FLUX.3 and Kandinsky 6 video apply this to that generation's rewrite.
+            ----------------------------------------------------------------------------------------
       --pipeline-prompt-enhance-top-p FLOAT
             Nucleus top-p for --pipeline-prompt-enhance. Must be greater than 0 and at most 1. Also turns
-            --pipeline-prompt-enhance on when that flag is omitted.
-            -------------------------------------------------------
+            --pipeline-prompt-enhance on when that flag is omitted. FLUX.3 and Kandinsky 6 video apply this to
+            that generation's rewrite.
+            --------------------------
       --pipeline-prompt-enhance-top-k INT
             Top-k for --pipeline-prompt-enhance. 0 turns top-k off. Also turns --pipeline-prompt-enhance on when
-            that flag is omitted.
-            ---------------------
+            that flag is omitted. FLUX.3 and Kandinsky 6 video apply this to that generation's rewrite.
+            -------------------------------------------------------------------------------------------
       --pipeline-prompt-enhance-presence-penalty FLOAT
             Presence penalty for --pipeline-prompt-enhance sampling. Also turns --pipeline-prompt-enhance on
-            when that flag is omitted.
-            --------------------------
+            when that flag is omitted. FLUX.3 and Kandinsky 6 video apply this to that generation's rewrite.
+            ------------------------------------------------------------------------------------------------
       --pipeline-prompt-enhance-max-new-tokens INT
             Maximum new tokens for one --pipeline-prompt-enhance rewrite. Also turns --pipeline-prompt-enhance
-            on when that flag is omitted.
-            -----------------------------
+            on when that flag is omitted. FLUX.3 and Kandinsky 6 video apply this to that generation's rewrite.
+            ---------------------------------------------------------------------------------------------------
       --pipeline-prompt-enhance-min-new-tokens INT
             Minimum new tokens before end-of-sequence is allowed. Also turns --pipeline-prompt-enhance on when
-            that flag is omitted.
-            ---------------------
+            that flag is omitted. FLUX.3 and Kandinsky 6 video apply this to that generation's rewrite.
+            -------------------------------------------------------------------------------------------
       --pipeline-prompt-enhance-gpu-headroom GIB
             GiB of free GPU memory to leave unused when splitting the text encoder across GPU and CPU, on top of
             10 percent of free memory. The default is 2. Raise it when the rewrite runs out of memory. Lower it
             to keep more layers on the GPU. Also turns --pipeline-prompt-enhance on when that flag is omitted.
-            --------------------------------------------------------------------------------------------------
-      --ltx-prompt-enhancer URI
-            URI for a separate model that rewrites the LTX prompt before denoising, for example
-            google/gemma-4-E2B-it or google/gemma-4-E2B-it;revision=main;subfolder=model;dtype=bfloat16, with an
-            optional quantizer URI such as google/gemma-4-E2B-it;quantizer="sdnq;type=int4". Setting this turns
-            enhancement on and loads that model. Omit it and --pipeline-prompt-enhance loads
-            google/gemma-4-E2B-it. A value on --pipeline-prompt-enhance replaces the text-to-video or
-            image-to-video system prompt.
-            -----------------------------
+            FLUX.3 splits the prompt upsampler. Kandinsky 6 video splits the text encoder.
+            ------------------------------------------------------------------------------
+      --prompt-upsampler URI
+            Prompt upsampler URI. The arguments match --transformer: revision, variant, subfolder, dtype,
+            quantizer, and compile. compile=true compiles its decoder layers. It loads a Transformers causal or
+            image-to-text model, not the denoiser. For example google/gemma-4-E2B-it or
+            google/gemma-4-E2B-it;quantizer="sdnq;type=int4". Setting this turns prompt enhancement on and loads
+            that model instead of the default. --model-type ltx2 defaults to google/gemma-4-E2B-it when only
+            --pipeline-prompt-enhance is set. --model-type flux3 defaults to the checkpoint Qwen3.5 prompt
+            upsampler. Models that rewrite with the diffusion text encoder, including kandinsky6-video, reject
+            this option. A value on --pipeline-prompt-enhance replaces the built-in system prompt for that
+            generation on LTX-2, FLUX.3, and Kandinsky 6.
+            ---------------------------------------------
       --wan-low-noise-guidance-scales FLOAT [FLOAT ...]
             CFG scales for the Wan 2.2 MoE low-noise expert. When omitted, that expert copies --guidance-scales.
             ----------------------------------------------------------------------------------------------------
@@ -3279,7 +3355,7 @@ Help Output
             
             For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
             
-            For SD3, Flux, Qwen-Image, Qwen-Image 2.1, Krea 2, Kandinsky 5 Image, and Z-Image,
+            For SD3, Flux, Flux.2, FLUX.3, Qwen-Image, Qwen-Image 2.1, Krea 2, Kandinsky 5 Image, and Z-Image,
             FlowMatchEulerDiscreteScheduler is supported.
             
             Example: --denoising-start 0.8
@@ -3307,7 +3383,7 @@ Help Output
             
             For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
             
-            For SD3, Flux, Qwen-Image, Qwen-Image 2.1, Krea 2, Kandinsky 5 Image, and Z-Image,
+            For SD3, Flux, Flux.2, FLUX.3, Qwen-Image, Qwen-Image 2.1, Krea 2, Kandinsky 5 Image, and Z-Image,
             FlowMatchEulerDiscreteScheduler is supported.
             
             Example: --denoising-end 0.5
@@ -4810,6 +4886,33 @@ VAEs are tiled automatically, so ``--vae-tiling`` is rejected. ``--vae-slicing``
 is available to reduce VAE memory use. These integrations generate video frames
 only; they do not synthesize audio.
 
+Library
+-------
+
+A video pipeline yields :class:`dgenerate.VideoGeneratedEvent` with the frames,
+frame rate, and soundtrack in memory. ``RenderLoop(..., disable_writes=True)``
+does not write a file. ``event.write`` muxes the clip to a path or a binary
+stream. A path's extension selects the container. A ``.frames`` path writes
+one PNG per frame. A stream is mp4 unless
+``animation_format`` is given. A seekable stream, such as ``io.BytesIO``, is
+rewound when the mux finishes. A non-seekable stream receives a fragmented mp4.
+The soundtrack is muxed into mp4. Call ``write`` while handling the event; the
+frames are closed when the loop moves on.
+
+.. code-block:: python
+
+    from dgenerate import RenderLoop, VideoGeneratedEvent
+
+    render_loop = RenderLoop(config=config, disable_writes=True)
+    for event in render_loop.events():
+        if isinstance(event, VideoGeneratedEvent):
+            event.write(event.suggested_filename)
+            event.write(stream)
+
+``dgenerate.mediaoutput.write_animation`` is the same mux for frames you
+already have. Examples are under
+`examples/library_usage <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/library_usage>`_.
+
 HunyuanVideo 1.5
 ----------------
 
@@ -5340,12 +5443,24 @@ See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teri
 image-to-video system prompt. A value replaces that system prompt.
 Any other ``--pipeline-prompt-enhance-*`` option turns enhancement on with that
 built-in system prompt when ``--pipeline-prompt-enhance`` is omitted.
-``--ltx-prompt-enhancer`` names a different enhancer model and turns enhancement
-on by itself. Its URI accepts ``revision``, ``subfolder``, ``dtype``, and
-``quantizer``.
+FLUX.3 and Kandinsky 6 accept the same system-prompt value and the same sampling
+options for that generation. With no value, FLUX.3 keeps the upsampler's system
+prompt and decodes greedily. Kandinsky 6 keeps its expansion instruction.
+``--prompt-upsampler`` names a different upsampler and turns enhancement on
+by itself. Its arguments match ``--transformer`` (``revision``, ``variant``,
+``subfolder``, ``dtype``, and ``quantizer``), and it loads a Transformers
+causal or image-to-text model rather than the denoiser. FLUX.3 uses the
+same option for its Qwen3.5 prompt upsampler.
 See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/basic/prompt-enhancer-config.dgen>`_,
 `examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen>`_,
-and `examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen>`_.
+`examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen>`_,
+and `examples/ltx2/pipeline_prompt_enhance/quantized-upsampler-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/quantized-upsampler-config.dgen>`_.
+FLUX.3 quantizes its published Qwen3.5 upsampler the same way in
+`examples/flux3/pipeline_prompt_enhance/quantized-upsampler-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux3/pipeline_prompt_enhance/quantized-upsampler-config.dgen>`_.
+A custom system prompt and the sampling options are
+`examples/flux3/pipeline_prompt_enhance/sampling-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux3/pipeline_prompt_enhance/sampling-config.dgen>`_
+and
+`examples/kandinsky6/pipeline_prompt_enhance/sampling-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky6/pipeline_prompt_enhance/sampling-config.dgen>`_.
 
 ``--ltx-image-crfs`` recompresses a conditioning still before the VAE encode. Omit it
 and the pipeline default is used (``18`` on LTX-2.5). ``0`` skips recompression.
@@ -6679,6 +6794,56 @@ Flux.2 Cooperative Denoising:
     --output-size 1024
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
 
+Flux.3 Cooperative Denoising:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # FLUX.3 cooperative denoising. Saved latents are unpatchified denoise-space
+    # tensors, the same layout Flux.2 uses, so the second stage reloads them with
+    # latents: and continues from --denoising-start. The checkpoint is gated.
+    
+    {% if "--output-metadata" in injected_args %}
+        \set _ {{ injected_args.remove("--output-metadata") }}
+    {% endif %}
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    \set high_noise_fraction 0.80
+    
+    black-forest-labs/flux-3-image-klein-base
+    --model-type flux3
+    --dtype bfloat16
+    --model-sequential-offload
+    --inference-steps 50
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path cooperative
+    --image-format pt
+    --denoising-end {{ high_noise_fraction }}
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+    
+    black-forest-labs/flux-3-image-klein-base
+    --model-type flux3
+    --dtype bfloat16
+    --model-sequential-offload
+    --inference-steps 50
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path cooperative
+    --image-seeds "latents: {{ quote(last_images) }}"
+    --denoising-start {{ high_noise_fraction }}
+    --output-size 1024
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
 Qwen-Image Cooperative Denoising:
 
 .. code-block:: jinja
@@ -7093,7 +7258,7 @@ when ``--denoising-start`` has been specified with an SDXL or Kolors model:
 Advanced Usage with Image Input:
 
 You can also combine cooperative denoising with img2img input by using the combined syntax,
-this works for SD1.5/2.x, SD3, Flux.1, Flux.2, Qwen-Image, Qwen-Image 2.1,
+this works for SD1.5/2.x, SD3, Flux.1, Flux.2, Flux.3, Qwen-Image, Qwen-Image 2.1,
 Kandinsky 5 Image, and Z-Image
 models using the ``latents= ...`` syntax:
 
@@ -13536,7 +13701,7 @@ to define the ``--prompt-weighter`` and ``--prompt-upscaler`` plugins that act o
 ``<upscaler: ...>`` is unlike other embedded arguments in that it can be mentioned multiple times
 in a row to create a chain of prompt upscaling operations using different prompt upscaler plugin URIs.
 
-The rest of the specifiable arguments are select members of the `DiffusionArguments <DiffusionArguments_>`_
+The rest of the specifiable arguments are select members of the `GenerationArguments <GenerationArguments_>`_
 class from dgenerate's library API.
 
 You may not specify prompt related arguments aside from the aforementioned ``weighter`` and ``upscaler``.
@@ -13560,7 +13725,7 @@ All other arguments are fair game, for example ``inference_steps``
     --prompts "hello world!" "<inference-steps: 50> hello world!"
 
 
-Of the arguments mentioned in the `DiffusionArguments <DiffusionArguments_>`_ class,
+Of the arguments mentioned in the `GenerationArguments <GenerationArguments_>`_ class,
 these are the arguments that are available for use:
 
 .. code-block:: text
@@ -14974,13 +15139,11 @@ The help output of ``assistant`` is as follows:
 
 .. code-block:: text
 
-    usage: assistant [-h] [-o OUTPUT] [--model MODEL] [--embed-model EMBED_MODEL] [--ctx CTX]
-                     [--gpu-layers GPU_LAYERS] [--edit FILE] [--think] [--reasoning-effort {low,medium,xhigh}]
-                     [--temperature TEMPERATURE] [--top-p TOP_P] [--top-k TOP_K] [--min-p MIN_P]
-                     [--presence-penalty PRESENCE_PENALTY] [--repeat-penalty REPEAT_PENALTY]
-                     [--max-tokens MAX_TOKENS] [--no-check] [--max-repairs MAX_REPAIRS] [--show-context]
-                     [--offline] [--no-link-tools] [--progress-plain CODE] [--progress-thought CODE]
-                     [--progress-talk CODE] [--progress-tool CODE] [-v]
+    usage: assistant [-h] [-o OUTPUT] [-mdl MODEL] [-emb EMBED_MODEL] [-ctx CTX] [-gpu GPU_LAYERS] [-ed FILE]
+                     [-thk] [-eff {low,medium,xhigh}] [-temp TEMPERATURE] [-tp TOP_P] [-tk TOP_K] [-mp MIN_P]
+                     [-pres PRESENCE_PENALTY] [-rpen REPEAT_PENALTY] [-mtok MAX_TOKENS] [-nc]
+                     [-mrep MAX_REPAIRS] [-sctx] [-ofm] [-nlt] [-ppl CODE] [-pth CODE] [-ptk CODE] [-ptl CODE]
+                     [-v]
                      [request ...]
     
     Write a dgenerate config from a plain language request, using a local Qwen model with retrieval over the
@@ -14999,7 +15162,7 @@ The help output of ``assistant`` is as follows:
             Write the config to this file instead of stdout. File paths in the request are relative to the
             current directory and are rewritten relative to this file.
             ----------------------------------------------------------
-      --model MODEL
+      -mdl, --model MODEL
             Chat model. One of these compatible Qwen 3.8 27B GGUFs, smallest download first.
             
             unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ1_S.gguf (6.2 GB, Qwen 3.8, 8 GB GPUs)
@@ -15029,7 +15192,7 @@ The help output of ``assistant`` is as follows:
             
             Default: unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf
             ------------------------------------------------------------
-      --embed-model EMBED_MODEL
+      -emb, --embed-model EMBED_MODEL
             Embedding model. One of these compatible Qwen3-Embedding GGUFs. Each one has a packaged index.
             
             Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf (0.6 GB, default)
@@ -15038,68 +15201,72 @@ The help output of ``assistant`` is as follows:
             
             Default: Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf
             ----------------------------------------------------------------------
-      --ctx CTX
+      -ctx, --ctx CTX
             Chat context size in tokens. Default: 32768
             -------------------------------------------
-      --gpu-layers GPU_LAYERS
+      -gpu, --gpu-layers GPU_LAYERS
             Layers to put on the GPU, -1 for automatic, 0 for CPU only. Default: -1
             -----------------------------------------------------------------------
-      --edit FILE
+      -ed, --edit FILE
             Revise this existing config instead of writing a new one. The request describes the change.
             -------------------------------------------------------------------------------------------
-      --think
+      -thk, --think
             Let the model reason before answering. Slower.
             ----------------------------------------------
-      --reasoning-effort {low,medium,xhigh}
+      -eff, --reasoning-effort {low,medium,xhigh}
             How long to think when --think is set. Qwen3.8 otherwise uses extra high. Default: medium
             -----------------------------------------------------------------------------------------
-      --temperature TEMPERATURE
+      -temp, --temperature TEMPERATURE
             Sampling temperature. Default: 0.7, or 1.0 with --think.
             --------------------------------------------------------
-      --top-p TOP_P
+      -tp, --top-p TOP_P
             Default: 0.8, or 0.95 with --think.
             -----------------------------------
-      --top-k TOP_K
+      -tk, --top-k TOP_K
             Default: 20.
             ------------
-      --min-p MIN_P
+      -mp, --min-p MIN_P
             Default: 0.0.
             -------------
-      --presence-penalty PRESENCE_PENALTY
+      -pres, --presence-penalty PRESENCE_PENALTY
             Default: 1.5, or 0.0 with --think.
             ----------------------------------
-      --repeat-penalty REPEAT_PENALTY
+      -rpen, --repeat-penalty REPEAT_PENALTY
             Repetition penalty. Default: 1.0.
             ---------------------------------
-      --max-tokens MAX_TOKENS
+      -mtok, --max-tokens MAX_TOKENS
             Maximum reply tokens. 0 uses the rest of the context window and does not increase memory use.
             Default: 0
             ----------
-      --no-check
+      -nc, --no-check
             Skip validating the config with dgenerate.
             ------------------------------------------
-      --max-repairs MAX_REPAIRS
+      -mrep, --max-repairs MAX_REPAIRS
             How many times to ask the model to fix a config dgenerate rejects. Default: 2
             -----------------------------------------------------------------------------
-      --show-context
+      -sctx, --show-context
             Print the retrieved context to stderr.
             --------------------------------------
-      --offline
-            Only use models already in the Hugging Face cache.
-            --------------------------------------------------
-      --no-link-tools
-            Do not offer fetch_link; the model cannot request CivitAI or Hugging Face lookups.
-            ----------------------------------------------------------------------------------
-      --progress-plain CODE
+      -ofm, --offline-mode
+            Only use models already in the Hugging Face cache. The "fetch_link" tool lists Hugging Face files
+            already in that cache and does not call the Hub. A quant that is not cached is not listed, so the
+            example file is kept. The "fetch_link" tool does not fetch a CivitAI link or any other URL. A
+            CivitAI page is not in the local cache, so the config is written from the request and the retrieved
+            examples.
+            ---------
+      -nlt, --no-link-tools
+            Do not offer the "fetch_link" tool; the model cannot request CivitAI or Hugging Face lookups.
+            ---------------------------------------------------------------------------------------------
+      -ppl, --progress-plain CODE
             Terminal color before status text. Off by default. Reset with \033[0m.
             ----------------------------------------------------------------------
-      --progress-thought CODE
+      -pth, --progress-thought CODE
             Terminal color before reasoning. Off by default. Green is \033[32m.
             -------------------------------------------------------------------
-      --progress-talk CODE
+      -ptk, --progress-talk CODE
             Terminal color before the model's reply. Off by default. Cyan is \033[36m.
             --------------------------------------------------------------------------
-      --progress-tool CODE
+      -ptl, --progress-tool CODE
             Terminal color before a tool call. Off by default. Yellow is \033[33m.
             ----------------------------------------------------------------------
       -v, --verbose
@@ -17591,9 +17758,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ltx_noise_scales"
             Type: collections.abc.Sequence[float] | None
             Value: []
-        Name: "last_ltx_prompt_enhancer"
-            Type: str | None
-            Value: None
         Name: "last_ltx_stage_audio_guidance_scales"
             Type: collections.abc.Sequence[float] | None
             Value: []
@@ -17729,6 +17893,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_post_processors"
             Type: collections.abc.Sequence[str] | None
             Value: []
+        Name: "last_prompt_upsampler"
+            Type: str | None
+            Value: None
         Name: "last_prompt_upscaler_uri"
             Type: str | collections.abc.Sequence[str] | None
             Value: None
@@ -18016,7 +18183,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [40286099687655]
+            Value: [32203332613534]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -18072,7 +18239,7 @@ The ``\templates_help`` output from the above example is:
             Type: collections.abc.Sequence[collections.abc.Sequence[int] | str] | None
             Value: []
         Name: "last_torch_compile"
-            Type: <class 'bool'>
+            Type: bool | collections.abc.Sequence[str]
             Value: False
         Name: "last_transformer_uri"
             Type: str | None
@@ -18375,11 +18542,14 @@ The dgenerate specific jinja2 functions/filters are:
     
         \setp my_variable download('https://modelhost.com/model.safetensors')
     
+        A Hugging Face model "/blob/" or "/resolve/" link with no output path is stored in the Hugging Face cache.
+        Every other URL uses the web cache.
+    
         When an "output" path is specified, if the file already exists it will be reused by default (simple
         caching behavior), this can be disabled with the argument "overwrite=True" indicating that the file should
         always be downloaded.
     
-        An interrupted download is kept beside the destination with an ``.unfinished`` suffix and continued on the
+        An interrupted download is kept beside the destination with an ".unfinished" suffix and continued on the
         next call.
     
         "overwrite=True" can also be used to overwrite cached files in the dgenerate web cache.
@@ -20647,18 +20817,41 @@ that graph. A compiled pipeline and an eager pipeline are separate cache
 entries. TorchDynamo, Inductor, and Triton stay quiet unless ``-v`` is
 set. Compile errors still print.
 
+Module names on ``--torch-compile`` choose which components are compiled.
+With no names, the set above is used. Accepted names are ``unet``,
+``transformer``, ``transformer_2``, ``controlnet``, ``vae``,
+``text_encoder``, ``text_encoder_2``, ``text_encoder_3``, ``image_encoder``,
+``prompt_upsampler``, ``prompt_enhancer``, and ``connectors``.
+``prompt_upsampler`` and ``prompt_enhancer`` are aliases. Either name compiles
+the FLUX.3 prompt upsampler or the LTX Gemma enhancer, whichever that pipeline
+has. Text encoders and that upsampler compile their decoder layers.
+``image_encoder`` is compiled only when named here. The ``--image-encoder``
+URI has no ``compile`` argument.
+
+``compile=true`` on ``--unet``, ``--vae``, ``--text-encoders``,
+``--control-nets``, ``--transformer``, or ``--prompt-upsampler`` compiles that
+loaded module even when ``--torch-compile`` is omitted, and even when the
+named modules omit it. A compiled prompt upsampler is still layer-split for
+the rewrite, so the first ``generate()`` can build the graph again.
+
 CUDA and XPU need Triton. On macOS, PyTorch 2.13 and newer compile these
 blocks to a Metal kernel. CPU stays eager. BitsAndBytes, SDNQ, GGUF, and
 other quantized weights stay eager. Stable Diffusion 3 compiles its joint
 transformer blocks. Stable Cascade compiles its res, timestep, and attention
-blocks. Text encoders, image encoders, and the LTX diffusion decoder stay
-eager. Console recipes for the models that can compile include a Torch Compile
-checkbox, left off.
+blocks. The LTX diffusion decoder stays eager. Console recipes for the models
+that can compile include one Torch Compile control, left off. Its component
+field is available while the checkbox is on. Leave that field empty to keep
+the default set.
+
+Weights streamed from disk skip ``--torch-compile``, including a URI
+``compile=true``. A ``compile=true`` URI without ``--torch-compile`` is still
+compiled when the weights are streamed from disk.
 
 Wan-Animate-2 compiles its transformer blocks and VAE blocks on every load,
-with or without the flag. The transformer compile keeps flex attention
+with or without ``--torch-compile``. The transformer compile keeps flex attention
 block-sparse. The pipeline cache stores one compiled Wan-Animate-2 entry
-either way.
+either way. It ignores module names on ``--torch-compile`` and a URI
+``compile=true``.
 
 ``DGENERATE_TORCH_COMPILE`` defaults to ``1``. ``\env DGENERATE_TORCH_COMPILE=0``
 leaves every model eager, including Wan-Animate-2. dgenerate warns when a

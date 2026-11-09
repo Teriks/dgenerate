@@ -10,7 +10,7 @@ title: Krea 2 Raw (GGUF + Encoders)
 @spectrum[{"id": "sp", "divider-after": true}]
 @dype[{"exclude":["sp"], "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"krea2"}]
 @quantizer[{"model-type":"krea2"}]
 @textencoders[{"model-type": "krea2", "arg": "--text-encoders", "divider-after": true, "defaults": ["Qwen3VLModel;model=https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct-GGUF/blob/main/Qwen3VL-4B-Instruct-Q4_K_M.gguf"]}]
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model":"LoRA"}]

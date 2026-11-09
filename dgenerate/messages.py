@@ -74,6 +74,10 @@ Errors are printed to ``stderr`` which is unbuffered by default.
 """
 
 _handlers = []
+# Ends an in-place status line (a carriage return with no newline) before a
+# normal message, so the message does not continue that line.
+_before_log_callback = None
+_in_before_log = False
 
 _level_stack = []
 
@@ -249,6 +253,22 @@ def censor_secrets(text: str) -> str:
     return text
 
 
+def set_before_log_callback(callback):
+    """Run before every visible log line until it is cleared.
+
+    The prompt-enhance token counter redraws one line with a carriage return.
+    This callback ends that line so the following message starts on its own.
+    The callback must not call :func:`log`.
+    """
+    global _before_log_callback
+    _before_log_callback = callback
+
+
+def get_before_log_callback():
+    """The callback registered with :func:`set_before_log_callback`, if any."""
+    return _before_log_callback
+
+
 def remove_logging_handler(callback: typing.Callable[[typing.ParamSpecArgs, int, bool, str], None]):
     """
     Remove a logging handler callback by reference.
@@ -288,6 +308,14 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='=',
 
     if level not in allowed:
         return
+
+    global _in_before_log
+    if _before_log_callback is not None and not _in_before_log:
+        _in_before_log = True
+        try:
+            _before_log_callback()
+        finally:
+            _in_before_log = False
 
     prefix = ''
     if level == DEBUG:

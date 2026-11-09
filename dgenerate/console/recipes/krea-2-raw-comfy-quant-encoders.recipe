@@ -13,7 +13,7 @@ title: Krea 2 Raw (ComfyUI Quant + Encoders)
 @spectrum[{"id": "sp", "divider-after": true}]
 @dype[{"exclude":["sp"], "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"krea2"}]
 @quantizer[{"model-type":"krea2"}]
 @textencoders[{"model-type": "krea2", "arg": "--text-encoders", "divider-after": true, "defaults": ["Qwen3VLModel;model=https://huggingface.co/Comfy-Org/Krea-2/blob/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors"]}]
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model":"LoRA"}]

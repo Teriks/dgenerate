@@ -17,7 +17,7 @@ title: Qwen-Image Edit 2509 (ComfyUI Quant + Encoders)
 @dype[{"id": "dype", "exclude":["cd", "sp", "re"]}]
 @regione[{"id": "re", "preset": "qwen-edit", "exclude":["sp", "cd", "dype"], "divider-before":true, "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"qwen-image-edit"}]
 @quantizer[{"model-type":"qwen-image-edit"}]
 @textencoders[{"model-type": "qwen-image-edit", "arg": "--text-encoders", "divider-after": true, "defaults": ["Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors"]}]
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model": "LoRA"}]

@@ -54,6 +54,16 @@ _KANDINSKY5_BY_HIDDEN = {
     4096: 'kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers',
 }
 
+_KANDINSKY6_BY_HIDDEN = {
+    # Hidden size does not separate a distilled checkpoint from the full one.
+    # The published GGUFs are the 50-step Lite and Pro transformers.
+    1792: 'kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers',
+    4096: 'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers',
+}
+
+_FLUX3_DISTILLED = 'black-forest-labs/flux-3-image-klein'
+_FLUX3_BASE = 'black-forest-labs/flux-3-image-klein-base'
+
 _patches_installed = False
 
 
@@ -167,6 +177,10 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
         config_repo = _singlefilecompat.hunyuanimage_gguf_config_repo(shapes)
         return GGUFLayout('hyimage21', config_repo, comfy=comfy, adapt=True)
 
+    flux3 = _detect_flux3_layout(shapes, comfy)
+    if flux3 is not None:
+        return flux3
+
     if _has(shapes, 'single_stream_modulation.lin.weight',
             _COMFY_PREFIX + 'single_stream_modulation.lin.weight'):
         hidden = _flux2_hidden(shapes)
@@ -204,6 +218,10 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
         return GGUFLayout(
             'qwen-image', 'Qwen/Qwen-Image', comfy=comfy, adapt=comfy)
 
+    kandinsky6 = _detect_kandinsky6_layout(shapes, comfy)
+    if kandinsky6 is not None:
+        return kandinsky6
+
     if _has(shapes, 'visual_transformer_blocks.0.visual_modulation.out_layer.weight',
             _COMFY_PREFIX + 'visual_transformer_blocks.0.visual_modulation.out_layer.weight'):
         # Always adapt: files store some unquantized tensors with extra
@@ -222,6 +240,70 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
         return wan
 
     return None
+
+
+def _detect_flux3_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
+    """FLUX.3 Klein, in Comfy names (``emb_in``) or Diffusers names (``x_embedders``)."""
+    comfy_layout = _has(
+        shapes,
+        'emb_in.image.weight',
+        'content_mode_blocks.image.0.q_proj.weight',
+        'content_mode_blocks.image.0.attn.q_proj.weight',
+        _COMFY_PREFIX + 'emb_in.image.weight',
+        _COMFY_PREFIX + 'content_mode_blocks.image.0.q_proj.weight')
+    diffusers_layout = _has(
+        shapes,
+        'x_embedders.image.weight',
+        'mode_blocks.image.0.attn.to_q.weight',
+        _COMFY_PREFIX + 'x_embedders.image.weight',
+        _COMFY_PREFIX + 'mode_blocks.image.0.attn.to_q.weight')
+    if not comfy_layout and not diffusers_layout:
+        return None
+    distilled = _has(
+        shapes,
+        'ref_time_in.in_layer.weight',
+        'target_timestep_embedder.linear_1.weight',
+        _COMFY_PREFIX + 'ref_time_in.in_layer.weight',
+        _COMFY_PREFIX + 'target_timestep_embedder.linear_1.weight')
+    return GGUFLayout(
+        'flux3',
+        _FLUX3_DISTILLED if distilled else _FLUX3_BASE,
+        comfy=comfy,
+        adapt=comfy or comfy_layout)
+
+
+def _kandinsky6_hidden(shapes: dict) -> int | None:
+    weight = _lookup_shape(
+        shapes,
+        'visual_embeddings.in_layer.weight',
+        _COMFY_PREFIX + 'visual_embeddings.in_layer.weight')
+    if weight is None:
+        return None
+    for dim in weight:
+        if dim in _KANDINSKY6_BY_HIDDEN:
+            return dim
+    return None
+
+
+def _detect_kandinsky6_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
+    """Kandinsky 6 video+audio. The audio embedder is absent from Kandinsky 5."""
+    if not _has(
+            shapes,
+            'audio_embeddings.in_layer.weight',
+            'video_text_transformer_blocks.0.attn.to_q.weight',
+            'audio_out_layer.proj.weight',
+            _COMFY_PREFIX + 'audio_embeddings.in_layer.weight',
+            _COMFY_PREFIX + 'video_text_transformer_blocks.0.attn.to_q.weight',
+            _COMFY_PREFIX + 'audio_out_layer.proj.weight'):
+        return None
+    hidden = _kandinsky6_hidden(shapes)
+    # The published Pro GGUF stores four modulation weights transposed, with a
+    # trailing size-1 dimension. Align those before Diffusers builds the module.
+    return GGUFLayout(
+        'kandinsky6',
+        _KANDINSKY6_BY_HIDDEN.get(hidden, _KANDINSKY6_BY_HIDDEN[1792]),
+        comfy=comfy,
+        adapt=True)
 
 
 def _detect_wan_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
@@ -342,6 +424,13 @@ def _align_tensor(param, target_shape: tuple[int, ...]):
         if (len(quant_shape) == 2 and len(target_shape) == 2
                 and quant_shape == tuple(reversed(target_shape))):
             param._dgenerate_comfy_transpose = True
+            return param
+        # A row whose length is not a quant block is stored as
+        # (numel / block, block). The values are still the original row-major
+        # weight, so dequantize and restore the module shape.
+        if math.prod(quant_shape) == math.prod(target_shape):
+            from diffusers.quantizers.gguf.utils import dequantize_gguf_tensor
+            return dequantize_gguf_tensor(param).reshape(target_shape).contiguous()
         return param
 
     current = _shape(param.shape)
@@ -349,6 +438,12 @@ def _align_tensor(param, target_shape: tuple[int, ...]):
         return param
     if param.numel() != math.prod(target_shape):
         return param
+    squeezed = tuple(dim for dim in current if dim != 1)
+    if squeezed and squeezed != current:
+        param = param.reshape(squeezed)
+        current = squeezed
+        if current == target_shape:
+            return param
     if tuple(d for d in current if d != 1) == tuple(d for d in target_shape if d != 1):
         # Only singleton dimensions differ.
         return param.reshape(target_shape)
@@ -547,20 +642,58 @@ def _check_quantized_decodes(checkpoint: dict, label: str) -> None:
             f'is corrupt or was written with a nonstandard block layout.')
 
 
+def adapt_flux3_checkpoint(checkpoint: dict) -> dict:
+    """Rename a ComfyUI / BFL FLUX.3 transformer to Diffusers names.
+
+    ``final_layer.image.adaLN_modulation.1.weight`` is stored packed in some
+    GGUF files. The Diffusers converter swaps its scale and shift halves, so
+    that one tensor is dequantized first.
+    """
+    from diffusers.loaders.single_file_utils import convert_flux3_transformer_checkpoint_to_diffusers
+    from diffusers.quantizers.gguf.utils import dequantize_gguf_tensor
+
+    stripped = {}
+    for key, value in checkpoint.items():
+        if key.startswith(_COMFY_PREFIX):
+            key = key[len(_COMFY_PREFIX):]
+        stripped[key] = value
+    adaln = 'final_layer.image.adaLN_modulation.1.weight'
+    if adaln in stripped and _is_gguf_parameter(stripped[adaln]):
+        stripped[adaln] = dequantize_gguf_tensor(stripped[adaln])
+    return convert_flux3_transformer_checkpoint_to_diffusers(stripped)
+
+
+def _adapt_named_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
+                            model_class, label: str, token, local_files_only) -> dict:
+    """Align a GGUF whose keys are already Diffusers names."""
+    checkpoint = _strip_comfy_prefix(checkpoint)
+    _check_quantized_decodes(checkpoint, label)
+    targets = _target_shapes(
+        config_repo, subfolder, model_class, token, local_files_only)
+    return {
+        name: _align_tensor(param, targets[name]) if name in targets else param
+        for name, param in checkpoint.items()
+    }
+
+
 def adapt_kandinsky5_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
                                 token=None, local_files_only: bool = False) -> dict:
     """Align Kandinsky 5 GGUF tensors. Keys are already Diffusers names."""
     import diffusers
 
-    checkpoint = _strip_comfy_prefix(checkpoint)
-    _check_quantized_decodes(checkpoint, 'Kandinsky 5')
-    targets = _target_shapes(
-        config_repo, subfolder, diffusers.Kandinsky5Transformer3DModel,
-        token, local_files_only)
-    return {
-        name: _align_tensor(param, targets[name]) if name in targets else param
-        for name, param in checkpoint.items()
-    }
+    return _adapt_named_checkpoint(
+        checkpoint, config_repo, subfolder, diffusers.Kandinsky5Transformer3DModel,
+        'Kandinsky 5', token, local_files_only)
+
+
+def adapt_kandinsky6_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
+                                token=None, local_files_only: bool = False) -> dict:
+    """Align Kandinsky 6 GGUF tensors. Keys are already Diffusers names."""
+    import diffusers
+
+    return _adapt_named_checkpoint(
+        checkpoint, config_repo, subfolder, diffusers.Kandinsky6Transformer3DModel,
+        'Kandinsky 6', token, local_files_only)
 
 
 _QWEN_LAYERED_ADDITION_T = 'time_text_embed.addition_t_embedding.weight'
@@ -808,8 +941,15 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
             checkpoint, config, subfolder or 'transformer',
             token=token, local_files_only=local_files_only)
         return checkpoint, config, subfolder, True
+    if layout.kind == 'flux3':
+        return adapt_flux3_checkpoint(checkpoint), config, subfolder, True
     if layout.kind == 'kandinsky5':
         checkpoint = adapt_kandinsky5_checkpoint(
+            checkpoint, config, subfolder or 'transformer',
+            token=token, local_files_only=local_files_only)
+        return checkpoint, config, subfolder, False
+    if layout.kind == 'kandinsky6':
+        checkpoint = adapt_kandinsky6_checkpoint(
             checkpoint, config, subfolder or 'transformer',
             token=token, local_files_only=local_files_only)
         return checkpoint, config, subfolder, False

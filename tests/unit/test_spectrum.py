@@ -385,11 +385,11 @@ class TestSpectrum(unittest.TestCase):
             pipe = types.SimpleNamespace(
                 _model_type=_pipelinewrapper.ModelType.KREA2,
                 _pipeline=types.SimpleNamespace(config={'is_distilled': distilled}))
-            args = _diffusion_arguments.DiffusionArguments()
+            args = _diffusion_arguments.GenerationArguments()
             args.spectrum = True
             for name, value in overrides.items():
                 setattr(args, name, value)
-            return _wrapper.DiffusionPipelineWrapper._spectrum_settings(pipe, args)
+            return _wrapper.PipelineWrapper._spectrum_settings(pipe, args)
 
         turbo = settings(True)
         self.assertEqual(turbo.warmup_steps, 2)
@@ -412,15 +412,15 @@ class TestSpectrum(unittest.TestCase):
 
         unloaded = types.SimpleNamespace(
             _model_type=_pipelinewrapper.ModelType.KREA2, _pipeline=None)
-        omitted = _diffusion_arguments.DiffusionArguments()
+        omitted = _diffusion_arguments.GenerationArguments()
         omitted.spectrum = True
-        pending = _wrapper.DiffusionPipelineWrapper._spectrum_settings(unloaded, omitted)
+        pending = _wrapper.PipelineWrapper._spectrum_settings(unloaded, omitted)
         self.assertIsNone(pending.warmup_steps)
         self.assertIsNone(pending.flex_window)
-        counted = _diffusion_arguments.DiffusionArguments()
+        counted = _diffusion_arguments.GenerationArguments()
         counted.spectrum = True
         counted.inference_steps = 8
-        counted_settings = _wrapper.DiffusionPipelineWrapper._spectrum_settings(unloaded, counted)
+        counted_settings = _wrapper.PipelineWrapper._spectrum_settings(unloaded, counted)
         self.assertEqual(counted_settings.warmup_steps, 2)
         self.assertEqual(counted_settings.flex_window, 0.0)
 

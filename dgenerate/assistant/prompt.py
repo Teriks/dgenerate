@@ -143,7 +143,12 @@ Hunyuan-DiT (hydit), HunyuanVideo 1.5 (hyvideo-15), and HunyuanImage 2.1 (hyimag
 share a type. Wan-Animate and Wan-Animate-2 are not --model-type wan. Qwen-Image-Edit, \
 Qwen-Image-Layered, and Qwen-Image-2.1 are not --model-type qwen-image. FLUX.1-Fill-dev is \
 flux-fill and FLUX.1-Kontext-dev is flux-kontext, not flux. \
-diffusers/sdxl-instructpix2pix-768 is --model-type sdxl-pix2pix, not sdxl.
+diffusers/sdxl-instructpix2pix-768 is --model-type sdxl-pix2pix, not sdxl. \
+FLUX.3 is --model-type flux3, not flux2 or flux. Kandinsky 6 is \
+--model-type kandinsky6-video, not kandinsky5-video. \
+--pipeline-prompt-enhance on flux3 or kandinsky6-video takes no value, or one \
+system prompt for that generation. --pipeline-prompt-enhance-* sampling options \
+apply to that rewrite. Omit the flag unless the user asks for a rewrite.
 - Inpainting models (repos with "inpainting" in the name) only work with --image-seeds \
 "image.png;mask.png". A step that generates from a prompt alone needs a regular model of the \
 same family, for example stabilityai/stable-diffusion-xl-base-1.0 for SDXL.
@@ -212,6 +217,7 @@ SD3. compel is InvokeAI word+ / word++ syntax. Use a weighter when the \
 user emphasizes a subject or pastes weighted syntax; do not decorate \
 every quality word. Flux, flux-fill, flux-kontext, and flux2 never take a \
 negative prompt: no ; in --prompts. flux2-klein-kv does not either. \
+flux3 distilled ignores a negative prompt. \
 z-image, qwen-image, qwen-image-edit, and qwen-image-layered do. \
 --guidance-scales on qwen-image is true CFG, not embedded guidance. \
 --qwen-guidance-scale is that embedded guidance; omit it to leave it unset. \
@@ -340,6 +346,19 @@ PROMPT_GUIDES = {
                    'still applies classifier-free guidance.'),
     'flux2-klein-kv': ('Natural sentences. No negative prompt and no guidance scale. '
                        '--image-seeds with no mask are reference images.'),
+    'flux3': ('Natural sentences. Distilled black-forest-labs/flux-3-image-klein is 16 steps '
+              'and guidance 1 and ignores a negative prompt. Base flux-3-image-klein-base is '
+              '50 steps and guidance 3.5. --image-seeds are reference images, no mask and no '
+              'strength. Omit --pipeline-prompt-enhance unless the user asks for a rewrite. '
+              'The flag takes no value, or one system prompt for that generation. '
+              '--pipeline-prompt-enhance-* sampling options apply to that rewrite.'),
+    'kandinsky6-video': ('One paragraph of the action, the look, the camera, and the sound. '
+                         'Lite distilled is 10 steps and guidance 1. Full and Pro are 50 steps '
+                         'and guidance 5. --video-fps is 24. --output-size 864x480. One still '
+                         'is the first frame. No --loras. Omit --pipeline-prompt-enhance unless '
+                         'the user asks for a rewrite. The flag takes no value, or one '
+                         'system prompt for that generation. '
+                         '--pipeline-prompt-enhance-* sampling options apply to that rewrite.'),
     'qwen-image-edit': ('An instruction that says what should change. The image seed is '
                         'the picture to edit, with no strength. A mask makes it inpaint. '
                         'images: a.png, b.png is edit-plus.'),
@@ -479,6 +498,18 @@ NVFP4: --transformer https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/ma
 Gated, needs HF_TOKEN. Reference images are --image-seeds with no mask and no strength. No guidance scale. \
 GGUF: --transformer https://huggingface.co/QuantStack/FLUX.2-Klein-9B-KV-GGUF/blob/main/Flux-2-Klein-9B-KV-Q4_K_S.gguf. \
 Width 4096 uses the Klein 9B transformer config, which matches this checkpoint.
+- FLUX.3 Image Klein distilled: black-forest-labs/flux-3-image-klein, --model-type flux3 \
+--dtype bfloat16, 16 steps, guidance 1, --model-sequential-offload, --output-size 1024. \
+Gated, needs HF_TOKEN. No negative prompt. --image-seeds are reference images, no mask and no strength. \
+Omit --scheduler. Omit --pipeline-prompt-enhance unless the user asks for a rewrite. The flag takes no value, \
+or one system prompt for that generation. --pipeline-prompt-enhance-* sampling options apply to that rewrite. \
+It loads the Qwen3.5 upsampler. \
+GGUF: --transformer https://huggingface.co/molbal/Flux-3-Klein-GGUF/blob/main/flux3_image_klein_sd-Q4_K_M.gguf \
+on that distilled parent. \
+Base: black-forest-labs/flux-3-image-klein-base, 50 steps, guidance 3.5. \
+Its GGUF is --transformer https://huggingface.co/molbal/Flux-3-Klein-GGUF/blob/main/flux3_image_klein_base-Q4_K_M.gguf. \
+INT8 text encoder: --text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/blob/main/text_encoders/qwen3vl_4b_int8_convrot.safetensors". \
+This is not Flux.2.
 - Qwen-Image Edit: Qwen/Qwen-Image-Edit, --model-type qwen-image-edit. The image seed is required. \
 Qwen/Qwen-Image-Edit-2509 is edit-plus. A mask on the edit checkpoint is edit-inpaint. \
 GGUF: --transformer https://huggingface.co/QuantStack/Qwen-Image-Edit-GGUF/blob/main/Qwen_Image_Edit-Q4_K_S.gguf. \
@@ -526,6 +557,20 @@ Lite image-to-video is kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers.
 - Kandinsky 5 image: --model-type kandinsky5-image. \
 Text-to-image is kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers, guidance 3.5, 50 steps, 1024. \
 An edit is kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers with --image-seeds. Public, no HF_TOKEN.
+- Kandinsky 6 video: --model-type kandinsky6-video, --dtype bfloat16, --model-sequential-offload, \
+--video-fps 24, --output-size 864x480, 5 seconds, audio included. \
+Lite distilled is kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers, PiflowScheduler, 10 steps, guidance 1. Public, no HF_TOKEN. \
+Full Lite is kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers, 50 steps, guidance 5. \
+Pro distilled is kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers, 10 steps, guidance 1. \
+Pro is kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, 50 steps, guidance 5. The full Pro repo may need HF_TOKEN. \
+One still image is the first frame. No --loras. \
+Omit --pipeline-prompt-enhance unless the user asks for a rewrite. The flag takes no value, \
+or one system prompt for that generation. --pipeline-prompt-enhance-* sampling options apply to that rewrite. \
+It turns on expand_prompts. \
+GGUF: --transformer https://huggingface.co/realrebelai/Kandinsky-6.0-Pro-5s_GGUFs/blob/main/Diffusion Model/Full/Kandinsky-6.0-Pro-5s-Q4_K_S.gguf \
+on the Pro parent, 50 steps, guidance 5. \
+INT8 Lite distilled: --transformer https://huggingface.co/kabachuha/Kandinsky-6.0-Lite-distill-5s-int8-convrot/blob/main/Kandinsky-6.0-Lite-Distilled-5s-int8-convrot.safetensors. \
+This is not Kandinsky 5.
 - DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
 - Animate a still or make a clip. When the user says ltx2, LTX-2, or LTX, use the LTX-2.5 recipes. \
 Use Lightricks/LTX-2 and Gemma 3 only when they name 19B, LTX-2.0, or Gemma 3. \
@@ -1221,6 +1266,7 @@ def _memory_spec(kind: str | None, cuda: bool, gib: float, bitsandbytes: bool, s
 _SEQUENTIAL_TYPES = frozenset({
     'krea2', 'wan', 'wan-animate', 'wan-animate-2', 'ltx2',
     'hyvideo-15', 'motif-video', 'kandinsky5-image', 'kandinsky5-video',
+    'kandinsky6-video', 'flux3',
     'hyimage-21', 'hyimage-21-refiner', 'qwen-image-21',
     'if', 'ifs', 'ifs-img2img',
 })
@@ -1312,8 +1358,11 @@ def _request_kinds(request: str) -> list[str]:
 
     # klein-base-4B is still the 4B checkpoint. The hyphen is not always before 4b.
     klein4 = bool(re.search(r'klein', text) and re.search(r'4b', text))
+    flux3 = bool(re.search(r'flux\.3|flux3|flux-3\b|flux 3', text))
     flux2 = bool(re.search(r'flux\.2|flux2|flux-2|flux 2', text))
-    if klein4:
+    if flux3:
+        add('sequential')
+    elif klein4:
         add('flux2-pre-klein' if pre else 'klein4-full')
     elif flux2:
         if 'klein' in text:
@@ -1359,8 +1408,10 @@ def _request_kinds(request: str) -> list[str]:
         add('hydit')
     image21 = bool(re.search(r'hunyuan-?image|hyimage', text)) and not re.search(r'3\.0|image-3', text)
     video15 = bool(re.search(r'hunyuan-?video-?1\.5|hunyuanvideo1\.5|hyvideo', text))
-    kandinsky5 = bool(re.search(r'kandinsky-5|kandinsky5', text)) and not re.search(
-        r'kandinsky-6|kandinsky6', text)
+    kandinsky6 = bool(re.search(r'kandinsky-6|kandinsky6', text))
+    kandinsky5 = bool(re.search(r'kandinsky-5|kandinsky5', text)) and not kandinsky6
+    if kandinsky6:
+        add('sequential')
     if image21 or video15 or kandinsky5 or re.search(r'motif-video|\bmotif\b|deepfloyd|\bif-i-', text):
         add('sequential')
     elif re.search(r'\bcascade\b', text):
@@ -1527,7 +1578,7 @@ def offload_plan(cuda: bool, gib: float, bitsandbytes: bool, sdnq: bool) -> str:
         block('krea2, quantized transformer and quantized text encoder', 'krea2-packed', 'No quantizer.'),
         block(
             'krea2 otherwise, and wan, wan-animate, wan-animate-2, ltx2, hyvideo-15, '
-            'motif-video, kandinsky5-image, kandinsky5-video, hyimage-21, '
+            'motif-video, kandinsky5-image, kandinsky5-video, kandinsky6-video, flux3, hyimage-21, '
             'hyimage-21-refiner, qwen-image-21, if, ifs, ifs-img2img',
             'sequential', 'No quantizer, including a GGUF or FP8 file.'),
         block('ltx-video, full checkpoint', 'ltx-full', 'No quantizer.'),

@@ -2,7 +2,7 @@ import dgenerate.arguments
 from dgenerate import \
     RenderLoop, \
     RenderLoopConfig, \
-    AnimationFileFinishedEvent, \
+    VideoGeneratedEvent, \
     Prompt, \
     ModelType, \
     DataType
@@ -23,7 +23,6 @@ config.guidance_scales = [5]
 config.video_lengths = [5]
 config.video_fps = [24]
 config.animation_format = 'mp4'
-config.output_configs = True  # write a .dgen config next to each clip
 config.output_size = (768, 512)
 
 config.prompts = [Prompt.parse('A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement; worst quality, blurry, jittery, distorted')]
@@ -33,12 +32,18 @@ config.device = device
 config.model_sequential_offload = True
 
 
-# Video models write a finished clip to config.output_path, they do
-# not emit ImageGeneratedEvent, so writes must stay enabled
-
-render_loop = RenderLoop(config=config)
+render_loop = RenderLoop(
+    config=config,
+    disable_writes=True  # the clip stays in memory; write() muxes it
+)
 
 for event in render_loop.events():
-    if isinstance(event, AnimationFileFinishedEvent):
-        print('Video:', event.path)
-        print('Reproduce With Config:', event.config_filename)
+    if isinstance(event, VideoGeneratedEvent):
+        print('Filename:', event.suggested_filename)
+        print('Seed:', event.diffusion_args.seed)
+        print('Prompt:', event.diffusion_args.prompt)
+        print('Reproduce With Command:', event.command_string)
+        print(f'Reproduce With Config:\n{event.config_string}')
+        # write() accepts a path or a binary stream, such as io.BytesIO().
+        # Call it here; the frames are closed when the loop moves on.
+        event.write(event.suggested_filename)

@@ -71,10 +71,10 @@ class TestDyPE(unittest.TestCase):
         self.assertIn('16', str(raised.exception))
 
     def test_wrapper_rejects_cache_dit(self):
-        wrapper = _pipelinewrapper.DiffusionPipelineWrapper.__new__(
-            _pipelinewrapper.DiffusionPipelineWrapper)
+        wrapper = _pipelinewrapper.PipelineWrapper.__new__(
+            _pipelinewrapper.PipelineWrapper)
         wrapper._model_type = _pipelinewrapper.ModelType.FLUX
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.dype = True
         args.cache_dit = True
         with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
@@ -225,10 +225,10 @@ class TestDyPE(unittest.TestCase):
         config.check()
         self.assertFalse(config.dype)
         self.assertTrue(config.is_dype_enabled())
-        wrapper = _pipelinewrapper.DiffusionPipelineWrapper.__new__(
-            _pipelinewrapper.DiffusionPipelineWrapper)
+        wrapper = _pipelinewrapper.PipelineWrapper.__new__(
+            _pipelinewrapper.PipelineWrapper)
         wrapper._model_type = _pipelinewrapper.ModelType.FLUX
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.dype_mscale = 'decay'
         wrapper._auto_dype_check(args)
         self.assertTrue(args.dype)
@@ -299,10 +299,10 @@ class TestDyPE(unittest.TestCase):
         config.check()
         self.assertFalse(config.dype)
         self.assertTrue(config.is_dype_enabled())
-        wrapper = _pipelinewrapper.DiffusionPipelineWrapper.__new__(
-            _pipelinewrapper.DiffusionPipelineWrapper)
+        wrapper = _pipelinewrapper.PipelineWrapper.__new__(
+            _pipelinewrapper.PipelineWrapper)
         wrapper._model_type = _pipelinewrapper.ModelType.FLUX
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.dype_axis_scaling = 'shared'
         wrapper._auto_dype_check(args)
         self.assertTrue(args.dype)

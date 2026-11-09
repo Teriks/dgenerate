@@ -21,7 +21,7 @@ title: Flux Krea Dev (GGUF + Encoders)
 @switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["tc", "sada", "sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
 @dype[{"exclude":["cd", "tc", "sada", "sp"],"divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":0}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"flux"}]
 @quantizer[{"model-type":"flux", "map-default":"text_encoder"}]
 @textencoders[{"model-type": "flux", "arg": "--text-encoders", "divider-after": true, "defaults": [null, "T5EncoderModel;model=https://huggingface.co/city96/t5-v1_1-xxl-encoder-gguf/blob/main/t5-v1_1-xxl-encoder-Q4_K_S.gguf"]}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]

@@ -62,6 +62,7 @@ _QUANTIZER_MAP_BY_MODEL_TYPE = {
     'flux-kontext': ('transformer', 'text_encoder', 'text_encoder_2'),
     'flux2': ('transformer', 'text_encoder'),
     'flux2-klein-kv': ('transformer', 'text_encoder'),
+    'flux3': ('transformer', 'text_encoder'),
     'z-image': ('transformer', 'text_encoder', 'controlnet'),
     'z-image-omni': ('transformer', 'text_encoder'),
     'qwen-image': ('transformer', 'text_encoder', 'controlnet'),
@@ -81,6 +82,7 @@ _QUANTIZER_MAP_BY_MODEL_TYPE = {
     'hyvideo-15': ('transformer', 'text_encoder'),
     'motif-video': ('transformer', 'text_encoder'),
     'kandinsky5-video': ('transformer', 'text_encoder', 'text_encoder_2'),
+    'kandinsky6-video': ('transformer', 'text_encoder', 'text_encoder_2'),
 }
 
 
@@ -116,9 +118,12 @@ class _QuantizerMapSelect(tk.Toplevel):
                  apply: typing.Callable[[str], None],
                  master=None,
                  position: tuple[int, int] = None,
-                 model_type: str | None = None):
+                 model_type: str | None = None,
+                 title: str | None = None,
+                 prompt: str | None = None):
         super().__init__(master)
-        self.title('Quantizer map' + (f' ({model_type})' if model_type else ''))
+        self._option_order = list(options)
+        self.title(title or ('Quantizer map' + (f' ({model_type})' if model_type else '')))
         self.transient(master)
         self.resizable(False, False)
         self._apply = apply
@@ -129,7 +134,7 @@ class _QuantizerMapSelect(tk.Toplevel):
 
         ttk.Label(
             frame,
-            text='Select pipeline submodules to quantize with --quantizer:',
+            text=prompt or 'Select pipeline submodules to quantize with --quantizer:',
             wraplength=360,
         ).grid(row=0, column=0, columnspan=2, sticky='w', pady=(0, 8))
 
@@ -154,8 +159,8 @@ class _QuantizerMapSelect(tk.Toplevel):
         self.protocol('WM_DELETE_WINDOW', self.destroy)
 
     def _ok_action(self):
-        selected = [name for name, var in self._vars.items() if var.get()]
-        self._apply(format_quantizer_map_text(selected))
+        selected = [name for name in self._option_order if self._vars[name].get()]
+        self._apply(' '.join(selected))
         self._ok = True
         self.destroy()
 
@@ -165,8 +170,11 @@ def open_quantizer_map_select(master,
                               initial_text: str,
                               apply: typing.Callable[[str], None],
                               position: tuple[int, int] = None,
-                              model_type: str | None = None) -> None:
-    initial = parse_quantizer_map_text(initial_text)
+                              model_type: str | None = None,
+                              title: str | None = None,
+                              prompt: str | None = None,
+                              parse=None) -> None:
+    initial = (parse or parse_quantizer_map_text)(initial_text)
     _QuantizerMapSelect(
         options=options,
         initial=initial,
@@ -174,4 +182,6 @@ def open_quantizer_map_select(master,
         master=master,
         position=position,
         model_type=model_type,
+        title=title,
+        prompt=prompt,
     )

@@ -1,0 +1,38 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Quantize the Gemma prompt upsampler on load. quantizer= is a quantizer URI
+# on the prompt-upsampler URI, quoted because it has its own semicolons:
+# google/gemma-4-E2B-it;quantizer="sdnq;type=int4"
+# Setting --prompt-upsampler turns enhancement on. The pipeline text encoder
+# is not used. The unquantized default is
+# examples/ltx2/basic/prompt-enhancer-config.dgen.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+{% if have_cuda() and have_feature('bitsandbytes') %}
+    \set upsampler_quant bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') %}
+    \set upsampler_quant sdnq;type=int4
+{% else %}
+    \print This example quantizes the prompt upsampler. It needs a CUDA GPU and bitsandbytes or sdnq.
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx2
+--dtype bfloat16
+--model-sequential-offload
+--prompt-upsampler google/gemma-4-E2B-it;quantizer="{{ upsampler_quant }}"
+--guidance-scales 1
+--gen-seeds 1
+--output-size 640x384
+--video-lengths 2
+--animation-format mp4
+--output-path ltx-quantized-upsampler
+--prompts "A red fox walks through snow."

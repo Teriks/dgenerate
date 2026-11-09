@@ -25,9 +25,11 @@ from __future__ import annotations
 
 import collections.abc
 import contextlib
+import contextvars
 import itertools
 import os
 import re
+import time
 
 import langcodes
 import torch
@@ -35,6 +37,7 @@ import torch
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.textprocessing as _textprocessing
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.util as _putil
 
@@ -638,12 +641,35 @@ class PromptEnhanceOverrides:
 
 
 def pipeline_prompt_enhance_requested(args) -> bool:
-    """True when any ``--pipeline-prompt-enhance*`` CLI field is set on *args*."""
+    """True when prompt enhancement or a separate upsampler was requested."""
+    if getattr(args, 'prompt_upsampler', None):
+        return True
     if getattr(args, 'pipeline_prompt_enhance', None) is not None:
         return True
     if getattr(args, 'pipeline_prompt_enhance_seeds', None):
         return True
     return PromptEnhanceOverrides.from_args(args).any_set()
+
+
+def separate_prompt_upsampler_uri(model_type, args) -> str | None:
+    """URI passed to pipeline creation for a separate prompt upsampler.
+
+    ``None`` leaves it unloaded. ``+`` loads the pipeline default.
+    A ``--prompt-upsampler`` URI loads that model and turns enhancement on.
+    Models that rewrite with the diffusion text encoder return ``None``.
+    """
+    uri = getattr(args, 'prompt_upsampler', None)
+    if uri:
+        return uri
+    try:
+        separate = (
+            _enums.model_type_is_flux3(model_type)
+            or _enums.model_type_is_ltx2(model_type))
+    except (TypeError, ValueError):
+        return None
+    if separate and getattr(args, 'pipeline_prompt_enhance', None):
+        return '+'
+    return None
 
 
 def ensure_pipeline_prompt_enhance_enabled(config) -> None:
@@ -654,6 +680,169 @@ def ensure_pipeline_prompt_enhance_enabled(config) -> None:
     """
     if config.pipeline_prompt_enhance is None and pipeline_prompt_enhance_requested(config):
         config.pipeline_prompt_enhance = True
+
+
+class _RewriteCall:
+    """Sampling overrides for one model ``generate()`` during a rewrite."""
+
+    def __init__(self, overrides: PromptEnhanceOverrides, seed, device):
+        self.overrides = overrides
+        self.seed = seed
+        self.device = device
+
+
+_rewrite_call: contextvars.ContextVar[_RewriteCall | None] = contextvars.ContextVar(
+    'dgenerate_rewrite_call', default=None)
+
+
+class _PresencePenaltyProcessor:
+    """Subtract a penalty from tokens already produced, matching the text-encoder sampler."""
+
+    def __init__(self, penalty: float):
+        self.penalty = float(penalty)
+        self._prompt_length = None
+
+    def __call__(self, input_ids, scores):
+        if not self.penalty or input_ids is None or input_ids.numel() == 0:
+            return scores
+        if self._prompt_length is None:
+            self._prompt_length = int(input_ids.shape[-1])
+            return scores
+        produced = input_ids[0, self._prompt_length:]
+        if produced.numel() == 0:
+            return scores
+        for token_id in set(int(token) for token in produced.tolist()):
+            if 0 <= token_id < scores.shape[-1]:
+                scores[:, token_id] -= self.penalty
+        return scores
+
+
+def _merge_rewrite_generate_kwargs(kwargs, call: _RewriteCall):
+    """Apply one generation's sampling options to a ``generate()`` call."""
+    overrides = call.overrides
+    if overrides.max_new_tokens is not None:
+        kwargs['max_new_tokens'] = int(overrides.max_new_tokens)
+    if overrides.min_new_tokens is not None and overrides.min_new_tokens > 0:
+        kwargs['min_new_tokens'] = int(overrides.min_new_tokens)
+    elif overrides.min_new_tokens == 0:
+        kwargs.pop('min_new_tokens', None)
+    sample = None
+    if overrides.temperature is not None:
+        if overrides.temperature > 0:
+            kwargs['temperature'] = float(overrides.temperature)
+            sample = True
+        else:
+            kwargs.pop('temperature', None)
+            sample = False
+    if overrides.top_p is not None:
+        kwargs['top_p'] = float(overrides.top_p)
+        if sample is not False:
+            sample = True
+    if overrides.top_k is not None:
+        if overrides.top_k > 0:
+            kwargs['top_k'] = int(overrides.top_k)
+            if sample is not False:
+                sample = True
+        else:
+            kwargs.pop('top_k', None)
+    if overrides.presence_penalty:
+        from transformers import LogitsProcessorList
+        processors = list(kwargs.get('logits_processor') or [])
+        processors.append(_PresencePenaltyProcessor(overrides.presence_penalty))
+        kwargs['logits_processor'] = LogitsProcessorList(processors)
+    if call.seed is not None and sample is not False:
+        kwargs['generator'] = torch.Generator(device='cpu').manual_seed(int(call.seed))
+        if sample is None:
+            sample = True
+    if sample is not None:
+        kwargs['do_sample'] = sample
+    return kwargs
+
+
+def _rewrite_headroom(call: _RewriteCall | None) -> int | None:
+    if call is None or call.overrides.gpu_headroom is None:
+        return None
+    return _headroom_bytes(call.overrides)
+
+
+@contextlib.contextmanager
+def rewrite_sampling(module, user_args, device):
+    """Apply ``--pipeline-prompt-enhance-*`` sampling to one model's ``generate()``.
+
+    A rewriter that already counts tokens reads the same call state. Any other
+    ``generate()`` is wrapped only for this generation and then restored.
+    ``--pipeline-prompt-enhance-gpu-headroom`` is the layer-split reserve.
+    """
+    overrides = PromptEnhanceOverrides.from_args(user_args)
+    seed = getattr(user_args, 'pipeline_prompt_enhance_seed', None)
+    if seed is not None:
+        try:
+            seed = int(seed)
+        except (TypeError, ValueError):
+            seed = None
+    if not overrides.any_set() and seed is None:
+        yield
+        return
+    token = _rewrite_call.set(_RewriteCall(overrides, seed, device))
+    previous = None
+    if (module is not None and hasattr(module, 'generate')
+            and not getattr(module, '_dgenerate_rewriter_generate', False)):
+        previous = module.generate
+
+        def generate(*args, **kwargs):
+            kwargs, call = _prepare_rewrite_generate(kwargs)
+            headroom = _rewrite_headroom(call)
+            if headroom is not None and str(device) != 'cpu':
+                with _fast_encoder(
+                        module, device, True, headroom_bytes=headroom,
+                        label='Pipeline prompt enhance'):
+                    return previous(*args, **kwargs)
+            return previous(*args, **kwargs)
+
+        module.generate = generate
+    try:
+        yield
+    finally:
+        _rewrite_call.reset(token)
+        if previous is not None:
+            module.generate = previous
+
+
+def _prepare_rewrite_generate(kwargs):
+    call = _rewrite_call.get()
+    kwargs = dict(kwargs)
+    if call is None:
+        return kwargs, None
+    return _merge_rewrite_generate_kwargs(kwargs, call), call
+
+
+@contextlib.contextmanager
+def kandinsky6_expansion_instruction(system_prompt):
+    """Use ``system_prompt`` for one Kandinsky 6 rewrite, then restore the built-ins.
+
+    The pipeline still inserts the user prompt and, for image-to-video, the
+    reference image. Braces in the override stay literal.
+    """
+    if not isinstance(system_prompt, str) or not system_prompt.strip():
+        yield
+        return
+    import diffusers.pipelines.kandinsky6.pipeline_kandinsky6_ti2va as _kandinsky6
+
+    instruction = (
+        system_prompt.replace('{', '{{').replace('}', '}}').rstrip()
+        + '\n\nRewrite Prompt: {}')
+    saved = (
+        _kandinsky6._T2VA_EXPANSION_INSTRUCTION,
+        _kandinsky6._I2VA_EXPANSION_INSTRUCTION)
+    try:
+        _kandinsky6._T2VA_EXPANSION_INSTRUCTION = instruction
+        _kandinsky6._I2VA_EXPANSION_INSTRUCTION = instruction
+        yield
+    finally:
+        (
+            _kandinsky6._T2VA_EXPANSION_INSTRUCTION,
+            _kandinsky6._I2VA_EXPANSION_INSTRUCTION,
+        ) = saved
 
 
 def generation_limits(model_type=None, encoder_name: str | None = None) -> tuple[int, int]:
@@ -1399,6 +1588,18 @@ def _drop_repetitive_tail(text: str) -> str:
     return text.strip()
 
 
+def log_enhanced_prompt(prompt) -> None:
+    """Print a finished rewrite the same way a text-encoder rewrite does."""
+    if isinstance(prompt, (list, tuple)):
+        text = '\n'.join(part for part in (str(item).strip() for item in prompt) if part)
+    elif isinstance(prompt, str):
+        text = prompt.strip()
+    else:
+        return
+    if text:
+        _messages.log(f'Pipeline prompt enhance: {text}')
+
+
 def enhance_diffusion_arguments(wrapper, user_args) -> None:
     """Rewrite ``user_args.prompt`` with the pipeline text encoder, in place."""
     setting = user_args.pipeline_prompt_enhance
@@ -1425,7 +1626,7 @@ def enhance_diffusion_arguments(wrapper, user_args) -> None:
         offload=offload,
         model_type=wrapper.model_type,
         overrides=overrides)
-    _messages.log(f'Pipeline prompt enhance: {rewritten}')
+    log_enhanced_prompt(rewritten)
     revised = prompt.__class__.copy(prompt)
     revised.positive = rewritten
     user_args.prompt = revised
@@ -1943,6 +2144,7 @@ def _placement_log(message: str, *, debug: bool) -> None:
 
 
 def _log_layer_split(encoder, target: torch.device, layers, label: str, *, debug: bool = False) -> None:
+    del debug
     gpu_layers = 0
     for _, layer in layers:
         try:
@@ -1951,16 +2153,16 @@ def _log_layer_split(encoder, target: torch.device, layers, label: str, *, debug
             continue
     resident = _memory.bytes_best_human_unit(_resident_bytes(encoder, target))
     if gpu_layers >= len(layers):
-        _placement_log(
+        message = (
             f'{label}: '
-            f'{gpu_layers} of {len(layers)} layers on {target} ({resident}).',
-            debug=debug)
-        return
-    _placement_log(
-        f'{label}: '
-        f'{gpu_layers} of {len(layers)} layers on {target} ({resident}), '
-        f'{len(layers) - gpu_layers} stored on CPU and run on {target}.',
-        debug=debug)
+            f'{gpu_layers} of {len(layers)} layers on {target} ({resident}).')
+    else:
+        message = (
+            f'{label}: '
+            f'{gpu_layers} of {len(layers)} layers on {target} ({resident}), '
+            f'{len(layers) - gpu_layers} stored on CPU and run on {target}.')
+    # The split is the timing and memory record for this rewrite. Always show it.
+    _messages.log(message)
 
 
 @contextlib.contextmanager
@@ -2138,13 +2340,21 @@ def _fast_encoder_from_memory(encoder, device, offload: bool,
                               debug: bool = False):
     target = torch.device(device) if device is not None else torch.device('cpu')
     original_to = getattr(encoder, '_DGENERATE_ORIGINAL_TO_DISABLED', None)
-    if target.type == 'cpu' or _putil.is_loaded_in_8bit_bnb(encoder) or not offload:
-        with _on_device(encoder, device):
-            yield
+    if _putil.is_loaded_in_8bit_bnb(encoder):
+        _messages.log(
+            f'{label}: 8-bit bitsandbytes weights stay on the GPU. '
+            'They cannot be split or moved.')
+        yield
+        return
+    if target.type == 'cpu':
+        yield
         return
     from accelerate.hooks import remove_hook_from_module
     hooked = original_to is not None
     move = original_to if hooked else encoder.to
+    # offload=False means denoising still needs this module on the GPU, so the
+    # split is only for the rewrite and the module goes back afterward.
+    return_to_cpu = offload or hooked
     if hooked:
         with _real_weights():
             _release_inference_tensors_now(encoder)
@@ -2152,15 +2362,20 @@ def _fast_encoder_from_memory(encoder, device, offload: bool,
             original_to('cpu')
             _release_inference_tensors_now(encoder)
 
-    def _park():
-        with _real_weights():
-            _release_inference_tensors_now(encoder)
-            remove_hook_from_module(encoder, recurse=True)
-            move('cpu')
-            _release_inference_tensors_now(encoder)
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        if hooked:
+    def _park(force_cpu: bool = False):
+        # force_cpu is the out-of-memory path. It must not retry the upload
+        # that just failed. empty_cache still runs when that move raises.
+        destination = 'cpu' if force_cpu or return_to_cpu else target
+        try:
+            with _real_weights():
+                _release_inference_tensors_now(encoder)
+                remove_hook_from_module(encoder, recurse=True)
+                move(destination)
+                _release_inference_tensors_now(encoder)
+        finally:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        if hooked and destination == 'cpu':
             _restore_encoder_offload(encoder, target)
 
     budget = _gpu_budget_bytes(target, headroom_bytes)
@@ -2170,7 +2385,7 @@ def _fast_encoder_from_memory(encoder, device, offload: bool,
                 move(target)
                 _release_inference_tensors_now(encoder)
         except torch.cuda.OutOfMemoryError:
-            _park()
+            _park(force_cpu=True)
             _placement_log(
                 f'{label}: the model does not fit on the GPU, using offload.',
                 debug=debug)
@@ -2190,7 +2405,7 @@ def _fast_encoder_from_memory(encoder, device, offload: bool,
         return
     embeddings, layers, norms, heads = _placement_units(encoder)
     if not layers:
-        _park()
+        _park(force_cpu=True)
         _placement_log(
             f'{label}: the model does not fit on the GPU, using offload.',
             debug=debug)
@@ -2198,7 +2413,7 @@ def _fast_encoder_from_memory(encoder, device, offload: bool,
         return
     names = _modules_for_gpu(encoder, budget)
     if not names:
-        _park()
+        _park(force_cpu=True)
         _placement_log(
             f'{label}: the model does not fit on the GPU, using offload.',
             debug=debug)
@@ -2215,14 +2430,14 @@ def _fast_encoder_from_memory(encoder, device, offload: bool,
             _move_language_rotary(encoder, embeddings)
             _release_inference_tensors_now(encoder)
     except torch.cuda.OutOfMemoryError:
-        _park()
+        _park(force_cpu=True)
         _placement_log(
             f'{label}: the model does not fit on the GPU, using offload.',
             debug=debug)
         yield
         return
     if _count_gpu_layers(layers, target) == 0:
-        _park()
+        _park(force_cpu=True)
         _placement_log(
             f'{label}: the model does not fit on the GPU, using offload.',
             debug=debug)
@@ -2274,13 +2489,16 @@ def _on_device(module, device):
 
 
 class _TokenCounter:
-    """Redraw ``Pipeline prompt enhance: Encoder, N out of max MAX tokens`` on one line."""
+    """Redraw ``Pipeline prompt enhance: Encoder, N out of max MAX tokens, S.Ss`` on one line."""
 
     def __init__(self, encoder_name: str, maximum: int):
         self.encoder_name = encoder_name
         self.maximum = maximum
         self.count = 0
         self._open = False
+        self._armed = False
+        self._on_before_log = self._break_for_log
+        self._started = time.monotonic()
 
     def show(self):
         self._write()
@@ -2290,6 +2508,7 @@ class _TokenCounter:
         self._write()
 
     def finish(self):
+        self._disarm()
         if not self._open:
             return
         self._open = False
@@ -2299,14 +2518,80 @@ class _TokenCounter:
         file.write('\n')
         file.flush()
 
+    def _break_for_log(self):
+        """End the status line so the next log message starts on its own line."""
+        if not self._open:
+            return
+        self._open = False
+        file = _messages.get_message_file()
+        file.write('\n')
+        file.flush()
+
+    def _disarm(self):
+        if not self._armed:
+            return
+        if _messages.get_before_log_callback() is self._on_before_log:
+            _messages.set_before_log_callback(None)
+        self._armed = False
+
     def _write(self):
         if not (_messages.LEVEL & _messages.INFO):
             return
+        if not self._armed:
+            _messages.set_before_log_callback(self._on_before_log)
+            self._armed = True
         file = _messages.get_message_file()
+        elapsed = time.monotonic() - self._started
         file.write(
-            f'\rPipeline prompt enhance: {self.encoder_name}, {self.count} out of max {self.maximum} tokens')
+            f'\rPipeline prompt enhance: {self.encoder_name}, '
+            f'{self.count} out of max {self.maximum} tokens, {elapsed:.1f}s')
         self._open = True
         file.flush()
+
+
+def bind_rewriter_generate(module, device, label: str, park: bool = False) -> None:
+    """Count tokens during ``generate()`` and keep the rewrite out of shared GPU memory.
+
+    With an offload hook installed, the rewrite uses the same layer split as
+    pipeline prompt enhance: only the prefix that fits in free dedicated GPU
+    memory stays resident, and the hook is restored afterward. ``park`` moves
+    the module to CPU first, for a rewriter that is not the diffusion encoder.
+    """
+    if module is None or not hasattr(module, 'generate'):
+        return
+    if getattr(module, '_dgenerate_rewriter_generate', False):
+        return
+    original = module.generate
+    target = torch.device(device)
+
+    def generate(*args, **kwargs):
+        kwargs, call = _prepare_rewrite_generate(kwargs)
+        maximum = int(kwargs.get('max_new_tokens') or 1)
+        counter = _TokenCounter(label, maximum)
+        kwargs['streamer'] = _CountStreamer(counter)
+        try:
+            offloaded = getattr(module, '_DGENERATE_ORIGINAL_TO_DISABLED', None) is not None
+            headroom = _rewrite_headroom(call)
+            # Rewrite before denoising uses the GPU. A dedicated enhancer
+            # (park=True) and an offloaded text encoder then leave the GPU.
+            # A text encoder that denoising keeps resident is moved back.
+            # The split line is logged as the encoder is placed, before the
+            # token counter opens its single-line status.
+            if target.type != 'cpu':
+                with _fast_encoder(
+                        module, target, offload=park or offloaded, label=label,
+                        headroom_bytes=headroom):
+                    counter.show()
+                    return original(*args, **kwargs)
+            counter.show()
+            return original(*args, **kwargs)
+        finally:
+            counter.finish()
+
+    if park and not _putil.is_loaded_in_8bit_bnb(module):
+        module.to('cpu')
+    module.generate = generate
+    module._dgenerate_rewriter_generate = True
 
 
 class _CountStreamer:

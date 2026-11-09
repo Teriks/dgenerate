@@ -10,7 +10,7 @@ from diffusers import WanPipeline
 class PipelineSamplingDefaultsTests(unittest.TestCase):
 
     def test_wan_pipeline_omitted_steps_and_guidance(self):
-        args = _arguments.DiffusionArguments()
+        args = _arguments.GenerationArguments()
         args.inference_steps = None
         args.guidance_scale = None
         steps = _sampling.resolved_inference_steps(WanPipeline, args)
@@ -21,7 +21,7 @@ class PipelineSamplingDefaultsTests(unittest.TestCase):
         self.assertEqual(args.guidance_scale, 5.0)
 
     def test_explicit_values_are_unchanged(self):
-        args = _arguments.DiffusionArguments()
+        args = _arguments.GenerationArguments()
         args.inference_steps = 30
         args.guidance_scale = 4.0
         steps = _sampling.resolved_inference_steps(WanPipeline, args)

@@ -19,6 +19,7 @@ Diffusion Model Feature Support Tables
    * ``--model-type flux-kontext`` (Flux.1 Kontext - Pix2Pix-like editing)
    * ``--model-type flux2`` (Flux.2 and Flux.2 Klein)
    * ``--model-type flux2-klein-kv`` (Flux.2 Klein KV)
+   * ``--model-type flux3`` (FLUX.3 Image Klein)
    * ``--model-type z-image`` (Z-Image)
    * ``--model-type z-image-omni`` (Z-Image Omni)
    * ``--model-type qwen-image`` (Qwen-Image)
@@ -38,6 +39,7 @@ Diffusion Model Feature Support Tables
    * ``--model-type hyvideo-15`` (HunyuanVideo 1.5, see `Video Model Feature Support`_)
    * ``--model-type motif-video`` (Motif-Video, see `Video Model Feature Support`_)
    * ``--model-type kandinsky5-video`` (Kandinsky 5.0 Video, see `Video Model Feature Support`_)
+   * ``--model-type kandinsky6-video`` (Kandinsky 6.0 Video, see `Video Model Feature Support`_)
 
 .. list-table:: Generation modes by ``--model-type``
    :widths: 40 10 10 10
@@ -698,6 +700,9 @@ Diffusion Model Feature Support Tables
    * - ``flux2-klein-kv``
      - ✅
 
+   * - ``flux3``
+     - ❌
+
    * - ``z-image``
      - ❌
 
@@ -728,6 +733,9 @@ Diffusion Model Feature Support Tables
    * - ``kandinsky5-video``
      - ✅
 
+   * - ``kandinsky6-video``
+     - ❌
+
    * - ``krea2``
      - ❌
 
@@ -736,15 +744,31 @@ Diffusion Model Feature Support Tables
 
 Any ``--pipeline-prompt-enhance-*`` option, including ``--pipeline-prompt-enhance-seeds``,
 turns prompt enhancement on with the built-in system prompt when
-``--pipeline-prompt-enhance`` itself is omitted. ``--ltx-prompt-enhancer`` is separate
-and turns on LTX enhancement by itself.
+``--pipeline-prompt-enhance`` itself is omitted. ``flux3`` and ``kandinsky6-video``
+accept one system prompt on that flag for the generation, and their
+``--pipeline-prompt-enhance-*`` sampling options apply to that rewrite.
+``--prompt-upsampler`` uses its own URI, with the
+same arguments as ``--transformer``, and loads a causal or image-to-text model.
+It turns enhancement on by itself and replaces the default upsampler for
+``ltx2`` and ``flux3``.
 
 When the built-in system prompt is used, a ✅ row means dgenerate asks the loaded
 text encoder to rewrite in the same language as the user's prompt (with checks that
 drop back to the original prompt when the rewrite is in the wrong language). ❌ means
 the rewrite targets an English caption: ``z-image``, ``z-image-omni``, and ``krea2``
 use that policy directly; ``ltx2`` uses the Gemma prompt enhancer, which is oriented
-toward English shot descriptions.
+toward English shot descriptions. ``flux3`` and ``kandinsky6-video`` do not use that
+rewriter. ``flux3`` loads its Qwen3.5 prompt upsampler only when enhancement is on.
+With no system prompt the upsampler keeps its own, and with no sampling options it
+decodes greedily. A value on ``--pipeline-prompt-enhance`` replaces that system
+prompt for the generation. ``kandinsky6-video`` turns on the pipeline's
+``expand_prompts`` rewrite with the loaded Qwen2.5-VL encoder, including the first
+frame when one was given. A value replaces that expansion instruction for the
+generation. Temperature, top-p, top-k, presence penalty, token limits, seeds, and
+GPU headroom apply to both rewrites when set. Both show a token counter while they
+write, then log the rewritten prompt. With CPU offload, the rewrite keeps on the GPU only the layers that fit in
+free dedicated memory. ``flux3`` does not load the upsampler at all when the flag
+is omitted. Kandinsky 6 still loads its text encoder, because denoising uses it.
 
 .. list-table:: Generation features by ``--model-type``
    :widths: 25 12 16 22 18 28 24 12 24 24 24 20
@@ -1516,7 +1540,7 @@ Generation Feature Notes
 
 FreeU parameters differ by model type and can be specified using the ``--freeu-params`` option. The recommended parameters for SD1.4, SD1.5, SD2.1, and SDXL can be reviewed `here <https://github.com/ChenyangSi/FreeU?tab=readme-ov-file#parameters>`__. Kolors is compatible with FreeU's SDXL settings.
 
-``--torch-compile`` compiles repeated denoiser, ControlNet, and VAE decoder blocks. The first use of each waits while the graph builds. A later change of resolution or frame count compiles once more, then reuses that graph. CUDA and XPU need Triton. On macOS, PyTorch 2.13 and newer compile these blocks to a Metal kernel. CPU and quantized weights stay eager, and dgenerate warns. Text encoders, image encoders, and the LTX diffusion decoder stay eager. Wan-Animate-2 compiles its transformer and VAE blocks on every load. ``DGENERATE_TORCH_COMPILE=0`` leaves every model eager, including Wan-Animate-2.
+``--torch-compile`` compiles repeated denoiser, ControlNet, and VAE decoder blocks. Module names on that option limit the set; with no names the default set is used. ``prompt_upsampler`` and ``prompt_enhancer`` are aliases for the FLUX.3 upsampler or the LTX Gemma enhancer. ``compile=true`` on ``--unet``, ``--vae``, ``--text-encoders``, ``--control-nets``, ``--transformer``, or ``--prompt-upsampler`` compiles that module even when the option is omitted. ``--image-encoder`` has no ``compile`` argument. Name ``image_encoder`` on ``--torch-compile`` instead. The first use of each waits while the graph builds. A later change of resolution or frame count compiles once more, then reuses that graph. A compiled prompt upsampler is still layer-split, so its first ``generate()`` can build the graph again. CUDA and XPU need Triton. On macOS, PyTorch 2.13 and newer compile these blocks to a Metal kernel. CPU and quantized weights stay eager, and dgenerate warns. The LTX diffusion decoder stays eager. Weights streamed from disk skip ``--torch-compile``, including a URI ``compile=true``. Wan-Animate-2 compiles its transformer and VAE blocks on every load and ignores module names on ``--torch-compile`` and a URI ``compile=true``. ``DGENERATE_TORCH_COMPILE=0`` leaves every model eager, including Wan-Animate-2.
 
 Faster generation speeds can be achieved by using Cache-DiT, DyPE, DeepCache, Microsoft RAS, SADA, TeaCache, Spectrum, or RegionE, but may lead to reduced image quality. The default values for each of these features are conservative, providing some speed increases without major impacts on quality.
 

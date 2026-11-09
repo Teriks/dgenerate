@@ -351,11 +351,8 @@ def _load_ltx_latent_upsampler(wrapper, user_args, use_custom_uri=True):
 
     try:
         if _hfhub.is_single_file_model_load(model_path):
-            from_single_file = getattr(LTX2LatentUpsamplerModel, 'from_single_file', None)
-            if from_single_file is None:
-                from diffusers.loaders.single_file_model import FromOriginalModelMixin
-                from_single_file = FromOriginalModelMixin.from_single_file.__get__(
-                    LTX2LatentUpsamplerModel, LTX2LatentUpsamplerModel)
+            import dgenerate.pipelinewrapper.singlefilecompat as _singlefilecompat
+            from_single_file = _singlefilecompat.bind_from_single_file(LTX2LatentUpsamplerModel)
             return from_single_file(model_path, **load_kwargs)
         return LTX2LatentUpsamplerModel.from_pretrained(model_path, **load_kwargs)
     except Exception as e:

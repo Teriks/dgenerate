@@ -289,6 +289,12 @@ class ModelType(enum.Enum):
     HYIMAGE_21_REFINER = 37
     """HunyuanImage 2.1 refiner (requires an input image)."""
 
+    FLUX3 = 38
+    """FLUX.3 Image Klein. Text-to-image and multi-reference edit in one modular pipeline."""
+
+    KANDINSKY6_VIDEO = 39
+    """Kandinsky 6.0 text-to-audio-video and image-to-audio-video."""
+
 
 def supported_model_type_strings():
     """
@@ -330,7 +336,9 @@ def supported_model_type_strings():
             'motif-video',
             'hydit',
             'hyimage-21',
-            'hyimage-21-refiner']
+            'hyimage-21-refiner',
+            'flux3',
+            'kandinsky6-video']
 
 
 def supported_model_type_enums() -> list[ModelType]:
@@ -397,7 +405,9 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'motif-video': ModelType.MOTIF_VIDEO,
                 'hydit': ModelType.HYDIT,
                 'hyimage-21': ModelType.HYIMAGE_21,
-                'hyimage-21-refiner': ModelType.HYIMAGE_21_REFINER}[id_str.strip().lower()]
+                'hyimage-21-refiner': ModelType.HYIMAGE_21_REFINER,
+                'flux3': ModelType.FLUX3,
+                'kandinsky6-video': ModelType.KANDINSKY6_VIDEO}[id_str.strip().lower()]
     except KeyError:
         if id_str.strip().lower() == 'ltx':
             raise ValueError(_LTX_RENAMED_MESSAGE)
@@ -451,7 +461,9 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.MOTIF_VIDEO: 'motif-video',
             ModelType.HYDIT: 'hydit',
             ModelType.HYIMAGE_21: 'hyimage-21',
-            ModelType.HYIMAGE_21_REFINER: 'hyimage-21-refiner'}[model_type]
+            ModelType.HYIMAGE_21_REFINER: 'hyimage-21-refiner',
+            ModelType.FLUX3: 'flux3',
+            ModelType.KANDINSKY6_VIDEO: 'kandinsky6-video'}[model_type]
 
 
 def model_type_is_sd(model_type: ModelType | str) -> bool:
@@ -625,6 +637,11 @@ def model_type_is_flux2_klein_kv(model_type: ModelType | str) -> bool:
     return get_model_type_enum(model_type) == ModelType.FLUX2_KLEIN_KV
 
 
+def model_type_is_flux3(model_type: ModelType | str) -> bool:
+    """FLUX.3 Image Klein."""
+    return get_model_type_enum(model_type) == ModelType.FLUX3
+
+
 def model_type_is_flux2_family(model_type: ModelType | str) -> bool:
     """Flux.2 or Flux.2 Klein KV."""
     return model_type_is_flux2(model_type) or model_type_is_flux2_klein_kv(model_type)
@@ -700,6 +717,11 @@ def model_type_is_kandinsky5_video(model_type: ModelType | str) -> bool:
     return get_model_type_enum(model_type) == ModelType.KANDINSKY5_VIDEO
 
 
+def model_type_is_kandinsky6_video(model_type: ModelType | str) -> bool:
+    """Kandinsky 6.0 text-to-audio-video and image-to-audio-video."""
+    return get_model_type_enum(model_type) == ModelType.KANDINSKY6_VIDEO
+
+
 def model_type_is_kandinsky5_family(model_type: ModelType | str) -> bool:
     """Kandinsky 5 image or video."""
     return (model_type_is_kandinsky5_image(model_type)
@@ -741,7 +763,8 @@ def model_type_image_is_condition(model_type: ModelType | str) -> bool:
             or model_type_is_qwen_image_layered(model_type)
             or model_type_is_qwen_image_21(model_type)
             or model_type_is_kandinsky5_image(model_type)
-            or model_type_is_hyimage_21_refiner(model_type))
+            or model_type_is_hyimage_21_refiner(model_type)
+            or model_type_is_flux3(model_type))
 
 
 ADETAILER_NO_INPAINT = (
@@ -776,7 +799,8 @@ def model_type_is_flow_image_family(model_type: ModelType | str) -> bool:
             or model_type_is_qwen_image_21(model_type)
             or model_type_is_krea2(model_type)
             or model_type_is_kandinsky5_image(model_type)
-            or model_type_is_hyimage_21_family(model_type))
+            or model_type_is_hyimage_21_family(model_type)
+            or model_type_is_flux3(model_type))
 
 
 def model_type_is_ltx2(model_type: ModelType | str) -> bool:
@@ -826,7 +850,8 @@ def model_type_is_video_family(model_type: ModelType | str) -> bool:
             or model_type_is_wan_family(model_type)
             or model_type_is_hyvideo_15(model_type)
             or model_type_is_motif_video(model_type)
-            or model_type_is_kandinsky5_video(model_type))
+            or model_type_is_kandinsky5_video(model_type)
+            or model_type_is_kandinsky6_video(model_type))
 
 
 def model_type_is_ltx_family(model_type: ModelType | str) -> bool:
@@ -1052,6 +1077,7 @@ def model_type_supports_freeu(model_type: ModelType | str) -> bool:
 PIPELINE_PROMPT_ENHANCE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.FLUX2,
     ModelType.FLUX2_KLEIN_KV,
+    ModelType.FLUX3,
     ModelType.Z_IMAGE,
     ModelType.Z_IMAGE_OMNI,
     ModelType.QWEN_IMAGE,
@@ -1062,6 +1088,7 @@ PIPELINE_PROMPT_ENHANCE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.HYIMAGE_21_REFINER,
     ModelType.KANDINSKY5_IMAGE,
     ModelType.KANDINSKY5_VIDEO,
+    ModelType.KANDINSKY6_VIDEO,
     ModelType.KREA2,
     ModelType.LTX2,
 )
@@ -1116,6 +1143,8 @@ SPECTRUM_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.QWEN_IMAGE_21,
     ModelType.KREA2,
     ModelType.KANDINSKY5_IMAGE,
+    ModelType.FLUX3,
+    ModelType.KANDINSKY6_VIDEO,
     ModelType.WAN,
     ModelType.WAN_ANIMATE,
     ModelType.WAN_ANIMATE_2,
@@ -1146,6 +1175,7 @@ DYPE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.FLUX_KONTEXT,
     ModelType.FLUX2,
     ModelType.FLUX2_KLEIN_KV,
+    ModelType.FLUX3,
     ModelType.QWEN_IMAGE,
     ModelType.QWEN_IMAGE_EDIT,
     ModelType.QWEN_IMAGE_LAYERED,
@@ -1157,6 +1187,7 @@ DYPE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.WAN_ANIMATE_2,
     ModelType.HUNYUAN_VIDEO_15,
     ModelType.MOTIF_VIDEO,
+    ModelType.KANDINSKY6_VIDEO,
 )
 """``--model-type`` values that accept DyPE."""
 

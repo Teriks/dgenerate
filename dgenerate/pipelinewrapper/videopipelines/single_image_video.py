@@ -62,6 +62,9 @@ _FAMILY_CLASSES = {
     'kandinsky5-video': (
         'Kandinsky5T2VPipeline', 'Kandinsky5I2VPipeline',
         'Kandinsky5Transformer3DModel'),
+    'kandinsky6-video': (
+        'Kandinsky6TI2VAPipeline', 'Kandinsky6TI2VAPipeline',
+        'Kandinsky6Transformer3DModel'),
 }
 
 SINGLE_IMAGE_VIDEO_FAMILIES = frozenset(_FAMILY_CLASSES)
@@ -70,8 +73,58 @@ SINGLE_IMAGE_VIDEO_FAMILIES = frozenset(_FAMILY_CLASSES)
 SINGLE_IMAGE_VIDEO_MODEL_TYPES = frozenset({
     _enums.ModelType.HUNYUAN_VIDEO_15,
     _enums.ModelType.MOTIF_VIDEO,
-    _enums.ModelType.KANDINSKY5_VIDEO})
+    _enums.ModelType.KANDINSKY5_VIDEO,
+    _enums.ModelType.KANDINSKY6_VIDEO})
 """``--model-type`` values served by this module."""
+
+
+def _park_modules_for_rewrite(pipe):
+    """Move every module except the text encoder off the GPU for one rewrite.
+
+    Offload hooks already keep their weights on CPU until a forward, so those
+    modules are left alone. 8-bit bitsandbytes weights cannot move.
+    """
+    import torch
+
+    import dgenerate.pipelinewrapper.util as _putil
+
+    parked = []
+    warned = False
+    for name, module in _pipelines.get_pipeline_modules(pipe).items():
+        if name.startswith('text_encoder') or name.startswith('tokenizer'):
+            continue
+        if module is None or not hasattr(module, 'parameters') or not hasattr(module, 'to'):
+            continue
+        if getattr(module, '_DGENERATE_ORIGINAL_TO_DISABLED', None) is not None or getattr(
+                module, '_hf_hook', None) is not None:
+            continue
+        if _putil.is_loaded_in_8bit_bnb(module):
+            if not warned:
+                _messages.log(
+                    f'{name}: 8-bit bitsandbytes weights stay on the GPU. '
+                    'They cannot be moved for the rewrite.')
+                warned = True
+            continue
+        try:
+            current = next(module.parameters()).device
+        except StopIteration:
+            continue
+        if current.type == 'cpu':
+            continue
+        module.to('cpu')
+        parked.append((module, current))
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    return parked
+
+
+def _restore_parked_modules(parked):
+    import torch
+
+    for module, device in parked:
+        module.to(device)
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 def _family_classes(family):
@@ -93,6 +146,10 @@ def _single_image_video_transformer_class(family):
 
 
 def _classify_single_image_video_seed(model_type, parsed):
+    if parsed is not None and parsed.mask_images and _enums.model_type_is_kandinsky6_video(model_type):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'kandinsky6-video does not accept inpaint masks. '
+            'One still image is the first frame.')
     if parsed is None or not parsed.images:
         return 'text-to-video'
     if parsed.multi_image_mode or len(parsed.images) != 1:
@@ -110,8 +167,17 @@ def _resolve_single_image_video_load(model_type, index):
         _enums.ModelType.HUNYUAN_VIDEO_15: ('hyvideo-15', 'HunyuanVideo15'),
         _enums.ModelType.MOTIF_VIDEO: ('motif-video', 'MotifVideo'),
         _enums.ModelType.KANDINSKY5_VIDEO: ('kandinsky5-video', 'Kandinsky5'),
+        _enums.ModelType.KANDINSKY6_VIDEO: ('kandinsky6-video', 'Kandinsky6'),
     }[model_type]
     name = str((index or {}).get('_class_name') or '')
+    if name.startswith('Kandinsky6SR'):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'Kandinsky 6 super-resolution is a separate pipeline. '
+            'Load kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers or a Pro checkpoint '
+            'with --model-type kandinsky6-video.')
+    if name.startswith('Kandinsky6') and not _enums.model_type_is_kandinsky6_video(model_type):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'This repository uses {name}. Use --model-type kandinsky6-video.')
     if name.startswith(prefix):
         image_to_video_markers = ('I2V', 'ImageToVideo', 'Image2Video')
         mode = ('image-to-video'
@@ -258,7 +324,7 @@ def _skip_nabla_sparse_attention(pipe) -> None:
 def _enhance_loaded_video_prompt(wrapper, pipe, user_args) -> None:
     """Rewrite the prompt with the loaded pipeline text encoder.
 
-    The still-image call path does this in ``DiffusionPipelineWrapper``. Video
+    The still-image call path does this in ``PipelineWrapper``. Video
     generation returns before that point, so Kandinsky 5 video does it here,
     after the pipeline exists and before the prompt is read for the call.
     """
@@ -291,6 +357,12 @@ def _call_single_image_video(wrapper, user_args):
         user_args.images[0] = _media.resize_media([source], (width, height))[0]
     if family == 'kandinsky5-video':
         _enhance_loaded_video_prompt(wrapper, pipe, user_args)
+    if family == 'kandinsky6-video':
+        distilled = type(getattr(pipe, 'scheduler', None)).__name__ == 'PiflowScheduler'
+        if user_args.inference_steps is None:
+            user_args.inference_steps = 10 if distilled else 50
+        if user_args.guidance_scale is None:
+            user_args.guidance_scale = 1.0 if distilled else 5.0
     positive, negative = _vp._prompt_text(user_args)
     kwargs = {
         'prompt': positive,
@@ -310,7 +382,7 @@ def _call_single_image_video(wrapper, user_args):
     guidance_default = 6.0 if family == 'hyvideo-15' else 5.0
     guidance = _sampling.resolved_guidance_scale(
         pipe, user_args, fallback=guidance_default)
-    if family == 'kandinsky5-video':
+    if family in ('kandinsky5-video', 'kandinsky6-video'):
         kwargs['guidance_scale'] = guidance
     else:
         guider = getattr(pipe, 'guider', None)
@@ -337,6 +409,9 @@ def _call_single_image_video(wrapper, user_args):
             custom_timesteps = [int(value) for value in user_args.timesteps]
         kwargs['num_inference_steps'] = len(custom_timesteps)
         user_args.inference_steps = len(custom_timesteps)
+    if family == 'kandinsky6-video' and user_args.pipeline_prompt_enhance:
+        if 'expand_prompts' in call_parameters:
+            kwargs['expand_prompts'] = True
     if user_args.max_sequence_length is not None:
         if 'max_sequence_length' not in call_parameters:
             raise _pipelines.UnsupportedPipelineConfigError(
@@ -362,6 +437,27 @@ def _call_single_image_video(wrapper, user_args):
             stack.enter_context(_schedules._forced_scheduler_timesteps(pipe.scheduler, custom_timesteps))
         if family == 'motif-video' and mode == 'image-to-video':
             stack.enter_context(_vae_encode_in_vae_dtype(pipe.vae))
+        if family == 'kandinsky6-video':
+            import dgenerate.pipelinewrapper.promptenhance as _promptenhance
+            stack.enter_context(_promptenhance.kandinsky6_expansion_instruction(
+                user_args.pipeline_prompt_enhance))
+            stack.enter_context(_promptenhance.rewrite_sampling(
+                getattr(pipe, 'text_encoder', None), user_args, wrapper.device))
+            if kwargs.get('expand_prompts'):
+                parked = _park_modules_for_rewrite(pipe)
+                try:
+                    kwargs['prompt'] = pipe.expand_prompts(
+                        kwargs['prompt'],
+                        pipe.tokenizer,
+                        pipe.text_encoder,
+                        wrapper.device,
+                        image=kwargs.get('image'),
+                        max_sequence_length=int(kwargs.get('max_sequence_length') or 1024),
+                        generator=kwargs.get('generator'))
+                    _promptenhance.log_enhanced_prompt(kwargs['prompt'])
+                finally:
+                    _restore_parked_modules(parked)
+                kwargs['expand_prompts'] = False
         output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
     frames = _media.frames_from_output(getattr(output, 'frames', output))
     audio = _media.audio_to_numpy(getattr(output, 'audio', None))

@@ -7,7 +7,7 @@ title: Krea 2 Turbo (GGUF)
 @spectrum[{"id": "sp", "divider-after": true}]
 @dype[{"exclude":["sp"], "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"krea2"}]
 @quantizer[{"model-type":"krea2", "map-default":"text_encoder"}]
 @textencoders[{"model-type":"krea2","arg":"--text-encoders", "divider-after":true}]
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model":"LoRA"}]

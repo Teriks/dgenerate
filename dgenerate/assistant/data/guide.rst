@@ -436,7 +436,28 @@ Its refine LoRA is ``--ltx-stage-loras``, not a second config.
 ``--pipeline-prompt-enhance`` turns on LTX-2.5's optional Gemma prompt enhancer.
 Any other ``--pipeline-prompt-enhance-*`` option turns enhancement on with the
 built-in system prompt when that flag is omitted.
-``--ltx-prompt-enhancer`` names a different enhancer model.
+``--prompt-upsampler`` is its own URI, with the same arguments as ``--transformer``,
+for a different upsampler on
+LTX-2.5 or FLUX.3. Setting it turns enhancement on. FLUX.3 defaults to the
+checkpoint Qwen3.5 upsampler. Kandinsky 6 rewrites with its text encoder and
+rejects ``--prompt-upsampler``.
+FLUX.3 is ``--model-type flux3``, not Flux.2. Distilled is
+``black-forest-labs/flux-3-image-klein``, 16 steps, guidance 1. Base is
+``black-forest-labs/flux-3-image-klein-base``, 50 steps, guidance 3.5.
+Both are gated. ``--image-seeds`` are reference images, with no mask and no
+strength. Omit ``--pipeline-prompt-enhance`` unless the user asks for a rewrite.
+The flag takes no value, or one system prompt for that generation.
+``--pipeline-prompt-enhance-*`` sampling options apply to that rewrite.
+It loads the Qwen3.5 upsampler.
+Without it the prompt is encoded as given.
+Kandinsky 6 video is ``--model-type kandinsky6-video``, not Kandinsky 5.
+Lite distilled is ``Kandinsky-6.0-Lite-distill-5s-Diffusers``, 10 steps,
+guidance 1, with audio at 864x480 and 24 fps. Pro is
+``Kandinsky-6.0-Pro-5s-Diffusers``, 50 steps, guidance 5. One still is the
+first frame. No ``--loras``. The same ``--pipeline-prompt-enhance`` flag
+turns on ``expand_prompts``. A value replaces the expansion instruction for
+that generation. ``--pipeline-prompt-enhance-*`` sampling options apply to
+that rewrite.
 ``--ltx-video-decoder diffusion`` uses the diffusion decoder. Linux loads NATTEN through the kernels package. Windows runs that window with Triton, or gathers it in PyTorch when Triton is not installed. ``--ltx-diffusion-decode-tile`` sets that tile, for example ``384x384x24``.
 ``--ltx-image-crfs`` recompresses a conditioning still.
 ``--ltx-ic-lora`` is the IC-LoRA. The last frame is ``last-frame=``, not ``end=``.
@@ -495,10 +516,20 @@ Wan-Animate-2 is ``--model-type wan-animate-2`` with a character still plus
 distilled repo. ``--video-fps`` defaults to 24. ``--video-lengths`` is rejected.
 No ``wan-pose=``, ``wan-face=``, or ``wan-background=``.
 Wan-Animate-2 compiles its transformer and VAE blocks on every load. Do not add
-``--torch-compile`` for that model. Add ``--torch-compile`` for other models
-only when the user asks for it, including Stable Diffusion 3 and Stable Cascade.
-The flag also compiles ControlNet and VAE decoder blocks. Do not add it for
-GGUF, SDNQ, or bitsandbytes. Those stay eager and dgenerate warns.
+``--torch-compile`` for that model. It ignores module names on
+``--torch-compile`` and a URI ``compile=true``. Add ``--torch-compile`` for
+other models only when the user asks for it, including Stable Diffusion 3 and
+Stable Cascade. The option also compiles ControlNet and VAE decoder blocks.
+Module names on ``--torch-compile`` limit which components are compiled. With
+no names, the default set is used. ``prompt_upsampler`` and
+``prompt_enhancer`` are aliases for the FLUX.3 upsampler or the LTX Gemma
+enhancer. ``compile=true`` on ``--unet``, ``--vae``, ``--text-encoders``,
+``--control-nets``, ``--transformer``, or ``--prompt-upsampler`` compiles that
+module even when the option is omitted. ``--image-encoder`` has no
+``compile`` argument. Name ``image_encoder`` on ``--torch-compile``. Do not
+add compile for GGUF, SDNQ, or bitsandbytes. Those
+stay eager and dgenerate warns. Weights streamed from disk skip
+``--torch-compile``, including a URI ``compile=true``.
 ``DGENERATE_TORCH_COMPILE=0`` disables every compile, including Wan-Animate-2.
 TorchDynamo, Inductor, and Triton stay quiet unless the user passed ``-v``.
 Do not put ``last_animations`` on ``--image-seeds`` for Kontext, Fill,
@@ -537,6 +568,15 @@ low-noise FP8 pair for T2V or I2V. HunyuanVideo 1.5 text-to-video GGUF
 Kandinsky 5 Pro text-to-video GGUF stays on
 ``Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers``. A still uses
 ``Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers``.
+FLUX.3 distilled GGUF ``flux3_image_klein_sd-Q4_K_M.gguf`` stays on
+``flux-3-image-klein``. The base GGUF ``flux3_image_klein_base-Q4_K_M.gguf``
+stays on ``flux-3-image-klein-base``. Both are from ``molbal/Flux-3-Klein-GGUF``.
+Kandinsky 6 Pro GGUF ``Kandinsky-6.0-Pro-5s-Q4_K_S.gguf`` stays on
+``Kandinsky-6.0-Pro-5s-Diffusers``. Write it as
+``Diffusion Model/Full/Kandinsky-6.0-Pro-5s-Q4_K_S.gguf``.
+The published folder still has a space before ``Full``; dgenerate redirects
+that prefix. Lite distilled INT8 stays on
+``Kandinsky-6.0-Lite-distill-5s-Diffusers``.
 Flux Dev, Schnell, Fill, Kontext, and Flux Krea Dev each keep their own
 GGUF and FP8 file. Flux.2 dev, Klein 4B, Klein 9B distilled, Klein 9B
 base, and Klein KV do too. Z-Image base and Turbo, Krea 2 Raw and Turbo,

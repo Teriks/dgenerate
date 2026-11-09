@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
+import io
 import os
 import shutil
 import tempfile
@@ -33,6 +34,7 @@ import torch
 
 import dgenerate.filelock as _filelock
 import dgenerate.filetypes as _filetypes
+import dgenerate.messages as _messages
 
 __doc__ = """
 Media output, handles writing videos, animations, and tensor files (latents). 
@@ -62,6 +64,55 @@ class AnimationWriter:
         pass
 
 
+def _target_is_path(target) -> bool:
+    return isinstance(target, (str, os.PathLike))
+
+
+def _target_is_seekable(target) -> bool:
+    if _target_is_path(target):
+        return True
+    seekable = getattr(target, 'seekable', None)
+    if not callable(seekable):
+        return False
+    try:
+        return bool(seekable())
+    except Exception:
+        return False
+
+
+def _rewind(target) -> None:
+    """Leave a seekable stream at the start so the caller can read the container."""
+    if _target_is_path(target) or not _target_is_seekable(target):
+        return
+    try:
+        target.seek(0)
+    except Exception:
+        return
+
+
+_PIL_ANIMATION_FORMATS = {
+    'gif': 'GIF',
+    'webp': 'WEBP',
+    'png': 'PNG',
+    'apng': 'PNG',
+}
+
+
+def _animation_format_of(target, animation_format: str | None) -> str:
+    if animation_format:
+        return animation_format.strip().lower().lstrip('.')
+    if _target_is_path(target):
+        extension = os.path.splitext(os.fspath(target))[1].lstrip('.').lower()
+        if extension:
+            return extension
+    name = getattr(target, 'name', None)
+    if isinstance(name, str):
+        extension = os.path.splitext(name)[1].lstrip('.').lower()
+        if extension:
+            return extension
+    return 'mp4'
+
+
 class VideoWriter(AnimationWriter):
     """
     Animation writer for MP4 h264 format video
@@ -73,7 +124,9 @@ class VideoWriter(AnimationWriter):
                  audio: numpy.ndarray | None = None,
                  audio_sample_rate: int | None = None):
         """
-        :param filename: Filename to write to.
+        :param filename: Path to write, or a binary file object. A non-seekable
+            stream is written as a fragmented mp4 so the mux does not need to
+            seek back to the start.
         :param fps: Frame rate, in frames per second.
         :param audio: Optional float32 audio of shape ``(channels, samples)``, 1 or 2 channels.
             Muxed as AAC when the container is mp4.
@@ -81,7 +134,8 @@ class VideoWriter(AnimationWriter):
         """
 
         super().__init__()
-        self.filename = filename
+        self.filename = os.fspath(filename) if _target_is_path(filename) else None
+        self._target = filename
         self.fps = fps
         self._audio = None
         self._audio_sample_rate = None if audio_sample_rate is None else int(audio_sample_rate)
@@ -102,7 +156,8 @@ class VideoWriter(AnimationWriter):
         self._cleanup()
 
         if new_file is not None:
-            self.filename = new_file
+            self.filename = os.fspath(new_file) if _target_is_path(new_file) else None
+            self._target = new_file
 
     def _cleanup(self):
         if self._container is not None:
@@ -147,7 +202,13 @@ class VideoWriter(AnimationWriter):
 
     def write(self, img: PIL.Image.Image):
         if self._container is None:
-            self._container = av.open(self.filename, 'w')
+            if self.filename is not None:
+                self._container = av.open(self.filename, 'w')
+            else:
+                options = None
+                if not _target_is_seekable(self._target):
+                    options = {'movflags': 'frag_keyframe+empty_moov+default_base_moof'}
+                self._container = av.open(self._target, 'w', format='mp4', options=options)
             self._stream = self._container.add_stream(
                 "h264", rate=Fraction(self.fps).limit_denominator(1001))
             self._stream.codec_context.bit_rate = 8000000
@@ -168,21 +229,38 @@ class AnimatedImageWriter(AnimationWriter):
     Animation writer for animated images such as GIFs and webp
     """
 
-    def __init__(self, filename: str, duration: float):
+    def __init__(self, filename, duration: float, pil_format: str | None = None):
         """
-        :param filename: Filename to write to.
+        :param filename: Filename to write to, or a binary file object.
         :param duration: Frame duration, (duration of a single frame) in milliseconds.
+        :param pil_format: PIL format name used when ``filename`` is a stream.
         """
         super().__init__()
         self.collected_frames = []
         self.filename = filename
         self.duration = duration
+        self._pil_format = pil_format
 
     def end(self, new_file: str = None):
 
         if self.collected_frames:
-            self.collected_frames[0].save(self.filename, save_all=True, append_images=self.collected_frames[1:],
-                                          optimize=False, duration=self.duration, loop=0)
+            save_kwargs = dict(
+                save_all=True,
+                append_images=self.collected_frames[1:],
+                optimize=False,
+                duration=self.duration,
+                loop=0)
+            target = self.filename
+            if not _target_is_path(target):
+                save_kwargs['format'] = self._pil_format or 'GIF'
+            if not _target_is_path(target) and not _target_is_seekable(target):
+                # GIF and WebP saves seek back into the file. Encode into a
+                # buffer, then write the finished bytes to the stream.
+                buffer = io.BytesIO()
+                self.collected_frames[0].save(buffer, **save_kwargs)
+                target.write(buffer.getvalue())
+            else:
+                self.collected_frames[0].save(target, **save_kwargs)
             for i in self.collected_frames:
                 i.close()
             self.collected_frames.clear()
@@ -348,7 +426,84 @@ def create_animation_writer(animation_format: str,
 
     if animation_format == 'mp4':
         return VideoWriter(out_filename, fps, audio=audio, audio_sample_rate=audio_sample_rate)
-    return AnimatedImageWriter(out_filename, 1000 / fps)
+    return AnimatedImageWriter(
+        out_filename, 1000 / fps, pil_format=_PIL_ANIMATION_FORMATS.get(animation_format))
+
+
+def _write_frame_images(file, frames) -> None:
+    """Write ``frames`` as numbered PNG files for a ``.frames`` target."""
+    if not _target_is_path(file):
+        raise UnknownAnimationFormatError(
+            'frames writes one image per frame and needs a path, not a stream.')
+    path = os.fspath(file)
+    root, extension = os.path.splitext(path)
+    prefix = root if extension.lower() == '.frames' else path
+    directory = os.path.dirname(prefix)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    for index, frame in enumerate(frames, start=1):
+        image = frame if frame.mode == 'RGB' else frame.convert('RGB')
+        image.save(f'{prefix}_frame_{index}.png')
+
+
+def write_animation(file,
+                    frames,
+                    fps: float,
+                    animation_format: str | None = None,
+                    audio: numpy.ndarray | None = None,
+                    audio_sample_rate: int | None = None) -> None:
+    """Mux frames, and an optional soundtrack, to a path or a binary stream.
+
+    A path's extension selects the container. A stream is mp4 unless
+    ``animation_format`` is given. A seekable stream is rewound to the start
+    when the container is finished. A non-seekable stream receives a
+    fragmented mp4, which can be written without seeking back to the header.
+    ``frames`` writes one PNG per frame next to a path and does not accept a
+    stream. GIF and WebP bound for a non-seekable stream are encoded in
+    memory first.
+
+    :param file: Filesystem path or binary file object.
+    :param frames: Frames as PIL images.
+    :param fps: Frames per second.
+    :param animation_format: Container extension without a period, such as
+        ``mp4`` or ``gif``. ``None`` uses the path extension, or mp4 for a stream.
+    :param audio: Optional float32 soundtrack of shape ``(channels, samples)``.
+        Muxed into mp4. Other containers cannot carry it.
+    :param audio_sample_rate: Sample rate of ``audio``.
+    :raise UnknownAnimationFormatError: the container format is not writable.
+    :raise ValueError: ``frames`` is empty.
+    """
+    if not frames:
+        raise ValueError('write_animation needs at least one frame.')
+    container_format = _animation_format_of(file, animation_format)
+    if container_format == 'frames':
+        _write_frame_images(file, frames)
+        return
+    if container_format not in get_supported_animation_writer_formats():
+        raise UnknownAnimationFormatError(
+            f'Animation format "{container_format}" is not a known format.')
+    soundtrack = audio
+    sample_rate = audio_sample_rate
+    if container_format != 'mp4' and soundtrack is not None:
+        _messages.warning(
+            f'Audio is dropped because the container is {container_format}. '
+            'Use mp4 to keep the soundtrack.')
+        soundtrack = None
+        sample_rate = None
+    if container_format == 'mp4':
+        writer = VideoWriter(
+            file, fps, audio=soundtrack, audio_sample_rate=sample_rate)
+    else:
+        writer = AnimatedImageWriter(
+            file,
+            1000 / fps,
+            pil_format=_PIL_ANIMATION_FORMATS.get(container_format, 'GIF'))
+    try:
+        for frame in frames:
+            writer.write(frame if frame.mode == 'RGB' else frame.convert('RGB'))
+    finally:
+        writer.end()
+    _rewind(file)
 
 
 class MultiAnimationWriter(AnimationWriter):

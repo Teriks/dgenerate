@@ -25,7 +25,7 @@ title: Flux Kontext Dev (GGUF + Encoders)
 @dype[{"id": "dype", "exclude":["cd", "tc", "sada", "sp", "re"]}]
 @regione[{"id": "re", "preset": "flux-kontext", "exclude":["tc", "sada", "sp", "cd", "dype"], "divider-before":true, "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":0}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"flux-kontext"}]
 @quantizer[{"model-type":"flux-kontext", "map-default":"text_encoder"}]
 @textencoders[{"model-type": "flux-kontext", "arg": "--text-encoders", "divider-after": true, "defaults": [null, "T5EncoderModel;model=https://huggingface.co/city96/t5-v1_1-xxl-encoder-gguf/blob/main/t5-v1_1-xxl-encoder-Q4_K_S.gguf"]}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]

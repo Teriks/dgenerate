@@ -11,7 +11,7 @@ to define the ``--prompt-weighter`` and ``--prompt-upscaler`` plugins that act o
 ``<upscaler: ...>`` is unlike other embedded arguments in that it can be mentioned multiple times
 in a row to create a chain of prompt upscaling operations using different prompt upscaler plugin URIs.
 
-The rest of the specifiable arguments are select members of the `DiffusionArguments <https://dgenerate.readthedocs.io/en/@REVISION/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments>`_
+The rest of the specifiable arguments are select members of the `GenerationArguments <https://dgenerate.readthedocs.io/en/@REVISION/dgenerate_submodules.html#dgenerate.pipelinewrapper.GenerationArguments>`_
 class from dgenerate's library API.
 
 You may not specify prompt related arguments aside from the aforementioned ``weighter`` and ``upscaler``.
@@ -35,7 +35,7 @@ All other arguments are fair game, for example ``inference_steps``
     --prompts "hello world!" "<inference-steps: 50> hello world!"
 
 
-Of the arguments mentioned in the `DiffusionArguments <https://dgenerate.readthedocs.io/en/@REVISION/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments>`_ class,
+Of the arguments mentioned in the `GenerationArguments <https://dgenerate.readthedocs.io/en/@REVISION/dgenerate_submodules.html#dgenerate.pipelinewrapper.GenerationArguments>`_ class,
 these are the arguments that are available for use:
 
 @COMMAND_OUTPUT[python ../../../scripts/prompt_embedded_args_list.py]

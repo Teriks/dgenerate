@@ -5,7 +5,7 @@ import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.videopipelines.ltx as _ltx
 import dgenerate.pipelinewrapper.videopipelines.ltx.components as _ltx_components
 import dgenerate.pipelinewrapper.uris.ltxlatentupsampleruri as _uri
-from dgenerate.pipelinewrapper.arguments import DiffusionArguments
+from dgenerate.pipelinewrapper.arguments import GenerationArguments
 
 
 class TestLTXLatentUpsampler(unittest.TestCase):
@@ -31,7 +31,7 @@ class TestLTXLatentUpsampler(unittest.TestCase):
             filenames - {'diffusion_pytorch_model-00002-of-00002.safetensors'}, None))
 
     def test_older_ltx_rejects_upscale_before_component_probe(self):
-        args = DiffusionArguments()
+        args = GenerationArguments()
         args.width = 512
         args.height = 512
         args.ltx_latent_upscale = True
@@ -57,7 +57,7 @@ class TestLTXLatentUpsampler(unittest.TestCase):
         check_component.assert_not_called()
 
     def test_temporal_only_component_is_rejected_before_generation(self):
-        args = DiffusionArguments()
+        args = GenerationArguments()
         args.ltx_latent_upscale = 'org/ltx;subfolder=temporal_latent_upsampler'
 
         class Wrapper:

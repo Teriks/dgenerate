@@ -22,7 +22,7 @@ title: Stable Diffusion 3.5 (ComfyUI Quant + Encoders)
 @spectrum[{"id": "sp", "exclude": ["ras"], "divider-after": true}]
 @switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["tc", "sada", "sp", "ras"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":0}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"sd3"}]
 @quantizer[{"model-type":"sd3", "map-default":"text_encoder_3"}]
 @textencoders[{"model-type": "sd3", "arg": "--text-encoders", "divider-after": true, "defaults": [null, null, "T5EncoderModel;model=https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors"]}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]

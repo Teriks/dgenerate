@@ -43,7 +43,8 @@ _unet_uri_parser = _textprocessing.ConceptUriParser(
         'variant',
         'subfolder',
         'dtype',
-        'quantizer'
+        'quantizer',
+        'compile'
     ]
 )
 
@@ -118,13 +119,19 @@ class UNetUri:
         """
         return self._quantizer
 
+    @property
+    def compile(self) -> bool:
+        """Compile this UNet's repeated blocks."""
+        return self._compile
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None,
-                 quantizer: _types.OptionalUri = None):
+                 quantizer: _types.OptionalUri = None,
+                 compile: bool = False):
         """
         :param model: model path
         :param revision: model revision (branch name)
@@ -147,6 +154,7 @@ class UNetUri:
         self._revision = revision
         self._variant = variant
         self._quantizer = quantizer
+        self._compile = bool(compile)
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -198,7 +206,9 @@ class UNetUri:
                 fresh['no_cache'] = True
                 return self._load(**fresh)
 
-            return _util.reuse_lora_free_module(loaded, reload)
+            loaded = _util.reuse_lora_free_module(loaded, reload)
+            _util.mark_compile_requested(loaded, self.compile)
+            return loaded
 
     @staticmethod
     def _enforce_cache_size(new_unet_size):
@@ -352,6 +362,8 @@ class UNetUri:
                 variant=r.args.get('variant', None),
                 dtype=dtype,
                 subfolder=r.args.get('subfolder', None),
-                quantizer=r.args.get('quantizer', None))
+                quantizer=r.args.get('quantizer', None),
+                compile=_util.parse_compile_argument(
+                    r.args.get('compile'), _exceptions.InvalidUNetUriError))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidUNetUriError(e) from e

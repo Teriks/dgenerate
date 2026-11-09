@@ -50,7 +50,7 @@ def apply_video_arg_rewrites(source, dest) -> None:
     """
     Copy LTX rewrite fields from the pipeline call args onto the original args.
 
-    :param source: :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` after generate
+    :param source: :py:class:`dgenerate.pipelinewrapper.GenerationArguments` after generate
     :param dest: the original arguments object passed into the wrapper
     """
     dest.guidance_scale = source.guidance_scale
@@ -127,8 +127,8 @@ def generate(wrapper, user_args) -> tuple[list[PIL.Image.Image], numpy.ndarray |
     """
     Run the video pipeline selected by ``wrapper.model_type``.
 
-    :param wrapper: :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`
-    :param user_args: :py:class:`dgenerate.pipelinewrapper.DiffusionArguments`
+    :param wrapper: :py:class:`dgenerate.pipelinewrapper.PipelineWrapper`
+    :param user_args: :py:class:`dgenerate.pipelinewrapper.GenerationArguments`
     :return: ``(frames, audio, sample_rate, fps)``. ``audio`` and ``sample_rate`` may be ``None``.
     """
     model_type = wrapper.model_type
@@ -147,7 +147,8 @@ def generate(wrapper, user_args) -> tuple[list[PIL.Image.Image], numpy.ndarray |
             return wan.animate2._call_wan_animate_2(wrapper, user_args)
         if (_enums.model_type_is_hyvideo_15(model_type)
                 or _enums.model_type_is_motif_video(model_type)
-                or _enums.model_type_is_kandinsky5_video(model_type)):
+                or _enums.model_type_is_kandinsky5_video(model_type)
+                or _enums.model_type_is_kandinsky6_video(model_type)):
             return _single_image_video._call_single_image_video(wrapper, user_args)
     except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
         _d_exceptions.raise_if_not_cuda_oom(e)
@@ -234,7 +235,7 @@ def _set_video_vae_slicing(pipe, enabled: bool):
             vae.disable_slicing()
 
 
-def _video_pipeline(wrapper, mode: str, scheduler_uri=None):
+def _video_pipeline(wrapper, mode: str, scheduler_uri=None, prompt_upsampler_uri=None):
     kwargs = _loading._cache_kwargs(wrapper)
     kwargs['transformer_uri'] = wrapper.transformer_uri
     kwargs['lora_uris'] = tuple(wrapper.lora_uris) if wrapper.lora_uris else None
@@ -252,6 +253,8 @@ def _video_pipeline(wrapper, mode: str, scheduler_uri=None):
     text_encoder_uris = getattr(wrapper, 'text_encoder_uris', None)
     if text_encoder_uris:
         kwargs['text_encoder_uris'] = tuple(text_encoder_uris)
+    if prompt_upsampler_uri:
+        kwargs['prompt_upsampler_uri'] = prompt_upsampler_uri
     held = _loading._create_cached_video_pipeline(**kwargs)
     model_mode = getattr(held, 'model_mode', None)
     if model_mode is not None and mode != model_mode:

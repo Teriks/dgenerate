@@ -10,7 +10,7 @@ title: Qwen-Image 2.1 Turbo (ComfyUI Quant + Encoders)
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter":["FlowMatchEulerDiscreteScheduler"]}]
 @spectrum[{"id": "sp", "divider-after": true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"qwen-image-21"}]
 @switch[{"label":"Disable KV Cache", "arg":"--qwen21-no-kv-cache"}]
 @quantizer[{"model-type":"qwen-image-21"}]
 @textencoders[{"model-type": "qwen-image-21", "arg": "--text-encoders", "divider-after": true, "defaults": ["Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/text_encoders/qwen3vl_8b_int8_convrot.safetensors"]}]

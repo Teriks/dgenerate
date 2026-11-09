@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Int8 ConvRot Lite distilled transformer and a W4A8 Qwen2.5-VL encoder.
+# "+" keeps CLIP from the repository.
+
+kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers
+--model-type kandinsky6-video
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/kabachuha/Kandinsky-6.0-Lite-distill-5s-int8-convrot/blob/main/Kandinsky-6.0-Lite-Distilled-5s-int8-convrot.safetensors
+--text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/realrebelai/Kandinsky-6.0-Pro-5s_GGUFs/blob/main/Text Encoder/K6-Qwen2.5-VL-7B-w4a8.safetensors" +
+--inference-steps 10
+--guidance-scales 1
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky6-lite-int8-encoder
+--output-size 864x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour. Audio: wind and distant surf."

@@ -7,7 +7,7 @@ title: Hunyuan-DiT
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"hydit"}]
 @quantizer[{"model-type":"hydit"}]
 @textencoders[{"model-type":"hydit","arg":"--text-encoders", "divider-after":true}]
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model":"LoRA"}]

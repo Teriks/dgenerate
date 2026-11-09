@@ -155,6 +155,45 @@ def _patch_flux_pos_embed(transformer,
     return _attribute_patch(pos_embed, 'forward', forward)
 
 
+def _patch_kandinsky6_rope(transformer,
+                           base_resolution: int | None,
+                           method: str,
+                           mscale: str = 'constant',
+                           axis_scaling: str = 'shared'):
+    """Scale Kandinsky 6's spatial RoPE axes. Time stays on the original table."""
+    rope = getattr(transformer, 'visual_rope_embeddings', None)
+    if rope is None or not hasattr(rope, 'axes_dims') or not hasattr(rope, 'angles_0'):
+        raise DypeError('The loaded Kandinsky 6 transformer has no visual RoPE embedder.')
+    axes = tuple(int(dim) for dim in rope.axes_dims)
+    theta = float(getattr(rope, 'max_period', 10000.0))
+    base_patches = _image_base_patches(base_resolution, default=864)
+
+    def forward(pos, scale_factor=(1.0, 1.0, 1.0)):
+        num_frames, height, width = (int(axis.shape[0]) for axis in pos)
+        angles_t = rope.angles_0[pos[0]] / float(scale_factor[0])
+        shared_scale = _shared_scale(axis_scaling, (height, width), base_patches)
+        spatial = []
+        for axis, length, positions, scale in (
+                (1, height, pos[1], float(scale_factor[1])),
+                (2, width, pos[2], float(scale_factor[2]))):
+            angles = dype_rope_1d(
+                positions, axes[axis], theta=theta,
+                base_length=base_patches, current_length=length,
+                timestep=_CURRENT_TIMESTEP.get(), method=method, mscale=mscale,
+                shared_scale=shared_scale, output='angles')
+            spatial.append(angles / scale)
+        angles = torch.cat([
+            angles_t.view(num_frames, 1, 1, -1).expand(num_frames, height, width, -1),
+            spatial[0].view(1, height, 1, -1).expand(num_frames, height, width, -1),
+            spatial[1].view(1, 1, width, -1).expand(num_frames, height, width, -1),
+        ], dim=-1)
+        cos, sin = torch.cos(angles), torch.sin(angles)
+        packed = torch.stack([cos, -sin, sin, cos], dim=-1)
+        return packed.view(*packed.shape[:-1], 2, 2).unsqueeze(-4)
+
+    return _attribute_patch(rope, 'forward', forward)
+
+
 def _patch_zimage_rope(transformer,
                        base_resolution: int | None,
                        method: str,
@@ -487,8 +526,11 @@ def _patch_transformer(transformer,
                        method: str,
                        mscale: str,
                        axis_scaling: str):
-    if model_family in {'flux1', 'flux2'}:
+    if model_family in {'flux1', 'flux2', 'flux3'}:
         restore_rope = _patch_flux_pos_embed(transformer, base_resolution, method, mscale, axis_scaling)
+    elif model_family == 'kandinsky6':
+        restore_rope = _patch_kandinsky6_rope(
+            transformer, base_resolution, method, mscale, axis_scaling)
     elif model_family == 'krea2':
         # Diffusers' Krea2RotaryPosEmbed is copied from FluxPosEmbed and uses
         # the same position-ID contract, under transformer.rotary_emb.

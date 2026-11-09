@@ -94,27 +94,43 @@ def fetch_model_index_dict(
     else:
         default_pretrained_model_config_name = path
 
+    filenames = ('model_index.json', 'modular_model_index.json')
+
+    def _read(path):
+        with open(path, encoding='utf-8') as config_file:
+            return json.load(config_file)
+
     if single_file_load or not os.path.isdir(default_pretrained_model_config_name):
-        with _hfhub.with_hf_errors_as_config_not_found():
-            cached_model_config_path = huggingface_hub.hf_hub_download(
-                default_pretrained_model_config_name,
-                filename='model_index.json',
-                subfolder=subfolder,
-                revision=revision,
-                local_files_only=local_files_only,
-                token=auth_token
-            )
-    else:
-        cached_model_config_path = default_pretrained_model_config_name
+        last_error = None
+        for filename in filenames:
+            try:
+                with _hfhub.with_hf_errors_as_config_not_found():
+                    cached_model_config_path = huggingface_hub.hf_hub_download(
+                        default_pretrained_model_config_name,
+                        filename=filename,
+                        subfolder=subfolder,
+                        revision=revision,
+                        local_files_only=local_files_only,
+                        token=auth_token
+                    )
+                return _read(cached_model_config_path)
+            except Exception as error:
+                last_error = error
+                continue
+        if last_error is not None:
+            raise last_error
+        raise FileNotFoundError(
+            f'No model_index.json or modular_model_index.json for "{default_pretrained_model_config_name}".')
 
-        extra_path_args = []
-        if subfolder:
-            extra_path_args = [subfolder]
-
-        cached_model_config_path = os.path.join(cached_model_config_path, *extra_path_args, 'model_index.json')
-
-    with open(cached_model_config_path) as config_file:
-        return json.load(config_file)
+    extra_path_args = [subfolder] if subfolder else []
+    last_error = None
+    for filename in filenames:
+        cached_model_config_path = os.path.join(
+            default_pretrained_model_config_name, *extra_path_args, filename)
+        if os.path.isfile(cached_model_config_path):
+            return _read(cached_model_config_path)
+        last_error = FileNotFoundError(cached_model_config_path)
+    raise last_error
 
 
 _AUTO_DTYPES = {

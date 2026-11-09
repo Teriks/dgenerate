@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Diffusers DreamBooth LoRA trained on Klein Base.
+# Trigger word: alphajace. https://huggingface.co/Raume/alphajace-klein-lora
+# The same weights also load on the distilled checkpoint.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+black-forest-labs/flux-3-image-klein-base
+--model-type flux3
+--dtype bfloat16
+--model-sequential-offload
+--loras "Raume/alphajace-klein-lora;weight-name=pytorch_lora_weights.safetensors;scale=1.0"
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path flux3-klein-lora
+--output-size 1024
+--prompts "alphajace, a portrait in warm window light"

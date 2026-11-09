@@ -4,7 +4,7 @@ from unittest import mock
 
 import torch
 
-from dgenerate.pipelinewrapper import DiffusionArguments
+from dgenerate.pipelinewrapper import GenerationArguments
 from dgenerate.pipelinewrapper.videopipelines import ltx
 
 
@@ -64,7 +64,7 @@ class LTXTemporalUpscaleTest(unittest.TestCase):
             calls.append((pipeline, kwargs))
             return make_output()
 
-        args = DiffusionArguments()
+        args = GenerationArguments()
         args.ltx_latent_upscale_mode = 'temporal'
         args.ltx_temporal_upscale_rounds = 1
         args.ltx_stg_scale = None

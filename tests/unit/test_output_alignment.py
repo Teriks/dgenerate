@@ -19,16 +19,16 @@ class TestOutputAlignment(unittest.TestCase):
             (_enums.ModelType.FLUX, 8),
         )
 
-        wrapper = _wrapper.DiffusionPipelineWrapper.__new__(
-            _wrapper.DiffusionPipelineWrapper)
+        wrapper = _wrapper.PipelineWrapper.__new__(
+            _wrapper.PipelineWrapper)
         for model_type, expected_alignment in cases:
             with self.subTest(model_type=model_type):
                 wrapper._model_type = model_type
                 self.assertEqual(wrapper._output_align(), expected_alignment)
 
     def test_aligned_user_dimensions_snap_to_alignment_minimum(self):
-        wrapper = _wrapper.DiffusionPipelineWrapper.__new__(
-            _wrapper.DiffusionPipelineWrapper)
+        wrapper = _wrapper.PipelineWrapper.__new__(
+            _wrapper.PipelineWrapper)
         wrapper._model_type = _enums.ModelType.QWEN_IMAGE
 
         self.assertEqual(
@@ -41,8 +41,8 @@ class TestOutputAlignment(unittest.TestCase):
             (16, None))
 
     def test_txt2img_reports_both_aligned_dimensions_once(self):
-        wrapper = _wrapper.DiffusionPipelineWrapper.__new__(
-            _wrapper.DiffusionPipelineWrapper)
+        wrapper = _wrapper.PipelineWrapper.__new__(
+            _wrapper.PipelineWrapper)
         wrapper._model_type = _enums.ModelType.SDXL
         user_args = SimpleNamespace(width=1001, height=1003)
 

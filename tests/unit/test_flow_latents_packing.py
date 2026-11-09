@@ -5,7 +5,7 @@ import torch
 
 import dgenerate.pipelinewrapper.denoise_range as denoise_range
 from dgenerate.pipelinewrapper.enums import ModelType
-from dgenerate.pipelinewrapper.wrapper import DiffusionPipelineWrapper
+from dgenerate.pipelinewrapper.wrapper import PipelineWrapper
 
 
 class TestFlowLatentsPacking(unittest.TestCase):
@@ -14,7 +14,7 @@ class TestFlowLatentsPacking(unittest.TestCase):
     def test_flux_style_pack_unpack_roundtrip(self):
         # External spatial [B, C, H, W] <-> packed [B, L, C*4]
         spatial = torch.randn(2, 16, 64, 64)
-        packed = DiffusionPipelineWrapper._repack_flux_latents(spatial)
+        packed = PipelineWrapper._repack_flux_latents(spatial)
         self.assertEqual(packed.shape, (2, 32 * 32, 64))
 
         # Mimic wrapper unpack geometry for 512px / vae_scale 8.
@@ -28,14 +28,14 @@ class TestFlowLatentsPacking(unittest.TestCase):
 
     def test_qwen21_flatten_pack_unpack_roundtrip(self):
         spatial = torch.randn(2, 16, 64, 96)
-        packed = DiffusionPipelineWrapper._repack_qwen21_latents(spatial)
-        restored = DiffusionPipelineWrapper._unpack_qwen21_latents(
+        packed = PipelineWrapper._repack_qwen21_latents(spatial)
+        restored = PipelineWrapper._unpack_qwen21_latents(
             packed, height=1024, width=1536)
 
         self.assertEqual(packed.shape, (2, 64 * 96, 16))
         self.assertTrue(torch.allclose(restored, spatial, atol=1e-6))
 
-        wrapper = DiffusionPipelineWrapper.__new__(DiffusionPipelineWrapper)
+        wrapper = PipelineWrapper.__new__(PipelineWrapper)
         wrapper._model_type = ModelType.QWEN_IMAGE_21
         wrapper._pipeline = types.SimpleNamespace(vae_scale_factor=16)
         self.assertTrue(wrapper._latents_use_qwen21_packing())
@@ -47,13 +47,13 @@ class TestFlowLatentsPacking(unittest.TestCase):
 
     def test_kandinsky5_image_layout_roundtrip(self):
         spatial = torch.randn(2, 16, 64, 96)
-        pipeline_layout = DiffusionPipelineWrapper._repack_kandinsky5_image_latents(spatial)
-        restored = DiffusionPipelineWrapper._unpack_kandinsky5_image_latents(pipeline_layout)
+        pipeline_layout = PipelineWrapper._repack_kandinsky5_image_latents(spatial)
+        restored = PipelineWrapper._unpack_kandinsky5_image_latents(pipeline_layout)
 
         self.assertEqual(pipeline_layout.shape, (2, 1, 64, 96, 16))
         self.assertTrue(torch.allclose(restored, spatial, atol=1e-6))
 
-        wrapper = DiffusionPipelineWrapper.__new__(DiffusionPipelineWrapper)
+        wrapper = PipelineWrapper.__new__(PipelineWrapper)
         wrapper._model_type = ModelType.KANDINSKY5_IMAGE
         self.assertTrue(wrapper._latents_use_kandinsky5_image_layout())
         self.assertTrue(torch.allclose(
@@ -71,7 +71,7 @@ class TestFlowLatentsPacking(unittest.TestCase):
 
     def test_krea2_uses_flux_style_packing(self):
         from types import SimpleNamespace
-        wrapper = DiffusionPipelineWrapper.__new__(DiffusionPipelineWrapper)
+        wrapper = PipelineWrapper.__new__(PipelineWrapper)
         wrapper._model_type = ModelType.KREA2
         wrapper._pipeline = SimpleNamespace(default_sample_size=64, vae_scale_factor=8)
         spatial = torch.randn(1, 16, 64, 64)
@@ -90,9 +90,9 @@ class TestFlowLatentsPacking(unittest.TestCase):
 
     def test_flux2_patchify_unpatchify_roundtrip(self):
         spatial = torch.randn(2, 32, 128, 128)
-        patchified = DiffusionPipelineWrapper._patchify_flux2_latents(spatial)
+        patchified = PipelineWrapper._patchify_flux2_latents(spatial)
         self.assertEqual(patchified.shape, (2, 128, 64, 64))
-        restored = DiffusionPipelineWrapper._unpatchify_flux2_latents(patchified)
+        restored = PipelineWrapper._unpatchify_flux2_latents(patchified)
         self.assertEqual(restored.shape, spatial.shape)
         self.assertTrue(torch.allclose(restored, spatial, atol=1e-6))
 
@@ -100,12 +100,12 @@ class TestFlowLatentsPacking(unittest.TestCase):
         # Full Flux.2: prepare_latents packs patchified [B, C*4, H/2, W/2]
         # to [B, H*W, C*4]. Dense inverse must recover patchified, then spatial.
         spatial = torch.randn(1, 32, 128, 128)
-        patchified = DiffusionPipelineWrapper._patchify_flux2_latents(spatial)
+        patchified = PipelineWrapper._patchify_flux2_latents(spatial)
         packed = patchified.reshape(1, 128, 64 * 64).permute(0, 2, 1)  # Flux2._pack_latents
 
         batch_size, num_patches, channels = packed.shape
         restored_patch = packed.permute(0, 2, 1).reshape(batch_size, channels, 64, 64)
-        restored = DiffusionPipelineWrapper._unpatchify_flux2_latents(restored_patch)
+        restored = PipelineWrapper._unpatchify_flux2_latents(restored_patch)
 
         self.assertTrue(torch.allclose(restored_patch, patchified, atol=1e-6))
         self.assertTrue(torch.allclose(restored, spatial, atol=1e-6))

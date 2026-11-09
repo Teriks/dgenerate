@@ -1,0 +1,36 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Custom system prompt and sampling for the FLUX.3 Qwen3.5 upsampler.
+# With no value the upsampler keeps its own system prompt and decodes
+# greedily. A value replaces that system prompt for this image. The user
+# request stays the user turn. --pipeline-prompt-enhance-seeds is only the
+# rewrite. --gen-seeds is the image. The bare flag is
+# examples/flux3/pipeline_prompt_enhance/distilled-config.dgen.
+# The checkpoint is gated.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+black-forest-labs/flux-3-image-klein
+--model-type flux3
+--dtype bfloat16
+--model-sequential-offload
+--pipeline-prompt-enhance "Expand the request into one English caption. Keep the subject the user named. Output only the caption."
+--pipeline-prompt-enhance-seeds 7
+--pipeline-prompt-enhance-temperature 0.7
+--pipeline-prompt-enhance-top-p 0.9
+--pipeline-prompt-enhance-top-k 40
+--pipeline-prompt-enhance-presence-penalty 0.6
+--pipeline-prompt-enhance-max-new-tokens 200
+--pipeline-prompt-enhance-gpu-headroom 3
+--inference-steps 16
+--guidance-scales 1
+--gen-seeds 1
+--output-path flux3-klein-sampling
+--output-size 1024
+--prompts "A red fox in a snow-covered forest clearing at golden hour"

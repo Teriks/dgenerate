@@ -266,6 +266,10 @@ class _StepState:
         self._shapes: dict[int, torch.Size] = {}
         self.patches: list[_BlockPatch] = []
         self.force_blocks = False
+        # Audio half of a fused (video, audio) block, forecast beside the video feature.
+        self._companion_preds: dict[int, torch.Tensor | None] = {}
+        self._companion_forecasters: dict[int, _forecaster.SpectrumPredictor] = {}
+        self._companion_shapes: dict[int, torch.Size] = {}
 
     def _time(self) -> float:
         return self.cnt / max(self.num_steps - 1, 1)
@@ -294,6 +298,7 @@ class _StepState:
         self.cnt += 1
         self._open = False
         self._preds.clear()
+        self._companion_preds.clear()
 
     def _reset_sample(self) -> None:
         self.cnt = 0
@@ -304,6 +309,9 @@ class _StepState:
         self._forecasters.clear()
         self._shapes.clear()
         self._preds.clear()
+        self._companion_forecasters.clear()
+        self._companion_shapes.clear()
+        self._companion_preds.clear()
 
     def begin(self, timestep) -> None:
         key = _timestep_key(timestep)
@@ -321,6 +329,7 @@ class _StepState:
         self._open_key = key
         self.stream = 0
         self._preds.clear()
+        self._companion_preds.clear()
         self._decide()
         if any(patch.returns_pair is None for patch in self.patches):
             self.actual_forward = True
@@ -361,6 +370,41 @@ class _StepState:
             return None
         value = predictor.predict(self._time()).reshape(shape)
         self._preds[stream] = value
+        return value
+
+    def _companion_predictor(self, stream: int) -> _forecaster.SpectrumPredictor:
+        found = self._companion_forecasters.get(stream)
+        if found is None:
+            chebyshev = _forecaster.ChebyshevForecaster(
+                M=self.settings.order,
+                K=max(100, self.settings.order + 2),
+                lam=self.settings.lam,
+            )
+            found = _forecaster.SpectrumPredictor(chebyshev, w=self.settings.weight)
+            self._companion_forecasters[stream] = found
+        return found
+
+    def cache_companion(self, feature: torch.Tensor) -> None:
+        """Record the cache-point audio stream so a skipped step can forecast it."""
+        feature = feature.detach()
+        stream = self.stream
+        previous = self._companion_shapes.get(stream)
+        if previous is not None and previous != feature.shape:
+            self._companion_forecasters.pop(stream, None)
+        self._companion_shapes[stream] = feature.shape
+        self._companion_predictor(stream).update(self._time(), feature.reshape(-1))
+
+    def predict_companion(self) -> torch.Tensor | None:
+        stream = self.stream
+        if stream in self._companion_preds:
+            return self._companion_preds[stream]
+        predictor = self._companion_forecasters.get(stream)
+        shape = self._companion_shapes.get(stream)
+        if predictor is None or shape is None or not predictor.ready():
+            self._companion_preds[stream] = None
+            return None
+        value = predictor.predict(self._time()).reshape(shape)
+        self._companion_preds[stream] = value
         return value
 
 
@@ -427,6 +471,10 @@ class _BlockPatch:
         # 0: the block returns (image, text), as Hunyuan and Motif do.
         # 1: the block returns (text, image), as Flux, SD3, and Qwen-Image do.
         self.image_slot: int | None = None
+        # Kandinsky 6 fused blocks return (video, audio). Audio is forecast
+        # from the cache-point block, the same way the video feature is.
+        self.companion_audio = False
+        self.companion_absent = False
         self.is_cache_point = is_cache_point
         state.patches.append(self)
 
@@ -434,31 +482,48 @@ class _BlockPatch:
             hidden, encoder = _hidden_and_encoder(self.original, args, kwargs)
             if state.actual_forward or self.returns_pair is None or hidden is None:
                 out = self.original(*args, **kwargs)
-                self._remember(out, hidden)
+                self._remember(out, hidden, encoder)
                 if self.is_cache_point and hidden is not None:
                     feature = _feature_from_output(out, hidden)
                     if feature is not None:
                         state.cache(feature)
+                    if (self.companion_audio and isinstance(out, tuple)
+                            and len(out) > 1 and torch.is_tensor(out[1])):
+                        state.cache_companion(out[1])
                 return out
 
             predicted = state.predict()
             image = hidden
             if predicted is not None and predicted.shape == hidden.shape:
                 image = predicted.to(device=hidden.device, dtype=hidden.dtype)
+            if self.companion_audio:
+                audio = state.predict_companion()
+                if audio is None:
+                    return self.original(*args, **kwargs)
+                return image, audio.to(device=hidden.device, dtype=audio.dtype)
+            if self.companion_absent:
+                return image, None
             if self.returns_pair:
                 return _pair_with_image(image, encoder, self.image_slot)
             return image
 
         module.forward = wrapper
 
-    def _remember(self, out, hidden: torch.Tensor | None) -> None:
+    def _remember(self, out, hidden: torch.Tensor | None, encoder=None) -> None:
         self.returns_pair = isinstance(out, tuple)
         if not self.returns_pair or hidden is None:
             return
         for index, item in enumerate(out):
             if torch.is_tensor(item) and item.shape == hidden.shape:
                 self.image_slot = index
-                return
+                break
+        if (encoder is None and self.image_slot == 0 and isinstance(out, tuple)
+                and len(out) > 1):
+            audio = out[1]
+            if audio is None:
+                self.companion_absent = True
+            elif torch.is_tensor(audio) and audio.shape != hidden.shape:
+                self.companion_audio = True
 
     def restore(self) -> None:
         self.module.forward = self.original
@@ -505,18 +570,29 @@ def _face_adapters(denoiser: nn.Module) -> list[nn.Module]:
     return []
 
 
+def _extend_blocks(found: list, seen: set, listing) -> None:
+    if not isinstance(listing, (nn.ModuleList, list, tuple)) or len(listing) == 0:
+        return
+    for module in listing:
+        if not isinstance(module, nn.Module) or id(module) in seen:
+            continue
+        seen.add(id(module))
+        found.append(module)
+
+
 def _block_modules(denoiser: nn.Module) -> list[nn.Module]:
     found = []
     seen = set()
+    # FLUX.3 per-mode blocks run before the joint single blocks. The last
+    # single block stays the cache point because it is appended below.
+    _extend_blocks(found, seen, getattr(denoiser, 'txt_mode_blocks', None))
+    mode_blocks = getattr(denoiser, 'mode_blocks', None)
+    if isinstance(mode_blocks, nn.ModuleDict):
+        for name in ('image', 'image_cond'):
+            _extend_blocks(found, seen, mode_blocks.get(name) if hasattr(mode_blocks, 'get') else None)
     for name in _BLOCK_LISTS:
         listing = getattr(denoiser, name, None)
-        if not isinstance(listing, (nn.ModuleList, list, tuple)) or len(listing) == 0:
-            continue
-        for module in listing:
-            if not isinstance(module, nn.Module) or id(module) in seen:
-                continue
-            seen.add(id(module))
-            found.append(module)
+        _extend_blocks(found, seen, listing)
     return found
 
 

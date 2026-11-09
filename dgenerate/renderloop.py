@@ -29,6 +29,7 @@ import tempfile
 import time
 import typing
 
+import numpy
 import PIL.Image
 import PIL.PngImagePlugin
 import torch
@@ -141,9 +142,9 @@ class ImageGeneratedEvent(_Event):
     :py:attr:`.RenderLoopConfig.output_path`, it is the suggested filename by itself.
     """
 
-    diffusion_args: _pipelinewrapper.DiffusionArguments
+    diffusion_args: _pipelinewrapper.GenerationArguments
     """
-    Diffusion argument object, contains :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper` 
+    Diffusion argument object, contains :py:class:`dgenerate.pipelinewrapper.PipelineWrapper` 
     arguments used to produce this image.
     """
 
@@ -209,7 +210,7 @@ class ImageGeneratedEvent(_Event):
                  batch_index: int,
                  suggested_directory: str,
                  suggested_filename: str,
-                 diffusion_args: _pipelinewrapper.DiffusionArguments,
+                 diffusion_args: _pipelinewrapper.GenerationArguments,
                  image_seed: _mediainput.ImageSeed,
                  command_string: str,
                  config_string: str):
@@ -260,8 +261,133 @@ class ImageFileSavedEvent(_Event):
         self.config_filename = config_filename
 
 
+class VideoGeneratedEvent(_Event):
+    """
+    Generated in the event stream of :py:meth:`.RenderLoop.events`
+
+    Occurs when a video pipeline has produced a clip. The frames and soundtrack
+    are in memory. This is yielded whether or not :py:attr:`RenderLoop.disable_writes`
+    is set. :py:meth:`write` muxes the clip to a path or a binary stream.
+
+    Call :py:meth:`write` while handling the event. The frames are closed when
+    the render loop moves on. Copy a frame with ``frame.copy()`` to keep it.
+
+    .. code-block:: python
+
+        render_loop = RenderLoop(config=config, disable_writes=True)
+        for event in render_loop.events():
+            if isinstance(event, VideoGeneratedEvent):
+                event.write(event.suggested_filename)
+                event.write(stream)
+    """
+
+    frames: list[PIL.Image.Image]
+    """
+    The clip, one PIL image per frame.
+    """
+
+    fps: float
+    """
+    Frame rate of the clip.
+    """
+
+    frame_duration: float
+    """
+    How long one frame is visible, in milliseconds.
+    """
+
+    audio: numpy.ndarray | None
+    """
+    Optional float32 soundtrack, shape ``(channels, samples)``.
+    """
+
+    audio_sample_rate: int | None
+    """
+    Sample rate of :py:attr:`audio` in Hz.
+    """
+
+    generation_step: int
+    """
+    The current generation step. (zero indexed)
+    """
+
+    suggested_directory: str
+    """
+    A suggested directory path for saving this clip.
+
+    A value of ``'.'`` may be present, this indicates the current working directory.
+    """
+
+    suggested_filename: str
+    """
+    A suggested filename for this clip. This does not include
+    :py:attr:`.RenderLoopConfig.output_path`.
+    """
+
+    diffusion_args: _pipelinewrapper.GenerationArguments
+    """
+    Arguments used to produce this clip.
+    """
+
+    command_string: str
+    """
+    Command line that can reproduce this clip. This does not include ``--device``.
+    """
+
+    config_string: str
+    """
+    Config file text that can reproduce this clip. This does not include ``--device``.
+    """
+
+    def write(self, file, animation_format: str | None = None) -> None:
+        """Mux this clip to a path or a binary stream.
+
+        A path's extension selects the container. A stream is mp4 unless
+        ``animation_format`` is set. Audio is muxed into mp4. A seekable stream
+        is rewound when the mux finishes. A non-seekable stream receives a
+        fragmented mp4. A ``.frames`` path writes one PNG per frame. Call this
+        while handling the event, before the frames are closed.
+
+        :param file: Filesystem path or binary file object.
+        :param animation_format: Container extension without a period.
+        """
+        _mediaoutput.write_animation(
+            file,
+            self.frames,
+            self.fps,
+            animation_format=animation_format,
+            audio=self.audio,
+            audio_sample_rate=self.audio_sample_rate)
+
+    def __init__(self,
+                 origin: 'RenderLoop',
+                 frames: list[PIL.Image.Image],
+                 fps: float,
+                 audio: numpy.ndarray | None,
+                 audio_sample_rate: int | None,
+                 generation_step: int,
+                 suggested_directory: str,
+                 suggested_filename: str,
+                 diffusion_args: _pipelinewrapper.GenerationArguments,
+                 command_string: str,
+                 config_string: str):
+        super().__init__(origin)
+        self.frames = frames
+        self.fps = fps
+        self.frame_duration = 1000.0 / fps if fps else 0.0
+        self.audio = audio
+        self.audio_sample_rate = audio_sample_rate
+        self.generation_step = generation_step
+        self.suggested_directory = suggested_directory if suggested_directory.strip() else '.'
+        self.suggested_filename = suggested_filename
+        self.diffusion_args = diffusion_args
+        self.command_string = command_string
+        self.config_string = config_string
+
+
 RenderLoopEvent = typing.Union[
     ImageGeneratedEvent,
+    VideoGeneratedEvent,
     StartingAnimationEvent,
     StartingAnimationFileEvent,
     AnimationFileFinishedEvent,
@@ -292,6 +418,8 @@ class RenderLoop:
     """
     Disable or enable all writes to disk, if you intend to only ever use the event
     stream of the render loop when using dgenerate as a library, this is a useful option.
+    A video clip is still delivered on :py:class:`VideoGeneratedEvent`, and
+    :py:meth:`VideoGeneratedEvent.write` muxes it to a path or a stream.
     
     :py:attr:`.RenderLoop.written_images` and :py:attr:`.RenderLoop.written_animations` will not be available
     if writes to disk are disabled.
@@ -323,13 +451,13 @@ class RenderLoop:
     """
 
     @property
-    def pipeline_wrapper(self) -> _pipelinewrapper.DiffusionPipelineWrapper:
+    def pipeline_wrapper(self) -> _pipelinewrapper.PipelineWrapper:
         """
-        Get the last used :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper` instance.
+        Get the last used :py:class:`dgenerate.pipelinewrapper.PipelineWrapper` instance.
 
         Will be ``None`` if :py:meth:`.RenderLoop.run` has never been called.
 
-        :return: :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper` or ``None``
+        :return: :py:class:`dgenerate.pipelinewrapper.PipelineWrapper` or ``None``
         """
 
         return self._pipeline_wrapper
@@ -360,11 +488,10 @@ class RenderLoop:
         :param second_model_extra_modules: Extra raw diffusers modules to use in the creation of
             any refiner or stable cascade decoder model pipeline.
 
-        :param disable_writes: Disable or enable all writes to disk, if you intend to only
-            ever use the event stream of the render loop when using dgenerate as a
-            library, this is a useful option. :py:attr:`.RenderLoop.written_images` and
-            :py:attr:`.RenderLoop.written_animations` will not be available if writes to
-            disk are disabled.
+        :param disable_writes: Disable or enable all writes to disk. Useful when the
+            event stream is the only output. Video clips are still delivered on
+            :py:class:`VideoGeneratedEvent`. :py:attr:`.RenderLoop.written_images` and
+            :py:attr:`.RenderLoop.written_animations` are empty when writes are disabled.
         """
 
         self._generation_step = -1
@@ -453,7 +580,7 @@ class RenderLoop:
             return os.path.normpath(os.path.join(self._c_config.output_path, name))
         return name
 
-    def _gen_filename_components_base(self, diffusion_args: _pipelinewrapper.DiffusionArguments):
+    def _gen_filename_components_base(self, diffusion_args: _pipelinewrapper.GenerationArguments):
 
         scheduler_components = []
 
@@ -574,7 +701,7 @@ class RenderLoop:
 
         return args
 
-    def _get_base_extra_config_opts(self, args: _pipelinewrapper.DiffusionArguments):
+    def _get_base_extra_config_opts(self, args: _pipelinewrapper.GenerationArguments):
         render_loop_opts = []
 
         if self._c_config.seed_image_processors:
@@ -655,7 +782,7 @@ class RenderLoop:
                                       extra_opts_out: list[tuple[str, typing.Any] | tuple[str]],
                                       extra_comments_out: list[str],
                                       batch_index: int,
-                                      generation_result: _pipelinewrapper.PipelineWrapperResult):
+                                      generation_result: _pipelinewrapper.GenerationResult):
 
         if generation_result.image_count > 1:
             if self._c_config.batch_grid_size is not None:
@@ -666,7 +793,7 @@ class RenderLoop:
                     f'{file_title} {batch_index + 1} from a batch of {generation_result.image_count}')
 
     def _gen_dgenerate_config(self,
-                              args: _pipelinewrapper.DiffusionArguments | None = None,
+                              args: _pipelinewrapper.GenerationArguments | None = None,
                               extra_opts:
                               collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
                               extra_comments: collections.abc.Iterable[str] | None = None) -> str:
@@ -681,7 +808,7 @@ class RenderLoop:
         )
 
     def _gen_dgenerate_command(self,
-                               args: _pipelinewrapper.DiffusionArguments | None = None,
+                               args: _pipelinewrapper.GenerationArguments | None = None,
                                extra_opts: collections.abc.Sequence[
                                                tuple[str] | tuple[str, typing.Any]] | None = None) -> str:
 
@@ -698,8 +825,8 @@ class RenderLoop:
                      image: PIL.Image.Image | None,
                      latents: torch.Tensor | None,
                      batch_index: int,
-                     diffusion_args: _pipelinewrapper.DiffusionArguments,
-                     generation_result: _pipelinewrapper.PipelineWrapperResult,
+                     diffusion_args: _pipelinewrapper.GenerationArguments,
+                     generation_result: _pipelinewrapper.GenerationResult,
                      image_seed: _mediainput.ImageSeed | None = None) -> RenderLoopEventStream:
 
         self._ensure_output_path()
@@ -859,8 +986,8 @@ class RenderLoop:
 
     def _write_generation_result(self,
                                  filename_components: list[str],
-                                 diffusion_args: _pipelinewrapper.DiffusionArguments,
-                                 generation_result: _pipelinewrapper.PipelineWrapperResult,
+                                 diffusion_args: _pipelinewrapper.GenerationArguments,
+                                 generation_result: _pipelinewrapper.GenerationResult,
                                  image_seed: _mediainput.ImageSeed | None = None) -> RenderLoopEventStream:
 
         # Determine if we're working with images or latents
@@ -929,9 +1056,9 @@ class RenderLoop:
                 )
 
     def _write_animation_frame(self,
-                               diffusion_args: _pipelinewrapper.DiffusionArguments,
+                               diffusion_args: _pipelinewrapper.GenerationArguments,
                                image_seed_obj: _mediainput.ImageSeed,
-                               generation_result: _pipelinewrapper.PipelineWrapperResult) -> RenderLoopEventStream:
+                               generation_result: _pipelinewrapper.GenerationResult) -> RenderLoopEventStream:
 
         filename_components = [*self._gen_filename_components_base(diffusion_args),
                                'frame',
@@ -945,9 +1072,9 @@ class RenderLoop:
                                                  image_seed_obj)
 
     def _write_image_seed_gen_image(self,
-                                    diffusion_args: _pipelinewrapper.DiffusionArguments,
+                                    diffusion_args: _pipelinewrapper.GenerationArguments,
                                     image_seed_obj: _mediainput.ImageSeed,
-                                    generation_result: _pipelinewrapper.PipelineWrapperResult) -> RenderLoopEventStream:
+                                    generation_result: _pipelinewrapper.GenerationResult) -> RenderLoopEventStream:
         filename_components = [*self._gen_filename_components_base(diffusion_args),
                                'step',
                                self._generation_step + 1]
@@ -958,8 +1085,8 @@ class RenderLoop:
                                                  image_seed_obj)
 
     def _write_prompt_only_image(self,
-                                 diffusion_args: _pipelinewrapper.DiffusionArguments,
-                                 generation_result: _pipelinewrapper.PipelineWrapperResult) \
+                                 diffusion_args: _pipelinewrapper.GenerationArguments,
+                                 generation_result: _pipelinewrapper.GenerationResult) \
             -> RenderLoopEventStream:
         filename_components = [*self._gen_filename_components_base(diffusion_args),
                                'step',
@@ -970,7 +1097,7 @@ class RenderLoop:
                                                  generation_result)
 
     def _pre_generation_step(self,
-                             diffusion_args: _pipelinewrapper.DiffusionArguments,
+                             diffusion_args: _pipelinewrapper.GenerationArguments,
                              image_seed=None):
 
         self._last_frame_time = 0
@@ -1043,7 +1170,7 @@ class RenderLoop:
             with _hfhub.auth_token_context(self.config.auth_token):
                 for _ in self._run():
                     continue
-        except _pipelinewrapper.DiffusionArgumentsHelpException as e:
+        except _pipelinewrapper.GenerationArgumentsHelpException as e:
             _messages.log(e)
             pass
 
@@ -1055,7 +1182,11 @@ class RenderLoop:
         :py:meth:`RenderLoopConfig.fill_defaults` on a copy of your configuration
         prior to running.
 
-        Event objects are of the union type :py:data:`.RenderLoopEvent`
+        Event objects are of the union type :py:data:`.RenderLoopEvent`.
+
+        A video pipeline yields :py:class:`VideoGeneratedEvent` with the frames
+        and soundtrack in memory. ``disable_writes=True`` skips the file, and
+        :py:meth:`VideoGeneratedEvent.write` muxes the clip to a path or a stream.
 
         The exceptions mentioned here are those you may encounter upon iterating,
         they will not occur upon simple acquisition of the event stream iterator.
@@ -1069,12 +1200,12 @@ class RenderLoop:
         try:
             with _hfhub.auth_token_context(self.config.auth_token):
                 yield from self._run()
-        except _pipelinewrapper.DiffusionArgumentsHelpException as e:
+        except _pipelinewrapper.GenerationArgumentsHelpException as e:
             _messages.log(e)
             pass
 
     def _create_pipeline_wrapper(self):
-        self._pipeline_wrapper = _pipelinewrapper.DiffusionPipelineWrapper(
+        self._pipeline_wrapper = _pipelinewrapper.PipelineWrapper(
             self._c_config.model_path,
             dtype=self._c_config.dtype,
             device=self._c_config.device,
@@ -1214,7 +1345,7 @@ class RenderLoop:
         del self._post_processor
         self._post_processor = None
 
-    def _run_postprocess(self, generation_result: _pipelinewrapper.PipelineWrapperResult):
+    def _run_postprocess(self, generation_result: _pipelinewrapper.GenerationResult):
         if self._post_processor is not None:
             if generation_result.has_images:
                 for idx, image in enumerate(generation_result.images):
@@ -1338,7 +1469,7 @@ class RenderLoop:
 
     def _should_skip_external_resize(self) -> bool:
         """
-        Determines if we should skip external resizing and let the DiffusionPipelineWrapper handle it.
+        Determines if we should skip external resizing and let the PipelineWrapper handle it.
         This is needed for:
 
         - Models using image encoders (like Stable Cascade) where input size doesn't matter
@@ -1445,11 +1576,11 @@ class RenderLoop:
             if seed_info.is_animation:
 
                 if is_control_guidance_spec:
-                    def set_extra_args(args: _pipelinewrapper.DiffusionArguments,
+                    def set_extra_args(args: _pipelinewrapper.GenerationArguments,
                                        ci_obj: _mediainput.ImageSeed):
                         args.control_images = ci_obj.control_images
                 else:
-                    def set_extra_args(args: _pipelinewrapper.DiffusionArguments,
+                    def set_extra_args(args: _pipelinewrapper.GenerationArguments,
                                        ims_obj: _mediainput.ImageSeed):
                         self._assign_image_seed_frames(args, ims_obj)
 
@@ -1482,7 +1613,7 @@ class RenderLoop:
                             generation_result)
 
     def _assign_image_seed_frames(self,
-                                  args: _pipelinewrapper.DiffusionArguments,
+                                  args: _pipelinewrapper.GenerationArguments,
                                   image_seed: _mediainput.ImageSeed):
         """
         Copy one zipped frame onto the pipeline arguments.
@@ -1527,7 +1658,7 @@ class RenderLoop:
             args.floyd_image = image_seed.floyd_image
 
     def _gen_animation_filename(self,
-                                diffusion_args: _pipelinewrapper.DiffusionArguments,
+                                diffusion_args: _pipelinewrapper.GenerationArguments,
                                 generation_step,
                                 ext):
 
@@ -1538,7 +1669,7 @@ class RenderLoop:
         return self._join_output_filename(components, ext=ext)
 
     def _render_video(self,
-                      pipeline_wrapper: _pipelinewrapper.DiffusionPipelineWrapper) -> RenderLoopEventStream:
+                      pipeline_wrapper: _pipelinewrapper.PipelineWrapper) -> RenderLoopEventStream:
         processors = self._video_image_processors()
         try:
             if self._c_config.image_seeds:
@@ -1642,7 +1773,7 @@ class RenderLoop:
         return processor
 
     def _assign_video_conditioning(self,
-                                   diffusion_arguments: _pipelinewrapper.DiffusionArguments,
+                                   diffusion_arguments: _pipelinewrapper.GenerationArguments,
                                    parsed: _mediainput.ImageSeedParseResult | None,
                                    processors: dict,
                                    owned_images: list):
@@ -1842,8 +1973,8 @@ class RenderLoop:
         return parsed.resize_resolution, aspect, align
 
     def _write_video_clip(self,
-                          diffusion_args: _pipelinewrapper.DiffusionArguments,
-                          generation_result: _pipelinewrapper.PipelineWrapperResult,
+                          diffusion_args: _pipelinewrapper.GenerationArguments,
+                          generation_result: _pipelinewrapper.GenerationResult,
                           image_seed_uri: str | None) -> RenderLoopEventStream:
         frames = list(generation_result.images or [])
         if not frames:
@@ -1858,6 +1989,13 @@ class RenderLoop:
                 'Audio is dropped because the clip has no sample rate.')
             audio = None
         animation_format = self._c_config.animation_format
+        filename_components = [
+            'ANIM',
+            *self._gen_filename_components_base(diffusion_args),
+            'step', self._generation_step + 1]
+        extra_opts = [(('--animation-format', animation_format))]
+        if image_seed_uri is not None:
+            extra_opts.append(('--image-seeds', image_seed_uri))
 
         starting_animation_event = StartingAnimationEvent(
             origin=self,
@@ -1865,6 +2003,19 @@ class RenderLoop:
             fps=fps,
             frame_duration=frame_duration)
         yield starting_animation_event
+        yield VideoGeneratedEvent(
+            origin=self,
+            frames=frames,
+            fps=fps,
+            audio=audio,
+            audio_sample_rate=sample_rate,
+            generation_step=self._generation_step,
+            suggested_directory=self._c_config.output_path,
+            suggested_filename=self._join_output_filename(
+                filename_components, ext=animation_format, with_output_path=False),
+            diffusion_args=diffusion_args,
+            command_string=self._gen_dgenerate_command(diffusion_args, extra_opts=extra_opts),
+            config_string=self._gen_dgenerate_config(diffusion_args, extra_opts=extra_opts))
 
         if not self.disable_writes:
             self._ensure_output_path()
@@ -1953,7 +2104,7 @@ class RenderLoop:
             writer.end()
 
     def _write_video_frame_files(self,
-                                 diffusion_args: _pipelinewrapper.DiffusionArguments,
+                                 diffusion_args: _pipelinewrapper.GenerationArguments,
                                  frames: list[PIL.Image.Image]):
         for index, frame in enumerate(frames):
             components = [*self._gen_filename_components_base(diffusion_args),
@@ -2008,11 +2159,11 @@ class RenderLoop:
         anim_writer.set_source_audio(audio, sample_rate)
 
     def _render_animation(self,
-                          pipeline_wrapper: _pipelinewrapper.DiffusionPipelineWrapper,
+                          pipeline_wrapper: _pipelinewrapper.PipelineWrapper,
                           set_wrapper_args_per_image_seed:
-                          typing.Callable[[_pipelinewrapper.DiffusionArguments, _mediainput.ImageSeed], None],
+                          typing.Callable[[_pipelinewrapper.GenerationArguments, _mediainput.ImageSeed], None],
                           arg_iterator:
-                          collections.abc.Iterator[_pipelinewrapper.DiffusionArguments],
+                          collections.abc.Iterator[_pipelinewrapper.GenerationArguments],
                           image_seed_iterator:
                           typing.Callable[[], collections.abc.Iterator[_mediainput.ImageSeed]],
                           fps: float,
@@ -2166,8 +2317,8 @@ class RenderLoop:
                                      filename: str,
                                      image_seed_uri: str,
                                      batch_index: int,
-                                     diffusion_args: _pipelinewrapper.DiffusionArguments,
-                                     generation_result: _pipelinewrapper.PipelineWrapperResult):
+                                     diffusion_args: _pipelinewrapper.GenerationArguments,
+                                     generation_result: _pipelinewrapper.GenerationResult):
         self._ensure_output_path()
 
         extra_opts = []

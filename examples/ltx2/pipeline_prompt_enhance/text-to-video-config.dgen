@@ -7,8 +7,8 @@
 # examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen.
 # A value replaces that prompt. file:path reads it from a UTF-8 file.
 # --pipeline-prompt-enhance-seeds is only the rewrite. --gen-seeds is the video.
-# Omit --ltx-prompt-enhancer to load google/gemma-4-E2B-it.
-# Set it to a model URI to load a different enhancer. text_encoder is not a URI.
+# Omit --prompt-upsampler to load google/gemma-4-E2B-it.
+# Set it to a prompt-upsampler URI to load a different model. text_encoder is not a URI.
 
 \set token %HF_TOKEN%
 

@@ -94,8 +94,8 @@ def _type_main_prompts(prompt):
     try:
         prompt = _prompt.Prompt.parse(prompt)
         prompt.set_embedded_args_on(
-            _pipelinewrapper.DiffusionArguments,
-            forbidden_checker=_pipelinewrapper.DiffusionArguments.prompt_embedded_arg_checker,
+            _pipelinewrapper.GenerationArguments,
+            forbidden_checker=_pipelinewrapper.GenerationArguments.prompt_embedded_arg_checker,
             validate_only=True)
         return prompt
     except (ValueError, _prompt.PromptEmbeddedArgumentError) as e:
@@ -972,6 +972,16 @@ def _type_freeu_params(val: str) -> tuple[float, float, float, float]:
     return tuple(steps)
 
 
+def _type_torch_compile_module(val: str):
+    if val not in _pipelinewrapper.TORCH_COMPILE_MAP_NAMES:
+        raise argparse.ArgumentTypeError(
+            f'Torch compile modules must be one of: '
+            f'{_textprocessing.oxford_comma(_pipelinewrapper.TORCH_COMPILE_MAP_NAMES, "or")}, '
+            f'received invalid value: {val}'
+        )
+    return val
+
+
 def _type_quantizer_map(val: str):
     vals = [
         'unet',
@@ -1050,6 +1060,13 @@ def _type_denoising_fraction(val: str) -> float:
 class _SetAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, set(values))
+
+
+class _TorchCompileAction(argparse.Action):
+    """``--torch-compile`` with no modules uses the default set."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, 'torch_compile', list(values) if values else True)
 
 
 _ARG_PARSER_CACHE = dict()
@@ -1695,7 +1712,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-te', '--text-encoders', nargs='+', type=_type_text_encoder, action='store', default=None,
             metavar='TEXT_ENCODER_URIS', dest='text_encoder_uris',
-            help=f'''Specify Text Encoders for the main model using URIs, main models
+            help=f'''Specify Text Encoders for the main model using URIs.
+                    compile=true compiles that encoder's decoder layers.
+                    Main models
                     may use one or more text encoders depending on the --model-type value and other
                     dgenerate arguments. See: --text-encoders help for information
                     about what text encoders are needed for your invocation.
@@ -1785,11 +1804,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     * Gemma3ForConditionalGeneration
                     * Gemma4UnifiedForConditionalGeneration (LTX-2.5)
                     * Mistral3ForConditionalGeneration (Flux.2)
-                    * Qwen2_5_VLForConditionalGeneration (Qwen-Image, Kandinsky 5)
+                    * Qwen2_5_VLForConditionalGeneration (Qwen-Image, Kandinsky 5, Kandinsky 6)
                     * Qwen2_5_VLTextModel (HunyuanVideo 1.5)
                     * Qwen3ForCausalLM (Flux.2 Klein)
                     * Qwen3Model (Z-Image)
-                    * Qwen3VLForConditionalGeneration (Qwen-Image 2.1)
+                    * Qwen3VLForConditionalGeneration (Qwen-Image 2.1, FLUX.3)
                     * Qwen3VLModel (Krea 2)
                     
                     If you wish to load weights directly from a path on disk, you must point this argument at the folder
@@ -1809,7 +1828,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-un', '--unet', action='store', default=None, metavar="UNET_URI", dest='unet_uri',
-            help=f"""Specify a UNet using a URI.
+            help=f"""Specify a UNet using a URI. compile=true compiles its repeated blocks.
                     
                     Examples: 
                     
@@ -1858,12 +1877,20 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-tf', '--transformer', action='store', default=None, metavar="TRANSFORMER_URI", dest='transformer_uri',
-            help=f"""Specify a Stable Diffusion 3, Flux, Flux.2, Flux.2 Klein KV, Z-Image,
-                    Z-Image Omni, Qwen-Image, Qwen-Image edit, Qwen-Image layered, LTX,
-                    Wan, or Wan-Animate Transformer model using a URI.
-                    ``--model-type ltx2``, ``ltx-video``, ``wan``, ``wan-animate``, and ``wan-animate-2`` accept one
+            help=f"""Specify a replacement diffusion transformer using a URI.
+                    compile=true compiles this transformer's repeated blocks.
+                    This is accepted for Stable Diffusion 3, Flux, Flux.2, Flux.2 Klein KV,
+                    FLUX.3, Z-Image, Z-Image Omni, Qwen-Image, Qwen-Image edit,
+                    Qwen-Image layered, Qwen-Image 2.1, Krea 2, Kandinsky 5 image and video,
+                    Kandinsky 6 video, Hunyuan-DiT, HunyuanImage 2.1, HunyuanVideo 1.5,
+                    Motif-Video, LTX, Wan, and Wan-Animate.
+                    ``--model-type ltx2``, ``ltx-video``, ``wan``, ``wan-animate``,
+                    ``wan-animate-2``, and ``kandinsky6-video`` accept one
                     replacement diffusion transformer. Wan 2.2 MoE checkpoints can
                     load the low-noise expert with --wan-second-transformer.
+                    A FLUX.3 GGUF in Comfy layout is renamed onto Flux3Transformer2DModel.
+                    Pair a distilled GGUF with the distilled Klein repository and a base
+                    GGUF with the base repository, so flow_map matches the checkpoint.
                     
                     Examples: 
                     
@@ -1916,7 +1943,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-vae', '--vae', action='store', default=None, metavar="VAE_URI", dest='vae_uri',
-            help=f"""Specify a VAE using a URI, the URI syntax is: 
+            help=f"""Specify a VAE using a URI. compile=true compiles its repeated blocks.
+                    The URI syntax is: 
                     "AutoEncoderClass;model=(Hugging Face repository slug/blob link or file/folder path)".
                     
                     Examples: 
@@ -2022,9 +2050,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     IC-LoRAs for ``ltx2`` are loaded with --ltx-ic-lora instead.
                     ``hyvideo-15`` accepts HunyuanVideo 1.5 LoRAs, including original module names
                     and Musubi ``lora_unet_`` files. ``motif-video`` accepts Diffusers-format and
-                    Musubi Motif-Video LoRAs. ``krea2`` accepts Diffusers-format LoRAs, the
+                    Musubi Motif-Video LoRAs.                     ``krea2`` accepts Diffusers-format LoRAs, the
                     reference ``diffusion_model.`` and AI-Toolkit layouts, and Musubi
-                    ``lora_unet_`` files.
+                    ``lora_unet_`` files. ``flux3`` accepts Diffusers-format LoRAs
+                    trained on FLUX.3 Klein Base; the same file also loads on the
+                    distilled checkpoint. ``kandinsky6-video`` rejects --loras:
+                    no Kandinsky 6 LoRA loader or checkpoint is published.
                     
                     If a LoRA model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
@@ -2142,7 +2173,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-ie', '--image-encoder', action='store', default=None, metavar="IMAGE_ENCODER_URI",
             dest='image_encoder_uri',
-            help=f"""Specify an Image Encoder using a URI. 
+            help=f"""Specify an Image Encoder using a URI. This URI has no compile argument.
+                    Name image_encoder on --torch-compile to compile it. 
                     
                     Image Encoders are used with --ip-adapters models, and must be specified if none of the
                     loaded --ip-adapters contain one. An error will be produced in this situation, which
@@ -2329,7 +2361,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         image_guidance_group.add_argument(
             '-cn', '--control-nets', nargs='+', action='store', default=None, metavar="CONTROLNET_URI",
             dest='controlnet_uris',
-            help=f"""Specify one or more ControlNet models using URIs. This should be a
+            help=f"""Specify one or more ControlNet models using URIs. compile=true compiles
+                    that ControlNet's repeated blocks. This should be a
                     Hugging Face repository slug / blob link, path to model file on disk
                     (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model
                     folder containing model files.
@@ -2612,6 +2645,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     For --model-type ltx2 and ltx-video the only accepted scheduler is FlowMatchEulerDiscreteScheduler.
                     URI arguments overlay the checkpoint scheduler config. Other scheduler names are rejected.
                     Omitting this option keeps the checkpoint scheduler.
+
+                    For --model-type kandinsky6-video the accepted names are
+                    FlowMatchEulerDiscreteScheduler and PiflowScheduler. A distilled
+                    checkpoint ships PiflowScheduler; omitting --scheduler keeps it.
+                    For --model-type flux3, omit --scheduler. The modular pipeline
+                    keeps the checkpoint scheduler, and other names are not registered.
                     
                     You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
                     """
@@ -3165,7 +3204,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help=f"""Enable DyPE's positional scaling methods for supported transformer pipelines.
 
                      Flux.1 and Qwen-Image use the upstream architectures. Flux Fill/Kontext,
-                     Qwen Edit/Layered, Flux.2, Z-Image, and Wan are experimental adapters.
+                     Qwen Edit/Layered, Flux.2, FLUX.3, Z-Image, Wan, and Kandinsky 6
+                     are experimental adapters. FLUX.3 uses the Flux.2 position-id
+                     contract. Kandinsky 6 scales height and width and leaves the
+                     time axis on the checkpoint table.
                      Defaults to a model-specific reference resolution. See
                      --dype-methods to choose position encoding methods,
                      --dype-base-resolutions to override the reference resolution,
@@ -3206,12 +3248,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             type=_type_positive_int, default=None, dest='dype_base_resolutions',
             help="""Reference long-side resolution in pixels for DyPE's positional scaling.
 
-                     Defaults to 1024 for Flux/Flux.2/Z-Image, 1328 for Qwen-Image, and 832 for
-                     Wan. Values are tried in turn, must be at least 16 pixels. Supplying this
-                     option implies --dype.
+                     Defaults to 1024 for Flux/Flux.2/FLUX.3/Z-Image, 1328 for Qwen-Image,
+                     864 for Kandinsky 6, and 832 for Wan. Values are tried in turn,
+                     must be at least 16 pixels. Supplying this option implies --dype.
 
                      This option is supported for Flux.1, Flux Fill/Kontext, Qwen-Image,
-                     Qwen Edit/Layered, Flux.2, Z-Image, and Wan pipeline families.
+                     Qwen Edit/Layered, Flux.2, FLUX.3, Z-Image, Wan, and Kandinsky 6.
 
                      NOWRAP!
                      See: https://github.com/guyyariv/DyPE
@@ -3893,13 +3935,36 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--torch-compile', action='store_true', default=False,
+            '--torch-compile', nargs='*', action=_TorchCompileAction, default=False,
+            type=_type_torch_compile_module, metavar='SUBMODULE',
             help="""Compile repeated denoiser, ControlNet, and VAE blocks. The first use of each
                     waits while the graph builds. A later change of resolution or frame count compiles
                     once more, then reuses that graph. CUDA and XPU need Triton. Quantized modules
-                    and models with no repeated blocks stay eager, and dgenerate warns when the
-                    flag is set and nothing was compiled. Wan-Animate-2 compiles its transformer
-                    and VAE blocks on every load, with or without this flag. DGENERATE_TORCH_COMPILE=0
+                    and models with no repeated blocks stay eager, and dgenerate warns when this
+                    option is set and nothing was compiled.
+
+                    With no module names, the UNet or transformer, ControlNet, and the VAE are
+                    compiled. Naming modules compiles only those, for example
+                    --torch-compile vae text_encoder. Accepted names are: "unet", "transformer",
+                    "transformer_2", "controlnet", "vae", "text_encoder", "text_encoder_2",
+                    "text_encoder_3", "image_encoder", "prompt_upsampler", "prompt_enhancer",
+                    and "connectors".
+
+                    prompt_upsampler and prompt_enhancer are aliases. Either name compiles
+                    the FLUX.3 prompt upsampler or the LTX Gemma enhancer, whichever that
+                    pipeline has. Text encoders and that upsampler compile their decoder layers.
+                    image_encoder is compiled only when named here. The --image-encoder URI
+                    has no compile argument.
+
+                    A submodel URI can also set compile=true, which compiles that module
+                    even when this option is omitted, and even when the named modules omit it.
+                    --unet, --vae, --text-encoders, --control-nets, --transformer, and
+                    --prompt-upsampler accept it. A compiled prompt upsampler is still
+                    layer-split for the rewrite, so the first generate() can build the graph
+                    again. Weights streamed from disk skip this option, including a URI
+                    compile=true. Wan-Animate-2 compiles its transformer and VAE blocks on every
+                    load and ignores the module names and a URI compile=true.
+                    DGENERATE_TORCH_COMPILE=0
                     leaves every model eager, including Wan-Animate-2. TorchDynamo, Inductor, and
                     Triton stay quiet unless -v/--verbose is set. Compile errors still print."""
         )
@@ -4265,7 +4330,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Image output size, for txt2img generation this is the exact output size.
                     The dimensions specified for this value must be aligned by 8 or you will receive an error message.
                     Models that require a larger alignment round the size down and print a warning:
-                    16 for Stable Diffusion 3, Flux.2, Z-Image, and Qwen-Image, 128 for Stable Cascade,
+                    16 for Stable Diffusion 3, Flux.2, FLUX.3, Z-Image, and Qwen-Image, 128 for Stable Cascade,
                     and the VAE alignment for video models.
                     If an --image-seeds URI is used its Seed, Mask, and/or Control component image sources will be
                     resized to this dimension with aspect ratio maintained before being used for generation by default,
@@ -4900,6 +4965,15 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     cannot perform traditional img2img, and will result in an error if attempted. Latent input 
                     is also not supported for ControlNet/T2I Adapter guidance images, or IP Adapter images, as 
                     these guidance models operate on images in pixel space.
+
+                    For --model-type flux3, --image-seeds are reference images.
+                    There is no mask and no img2img strength. Several images are
+                    several references, up to 10. One reference keeps its own size
+                    unless --output-size is set.
+
+                    For --model-type kandinsky6-video, one still image is the first
+                    frame of the clip. A mask, a second image, or a control image
+                    is rejected.
                     """
         )
     )
@@ -5169,7 +5243,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     groups that omit strength=. 1 keeps the conditioning frame. A lower value
                     lets the generated frames leave it. Several values are tried in turn.
                     last-frame= stays at strength 1. LTX does not use the img2img default 0.8;
-                    omit this option and an omitted strength= stays at 1."""
+                    omit this option and an omitted strength= stays at 1.
+
+                    --model-type flux3 rejects this option. Its --image-seeds are
+                    references and have no strength."""
         )
     )
 
@@ -5270,8 +5347,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     Omitting this lets the pipeline choose. Qwen-Image 2.1 uses 1.
                     Krea 2 uses 0 when the checkpoint is distilled and 4.5 otherwise.
-                    Kandinsky 5 Image uses 3.5. HunyuanImage 2.1 uses 3.25 when the
-                    checkpoint embeds guidance, and for the refiner.
+                    Kandinsky 5 Image uses 3.5. FLUX.3 uses 1 on the distilled
+                    checkpoint and 3.5 on the base checkpoint. The distilled
+                    checkpoint has no classifier-free guidance, so a negative
+                    prompt is ignored. Kandinsky 6 video uses 1 when the loaded
+                    scheduler is PiflowScheduler and 5 otherwise. HunyuanImage 2.1
+                    uses 3.25 when the checkpoint embeds guidance, and for the refiner.
                     
                     For --model-type ltx-video, omitted values follow the loaded
                     LTXPipeline __call__ defaults (typically guidance 3). A value you
@@ -5329,7 +5410,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     as written; see --guidance-scales.
                     
                     For --model-type flux, flux-fill, flux-kontext, flux2,
-                    flux2-klein-kv, z-image, z-image-omni, qwen-image,
+                    flux2-klein-kv, flux3, z-image, z-image-omni, qwen-image,
                     qwen-image-edit, and qwen-image-layered, expr: sigmas is the
                     pipeline default schedule: evenly spaced values from 1 down
                     to 1/steps. The model applies its resolution-dependent shift to
@@ -5397,7 +5478,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     sigma list when it has one. Krea 2 uses 8 when the checkpoint is
                     distilled and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the
                     refiner.
-                    Kandinsky 5 Image uses 50.
+                    Kandinsky 5 Image uses 50. FLUX.3 uses 16 on the distilled
+                    checkpoint and 50 on the base checkpoint. Kandinsky 6 video
+                    uses 10 when the loaded scheduler is PiflowScheduler and 50
+                    otherwise.
                     
                     For --model-type ltx-video, omitted values follow the loaded
                     LTXPipeline __call__ defaults (typically guidance 3 and 50 steps).
@@ -5435,6 +5519,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     used with Wan video-to-video or --model-type wan-animate,
                     where the output follows the input clip.
 
+                    Kandinsky 6 snaps the same way and is trained for 5 seconds
+                    at 24 fps (121 frames). The clip includes audio. There is no
+                    separate audio option.
+
                     NOWRAP!
                     (default: model chooses)"""
         )
@@ -5448,7 +5536,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     Each value will be tried in turn.
 
                     Defaults to 24 for --model-type ltx2, ltx-video, motif-video,
-                    wan-animate-2, and kandinsky5-video; 15 for hyvideo-15;
+                    wan-animate-2, kandinsky5-video, and kandinsky6-video; 15 for hyvideo-15;
                     16 for wan; and 30 for wan-animate.
 
                     NOWRAP!
@@ -5463,7 +5551,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
               'Expressions receive the scheduler default array as "timesteps". The schedule length '
               'sets the inference step count. Supported where the pipeline accepts a timestep '
               'schedule, for example SD 1.5/2/XL, Kolors, Wan video-to-video, LTX-2, Motif-Video, '
-              'Hunyuan Video 1.5, and Kandinsky 5 video. Cannot be combined with --sigmas.'))
+              'Hunyuan Video 1.5, Kandinsky 5 video, and Kandinsky 6 video. '
+              'Cannot be combined with --sigmas.'))
 
     actions.append(parser.add_argument(
         '--qwen21-no-kv-cache', action='store_const', const=False, default=None,
@@ -5808,12 +5897,32 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     image editing use the built-in edit prompt when the text encoder
                     can see an input image. Kandinsky 5 video uses a shot prompt, and
                     an image-to-video prompt when a first frame is present.
+                    Kandinsky 6 video accepts the flag with no value, or with one
+                    system prompt for that generation. The --pipeline-prompt-enhance-*
+                    sampling options apply to that rewrite. The flag turns on the pipeline's own
+                    expand_prompts, including the first frame when one was given.
+                    A token counter is shown while it writes, then the rewritten prompt
+                    is logged. With CPU offload,
+                    that rewrite keeps on the GPU only the text-encoder layers
+                    that fit in free dedicated memory, then restores the offload
+                    hooks. --max-sequence-length still applies. The text encoder
+                    stays loaded either way, because denoising uses it too.
+                    --model-type flux3 runs its Qwen3.5 prompt upsampler only when
+                    this flag is set. With no value the upsampler keeps its own
+                    system prompt. A value replaces that system prompt for the
+                    generation. Omitting the sampling options decodes greedily.
+                    Temperature, top-p, top-k, presence penalty, token limits,
+                    seeds, and GPU headroom apply to that rewrite when set.
+                    A token counter is shown while it writes, then the rewritten prompt
+                    is logged. Without the flag the
+                    prompt is encoded as given and the upsampler is not loaded.
                     On LTX-2 this turns on the optional Gemma prompt enhancer.
                     With no value the enhancer is google/gemma-4-E2B-it and
                     LTX-2.5 selects its text-to-video or image-to-video system
                     prompt from the conditioning input. A value replaces that
-                    system prompt. --ltx-prompt-enhancer names a different
-                    enhancer model. LTX-Video (T5) is not supported.
+                    system prompt. The rewritten prompt is logged.
+                    --prompt-upsampler names a different upsampler
+                    for LTX-2 and FLUX.3. LTX-Video (T5) is not supported.
                     Supported --model-type values: {_textprocessing.oxford_comma(_pipelinewrapper.PIPELINE_PROMPT_ENHANCE_MODEL_TYPES, "and")}.
                     Any other --pipeline-prompt-enhance-* option, including
                     --pipeline-prompt-enhance-seeds, turns enhancement on with
@@ -5833,7 +5942,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     These seeds are used only by the enhancer. The image or video
                     still uses --seeds or --gen-seeds. When omitted, the enhancer
                     uses that generation seed. Also turns --pipeline-prompt-enhance
-                    on when that flag is omitted."""
+                    on when that flag is omitted. FLUX.3 and Kandinsky 6 video
+                    apply this to that generation's rewrite."""
         )
     )
 
@@ -5845,7 +5955,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     This may not be used with --pipeline-prompt-enhance-seeds.
                     The generated seeds override --seeds and --gen-seeds for the
                     enhancer only. Also turns --pipeline-prompt-enhance on when
-                    that flag is omitted."""
+                    that flag is omitted. FLUX.3 and Kandinsky 6 video apply
+                    this to that generation's rewrite."""
         )
     )
 
@@ -5858,7 +5969,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     families use the pipeline text encoder. LTX-2 passes this to
                     the Gemma enhancer or text-encoder fallback. Omitting it keeps
                     the default for that model type. Any --pipeline-prompt-enhance-*
-                    option turns prompt enhancement on when the flag itself is omitted."""
+                    option turns prompt enhancement on when the flag itself is omitted.
+                    FLUX.3 and Kandinsky 6 video apply this to that
+                    generation's rewrite."""
         )
     )
     actions.append(
@@ -5867,7 +5980,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             dest='pipeline_prompt_enhance_top_p', metavar='FLOAT', type=float,
             help="""Nucleus top-p for --pipeline-prompt-enhance. Must be greater
                     than 0 and at most 1. Also turns --pipeline-prompt-enhance on
-                    when that flag is omitted."""
+                    when that flag is omitted. FLUX.3 and Kandinsky 6 video
+                    apply this to that generation's rewrite."""
         )
     )
     actions.append(
@@ -5876,7 +5990,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             dest='pipeline_prompt_enhance_top_k', metavar='INT',
             type=_type_non_negative_integer,
             help="""Top-k for --pipeline-prompt-enhance. 0 turns top-k off.
-                    Also turns --pipeline-prompt-enhance on when that flag is omitted."""
+                    Also turns --pipeline-prompt-enhance on when that flag is omitted.
+                    FLUX.3 and Kandinsky 6 video apply this to that
+                    generation's rewrite."""
         )
     )
     actions.append(
@@ -5884,7 +6000,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--pipeline-prompt-enhance-presence-penalty', action='store', default=None,
             dest='pipeline_prompt_enhance_presence_penalty', metavar='FLOAT', type=float,
             help="""Presence penalty for --pipeline-prompt-enhance sampling.
-                    Also turns --pipeline-prompt-enhance on when that flag is omitted."""
+                    Also turns --pipeline-prompt-enhance on when that flag is omitted.
+                    FLUX.3 and Kandinsky 6 video apply this to that
+                    generation's rewrite."""
         )
     )
     actions.append(
@@ -5893,7 +6011,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             dest='pipeline_prompt_enhance_max_new_tokens', metavar='INT',
             type=_type_positive_int,
             help="""Maximum new tokens for one --pipeline-prompt-enhance rewrite.
-                    Also turns --pipeline-prompt-enhance on when that flag is omitted."""
+                    Also turns --pipeline-prompt-enhance on when that flag is omitted.
+                    FLUX.3 and Kandinsky 6 video apply this to that
+                    generation's rewrite."""
         )
     )
     actions.append(
@@ -5902,7 +6022,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             dest='pipeline_prompt_enhance_min_new_tokens', metavar='INT',
             type=_type_non_negative_integer,
             help="""Minimum new tokens before end-of-sequence is allowed.
-                    Also turns --pipeline-prompt-enhance on when that flag is omitted."""
+                    Also turns --pipeline-prompt-enhance on when that flag is omitted.
+                    FLUX.3 and Kandinsky 6 video apply this to that
+                    generation's rewrite."""
         )
     )
     actions.append(
@@ -5914,23 +6036,32 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     text encoder across GPU and CPU, on top of 10 percent of
                     free memory. The default is 2. Raise it when the rewrite
                     runs out of memory. Lower it to keep more layers on the GPU.
-                    Also turns --pipeline-prompt-enhance on when that flag is omitted."""
+                    Also turns --pipeline-prompt-enhance on when that flag is omitted.
+                    FLUX.3 splits the prompt upsampler. Kandinsky 6 video splits
+                    the text encoder."""
         )
     )
 
     actions.append(
         parser.add_argument(
-            '--ltx-prompt-enhancer', action='store', default=None, metavar="URI",
-            dest='ltx_prompt_enhancer',
-            help="""URI for a separate model that rewrites the LTX prompt before
-                    denoising, for example google/gemma-4-E2B-it or
-                    google/gemma-4-E2B-it;revision=main;subfolder=model;dtype=bfloat16,
-                    with an optional quantizer URI such as
+            '--prompt-upsampler', action='store', default=None, metavar="URI",
+            dest='prompt_upsampler',
+            help="""Prompt upsampler URI. The arguments match --transformer:
+                    revision, variant, subfolder, dtype, quantizer, and compile.
+                    compile=true compiles its decoder layers. It loads
+                    a Transformers causal or image-to-text model, not the denoiser.
+                    For example
+                    google/gemma-4-E2B-it or
                     google/gemma-4-E2B-it;quantizer="sdnq;type=int4".
-                    Setting this turns enhancement on and loads that model.
-                    Omit it and --pipeline-prompt-enhance loads
-                    google/gemma-4-E2B-it. A value on --pipeline-prompt-enhance
-                    replaces the text-to-video or image-to-video system prompt."""
+                    Setting this turns prompt enhancement on and loads that model
+                    instead of the default. --model-type ltx2 defaults to
+                    google/gemma-4-E2B-it when only --pipeline-prompt-enhance is
+                    set. --model-type flux3 defaults to the checkpoint Qwen3.5
+                    prompt upsampler. Models that rewrite with the diffusion
+                    text encoder, including kandinsky6-video, reject this option.
+                    A value on --pipeline-prompt-enhance replaces the built-in
+                    system prompt for that generation on LTX-2, FLUX.3, and
+                    Kandinsky 6."""
         )
     )
 
@@ -6101,7 +6232,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
                     
-                    For SD3, Flux, Qwen-Image, Qwen-Image 2.1, Krea 2,
+                    For SD3, Flux, Flux.2, FLUX.3, Qwen-Image, Qwen-Image 2.1, Krea 2,
                     Kandinsky 5 Image, and Z-Image, FlowMatchEulerDiscreteScheduler is supported.
                     
                     NOWRAP!
@@ -6138,7 +6269,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
                     
-                    For SD3, Flux, Qwen-Image, Qwen-Image 2.1, Krea 2,
+                    For SD3, Flux, Flux.2, FLUX.3, Qwen-Image, Qwen-Image 2.1, Krea 2,
                     Kandinsky 5 Image, and Z-Image, FlowMatchEulerDiscreteScheduler is supported.
                     
                     NOWRAP!

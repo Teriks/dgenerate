@@ -10,7 +10,7 @@ title: Kolors
 @sada[{"id": "sada", "preset": "sdxl", "exclude": ["hd", "dc"], "divider-after": true}]
 @spectrum[{"id": "sp", "exclude": ["hd", "dc", "sada"], "divider-after": true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"kolors"}]
 @quantizer[{"model-type":"kolors"}]
 @textencoders[{"model-type":"kolors","arg":"--text-encoders","divider-after":true}]
 @submodelbuilder[{"id":"refiner", "label":"Refiner", "arg":"--sdxl-refiner", "model": "SDXL Refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0"}]

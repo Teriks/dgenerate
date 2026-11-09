@@ -181,6 +181,7 @@ class ConsoleSchemaBuilder:
         uris = [
             _pipelinewrapper.uris.UNetUri,
             _pipelinewrapper.uris.TransformerUri,
+            _pipelinewrapper.uris.PromptUpsamplerUri,
             _pipelinewrapper.uris.TextEncoderUri,
             _pipelinewrapper.uris.VAEUri,
             _pipelinewrapper.uris.ImageEncoderUri,
@@ -195,7 +196,6 @@ class ConsoleSchemaBuilder:
             _pipelinewrapper.uris.SCascadeDecoderUri,
             _pipelinewrapper.uris.SDXLRefinerUri,
             _pipelinewrapper.uris.LTXLatentUpsamplerUri,
-            _pipelinewrapper.uris.LTXPromptEnhancerUri,
             _pipelinewrapper.uris.LTXDiffusionDecoderUri
         ]
 

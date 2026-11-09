@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Kandinsky 6 Lite distilled. 10 steps, guidance 1, PiFlow, 5 seconds at 24 fps
+# with 44 kHz audio. The checkpoint scheduler is kept when --scheduler is omitted.
+
+kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers
+--model-type kandinsky6-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 10
+--guidance-scales 1
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky6-lite-distill
+--output-size 864x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour. Audio: wind, distant surf, the kite's fabric snapping."

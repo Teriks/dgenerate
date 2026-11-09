@@ -261,13 +261,23 @@ def _ltx_extra_weight_directories(model_path, revision, subfolder, auth_token, l
     return extra_weight_directories_from_index(index)
 
 
-def _torch_compile_for_cache(wrapper) -> bool:
+def _ltx_enhancer_compile_requested(uri_string, torch_compile) -> bool:
+    """True when ``--torch-compile`` names the LTX Gemma enhancer."""
+    del uri_string
+    names = _pipelines.torch_compile_module_names(torch_compile)
+    if not names:
+        return False
+    return 'prompt_enhancer' in names or 'prompt_upsampler' in names
+
+
+def _torch_compile_for_cache(wrapper):
     """
     Cache identity for block compilation.
 
     Wan-Animate-2 compiles on every load, so its cache entry is compiled
     whether or not ``--torch-compile`` was passed. ``DGENERATE_TORCH_COMPILE=0``
-    leaves that entry eager. Other models compile only when the flag is set.
+    leaves that entry eager. Other models store ``False``, ``True``, or the
+    module names.
     """
     if _pipelines.torch_compile_disabled():
         return False
@@ -278,7 +288,10 @@ def _torch_compile_for_cache(wrapper) -> bool:
         animate_2 = False
     if animate_2:
         return True
-    return bool(getattr(wrapper, 'torch_compile', False))
+    value = _pipelines.normalize_torch_compile(getattr(wrapper, 'torch_compile', False))
+    if isinstance(value, list):
+        return tuple(value)
+    return value
 
 
 def _cache_kwargs(wrapper) -> dict:
@@ -562,6 +575,7 @@ def _create_cached_video_pipeline(model_path,
                                   wan_second_transformer_uri=None,
                                   vae_uri=None,
                                   text_encoder_uris=None,
+                                  prompt_upsampler_uri=None,
                                   lora_disk_fuse=False):
     all_lora_uris = list(lora_uris or ()) + ([ltx_ic_lora_uri] if ltx_ic_lora_uri else [])
     aux_repo = None
@@ -592,6 +606,10 @@ def _create_cached_video_pipeline(model_path,
         model_type=model_type)
     extra_dirs = extra_weight_directories_from_index(index)
     family, pipeline_class, moe = _resolve_video_load(model_type, index, ltx_ic_lora_uri)
+    if family == 'kandinsky6-video' and all_lora_uris:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            '--model-type kandinsky6-video has no published LoRA loader. '
+            'The transformer exposes PEFT, and no Kandinsky 6 LoRA checkpoint is on the Hub.')
     if transformer_uri and wan_second_transformer_uri is None and index.get('transformer_2'):
         extra_dirs = list(extra_dirs) + ['transformer_2']
     if dtype is _enums.DataType.AUTO:
@@ -856,13 +874,38 @@ def _create_cached_video_pipeline(model_path,
         wan.animate2.place_wan_animate_2(
             pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
     else:
-        if torch_compile and stream_from_disk:
+        compile_on = _pipelines.torch_compile_enabled(torch_compile)
+        if compile_on and stream_from_disk:
             _messages.warning(
                 'Skipping --torch-compile because the pipeline weights are on disk.')
-        elif torch_compile:
-            _pipelines.apply_torch_compile(pipe, device)
+        elif compile_on or _pipelines._compile_requested_names(pipe):
+            _pipelines.apply_torch_compile(
+                pipe, device,
+                names=_pipelines.torch_compile_module_names(torch_compile) if compile_on else ())
         _apply_video_offload(
             pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
+    if prompt_upsampler_uri:
+        if family != 'ltx2':
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '--prompt-upsampler is supported for --model-type ltx2 and flux3.')
+        import dgenerate.pipelinewrapper.videopipelines.ltx as _ltx_video
+        _ltx_video._ensure_prompt_enhancer(
+            type('_UpsamplerHost', (), {
+                '_dtype': dtype,
+                '_auth_token': auth_token,
+                '_local_files_only': local_files_only,
+                'device': device,
+                'model_cpu_offload': model_cpu_offload,
+                'model_sequential_offload': sequential_cpu_offload,
+                'model_group_offload': model_group_offload,
+            })(),
+            pipe, prompt_upsampler_uri,
+            compile_requested=_ltx_enhancer_compile_requested(
+                prompt_upsampler_uri, torch_compile))
+    if family == 'kandinsky6-video':
+        import dgenerate.pipelinewrapper.promptenhance as _promptenhance
+        _promptenhance.bind_rewriter_generate(
+            getattr(pipe, 'text_encoder', None), device, 'Kandinsky 6')
     _quantization._pin_video_8bit_modules(pipe)
     _enable_vae_tiling(pipe)
     model_mode = None

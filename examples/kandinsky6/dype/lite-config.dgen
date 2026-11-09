@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# DyPE scales the height and width RoPE axes. The time axis stays on the
+# checkpoint table. The reference long side is 864.
+
+kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers
+--model-type kandinsky6-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 10
+--guidance-scales 1
+--dype
+--dype-methods yarn
+--dype-base-resolutions 864
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky6-lite-dype
+--output-size 960x544
+--prompts "A red kite glides above a windswept coastal meadow at golden hour. Audio: wind and distant surf."

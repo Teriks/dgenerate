@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Kandinsky 6 Pro distilled, 29B. 10 steps, guidance 1.
+# The transformer alone is about 60 GB.
+
+kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers
+--model-type kandinsky6-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 10
+--guidance-scales 1
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky6-pro-distill
+--output-size 864x480
+--prompts "A stone samurai on a cliff raises a katana as lightning hits the blade. Audio: rain, thunder, a metal ring, low brass."

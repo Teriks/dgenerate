@@ -144,8 +144,8 @@ try:
         ModelType,
         DataType,
         PipelineType,
-        DiffusionPipelineWrapper,
-        DiffusionArguments
+        PipelineWrapper,
+        GenerationArguments
     )
 
     from dgenerate.torchutil import (
@@ -159,6 +159,7 @@ try:
         RenderLoopEvent,
         RenderLoopEventStream,
         ImageGeneratedEvent,
+        VideoGeneratedEvent,
         ImageFileSavedEvent,
         StartingAnimationFileEvent,
         StartingAnimationEvent,

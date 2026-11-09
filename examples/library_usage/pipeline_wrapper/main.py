@@ -20,7 +20,7 @@ if device is None:
 # directly to the URI syntax for said argument from the
 # command line
 
-wrapper = dgenerate.DiffusionPipelineWrapper(
+wrapper = dgenerate.PipelineWrapper(
     model_path='stabilityai/stable-diffusion-xl-base-1.0',
     model_type=dgenerate.ModelType.SDXL,
     dtype=dgenerate.DataType.FLOAT16,
@@ -28,7 +28,7 @@ wrapper = dgenerate.DiffusionPipelineWrapper(
     device=device
 )
 
-args = dgenerate.DiffusionArguments()
+args = dgenerate.GenerationArguments()
 args.prompt_weighter_uri = 'sd-embed'
 args.inference_steps = 30
 args.guidance_scale = 4

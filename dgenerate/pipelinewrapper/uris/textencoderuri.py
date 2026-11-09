@@ -59,7 +59,8 @@ _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
         'subfolder',
         'dtype',
         'quantizer',
-        'mode'
+        'mode',
+        'compile'
     ]
 )
 
@@ -1324,6 +1325,11 @@ class TextEncoderUri:
         return self._quantizer
 
     @property
+    def compile(self) -> bool:
+        """Compile this text encoder's repeated blocks."""
+        return self._compile
+
+    @property
     def mode(self) -> _types.OptionalString:
         """
         Model loading mode for single file checkpoints, for example 'clip-l', 'clip-g', or 't5-xxl'
@@ -1419,7 +1425,8 @@ class TextEncoderUri:
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None,
                  quantizer: _types.OptionalUri = None,
-                 mode: _types.OptionalString = None):
+                 mode: _types.OptionalString = None,
+                 compile: bool = False):
         """
         :param encoder: encoder class name, for example ``CLIPTextModel``
         :param model: model path
@@ -1478,6 +1485,7 @@ class TextEncoderUri:
         self._variant = variant
         self._subfolder = subfolder
         self._quantizer = quantizer
+        self._compile = bool(compile)
         self._mode = mode
 
         try:
@@ -1541,7 +1549,9 @@ class TextEncoderUri:
                 fresh['no_cache'] = True
                 return self._load(**fresh)
 
-            return _util.reuse_lora_free_module(loaded, reload)
+            loaded = _util.reuse_lora_free_module(loaded, reload)
+            _util.mark_compile_requested(loaded, self.compile)
+            return loaded
 
     @staticmethod
     def _enforce_cache_size(new_text_encoder_size):
@@ -1948,7 +1958,10 @@ class TextEncoderUri:
                                   dtype=dtype,
                                   subfolder=r.args.get('subfolder', None),
                                   quantizer=r.args.get('quantizer', False),
-                                  mode=r.args.get('mode', None)
+                                  mode=r.args.get('mode', None),
+                                  compile=_util.parse_compile_argument(
+                                      r.args.get('compile'),
+                                      _exceptions.InvalidTextEncoderUriError)
                                   )
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidTextEncoderUriError(e) from e

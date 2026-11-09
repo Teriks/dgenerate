@@ -220,6 +220,10 @@ class TestLinkTools(unittest.TestCase):
             'kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers': 'kandinsky5-image',
             'kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers': 'kandinsky5-video',
             'kandinskylab/Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers': 'kandinsky5-video',
+            'black-forest-labs/flux-3-image-klein': 'flux3',
+            'molbal/Flux-3-Klein-GGUF': 'flux3',
+            'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers': 'kandinsky6-video',
+            'kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers': 'kandinsky6-video',
             'Motif-Technologies/Motif-Video-2B': 'motif-video',
             'stabilityai/stable-cascade-prior': 's-cascade',
             'dn6/StableCascade-prior': 's-cascade',
@@ -243,7 +247,6 @@ class TestLinkTools(unittest.TestCase):
             'tencent/HunyuanImage-3.0',
             'Comfy-Org/Hunyuan-Video',
             'city96/HunyuanVideo-gguf',
-            'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers',
             'DeepBeepMeep/Kandinsky5',
         )
         for name, expected in cases.items():
@@ -258,7 +261,9 @@ class TestLinkTools(unittest.TestCase):
         self.assertEqual(_request_kinds('QuantStack/LTXV-13B-0.9.8-dev-GGUF'), ['ltx-gguf'])
         self.assertEqual(_request_kinds('Lightricks/LTX-2.5'), ['sequential'])
         self.assertNotIn('sequential', _request_kinds('tencent/HunyuanImage-3.0'))
-        self.assertNotIn('sequential', _request_kinds('kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers'))
+        self.assertEqual(
+            _request_kinds('kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers'), ['sequential'])
+        self.assertEqual(_request_kinds('black-forest-labs/flux-3-image-klein'), ['sequential'])
 
     def test_example_configs_match_their_model_type(self):
         import re

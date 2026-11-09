@@ -264,6 +264,8 @@ def _specific_model_type(label: str) -> str | None:
         return 'flux-fill'
     if re.search(r'klein[\w.-]*kv|klein kv', label):
         return 'flux2-klein-kv'
+    if re.search(r'flux\.3|flux3|flux-3\b|flux 3', label):
+        return 'flux3'
     if re.search(r'flux\.2|flux2|flux-2\b|flux 2', label):
         return 'flux2'
     # FLUX.1-Krea-dev is Flux.1. The repo name wins over a card that says "Krea 2".
@@ -294,6 +296,8 @@ def _specific_model_type(label: str) -> str | None:
         return 'hydit'
     if re.search(r'hunyuan-?video-?1\.5|hunyuanvideo1\.5|hyvideo-15|\bhyvideo\b', label):
         return 'hyvideo-15'
+    if re.search(r'kandinsky-6|kandinsky6', label):
+        return 'kandinsky6-video'
     if re.search(r'kandinsky-5|kandinsky5', label) and not re.search(r'kandinsky-6|kandinsky6', label):
         if re.search(r't2v|i2v', label):
             return 'kandinsky5-video'

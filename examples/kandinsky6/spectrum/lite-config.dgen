@@ -1,0 +1,20 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Spectrum on the fused video/audio blocks. A predicted step replays the last
+# real audio stream instead of forecasting it.
+
+kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers
+--model-type kandinsky6-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 10
+--guidance-scales 1
+--spectrum
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky6-lite-spectrum
+--output-size 864x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour. Audio: wind and distant surf."

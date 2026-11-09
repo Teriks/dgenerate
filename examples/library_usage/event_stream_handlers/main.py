@@ -32,6 +32,11 @@ for event in rl.events():
     if isinstance(event, dgenerate.ImageGeneratedEvent):
         print('Image Generated (Suggested Filename):', event.suggested_filename)
         print('Image Generated (Suggested Directory):', event.suggested_directory)
+    if isinstance(event, dgenerate.VideoGeneratedEvent):
+        print('Video Generated (Suggested Filename):', event.suggested_filename)
+        print('Video FPS:', event.fps)
+        # event.write(path_or_stream) muxes the frames and audio.
+        # Call it here; the frames are closed when the loop moves on.
     if isinstance(event, dgenerate.ImageFileSavedEvent):
         print('Image Saved:', event.path)
         print('Config Saved:', event.config_filename)

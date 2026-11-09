@@ -8,7 +8,7 @@ title: HunyuanVideo 1.5 Image to Video (GGUF)
 @spectrum[{"id": "sp", "divider-after": true}]
 @dype[{"exclude":["sp"], "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"hyvideo-15"}]
 @quantizer[{"model-type":"hyvideo-15", "map-default":"text_encoder"}]
 @textencoders[{"model-type":"hyvideo-15","arg":"--text-encoders", "divider-after":true}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]

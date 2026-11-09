@@ -9,6 +9,7 @@ import dgenerate.arguments as _arguments
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.promptenhance as _promptenhance
+import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.prompt as _prompt
 import dgenerate.renderloopconfig as _renderloopconfig
 
@@ -31,15 +32,35 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         omitted = parser.parse_args(['model'])
         self.assertIsNone(omitted.pipeline_prompt_enhance)
 
-    def test_ltx_prompt_enhancer_is_an_ltx2_uri(self):
+    def test_log_enhanced_prompt_joins_a_batch(self):
+        logged = []
+        with unittest.mock.patch(
+                'dgenerate.pipelinewrapper.promptenhance._messages.log',
+                side_effect=logged.append):
+            _promptenhance.log_enhanced_prompt(['  first shot  ', '', 'second shot'])
+            _promptenhance.log_enhanced_prompt(None)
+        self.assertEqual(logged, ['Pipeline prompt enhance: first shot\nsecond shot'])
+
+    def test_prompt_upsampler_is_its_own_uri(self):
+        import dgenerate.pipelinewrapper.uris.promptupsampleruri as _prompt_upsampler_uri
+        import dgenerate.pipelinewrapper.uris.transformeruri as _transformer_uri
+
         parser = _arguments._create_parser(add_help=False, prints_usage=False)[0]
         parsed = parser.parse_args(
-            ['model', '--ltx-prompt-enhancer', 'google/gemma-4-E2B-it'])
-        self.assertEqual(parsed.ltx_prompt_enhancer, 'google/gemma-4-E2B-it')
+            ['model', '--prompt-upsampler', 'google/gemma-4-E2B-it;quantizer=sdnq'])
+        self.assertEqual(parsed.prompt_upsampler, 'google/gemma-4-E2B-it;quantizer=sdnq')
+        uri = _uris.PromptUpsamplerUri.parse(parsed.prompt_upsampler)
+        self.assertEqual(uri.model, 'google/gemma-4-E2B-it')
+        self.assertEqual(uri.quantizer, 'sdnq')
+        self.assertIsNot(
+            _prompt_upsampler_uri._prompt_upsampler_cache,
+            _transformer_uri._transformer_cache)
+        with self.assertRaises(_uris.InvalidPromptUpsamplerUriError):
+            _uris.PromptUpsamplerUri.parse('gemma.gguf')
         rejected = _config(
             model_path='org/sd',
             model_type=_enums.ModelType.SD,
-            ltx_prompt_enhancer='google/gemma-4-E2B-it')
+            prompt_upsampler='google/gemma-4-E2B-it')
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             rejected.check()
         self.assertIn('ltx2', str(raised.exception))
@@ -83,8 +104,103 @@ class TestPipelinePromptEnhance(unittest.TestCase):
                 config.calculate_generation_steps(),
                 len(list(config.iterate_diffusion_args())))
 
+    def test_kandinsky6_and_flux3_accept_prompt_enhance_extras(self):
+        from dgenerate.pipelinewrapper.wrapper import PipelineWrapper
+
+        class Wrapper:
+            model_type = _enums.ModelType.KANDINSKY6_VIDEO
+
+        bare = _pipeline_args()
+        bare.pipeline_prompt_enhance = True
+        PipelineWrapper._auto_pipeline_prompt_enhance_check(Wrapper(), bare)
+
+        custom = _pipeline_args()
+        custom.pipeline_prompt_enhance = 'be precise'
+        custom.pipeline_prompt_enhance_top_p = 0.9
+        custom.pipeline_prompt_enhance_seed = 3
+        PipelineWrapper._auto_pipeline_prompt_enhance_check(Wrapper(), custom)
+        self.assertEqual(custom.pipeline_prompt_enhance, 'be precise')
+
+        config = _config(
+            model_path='kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers',
+            model_type=_enums.ModelType.KANDINSKY6_VIDEO,
+            pipeline_prompt_enhance_seeds=[3],
+            pipeline_prompt_enhance_temperature=0.7)
+        config.check()
+        self.assertTrue(config.is_pipeline_prompt_enhance_enabled())
+
+        flux3 = _pipeline_args()
+        flux3.pipeline_prompt_enhance = 'be precise'
+        flux3.pipeline_prompt_enhance_top_p = 0.9
+
+        class Flux3:
+            model_type = _enums.ModelType.FLUX3
+
+        PipelineWrapper._auto_pipeline_prompt_enhance_check(Flux3(), flux3)
+        self.assertEqual(flux3.pipeline_prompt_enhance, 'be precise')
+
+    def test_rewrite_sampling_patches_one_generate_call(self):
+        class Rewriter:
+            def __init__(self):
+                self.calls = []
+
+            def generate(self, **kwargs):
+                self.calls.append(kwargs)
+                return kwargs
+
+        rewriter = Rewriter()
+        args = _pipeline_args()
+        args.pipeline_prompt_enhance_temperature = 0.7
+        args.pipeline_prompt_enhance_top_p = 0.9
+        args.pipeline_prompt_enhance_top_k = 40
+        args.pipeline_prompt_enhance_presence_penalty = 0.6
+        args.pipeline_prompt_enhance_max_new_tokens = 32
+        args.pipeline_prompt_enhance_min_new_tokens = 4
+        args.pipeline_prompt_enhance_seed = 7
+        with _promptenhance.rewrite_sampling(rewriter, args, 'cpu'):
+            rewriter.generate(max_new_tokens=10, do_sample=False)
+        rewriter.generate(max_new_tokens=10, do_sample=False)
+        self.assertEqual(rewriter.calls[1], {'max_new_tokens': 10, 'do_sample': False})
+        sent = rewriter.calls[0]
+        self.assertEqual(sent['max_new_tokens'], 32)
+        self.assertEqual(sent['min_new_tokens'], 4)
+        self.assertEqual(sent['temperature'], 0.7)
+        self.assertEqual(sent['top_p'], 0.9)
+        self.assertEqual(sent['top_k'], 40)
+        self.assertTrue(sent['do_sample'])
+        self.assertEqual(int(sent['generator'].initial_seed()), 7)
+        self.assertEqual(len(sent['logits_processor']), 1)
+
+        greedy = Rewriter()
+        cold = _pipeline_args()
+        cold.pipeline_prompt_enhance_temperature = 0
+        cold.pipeline_prompt_enhance_seed = 7
+        with _promptenhance.rewrite_sampling(greedy, cold, 'cpu'):
+            greedy.generate(max_new_tokens=10, do_sample=True)
+        self.assertFalse(greedy.calls[0]['do_sample'])
+        self.assertNotIn('generator', greedy.calls[0])
+
+    def test_system_prompt_override_lasts_one_generation(self):
+        import dgenerate.pipelinewrapper.flux3 as _flux3
+        import diffusers.modular_pipelines.flux3.prompt_upsampler as _pup
+        import diffusers.pipelines.kandinsky6.pipeline_kandinsky6_ti2va as _kandinsky6
+
+        flux_saved = dict(_pup.SYSTEM_PROMPTS)
+        k6_saved = (
+            _kandinsky6._T2VA_EXPANSION_INSTRUCTION,
+            _kandinsky6._I2VA_EXPANSION_INSTRUCTION)
+        with _flux3.override_upsampler_system_prompt('be precise {style}'):
+            self.assertEqual(set(_pup.SYSTEM_PROMPTS.values()), {'be precise {style}'})
+        self.assertEqual(_pup.SYSTEM_PROMPTS, flux_saved)
+        with _promptenhance.kandinsky6_expansion_instruction('be precise {style}'):
+            instruction = _kandinsky6._T2VA_EXPANSION_INSTRUCTION
+            self.assertEqual(instruction, _kandinsky6._I2VA_EXPANSION_INSTRUCTION)
+            self.assertEqual(instruction.format('a fox'), 'be precise {style}\n\nRewrite Prompt: a fox')
+        self.assertEqual(_kandinsky6._T2VA_EXPANSION_INSTRUCTION, k6_saved[0])
+        self.assertEqual(_kandinsky6._I2VA_EXPANSION_INSTRUCTION, k6_saved[1])
+
     def test_wrapper_implies_pipeline_prompt_enhance(self):
-        from dgenerate.pipelinewrapper.wrapper import DiffusionPipelineWrapper
+        from dgenerate.pipelinewrapper.wrapper import PipelineWrapper
 
         class Wrapper:
             model_type = _enums.ModelType.Z_IMAGE
@@ -92,7 +208,7 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         args = _pipeline_args()
         args.pipeline_prompt_enhance = None
         args.pipeline_prompt_enhance_top_p = 0.9
-        DiffusionPipelineWrapper._auto_pipeline_prompt_enhance_check(Wrapper(), args)
+        PipelineWrapper._auto_pipeline_prompt_enhance_check(Wrapper(), args)
         self.assertIs(args.pipeline_prompt_enhance, True)
         self.assertEqual(args.pipeline_prompt_enhance_top_p, 0.9)
 
@@ -337,18 +453,53 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         buf = io.StringIO()
         previous = _messages.get_message_file()
         _messages.set_message_file(buf)
+        clock = iter((100.0, 101.0, 103.5))
         try:
-            counter = _promptenhance._TokenCounter('Qwen3VLModel', 512)
-            counter.add()
-            counter.add()
-            counter.finish()
-            counter.finish()
+            with unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.promptenhance.time.monotonic',
+                    side_effect=lambda: next(clock)):
+                counter = _promptenhance._TokenCounter('Qwen3VLModel', 512)
+                counter.add()
+                counter.add()
+                counter.finish()
+                counter.finish()
         finally:
             _messages.set_message_file(previous)
         self.assertEqual(
             buf.getvalue(),
-            '\rPipeline prompt enhance: Qwen3VLModel, 1 out of max 512 tokens'
-            '\rPipeline prompt enhance: Qwen3VLModel, 2 out of max 512 tokens\n')
+            '\rPipeline prompt enhance: Qwen3VLModel, 1 out of max 512 tokens, 1.0s'
+            '\rPipeline prompt enhance: Qwen3VLModel, 2 out of max 512 tokens, 3.5s\n')
+        self.assertIsNone(_messages.get_before_log_callback())
+
+    def test_token_counter_breaks_before_another_log_line(self):
+        import io
+        import dgenerate.messages as _messages
+        buf = io.StringIO()
+        previous = _messages.get_message_file()
+        _messages.set_message_file(buf)
+        clock = iter((100.0, 101.0, 102.0, 104.0))
+        try:
+            with unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.promptenhance.time.monotonic',
+                    side_effect=lambda: next(clock)):
+                counter = _promptenhance._TokenCounter('FLUX.3 prompt upsampler', 3584)
+                counter.show()
+                _messages.log(
+                    'FLUX.3 prompt upsampler: 24 of 32 layers on cuda (4.63GB), '
+                    '8 stored on CPU and run on cuda.')
+                counter.add(29)
+                counter.finish()
+        finally:
+            _messages.set_message_file(previous)
+            _messages.set_before_log_callback(None)
+        self.assertEqual(
+            buf.getvalue(),
+            '\rPipeline prompt enhance: FLUX.3 prompt upsampler, '
+            '0 out of max 3584 tokens, 1.0s\n'
+            'FLUX.3 prompt upsampler: 24 of 32 layers on cuda (4.63GB), '
+            '8 stored on CPU and run on cuda.\n'
+            '\rPipeline prompt enhance: FLUX.3 prompt upsampler, '
+            '29 out of max 3584 tokens, 2.0s\n')
         logits = torch.tensor([float('nan'), float('inf'), 1.0, -3.0])
         token = _promptenhance._sample(
             logits, torch.Generator().manual_seed(0),
@@ -886,6 +1037,12 @@ class TestPipelinePromptEnhance(unittest.TestCase):
                 'examples/kandinsky5/pipeline_prompt_enhance/text-to-video-config.dgen',
                 'examples/kandinsky5/pipeline_prompt_enhance/image-to-video-config.dgen',
             ),
+            'kandinsky6-video': (
+                'examples/kandinsky6/pipeline_prompt_enhance/text-to-video-config.dgen',
+            ),
+            'flux3': (
+                'examples/flux3/pipeline_prompt_enhance/distilled-config.dgen',
+            ),
             'krea2': ('examples/krea2/pipeline_prompt_enhance/config.dgen',),
             'ltx2': (
                 'examples/ltx2/basic/prompt-enhancer-config.dgen',
@@ -1078,7 +1235,7 @@ class TestHeadGeneration(unittest.TestCase):
 
 def _pipeline_args():
     import dgenerate.pipelinewrapper as _pipelinewrapper
-    args = _pipelinewrapper.DiffusionArguments()
+    args = _pipelinewrapper.GenerationArguments()
     args.prompt = _prompt.Prompt()
     args.prompt.positive = 'fox'
     args.pipeline_prompt_enhance = True

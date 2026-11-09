@@ -1,0 +1,39 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Quantize the FLUX.3 Qwen3.5 prompt upsampler on load. quantizer= is a
+# quantizer URI on the prompt-upsampler URI, quoted because it has its own
+# semicolons:
+# black-forest-labs/flux-3-image-klein-pup;quantizer="sdnq;type=int4"
+# Setting --prompt-upsampler turns the rewrite on and replaces the checkpoint
+# copy. The unquantized checkpoint upsampler is
+# examples/flux3/pipeline_prompt_enhance/distilled-config.dgen.
+# Both repositories are gated.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+{% if have_cuda() and have_feature('bitsandbytes') %}
+    \set upsampler_quant bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') %}
+    \set upsampler_quant sdnq;type=int4
+{% else %}
+    \print This example quantizes the prompt upsampler. It needs a CUDA GPU and bitsandbytes or sdnq.
+    \exit
+{% endif %}
+
+black-forest-labs/flux-3-image-klein
+--model-type flux3
+--dtype bfloat16
+--model-sequential-offload
+--prompt-upsampler black-forest-labs/flux-3-image-klein-pup;quantizer="{{ upsampler_quant }}"
+--inference-steps 16
+--guidance-scales 1
+--gen-seeds 1
+--output-path flux3-quantized-upsampler
+--output-size 1024
+--prompts "A red fox in a snow-covered forest clearing at golden hour"

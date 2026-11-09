@@ -58,6 +58,7 @@ from .enums import (
     model_type_is_flux2,
     model_type_is_flux2_klein_kv,
     model_type_is_flux2_family,
+    model_type_is_flux3,
     model_type_is_z_image,
     model_type_is_z_image_omni,
     model_type_is_z_image_family,
@@ -74,6 +75,7 @@ from .enums import (
     model_type_is_kandinsky5_image,
     model_type_is_kandinsky5_video,
     model_type_is_kandinsky5_family,
+    model_type_is_kandinsky6_video,
     model_type_image_is_condition,
     model_type_supports_adetailer,
     ADETAILER_INPAINT_MODEL_TYPES,
@@ -144,7 +146,7 @@ from .pipelines import (
     PipelineCreationResult,
     set_vae_tiling_and_slicing,
     get_pipeline_class,
-    create_diffusion_pipeline,
+    create_pipeline,
     estimate_pipeline_cache_footprint,
     UnsupportedPipelineConfigError,
     get_pipeline_modules,
@@ -160,7 +162,11 @@ from .pipelines import (
     enable_group_offload,
     get_torch_device_string,
     get_last_called_pipeline,
-    destroy_last_called_pipeline
+    destroy_last_called_pipeline,
+    TORCH_COMPILE_MAP_NAMES,
+    normalize_torch_compile,
+    torch_compile_enabled,
+    torch_compile_module_names,
 )
 
 from .schedulers import (
@@ -214,6 +220,12 @@ from .uris import (
     TransformerUriLoadError,
     InvalidTransformerUriError,
 
+    # Prompt Upsampler
+    PromptUpsamplerUri,
+    LoadedPromptUpsampler,
+    PromptUpsamplerUriLoadError,
+    InvalidPromptUpsamplerUriError,
+
     # Image Encoder
     ImageEncoderUri,
     InvalidImageEncoderUriError,
@@ -242,10 +254,6 @@ from .uris import (
     LTXLatentUpsamplerUri,
     InvalidLTXLatentUpsamplerUriError,
 
-    # LTX Prompt Enhancer
-    LTXPromptEnhancerUri,
-    InvalidLTXPromptEnhancerUriError,
-
     # LTX Diffusion Decoder
     LTXDiffusionDecoderUri,
     InvalidLTXDiffusionDecoderUriError,
@@ -272,11 +280,11 @@ from .uris import (
 )
 
 # Wrapper
-from .arguments import DiffusionArguments
+from .arguments import GenerationArguments
 from .wrapper import (
-    PipelineWrapperResult,
-    DiffusionPipelineWrapper,
-    DiffusionArgumentsHelpException
+    GenerationResult,
+    PipelineWrapper,
+    GenerationArgumentsHelpException
 )
 
 __all__ = _types.module_all()

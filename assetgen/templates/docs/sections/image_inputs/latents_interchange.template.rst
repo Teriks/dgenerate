@@ -143,6 +143,10 @@ Flux.2 Cooperative Denoising:
 
 @EXAMPLE[@PROJECT_DIR/examples/latents_interchange/flux2/cooperative-denoising-config.dgen]
 
+Flux.3 Cooperative Denoising:
+
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/flux3/cooperative-denoising-config.dgen]
+
 Qwen-Image Cooperative Denoising:
 
 @EXAMPLE[@PROJECT_DIR/examples/latents_interchange/qwen_image/cooperative-denoising-config.dgen]
@@ -185,7 +189,7 @@ when ``--denoising-start`` has been specified with an SDXL or Kolors model:
 Advanced Usage with Image Input:
 
 You can also combine cooperative denoising with img2img input by using the combined syntax,
-this works for SD1.5/2.x, SD3, Flux.1, Flux.2, Qwen-Image, Qwen-Image 2.1,
+this works for SD1.5/2.x, SD3, Flux.1, Flux.2, Flux.3, Qwen-Image, Qwen-Image 2.1,
 Kandinsky 5 Image, and Z-Image
 models using the ``latents= ...`` syntax:
 

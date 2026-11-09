@@ -36,7 +36,7 @@ import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
 import dgenerate.pipelinewrapper.uris.util as _util
 
 _controlnet_uri_parser = _textprocessing.ConceptUriParser(
-    'ControlNet', ['scale', 'start', 'end', 'mode', 'revision', 'variant', 'subfolder', 'dtype', 'quantizer'])
+    'ControlNet', ['scale', 'start', 'end', 'mode', 'revision', 'variant', 'subfolder', 'dtype', 'quantizer', 'compile'])
 
 _controlnet_cache = _d_memoize.create_object_cache(
     'controlnet', cache_type=_memory.SizedConstrainedObjectCache
@@ -179,6 +179,11 @@ class ControlNetUri:
         """
         return self._quantizer
 
+    @property
+    def compile(self) -> bool:
+        """Compile this ControlNet's repeated blocks."""
+        return self._compile
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString,
@@ -190,7 +195,8 @@ class ControlNetUri:
                  end: float = 1.0,
                  mode: int | str | FluxControlNetUnionUriModes | SDXLControlNetUnionUriModes | None = None,
                  quantizer: _types.OptionalUri = None,
-                 model_type: _enums.ModelType = _enums.ModelType.SD):
+                 model_type: _enums.ModelType = _enums.ModelType.SD,
+                 compile: bool = False):
         """
         :param model: model path
         :param revision: model revision (branch name)
@@ -219,6 +225,7 @@ class ControlNetUri:
         self._variant = variant
         self._subfolder = subfolder
         self._quantizer = quantizer
+        self._compile = bool(compile)
         self._model_type = model_type
 
         if isinstance(mode, str):
@@ -305,12 +312,14 @@ class ControlNetUri:
                 else:
                     model_class = diffusers.ControlNetModel
 
-            return self._load(dtype_fallback,
-                              auth_token,
-                              local_files_only,
-                              no_cache,
-                              device_map,
-                              model_class)
+            loaded = self._load(dtype_fallback,
+                                auth_token,
+                                local_files_only,
+                                no_cache,
+                                device_map,
+                                model_class)
+            _util.mark_compile_requested(loaded, self.compile)
+            return loaded
 
 
     @staticmethod
@@ -491,7 +500,9 @@ class ControlNetUri:
                 end=end,
                 mode=mode,
                 quantizer=r.args.get('quantizer', None),
-                model_type=model_type
+                model_type=model_type,
+                compile=_util.parse_compile_argument(
+                    r.args.get('compile'), _exceptions.InvalidControlNetUriError)
             )
 
         except _textprocessing.ConceptUriParseError as e:

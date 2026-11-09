@@ -37,6 +37,33 @@ VAEs are tiled automatically, so ``--vae-tiling`` is rejected. ``--vae-slicing``
 is available to reduce VAE memory use. These integrations generate video frames
 only; they do not synthesize audio.
 
+Library
+-------
+
+A video pipeline yields :class:`dgenerate.VideoGeneratedEvent` with the frames,
+frame rate, and soundtrack in memory. ``RenderLoop(..., disable_writes=True)``
+does not write a file. ``event.write`` muxes the clip to a path or a binary
+stream. A path's extension selects the container. A ``.frames`` path writes
+one PNG per frame. A stream is mp4 unless
+``animation_format`` is given. A seekable stream, such as ``io.BytesIO``, is
+rewound when the mux finishes. A non-seekable stream receives a fragmented mp4.
+The soundtrack is muxed into mp4. Call ``write`` while handling the event; the
+frames are closed when the loop moves on.
+
+.. code-block:: python
+
+    from dgenerate import RenderLoop, VideoGeneratedEvent
+
+    render_loop = RenderLoop(config=config, disable_writes=True)
+    for event in render_loop.events():
+        if isinstance(event, VideoGeneratedEvent):
+            event.write(event.suggested_filename)
+            event.write(stream)
+
+``dgenerate.mediaoutput.write_animation`` is the same mux for frames you
+already have. Examples are under
+`examples/library_usage <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/library_usage>`_.
+
 HunyuanVideo 1.5
 ----------------
 
@@ -567,12 +594,24 @@ See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teri
 image-to-video system prompt. A value replaces that system prompt.
 Any other ``--pipeline-prompt-enhance-*`` option turns enhancement on with that
 built-in system prompt when ``--pipeline-prompt-enhance`` is omitted.
-``--ltx-prompt-enhancer`` names a different enhancer model and turns enhancement
-on by itself. Its URI accepts ``revision``, ``subfolder``, ``dtype``, and
-``quantizer``.
+FLUX.3 and Kandinsky 6 accept the same system-prompt value and the same sampling
+options for that generation. With no value, FLUX.3 keeps the upsampler's system
+prompt and decodes greedily. Kandinsky 6 keeps its expansion instruction.
+``--prompt-upsampler`` names a different upsampler and turns enhancement on
+by itself. Its arguments match ``--transformer`` (``revision``, ``variant``,
+``subfolder``, ``dtype``, and ``quantizer``), and it loads a Transformers
+causal or image-to-text model rather than the denoiser. FLUX.3 uses the
+same option for its Qwen3.5 prompt upsampler.
 See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/prompt-enhancer-config.dgen>`_,
 `examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen>`_,
-and `examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen>`_.
+`examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen>`_,
+and `examples/ltx2/pipeline_prompt_enhance/quantized-upsampler-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/quantized-upsampler-config.dgen>`_.
+FLUX.3 quantizes its published Qwen3.5 upsampler the same way in
+`examples/flux3/pipeline_prompt_enhance/quantized-upsampler-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux3/pipeline_prompt_enhance/quantized-upsampler-config.dgen>`_.
+A custom system prompt and the sampling options are
+`examples/flux3/pipeline_prompt_enhance/sampling-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux3/pipeline_prompt_enhance/sampling-config.dgen>`_
+and
+`examples/kandinsky6/pipeline_prompt_enhance/sampling-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky6/pipeline_prompt_enhance/sampling-config.dgen>`_.
 
 ``--ltx-image-crfs`` recompresses a conditioning still before the VAE encode. Omit it
 and the pipeline default is used (``18`` on LTX-2.5). ``0`` skips recompression.

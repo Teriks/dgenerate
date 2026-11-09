@@ -189,7 +189,7 @@ class TestFlowImagePipelines(unittest.TestCase):
 
         import dgenerate.pipelinewrapper.argreconstruct as _argreconstruct
 
-        wrapper = _pipelinewrapper.DiffusionPipelineWrapper(
+        wrapper = _pipelinewrapper.PipelineWrapper(
             model_path=parsed.model_path,
             model_type=parsed.model_type,
             device='cpu')
@@ -494,9 +494,9 @@ class TestFlowImagePipelines(unittest.TestCase):
                 prompts=['a wave']).check()
 
     def test_wrapper_rejects_strength_without_an_image(self):
-        wrapper = _pipelinewrapper.DiffusionPipelineWrapper.__new__(
-            _pipelinewrapper.DiffusionPipelineWrapper)
-        args = _pipelinewrapper.DiffusionArguments()
+        wrapper = _pipelinewrapper.PipelineWrapper.__new__(
+            _pipelinewrapper.PipelineWrapper)
+        args = _pipelinewrapper.GenerationArguments()
         args.image_seed_strength = 0.4
         with self.assertRaises(_pipelines.UnsupportedPipelineConfigError) as raised:
             wrapper._get_pipeline_defaults(args)
@@ -640,10 +640,10 @@ class TestFlowImagePipelines(unittest.TestCase):
             def __call__(self, prompt=None):
                 return None
 
-        wrapper = _pipelinewrapper.DiffusionPipelineWrapper.__new__(
-            _pipelinewrapper.DiffusionPipelineWrapper)
+        wrapper = _pipelinewrapper.PipelineWrapper.__new__(
+            _pipelinewrapper.PipelineWrapper)
         wrapper._pipeline = Pipe()
-        args = _pipelinewrapper.DiffusionArguments()
+        args = _pipelinewrapper.GenerationArguments()
         args.inpaint_crop = True
         args.inpaint_crop_padding = 48
         self.assertEqual(wrapper._delegated_padding_mask_crop(args), 48)
@@ -685,7 +685,7 @@ class TestFlowImagePipelines(unittest.TestCase):
         self.assertEqual(converted.filename, 'seed.png')
         self.assertIs(_image.to_rgba(rgba), rgba)
 
-        out = _pipelinewrapper.DiffusionPipelineWrapper._qwen_layered_reference_images(
+        out = _pipelinewrapper.PipelineWrapper._qwen_layered_reference_images(
             [rgb, rgba])
         self.assertEqual(out[0].mode, 'RGBA')
         self.assertIs(out[1], rgba)
@@ -843,7 +843,7 @@ class TestFlowImagePipelines(unittest.TestCase):
         for argv in cases:
             config = _arguments.parse_args(argv, throw=True, log_error=False)
             generated = next(config.iterate_diffusion_args())
-            wrapper = _pipelinewrapper.DiffusionPipelineWrapper(
+            wrapper = _pipelinewrapper.PipelineWrapper(
                 model_path=config.model_path,
                 model_type=config.model_type,
                 device='cpu')
@@ -911,7 +911,7 @@ class TestFlowImagePipelines(unittest.TestCase):
         ], throw=True, log_error=False)
         self.assertTrue(parsed.model_group_offload)
         generated = next(parsed.iterate_diffusion_args())
-        wrapper = _pipelinewrapper.DiffusionPipelineWrapper(
+        wrapper = _pipelinewrapper.PipelineWrapper(
             model_path=parsed.model_path,
             model_type=parsed.model_type,
             device='cpu',
@@ -1160,7 +1160,7 @@ class TestFlowImagePipelines(unittest.TestCase):
     def test_flow_image_sigma_expressions(self):
         import numpy as np
 
-        from dgenerate.pipelinewrapper.wrapper import DiffusionPipelineWrapper
+        from dgenerate.pipelinewrapper.wrapper import PipelineWrapper
 
         class _RejectingScheduler:
             def set_timesteps(self, num_inference_steps=None, device=None, sigmas=None, mu=None):
@@ -1205,7 +1205,7 @@ class TestFlowImagePipelines(unittest.TestCase):
                 'QwenImageControlNetPipeline',
                 'QwenImageControlNetInpaintPipeline',
         ):
-            result = DiffusionPipelineWrapper._sigmas_eval(
+            result = PipelineWrapper._sigmas_eval(
                 'primary', pipe(name, _RejectingScheduler()), steps, 'sigmas * 0.95')
             self.assertEqual(len(result), steps, name)
             np.testing.assert_allclose(result, expected)
@@ -1215,16 +1215,16 @@ class TestFlowImagePipelines(unittest.TestCase):
             np.linspace(1.0, 1.0 / steps, steps),
             np.linspace(1.0, 0.0, steps + 1)[:-1])
 
-        csv = DiffusionPipelineWrapper._sigmas_eval(
+        csv = PipelineWrapper._sigmas_eval(
             'primary', pipe('ZImagePipeline', _RejectingScheduler()), steps, [0.2, 0.1])
         self.assertEqual(csv, [0.2, 0.1])
 
         with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
-            DiffusionPipelineWrapper._sigmas_eval(
+            PipelineWrapper._sigmas_eval(
                 'primary', pipe('QwenImagePipeline', _NoSigmasScheduler()), steps, 'sigmas * 0.95')
 
         with self.assertRaises(_pipelines.UnsupportedPipelineConfigError) as bad_expr:
-            DiffusionPipelineWrapper._sigmas_eval(
+            PipelineWrapper._sigmas_eval(
                 'primary', pipe('Flux2Pipeline', _RejectingScheduler()), steps, 'sigmas +')
         self.assertIn('Error interpreting sigmas expression', str(bad_expr.exception))
 
@@ -1239,7 +1239,7 @@ class TestFlowImagePipelines(unittest.TestCase):
 
         sdxl = type('StableDiffusionXLPipeline', (), {})()
         sdxl.scheduler = _SdScheduler()
-        scaled = DiffusionPipelineWrapper._sigmas_eval('primary', sdxl, 2, 'sigmas * 2')
+        scaled = PipelineWrapper._sigmas_eval('primary', sdxl, 2, 'sigmas * 2')
         self.assertTrue(sdxl.scheduler.called)
         np.testing.assert_allclose(scaled, [0.8, 0.4])
 
@@ -1483,21 +1483,21 @@ class SeedArgs:
 
 class TestConditionImagePipelineType(unittest.TestCase):
     def test_kandinsky_reference_image_selects_the_edit_pipeline(self):
-        kind = _pipelinewrapper.DiffusionPipelineWrapper._resolve_pipeline_type(
+        kind = _pipelinewrapper.PipelineWrapper._resolve_pipeline_type(
             SeedArgs(reference_images=['diner.png']),
             _pipelinewrapper.ModelType.KANDINSKY5_IMAGE,
             None)
         self.assertIs(kind, _pipelinewrapper.PipelineType.IMG2IMG)
 
     def test_kandinsky_without_an_image_stays_text_to_image(self):
-        kind = _pipelinewrapper.DiffusionPipelineWrapper._resolve_pipeline_type(
+        kind = _pipelinewrapper.PipelineWrapper._resolve_pipeline_type(
             SeedArgs(),
             _pipelinewrapper.ModelType.KANDINSKY5_IMAGE,
             None)
         self.assertIs(kind, _pipelinewrapper.PipelineType.TXT2IMG)
 
     def test_flux2_reference_image_stays_text_to_image(self):
-        kind = _pipelinewrapper.DiffusionPipelineWrapper._resolve_pipeline_type(
+        kind = _pipelinewrapper.PipelineWrapper._resolve_pipeline_type(
             SeedArgs(reference_images=['style.png']),
             _pipelinewrapper.ModelType.FLUX2,
             None)
@@ -1507,7 +1507,7 @@ class TestConditionImagePipelineType(unittest.TestCase):
 class TestFlowImageTimesteps(unittest.TestCase):
     def test_timesteps_eval(self):
         import numpy as np
-        from dgenerate.pipelinewrapper.wrapper import DiffusionPipelineWrapper
+        from dgenerate.pipelinewrapper.wrapper import PipelineWrapper
 
         class _Scheduler:
             def set_timesteps(self, num_inference_steps=None, timesteps=None):
@@ -1520,10 +1520,10 @@ class TestFlowImageTimesteps(unittest.TestCase):
         pipe.scheduler = _Scheduler()
 
         self.assertEqual(
-            DiffusionPipelineWrapper._timesteps_eval('primary', pipe, 2, [100, 50]),
+            PipelineWrapper._timesteps_eval('primary', pipe, 2, [100, 50]),
             [100, 50])
         self.assertEqual(
-            DiffusionPipelineWrapper._timesteps_eval('primary', pipe, 2, 'timesteps[::2]'),
+            PipelineWrapper._timesteps_eval('primary', pipe, 2, 'timesteps[::2]'),
             [1000])
 
         class _NoTimestepsScheduler:
@@ -1533,16 +1533,16 @@ class TestFlowImageTimesteps(unittest.TestCase):
         pipe2 = _Pipeline()
         pipe2.scheduler = _NoTimestepsScheduler()
         with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
-            DiffusionPipelineWrapper._timesteps_eval('primary', pipe2, 2, 'timesteps[::2]')
+            PipelineWrapper._timesteps_eval('primary', pipe2, 2, 'timesteps[::2]')
 
         # Reading the default schedule for an expression leaves the scheduler as it was.
         pipe.scheduler.timesteps = np.array([7, 3])
-        DiffusionPipelineWrapper._timesteps_eval('primary', pipe, 3, 'timesteps[1:]')
+        PipelineWrapper._timesteps_eval('primary', pipe, 3, 'timesteps[1:]')
         self.assertEqual(pipe.scheduler.timesteps.tolist(), [7, 3])
 
         for invalid in ([], [10.5], [-1], 'timesteps + 0.5', '5'):
             with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
-                DiffusionPipelineWrapper._timesteps_eval('primary', pipe, 3, invalid)
+                PipelineWrapper._timesteps_eval('primary', pipe, 3, invalid)
 
 
 if __name__ == '__main__':

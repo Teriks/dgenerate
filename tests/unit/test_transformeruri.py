@@ -76,6 +76,15 @@ class TestTransformerUri(unittest.TestCase):
         result = _transformeruri.TransformerUri.parse(uri)
         self.assertEqual(result.quantizer, False)
 
+    def test_compile_argument(self):
+        compiled = _transformeruri.TransformerUri.parse('model;compile=true')
+        self.assertTrue(compiled.compile)
+        eager = _transformeruri.TransformerUri.parse('model;compile=false')
+        self.assertFalse(eager.compile)
+        self.assertFalse(_transformeruri.TransformerUri.parse('model').compile)
+        with self.assertRaises(InvalidTransformerUriError):
+            _transformeruri.TransformerUri.parse('model;compile=yes')
+
     def test_wan_second_transformer_gguf(self):
         result = _transformeruri.TransformerUri.parse(
             'https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/LowNoise/Wan2.2-T2V-A14B-LowNoise-Q4_K_S.gguf')

@@ -45,7 +45,8 @@ _vae_uri_parser = _textprocessing.ConceptUriParser(
         'revision',
         'variant',
         'subfolder',
-        'dtype'
+        'dtype',
+        'compile'
     ]
 )
 
@@ -93,6 +94,11 @@ class VAEUri:
         Model repo subfolder
         """
         return self._subfolder
+
+    @property
+    def compile(self) -> bool:
+        """Compile this VAE's repeated blocks."""
+        return self._compile
 
     @property
     def dtype(self) -> _enums.DataType | None:
@@ -156,7 +162,8 @@ class VAEUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  extract: bool = False,
-                 dtype: _enums.DataType | str | None = None):
+                 dtype: _enums.DataType | str | None = None,
+                 compile: bool = False):
         """
         :param encoder: encoder class name, for example ``AutoencoderKL``
         :param model: model path
@@ -201,6 +208,7 @@ class VAEUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._compile = bool(compile)
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -249,7 +257,9 @@ class VAEUri:
             args = locals()
             args.pop('self')
             args.pop('cache_all')
-            return self._load(**args)
+            loaded = self._load(**args)
+            _util.mark_compile_requested(loaded, self.compile)
+            return loaded
 
     @staticmethod
     def _enforce_cache_size(new_vae_size):
@@ -430,6 +440,8 @@ class VAEUri:
                           revision=r.args.get('revision', None),
                           variant=r.args.get('variant', None),
                           dtype=dtype,
-                          subfolder=r.args.get('subfolder', None))
+                          subfolder=r.args.get('subfolder', None),
+                          compile=_util.parse_compile_argument(
+                              r.args.get('compile'), _exceptions.InvalidVaeUriError))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidVaeUriError(e) from e

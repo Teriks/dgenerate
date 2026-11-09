@@ -73,13 +73,6 @@ class InvalidLTXLatentUpsamplerUriError(InvalidModelUriError):
     pass
 
 
-class InvalidLTXPromptEnhancerUriError(InvalidModelUriError):
-    """
-    Error in ``--ltx-prompt-enhancer`` uri
-    """
-    pass
-
-
 class InvalidLTXDiffusionDecoderUriError(InvalidModelUriError):
     """
     Error in ``--ltx-diffusion-decoder`` URI
@@ -164,6 +157,13 @@ class InvalidTransformerUriError(InvalidModelUriError):
     pass
 
 
+class InvalidPromptUpsamplerUriError(InvalidModelUriError):
+    """
+    Error in ``--prompt-upsampler`` uri
+    """
+    pass
+
+
 class TextEncoderUriLoadError(InvalidModelUriError):
     """
     Error loading ``--text-encoder*`` uri
@@ -244,6 +244,13 @@ class ImageEncoderUriLoadError(ModelUriLoadError):
 class TransformerUriLoadError(ModelUriLoadError):
     """
     Error while loading model file in ``--transformer`` uri
+    """
+    pass
+
+
+class PromptUpsamplerUriLoadError(ModelUriLoadError):
+    """
+    Error while loading model file in ``--prompt-upsampler`` uri
     """
     pass
 

@@ -3,7 +3,7 @@ import dgenerate
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
-hints = typing.get_type_hints(dgenerate.DiffusionArguments)
+hints = typing.get_type_hints(dgenerate.GenerationArguments)
 
 supported_types = {
     _types.Boolean: "bool",
@@ -38,5 +38,5 @@ supported_types = {
 
 for name, hint in hints.items():
     if any(hint is h for h in supported_types):
-        if not dgenerate.DiffusionArguments.prompt_embedded_arg_checker(name, None):
+        if not dgenerate.GenerationArguments.prompt_embedded_arg_checker(name, None):
             print(_textprocessing.dashup(name) + ": " + supported_types[hint])

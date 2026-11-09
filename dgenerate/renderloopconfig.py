@@ -44,13 +44,13 @@ of input images. This is also used for latents processors.
 """
 
 
-def _iterate_diffusion_args(**kwargs) -> collections.abc.Iterator[_pipelinewrapper.DiffusionArguments]:
+def _iterate_diffusion_args(**kwargs) -> collections.abc.Iterator[_pipelinewrapper.GenerationArguments]:
     def _list_or_list_of_none(val: typing.Any) -> typing.List[typing.Any]:
         return val if val else [None]
 
     yield from _types.iterate_attribute_combinations(
         [(arg_name, _list_or_list_of_none(value)) for arg_name, value in kwargs.items()],
-        _pipelinewrapper.DiffusionArguments)
+        _pipelinewrapper.GenerationArguments)
 
 
 def _prefixed_arguments_in_use(config, prefix: str) -> list[str]:
@@ -132,7 +132,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     Omitted ``guidance_scales`` and ``inference_steps`` stay ``None`` on the
     config; generation-step text shows **auto** and the pipeline wrapper resolves
-    them in :meth:`~dgenerate.pipelinewrapper.wrapper.DiffusionPipelineWrapper._get_pipeline_defaults`
+    them in :meth:`~dgenerate.pipelinewrapper.wrapper.PipelineWrapper._get_pipeline_defaults`
     once the model is loaded. :meth:`fill_defaults` materializes other omitted lists (feature
     parameters, RegionE step count, and similar) but not guidance or step counts.
     :meth:`check` validates the configuration and may normalize a few fields
@@ -396,7 +396,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     ``None`` omits the option; generation-step text shows **auto**. Values are
     resolved when the step runs (image models:
-    :meth:`~dgenerate.pipelinewrapper.wrapper.DiffusionPipelineWrapper._get_pipeline_defaults`
+    :meth:`~dgenerate.pipelinewrapper.wrapper.PipelineWrapper._get_pipeline_defaults`
     after the pipeline is loaded; video models:
     :mod:`dgenerate.pipelinewrapper.videopipelines`). :meth:`fill_defaults` does
     not fill this list.
@@ -439,7 +439,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     ``None`` omits the option; generation-step text shows **auto**. Values are
     resolved when the step runs (image models:
-    :meth:`~dgenerate.pipelinewrapper.wrapper.DiffusionPipelineWrapper._get_pipeline_defaults`;
+    :meth:`~dgenerate.pipelinewrapper.wrapper.PipelineWrapper._get_pipeline_defaults`;
     video models: :mod:`dgenerate.pipelinewrapper.videopipelines`). With RegionE
     enabled, :meth:`fill_defaults` normalizes an omitted list to ``[28]``.
     """
@@ -696,11 +696,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     Supplying any value implies that :py:meth:`RenderLoopConfig.is_pipeline_prompt_enhance_enabled` is ``True``.
     """
 
-    ltx_prompt_enhancer: _types.OptionalString = None
+    prompt_upsampler: _types.OptionalString = None
     """
-    Separate LTX prompt-enhancer model. Setting it turns enhancement on.
-    When omitted, ``--pipeline-prompt-enhance`` loads ``google/gemma-4-E2B-it``.
-    ``--ltx-prompt-enhancer``.
+    Separate ``--prompt-upsampler`` URI. Setting it turns
+    enhancement on and replaces the default model. ``--prompt-upsampler``.
+    ``--model-type ltx2`` defaults to ``google/gemma-4-E2B-it``.
+    ``--model-type flux3`` defaults to the checkpoint Qwen3.5 upsampler.
     """
 
     wan_low_noise_guidance_scales: _types.OptionalFloats = None
@@ -2189,14 +2190,20 @@ class RenderLoopConfig(_types.SetFromMixin):
     :py:attr:`RenderLoopConfig.model_sequential_offload`
     """
 
-    torch_compile: bool = False
+    torch_compile: bool | collections.abc.Sequence[str] = False
     """
-    Compile repeated denoiser, ControlNet, and VAE blocks. The first use of each waits
-    while the graph builds. Wan-Animate-2 compiles its transformer and VAE blocks on
-    every load, with or without this flag. ``DGENERATE_TORCH_COMPILE=0`` leaves every
-    model eager, including Wan-Animate-2. Quantized modules and models with no
-    repeated blocks stay eager. TorchDynamo, Inductor, and Triton stay quiet
+    ``True`` compiles the UNet or transformer, ControlNet, and the VAE.
+    A sequence of module names compiles only those. ``False`` leaves the
+    pipeline eager. Wan-Animate-2 compiles its transformer and VAE blocks on
+    every load, with or without this value. ``DGENERATE_TORCH_COMPILE=0`` leaves
+    every model eager, including Wan-Animate-2. Quantized modules and models with
+    no repeated blocks stay eager. TorchDynamo, Inductor, and Triton stay quiet
     unless ``-v/--verbose`` is set. Compile errors still print.
+    ``compile=true`` on a submodel URI compiles that module even when this is
+    ``False``, and even when a name list omits it. ``prompt_upsampler`` and
+    ``prompt_enhancer`` are aliases. Weights streamed from disk skip this
+    value, including a URI ``compile=true``. Wan-Animate-2 ignores a name list
+    and a URI ``compile=true``.
     """
 
     second_model_cpu_offload: _types.OptionalBoolean = None
@@ -2569,19 +2576,23 @@ class RenderLoopConfig(_types.SetFromMixin):
                 _promptenhance.check_system_prompt_file(self.pipeline_prompt_enhance)
             except _pipelinewrapper.UnsupportedPipelineConfigError as error:
                 raise RenderLoopConfigError(str(error)) from error
-        if self.ltx_prompt_enhancer:
+        if self.prompt_upsampler:
             try:
-                ltx2 = _pipelinewrapper.model_type_is_ltx2(self.model_type)
+                separate = (
+                    _pipelinewrapper.model_type_is_ltx2(self.model_type)
+                    or _pipelinewrapper.model_type_is_flux3(self.model_type))
             except Exception:
-                ltx2 = False
-            if not ltx2:
+                separate = False
+            if not separate:
                 raise RenderLoopConfigError(
-                    f'{a_namer("ltx_prompt_enhancer")} is only supported for --model-type ltx2.')
+                    f'{a_namer("prompt_upsampler")} is supported for --model-type '
+                    'ltx2 and flux3. Models that rewrite with the diffusion text '
+                    'encoder do not take a separate upsampler.')
             try:
-                _pipelinewrapper.uris.LTXPromptEnhancerUri.parse(self.ltx_prompt_enhancer)
-            except _pipelinewrapper.uris.InvalidLTXPromptEnhancerUriError as e:
+                _pipelinewrapper.uris.PromptUpsamplerUri.parse(self.prompt_upsampler)
+            except _pipelinewrapper.uris.InvalidPromptUpsamplerUriError as e:
                 raise RenderLoopConfigError(
-                    f'{a_namer("ltx_prompt_enhancer")}: {e}') from e
+                    f'{a_namer("prompt_upsampler")}: {e}') from e
         overrides = _promptenhance.PromptEnhanceOverrides.from_args(self)
         try:
             _promptenhance.check_generation_overrides(overrides, a_namer, self.model_type)
@@ -2646,6 +2657,12 @@ class RenderLoopConfig(_types.SetFromMixin):
         """Check optimization features compatibility with the selected model type."""
         cache_dit_enabled = self.is_cache_dit_enabled()
         dype_enabled = self.is_dype_enabled()
+
+        try:
+            self.torch_compile = _pipelinewrapper.normalize_torch_compile(self.torch_compile)
+        except _pipelinewrapper.UnsupportedPipelineConfigError as error:
+            raise RenderLoopConfigError(
+                f'{a_namer("torch_compile")}: {error}') from error
 
         if self.quantizer_map and not self.quantizer_uri:
             raise RenderLoopConfigError(
@@ -3473,7 +3490,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 ('ltx_video_decoder', self.ltx_video_decoder == 'diffusion'),
                 ('ltx_diffusion_decoder', self.ltx_diffusion_decoder),
                 ('ltx_diffusion_decode_tile', self.ltx_diffusion_decode_tile),
-                ('ltx_prompt_enhancer', self.ltx_prompt_enhancer),
+                ('prompt_upsampler', self.prompt_upsampler),
                 ('ltx_image_crfs', self.ltx_image_crfs),
                 ('ltx_use_cross_timestep', self.ltx_use_cross_timestep is False),
                 ('ltx_video_min_seconds', self.ltx_video_min_seconds),
@@ -4951,7 +4968,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         and ``inference_steps`` stay omitted (**auto** in step text) except
         RegionE step normalization; numeric guidance and step counts are resolved
         when the step runs (image:
-        :meth:`~dgenerate.pipelinewrapper.wrapper.DiffusionPipelineWrapper._get_pipeline_defaults`;
+        :meth:`~dgenerate.pipelinewrapper.wrapper.PipelineWrapper._get_pipeline_defaults`;
         video: :mod:`dgenerate.pipelinewrapper.videopipelines`).
 
         Does not replace values the user already supplied. Call after
@@ -5006,20 +5023,20 @@ class RenderLoopConfig(_types.SetFromMixin):
                     self.second_model_second_prompts, _types.default(
                         self.second_model_second_prompt_upscaler_uri, self.prompt_upscaler_uri))
 
-    def iterate_diffusion_args(self, **overrides) -> collections.abc.Iterator[_pipelinewrapper.DiffusionArguments]:
+    def iterate_diffusion_args(self, **overrides) -> collections.abc.Iterator[_pipelinewrapper.GenerationArguments]:
         """
-        Iterate over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` argument objects using
+        Iterate over :py:class:`dgenerate.pipelinewrapper.GenerationArguments` argument objects using
         every combination of argument values provided for that object by this configuration.
 
         :param overrides: use key word arguments to override specific attributes of this object with a new list value.
-        :return: an iterator over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments`
+        :return: an iterator over :py:class:`dgenerate.pipelinewrapper.GenerationArguments`
         """
 
         def ov(n: str, v: typing.Any) -> typing.Optional[typing.List[typing.Any]]:
-            if not hasattr(_pipelinewrapper.DiffusionArguments, n):
+            if not hasattr(_pipelinewrapper.GenerationArguments, n):
                 # fat-fingered an argument name too many times :)
                 raise AssertionError(
-                    f'dgenerate.pipelinewrapper.DiffusionArguments lacks property: {n}')
+                    f'dgenerate.pipelinewrapper.GenerationArguments lacks property: {n}')
 
             if not (
                     _pipelinewrapper.model_type_is_sdxl_family(self.model_type) or
@@ -5222,7 +5239,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 ltx_decode_timestep=ov('ltx_decode_timestep', self.ltx_decode_timesteps),
                 ltx_decode_noise_scale=ov('ltx_decode_noise_scale', self.ltx_decode_noise_scales),
                 ltx_image_crf=ov('ltx_image_crf', self.ltx_image_crfs),
-                ltx_prompt_enhancer=ov('ltx_prompt_enhancer', [self.ltx_prompt_enhancer]),
+                prompt_upsampler=ov('prompt_upsampler', [self.prompt_upsampler]),
                 pipeline_prompt_enhance=ov(
                     'pipeline_prompt_enhance', [self.pipeline_prompt_enhance]),
                 pipeline_prompt_enhance_seed=ov(
@@ -5333,7 +5350,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             arg.prompt.set_embedded_args_on(
                 on_object=arg,
-                forbidden_checker=_pipelinewrapper.DiffusionArguments.prompt_embedded_arg_checker)
+                forbidden_checker=_pipelinewrapper.GenerationArguments.prompt_embedded_arg_checker)
 
             self._stamp_implied_diffusion_args(arg)
 
@@ -5342,7 +5359,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 yield arg
                 continue
             for low, high in bounds:
-                clone = _pipelinewrapper.DiffusionArguments()
+                clone = _pipelinewrapper.GenerationArguments()
                 clone.set_from(arg)
                 clone.ltx_video_min_seconds = low
                 clone.ltx_video_max_seconds = high
@@ -5359,7 +5376,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         """Give one generation step the defaults a bare parent switch used to carry.
 
         ``--pag`` and ``--sdxl-refiner-pag`` have no field on
-        :py:class:`~dgenerate.pipelinewrapper.DiffusionArguments`. The pipeline
+        :py:class:`~dgenerate.pipelinewrapper.GenerationArguments`. The pipeline
         wrapper enables PAG from a scale or a layer set, so a bare switch has
         to arrive as the default scales.
         """

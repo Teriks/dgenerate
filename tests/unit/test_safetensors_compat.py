@@ -234,6 +234,12 @@ class TestSafetensorsCompat(unittest.TestCase):
             ('layer', 'layer'),
             ('blocks.0.attn.q', 'model.diffusion_model.blocks.0.attn.q'),
             ('blocks.0.attn.q', 'transformer.blocks.0.attn.q'),
+            ('single_transformer_blocks.0.attn.to_q',
+             'model.diffusion_model.single_transformer_blocks.0.attn.to_q'),
+            ('visual_transformer_blocks.0.video_attn.to_q',
+             'model.diffusion_model.visual_transformer_blocks.0.video_attn.to_q'),
+            ('model.language_model.layers.0.self_attn.q_proj',
+             'model.language_model.layers.0.self_attn.q_proj'),
         )
         for meta_name, tensor_name in cases:
             with self.subTest(tensor_name=tensor_name):

@@ -116,7 +116,7 @@ class ToDiffusersSubCommand(_subcommand.SubCommand):
                     dgenerate.messages.push_level(dgenerate.messages.DEBUG)
 
                 with _memoize.disable_memoization_context():
-                    pipe = _pipelinewrapper.create_diffusion_pipeline(
+                    pipe = _pipelinewrapper.create_pipeline(
                         model_path=args.model_path,
                         model_type=_pipelinewrapper.get_model_type_enum(args.model_type),
                         revision=args.revision,

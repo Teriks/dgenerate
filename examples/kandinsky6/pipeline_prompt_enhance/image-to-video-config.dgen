@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Image-to-video rewrite. The still is the first frame, and expand_prompts
+# sees that image. Text-to-video with the same flag is
+# examples/kandinsky6/pipeline_prompt_enhance/text-to-video-config.dgen.
+
+kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers
+--model-type kandinsky6-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 10
+--guidance-scales 1
+--pipeline-prompt-enhance
+--image-seeds "../../media/man-fighting-pose.jpg"
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky6-lite-i2v-enhance
+--output-size 864x480
+--prompts "The person slowly lowers their arms and turns toward the camera. Audio: cloth movement, a quiet room, one breath."

@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# DyPE on distilled Klein, above the 1024 reference the positional embedder
+# was built around. Spatial axes are scaled; the time and layer axes are not.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+black-forest-labs/flux-3-image-klein
+--model-type flux3
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 16
+--guidance-scales 1
+--dype
+--dype-methods yarn
+--gen-seeds 1
+--output-path flux3-klein-dype
+--output-size 1344
+--prompts "A red fox in a snow-covered forest clearing at golden hour"

@@ -4,7 +4,7 @@ title: Upscaling (Stable Diffusion x2)
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["EulerDiscreteScheduler"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"]}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"upscaler-x2"}]
 @quantizer[{"model-type":"upscaler-x2"}]
 @textencoders[{"model-type":"upscaler-x2","arg":"--text-encoders", "divider-after":true}]
 --model-type upscaler-x2

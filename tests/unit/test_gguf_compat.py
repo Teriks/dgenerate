@@ -415,6 +415,16 @@ class TestGGUFCompat(unittest.TestCase):
         self.assertIn('img_in.weight', stripped)
         self.assertNotIn('model.diffusion_model.img_in.weight', stripped)
 
+        import gguf
+        from diffusers.quantizers.gguf.utils import GGML_QUANT_SIZES, GGUFParameter
+        qtype = gguf.GGMLQuantizationType.Q8_0
+        _block, type_size = GGML_QUANT_SIZES[qtype]
+        packed = GGUFParameter(torch.zeros(4, type_size, dtype=torch.uint8), quant_type=qtype)
+        self.assertEqual(tuple(packed.quant_shape), (4, 32))
+        restored = _ggufcompat._align_tensor(packed, (8, 16))
+        self.assertEqual(tuple(restored.shape), (8, 16))
+        self.assertFalse(hasattr(restored, 'quant_type'))
+
         table = torch.arange(8, dtype=torch.float32).reshape(4, 2)
         flipped = _ggufcompat._align_tensor(table, (2, 4))
         self.assertEqual(tuple(flipped.shape), (2, 4))

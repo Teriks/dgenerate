@@ -1,0 +1,23 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# FLUX.3 Image Klein base. 50 steps, guidance 3.5. This is the checkpoint
+# LoRAs are trained on. The repo is gated.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+black-forest-labs/flux-3-image-klein-base
+--model-type flux3
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path flux3-klein-base
+--output-size 1024
+--prompts "A red fox in a snow-covered forest clearing at golden hour"

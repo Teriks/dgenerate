@@ -27,9 +27,9 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
 
-class DiffusionArguments(_types.SetFromMixin):
+class GenerationArguments(_types.SetFromMixin):
     """
-    Represents all possible arguments for a :py:class:`.DiffusionPipelineWrapper` call.
+    Arguments for one :py:class:`.PipelineWrapper` call.
     """
     prompt: _prompt.OptionalPrompt = None
     """
@@ -63,7 +63,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
     second_model_scheduler_uri: _types.OptionalUri = None
     """
-    SDXL refiner scheduler / Stable Cascade Decoder URI, if not specified, defaults to :py:attr:`DiffusionArguments.scheduler`
+    SDXL refiner scheduler / Stable Cascade Decoder URI, if not specified, defaults to :py:attr:`GenerationArguments.scheduler`
     """
 
     prompt_weighter_uri: _types.OptionalUri = None
@@ -76,7 +76,7 @@ class DiffusionArguments(_types.SetFromMixin):
     The URI of a prompt-weighter implementation supported by dgenerate 
     to use with the SDXL refiner or Stable Cascade Decoder.
     
-    Defaults to :py:attr:`DiffusionArguments.prompt_weighter_uri` if not specified.
+    Defaults to :py:attr:`GenerationArguments.prompt_weighter_uri` if not specified.
     
     This corresponds to the ``--second-model-prompt-weighter`` argument of the dgenerate command line tool.
     """
@@ -85,7 +85,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     One or more latents processor URI strings for processing raw input latents before pipeline execution.
     
-    These processors are applied to latents provided through the :py:attr:`DiffusionArguments.latents` 
+    These processors are applied to latents provided through the :py:attr:`GenerationArguments.latents` 
     argument (raw latents used as noise initialization). The processors are applied in sequence
     before the latents are passed to the diffusion pipeline.
     """
@@ -94,7 +94,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     One or more latents processor URI strings for processing output latents when outputting to latents.
     
-    These processors are applied to latents when :py:attr:`DiffusionArguments.output_latents` is `True`. 
+    These processors are applied to latents when :py:attr:`GenerationArguments.output_latents` is `True`. 
     The processors are applied in sequence after the diffusion pipeline generates the latents 
     but before they are returned in the result.
     """
@@ -103,7 +103,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     One or more latents processor URI strings for processing ``img2img`` latents before pipeline execution.
     
-    These processors are applied to latent tensors provided through the :py:attr:`DiffusionArguments.images` 
+    These processors are applied to latent tensors provided through the :py:attr:`GenerationArguments.images` 
     argument when doing ``img2img`` with tensor inputs. The processors are applied in sequence and may occur 
     before VAE decoding (for models that decode ``img2img`` latents) or before direct pipeline usage.
     """
@@ -113,7 +113,7 @@ class DiffusionArguments(_types.SetFromMixin):
     One or more image processor URI strings for processing images decoded from incoming latents.
     
     These processors are applied to images that are decoded from latent tensors provided through the 
-    :py:attr:`DiffusionArguments.images` argument when doing ``img2img`` with tensor inputs. The processors 
+    :py:attr:`GenerationArguments.images` argument when doing ``img2img`` with tensor inputs. The processors 
     are applied in sequence after VAE decoding but before the images are used in the pipeline.
     
     The processing flow is: decoded images → pre-resize processing → resize to user dimensions → post-resize processing.
@@ -187,8 +187,8 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Auto-enabling:
     
-    This is automatically enabled when :py:attr:`DiffusionArguments.inpaint_crop_padding`, 
-    :py:attr:`DiffusionArguments.inpaint_crop_feather`, or :py:attr:`DiffusionArguments.inpaint_crop_masked` 
+    This is automatically enabled when :py:attr:`GenerationArguments.inpaint_crop_padding`, 
+    :py:attr:`GenerationArguments.inpaint_crop_feather`, or :py:attr:`GenerationArguments.inpaint_crop_masked` 
     are specified.
     """
 
@@ -202,32 +202,32 @@ class DiffusionArguments(_types.SetFromMixin):
     - tuple[int, int]: (horizontal, vertical) padding  
     - tuple[int, int, int, int]: (left, top, right, bottom) padding
     
-    Specifying this value automatically enables :py:attr:`DiffusionArguments.inpaint_crop` if it is not already enabled.
-    Default value when :py:attr:`DiffusionArguments.inpaint_crop` is enabled but no padding is specified: 32 pixels.
+    Specifying this value automatically enables :py:attr:`GenerationArguments.inpaint_crop` if it is not already enabled.
+    Default value when :py:attr:`GenerationArguments.inpaint_crop` is enabled but no padding is specified: 32 pixels.
     
-    Note: Inpaint crop cannot be used with multiple input images. See :py:attr:`DiffusionArguments.inpaint_crop` for batching details.
+    Note: Inpaint crop cannot be used with multiple input images. See :py:attr:`GenerationArguments.inpaint_crop` for batching details.
     """
 
     inpaint_crop_masked: bool = False
     """
     When inpaint_crop is enabled, use the mask when pasting the generated result back 
     onto the original image. This means only the masked areas will be replaced. 
-    Cannot be used together with :py:attr:`DiffusionArguments.inpaint_crop_feather`.
+    Cannot be used together with :py:attr:`GenerationArguments.inpaint_crop_feather`.
     
-    Specifying this value automatically enables :py:attr:`DiffusionArguments.inpaint_crop` if it is not already enabled.
+    Specifying this value automatically enables :py:attr:`GenerationArguments.inpaint_crop` if it is not already enabled.
     
-    Note: Inpaint crop cannot be used with multiple input images. See :py:attr:`DiffusionArguments.inpaint_crop` for batching details.
+    Note: Inpaint crop cannot be used with multiple input images. See :py:attr:`GenerationArguments.inpaint_crop` for batching details.
     """
 
     inpaint_crop_feather: int | None = None
     """
     Feather value to use when pasting the generated result back onto the original 
-    image when :py:attr:`DiffusionArguments.inpaint_crop` is enabled. Feathering creates smooth transitions from 
-    opaque to transparent. Cannot be used together with :py:attr:`DiffusionArguments.inpaint_crop_masked`.
+    image when :py:attr:`GenerationArguments.inpaint_crop` is enabled. Feathering creates smooth transitions from 
+    opaque to transparent. Cannot be used together with :py:attr:`GenerationArguments.inpaint_crop_masked`.
     
-    Specifying this value automatically enables :py:attr:`DiffusionArguments.inpaint_crop` if it is not already enabled.
+    Specifying this value automatically enables :py:attr:`GenerationArguments.inpaint_crop` if it is not already enabled.
     
-    Note: Inpaint crop cannot be used with multiple input images. See :py:attr:`DiffusionArguments.inpaint_crop` for batching details.
+    Note: Inpaint crop cannot be used with multiple input images. See :py:attr:`GenerationArguments.inpaint_crop` for batching details.
     """
 
     reference_images: _types.OptionalImages = None
@@ -243,7 +243,7 @@ class DiffusionArguments(_types.SetFromMixin):
     control_images: _types.OptionalImages = None
     """
     ControlNet guidance images to use if ``controlnet_uris`` were given to the 
-    constructor of :py:class:`.DiffusionPipelineWrapper`.
+    constructor of :py:class:`.PipelineWrapper`.
     
     Note: Control images must be PIL Images, tensors are not supported since ControlNet/T2I-Adapter 
     operate in pixel space.
@@ -256,7 +256,7 @@ class DiffusionArguments(_types.SetFromMixin):
     ip_adapter_images: _types.OptionalImagesSequence = None
     """
     IP Adapter images to use if ``ip_adapter_uris`` were given to the
-    constructor of :py:class:`.DiffusionPipelineWrapper`.
+    constructor of :py:class:`.PipelineWrapper`.
     
     Note: IP Adapter images must be PIL Images, tensors are not supported since IP-Adapter 
     operates in pixel space.
@@ -274,7 +274,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     The output image or tensor of the last stage when performing img2img or 
     inpainting generation with Deep Floyd. When performing txt2img 
-    generation :py:attr:`DiffusionArguments.image` is used.
+    generation :py:attr:`GenerationArguments.image` is used.
     
     When a tensor is provided, it represents latent space data from a previous Floyd stage.
     
@@ -303,8 +303,8 @@ class DiffusionArguments(_types.SetFromMixin):
 
     aspect_correct: bool = False
     """
-    When resizing input images according to :py:attr:`DiffusionArguments.width` 
-    and :py:attr:`DiffusionArguments.height`, should the resize be aspect correct?
+    When resizing input images according to :py:attr:`GenerationArguments.width` 
+    and :py:attr:`GenerationArguments.height`, should the resize be aspect correct?
     """
 
     batch_size: _types.OptionalInteger = None
@@ -421,7 +421,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     In edit mode, the refiner uses img2img with an image seed strength
     to add details to the image instead of cooperative denoising, this image 
-    seed strength is calculated as (1.0 - :py:attr:`.DiffusionArguments.sdxl_high_noise_fraction`), and the 
+    seed strength is calculated as (1.0 - :py:attr:`.GenerationArguments.sdxl_high_noise_fraction`), and the 
     number of inference steps for the refiner is then calculated as 
     (image_seed_strength * inference_steps).
     """
@@ -439,7 +439,7 @@ class DiffusionArguments(_types.SetFromMixin):
     sdxl_refiner_sigmas: collections.abc.Sequence[float] | str | None = None
     """
     Sigma values, this is supported when using a 
-    :py:attr:`DiffusionArguments.second_model_scheduler_uri` that supports 
+    :py:attr:`GenerationArguments.second_model_scheduler_uri` that supports 
     setting sigmas.
     
     These sigma values control the noise schedule specifically for the SDXL 
@@ -458,7 +458,7 @@ class DiffusionArguments(_types.SetFromMixin):
     sdxl_refiner_guidance_rescale: _types.OptionalFloat = None
     """
     Override the guidance rescale value used by the SDXL refiner, which is normally set to the value of
-    :py:attr:`.DiffusionArguments.guidance_rescale`.
+    :py:attr:`.GenerationArguments.guidance_rescale`.
     """
 
     sdxl_aesthetic_score: _types.OptionalFloat = None
@@ -471,8 +471,8 @@ class DiffusionArguments(_types.SetFromMixin):
     sdxl_original_size: _types.OptionalSize = None
     """
     Optional SDXL conditioning parameter. 
-    If :py:attr:`.DiffusionArguments.sdxl_original_size` is not the same as :py:attr:`.DiffusionArguments.sdxl_target_size` 
-    the image will appear to be down- or up-sampled. :py:attr:`.DiffusionArguments.sdxl_original_size` defaults to ``(width, height)`` 
+    If :py:attr:`.GenerationArguments.sdxl_original_size` is not the same as :py:attr:`.GenerationArguments.sdxl_target_size` 
+    the image will appear to be down- or up-sampled. :py:attr:`.GenerationArguments.sdxl_original_size` defaults to ``(width, height)`` 
     if not specified or the size of any input images provided. Part of SDXL's micro-conditioning as explained in section 2.2 of 
     [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952).
     """
@@ -480,7 +480,7 @@ class DiffusionArguments(_types.SetFromMixin):
     sdxl_target_size: _types.OptionalSize = None
     """
     Optional SDXL conditioning parameter.
-    For most cases, :py:attr:`.DiffusionArguments.sdxl_target_size` should be set to the desired height and width of the generated image. If
+    For most cases, :py:attr:`.GenerationArguments.sdxl_target_size` should be set to the desired height and width of the generated image. If
     not specified it will default to ``(width, height)`` or the size of any input images provided. Part of SDXL's 
     micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952).
     """
@@ -488,20 +488,20 @@ class DiffusionArguments(_types.SetFromMixin):
     sdxl_crops_coords_top_left: _types.OptionalCoordinate = None
     """
     Optional SDXL conditioning parameter.
-    :py:attr:`.DiffusionArguments.sdxl_crops_coords_top_left` can be used to generate an image that appears to be "cropped" from the position
-    :py:attr:`.DiffusionArguments.sdxl_crops_coords_top_left` downwards. Favorable, well-centered images are usually achieved by setting
-    :py:attr:`.DiffusionArguments.sdxl_crops_coords_top_left` to (0, 0). Part of SDXL's micro-conditioning as explained in section 2.2 of
+    :py:attr:`.GenerationArguments.sdxl_crops_coords_top_left` can be used to generate an image that appears to be "cropped" from the position
+    :py:attr:`.GenerationArguments.sdxl_crops_coords_top_left` downwards. Favorable, well-centered images are usually achieved by setting
+    :py:attr:`.GenerationArguments.sdxl_crops_coords_top_left` to (0, 0). Part of SDXL's micro-conditioning as explained in section 2.2 of
     [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952).
     """
 
     sdxl_negative_aesthetic_score: _types.OptionalFloat = None
     """
-    Negative influence version of :py:attr:`.DiffusionArguments.sdxl_aesthetic_score`
+    Negative influence version of :py:attr:`.GenerationArguments.sdxl_aesthetic_score`
     """
 
     sdxl_negative_original_size: _types.OptionalSize = None
     """
-    This value is only supported for certain :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`
+    This value is only supported for certain :py:class:`dgenerate.pipelinewrapper.PipelineWrapper`
     configurations, an error will be produced when it is unsupported. It is not known to be supported
     by ``pix2pix``.
     
@@ -514,77 +514,77 @@ class DiffusionArguments(_types.SetFromMixin):
 
     sdxl_negative_target_size: _types.OptionalSize = None
     """
-    This value is only supported for certain :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`
+    This value is only supported for certain :py:class:`dgenerate.pipelinewrapper.PipelineWrapper`
     configurations, an error will be produced when it is unsupported. It is not known to be supported
     by ``pix2pix``.
     
     Optional SDXL conditioning parameter.
     To negatively condition the generation process based on a target image resolution. It should be as same
-    as the :py:attr:`.DiffusionArguments.target_size` for most cases. Part of SDXL's micro-conditioning as 
+    as the :py:attr:`.GenerationArguments.target_size` for most cases. Part of SDXL's micro-conditioning as 
     explained in section 2.2 of [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952).
     For more information, refer to this issue thread: https://github.com/huggingface/diffusers/issues/4208.
     """
 
     sdxl_negative_crops_coords_top_left: _types.OptionalCoordinate = None
     """
-    Negative influence version of :py:attr:`.DiffusionArguments.sdxl_crops_coords_top_left`
+    Negative influence version of :py:attr:`.GenerationArguments.sdxl_crops_coords_top_left`
     """
 
     sdxl_refiner_aesthetic_score: _types.OptionalFloat = None
     """
-    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_aesthetic_score`
+    Override the refiner value usually taken from :py:attr:`.GenerationArguments.sdxl_aesthetic_score`
     """
 
     sdxl_refiner_original_size: _types.OptionalSize = None
     """
-    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_original_size`
+    Override the refiner value usually taken from :py:attr:`.GenerationArguments.sdxl_original_size`
     """
 
     sdxl_refiner_target_size: _types.OptionalSize = None
     """
-    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_target_size`
+    Override the refiner value usually taken from :py:attr:`.GenerationArguments.sdxl_target_size`
     """
 
     sdxl_refiner_crops_coords_top_left: _types.OptionalCoordinate = None
     """
-    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_crops_coords_top_left`
+    Override the refiner value usually taken from :py:attr:`.GenerationArguments.sdxl_crops_coords_top_left`
     """
 
     sdxl_refiner_negative_aesthetic_score: _types.OptionalFloat = None
     """
-    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_negative_aesthetic_score`
+    Override the refiner value usually taken from :py:attr:`.GenerationArguments.sdxl_negative_aesthetic_score`
     """
 
     sdxl_refiner_negative_original_size: _types.OptionalSize = None
     """
-    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_negative_original_size`
+    Override the refiner value usually taken from :py:attr:`.GenerationArguments.sdxl_negative_original_size`
     """
 
     sdxl_refiner_negative_target_size: _types.OptionalSize = None
     """
-    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_negative_target_size`
+    Override the refiner value usually taken from :py:attr:`.GenerationArguments.sdxl_negative_target_size`
     """
 
     sdxl_refiner_negative_crops_coords_top_left: _types.OptionalCoordinate = None
     """
-    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_negative_crops_coords_top_left`
+    Override the refiner value usually taken from :py:attr:`.GenerationArguments.sdxl_negative_crops_coords_top_left`
     """
 
     guidance_scale: _types.OptionalFloat = None
     """
     A higher guidance scale value encourages the model to generate images closely linked to the text
-    :py:attr:`.DiffusionArguments.prompt` at the expense of lower image quality. Guidance scale is enabled
-    when :py:attr:`.DiffusionArguments.guidance_scale`  > 1
+    :py:attr:`.GenerationArguments.prompt` at the expense of lower image quality. Guidance scale is enabled
+    when :py:attr:`.GenerationArguments.guidance_scale`  > 1
 
     For LTX-2, omitted guidance becomes ``1`` on a distilled checkpoint, or video
     ``3`` with audio ``7`` on a full checkpoint. Values you set are used as written.
-    Setting :py:attr:`.DiffusionArguments.sigmas` leaves guidance unchanged.
+    Setting :py:attr:`.GenerationArguments.sigmas` leaves guidance unchanged.
     """
 
     sigmas: collections.abc.Sequence[float] | str | None = None
     """
     Sigma values, this is supported when using a when using 
-    a :py:attr:`DiffusionArguments.scheduler_uri` that supports setting sigmas.
+    a :py:attr:`GenerationArguments.scheduler_uri` that supports setting sigmas.
     
     Sigma values control the noise schedule in the diffusion process, allowing for 
     fine-grained control over how noise is added and removed during image generation.
@@ -628,7 +628,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     FreeU parameters for the SDXL refiner
     
-    See: :py:attr:`DiffusionArguments.freeu_params` for clarification.
+    See: :py:attr:`GenerationArguments.freeu_params` for clarification.
     """
 
     hi_diffusion: bool = False
@@ -861,7 +861,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     See: https://github.com/ali-vilab/TeaCache
     
-    Also see: :py:attr:`DiffusionArguments.tea_cache_rel_l1_threshold`
+    Also see: :py:attr:`GenerationArguments.tea_cache_rel_l1_threshold`
     
     This is supported for: ``--model-type flux*``.
     
@@ -888,7 +888,9 @@ class DiffusionArguments(_types.SetFromMixin):
     not add a package dependency.
 
     Flux.1 and Qwen-Image use the upstream architectures. Flux Fill/Kontext,
-    Qwen Edit/Layered, Flux.2, Z-Image, and Wan are experimental adapters.
+    Qwen Edit/Layered, Flux.2, FLUX.3, Z-Image, Wan, and Kandinsky 6 are
+    experimental adapters. FLUX.3 uses the Flux.2 position-id contract.
+    Kandinsky 6 scales height and width and leaves the time axis alone.
 
     DyPE cannot be combined with Cache-DiT, TeaCache, Spectrum, or SADA.
     Those features reuse or skip denoiser work from an earlier step, which
@@ -900,16 +902,16 @@ class DiffusionArguments(_types.SetFromMixin):
     Position encoding method for DyPE: ``yarn`` (the default), ``ntk``, or
     ``base`` (the unmodified RoPE baseline).
 
-    Supplying any value implies that :py:attr:`DiffusionArguments.dype` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.dype` is enabled.
     """
 
     dype_base_resolution: _types.OptionalInteger = None
     """
     Reference long-side resolution in pixels used by DyPE to determine when
-    positional scaling begins. Defaults to 1024 for Flux/Flux.2/Z-Image,
-    1328 for Qwen-Image, and 832 for Wan. Must be at least 16 pixels.
+    positional scaling begins. Defaults to 1024 for Flux/Flux.2/FLUX.3/Z-Image,
+    1328 for Qwen-Image, 864 for Kandinsky 6, and 832 for Wan. Must be at least 16 pixels.
 
-    Supplying any value implies that :py:attr:`DiffusionArguments.dype` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.dype` is enabled.
     """
 
     dype_mscale: _types.OptionalString = None
@@ -918,7 +920,7 @@ class DiffusionArguments(_types.SetFromMixin):
     upstream DyPE's fixed scale), ``decay`` (fades the scale out as denoising
     progresses), or ``off``. Only affects the ``yarn`` method.
 
-    Supplying any value implies that :py:attr:`DiffusionArguments.dype` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.dype` is enabled.
     """
 
     dype_axis_scaling: _types.OptionalString = None
@@ -928,12 +930,12 @@ class DiffusionArguments(_types.SetFromMixin):
     linear interpolation) or ``independent`` (upstream DyPE's per-axis
     scaling). Square images are unaffected.
 
-    Supplying any value implies that :py:attr:`DiffusionArguments.dype` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.dype` is enabled.
     """
 
     tea_cache_rel_l1_threshold: _types.OptionalFloat = None
     """
-    TeaCache relative L1 threshold when :py:attr:`DiffusionArguments.tea_cache` is enabled.
+    TeaCache relative L1 threshold when :py:attr:`GenerationArguments.tea_cache` is enabled.
     
     Higher values mean more speedup.
     
@@ -942,7 +944,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     See: https://github.com/ali-vilab/TeaCache
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.tea_cache` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.tea_cache` is enabled.
     
     This is supported for: ``--model-type flux*``.
     """
@@ -968,7 +970,7 @@ class DiffusionArguments(_types.SetFromMixin):
     ``1`` uses only the Chebyshev forecast. ``0`` uses only the last-step
     Taylor step. Defaults to 0.5.
 
-    Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
+    Supplying a value implies that :py:attr:`GenerationArguments.spectrum` is enabled.
     """
 
     spectrum_order: _types.OptionalInteger = None
@@ -977,7 +979,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
     Defaults to 4.
 
-    Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
+    Supplying a value implies that :py:attr:`GenerationArguments.spectrum` is enabled.
     """
 
     spectrum_lambda: _types.OptionalFloat = None
@@ -986,7 +988,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
     Defaults to 0.1.
 
-    Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
+    Supplying a value implies that :py:attr:`GenerationArguments.spectrum` is enabled.
     """
 
     spectrum_warmup_steps: _types.OptionalInteger = None
@@ -997,7 +999,7 @@ class DiffusionArguments(_types.SetFromMixin):
     use 2, and 4 or fewer stay on a real pass every step. Shown as ``auto``
     until the step count is known.
 
-    Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
+    Supplying a value implies that :py:attr:`GenerationArguments.spectrum` is enabled.
     """
 
     spectrum_window_size: _types.OptionalFloat = None
@@ -1007,7 +1009,7 @@ class DiffusionArguments(_types.SetFromMixin):
     ``2`` predicts every other eligible step. Values below 2 do not skip.
     Defaults to 2.
 
-    Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
+    Supplying a value implies that :py:attr:`GenerationArguments.spectrum` is enabled.
     """
 
     spectrum_flex_window: _types.OptionalFloat = None
@@ -1019,7 +1021,7 @@ class DiffusionArguments(_types.SetFromMixin):
     0 on a shorter run or when classifier-free guidance is above 1. Shown as
     ``auto`` until that is known.
 
-    Supplying a value implies that :py:attr:`DiffusionArguments.spectrum` is enabled.
+    Supplying a value implies that :py:attr:`GenerationArguments.spectrum` is enabled.
     """
 
     regione: bool = False
@@ -1045,44 +1047,44 @@ class DiffusionArguments(_types.SetFromMixin):
 
     Defaults depend on the loaded pipeline (see RegionE upstream presets).
 
-    Supplying a value implies that :py:attr:`DiffusionArguments.regione` is enabled.
+    Supplying a value implies that :py:attr:`GenerationArguments.regione` is enabled.
     """
 
     regione_post_step: _types.OptionalInteger = None
     """
     RegionE trailing full denoising steps.
 
-    Supplying a value implies that :py:attr:`DiffusionArguments.regione` is enabled.
+    Supplying a value implies that :py:attr:`GenerationArguments.regione` is enabled.
     """
 
     regione_refresh_step: _types.OptionalInteger = None
     """
     RegionE step at which the edit mask is refreshed.
 
-    Supplying a value implies that :py:attr:`DiffusionArguments.regione` is enabled.
+    Supplying a value implies that :py:attr:`GenerationArguments.regione` is enabled.
     """
 
     regione_threshold: _types.OptionalFloat = None
     """
     RegionE partition threshold for separating edited and unchanged regions.
 
-    Supplying a value implies that :py:attr:`DiffusionArguments.regione` is enabled.
+    Supplying a value implies that :py:attr:`GenerationArguments.regione` is enabled.
     """
 
     regione_cache_threshold: _types.OptionalFloat = None
     """
     RegionE adaptive velocity-decay cache threshold for edited regions.
 
-    Supplying a value implies that :py:attr:`DiffusionArguments.regione` is enabled.
+    Supplying a value implies that :py:attr:`GenerationArguments.regione` is enabled.
     """
 
     regione_erosion_dilation: _types.OptionalBoolean = None
     """
     Whether RegionE morphologically erodes/dilates the region mask.
 
-    Defaults to true when :py:attr:`DiffusionArguments.regione` is enabled.
+    Defaults to true when :py:attr:`GenerationArguments.regione` is enabled.
 
-    Supplying a value implies that :py:attr:`DiffusionArguments.regione` is enabled.
+    Supplying a value implies that :py:attr:`GenerationArguments.regione` is enabled.
     """
 
     ras: bool = False
@@ -1104,7 +1106,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     See: https://github.com/microsoft/ras
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.ras` is enabled.
     
     This is supported for: ``--model-type sd3``, (but not for SD3.5 models)
     """
@@ -1116,7 +1118,7 @@ class DiffusionArguments(_types.SetFromMixin):
     For instance, setting this to 0.5 on a sequence of 4096 tokens will result in 
     the noise of averagely 2048 tokens to be updated during each RAS step. Must be between 0.0 and 1.0.
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.ras` is enabled.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1129,7 +1131,7 @@ class DiffusionArguments(_types.SetFromMixin):
     Default value is 1.0, but can be set between 0.0 and 1.0 to balance the sample ratio
     between the main subject and the background.
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.ras` is enabled.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1143,7 +1145,7 @@ class DiffusionArguments(_types.SetFromMixin):
     final generated image. Larger scaling factor will result in more uniform sampling.
     Usually set between 0.0 and 1.0.
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.ras` is enabled.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1155,7 +1157,7 @@ class DiffusionArguments(_types.SetFromMixin):
     The dense sampling steps inserted between the RAS steps to reset the accumulated error.
     A list of step numbers, e.g. [12, 22].
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.ras` is enabled.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1169,7 +1171,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Defaults to 4 if not specified.
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.ras` is enabled.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1183,7 +1185,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Defaults to the number of inference steps if not specified.
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.ras` is enabled.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1196,7 +1198,7 @@ class DiffusionArguments(_types.SetFromMixin):
     Valid values are "std" (standard deviation) or "l2norm" (L2 norm).
     Defaults to "std".
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.ras` is enabled.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1207,7 +1209,7 @@ class DiffusionArguments(_types.SetFromMixin):
     The actual number of tokens skipped will be rounded down to the nearest multiple of 64 to ensure
     efficient memory access patterns for attention computation. 
     
-    When used with :py:attr:`DiffusionArguments.ras_skip_num_step_length` greater than 0, this 
+    When used with :py:attr:`GenerationArguments.ras_skip_num_step_length` greater than 0, this 
     value determines how the number of skipped tokens changes over time.
     
     Positive values will increase the number of skipped tokens over time, while negative values will
@@ -1215,7 +1217,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Each value will be tried in turn. 
     
-    Supplying any values implies :py:attr:`DiffusionArguments.ras`.
+    Supplying any values implies :py:attr:`GenerationArguments.ras`.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1227,13 +1229,13 @@ class DiffusionArguments(_types.SetFromMixin):
     constant throughout the generation process. 
     
     When greater than 0, dynamic dropping is enabled where the number of skipped tokens varies over 
-    time based on :py:attr:`DiffusionArguments.ras_skip_num_step`. 
+    time based on :py:attr:`GenerationArguments.ras_skip_num_step`. 
     
-    The pattern of skipping will repeat every :py:attr:`DiffusionArguments.ras_skip_num_step_length` steps. 
+    The pattern of skipping will repeat every :py:attr:`GenerationArguments.ras_skip_num_step_length` steps. 
     
     Each value will be tried in turn. 
     
-    Supplying any values implies :py:attr:`DiffusionArguments.ras`.
+    Supplying any values implies :py:attr:`GenerationArguments.ras`.
     
     This is supported for: ``--model-type sd3``.
     """
@@ -1272,15 +1274,15 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     This value is only relevant for ``pix2pix`` :py:class:`dgenerate.pipelinewrapper.ModelType`.
     
-    Image guidance scale is to push the generated image towards the initial image :py:attr:`.DiffusionArguments.image`. 
-    Image guidance scale is enabled by setting :py:attr:`.DiffusionArguments.image_guidance_scale` > 1. Higher image 
-    guidance scale encourages to generate images that are closely linked to the source image :py:attr:`.DiffusionArguments.image`, 
+    Image guidance scale is to push the generated image towards the initial image :py:attr:`.GenerationArguments.image`. 
+    Image guidance scale is enabled by setting :py:attr:`.GenerationArguments.image_guidance_scale` > 1. Higher image 
+    guidance scale encourages to generate images that are closely linked to the source image :py:attr:`.GenerationArguments.image`, 
     usually at the expense of lower image quality.
     """
 
     guidance_rescale: _types.OptionalFloat = None
     """
-    This value is only supported for certain :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`
+    This value is only supported for certain :py:class:`dgenerate.pipelinewrapper.PipelineWrapper`
     configurations, an error will be produced when it is unsupported.
     
     Guidance rescale factor proposed by [Common Diffusion Noise Schedules and Sample Steps are
@@ -1306,7 +1308,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Audio CFG scale for ``--model-type ltx2``.
 
-    ``None`` copies :py:attr:`.DiffusionArguments.guidance_scale` after LTX
+    ``None`` copies :py:attr:`.GenerationArguments.guidance_scale` after LTX
     rewrites the unused default ``5``, except a full scheduler which uses
     audio ``7`` in that unused-``5`` case.
     """
@@ -1315,7 +1317,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Audio guidance rescale for ``--model-type ltx2``.
 
-    ``None`` copies :py:attr:`.DiffusionArguments.guidance_rescale` when that
+    ``None`` copies :py:attr:`.GenerationArguments.guidance_rescale` when that
     is set, otherwise the pipeline default ``0.7`` is left in place.
     """
 
@@ -1337,7 +1339,7 @@ class DiffusionArguments(_types.SetFromMixin):
     ltx_audio_stg_scale: _types.OptionalFloat = None
     """
     Audio spatio-temporal guidance scale for LTX-2. ``None`` copies
-    :py:attr:`.DiffusionArguments.ltx_stg_scale`.
+    :py:attr:`.GenerationArguments.ltx_stg_scale`.
     """
 
     ltx_modality_scale: _types.OptionalFloat = None
@@ -1348,7 +1350,7 @@ class DiffusionArguments(_types.SetFromMixin):
     ltx_audio_modality_scale: _types.OptionalFloat = None
     """
     Audio modality-isolation guidance scale for LTX-2. ``None`` copies
-    :py:attr:`.DiffusionArguments.ltx_modality_scale`.
+    :py:attr:`.GenerationArguments.ltx_modality_scale`.
     """
 
     ltx_stg_blocks: _types.OptionalIntegers = None
@@ -1465,6 +1467,11 @@ class DiffusionArguments(_types.SetFromMixin):
     omitted. Generation sampling and limits are set with
     :py:attr:`pipeline_prompt_enhance_temperature` and the other
     ``pipeline_prompt_enhance_*`` fields on this class.
+    ``flux3`` and ``kandinsky6-video`` accept ``True`` or one system-prompt
+    string for that generation. Their sampling fields apply to that rewrite.
+    ``flux3`` then runs its Qwen3.5 prompt upsampler, which is not loaded when
+    this field is omitted. ``kandinsky6-video`` turns on the pipeline's
+    ``expand_prompts`` rewrite. Both show a token counter, then log the rewritten prompt.
     """
 
     pipeline_prompt_enhance_seed: _types.OptionalInteger = None
@@ -1521,10 +1528,10 @@ class DiffusionArguments(_types.SetFromMixin):
     ``None`` leaves 2 GiB on top of 10 percent of free memory.
     """
 
-    ltx_prompt_enhancer: _types.OptionalString = None
+    prompt_upsampler: _types.OptionalString = None
     """
-    Separate LTX prompt-enhancer model. When set, enhancement loads this
-    model. Otherwise ``--pipeline-prompt-enhance`` loads google/gemma-4-E2B-it.
+    Separate ``--prompt-upsampler`` URI. When set, enhancement
+    loads this model instead of the pipeline default. ``--prompt-upsampler``.
     """
 
     ltx_condition_index: _types.OptionalInteger = None
@@ -1690,8 +1697,8 @@ class DiffusionArguments(_types.SetFromMixin):
     at the expense of slower inference.
 
     For LTX this is sent to the pipeline only when the scheduler has dynamic
-    shifting and neither :py:attr:`.DiffusionArguments.timesteps` nor
-    :py:attr:`.DiffusionArguments.sigmas` is set. Without dynamic shifting, the
+    shifting and neither :py:attr:`.GenerationArguments.timesteps` nor
+    :py:attr:`.GenerationArguments.sigmas` is set. Without dynamic shifting, the
     distilled 8-value table is used and this value is ignored. A warning names
     the ignored value, including the global default of 30. Passing 8 matches the
     table and silences the warning. ``timesteps`` and ``sigmas`` overwrite the
@@ -1708,7 +1715,7 @@ class DiffusionArguments(_types.SetFromMixin):
     sdxl_refiner_clip_skip: _types.OptionalInteger = None
     """
     Clip skip override value for the SDXL refiner, which normally defaults to that of 
-    :py:attr:`.DiffusionArguments.clip_skip` when it is defined.
+    :py:attr:`.GenerationArguments.clip_skip` when it is defined.
     """
 
     adetailer_class_filter: _types.OptionalIntegersAndStringsBag = None
@@ -1734,8 +1741,8 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Indicates that masks generated by the model itself should be preferred over 
     masks generated from the detection bounding box. If this is ``True``, and the model itself
-    returns mask data, :py:attr:`DiffusionArguments.adetailer_mask_shape`, :py:attr:`DiffusionArguments.adetailer_mask_padding`, 
-    and :py:attr:`DiffusionArguments.adetailer_detector_padding` will all be ignored.
+    returns mask data, :py:attr:`GenerationArguments.adetailer_mask_shape`, :py:attr:`GenerationArguments.adetailer_mask_padding`, 
+    and :py:attr:`GenerationArguments.adetailer_detector_padding` will all be ignored.
     """
 
     adetailer_mask_shape: _types.OptionalName = None
@@ -1769,8 +1776,8 @@ class DiffusionArguments(_types.SetFromMixin):
     This value indicates how much padding to place around the masked 
     area when cropping out the image to be inpainted, this value must be large
     enough to accommodate any feathering on the edge of the mask caused
-    by :py:attr:`.DiffusionArguments.mask_blur` or 
-    :py:attr:`.DiffusionArguments.mask_dilation for the best result.
+    by :py:attr:`.GenerationArguments.mask_blur` or 
+    :py:attr:`.GenerationArguments.mask_dilation for the best result.
     
     Example:
     
@@ -1828,7 +1835,7 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for Stable Diffusion, Stable Diffusion XL,
     Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.deep_cache` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.deep_cache` is enabled.
     
     Defaults to 5.
     """
@@ -1843,7 +1850,7 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for Stable Diffusion, Stable Diffusion XL,
     Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.deep_cache` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.deep_cache` is enabled.
     
     Defaults to 1.
     """
@@ -1864,7 +1871,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     This is supported for Stable Diffusion XL and Kolors based models.
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.sdxl_refiner_deep_cache` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.sdxl_refiner_deep_cache` is enabled.
     
     Defaults to 5.
     """
@@ -1878,7 +1885,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     This is supported for Stable Diffusion XL and Kolors based models.
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.sdxl_refiner_deep_cache` is enabled.
+    Supplying any value implies that :py:attr:`GenerationArguments.sdxl_refiner_deep_cache` is enabled.
     
     Defaults to 1.
     """
@@ -1897,7 +1904,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Denoising should start at this fraction of total timesteps (0.0 to 1.0).
     
-    This is useful continuing denoising on noisy latents generated with :py:attr:`DiffusionArguments.denoising_end`
+    This is useful continuing denoising on noisy latents generated with :py:attr:`GenerationArguments.denoising_end`
     
     Scheduler Compatibility:
     
@@ -1936,7 +1943,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
     def get_pipeline_wrapper_kwargs(self):
         """
-        Get the arguments dictionary needed to call :py:class:`.DiffusionPipelineWrapper`
+        Get the arguments dictionary needed to call :py:class:`.PipelineWrapper`
 
         :return: dictionary of argument names with values
         """
@@ -2051,35 +2058,35 @@ class DiffusionArguments(_types.SetFromMixin):
         """
         if model_type is not None:
             import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
-            shown = DiffusionArguments()
+            shown = GenerationArguments()
             shown.set_from(self)
             _featuredefaults.apply_known_defaults(
                 shown, model_type, refiner=refiner, image_seed=image_seed,
                 control_guidance=control_guidance, adetailer=adetailer)
             return shown.describe_pipeline_wrapper_args()
         prompt_format = []
-        DiffusionArguments._describe_prompt(
+        GenerationArguments._describe_prompt(
             prompt_format, self.prompt,
             "Prompt",
             "Negative Prompt",
             "Prompt Weighter")
 
-        DiffusionArguments._describe_prompt(
+        GenerationArguments._describe_prompt(
             prompt_format, self.second_prompt,
             "Secondary Prompt",
             "Secondary Negative Prompt")
 
-        DiffusionArguments._describe_prompt(
+        GenerationArguments._describe_prompt(
             prompt_format, self.third_prompt,
             "Tertiary Prompt",
             "Tertiary Negative Prompt")
 
-        DiffusionArguments._describe_prompt(
+        GenerationArguments._describe_prompt(
             prompt_format, self.second_model_prompt,
             "Second Model Prompt",
             "Second Model Negative Prompt")
 
-        DiffusionArguments._describe_prompt(
+        GenerationArguments._describe_prompt(
             prompt_format, self.second_model_second_prompt,
             "Second Model Second Prompt",
             "Second Model Second Negative Prompt")
@@ -2189,7 +2196,7 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.ltx_video_decoder, "Video Decoder:"),
             (self.ltx_diffusion_decode_tile, "Decode Tile:"),
             (self.ltx_image_crf, "Image CRF:"),
-            (self.ltx_prompt_enhancer, "Prompt Enhancer:"),
+            (self.prompt_upsampler, "Prompt Upsampler:"),
             (self.pipeline_prompt_enhance, "Pipeline Prompt Enhance:"),
             (self.wan_low_noise_guidance_scale, "Wan Low-Noise Guidance Scale:"),
             (self.wan_boundary_ratio, "Wan Boundary Ratio:"),

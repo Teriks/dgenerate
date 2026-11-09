@@ -43,6 +43,7 @@ from .argswitchconditionalcheckboxes import _ArgSwitchConditionalCheckboxes
 from .urientry import _UriEntry
 from .imageseedentry import _ImageSeedEntry
 from .quantizerurientry import _QuantizerEntry
+from .torchcompileentry import _TorchCompileEntry
 from .promptupscalerentry import _PromptUpscalerEntry
 from .promptweighterentry import _PromptWeighterEntry
 from .checkboxwithtwointargsentry import _CheckboxWithTwoIntArgsEntry

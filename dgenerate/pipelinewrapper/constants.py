@@ -620,8 +620,8 @@ Default frames per second for LTX video.
 
 DEFAULT_LTX_PROMPT_ENHANCER: str = 'google/gemma-4-E2B-it'
 """
-Default ``--ltx-prompt-enhancer`` model when ``--pipeline-prompt-enhance`` is on
-and no enhancer URI was given.
+Default ``--prompt-upsampler`` model for ``--model-type ltx2`` when
+``--pipeline-prompt-enhance`` is on and no upsampler URI was given.
 """
 
 PIPELINE_CACHE_MEMORY_CONSTRAINTS: list[str] = ['pipeline_size > (available * 0.75)']
@@ -718,6 +718,18 @@ If any of these constraints are met, all cached transformer objects will be garb
 
 Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
 and ``transformer_size`` (the estimated size of the new transformer model before it is brought into memory, in bytes)
+"""
+
+PROMPT_UPSAMPLER_CACHE_MEMORY_CONSTRAINTS: list[str] = ['prompt_upsampler_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear the CPU side
+prompt upsampler cache upon a new upsampler being created,
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, all cached prompt upsampler objects will be garbage collected.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes),
+and ``prompt_upsampler_size`` (the estimated size of the new upsampler before it is brought into memory, in bytes)
 """
 
 dgenerate.globalconfig.register_all()

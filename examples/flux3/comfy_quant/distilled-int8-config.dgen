@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Official int8 ConvRot distilled transformer.
+# https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy
+# The file is gated. Quantized linears stay packed.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+black-forest-labs/flux-3-image-klein
+--model-type flux3
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/blob/main/diffusion_models/flux3-image-klein-int8-convrot.safetensors
+--inference-steps 16
+--guidance-scales 1
+--gen-seeds 1
+--output-path flux3-klein-int8
+--output-size 1024
+--prompts "A red fox in a snow-covered forest clearing at golden hour"

@@ -18,7 +18,7 @@ title: Qwen-Image Edit (ComfyUI Quant)
 @dype[{"id": "dype", "exclude":["cd", "sp", "re"]}]
 @regione[{"id": "re", "preset": "qwen-edit", "exclude":["sp", "cd", "dype"], "divider-before":true, "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"qwen-image-edit"}]
 @quantizer[{"model-type":"qwen-image-edit", "map-default":"text_encoder"}]
 @textencoders[{"model-type":"qwen-image-edit","arg":"--text-encoders", "divider-after":true}]
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model": "LoRA"}]

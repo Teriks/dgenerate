@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Pro 50-step transformer as Q4_K_S GGUF.
+# https://huggingface.co/realrebelai/Kandinsky-6.0-Pro-5s_GGUFs
+# The Diffusers repo supplies Qwen2.5-VL, CLIP, the video VAE, the audio VAE, and the vocoder.
+# The full Pro repository may require a Hugging Face login.
+
+kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers
+--model-type kandinsky6-video
+--dtype bfloat16
+--model-sequential-offload
+--transformer "https://huggingface.co/realrebelai/Kandinsky-6.0-Pro-5s_GGUFs/blob/main/Diffusion Model/Full/Kandinsky-6.0-Pro-5s-Q4_K_S.gguf"
+--inference-steps 50
+--guidance-scales 5
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky6-pro-gguf
+--output-size 864x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour. Audio: wind and distant surf."

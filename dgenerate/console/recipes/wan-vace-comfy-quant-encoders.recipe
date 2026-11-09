@@ -26,7 +26,7 @@ title: Wan 2.1 VACE (ComfyUI Quant + Encoders)
 @switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["tc", "sada", "sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
 @dype[{"exclude":["cd", "sp"],"divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"wan"}]
 @quantizer[{"model-type":"wan"}]
 @textencoders[{"model-type": "wan", "arg": "--text-encoders", "divider-after": true, "defaults": ["UMT5EncoderModel;model=https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"]}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]

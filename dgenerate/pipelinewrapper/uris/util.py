@@ -38,6 +38,23 @@ import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 
 
+def parse_compile_argument(value, error_class) -> bool:
+    """Parse a URI ``compile`` value. Absent means false."""
+    if value is None or value is False:
+        return False
+    try:
+        return _types.parse_bool(value)
+    except ValueError as exc:
+        raise error_class(
+            f'compile must be true or false, received: {value}') from exc
+
+
+def mark_compile_requested(module, enabled: bool) -> None:
+    """Remember that this loaded module should be compiled with ``--torch-compile``."""
+    if enabled and module is not None:
+        module._dgenerate_compile = True
+
+
 def uri_hash_with_parser(parser, exclude: set[str] | None = None):
     """
     Create a hash function from a particular URI parser function that hashes a URI string.

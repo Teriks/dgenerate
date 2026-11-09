@@ -3,10 +3,12 @@
 
 # --pipeline-prompt-enhance turns on the optional Gemma prompt enhancer
 # (google/gemma-4-E2B-it). The pipeline text encoder is not used.
-# --ltx-prompt-enhancer replaces that default model.
+# --prompt-upsampler replaces that default model. Its URI arguments match --transformer.
 # A value on --pipeline-prompt-enhance replaces the built-in system prompt.
 # Sampling options and a custom system prompt are in
 # examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen.
+# quantizer= on that URI is
+# examples/ltx2/pipeline_prompt_enhance/quantized-upsampler-config.dgen.
 
 \set token %HF_TOKEN%
 

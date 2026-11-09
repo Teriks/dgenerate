@@ -25,7 +25,7 @@ title: Flux Kontext Dev (ComfyUI Quant)
 @dype[{"id": "dype", "exclude":["cd", "tc", "sada", "sp", "re"]}]
 @regione[{"id": "re", "preset": "flux-kontext", "exclude":["tc", "sada", "sp", "cd", "dype"], "divider-before":true, "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
-@switch[{"label":"Torch Compile", "arg":"--torch-compile"}]
+@torchcompile[{"model-type":"flux-kontext"}]
 @quantizer[{"model-type":"flux-kontext", "map-default":"text_encoder"}]
 @textencoders[{"model-type":"flux-kontext","arg":"--text-encoders", "divider-after":true}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]

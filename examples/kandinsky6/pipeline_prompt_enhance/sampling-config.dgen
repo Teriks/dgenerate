@@ -1,0 +1,32 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Custom expansion instruction and sampling for Kandinsky 6.
+# With no value the pipeline keeps its text-to-video or image-to-video
+# instruction. A value replaces that instruction for this clip. The user
+# prompt is still appended as "Rewrite Prompt: ...". Braces in the value
+# stay literal. --pipeline-prompt-enhance-seeds is only the rewrite.
+# --gen-seeds is the video. The bare flag is
+# examples/kandinsky6/pipeline_prompt_enhance/text-to-video-config.dgen.
+
+kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers
+--model-type kandinsky6-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 10
+--guidance-scales 1
+--pipeline-prompt-enhance "Rewrite the short request as one English video and audio prompt. Keep the subject the user named. Put speech between <S> and <E>. Put other sound between <AUDCAP> and <ENDAUDCAP>."
+--pipeline-prompt-enhance-seeds 7
+--pipeline-prompt-enhance-temperature 0.7
+--pipeline-prompt-enhance-top-p 0.9
+--pipeline-prompt-enhance-top-k 40
+--pipeline-prompt-enhance-presence-penalty 0.6
+--pipeline-prompt-enhance-max-new-tokens 200
+--pipeline-prompt-enhance-gpu-headroom 3
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky6-lite-sampling
+--output-size 864x480
+--prompts "a red kite over a meadow"

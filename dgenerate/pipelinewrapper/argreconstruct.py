@@ -20,10 +20,10 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Argument reconstruction functionality for _wrapper.DiffusionPipelineWrapper.
+Argument reconstruction functionality for _wrapper.PipelineWrapper.
 
 This module provides utilities to reconstruct dgenerate command line arguments
-from _arguments.DiffusionArguments and _wrapper.DiffusionPipelineWrapper state.
+from _arguments.GenerationArguments and _wrapper.PipelineWrapper state.
 """
 
 import collections.abc
@@ -41,8 +41,8 @@ import dgenerate.pipelinewrapper.wrapper as _wrapper
 
 # noinspection PyTypeChecker
 def reconstruct_dgenerate_opts(
-        wrapper: _wrapper.DiffusionPipelineWrapper,
-        args: _arguments.DiffusionArguments | None = None,
+        wrapper: _wrapper.PipelineWrapper,
+        args: _arguments.GenerationArguments | None = None,
         extra_opts: collections.abc.Sequence[
                         tuple[str] | tuple[str, typing.Any]] | None = None,
         omit_device: bool = False,
@@ -53,11 +53,11 @@ def reconstruct_dgenerate_opts(
     Reconstruct dgenerate's command line arguments from a particular set of pipeline wrapper call arguments.
     
     This does not reproduce ``--image-seeds``, you must include that value in ``extra_opts``, 
-    this is because there is not enough information in :py:class:`.DiffusionArguments` to
+    this is because there is not enough information in :py:class:`.GenerationArguments` to
     accurately reproduce it.
 
-    :param wrapper: _wrapper.DiffusionPipelineWrapper instance to extract configuration from
-    :param args: :py:class:`.DiffusionArguments` object to take values from
+    :param wrapper: _wrapper.PipelineWrapper instance to extract configuration from
+    :param args: :py:class:`.GenerationArguments` object to take values from
     :param extra_opts: Extra option pairs to be added to the end of reconstructed options,
         this should be a sequence of tuples of length 1 (switch only) or length 2 (switch with args)
     :param omit_device: Omit the ``--device`` option? For a shareable configuration it might not
@@ -65,11 +65,11 @@ def reconstruct_dgenerate_opts(
         the default device is, which is generally ``cuda``
     :param shell_quote: Shell quote and format the argument values? or return them raw.
     :param overrides: pipeline wrapper keyword arguments, these will override values derived from
-        any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
-        :py:meth:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+        any :py:class:`.GenerationArguments` object given to the *args* argument. See:
+        :py:meth:`.GenerationArguments.get_pipeline_wrapper_kwargs`
     :return: List of tuples of length 1 or 2 representing the option
     """
-    copy_args = _arguments.DiffusionArguments()
+    copy_args = _arguments.GenerationArguments()
 
     if args is not None:
         copy_args.set_from(args)
@@ -191,8 +191,8 @@ def reconstruct_dgenerate_opts(
             opts.append(('--ltx-video-min-seconds', args.ltx_video_min_seconds))
         if args.ltx_video_max_seconds is not None:
             opts.append(('--ltx-video-max-seconds', args.ltx_video_max_seconds))
-        if args.ltx_prompt_enhancer:
-            opts.append(('--ltx-prompt-enhancer', args.ltx_prompt_enhancer))
+        if args.prompt_upsampler:
+            opts.append(('--prompt-upsampler', args.prompt_upsampler))
         if args.ltx_stage_sigmas is not None:
             if isinstance(args.ltx_stage_sigmas, str):
                 opts.append(('--ltx-stage-sigmas', f'expr: {args.ltx_stage_sigmas}'))
@@ -417,8 +417,11 @@ def reconstruct_dgenerate_opts(
     if wrapper.model_group_offload:
         opts.append(('--model-group-offload',))
 
-    if wrapper.torch_compile:
+    compiled = wrapper.torch_compile
+    if compiled is True:
         opts.append(('--torch-compile',))
+    elif compiled:
+        opts.append(('--torch-compile', list(compiled)))
 
     if wrapper.second_model_cpu_offload:
         opts.append(('--second-model-cpu-offload',))
@@ -894,6 +897,8 @@ def reconstruct_dgenerate_opts(
                     opts[idx] = (name, _textprocessing.shell_quote(str(value)))
                 elif isinstance(value, tuple):
                     opts[idx] = (name, _textprocessing.format_size(value))
+                elif isinstance(value, list):
+                    opts[idx] = (name, value)
                 else:
                     opts[idx] = (name, str(value))
             else:
@@ -953,8 +958,8 @@ def _format_option_pair(val):
 
 
 def gen_dgenerate_config(
-        wrapper: _wrapper.DiffusionPipelineWrapper,
-        args: _arguments.DiffusionArguments | None = None,
+        wrapper: _wrapper.PipelineWrapper,
+        args: _arguments.GenerationArguments | None = None,
         extra_opts: collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
         extra_comments: collections.abc.Iterable[str] | None = None,
         omit_device: bool = False,
@@ -962,14 +967,14 @@ def gen_dgenerate_config(
 ) -> str:
     """
     Generate a valid dgenerate config file with a single invocation that reproduces the 
-    arguments associated with :py:class:`.DiffusionArguments`.
+    arguments associated with :py:class:`.GenerationArguments`.
     
     This does not reproduce ``--image-seeds``, you must include that value in ``extra_opts``, 
-    this is because there is not enough information in :py:class:`.DiffusionArguments` to
+    this is because there is not enough information in :py:class:`.GenerationArguments` to
     accurately reproduce it.
 
-    :param wrapper: _wrapper.DiffusionPipelineWrapper instance to extract configuration from
-    :param args: :py:class:`.DiffusionArguments` object to take values from
+    :param wrapper: _wrapper.PipelineWrapper instance to extract configuration from
+    :param args: :py:class:`.GenerationArguments` object to take values from
     :param extra_opts: Extra option pairs to be added to the end of reconstructed options
         of the dgenerate invocation, this should be a sequence of tuples of length 1 (switch only)
         or length 2 (switch with args)
@@ -979,8 +984,8 @@ def gen_dgenerate_config(
         make sense to include the device specification. And instead simply fallback to whatever 
         the default device is, which is generally ``cuda``
     :param overrides: pipeline wrapper keyword arguments, these will override values derived from
-        any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
-        :py:meth:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+        any :py:class:`.GenerationArguments` object given to the *args* argument. See:
+        :py:meth:`.GenerationArguments.get_pipeline_wrapper_kwargs`
     :return: The configuration as a string
     """
     from dgenerate import __version__
@@ -1016,21 +1021,21 @@ def gen_dgenerate_config(
     return config + _format_option_pair(last)
 
 
-def gen_dgenerate_command(wrapper: _wrapper.DiffusionPipelineWrapper,
-                          args: _arguments.DiffusionArguments | None = None,
+def gen_dgenerate_command(wrapper: _wrapper.PipelineWrapper,
+                          args: _arguments.GenerationArguments | None = None,
                           extra_opts: collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
                           omit_device: bool = False,
                           overrides: dict[str, typing.Any] = None) -> str:
     """
     Generate a valid dgenerate command line invocation that reproduces the 
-    arguments associated with :py:class:`.DiffusionArguments`.
+    arguments associated with :py:class:`.GenerationArguments`.
     
     This does not reproduce ``--image-seeds``, you must include that value in ``extra_opts``, 
-    this is because there is not enough information in :py:class:`.DiffusionArguments` to
+    this is because there is not enough information in :py:class:`.GenerationArguments` to
     accurately reproduce it.
 
-    :param wrapper: _wrapper.DiffusionPipelineWrapper instance to extract configuration from
-    :param args: :py:class:`.DiffusionArguments` object to take values from
+    :param wrapper: _wrapper.PipelineWrapper instance to extract configuration from
+    :param args: :py:class:`.GenerationArguments` object to take values from
     :param extra_opts: Extra option pairs to be added to the end of reconstructed options
         of the dgenerate invocation, this should be a sequence of tuples of length 1 (switch only)
         or length 2 (switch with args)
@@ -1038,8 +1043,8 @@ def gen_dgenerate_command(wrapper: _wrapper.DiffusionPipelineWrapper,
         make sense to include the device specification. And instead simply fallback to whatever 
         the default device is, which is generally ``cuda``
     :param overrides: pipeline wrapper keyword arguments, these will override values derived from
-        any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
-        :py:meth:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+        any :py:class:`.GenerationArguments` object given to the *args* argument. See:
+        :py:meth:`.GenerationArguments.get_pipeline_wrapper_kwargs`
     :return: A string containing the dgenerate command line needed to reproduce this result.
     """
     opt_string = \

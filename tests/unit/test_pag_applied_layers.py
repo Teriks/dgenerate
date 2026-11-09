@@ -112,8 +112,8 @@ class TestPagAppliedLayers(unittest.TestCase):
 
     def test_apply_keeps_the_pipeline_attention_processors(self):
         pipeline = _FakePagPipeline()
-        helper = _wrapper.DiffusionPipelineWrapper.__new__(
-            _wrapper.DiffusionPipelineWrapper)
+        helper = _wrapper.PipelineWrapper.__new__(
+            _wrapper.PipelineWrapper)
         apply = helper._apply_pag_applied_layers
         apply(pipeline, ['blocks.13'])
         self.assertEqual(pipeline.pag_applied_layers, ['blocks.13'])

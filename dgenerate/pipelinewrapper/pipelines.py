@@ -732,12 +732,85 @@ def place_quantized_module(module, device) -> None:
 
 _DENOISER_NAMES = ('unet', 'transformer', 'transformer_2', 'controlnet')
 _VAE_NAME = 'vae'
+# ``--torch-compile`` with no module names compiles this set.
+DEFAULT_TORCH_COMPILE_NAMES = (*_DENOISER_NAMES, _VAE_NAME)
+# ``--torch-compile`` may also name these. prompt_upsampler and
+# prompt_enhancer are aliases: either name compiles the Flux.3 upsampler
+# or the LTX enhancer, whichever the pipeline has. Neither is in the default set.
+TORCH_COMPILE_MAP_NAMES = (
+    *DEFAULT_TORCH_COMPILE_NAMES,
+    'text_encoder',
+    'text_encoder_2',
+    'text_encoder_3',
+    'image_encoder',
+    'prompt_upsampler',
+    'prompt_enhancer',
+    'connectors',
+)
+
+
+def torch_compile_enabled(value) -> bool:
+    """True when ``--torch-compile`` is on.
+
+    ``True`` selects the default modules. A list or other iterable of module
+    names selects those modules. ``False`` and ``None`` leave the pipeline eager.
+    """
+    if isinstance(value, bool) or value is None:
+        return bool(value)
+    return True
+
+
+def torch_compile_module_names(value) -> list[str] | None:
+    """Modules named on ``--torch-compile``.
+
+    ``None`` means the default set (UNet or transformer, ControlNet, and the
+    VAE). A list is an allow-list. A string is one module name.
+    """
+    if isinstance(value, bool) or value is None:
+        return None
+    names = [value] if isinstance(value, str) else list(value)
+    unknown = [name for name in names if name not in TORCH_COMPILE_MAP_NAMES]
+    if unknown:
+        allowed = _textprocessing.oxford_comma(TORCH_COMPILE_MAP_NAMES, 'or')
+        raise UnsupportedPipelineConfigError(
+            f'Unknown torch_compile module {unknown[0]!r}. Must be one of: {allowed}')
+    return names
+
+
+def normalize_torch_compile(value):
+    """``False``, ``True`` for the default set, or a list of module names."""
+    if not torch_compile_enabled(value):
+        return False
+    names = torch_compile_module_names(value)
+    if not names:
+        return True
+    chosen = []
+    for name in names:
+        if name not in chosen:
+            chosen.append(name)
+    return chosen
+_PROMPT_REWRITER_NAMES = ('prompt_upsampler', 'prompt_enhancer')
+_LANGUAGE_COMPILE_NAMES = frozenset({
+    'text_encoder',
+    'text_encoder_2',
+    'text_encoder_3',
+    'image_encoder',
+    'prompt_upsampler',
+    'prompt_enhancer',
+})
 _COMPILE_PART_LABELS = {
     'unet': 'UNet',
     'transformer': 'Transformer',
     'transformer_2': 'Second Transformer',
     'controlnet': 'ControlNet',
     'vae': 'VAE',
+    'text_encoder': 'Text Encoder',
+    'text_encoder_2': 'Text Encoder 2',
+    'text_encoder_3': 'Text Encoder 3',
+    'image_encoder': 'Image Encoder',
+    'prompt_upsampler': 'Prompt Upsampler',
+    'prompt_enhancer': 'Prompt Upsampler',
+    'connectors': 'Connectors',
 }
 
 # Used when a module inherits ModelMixin's empty ``_repeated_blocks``.
@@ -954,15 +1027,74 @@ def _torch_compile_message(parts: list[tuple[str, dict[str, int]]]) -> str:
         'or frame count compiles once more, then reuses that graph.')
 
 
-def apply_torch_compile(pipe, device) -> None:
+def _decoder_layer_names(module) -> tuple[str, ...]:
+    """Repeated causal-LM layers, such as ``Qwen3DecoderLayer``."""
+    counts: dict[str, int] = {}
+    for submod in module.modules():
+        name = submod.__class__.__name__
+        if name.endswith('DecoderLayer'):
+            counts[name] = counts.get(name, 0) + 1
+    return tuple(name for name, count in counts.items() if count >= 2)
+
+
+def _block_names_for(module, component_name: str) -> tuple[str, ...]:
+    if component_name == _VAE_NAME or component_name.startswith('vae'):
+        return vae_block_names(module)
+    declared = repeated_block_names(module)
+    if component_name not in _LANGUAGE_COMPILE_NAMES:
+        return declared
+    return tuple(dict.fromkeys((*declared, *_decoder_layer_names(module))))
+
+
+def _expand_prompt_rewriter_names(names) -> list[str]:
+    """``prompt_upsampler`` and ``prompt_enhancer`` name the same component."""
+    expanded = list(names)
+    if any(name in _PROMPT_REWRITER_NAMES for name in expanded):
+        for alias in _PROMPT_REWRITER_NAMES:
+            if alias not in expanded:
+                expanded.append(alias)
+    return expanded
+
+
+def _compile_requested_names(pipe) -> list[str]:
+    """Component names whose URI set ``compile=true``."""
+    names = []
+    components = getattr(pipe, 'components', None)
+    if isinstance(components, dict):
+        for name, module in components.items():
+            if isinstance(module, torch.nn.Module) and getattr(module, '_dgenerate_compile', False):
+                names.append(name)
+    enhancer = getattr(pipe, 'prompt_enhancer', None)
+    if (isinstance(enhancer, torch.nn.Module)
+            and getattr(enhancer, '_dgenerate_compile', False)
+            and 'prompt_enhancer' not in names):
+        names.append('prompt_enhancer')
+    return names
+
+
+def apply_torch_compile(pipe, device, names=None) -> None:
     """
-    Compile repeated denoiser, ControlNet, and VAE blocks for ``--torch-compile``.
+    Compile repeated blocks for ``--torch-compile``.
+
+    ``names`` is the module list from ``--torch-compile``. ``None`` compiles the
+    UNet or transformer, ControlNet, and the VAE. A URI ``compile=true`` adds
+    that component even when the list omits it. Text encoders and the prompt
+    upsampler compile their decoder layers when named. ``prompt_upsampler``
+    and ``prompt_enhancer`` are aliases for that upsampler.
 
     The log names only the pipeline parts and block classes compiled on this
     pipeline. Warns when the device cannot compile, the weights are quantized,
     or nothing repeated was found. Wan-Animate-2 compiles its transformer on
     every load and does not use this path for that module.
     """
+    if names is None:
+        selected = DEFAULT_TORCH_COMPILE_NAMES
+    else:
+        selected = tuple(names)
+    targets = _expand_prompt_rewriter_names(
+        list(dict.fromkeys((*selected, *_compile_requested_names(pipe)))))
+    if not targets:
+        return
     if torch_compile_disabled():
         _messages.warning(
             '--torch-compile was set, but DGENERATE_TORCH_COMPILE=0, '
@@ -979,10 +1111,9 @@ def apply_torch_compile(pipe, device) -> None:
     saw_repeated = False
     saw_quantized = False
     compiled_parts: list[tuple[str, dict[str, int]]] = []
-    for name in (*_DENOISER_NAMES, _VAE_NAME):
-        block_names_for = repeated_block_names if name != _VAE_NAME else vae_block_names
+    for name in targets:
         for module in _modules_named(pipe, name):
-            block_names = block_names_for(module)
+            block_names = _block_names_for(module, name)
             if not block_names:
                 continue
             saw_repeated = True
@@ -1054,7 +1185,7 @@ def estimate_pipeline_cache_footprint(
     :param safety_checker: consider the safety checker? dgenerate usually loads the safety checker and then retroactively
         disables it if needed, so it usually considers the size of the safety checker model.
     :param auth_token: optional huggingface auth token to access restricted repositories that your account has access to.
-    :param extra_args: ``extra_args`` as to be passed to :py:func:`.create_diffusion_pipeline`
+    :param extra_args: ``extra_args`` as to be passed to :py:func:`.create_pipeline`
     :param local_files_only: Only ever attempt to look in the local huggingface cache? if ``False`` the huggingface
         API will be contacted when necessary.
     :param include_directories: extra repo folder names to count with the main estimate,
@@ -2243,7 +2374,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
     for cached_pipeline in _pipeline_cache.values():
         # hack to clear out cached 8bit pipelines, only one should ever
         # be in the object cache for sequential calls, this is necessary
-        # for efficient main pipeline recall in DiffusionPipelineWrapper
+        # for efficient main pipeline recall in PipelineWrapper
         # which is used for the adetailer post processor
         if cached_pipeline.pipeline is not pipeline:
             bit8 = any(_util.is_loaded_in_8bit_bnb(module) for
@@ -2477,7 +2608,7 @@ class PipelineCreationResult:
                              **kwargs)
 
 
-def create_diffusion_pipeline(
+def create_pipeline(
         model_path: str,
         model_type: _enums.ModelType = _enums.ModelType.SD,
         pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
@@ -2499,6 +2630,7 @@ def create_diffusion_pipeline(
         control_lora_uris: _types.OptionalUris = None,
         control_lora_fuse_scale: _types.OptionalFloat = None,
         t2i_adapter_uris: _types.OptionalUris = None,
+        prompt_upsampler_uri: _types.OptionalUri = None,
         quantizer_uri: _types.OptionalUri = None,
         quantizer_map: _types.OptionalStrings = None,
         pag: bool = False,
@@ -2510,7 +2642,7 @@ def create_diffusion_pipeline(
         model_cpu_offload: bool = False,
         sequential_cpu_offload: bool = False,
         model_group_offload: bool = False,
-        torch_compile: bool = False,
+        torch_compile: bool | collections.abc.Iterable[str] = False,
         local_files_only: bool = False,
         missing_submodules_ok: bool = False
 ) -> PipelineCreationResult:
@@ -2550,6 +2682,10 @@ def create_diffusion_pipeline(
         before quantization when ``lora_disk_fuse`` is set. Otherwise a
         quantized transformer keeps the adapter and folds this scale in.
     :param t2i_adapter_uris: Optional ``--t2i-adapters`` URI strings for specifying T2IAdapter models
+    :param prompt_upsampler_uri: Separate ``--prompt-upsampler`` URI.
+        ``None`` does not load one. ``+`` loads the pipeline default.
+        FLUX.3 uses this for its Qwen3.5 prompt upsampler. LTX-2 uses it for
+        the Gemma prompt enhancer.
     :param quantizer_uri: Optional ``--quantizer`` URI value
     :param quantizer_map: Collection of pipeline submodule names to which quantization should be applied when
         ``quantizer_uri`` is provided. Valid values are ``unet``, ``transformer``, ``text_encoder``,
@@ -2565,9 +2701,11 @@ def create_diffusion_pipeline(
     :param model_cpu_offload: This pipeline has model_cpu_offloading enabled?
     :param sequential_cpu_offload: This pipeline has sequential_cpu_offloading enabled?
     :param model_group_offload: This pipeline has group offload enabled?
-    :param torch_compile: Compile repeated denoiser, ControlNet, and VAE blocks when the device
-        can compile them. Quantized modules stay eager. ``DGENERATE_TORCH_COMPILE=0`` leaves
-        the blocks eager. TorchDynamo, Inductor, and Triton stay quiet unless ``-v`` is set.
+    :param torch_compile: ``True`` compiles the UNet or transformer, ControlNet, and the VAE.
+        A list of module names compiles only those. ``False`` leaves the pipeline eager,
+        except a URI ``compile=true``. Quantized modules stay eager.
+        ``DGENERATE_TORCH_COMPILE=0`` leaves the blocks eager. TorchDynamo, Inductor, and
+        Triton stay quiet unless ``-v`` is set.
     :param local_files_only: Only look in the huggingface cache and do not connect to download models?
     :param missing_submodules_ok: It is okay if Text Encoders or VAE is missing from the checkpoint?
 
@@ -2581,7 +2719,7 @@ def create_diffusion_pipeline(
     :raises dgenerate.NonHFConfigDownloadError:
     :raises dgenerate.WebFileCacheOfflineModeException:
 
-    :return: :py:class:`.TorchPipelineCreationResult`
+    :return: :py:class:`.PipelineCreationResult`
     """
     __locals = locals()
 
@@ -2597,11 +2735,11 @@ def create_diffusion_pipeline(
 
     with _hfhub.with_hf_errors_as_model_not_found(), \
             _safetensorscompat.single_file_components(transformer_loaded=transformer_loaded):
-        return _create_diffusion_pipeline(**__locals)
+        return _create_pipeline(**__locals)
 
 class PipelineFactory:
     """
-    Turns :py:func:`.create_diffusion_pipeline` into a factory that can
+    Turns :py:func:`.create_pipeline` into a factory that can
     repeatedly create a pipeline with the same arguments, possibly from cache.
     """
 
@@ -2622,11 +2760,12 @@ class PipelineFactory:
                  image_encoder_uri: _types.OptionalUri = None,
                  ip_adapter_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
+                 text_encoder_uris: _types.OptionalUris = None,
                  controlnet_uris: _types.OptionalUris = None,
                  control_lora_uris: _types.OptionalUris = None,
                  control_lora_fuse_scale: _types.OptionalFloat = None,
                  t2i_adapter_uris: _types.OptionalUris = None,
-                 text_encoder_uris: _types.OptionalUris = None,
+                 prompt_upsampler_uri: _types.OptionalUri = None,
                  quantizer_uri: _types.OptionalUri = None,
                  quantizer_map: _types.OptionalStrings = None,
                  pag: bool = False,
@@ -2638,7 +2777,7 @@ class PipelineFactory:
                  model_cpu_offload: bool = False,
                  sequential_cpu_offload: bool = False,
                  model_group_offload: bool = False,
-                 torch_compile: bool = False,
+                 torch_compile: bool | collections.abc.Iterable[str] = False,
                  local_files_only: bool = False):
         self._args = {k: v for k, v in
                       _types.partial_deep_copy_container(locals()).items()
@@ -2654,9 +2793,9 @@ class PipelineFactory:
         :raises dgenerate.NonHFModelDownloadError:
         :raises dgenerate.NonHFConfigDownloadError:
 
-        :return: :py:class:`.TorchPipelineCreationResult`
+        :return: :py:class:`.PipelineCreationResult`
         """
-        return create_diffusion_pipeline(**self._args)
+        return create_pipeline(**self._args)
 
 
 def _format_pipeline_creation_debug_arg(arg_name, v):
@@ -2838,6 +2977,8 @@ def diffusion_transformer_class(model_type: _enums.ModelType):
         return diffusers.SD3Transformer2DModel
     if _enums.model_type_is_flux_family(model_type):
         return diffusers.FluxTransformer2DModel
+    if _enums.model_type_is_flux3(model_type):
+        return diffusers.Flux3Transformer2DModel
     if _enums.model_type_is_flux2_family(model_type):
         return diffusers.Flux2Transformer2DModel
     if _enums.model_type_is_z_image_family(model_type):
@@ -2922,6 +3063,17 @@ def _flow_image_pipeline_class(
     if unet_uri:
         raise UnsupportedPipelineConfigError(
             f'--model-type {model_type_string} does not use a UNet. Use --transformer.')
+
+    if _enums.model_type_is_flux3(model_type):
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type flux3 does not support --control-nets. '
+                'Reference images are the layout control published for this model.')
+        if pipeline_type != _enums.PipelineType.TXT2IMG and not help_mode:
+            raise UnsupportedPipelineConfigError(
+                '--model-type flux3 has no img2img or inpaint pipeline. '
+                '--image-seeds are reference images and take no mask or strength.')
+        return diffusers.Flux3ModularPipeline
 
     if _enums.model_type_is_qwen_image_21(model_type):
         if controlnet_uris:
@@ -3069,6 +3221,7 @@ def _flow_image_pipeline_class(
 
 
 _MODEL_INDEX_CHECKS = [
+    (_enums.model_type_is_flux3, ('^Flux3', 'FLUX.3')),
     (_enums.model_type_is_flux2_klein_kv, ('^Flux2Klein', 'Flux.2 Klein KV')),
     (_enums.model_type_is_flux2, ('^Flux2', 'Flux.2')),
     (_enums.model_type_is_z_image_omni, ('^ZImageOmni', 'Z-Image Omni')),
@@ -3097,6 +3250,9 @@ _MODEL_INDEX_FALLBACK_CHECKS = [
 ]
 
 _REDIRECTED_FLOW_CLASSES = (
+    ('Flux3', _enums.model_type_is_flux_family, 'flux3'),
+    ('Flux3', _enums.model_type_is_flux2, 'flux3'),
+    ('Flux3', _enums.model_type_is_flux2_klein_kv, 'flux3'),
     ('Flux2KleinKV', _enums.model_type_is_flux2, 'flux2-klein-kv'),
     ('ZImageOmni', _enums.model_type_is_z_image, 'z-image-omni'),
     ('QwenImage21', _enums.model_type_is_qwen_image, 'qwen-image-21'),
@@ -3273,7 +3429,8 @@ def get_pipeline_class(
                 'flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, '
                 'qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, hydit, hyimage-21, '
                 'hyimage-21-refiner, ltx2, ltx-video, wan, wan-animate, '
-                'wan-animate-2, hyvideo-15, motif-video, and kandinsky5-video.')
+                'wan-animate-2, hyvideo-15, motif-video, kandinsky5-video, '
+                'kandinsky6-video, and flux3.')
 
     # Incompatible combinations
     if controlnet_uris and t2i_adapter_uris:
@@ -3781,7 +3938,7 @@ def _enforce_pipeline_cache_size(new_pipeline_size):
           extra_identities=[lambda m: m.pipeline],
           on_hit=_pipeline_on_hit,
           on_create=_pipeline_on_create)
-def _create_diffusion_pipeline(
+def _create_pipeline(
         model_path: str,
         model_type: _enums.ModelType = _enums.ModelType.SD,
         pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
@@ -3803,6 +3960,7 @@ def _create_diffusion_pipeline(
         control_lora_uris: _types.OptionalUris = None,
         control_lora_fuse_scale: _types.OptionalFloat = None,
         t2i_adapter_uris: _types.OptionalUris = None,
+        prompt_upsampler_uri: _types.OptionalUri = None,
         quantizer_uri: _types.OptionalUri = None,
         quantizer_map: _types.OptionalStrings = None,
         pag: bool = False,
@@ -3814,7 +3972,7 @@ def _create_diffusion_pipeline(
         model_cpu_offload: bool = False,
         sequential_cpu_offload: bool = False,
         model_group_offload: bool = False,
-        torch_compile: bool = False,
+        torch_compile: bool | collections.abc.Iterable[str] = False,
         local_files_only: bool = False,
         missing_submodules_ok: bool = False
 ) -> PipelineCreationResult:
@@ -3931,6 +4089,8 @@ def _create_diffusion_pipeline(
     text_encoder_count = len(
         [a for a in inspect.getfullargspec(pipeline_class.__init__).args
          if _is_text_encoder_component(a)])
+    if _enums.model_type_is_flux3(model_type):
+        text_encoder_count = max(text_encoder_count, 1)
 
     if not text_encoder_uris:
         text_encoder_uris = []
@@ -4052,7 +4212,7 @@ def _create_diffusion_pipeline(
         if not quantizer_uri:
             return False
         if quantizer_map is None:
-            # Match the create_diffusion_pipeline docstring: ControlNet stays
+            # Match the create_pipeline docstring: ControlNet stays
             # full precision unless the user puts it in --quantizer-map.
             return module_name != 'controlnet'
         return module_name in quantizer_map
@@ -4258,6 +4418,9 @@ def _create_diffusion_pipeline(
     parsed_transformer_uri = None
 
     pipe_params = inspect.signature(pipeline_class.__init__).parameters
+    if _enums.model_type_is_flux3(model_type):
+        import dgenerate.pipelinewrapper.flux3 as _flux3
+        pipe_params = _flux3.declared_init_parameters(pipeline_class)
 
     def load_text_encoder(uri: _uris.TextEncoderUri):
         return uri.load(
@@ -4900,17 +5063,25 @@ def _create_diffusion_pipeline(
                     _messages.debug_log(
                         'Single file transformer checkpoint; loading pipeline '
                         f'components from "{single_file_pipeline_repo}".')
-                    pipeline = _pipeline_creation_args_debug(
-                        backend='Torch',
-                        cls=pipeline_class,
-                        method=pipeline_class.from_pretrained,
-                        model=single_file_pipeline_repo,
-                        token=auth_token,
-                        revision=revision,
-                        variant=_repo_pipeline_variant(variant, model_index, creation_kwargs),
-                        torch_dtype=torch_dtype,
-                        local_files_only=local_files_only,
-                        **creation_kwargs)
+                    if _enums.model_type_is_flux3(model_type):
+                        import dgenerate.pipelinewrapper.flux3 as _flux3
+                        pipeline = _flux3.load_flux3_pipeline(
+                            single_file_pipeline_repo, creation_kwargs, dtype,
+                            revision=revision, variant=variant,
+                            prompt_upsampler_uri=prompt_upsampler_uri,
+                            token=auth_token, local_files_only=local_files_only)
+                    else:
+                        pipeline = _pipeline_creation_args_debug(
+                            backend='Torch',
+                            cls=pipeline_class,
+                            method=pipeline_class.from_pretrained,
+                            model=single_file_pipeline_repo,
+                            token=auth_token,
+                            revision=revision,
+                            variant=_repo_pipeline_variant(variant, model_index, creation_kwargs),
+                            torch_dtype=torch_dtype,
+                            local_files_only=local_files_only,
+                            **creation_kwargs)
                 else:
                     pipeline = _pipeline_creation_args_debug(
                         backend='Torch',
@@ -4932,18 +5103,26 @@ def _create_diffusion_pipeline(
             _handle_generic_pipeline_load_failure(e)
     else:
         try:
-            pipeline = _pipeline_creation_args_debug(
-                backend='Torch',
-                cls=pipeline_class,
-                method=pipeline_class.from_pretrained,
-                model=model_path,
-                token=auth_token,
-                revision=revision,
-                variant=_repo_pipeline_variant(variant, model_index, creation_kwargs),
-                torch_dtype=torch_dtype,
-                subfolder=subfolder,
-                local_files_only=local_files_only,
-                **creation_kwargs)
+            if _enums.model_type_is_flux3(model_type):
+                import dgenerate.pipelinewrapper.flux3 as _flux3
+                pipeline = _flux3.load_flux3_pipeline(
+                    model_path, creation_kwargs, dtype,
+                    revision=revision, variant=variant, subfolder=subfolder,
+                    prompt_upsampler_uri=prompt_upsampler_uri,
+                    token=auth_token, local_files_only=local_files_only)
+            else:
+                pipeline = _pipeline_creation_args_debug(
+                    backend='Torch',
+                    cls=pipeline_class,
+                    method=pipeline_class.from_pretrained,
+                    model=model_path,
+                    token=auth_token,
+                    revision=revision,
+                    variant=_repo_pipeline_variant(variant, model_index, creation_kwargs),
+                    torch_dtype=torch_dtype,
+                    subfolder=subfolder,
+                    local_files_only=local_files_only,
+                    **creation_kwargs)
         except (ValueError, TypeError, NameError, OSError) as e:
             _handle_generic_pipeline_load_failure(e)
 
@@ -5042,9 +5221,13 @@ def _create_diffusion_pipeline(
         else:
             _set_sd_safety_checker(pipeline, safety_checker)
 
-    # Compile before offload hooks wrap forward.
-    if torch_compile:
-        apply_torch_compile(pipeline, device)
+    # Compile before offload hooks wrap forward. A URI compile=true still
+    # compiles that module when --torch-compile itself is off.
+    if torch_compile_enabled(torch_compile) or _compile_requested_names(pipeline):
+        apply_torch_compile(
+            pipeline, device,
+            names=torch_compile_module_names(torch_compile)
+            if torch_compile_enabled(torch_compile) else ())
 
     # Model Offloading
 
@@ -5063,7 +5246,11 @@ def _create_diffusion_pipeline(
         pipeline._exclude_from_cpu_offload = excluded
 
     if not device.startswith('cpu'):
-        if sequential_cpu_offload:
+        if _enums.model_type_is_flux3(model_type):
+            import dgenerate.pipelinewrapper.flux3 as _flux3
+            _flux3.place_flux3(
+                pipeline, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
+        elif sequential_cpu_offload:
             enable_sequential_cpu_offload(pipeline, device)
         elif model_cpu_offload:
             enable_model_cpu_offload(pipeline, device)
@@ -5513,6 +5700,9 @@ def _create_minimal_pipeline_for_component_extraction(
 
     # Get all text encoder parameters that the pipeline expects
     pipe_params = inspect.signature(pipeline_class.__init__).parameters
+    if _enums.model_type_is_flux3(model_type):
+        import dgenerate.pipelinewrapper.flux3 as _flux3
+        pipe_params = _flux3.declared_init_parameters(pipeline_class)
     text_encoder_params = [name for name in pipe_params.keys() if _is_text_encoder_component(name)]
 
     # Load ALL text encoders that the pipeline expects, even if not being cached
@@ -5712,14 +5902,22 @@ def _create_minimal_pipeline_for_component_extraction(
     if _hfhub.is_single_file_model_load(model_path):
         try:
             if single_file_pipeline_repo is not None:
-                pipeline = pipeline_class.from_pretrained(
-                    single_file_pipeline_repo,
-                    token=auth_token,
-                    revision=revision,
-                    variant=_repo_pipeline_variant(variant, model_index, creation_kwargs),
-                    torch_dtype=torch_dtype,
-                    local_files_only=local_files_only,
-                    **creation_kwargs)
+                if _enums.model_type_is_flux3(model_type):
+                    import dgenerate.pipelinewrapper.flux3 as _flux3
+                    pipeline = _flux3.load_flux3_pipeline(
+                        single_file_pipeline_repo, creation_kwargs, dtype,
+                        revision=revision, variant=variant,
+                        prompt_upsampler_uri=prompt_upsampler_uri,
+                        token=auth_token, local_files_only=local_files_only)
+                else:
+                    pipeline = pipeline_class.from_pretrained(
+                        single_file_pipeline_repo,
+                        token=auth_token,
+                        revision=revision,
+                        variant=_repo_pipeline_variant(variant, model_index, creation_kwargs),
+                        torch_dtype=torch_dtype,
+                        local_files_only=local_files_only,
+                        **creation_kwargs)
             else:
                 pipeline = pipeline_class.from_single_file(
                     model_path,
@@ -5738,15 +5936,23 @@ def _create_minimal_pipeline_for_component_extraction(
             raise
     else:
         try:
-            pipeline = pipeline_class.from_pretrained(
-                model_path,
-                token=auth_token,
-                revision=revision,
-                variant=variant,
-                torch_dtype=torch_dtype,
-                subfolder=subfolder,
-                **creation_kwargs
-            )
+            if _enums.model_type_is_flux3(model_type):
+                import dgenerate.pipelinewrapper.flux3 as _flux3
+                pipeline = _flux3.load_flux3_pipeline(
+                    model_path, creation_kwargs, dtype,
+                    revision=revision, variant=variant, subfolder=subfolder,
+                    prompt_upsampler_uri=prompt_upsampler_uri,
+                    token=auth_token, local_files_only=False)
+            else:
+                pipeline = pipeline_class.from_pretrained(
+                    model_path,
+                    token=auth_token,
+                    revision=revision,
+                    variant=variant,
+                    torch_dtype=torch_dtype,
+                    subfolder=subfolder,
+                    **creation_kwargs
+                )
         except Exception as e:
             _messages.debug_log(f"Failed to create minimal pipeline from pretrained: {e}")
             raise
