@@ -1,4 +1,4 @@
-title: Flux Dev Hyper LoRA (4-step, GGUF, DistillT5)
+title: Flux Dev Hyper LoRA (4-step, GGUF + DistillT5)
 
 # Flux requires a huggingface auth token to access
 # you must request access to the repository

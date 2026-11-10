@@ -108,7 +108,7 @@ def _load_quantized_module(component_class, model_path, subfolder, revision, var
             load_kwargs['torch_dtype'] = torch_dtype
     with _hfhub.with_hf_errors_as_model_not_found():
         module = component_class.from_pretrained(model_path, **load_kwargs)
-    # 8-bit BnB weights cannot leave the GPU. Pin .to() like still pipelines.
+    # 8-bit BnB weights stay on the device they were quantized onto.
     if _util.is_loaded_in_8bit_bnb(module):
         _pipelines._disable_to(module)
     elif offload:
@@ -126,15 +126,21 @@ def _pin_video_8bit_modules(pipe):
             _pipelines._disable_to(module)
 
 
+def _is_bnb_quantizer(quantizer_uri) -> bool:
+    if not quantizer_uri:
+        return False
+    concept = str(quantizer_uri).split(';', 1)[0].strip()
+    return concept in _uris.get_uri_names(_uris.BNBQuantizerUri)
+
+
 def _quantized_device_map(device, offload: bool, quantizer_uri=None):
-    # bitsandbytes rejects a CPU or disk device_map, so it has to be
-    # created on the GPU. SDNQ weights can be quantized on the CPU and
-    # streamed later, which is what keeps a 16GB card from filling up.
+    # BnB quantizes onto the selected device, including CPU. Disk is not a
+    # device_map target. SDNQ does not use this map.
     del offload
-    if not quantizer_uri or not str(quantizer_uri).split(';', 1)[0] == 'bnb':
+    if not _is_bnb_quantizer(quantizer_uri) or device is None:
         return None
-    if device is None or str(device) == 'cpu':
-        return None
+    if torch.device(device).type == 'cpu':
+        return {'': 'cpu'}
     return {'': str(device)}
 
 

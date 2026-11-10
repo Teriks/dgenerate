@@ -30,7 +30,6 @@ import dgenerate.console.appearance as _appearance
 import dgenerate.console.formentries as _formentries
 import dgenerate.console.formentries.entry as _form_entry
 import dgenerate.console.resources as _resources
-import dgenerate.console.textentry as _t_entry
 import dgenerate.console.util as _util
 from dgenerate.console.mousewheelbind import bind_mousewheel, handle_canvas_scroll, un_bind_mousewheel
 from dgenerate.console.combobox import ComboBox
@@ -38,6 +37,56 @@ from dgenerate.console.combobox import ComboBox
 _dialog_state = _util.DialogState(save_position=True, save_size=True)
 
 _FILTER_DEBOUNCE_MS = 120
+
+
+def recipe_filter_prefixes(titles: typing.Iterable[str]) -> list[str]:
+    """Starting substrings shared by more than one recipe title.
+
+    A prefix is kept when at least two titles start with it and the next
+    word is not the same for every one of them, or when the prefix is itself
+    a recipe title that longer titles continue. The list follows the order
+    titles are given.
+    """
+    titles = list(titles)
+    children: dict[tuple[str, ...], dict[str, tuple[str, ...]]] = {(): {}}
+    counts: dict[tuple[str, ...], int] = {(): 0}
+    terminal: set[tuple[str, ...]] = set()
+
+    for title in titles:
+        words = title.split()
+        if not words:
+            continue
+        counts[()] += 1
+        path: tuple[str, ...] = ()
+        for word in words:
+            children.setdefault(path, {})
+            nxt = path + (word,)
+            children[path][word] = nxt
+            counts[nxt] = counts.get(nxt, 0) + 1
+            children.setdefault(nxt, {})
+            path = nxt
+        terminal.add(path)
+
+    prefixes: list[str] = []
+    seen: set[tuple[str, ...]] = set()
+
+    def consider(path: tuple[str, ...]) -> None:
+        if not path or path in seen or counts.get(path, 0) < 2:
+            return
+        kids = children.get(path, {})
+        if len(kids) > 1 or (path in terminal and kids):
+            seen.add(path)
+            text = ' '.join(path).rstrip(',')
+            if text and text not in prefixes:
+                prefixes.append(text)
+
+    for title in titles:
+        path = ()
+        for word in title.split():
+            path = path + (word,)
+            consider(path)
+
+    return prefixes
 
 
 class _RecipeTemplateTag:
@@ -119,6 +168,7 @@ class _RecipesForm(tk.Toplevel):
         self._filter_visible = False
         self._templates_dict: dict[str, str] = _resources.get_recipes()
         self._template_names: list[str] = list(self._templates_dict.keys())
+        self._filter_prefixes = recipe_filter_prefixes(self._template_names)
         self._search_rows = [
             (name, name.lower(), self._templates_dict[name].lower())
             for name in self._template_names
@@ -232,6 +282,8 @@ class _RecipesForm(tk.Toplevel):
         self._set_filter_visible(not self._filter_visible)
 
     def _on_filter_escape(self, _event=None):
+        if getattr(self._filter_entry, '_is_dropdown_open', False):
+            return None
         if self._filter_query():
             self._filter_var.set('')
         else:
@@ -264,7 +316,12 @@ class _RecipesForm(tk.Toplevel):
         self._filter_frame.grid_columnconfigure(1, weight=1)
 
         ttk.Label(self._filter_frame, text='Filter').grid(row=0, column=0, sticky='w')
-        self._filter_entry = _t_entry.TextEntry(self._filter_frame, textvariable=self._filter_var)
+        self._filter_entry = ComboBox(
+            self._filter_frame,
+            textvariable=self._filter_var,
+            values=self._filter_prefixes,
+            state='normal',
+        )
         self._filter_entry.grid(row=0, column=1, sticky='ew', padx=(5, 0))
         self._filter_var.trace_add('write', self._on_filter_changed)
         self._filter_entry.bind('<Escape>', self._on_filter_escape)

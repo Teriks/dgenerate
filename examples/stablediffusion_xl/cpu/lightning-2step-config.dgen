@@ -1,0 +1,18 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Two steps on CPU. SDXL Lightning's 2-step LoRA uses EulerDiscreteScheduler
+# with trailing timesteps and guidance 0. 1024 is the SDXL training resolution, and it is slow on CPU.
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
+--dtype float32
+--device cpu
+--loras "ByteDance/SDXL-Lightning;weight-name=sdxl_lightning_2step_lora.safetensors"
+--scheduler EulerDiscreteScheduler;timestep-spacing=trailing
+--vae AutoencoderTiny;model=madebyollin/taesdxl
+--inference-steps 2
+--guidance-scales 0
+--gen-seeds 1
+--output-size 1024
+--output-path sdxl-lightning-2step
+--prompts "a small puppy"

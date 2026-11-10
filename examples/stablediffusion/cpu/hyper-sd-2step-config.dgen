@@ -1,0 +1,18 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Two steps on CPU. Hyper-SD's 2-step LoRA uses DDIMScheduler with
+# trailing timesteps and guidance 0. The tiny autoencoder replaces the full SD1.5 VAE.
+
+stable-diffusion-v1-5/stable-diffusion-v1-5
+--dtype float32
+--device cpu
+--loras "ByteDance/Hyper-SD;weight-name=Hyper-SD15-2steps-lora.safetensors"
+--scheduler DDIMScheduler;timestep-spacing=trailing
+--vae AutoencoderTiny;model=madebyollin/taesd
+--inference-steps 2
+--guidance-scales 0
+--gen-seeds 1
+--output-size 512
+--output-path sd15-hyper-sd-2step
+--prompts "a small puppy"

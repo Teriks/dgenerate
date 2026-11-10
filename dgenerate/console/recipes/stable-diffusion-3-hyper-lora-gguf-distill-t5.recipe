@@ -1,4 +1,4 @@
-title: Stable Diffusion 3 Hyper LoRA (GGUF, DistillT5)
+title: Stable Diffusion 3 Hyper LoRA (GGUF + DistillT5)
 
 # Stable Diffusion 3 requires a huggingface auth token to access
 # you must request access to the repository

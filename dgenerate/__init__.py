@@ -72,6 +72,10 @@ if __am_dgenerate_app and '--console' in sys.argv:
     _console.main(args)
     sys.exit(0)
 
+# Noop when not on Windows.
+import dgenerate.msvcenv as _msvcenv
+_msvcenv.activate_msvc_environment()
+
 import collections.abc
 import warnings
 

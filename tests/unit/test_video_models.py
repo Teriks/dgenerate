@@ -3470,6 +3470,15 @@ class TestVideoModels(unittest.TestCase):
         self.assertAlmostEqual(border[0, 0, 0, 0, 0, 0].item(), 1.0, places=4)
         self.assertAlmostEqual(border[0, 4, 3, 3, 0, 0].item(), 3.0, places=4)
 
+    def test_bnb_device_map_includes_cpu(self):
+        device_map = _video_quantization._quantized_device_map
+        self.assertEqual(device_map('cpu', False, 'bnb'), {'': 'cpu'})
+        self.assertEqual(device_map(torch.device('cpu'), False, 'bitsandbytes;bits=4'), {'': 'cpu'})
+        self.assertEqual(device_map('cuda', False, 'bnb;bits=4'), {'': 'cuda'})
+        self.assertIsNone(device_map(None, False, 'bnb'))
+        self.assertIsNone(device_map('cpu', False, 'sdnq'))
+        self.assertIsNone(device_map('cpu', False, None))
+
 
 class TestWanModels(unittest.TestCase):
     def test_wan_check_defaults(self):

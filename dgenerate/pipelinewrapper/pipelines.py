@@ -890,6 +890,91 @@ def torch_compile_disabled() -> bool:
     return os.environ.get('DGENERATE_TORCH_COMPILE', '1').strip() == '0'
 
 
+_CPU_CXX_COMPILER: bool | None = None
+_SDNQ_CPU_COMPILER_WARNED = False
+
+
+def cpu_inductor_compiler_available() -> bool:
+    """True when Inductor can find the C++ compiler it uses for CPU kernels.
+
+    This is the same lookup ``torch.compile`` uses: ``cl`` on Windows, or
+    ``CXX`` / the configured C++ compiler elsewhere.
+    """
+    global _CPU_CXX_COMPILER
+    if _CPU_CXX_COMPILER is not None:
+        return _CPU_CXX_COMPILER
+    try:
+        from torch._inductor.cpp_builder import get_cpp_compiler
+        get_cpp_compiler()
+    except Exception as error:
+        _messages.debug_log(f'Inductor C++ compiler check failed: {error}')
+        _CPU_CXX_COMPILER = False
+    else:
+        _CPU_CXX_COMPILER = True
+    return _CPU_CXX_COMPILER
+
+
+def _warn_sdnq_cpu_without_compiler() -> None:
+    global _SDNQ_CPU_COMPILER_WARNED
+    if _SDNQ_CPU_COMPILER_WARNED or cpu_inductor_compiler_available():
+        return
+    _SDNQ_CPU_COMPILER_WARNED = True
+    if os.name == 'nt':
+        compiler = 'the MSVC compiler cl'
+    else:
+        compiler = 'a C++ compiler'
+    _messages.warning(
+        'SDNQ on CPU is running eager. Torch Inductor needs '
+        f'{compiler} to compile the dequantizer, and it was not found.')
+
+
+def pipeline_has_sdnq(pipeline) -> bool:
+    """True when ``pipeline`` contains an SDNQ quantized layer."""
+    if isinstance(pipeline, torch.nn.Module):
+        modules = pipeline.modules()
+    else:
+        modules = (
+            submodule
+            for component in get_pipeline_modules(pipeline).values()
+            for submodule in component.modules()
+        )
+    return any(getattr(module, 'sdnq_dequantizer', None) is not None
+               for module in modules)
+
+
+_SDNQ_COMPILED = (
+    'dequantize_weight_compiled',
+    'dequantize_asymmetric_compiled',
+    'dequantize_symmetric_compiled',
+    're_quantize_matmul_compiled',
+)
+
+
+@contextlib.contextmanager
+def eager_sdnq_on_cpu(pipeline, device):
+    """Run SDNQ eager when its weights are on CPU.
+
+    SDNQ turns on ``torch.compile`` whenever CUDA is present. A CPU generation
+    then asks Inductor for a C++ kernel, which needs the MSVC compiler on
+    Windows. The compiled dequantizer entry points are the eager functions for
+    that call. Turning Dynamo off is not enough: those wrappers use
+    ``fullgraph=True`` and raise when tracing is disabled.
+    """
+    if torch.device(device).type != 'cpu' or not pipeline_has_sdnq(pipeline):
+        yield
+        return
+    _warn_sdnq_cpu_without_compiler()
+    import sdnq.dequantizer as dequantizer
+    saved = {name: getattr(dequantizer, name) for name in _SDNQ_COMPILED}
+    for name in _SDNQ_COMPILED:
+        setattr(dequantizer, name, getattr(dequantizer, name.removesuffix('_compiled')))
+    try:
+        yield
+    finally:
+        for name, function in saved.items():
+            setattr(dequantizer, name, function)
+
+
 def inductor_can_compile(device) -> bool:
     """
     True when ``torch.compile`` can build an Inductor kernel on ``device``.
@@ -2319,11 +2404,13 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
                     _warn_prompt_lengths(pipeline, **kwargs)
                     prompt_warning_issued = True
                 pipeline_to(pipeline, device)
-                pipe_result = _invoke(kwargs)
+                with eager_sdnq_on_cpu(pipeline, device):
+                    pipe_result = _invoke(kwargs)
             else:
                 args = _call_prompt_weighter()
                 pipeline_to(pipeline, device)
-                pipe_result = _invoke(args)
+                with eager_sdnq_on_cpu(pipeline, device):
+                    pipe_result = _invoke(args)
                 prompt_weighter.cleanup()
             return pipe_result
         except TypeError as e:
