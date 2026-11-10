@@ -37,7 +37,8 @@ _sdnq_quantizer_uri_parser = _textprocessing.ConceptUriParser(
         'group-size',
         'quant-conv',
         'quantized-matmul',
-        'quantized-matmul-conv'
+        'quantized-matmul-conv',
+        'use-svd'
     ])
 
 
@@ -112,6 +113,11 @@ class SDNQQuantizerUri:
         The argument "quantized-matmul-conv" is enables quantized matrix multiplication for 
         convolutional layers. Same as quantized-matmul but specifically for convolutional 
         layers in UNets like SDXL.
+        
+        The argument "use-svd" enables SVDQuant on top of SDNQ quantization.
+        When True, a low-rank residual is kept so the quantized weights stay
+        closer to the original values. Rank and iteration count use the SDNQ
+        defaults.
         """
 
     OPTION_ARGS = {
@@ -125,7 +131,8 @@ class SDNQQuantizerUri:
                  group_size: int = 0,
                  quant_conv: bool = False,
                  quantized_matmul: bool = False,
-                 quantized_matmul_conv: bool = False):
+                 quantized_matmul_conv: bool = False,
+                 use_svd: bool = False):
 
         if type not in self._valid_weight_dtypes:
             raise _exceptions.InvalidSDNQQuantizerUriError(
@@ -141,6 +148,7 @@ class SDNQQuantizerUri:
         self.quant_conv = quant_conv
         self.quantized_matmul = quantized_matmul
         self.quantized_matmul_conv = quantized_matmul_conv
+        self.use_svd = use_svd
 
     def to_config(self, compute_dtype: str | torch.dtype | None = None) -> 'SDNQConfig':
         """
@@ -158,7 +166,8 @@ class SDNQQuantizerUri:
             group_size=self.group_size,
             quant_conv=self.quant_conv,
             use_quantized_matmul=self.quantized_matmul,
-            use_quantized_matmul_conv=self.quantized_matmul_conv
+            use_quantized_matmul_conv=self.quantized_matmul_conv,
+            use_svd=self.use_svd
         )
 
     def to_transformers_config(self, compute_dtype: str | torch.dtype | None = None) -> 'SDNQConfig':
@@ -185,13 +194,15 @@ class SDNQQuantizerUri:
             quant_conv = _types.parse_bool(r.args.get('quant-conv', False))
             quantized_matmul = _types.parse_bool(r.args.get('quantized-matmul', False))
             quantized_matmul_conv = _types.parse_bool(r.args.get('quantized-matmul-conv', False))
+            use_svd = _types.parse_bool(r.args.get('use-svd', False))
 
             return SDNQQuantizerUri(
                 type=weights_dtype,
                 group_size=group_size,
                 quant_conv=quant_conv,
                 quantized_matmul=quantized_matmul,
-                quantized_matmul_conv=quantized_matmul_conv
+                quantized_matmul_conv=quantized_matmul_conv,
+                use_svd=use_svd
             )
 
         except _textprocessing.ConceptUriParseError as e:

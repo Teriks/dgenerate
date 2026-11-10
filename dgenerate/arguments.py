@@ -2573,6 +2573,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             * quant-conv: bool = False (quantize convolutional layers)
             * quantized-matmul: bool = False (use quantized matrix multiplication)
             * quantized-matmul-conv: bool = False (use quantized matrix multiplication for convolutional layers)
+            * use-svd: bool = False (keep an SVDQuant low-rank residual)
             
             SDNQ supports the quantization types:
             

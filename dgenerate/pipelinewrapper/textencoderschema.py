@@ -66,6 +66,9 @@ _ENCODER_REPLACEMENTS = {
         ('flux', 'flux-fill', 'flux-kontext'),
         {'text_encoder_2': ['T5EncoderModel', 'DistillT5EncoderModel']}),
     **_copy_slots(
+        ('sd3', 'sd3-pix2pix'),
+        {'text_encoder_3': ['T5EncoderModel', 'DistillT5EncoderModel']}),
+    **_copy_slots(
         ('z-image', 'z-image-omni'),
         {'text_encoder': ['Qwen3Model', 'Qwen3ForCausalLM']}),
     ('flux2', 'text_encoder'): [

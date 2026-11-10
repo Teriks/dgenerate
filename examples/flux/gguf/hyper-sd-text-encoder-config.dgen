@@ -1,0 +1,30 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# ByteDance Hyper-SD 8-step LoRA on a city96 Flux Dev GGUF, with a city96
+# T5-XXL GGUF. "+" keeps CLIP from the repository. The T5 file is already
+# quantized: do not set quantizer on that URI. The LoRA stays an adapter
+# on the packed transformer. Fuse scale 0.125.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+black-forest-labs/FLUX.1-dev
+--model-type flux
+--dtype bfloat16
+--model-cpu-offload
+--transformer https://huggingface.co/city96/FLUX.1-dev-gguf/blob/main/flux1-dev-Q4_K_S.gguf
+--loras "ByteDance/Hyper-SD;weight-name=Hyper-FLUX.1-dev-8steps-lora.safetensors"
+--lora-fuse-scale 0.125
+--text-encoders + "T5EncoderModel;model=https://huggingface.co/city96/t5-v1_1-xxl-encoder-gguf/blob/main/t5-v1_1-xxl-encoder-Q4_K_S.gguf"
+--vae AutoencoderTiny;model=madebyollin/taef1
+--inference-steps 8
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path flux-gguf-hyper-sd-text-encoder
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

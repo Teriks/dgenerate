@@ -13,15 +13,17 @@ class TestSDNQQuantizerUri(unittest.TestCase):
         self.assertFalse(result.quant_conv)
         self.assertFalse(result.quantized_matmul)
         self.assertFalse(result.quantized_matmul_conv)
+        self.assertFalse(result.use_svd)
 
     def test_full_options_parsing(self):
-        uri = 'sdnq;type=int4;group-size=8;quant-conv=true;quantized-matmul=true;quantized-matmul-conv=true'
+        uri = 'sdnq;type=int4;group-size=8;quant-conv=true;quantized-matmul=true;quantized-matmul-conv=true;use-svd=true'
         result = SDNQQuantizerUri.parse(uri)
         self.assertEqual(result.type, 'int4')
         self.assertEqual(result.group_size, 8)
         self.assertTrue(result.quant_conv)
         self.assertTrue(result.quantized_matmul)
         self.assertTrue(result.quantized_matmul_conv)
+        self.assertTrue(result.use_svd)
 
     def test_type_validation(self):
         for dtype in SDNQQuantizerUri._valid_weight_dtypes:
@@ -38,10 +40,12 @@ class TestSDNQQuantizerUri(unittest.TestCase):
     def test_to_config_uses_pypi_sdnq(self):
         import sdnq
 
-        config = SDNQQuantizerUri.parse('sdnq;type=uint4;group-size=32').to_config()
+        config = SDNQQuantizerUri.parse('sdnq;type=uint4;group-size=32;use-svd=true').to_config()
         self.assertIsInstance(config, sdnq.SDNQConfig)
         self.assertEqual(config.weights_dtype, 'uint4')
         self.assertEqual(config.group_size, 32)
+        self.assertTrue(config.use_svd)
+        self.assertFalse(SDNQQuantizerUri.parse('sdnq').to_config().use_svd)
 
         tf_config = SDNQQuantizerUri.parse('sdnq;type=int8').to_transformers_config()
         self.assertIsInstance(tf_config, sdnq.SDNQConfig)

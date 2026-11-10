@@ -1298,6 +1298,19 @@ def estimate_pipeline_cache_footprint(
     return usage
 
 
+def fill_unset_sd3_quant_convs(vae) -> None:
+    """Give an SD3 ``AutoencoderKL`` identity quant convolutions when they were left unset.
+
+    Tiled encode and decode call ``quant_conv`` whenever ``use_quant_conv`` is set, even
+    if the module itself is ``None``. ``AutoencoderTiny`` has neither attribute, and
+    reading it raises ``AttributeError``.
+    """
+    if hasattr(vae, 'quant_conv') and vae.quant_conv is None:
+        vae.quant_conv = lambda x: x
+    if hasattr(vae, 'post_quant_conv') and vae.post_quant_conv is None:
+        vae.post_quant_conv = lambda x: x
+
+
 def set_vae_tiling_and_slicing(
         pipeline: diffusers.DiffusionPipeline,
         tiling: bool,
@@ -5126,13 +5139,10 @@ def _create_pipeline(
         except (ValueError, TypeError, NameError, OSError) as e:
             _handle_generic_pipeline_load_failure(e)
 
-    if hasattr(pipeline, 'vae') and \
+    if hasattr(pipeline, 'vae') and pipeline.vae is not None and \
             _enums.model_type_is_sd3_family(model_type):
-        # patch to enable tiling at all resolutions
-        if pipeline.vae.quant_conv is None:
-            pipeline.vae.quant_conv = lambda x: x
-        if pipeline.vae.post_quant_conv is None:
-            pipeline.vae.post_quant_conv = lambda x: x
+        # An SD3 AutoencoderKL can ship with these left None, which breaks tiling.
+        fill_unset_sd3_quant_convs(pipeline.vae)
 
     if hydit_ip_adapter_image_encoder is not None:
         # Do not register_modules: HunyuanDiT is not an image_encoder pipeline component.

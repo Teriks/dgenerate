@@ -63,6 +63,12 @@ class TestTextEncoderSlots(unittest.TestCase):
             schema['flux'][1]['encoders'],
             ['T5EncoderModel', 'DistillT5EncoderModel'])
         self.assertEqual(
+            schema['sd3'][2]['encoders'],
+            ['T5EncoderModel', 'DistillT5EncoderModel'])
+        self.assertEqual(
+            schema['sd3-pix2pix'][2]['encoders'],
+            ['T5EncoderModel', 'DistillT5EncoderModel'])
+        self.assertEqual(
             schema['flux2'][0]['encoders'][0],
             'Mistral3ForConditionalGeneration')
         self.assertIn('Qwen3ForCausalLM', schema['flux2'][0]['encoders'])

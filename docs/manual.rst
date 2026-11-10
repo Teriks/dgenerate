@@ -1241,6 +1241,7 @@ Help Output
             * quant-conv: bool = False (quantize convolutional layers)
             * quantized-matmul: bool = False (use quantized matrix multiplication)
             * quantized-matmul-conv: bool = False (use quantized matrix multiplication for convolutional layers)
+            * use-svd: bool = False (keep an SVDQuant low-rank residual)
             
             SDNQ supports the quantization types:
             
@@ -17124,6 +17125,7 @@ And for ``sdnq``:
             quant-conv: bool = False
             quantized-matmul: bool = False
             quantized-matmul-conv: bool = False
+            use-svd: bool = False
     
         SD.Next quantization backend configuration.
     
@@ -17174,6 +17176,10 @@ And for ``sdnq``:
     
         The argument "quantized-matmul-conv" is enables quantized matrix multiplication for convolutional layers.
         Same as quantized-matmul but specifically for convolutional layers in UNets like SDXL.
+    
+        The argument "use-svd" enables SVDQuant on top of SDNQ quantization. When True, a low-rank residual is
+        kept so the quantized weights stay closer to the original values. Rank and iteration count use the SDNQ
+        defaults.
     
     ==============================================================================================================
 
