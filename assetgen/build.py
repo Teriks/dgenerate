@@ -96,14 +96,14 @@ def setup_argument_parser():
 
     parser.add_argument(
         '--no-command-cache', nargs='*', metavar='COMMAND_PATTERN',
-        help='Disable command cache (RST Templating). If patterns are provided, '
-             'remove matching commands from cache'
+        help='Re-run template commands and write the results back to the cache. '
+             'With no patterns, every command runs. With patterns, only matching commands are dropped and rerun.'
     )
 
     parser.add_argument(
         '--no-command-cache-regex', nargs='*', metavar='REGEX_PATTERN',
-        help='Disable command cache using regex patterns (RST Templating). '
-             'If patterns are provided, remove matching commands from cache'
+        help='Re-run template commands selected by a regex and write the results back to the cache. '
+             'With no patterns, every command runs. With patterns, only matching commands are dropped and rerun.'
     )
 
     return parser
@@ -147,27 +147,24 @@ def main():
     parser = setup_argument_parser()
     args = parser.parse_args()
 
-    # Determine if caching should be disabled completely
-    disable_cache_completely = (
+    # A bare flag re-runs every command. Patterns drop only the matching entries.
+    # Either way the cache file stays in place and is written back after the render.
+    refresh_every_command = (
             (args.no_command_cache is not None and not args.no_command_cache) or
             (args.no_command_cache_regex is not None and not args.no_command_cache_regex)
     )
 
-    # Determine cache file path only if caching is enabled
-    if disable_cache_completely:
-        command_cache_path = None
-    else:
-        command_cache_path = project_dir / 'assetgen' / 'cache' / 'command.cache.json'
-        command_cache_path.parent.mkdir(parents=True, exist_ok=True)
+    command_cache_path = project_dir / 'assetgen' / 'cache' / 'command.cache.json'
+    command_cache_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Create template builder - always verbose
     preprocessor = RSTPreprocessor(
         command_cache_path=command_cache_path,
-        verbose=True  # Always verbose
+        verbose=True,  # Always verbose
+        use_cache=not refresh_every_command,
     )
 
-    # Handle cache filtering (if caching is enabled but patterns are provided)
-    if command_cache_path and (args.no_command_cache or args.no_command_cache_regex):
+    if not refresh_every_command and (args.no_command_cache or args.no_command_cache_regex):
         preprocessor.clear_cache(patterns=args.no_command_cache, regex_patterns=args.no_command_cache_regex)
 
     # Register project-specific directives

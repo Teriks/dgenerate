@@ -35,7 +35,8 @@ class RSTPreprocessor:
     def __init__(self,
                  command_cache: Optional[Dict[str, str]] = None,
                  command_cache_path: Optional[Path] = None,
-                 verbose: bool = True):
+                 verbose: bool = True,
+                 use_cache: bool = True):
         """
         Initialize the RSTPreprocessor.
 
@@ -45,10 +46,14 @@ class RSTPreprocessor:
         :type command_cache_path: Optional[Path]
         :param verbose: Whether to print status messages
         :type verbose: bool
+        :param use_cache: When false, commands run again and their output replaces the cached value.
+            The cache file is still loaded and saved, so entries this render does not touch stay put.
+        :type use_cache: bool
         """
         self._command_cache = command_cache or {}
         self._command_cache_path = command_cache_path
         self.verbose = verbose
+        self._use_cache = use_cache
         self._custom_directives = {}
 
         # Load cache if path is provided and caching is enabled
@@ -136,7 +141,7 @@ class RSTPreprocessor:
         """
         cache_key = str(settings)
 
-        if self._command_cache_path and cache_key in self._command_cache:
+        if self._use_cache and self._command_cache_path and cache_key in self._command_cache:
             return self._command_cache[cache_key]
 
         if isinstance(settings, dict):
