@@ -7526,6 +7526,7 @@ Typically however, there will be many compatible schedulers:
     #     "LCMScheduler"
     #     "LMSDiscreteScheduler"
     #     "PNDMScheduler"
+    #     "TCDScheduler"
     #     "UniPCMultistepScheduler"
 
 
@@ -18216,7 +18217,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [2278199534312]
+            Value: [86402162499971]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

@@ -69,6 +69,7 @@ Typically however, there will be many compatible schedulers:
     #     "LCMScheduler"
     #     "LMSDiscreteScheduler"
     #     "PNDMScheduler"
+    #     "TCDScheduler"
     #     "UniPCMultistepScheduler"
 
 

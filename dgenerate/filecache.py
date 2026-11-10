@@ -38,6 +38,25 @@ import pyrfc6266
 import requests
 import tqdm
 
+
+def _adapt_datetime(value: datetime.datetime) -> str:
+    """
+    Store a timestamp the way sqlite used to.
+
+    The space separator matches the adapter sqlite3 is removing. Existing
+    ``creation_date`` values compare as text, so a ``T`` separator would
+    sort them differently.
+    """
+    return value.isoformat(' ')
+
+
+def _adapt_date(value: datetime.date) -> str:
+    return value.isoformat()
+
+
+sqlite3.register_adapter(datetime.datetime, _adapt_datetime)
+sqlite3.register_adapter(datetime.date, _adapt_date)
+
 import dgenerate.filetypes as _filetypes
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages

@@ -1,0 +1,18 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# One step on CPU. Hyper-SD's 1-step LoRA is trained for TCDScheduler
+# with eta 1.0. The tiny autoencoder replaces the full SD1.5 VAE.
+
+stable-diffusion-v1-5/stable-diffusion-v1-5
+--dtype float32
+--device cpu
+--loras "ByteDance/Hyper-SD;weight-name=Hyper-SD15-1step-lora.safetensors"
+--scheduler TCDScheduler;eta=1.0
+--vae AutoencoderTiny;model=madebyollin/taesd
+--inference-steps 1
+--guidance-scales 0
+--gen-seeds 1
+--output-size 512
+--output-path sd15-hyper-sd
+--prompts "a small puppy"

@@ -1,0 +1,18 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# One step on CPU. Hyper-SD's 1-step LoRA is trained for TCDScheduler
+# with eta 1.0. 1024 is the SDXL training resolution, and it is slow on CPU.
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
+--dtype float32
+--device cpu
+--loras "ByteDance/Hyper-SD;weight-name=Hyper-SDXL-1step-lora.safetensors"
+--scheduler TCDScheduler;eta=1.0
+--vae AutoencoderTiny;model=madebyollin/taesdxl
+--inference-steps 1
+--guidance-scales 0
+--gen-seeds 1
+--output-size 1024
+--output-path sdxl-hyper-sd
+--prompts "a small puppy"

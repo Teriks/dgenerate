@@ -80,6 +80,7 @@ _SCHEDULER_TO_AUTOMATIC1111 = {
     "LCMScheduler": "LCM",
     "LMSDiscreteScheduler": "LMS",
     "PNDMScheduler": "PNDM",
+    "TCDScheduler": "TCD",
     "UniPCMultistepScheduler": "UniPC",
     "FlowMatchEulerDiscreteScheduler": "Euler FM",
     "DDPMWuerstchenScheduler": "DDPM Wuerstchen",

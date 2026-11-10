@@ -2629,6 +2629,13 @@ class PipelineWrapper:
         pipeline_args['guidance_scale'] = float(user_args.guidance_scale)
         pipeline_args['num_inference_steps'] = int(user_args.inference_steps)
 
+        call_eta = getattr(getattr(self._pipeline, 'scheduler', None), '_dgenerate_call_eta', None)
+        if call_eta is not None:
+            call = self._pipeline.__call__
+            func = getattr(call, '__wrapped__', None) or call
+            if 'eta' in inspect.getfullargspec(func).args:
+                pipeline_args['eta'] = call_eta
+
         # Create generator once and reuse it throughout
         pipeline_args['generator'] = torch.Generator(device=self._device).manual_seed(
             _types.default(user_args.seed, _constants.DEFAULT_SEED))

@@ -23,6 +23,7 @@ import importlib.util
 import io
 import os
 import platform
+import re
 import shutil
 import subprocess
 import tempfile
@@ -199,78 +200,283 @@ def get_torch_vae_types() -> list[str]:
             "AutoencoderKLLTX2Video"]
 
 
-def get_torch_devices() -> list[str]:
-    if platform.system() == 'Darwin':
-        # Assume MPS is available without importing torch
-        return ['mps', 'cpu']
+def _tool_output(command: list[str],
+                 stderr: int = subprocess.DEVNULL) -> subprocess.CompletedProcess | None:
+    """Run a device-query tool. ``None`` when it cannot be started or times out."""
+    extra_kwargs = {}
+    if platform.system() == 'Windows':
+        # Missing on non-Windows interpreters. Tests patch the platform to
+        # Windows and would otherwise fail while importing this flag.
+        extra_kwargs['creationflags'] = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+    try:
+        return subprocess.run(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=stderr,
+            timeout=10,
+            check=False,
+            **extra_kwargs)
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _output_text(output: str | bytes | None) -> str:
+    if not output:
+        return ''
+    if isinstance(output, bytes):
+        output = output.decode(errors='replace')
+    return output
+
+
+def _index_lines(text: str) -> list[str]:
+    """Integer lines from a tool listing, with ``\\r\\n`` line endings removed."""
+    return [line.strip() for line in text.splitlines() if line.strip().isdigit()]
+
+
+def _visible_ordinals(physical: list[str], spec: str | None) -> list[str]:
+    """
+    Process-local device ordinals after a visibility mask.
+
+    PyTorch renumbers the selected devices from zero in the order given.
+    An empty mask or ``-1`` hides every device. Integer tokens must name a
+    discovered device. Any other token, such as a GPU UUID, counts as one
+    visible device. A subdevice token (``0.0``) is left uninterpreted and
+    the discovered list is kept.
+    """
+    if spec is None:
+        return physical
+    spec = spec.strip()
+    if spec in ('', '-1'):
+        return []
+    tokens = [token.strip() for token in spec.split(',') if token.strip()]
+    if not tokens:
+        return []
+    if any('.' in token for token in tokens):
+        return physical
+    if any(not token.isdigit() for token in tokens):
+        return [str(index) for index in range(len(tokens))]
+    known = set(physical)
+    visible = [token for token in tokens if token in known]
+    return [str(index) for index in range(len(visible))]
+
+
+def _cuda_names(physical: list[str], spec: str | None) -> list[str]:
+    return [f'cuda:{ordinal}' for ordinal in _visible_ordinals(physical, spec)] + ['cpu']
+
+
+def _nvidia_ordinals() -> list[str] | None:
+    """Physical NVIDIA indexes, ``[]`` when the tool ran and saw none, or ``None`` if it is absent."""
+    if shutil.which('nvidia-smi') is None:
+        return None
+    result = _tool_output(['nvidia-smi', '--query-gpu=index', '--format=csv,noheader'])
+    if result is None or result.returncode != 0:
+        return []
+    return _index_lines(_output_text(result.stdout))
+
+
+def _unique_in_order(values: list[str]) -> list[str]:
+    seen = set()
+    unique = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        unique.append(value)
+    return unique
+
+
+def _rocm_ordinals_from_text(text: str) -> tuple[list[str], bool]:
+    """
+    GPU ordinals from installer-recognized AMD tool text.
+
+    The second value is true when the ordinals came from ``hipinfo``.
+    ``hipinfo`` asks the HIP runtime, so ``device#`` is already the
+    process-local ordinal: ``HIP_VISIBLE_DEVICES`` has been applied, and
+    ``CUDA_VISIBLE_DEVICES`` has been applied when the HIP variable is
+    unset. Those numbers must not be masked again.
+
+    ``rocminfo`` and ``rocm-smi`` list every GPU. ``rocminfo`` prints one
+    ``Device Type: GPU`` line per GPU agent and does not print
+    ``gcnArchName``; a ``gcnArchName`` line is still accepted. ``rocm-smi
+    --showproductname`` repeats ``GPU[n]`` once per property, so those
+    indexes are de-duplicated.
+    """
+    hip_devices = re.findall(r'(?im)^device#\s+(\d+)', text)
+    if hip_devices:
+        return _unique_in_order(hip_devices), True
+    product_indexes = re.findall(r'GPU\[(\d+)\]', text)
+    if product_indexes:
+        return _unique_in_order(product_indexes), False
+    named_agents = re.findall(r'gcnArchName:\s*gfx\d+', text, re.IGNORECASE)
+    if named_agents:
+        return [str(index) for index in range(len(named_agents))], False
+    gpu_agents = re.findall(r'Device Type:\s+GPU\b', text, re.IGNORECASE)
+    return [str(index) for index in range(len(gpu_agents))], False
+
+
+def _rocm_commands() -> list[list[str]]:
+    """Tools the network installer already uses to identify an AMD GPU."""
+    commands = []
+    for name in ('hipinfo', 'hipInfo', 'rocminfo'):
+        if shutil.which(name) is not None:
+            commands.append([name])
+    if shutil.which('rocm-smi') is not None:
+        commands.append(['rocm-smi', '--showproductname'])
+    return commands
+
+
+def _rocm_ordinals() -> tuple[list[str] | None, bool]:
+    """
+    ROCm GPU indexes, and whether those indexes are already process-local.
+
+    The list is ``None`` when ``hipinfo``, ``rocminfo``, and ``rocm-smi``
+    are all absent. An empty list means one of those tools ran and no GPU
+    could be identified. A Windows display-adapter name can tell the
+    installer that an AMD GPU is present, but it is not a torch device
+    ordinal, so it is not listed here.
+    """
+    commands = _rocm_commands()
+    if not commands:
+        return None, False
+    saw_output = False
+    for command in commands:
+        result = _tool_output(command, stderr=subprocess.PIPE)
+        if result is None or result.returncode != 0:
+            continue
+        saw_output = True
+        text = _output_text(result.stdout) + '\n' + _output_text(result.stderr)
+        ordinals, hip_local = _rocm_ordinals_from_text(text)
+        if ordinals:
+            return ordinals, hip_local
+    return ([], False) if saw_output else (None, False)
+
+
+# Client integrated graphics sit at PCI 00:02.0. Discrete parts such as
+# Arc use another bus, and xpu-smi's "Intel(R) Graphics [id]" name is used
+# for those as well, so the name check stays specific to iGPU brands.
+_XPU_INTEGRATED_BDF = re.compile(r'(?i)(?:^|:)00:02\.0$')
+_XPU_INTEGRATED_NAME = re.compile(
+    r'(?i)\b(?:UHD Graphics|Iris(?:\(R\))?\s+(?:Xe|Plus)|HD Graphics)\b')
+
+
+def _xpu_is_integrated(device: dict) -> bool:
+    bdf = device.get('pci_bdf_address')
+    if isinstance(bdf, str) and _XPU_INTEGRATED_BDF.search(bdf.strip()):
+        return True
+    name = device.get('device_name')
+    return isinstance(name, str) and _XPU_INTEGRATED_NAME.search(name) is not None
+
+
+def _xpu_discovered() -> list[tuple[str, bool]] | None:
+    """
+    ``(device_id, integrated)`` pairs from ``xpu-smi discovery -j``.
+
+    ``None`` when ``xpu-smi`` is absent. An empty list means the tool ran
+    and no device id could be read.
+    """
+    if shutil.which('xpu-smi') is None:
+        return None
+    result = _tool_output(['xpu-smi', 'discovery', '-j'])
+    if result is None or result.returncode != 0:
+        return []
+    try:
+        data = json.loads(_output_text(result.stdout))
+        device_list = data.get('device_list', [])
+    except (json.JSONDecodeError, AttributeError, TypeError):
+        return []
+    discovered = []
+    for device in device_list:
+        if not isinstance(device, dict) or 'device_id' not in device:
+            continue
+        discovered.append((str(device['device_id']), _xpu_is_integrated(device)))
+    return discovered
+
+
+def _xpu_visible_ordinals(devices: list[tuple[str, bool]],
+                          spec: str | None) -> list[str]:
+    """
+    Process-local ``xpu`` ordinals.
+
+    Level Zero treats an unset mask, an empty mask, and ``default`` as no
+    mask. ``-1`` selects nothing. Integer tokens are physical device ids,
+    kept in the order written, with duplicates and unknown ids dropped.
+    When any selected device is discrete, integrated GPUs are dropped, which
+    is what ``torch.xpu`` counts. A subdevice token (``0.0``) is left
+    uninterpreted and the discovered list is kept.
+    """
+    if spec is None or spec in ('', 'default'):
+        selected = list(devices)
     else:
-        try:
-            extra_kwargs = dict()
-            if platform.system() == 'Windows':
-                extra_kwargs = {'creationflags': subprocess.CREATE_NO_WINDOW}
+        if spec.strip() in ('', '-1'):
+            return []
+        tokens = [token.strip() for token in spec.split(',') if token.strip()]
+        if not tokens:
+            return []
+        if any('.' in token for token in tokens):
+            selected = list(devices)
+        elif any(not token.isdigit() for token in tokens):
+            return [str(index) for index in range(len(tokens))]
+        else:
+            known = {device_id: integrated for device_id, integrated in devices}
+            selected = []
+            seen = set()
+            for token in tokens:
+                if token not in known or token in seen:
+                    continue
+                selected.append((token, known[token]))
+                seen.add(token)
+    if any(not integrated for _, integrated in selected):
+        selected = [item for item in selected if not item[1]]
+    return [str(index) for index in range(len(selected))]
 
-            # Detect CUDA devices using nvidia-smi
-            if shutil.which('nvidia-smi') is not None:
-                result = subprocess.run(['nvidia-smi',
-                                         '--query-gpu=index',
-                                         '--format=csv,noheader'],
-                                        stdin=None,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.STDOUT,
-                                        **extra_kwargs)
 
-                if result.returncode != 0:
-                    return ['cpu']
+def _macos_has_mps() -> bool:
+    """Apple Silicon has MPS. Intel Macs, including under Rosetta, do not."""
+    if platform.machine().lower() in {'arm64', 'aarch64'}:
+        return True
+    result = _tool_output(['sysctl', '-n', 'hw.optional.arm64'])
+    if result is None or result.returncode != 0:
+        return False
+    return _output_text(result.stdout).strip() == '1'
 
-                devices = result.stdout.decode().strip().split('\n')
-                return ['cuda:' + device for device in devices] + ['cpu']
 
-            # Detect ROCm devices using rocm-smi
-            elif shutil.which('rocm-smi') is not None:
-                result = subprocess.run(['rocm-smi', '-l'],
-                                        stdin=None,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.STDOUT,
-                                        **extra_kwargs)
+def get_torch_devices() -> list[str]:
+    """
+    Devices the console may offer for ``--device``.
 
-                if result.returncode != 0:
-                    return ['cpu']
-
-                gpu_count = sum(1 for line in result.stdout.decode().split('\n')
-                                if line.strip().startswith("GPU"))
-
-                if gpu_count > 0:
-                    devices = [str(i) for i in range(gpu_count)]
-                    return ['cuda:' + device for device in devices] + ['cpu']
-
-            # Detect XPU devices using xpu-smi
-            elif shutil.which('xpu-smi') is not None:
-                result = subprocess.run(['xpu-smi', 'discovery', '-j'],
-                                        stdin=None,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.STDOUT,
-                                        **extra_kwargs)
-
-                if result.returncode != 0:
-                    return ['cpu']
-
-                # Parse xpu-smi JSON output to get device IDs
-                try:
-                    data = json.loads(result.stdout.decode())
-                    device_list = data.get('device_list', [])
-                    device_ids = [str(device['device_id']) for device in device_list 
-                                  if 'device_id' in device]
-                    
-                    if device_ids:
-                        return ['xpu:' + device_id for device_id in device_ids] + ['cpu']
-                except (json.JSONDecodeError, KeyError, TypeError):
-                    # Fallback to CPU if JSON parsing fails
-                    return ['cpu']
-
-            # No GPUs found, fallback to CPU
+    Names match what this process can pass to torch. ``CUDA_VISIBLE_DEVICES``
+    and ``HIP_VISIBLE_DEVICES`` renumber ``cuda:`` ordinals from zero. The
+    query uses vendor tools and does not import torch, so the console can
+    open before torch is loaded.
+    """
+    try:
+        if platform.system() == 'Darwin':
+            if _macos_has_mps():
+                return ['mps', 'cpu']
             return ['cpu']
-        except:
-            return ['cpu']
+
+        nvidia = _nvidia_ordinals()
+        if nvidia is not None:
+            return _cuda_names(nvidia, os.environ.get('CUDA_VISIBLE_DEVICES'))
+
+        rocm, hip_local = _rocm_ordinals()
+        if rocm is not None:
+            if hip_local:
+                return [f'cuda:{ordinal}' for ordinal in rocm] + ['cpu']
+            spec = os.environ.get('HIP_VISIBLE_DEVICES')
+            if spec is None:
+                spec = os.environ.get('CUDA_VISIBLE_DEVICES')
+            return _cuda_names(rocm, spec)
+
+        xpu = _xpu_discovered()
+        if xpu is not None:
+            ordinals = _xpu_visible_ordinals(xpu, os.environ.get('ZE_AFFINITY_MASK'))
+            return [f'xpu:{ordinal}' for ordinal in ordinals] + ['cpu']
+
+        return ['cpu']
+    except Exception:
+        return ['cpu']
 
 
 def get_karras_scheduler_prediction_types() -> list[str]:

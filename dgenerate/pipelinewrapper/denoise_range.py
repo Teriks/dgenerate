@@ -139,8 +139,9 @@ def _is_problematic_scheduler(scheduler):
         diffusers.schedulers.DEISMultistepScheduler,
         diffusers.schedulers.UniPCMultistepScheduler,
 
-        # LCM scheduler is stateful and cannot be reliably split into ranges
+        # LCM and TCD schedulers are stateful and cannot be reliably split into ranges
         diffusers.schedulers.LCMScheduler,
+        diffusers.schedulers.TCDScheduler,
 
         # Wuerstchen scheduler not compatible with denoise range
         diffusers.schedulers.DDPMWuerstchenScheduler,
@@ -708,7 +709,8 @@ def denoise_range(pipeline, start: float | None = 0.0, end: float | None = 1.0):
             error_msg = (f"Scheduler {scheduler_name} has complex multistep state that causes runtime "
                         f"errors with denoise range splitting. Consider using DPMSolverMultistepScheduler, "
                         f"EulerDiscreteScheduler, PNDMScheduler, or DDIMScheduler instead.")
-        elif isinstance(scheduler, diffusers.schedulers.LCMScheduler):
+        elif isinstance(scheduler, (diffusers.schedulers.LCMScheduler,
+                                    diffusers.schedulers.TCDScheduler)):
             error_msg = (f"Scheduler {scheduler_name} uses timestep-dependent boundary conditions and consistency "
                         f"distillation that require the complete original timestep sequence from training. "
                         f"Splitting the timestep schedule breaks the learned consistency mapping and produces "

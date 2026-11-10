@@ -121,6 +121,7 @@ _SCHEDULER_KEYWORDS = sorted((
     "LCMScheduler",
     "LMSDiscreteScheduler",
     "PNDMScheduler",
+    "TCDScheduler",
     "UniPCMultistepScheduler",
     "DDPMWuerstchenScheduler",
     "FlowMatchEulerDiscreteScheduler"

@@ -142,6 +142,9 @@ def get_compatible_schedulers(pipeline_cls: type[diffusers.DiffusionPipeline]) -
     if issubclass(pipeline_cls, (diffusers.loaders.StableDiffusionLoraLoaderMixin,
                                  diffusers.loaders.StableDiffusionXLLoraLoaderMixin)):
         compatibles.append(diffusers.LCMScheduler)
+        # Hyper-SD 1-step LoRAs are trained for TCDScheduler, which is not
+        # part of the Karras scheduler enum those pipelines declare.
+        compatibles.append(diffusers.TCDScheduler)
 
     return compatibles
 
@@ -243,6 +246,12 @@ _scheduler_option_args = {
     },
 
     diffusers.LCMScheduler: {
+        "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.TCDScheduler: {
         "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
         "prediction_type": ["epsilon", "sample", "v_prediction"],
         "timestep_spacing": ["leading", "trailing", "linspace"]
@@ -371,6 +380,15 @@ def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[ty
                 parameter_details['options'] = option_args[parameter.name]
 
             parameter_schema[_textprocessing.dashup(parameter_name)] = parameter_details
+
+        if class_type is diffusers.TCDScheduler:
+            # eta is a pipeline call argument, not a TCDScheduler constructor
+            # argument. Hyper-SD 1-step uses eta=1.0; the scheduler default is 0.3.
+            parameter_schema['eta'] = {
+                'optional': True,
+                'default': 0.3,
+                'types': ['float']
+            }
     return schema
 
 
@@ -523,6 +541,8 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
                 sorted(' ' * 4 + _textprocessing.quote(i.__name__.split('.')[-1]) for i in compatibles)))
 
     args = parse_scheduler_uri(scheduler_type, scheduler_uri)
+    # eta is forwarded to the pipeline call. See _get_pipeline_defaults.
+    call_eta = args.pop('eta', None)
 
     _messages.debug_log(
         f'Constructing Scheduler: "{scheduler_type.__name__}", URI Args: {args}')
@@ -548,6 +568,9 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
         raise SchedulerArgumentError(
             f'Error constructing scheduler "{scheduler_type.__name__}" '
             f'with given URI argument values, encountered error: {e}') from e
+
+    if call_eta is not None:
+        pipeline.scheduler._dgenerate_call_eta = call_eta
 
     _messages.debug_log(
         f'Scheduler: "{scheduler_type.__name__}", '

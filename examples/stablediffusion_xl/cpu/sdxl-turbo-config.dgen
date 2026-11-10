@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# SDXL-Turbo is distilled for one step at guidance 0 and 512x512.
+# The checkpoint's own scheduler is already correct.
+
+stabilityai/sdxl-turbo --model-type sdxl
+--dtype float32
+--device cpu
+--vae AutoencoderTiny;model=madebyollin/taesdxl
+--inference-steps 1
+--guidance-scales 0
+--gen-seeds 1
+--output-size 512
+--output-path sdxl-turbo
+--prompts "a small puppy"

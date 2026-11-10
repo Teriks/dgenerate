@@ -143,6 +143,7 @@ _SCHEDULER_NAMES = {
     'LCMScheduler': 'LCM, for LCM LoRAs and LCM UNets',
     'LMSDiscreteScheduler': 'LMS',
     'PNDMScheduler': 'PNDM or PLMS',
+    'TCDScheduler': 'TCD, for Hyper-SD 1-step LoRAs. eta is passed to the pipeline call',
     'UniPCMultistepScheduler': 'UniPC',
 }
 
