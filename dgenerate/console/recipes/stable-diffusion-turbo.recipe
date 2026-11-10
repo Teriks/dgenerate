@@ -1,4 +1,4 @@
-title: Stable Diffusion Turbo
+title: Stable Diffusion 1.5 Turbo
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/sd-turbo", "optional":false, "file-types":["models"]}]
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]
