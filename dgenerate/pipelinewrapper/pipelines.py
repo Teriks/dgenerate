@@ -980,11 +980,14 @@ def inductor_can_compile(device) -> bool:
     True when ``torch.compile`` can build an Inductor kernel on ``device``.
 
     CUDA and XPU use Triton. macOS uses the Metal Inductor path from
-    PyTorch 2.13. CPU is left eager.
+    PyTorch 2.13. CPU uses Inductor's C++ compiler when that compiler
+    is installed.
     """
     import importlib.util
 
     kind = torch.device(device).type
+    if kind == 'cpu':
+        return cpu_inductor_compiler_available()
     if kind == 'mps':
         return _torch_version_at_least(2, 13)
     if kind in ('cuda', 'xpu'):
@@ -1186,8 +1189,11 @@ def apply_torch_compile(pipe, device, names=None) -> None:
             'so the blocks stay eager.')
         return
     if not inductor_can_compile(device):
-        if torch.device(device).type in ('cuda', 'xpu'):
+        kind = torch.device(device).type
+        if kind in ('cuda', 'xpu'):
             detail = 'Triton is not installed, so the blocks stay eager.'
+        elif kind == 'cpu':
+            detail = 'The C++ compiler Inductor needs was not found, so the blocks stay eager.'
         else:
             detail = 'This device cannot compile the blocks, so they stay eager.'
         _messages.warning(f'--torch-compile was set. {detail}')

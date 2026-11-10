@@ -69,3 +69,13 @@ class TestSdnqCpuEager(unittest.TestCase):
         finally:
             pipelines._CPU_CXX_COMPILER = None
             pipelines._SDNQ_CPU_COMPILER_WARNED = False
+
+    def test_cpu_compile_follows_the_compiler_check(self):
+        saved = pipelines._CPU_CXX_COMPILER
+        try:
+            pipelines._CPU_CXX_COMPILER = False
+            self.assertFalse(pipelines.inductor_can_compile('cpu'))
+            pipelines._CPU_CXX_COMPILER = True
+            self.assertTrue(pipelines.inductor_can_compile('cpu'))
+        finally:
+            pipelines._CPU_CXX_COMPILER = saved
