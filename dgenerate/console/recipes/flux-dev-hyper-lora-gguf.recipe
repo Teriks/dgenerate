@@ -4,7 +4,7 @@ title: Flux Dev Hyper LoRA (GGUF)
 # you must request access to the repository
 # ByteDance Hyper-SD 8-step LoRA on a city96 GGUF DiT.
 # Fuse scale 0.125 stays on the adapter; packed weights are not fused.
-# DistillT5 replaces T5-XXL. The VAE is the tiny Flux autoencoder.
+# The VAE is the tiny Flux autoencoder.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 
@@ -22,7 +22,7 @@ title: Flux Dev Hyper LoRA (GGUF)
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":0}]
 @torchcompile[{"model-type":"flux"}]
 @quantizer[{"model-type":"flux", "map-default":"text_encoder"}]
-@textencoders[{"model-type":"flux","arg":"--text-encoders", "defaults":[null, "DistillT5EncoderModel;model=LifuWang/DistillT5"], "divider-after":true}]
+@textencoders[{"model-type":"flux","arg":"--text-encoders", "divider-after":true}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE", "default":"AutoencoderTiny;model=madebyollin/taef1"}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]

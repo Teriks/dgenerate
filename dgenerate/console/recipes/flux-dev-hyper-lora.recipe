@@ -4,7 +4,7 @@ title: Flux Dev Hyper LoRA
 # you must request access to the repository
 #
 # ByteDance Hyper-SD 8-step LoRA. Fuse scale 0.125, guidance 3.5.
-# DistillT5 replaces T5-XXL. The VAE is the tiny Flux autoencoder.
+# The VAE is the tiny Flux autoencoder.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 
@@ -22,7 +22,7 @@ title: Flux Dev Hyper LoRA
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @torchcompile[{"model-type":"flux"}]
 @quantizer[{"model-type":"flux"}]
-@textencoders[{"model-type":"flux","arg":"--text-encoders", "defaults":[null, "DistillT5EncoderModel;model=LifuWang/DistillT5"], "divider-after":true}]
+@textencoders[{"model-type":"flux","arg":"--text-encoders", "divider-after":true}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE", "default":"AutoencoderTiny;model=madebyollin/taef1"}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]

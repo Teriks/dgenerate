@@ -1,0 +1,36 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# ByteDance Hyper-SD 8-step LoRA for FLUX.1-dev.
+# Fuse scale 0.125, guidance 3.5. DistillT5 replaces T5-XXL.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+black-forest-labs/FLUX.1-dev
+--model-type flux {{ optimization }}
+--dtype bfloat16
+--loras "ByteDance/Hyper-SD;weight-name=Hyper-FLUX.1-dev-8steps-lora.safetensors"
+--lora-fuse-scale 0.125
+--text-encoders + DistillT5EncoderModel;model=LifuWang/DistillT5
+--vae AutoencoderTiny;model=madebyollin/taef1
+--inference-steps 8
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path flux-dev-hyper-sd-distill-t5
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

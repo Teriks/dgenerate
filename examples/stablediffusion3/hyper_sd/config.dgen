@@ -2,7 +2,7 @@
 #! dgenerate 6.0.0
 
 # ByteDance Hyper-SD 4-step CFG LoRA for Stable Diffusion 3 Medium.
-# Fuse scale 0.125, guidance 3. DistillT5 replaces T5-XXL.
+# Fuse scale 0.125, guidance 3.
 
 \set token %HF_TOKEN%
 
@@ -23,7 +23,6 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --dtype float16
 --loras "ByteDance/Hyper-SD;weight-name=Hyper-SD3-4steps-CFG-lora.safetensors"
 --lora-fuse-scale 0.125
---text-encoders + + DistillT5EncoderModel;model=LifuWang/DistillT5
 --vae AutoencoderTiny;model=madebyollin/taesd3
 --inference-steps 4
 --guidance-scales 3

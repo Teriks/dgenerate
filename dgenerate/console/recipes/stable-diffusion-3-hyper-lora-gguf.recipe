@@ -4,7 +4,7 @@ title: Stable Diffusion 3 Hyper LoRA (GGUF)
 # you must request access to the repository
 # ByteDance Hyper-SD 4-step CFG LoRA on a city96 GGUF DiT.
 # Fuse scale 0.125 stays on the adapter; packed weights are not fused.
-# DistillT5 replaces T5-XXL. The VAE is the tiny SD3 autoencoder.
+# The VAE is the tiny SD3 autoencoder.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 
@@ -21,7 +21,7 @@ title: Stable Diffusion 3 Hyper LoRA (GGUF)
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":0}]
 @torchcompile[{"model-type":"sd3"}]
 @quantizer[{"model-type":"sd3", "map-default":"text_encoder_3"}]
-@textencoders[{"model-type":"sd3","arg":"--text-encoders", "defaults":[null, null, "DistillT5EncoderModel;model=LifuWang/DistillT5"], "divider-after":true}]
+@textencoders[{"model-type":"sd3","arg":"--text-encoders", "divider-after":true}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE", "default":"AutoencoderTiny;model=madebyollin/taesd3"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model": "LoRA", "default":"ByteDance/Hyper-SD;weight-name=Hyper-SD3-4steps-CFG-lora.safetensors"}]

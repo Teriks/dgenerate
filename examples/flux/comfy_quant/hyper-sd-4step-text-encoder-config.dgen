@@ -1,0 +1,29 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Lingyuzhou 4-step LoRA on Black Forest Labs' FP8 Flux Dev
+# transformer, with ComfyUI's scaled FP8 T5-XXL. "+" keeps CLIP from the
+# repository. Do not set quantizer on that T5 URI. The LoRA stays an
+# adapter on the packed transformer.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token to run this example.
+    \exit
+{% endif %}
+
+black-forest-labs/FLUX.1-dev
+--model-type flux
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/black-forest-labs/FLUX.1-dev-FP8/blob/main/flux1-dev-fp8.safetensors
+--loras "Lingyuzhou/Hyper_Flux.1_Dev_4_step_Lora;weight-name=Hyper-Flux.1-Dev 4-step-Lora.safetensors"
+--text-encoders + "T5EncoderModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp8_e4m3fn_scaled.safetensors"
+--vae AutoencoderTiny;model=madebyollin/taef1
+--inference-steps 4
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path flux-comfy-quant-hyper-sd-4step-text-encoder
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"
