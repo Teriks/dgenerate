@@ -68,7 +68,7 @@ class TestTranspileComments(unittest.TestCase):
         output = transpile(source, relaxed=True)
         self.assertEqual(output.count('#! dgenerate 6.0.0'), 1)
         self.assertIn('# note', output)
-        self.assertIn("script.version_check(0, '#! dgenerate 6.0.0')", output)
+        self.assertIn("script.version_check('#! dgenerate 6.0.0')", output)
 
 
 if __name__ == '__main__':

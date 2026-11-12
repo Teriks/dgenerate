@@ -29,6 +29,7 @@ IMAGE = Path(tempfile.gettempdir()) / '_dgenerate_adversarial.png'
 _OBJECT_ID = re.compile(r' at 0x[0-9A-Fa-f]+>')
 _LINE_WRAP = re.compile(r'^Error on line -?\d+:\s*')
 _ON_LINE = re.compile(r'\bon line -?\d+\b')
+_LINE_CITE = re.compile(r' on line -?\d+')
 _CONTINUATION = re.compile(
     r'^Error inside template continuation from line -?\d+ to line -?\d+:\n'
 )
@@ -194,6 +195,15 @@ def _diff(left, right, relaxed=False):
             and isinstance(a, tuple) and isinstance(b, tuple)
             and a and b and a[0] == 'error' and b[0] == 'error'
             and _relax_error(a[1]) == _relax_error(b[1])
+        ):
+            continue
+        if (
+            relaxed
+            and isinstance(a, tuple) and isinstance(b, tuple)
+            and len(a) > 1 and len(b) > 1
+            and a[0] == b[0]
+            and isinstance(a[1], str) and isinstance(b[1], str)
+            and _LINE_CITE.sub('', a[1]) == _LINE_CITE.sub('', b[1])
         ):
             continue
         if isinstance(a, tuple) and isinstance(b, tuple) and a and b and a[0] == 'invoke' and b[0] == 'invoke':

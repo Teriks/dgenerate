@@ -383,18 +383,19 @@ class BatchProcessor:
             config_minor_version = config_file_version_parts[1]
 
             version_str = '.'.join(str(i) for i in self.version)
+            where = f' on line {line_idx}' if line_idx is not None else ''
 
             if cur_major_version != config_major_version:
                 _messages.warning(
-                    f'Failed version check (major version mismatch) on line {line_idx}, '
+                    f'Failed version check (major version mismatch){where}, '
                     f'running an incompatible version of {self.name}! You are running version {version_str} '
                     f'and the config file specifies the required version: {config_file_version}',
                     underline=True
                 )
             elif cur_minor_version < config_minor_version:
                 _messages.warning(
-                    f'Failed version check (current minor version less than requested) '
-                    f'on line {line_idx}, running an incompatible version of {self.name}! '
+                    f'Failed version check (current minor version less than requested)'
+                    f'{where}, running an incompatible version of {self.name}! '
                     f'You are running version {version_str} and the config file specifies '
                     f'the required version: {config_file_version}',
                     underline=True

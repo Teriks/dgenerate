@@ -230,8 +230,15 @@ class Script:
         self._refresh_templates()
         return 0
 
-    def version_check(self, line_idx, line):
-        """Replay a ``#! dgenerate x.y.z`` line with the interpreter's own check."""
+    def version_check(self, line_idx, line=None):
+        """Replay a ``#! dgenerate x.y.z`` line with the interpreter's own check.
+
+        A relaxed script passes only the line. A strict script also passes the
+        interpreter's 0-based line index, which the warning cites.
+        """
+        if line is None:
+            line = line_idx
+            line_idx = None
         probe = batchprocessor.BatchProcessor(
             invoker=lambda *_args: 0,
             name='dgenerate',

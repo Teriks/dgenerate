@@ -833,7 +833,11 @@ class Transpiler:
                 self._flush_comments(line_idx)
                 self.needs_runtime = True
                 self.needs_dgenerate = True
-                self.emit(f'script.version_check({line_idx}, {line.rstrip(chr(13) + chr(10))!r})')
+                text = line.rstrip(chr(13) + chr(10))
+                if self.strict:
+                    self.emit(f'script.version_check({line_idx}, {text!r})')
+                else:
+                    self.emit(f'script.version_check({text!r})')
                 continue
             if event[0] == 'raise':
                 raise _ParseError(event[1])

@@ -43,8 +43,8 @@ class TestTranspileFormat(unittest.TestCase):
             '',
         ])
         output = transpile(source, relaxed=True)
-        version = output.split("script.version_check(0, '#! dgenerate 6.0.0')", 1)[1]
-        self.assertTrue(version.startswith("\nscript.version_check(1, '#! dgenerate 6.0.0')\n\n"))
+        version = output.split("script.version_check('#! dgenerate 6.0.0')", 1)[1]
+        self.assertTrue(version.startswith("\nscript.version_check('#! dgenerate 6.0.0')\n\n"))
         self.assertIn("script.directive('set', 'a', '1')\nscript.directive('setp', 'b', '2')\n\n", output)
         self.assertIn("script.directive('print', '{{ a }}')\nscript.directive('exit')\n\n", output)
         self.assertIn("script.directive('exit')\n\nscript.directive('echo', 'hi')\n\n", output)
@@ -69,7 +69,7 @@ class TestTranspileFormat(unittest.TestCase):
         ])
         output = transpile(source, relaxed=True, comments=True)
         self.assertIn(
-            "script.version_check(0, '#! dgenerate 6.0.0')\n\n"
+            "script.version_check('#! dgenerate 6.0.0')\n\n"
             '# before the set\n'
             '# still the set\n\n',
             output,
