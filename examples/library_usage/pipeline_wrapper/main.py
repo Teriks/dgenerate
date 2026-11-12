@@ -5,9 +5,15 @@ device, _ = dgenerate.arguments.parse_device()
 if device is None:
     device = 'cuda'
 
-# This wrapper supports every pipeline type
-# supported by dgenerate, this is a simple example
-# that uses SDXL
+# PipelineWrapper use cases in this folder:
+#
+# main.py                  one image
+# video_main.py            one finished video clip
+# ltx2_main.py             LTX-2.5, an opening clip and a closing clip
+# wan_animate_main.py      Wan-Animate, pose and face derived inside the call
+# wan_animate_2_main.py    Wan-Animate-2, driving clip resampled inside the call
+#
+# This file is the image case, using SDXL.
 
 # It is useful for generating singular images
 # and utilizes dgenerate's pipeline memory

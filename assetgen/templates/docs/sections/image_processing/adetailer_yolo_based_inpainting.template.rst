@@ -152,7 +152,7 @@ a certain class ID or class name in the model, this filter acts before "index-fi
 when using models that can detect multiple classes of objects. This is described in the
 adetailer processor help output below.
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --image-processor-help adetailer]
+@COMMAND_OUTPUT[dgenerate --image-processor-help adetailer]
 
 Adetailer Pipeline
 ------------------
@@ -282,5 +282,5 @@ internal inpaint mask generation, minus the gaussian blur and dilation
 steps, which can be applied using separate image processors and image
 processor chaining if desired.
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --image-processor-help yolo]
+@COMMAND_OUTPUT[dgenerate --image-processor-help yolo]
 

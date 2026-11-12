@@ -288,30 +288,34 @@ class ImageProcessRenderLoop:
     def _record_save_animation(self, filename):
         self._written_animations.write(pathlib.Path(filename).absolute().as_posix() + '\n')
 
-    def _source_audio_for_animation(self, file, reader, ext):
+    def _source_audio_for_animation(self, file, reader, ext, announce=True):
         """
         Soundtrack for an mp4 written from ``file``.
 
         Other animation formats cannot carry one, so the track is reported
-        as dropped instead of being decoded.
+        as dropped instead of being opened. An mp4 reader decodes samples as
+        frames are written.
         """
         fmt = ext.lstrip('.').lower()
         if not _mediaoutput.source_has_audio(file):
-            return None, None
+            return None
         if fmt != 'mp4':
-            _messages.warning(
-                f'{self.message_header}: Audio is dropped because the output is {fmt}. '
-                'Write an mp4 to keep the soundtrack.')
-            return None, None
-        loaded = _mediaoutput.read_source_audio(
+            if announce:
+                _messages.warning(
+                    f'{self.message_header}: Audio is dropped because the output is {fmt}. '
+                    'Write an mp4 to keep the soundtrack.')
+            return None
+        audio_reader = _mediainput.SourceAudioReader(
             file,
             fps=reader.fps,
             frame_start=reader.frame_start or 0,
             frame_count=reader.total_frames)
-        if not loaded:
-            return None, None
-        _messages.log(f'{self.message_header}: Keeping the audio track from "{file}".')
-        return loaded
+        if audio_reader.sample_rate is None:
+            audio_reader.close()
+            return None
+        if announce:
+            _messages.log(f'{self.message_header}: Keeping the audio track from "{file}".')
+        return audio_reader
 
     def _process_reader(self, file, reader: _mediainput.MediaReader, out_filename, generation_step):
         out_directory = os.path.dirname(out_filename)
@@ -364,13 +368,12 @@ class ImageProcessRenderLoop:
                 out_anim_name = out_filename
 
             if not self._c_config.no_animation_file and not self.disable_writes:
-                audio, sample_rate = self._source_audio_for_animation(file, reader, ext)
+                audio_reader = self._source_audio_for_animation(file, reader, ext)
                 anim_writer = _mediaoutput.create_animation_writer(
                     animation_format=ext.lstrip('.'),
                     out_filename=out_anim_name,
                     fps=reader.fps,
-                    audio=audio,
-                    audio_sample_rate=sample_rate)
+                    audio_reader=audio_reader)
             else:
                 if not self.disable_writes and self._c_config.no_animation_file:
                     self._source_audio_for_animation(file, reader, 'frames')
@@ -385,6 +388,18 @@ class ImageProcessRenderLoop:
 
             yield starting_animation_event
 
+            animation_streams = starting_animation_event.streams()
+            if animation_streams:
+                if len(animation_streams) != 1:
+                    raise _renderloopconfig.ImageProcessRenderLoopConfigError(
+                        'This animation writes one image per frame. '
+                        'StartingAnimationEvent.file needs one stream.')
+                stream_format = ext.lstrip('.').lower()
+                if stream_format not in _mediaoutput.get_supported_animation_writer_formats():
+                    raise _renderloopconfig.ImageProcessRenderLoopConfigError(
+                        'StartingAnimationEvent.file needs an animation container '
+                        'such as mp4.')
+
             starting_animation_file_event = None
             if not self._c_config.no_animation_file and not self.disable_writes:
                 starting_animation_file_event = StartingAnimationFileEvent(
@@ -397,69 +412,85 @@ class ImageProcessRenderLoop:
                 yield starting_animation_file_event
 
             with anim_writer as writer:
+                stream_writer = None
+                try:
+                    if animation_streams:
+                        stream_audio = self._source_audio_for_animation(
+                            file, reader, ext, announce=self.disable_writes or self._c_config.no_animation_file)
+                        stream_writer = _mediaoutput.create_animation_writer(
+                            animation_format=ext.lstrip('.'),
+                            out_filename=animation_streams[0],
+                            fps=reader.fps,
+                            audio_reader=stream_audio)
 
-                for frame_idx in range(0, reader.total_frames):
+                    for frame_idx in range(0, reader.total_frames):
 
-                    if self._last_frame_time == 0:
-                        eta = None
-                    else:
-                        self._frame_time_sum += time.time() - self._last_frame_time
-                        eta_seconds = (self._frame_time_sum / frame_idx) * (
-                                reader.total_frames - frame_idx)
-                        eta = datetime.timedelta(seconds=eta_seconds)
-                    self._last_frame_time = time.time()
+                        if self._last_frame_time == 0:
+                            eta = None
+                        else:
+                            self._frame_time_sum += time.time() - self._last_frame_time
+                            eta_seconds = (self._frame_time_sum / frame_idx) * (
+                                    reader.total_frames - frame_idx)
+                            eta = datetime.timedelta(seconds=eta_seconds)
+                        self._last_frame_time = time.time()
 
-                    eta_str = str(eta) if eta is not None else 'tbd...'
+                        eta_str = str(eta) if eta is not None else 'tbd...'
 
-                    _messages.log(
-                        fr'{self.message_header}: Processing Frame {frame_idx + 1}/{reader.total_frames}, Completion ETA: {eta_str}')
+                        _messages.log(
+                            fr'{self.message_header}: Processing Frame {frame_idx + 1}/{reader.total_frames}, Completion ETA: {eta_str}')
 
-                    if eta is not None:
-                        yield AnimationETAEvent(origin=self,
-                                                frame_index=frame_idx,
-                                                total_frames=reader.total_frames,
-                                                eta=eta)
+                        if eta is not None:
+                            yield AnimationETAEvent(origin=self,
+                                                    frame_index=frame_idx,
+                                                    total_frames=reader.total_frames,
+                                                    eta=eta)
 
-                    frame_filename = out_filename_base + f'_frame_{frame_idx + 1}.{self._c_config.frame_format}'
+                        frame_filename = out_filename_base + f'_frame_{frame_idx + 1}.{self._c_config.frame_format}'
 
-                    # Processing happens here, when the frame is read
-                    with next(reader) as frame:
+                        # Processing happens here, when the frame is read
+                        with next(reader) as frame:
 
-                        frame_generated_event = ImageGeneratedEvent(
-                            origin=self,
-                            image=frame,
-                            generation_step=generation_step,
-                            suggested_directory=os.path.dirname(out_filename_base),
-                            suggested_filename=os.path.basename(frame_filename),
-                            is_animation_frame=True,
-                            frame_index=frame_idx
-                        )
-                        yield frame_generated_event
-
-                        if not self._c_config.no_animation_file:
-                            writer.write(frame)
-
-                        if not self._c_config.no_frames and not self.disable_writes:
-
-                            # frames do not get the _processed_ suffix in any case
-
-                            if not self._c_config.output_overwrite:
-                                frame_filename = _filelock.touch_avoid_duplicate(
-                                    out_directory if out_directory else '.',
-                                    path_maker=_filelock.suffix_path_maker(frame_filename,
-                                                                           duplicate_output_suffix))
-
-                            frame.save(frame_filename)
-                            self._record_save_image(frame_filename)
-
-                            yield ImageFileSavedEvent(
+                            frame_generated_event = ImageGeneratedEvent(
                                 origin=self,
-                                path=frame_filename,
-                                generated_event=frame_generated_event)
+                                image=frame,
+                                generation_step=generation_step,
+                                suggested_directory=os.path.dirname(out_filename_base),
+                                suggested_filename=os.path.basename(frame_filename),
+                                is_animation_frame=True,
+                                frame_index=frame_idx
+                            )
+                            yield frame_generated_event
 
-                            _messages.log(fr'{self.message_header}: Wrote Frame "{frame_filename}"')
+                            if not self._c_config.no_animation_file:
+                                writer.write(frame)
+                            if stream_writer is not None:
+                                stream_writer.write(frame)
 
-                    frame_idx += 1
+                            if not self._c_config.no_frames and not self.disable_writes:
+
+                                # frames do not get the _processed_ suffix in any case
+
+                                if not self._c_config.output_overwrite:
+                                    frame_filename = _filelock.touch_avoid_duplicate(
+                                        out_directory if out_directory else '.',
+                                        path_maker=_filelock.suffix_path_maker(frame_filename,
+                                                                               duplicate_output_suffix))
+
+                                frame.save(frame_filename)
+                                self._record_save_image(frame_filename)
+
+                                yield ImageFileSavedEvent(
+                                    origin=self,
+                                    path=frame_filename,
+                                    generated_event=frame_generated_event)
+
+                                _messages.log(fr'{self.message_header}: Wrote Frame "{frame_filename}"')
+
+                        frame_idx += 1
+                finally:
+                    if stream_writer is not None:
+                        stream_writer.end()
+                        _mediaoutput._rewind(animation_streams[0])
 
             yield AnimationFinishedEvent(
                 origin=self,

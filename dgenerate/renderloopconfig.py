@@ -749,7 +749,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     wan_motion_encode_batch_sizes: _types.OptionalIntegers = None
     """
     Motion-encoder batch sizes for Wan-Animate.
-    ``--wan-motion-encode-batch-size``.
+    ``--wan-motion-encode-batch-size``. Wan-Animate-2 does not use this.
     """
 
     wan_animate_preprocess: bool = False
@@ -5280,8 +5280,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                     'wan_animate_preprocess', [self.wan_animate_preprocess]),
                 wan_animate_preprocess_output=ov(
                     'wan_animate_preprocess_output', [self.wan_animate_preprocess_output]),
-                wan_animate_output_dir=ov(
-                    'wan_animate_output_dir',
+                wan_animate_preprocess_output_dir=ov(
+                    'wan_animate_preprocess_output_dir',
                     [self.output_path] if self.wan_animate_preprocess_output else None),
                 sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
                 second_model_inference_steps=ov('second_model_inference_steps', self.second_model_inference_steps),

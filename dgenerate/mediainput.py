@@ -30,6 +30,7 @@ import PIL.Image
 import PIL.ImageOps
 import PIL.ImageSequence
 import av
+import numpy
 import safetensors.torch
 import torch
 
@@ -43,8 +44,8 @@ import dgenerate.types as _types
 import dgenerate.webcache as _webcache
 
 __doc__ = """
-Media input, handles reading videos/animations, static images, and tensor files (.pt, .pth, .safetensors), 
-and creating readers from image seed URIs.
+Media input, handles reading videos/animations, static images, source audio tracks,
+and tensor files (.pt, .pth, .safetensors), and creating readers from image seed URIs.
 
 Also provides media download capabilities and temporary caching of web based files.
 
@@ -2416,8 +2417,234 @@ class FrameStartOutOfBounds(ValueError):
     """
     Raised by :py:class:`.MultiMediaReader` when the provided ``frame_start``
     frame slicing value is calculated to be out of bounds.
+
+    Also raised by :py:func:`.load_rgb_frames` when the requested slice is empty.
     """
     pass
+
+
+def _as_rgb_frame(image: PIL.Image.Image) -> PIL.Image.Image:
+    if image.mode == 'RGB':
+        return image
+    converted = image.convert('RGB')
+    if converted is not image:
+        image.close()
+    return converted
+
+
+def load_rgb_frames(path: str,
+                    local_files_only: bool = False,
+                    resize_resolution: _types.OptionalSize = None,
+                    aspect_correct: bool = True,
+                    align: int = 1,
+                    frame_start: int = 0,
+                    frame_end: _types.OptionalInteger = None,
+                    max_frames: _types.OptionalInteger = None) -> tuple[list[PIL.Image.Image], float | None]:
+    """
+    Open a local path or URL as a list of RGB frames.
+
+    A still image gives one frame. Videos and animated images are sliced by
+    ``frame_start`` and ``frame_end`` (inclusive), then cut to ``max_frames``.
+
+    :param path: file path or URL
+    :param local_files_only: refuse to download
+    :param resize_resolution: optional resize
+    :param aspect_correct: preserve aspect ratio when resizing
+    :param align: pixel alignment, ``1`` disables it
+    :param frame_start: first frame index to keep
+    :param frame_end: last frame index to keep, ``None`` for the end of the file
+    :param max_frames: stop after this many frames, ``None`` for no limit
+    :raise FrameStartOutOfBounds: if the slice selects no frames
+    :raise UnknownMimetypeError: if the file is not an image, animated image, or video
+    :return: ``(frames, fps)``. ``fps`` is ``None`` for a still image.
+    """
+    mime_type, stream = fetch_media_data_stream(
+        path, local_files_only=local_files_only)
+    try:
+        if mimetype_is_static_image(mime_type):
+            return [create_image(
+                stream,
+                file_source=path,
+                resize_resolution=resize_resolution,
+                aspect_correct=aspect_correct,
+                align=align)], None
+
+        if not (mimetype_is_video(mime_type) or mimetype_is_animated_image(mime_type)):
+            raise UnknownMimetypeError(
+                f'Expected an image, animated image, or video for "{path}", '
+                f'got mimetype "{mime_type}".')
+
+        frames = []
+        try:
+            with create_animation_reader(
+                    mime_type,
+                    file_source=path,
+                    file=stream,
+                    resize_resolution=resize_resolution,
+                    aspect_correct=aspect_correct,
+                    align=align) as reader:
+                fps = float(reader.fps)
+                for index, frame in enumerate(reader):
+                    if frame_end is not None and index > frame_end:
+                        frame.close()
+                        break
+                    if index < frame_start:
+                        frame.close()
+                        continue
+                    frames.append(_as_rgb_frame(frame))
+                    if max_frames is not None and len(frames) >= max_frames:
+                        break
+        except Exception:
+            for frame in frames:
+                frame.close()
+            raise
+
+        if not frames:
+            raise FrameStartOutOfBounds(
+                f'No frames were read from "{path}" between frame {frame_start} '
+                f'and frame {"end" if frame_end is None else frame_end}.')
+        return frames, fps
+    finally:
+        stream.close()
+
+
+def _audio_frame_samples(frame) -> numpy.ndarray:
+    """Planar float32 samples shaped ``(channels, samples)``."""
+    data = numpy.asarray(frame.to_ndarray())
+    channels = frame.layout.nb_channels
+    if frame.format.is_planar:
+        if data.ndim == 1:
+            data = data.reshape(1, -1)
+    else:
+        data = data.reshape(-1, channels).T
+    if data.dtype.kind != 'f':
+        if data.dtype == numpy.uint8:
+            data = (data.astype(numpy.float32) - 128.0) / 128.0
+        else:
+            limits = numpy.iinfo(data.dtype)
+            data = data.astype(numpy.float32) / max(abs(int(limits.min)), int(limits.max))
+    else:
+        data = data.astype(numpy.float32, copy=False)
+    return numpy.ascontiguousarray(data)
+
+
+class SourceAudioReader:
+    """
+    Decode a source soundtrack from disk as it is needed.
+
+    ``frame_start`` and ``frame_count`` are in video frames at ``fps``. Samples
+    before the slice are discarded while decoding. :py:meth:`read` returns at
+    most the requested count, so the whole track is not kept.
+    """
+
+    def __init__(self,
+                 path: str,
+                 fps: float,
+                 frame_start: int = 0,
+                 frame_count: int | None = None):
+        self.sample_rate = None
+        self.channels = 0
+        self.consumed = 0
+        self._container = None
+        self._iterator = None
+        self._pending = None
+        self._skip_left = 0
+        self._limit = None
+        self._closed = False
+        if not path or not os.path.isfile(path) or not fps:
+            return
+        try:
+            container = av.open(path)
+        except av.error.FFmpegError:
+            return
+        streams = [stream for stream in container.streams if stream.type == 'audio']
+        if not streams:
+            container.close()
+            return
+        stream = streams[0]
+        rate = int(stream.codec_context.sample_rate or stream.rate or 0)
+        if rate <= 0:
+            container.close()
+            return
+        self._container = container
+        self._iterator = container.decode(stream)
+        self.sample_rate = rate
+        self._skip_left = max(0, int(round(int(frame_start or 0) / float(fps) * rate)))
+        if frame_count is not None:
+            self._limit = max(0, int(round(int(frame_count) / float(fps) * rate)))
+            if self._limit <= 0:
+                self.close()
+                self.sample_rate = None
+
+    def read(self, count: int) -> numpy.ndarray:
+        """
+        Return the next samples, at most ``count``.
+
+        The array is shaped ``(channels, samples)``. An empty array means the
+        slice is finished.
+        """
+        channels = self.channels or 1
+        if self._closed or self.sample_rate is None or count <= 0:
+            return numpy.zeros((channels, 0), dtype=numpy.float32)
+        if self._limit is not None:
+            count = min(count, self._limit - self.consumed)
+        if count <= 0:
+            return numpy.zeros((channels, 0), dtype=numpy.float32)
+        parts = []
+        got = 0
+        try:
+            while got < count:
+                block = self._next_block()
+                if block is None:
+                    break
+                take = min(count - got, block.shape[1])
+                parts.append(block[:, :take])
+                if take < block.shape[1]:
+                    self._pending = block[:, take:]
+                got += take
+        except av.error.FFmpegError:
+            self.close()
+        self.consumed += got
+        if not parts:
+            return numpy.zeros((self.channels or 1, 0), dtype=numpy.float32)
+        if len(parts) == 1:
+            return parts[0]
+        return numpy.concatenate(parts, axis=1)
+
+    def _next_block(self) -> numpy.ndarray | None:
+        while True:
+            if self._pending is not None and self._pending.shape[1]:
+                block = self._pending
+                self._pending = None
+                return block
+            try:
+                frame = next(self._iterator)
+            except StopIteration:
+                return None
+            data = _audio_frame_samples(frame)
+            if data.size == 0:
+                continue
+            if self.channels == 0:
+                self.channels = 1 if data.shape[0] == 1 else min(2, data.shape[0])
+            data = data[:self.channels]
+            if self._skip_left:
+                if data.shape[1] <= self._skip_left:
+                    self._skip_left -= data.shape[1]
+                    continue
+                data = data[:, self._skip_left:]
+                self._skip_left = 0
+            return numpy.ascontiguousarray(data, dtype=numpy.float32)
+
+    def close(self):
+        """Close the source file."""
+        if self._container is not None:
+            self._container.close()
+            self._container = None
+        self._iterator = None
+        self._pending = None
+        self._closed = True
+        if self.sample_rate is None:
+            self.consumed = 0
 
 
 class MultiMediaReader:

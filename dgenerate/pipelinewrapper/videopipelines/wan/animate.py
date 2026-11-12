@@ -53,8 +53,8 @@ def _call_wan_animate(wrapper, user_args):
     if user_args.wan_animate_preprocess and user_args.wan_driving_video_frames:
         derived_pose, derived_face = preprocess_wan_animate_driving(
             user_args.wan_driving_video_frames,
-            user_args.wan_driving_video_path,
-            user_args.wan_animate_output_dir,
+            user_args.wan_animate_preprocess_output_name,
+            user_args.wan_animate_preprocess_output_dir,
             motion_encoder_size=_animate_motion_size(wrapper),
             device=wrapper.device,
             write_clips=bool(user_args.wan_animate_preprocess_output))
@@ -156,9 +156,12 @@ def preprocess_wan_animate_driving(frames: list[PIL.Image.Image],
     Pose is ``openpose``. Face is a square crop around the first
     ``yolo`` face box. Both processors run on ``device`` for the clip
     and return to CPU when the clip is finished. The returned frames
-    are what generation uses. ``write_clips`` also stores them under
-    ``output_dir``. A name that already exists receives a
-    ``_duplicate_`` suffix.
+    are what generation uses. ``write_clips`` also stores them as
+    ``{stem}.wan-pose.mp4`` and ``{stem}.wan-face.mp4`` under
+    ``output_dir``, or under ``output`` when ``output_dir`` is unset.
+    ``source_path`` supplies the stem and is not opened. A missing path
+    uses the stem ``wan-animate``. A name that already exists receives a
+    ``_duplicate_`` suffix. The written files are 16 fps.
     """
     pose_processor, face_processor = _animate_processors(motion_encoder_size, device)
     try:

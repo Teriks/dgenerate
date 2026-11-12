@@ -1,3 +1,4 @@
+import io
 import math
 import os
 import tempfile
@@ -11,8 +12,10 @@ try:
     import dgenerate.console.console as _console
 except ImportError:
     _console = None
+import dgenerate.events as _events
 import dgenerate.image_process.renderloop as _image_process
 import dgenerate.image_process.renderloopconfig as _image_process_config
+import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.renderloop as _renderloop
 
@@ -92,10 +95,9 @@ class TestSourceAudio(unittest.TestCase):
         frames = 4
         sample_rate = 8000
         _write_clip(source, frames, fps, sample_rate, _tone(sample_rate, frames / fps))
-        loaded = _mediaoutput.read_source_audio(source, fps=fps, frame_start=0, frame_count=frames)
 
         writer = _mediaoutput.MultiAnimationWriter('mp4', output, fps, allow_overwrites=True)
-        writer.set_source_audio(*loaded)
+        writer.set_source_audio_file(source, fps=fps, frame_start=0, frame_count=frames)
         for index in range(frames):
             writer.write(PIL.Image.new('RGB', (16, 16), (index, 0, 0)))
         written = writer.filenames[0]
@@ -118,12 +120,16 @@ class TestSourceAudio(unittest.TestCase):
 
         class Writer:
             def __init__(self):
-                self.audio = None
-                self.rate = None
+                self.path = None
+                self.fps = None
+                self.frame_start = None
+                self.frame_count = None
 
-            def set_source_audio(self, audio, rate):
-                self.audio = audio
-                self.rate = rate
+            def set_source_audio_file(self, path, fps, frame_start=0, frame_count=None):
+                self.path = path
+                self.fps = fps
+                self.frame_start = frame_start
+                self.frame_count = frame_count
 
         class Seed:
             images = [type('Frame', (), {'filename': source})()]
@@ -140,9 +146,17 @@ class TestSourceAudio(unittest.TestCase):
 
         writer = Writer()
         _renderloop.RenderLoop._attach_animation_source_audio(Loop(), writer, Seed())
-        self.assertIsNotNone(writer.audio)
-        self.assertEqual(writer.rate, sample_rate)
-        self.assertGreater(writer.audio.shape[1], 0)
+        self.assertEqual(writer.path, source)
+        self.assertEqual(writer.frame_count, frames)
+        reader = _mediainput.SourceAudioReader(
+            writer.path, writer.fps, writer.frame_start, writer.frame_count)
+        try:
+            self.assertEqual(reader.sample_rate, sample_rate)
+            chunk = reader.read(256)
+            self.assertLessEqual(chunk.shape[1], 256)
+            self.assertLess(reader.consumed, sample_rate * frames / fps)
+        finally:
+            reader.close()
 
     def test_image_process_keeps_mp4_audio(self):
         directory = tempfile.mkdtemp()
@@ -167,6 +181,83 @@ class TestSourceAudio(unittest.TestCase):
             self.assertEqual(len(container.streams.audio), 1)
         finally:
             container.close()
+
+    def test_animation_event_file_duplicates_the_mp4(self):
+        directory = tempfile.mkdtemp()
+        source = os.path.join(directory, 'source.mp4')
+        output = os.path.join(directory, 'processed.mp4')
+        fps = 8
+        frames = 4
+        sample_rate = 8000
+        _write_clip(source, frames, fps, sample_rate, _tone(sample_rate, frames / fps))
+
+        config = _image_process_config.ImageProcessRenderLoopConfig()
+        config.input = [source]
+        config.output = [output]
+        config.output_overwrite = True
+        config.device = 'cpu'
+        loop = _image_process.ImageProcessRenderLoop(config)
+        stream = io.BytesIO()
+        for event in loop.events():
+            if isinstance(event, _events.StartingAnimationEvent):
+                event.file = stream
+
+        self.assertTrue(os.path.isfile(output))
+        self.assertEqual(stream.tell(), 0)
+        container = av.open(stream)
+        try:
+            self.assertEqual(len(container.streams.video), 1)
+            self.assertEqual(len(container.streams.audio), 1)
+        finally:
+            container.close()
+
+    def test_animation_event_file_is_the_only_output_when_writes_are_disabled(self):
+        directory = tempfile.mkdtemp()
+        source = os.path.join(directory, 'source.mp4')
+        output = os.path.join(directory, 'processed.mp4')
+        fps = 8
+        frames = 4
+        sample_rate = 8000
+        _write_clip(source, frames, fps, sample_rate, _tone(sample_rate, frames / fps))
+
+        config = _image_process_config.ImageProcessRenderLoopConfig()
+        config.input = [source]
+        config.output = [output]
+        config.output_overwrite = True
+        config.device = 'cpu'
+        loop = _image_process.ImageProcessRenderLoop(config, disable_writes=True)
+        stream = io.BytesIO()
+        for event in loop.events():
+            if isinstance(event, _events.StartingAnimationEvent):
+                event.file = stream
+
+        self.assertFalse(os.path.isfile(output))
+        container = av.open(stream)
+        try:
+            self.assertEqual(len(container.streams.video), 1)
+            self.assertEqual(len(container.streams.audio), 1)
+        finally:
+            container.close()
+
+    def test_multi_writer_streams_one_file_per_image(self):
+        stream = io.BytesIO()
+        writer = _mediaoutput.MultiAnimationWriter(
+            'mp4', 'ignored.mp4', 8, allow_overwrites=True, files=[stream])
+        for index in range(3):
+            writer.write(PIL.Image.new('RGB', (16, 16), (index, 0, 0)))
+        writer.end()
+        self.assertEqual(stream.tell(), 0)
+        container = av.open(stream)
+        try:
+            self.assertEqual(len(container.streams.video), 1)
+        finally:
+            container.close()
+        writer = _mediaoutput.MultiAnimationWriter(
+            'mp4', 'ignored.mp4', 8, allow_overwrites=True, files=[io.BytesIO()])
+        with self.assertRaises(ValueError):
+            writer.write([
+                PIL.Image.new('RGB', (16, 16)),
+                PIL.Image.new('RGB', (16, 16))])
 
 
 if __name__ == '__main__':

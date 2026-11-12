@@ -31,11 +31,13 @@ from .docs_builder import DocsBuilder
 from .console_schema_builder import ConsoleSchemaBuilder
 from .helsinki_nlp_translation_map_builder import HelsinkiNLPTranslationMapBuilder
 from .assistant_index_builder import AssistantIndexBuilder
+from .antlr_parser_builder import AntlrParserBuilder
 
 __all__ = [
     'ReadmeBuilder',
     'DocsBuilder', 
     'ConsoleSchemaBuilder',
     'HelsinkiNLPTranslationMapBuilder',
-    'AssistantIndexBuilder'
+    'AssistantIndexBuilder',
+    'AntlrParserBuilder',
 ] 

@@ -3335,7 +3335,8 @@ Help Output
             -----------------------------------------------------------------------------------------
       --wan-motion-encode-batch-size INTEGER [INTEGER ...]
             Motion-encoder batch size for Wan-Animate. Larger values use more memory and can be faster.
-            -------------------------------------------------------------------------------------------
+            Wan-Animate-2 does not use this.
+            --------------------------------
       --wan-animate-preprocess
             Derive wan-pose= and wan-face= from a wan-driving= clip. Pose uses the openpose processor. Face uses
             the yolo processor in crop mode (Bingsu/adetailer face_yolov8n.pt, square crop-scale=1.4). The
@@ -5777,7 +5778,8 @@ is omitted, and on ``wan-pose=`` or ``wan-face=`` when those clips are given.
 into. ``--wan-segment-frame-lengths`` must be ``4N+1``. The default is 77.
 ``--wan-prev-segment-frames`` is the overlap from the previous segment. 1 or 5
 is recommended. The default is 1. ``--wan-motion-encode-batch-size`` trades
-memory for speed in the motion encoder.
+memory for speed in the Wan-Animate motion encoder. Wan-Animate-2 does not
+use this option.
 
 .. code-block:: bash
 
@@ -13892,8 +13894,8 @@ these are the arguments that are available for use:
     wan-motion-encode-batch-size: int
     wan-animate-preprocess: bool
     wan-animate-preprocess-output: bool
-    wan-animate-output-dir: str
-    wan-driving-video-path: str
+    wan-animate-preprocess-output-dir: str
+    wan-animate-preprocess-output-name: str
     wan-driving-video-fps: float
     inference-steps: int
     clip-skip: int
@@ -15345,6 +15347,78 @@ The help output of ``kernel-warmup`` is as follows:
       -h, --help
             show this help message and exit
             -------------------------------
+
+
+Sub Command: transpile
+----------------------
+
+The ``transpile`` sub-command reads a dgenerate config and writes a Python script
+that runs the same actions through dgenerate's Python API. A generation line
+becomes a ``DgenerateArguments`` object. ``{% if %}``, ``{% for %}``,
+``{% set %}``, ``{% filter %}``, and ``{% with %}`` become Python. Shell-parsed directives such as ``\image_process`` and
+``\download`` become calls that pass already split arguments. ``\set``,
+``\setp``, ``\print``, and ``\echo`` stay on their own handlers.
+
+The default script keeps the config interpreter's line numbers and error text.
+``--relaxed`` writes the same actions without that bookkeeping, so the script
+is easier to read and edit. ``--format`` wraps long lists and calls and leaves
+a blank line between invocations. Config comments are left out. ``--comments``
+keeps comments on their own line and comments at the end of a line. A syntax
+error in the config stops translation. Both modes run the config. Neither mode
+loads a diffusion model while translating it.
+
+The config is a path to a ``.dgen`` file. ``--stdin`` reads the config from
+stdin instead. The script is printed to stdout. ``-o`` / ``--output`` writes
+it to a file instead. ``--tree`` prints the parse tree and does not write a
+script.
+
+.. code-block:: bash
+
+    # Print the script
+    dgenerate --sub-command transpile examples/config_syntax/basic-syntax-config.dgen
+
+    # Write a readable script
+    dgenerate --sub-command transpile config.dgen --relaxed -o config.py
+
+    # Translate a config piped on stdin
+    dgenerate --sub-command transpile --stdin --relaxed < config.dgen
+
+The help output of ``transpile`` is as follows:
+
+.. code-block:: text
+
+    usage: transpile [-h] [--stdin] [-o OUTPUT] [--tree] [--relaxed] [--format] [--comments | --no-comments]
+                     [config]
+    
+    Transpile a dgenerate config into a Python script.
+    
+    positional arguments:
+      config
+            Path to a .dgen config. Omit this with --stdin to read the config from stdin.
+            -----------------------------------------------------------------------------
+    
+    options:
+      -h, --help
+            show this help message and exit
+            -------------------------------
+      --stdin
+            Read the config from stdin instead of a file.
+            ---------------------------------------------
+      -o, --output OUTPUT
+            Write the script to this file instead of stdout.
+            ------------------------------------------------
+      --tree
+            Print the ANTLR parse tree and exit.
+            ------------------------------------
+      --relaxed
+            Emit a script that runs the config without reproducing the interpreter's error lines.
+            -------------------------------------------------------------------------------------
+      --format
+            Wrap long calls and lists, and leave a blank line between invocations.
+            ----------------------------------------------------------------------
+      --comments, --no-comments
+            Keep config comments in the script. They are left out by default.
+            -----------------------------------------------------------------
 
 Upscaling Images
 ================
@@ -18223,7 +18297,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [56928994611828]
+            Value: [53344088552113]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

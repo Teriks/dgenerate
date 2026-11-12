@@ -33,6 +33,7 @@ from assetgen.builders.console_schema_builder import ConsoleSchemaBuilder
 from assetgen.builders.helsinki_nlp_translation_map_builder import HelsinkiNLPTranslationMapBuilder
 from assetgen.builders.hf_configs_builder import HfConfigsBuilder
 from assetgen.builders.assistant_index_builder import AssistantIndexBuilder
+from assetgen.builders.antlr_parser_builder import AntlrParserBuilder
 
 
 def get_git_revision():
@@ -75,7 +76,7 @@ def setup_argument_parser():
     parser.add_argument(
         '--target', 
         choices=['readme', 'docs', 'console-schemas', 'helsinki-nlp-translation-map', 'hf-configs',
-                 'assistant-index', 'all'],
+                 'assistant-index', 'antlr', 'all'],
         default='all',
         help='What to build (default: all)'
     )
@@ -83,7 +84,7 @@ def setup_argument_parser():
     parser.add_argument(
         '--skip',
         choices=['readme', 'docs', 'console-schemas', 'helsinki-nlp-translation-map', 'hf-configs',
-                 'assistant-index'],
+                 'assistant-index', 'antlr'],
         nargs='*',
         metavar='TARGET',
         help='Skip specific targets when building (can specify multiple targets)'
@@ -178,6 +179,12 @@ def main():
     os.environ['COLUMNS'] = '110'
 
     # Build targets
+    if should_build_target('antlr', args):
+        print("Building config parser...")
+        AntlrParserBuilder(project_dir).build()
+    else:
+        print("Skipping config parser build")
+
     if should_build_target('readme', args):
         print("Building README...")
         readme_builder = ReadmeBuilder(preprocessor, project_dir)

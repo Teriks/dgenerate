@@ -55,7 +55,7 @@ features not mentioned in this documentation, that are worth reading about in th
     dgenerate --prompt-weighter-help compel
 
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-weighter-help compel]
+@COMMAND_OUTPUT[dgenerate --prompt-weighter-help compel]
 
 
 You can enable the ``compel`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
@@ -161,7 +161,7 @@ those ``--model-type`` values.
     dgenerate --prompt-weighter-help sd-embed
 
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-weighter-help sd-embed]
+@COMMAND_OUTPUT[dgenerate --prompt-weighter-help sd-embed]
 
 
 You can enable the ``sd-embed`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
@@ -208,4 +208,4 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
     dgenerate --prompt-weighter-help llm4gen
 
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-weighter-help llm4gen]
+@COMMAND_OUTPUT[dgenerate --prompt-weighter-help llm4gen]

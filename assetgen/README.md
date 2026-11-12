@@ -32,6 +32,12 @@ python -m assetgen.build --target helsinki-nlp-translation-map
 python -m assetgen.build --target hf-configs
 ```
 
+### Rebuild the config ANTLR parser
+```bash
+python -m assetgen.build --target antlr
+```
+This runs only when a `.g4` file is newer than the generated parser, or a generated file is missing. Java is required for that rebuild. An up-to-date parser does not look for Java.
+
 ### Skip specific targets:
 ```bash
 # Skip downloading HF configs (useful when working offline)
@@ -64,3 +70,4 @@ python -m assetgen.build --no-command-cache-regex "..."
 - **dgenerate/console/schemas**: static Console UI schemas
 - **dgenerate/translators/data/helsinki-nlp-translation-map.json**: Helsinki NLP model map
 - **dgenerate/pipelinewrapper/hub_configs**: Vendored HF Hub model configs
+- **dgenerate/transpile/grammar**: Generated ANTLR parser for the config language

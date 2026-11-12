@@ -24,7 +24,7 @@ Using the option ``--latents-processor-help`` with no arguments will yield a lis
 
 Output:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --latents-processor-help]
+@COMMAND_OUTPUT[dgenerate --latents-processor-help]
 
 Each processor has its own set of arguments that can be specified using URI syntax,
 which can be viewed with: ``dgenerate --latents-processor-help PROCESSOR_NAMES``
@@ -115,4 +115,4 @@ This only works for fully denoised latents, and not for partially denoised laten
 
 The ``interposer`` supports several conversions, described in its help output:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --latents-processor-help interposer]
+@COMMAND_OUTPUT[dgenerate --latents-processor-help interposer]

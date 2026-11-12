@@ -1,6 +1,21 @@
 import dgenerate.image_process
 import dgenerate.messages
 
+# Frame-by-frame animation.
+#
+# An image model walks an animated image seed one diffusion call per frame.
+# The stream reports that walk: the animation is starting, an ETA updates as
+# frames finish, each frame arrives on ImageGeneratedEvent, and the animation
+# finishes. A video pipeline returns one finished clip on VideoGeneratedEvent.
+# See video_pipeline_main.py.
+#
+# With writes enabled, an mp4 is streamed to disk during that walk. Each
+# finished frame is encoded and muxed while later frames are still generating,
+# and the soundtrack is muxed when the file closes. GIF and WebP keep their
+# frames and write the file when the animation finishes. This example uses GIF.
+# Writing that animation to a binary stream is
+# frame_by_frame_animation_streaming_main.py.
+
 # Disable built in informational output for this example
 dgenerate.messages.messages_to_null()
 dgenerate.messages.errors_to_null()
@@ -18,7 +33,7 @@ rl.config.image_seeds = ['../../media/kitten.gif']
 rl.config.animation_format = 'GIF'
 rl.config.output_configs = True
 
-# simple event handler for every possible event in the event stream
+# simple event handler for every event this frame-by-frame run produces
 
 for event in rl.events():
     if isinstance(event, dgenerate.StartingGenerationStepEvent):
@@ -32,11 +47,6 @@ for event in rl.events():
     if isinstance(event, dgenerate.ImageGeneratedEvent):
         print('Image Generated (Suggested Filename):', event.suggested_filename)
         print('Image Generated (Suggested Directory):', event.suggested_directory)
-    if isinstance(event, dgenerate.VideoGeneratedEvent):
-        print('Video Generated (Suggested Filename):', event.suggested_filename)
-        print('Video FPS:', event.fps)
-        # event.write(path_or_stream) muxes the frames and audio.
-        # Call it here; the frames are closed when the loop moves on.
     if isinstance(event, dgenerate.ImageFileSavedEvent):
         print('Image Saved:', event.path)
         print('Config Saved:', event.config_filename)
@@ -47,6 +57,7 @@ for event in rl.events():
         print('Animation Config Saved:', event.config_filename)
 
 # The image-process sub command guts can be used in nearly an identical manner.
+# It also walks input frames one at a time. It has no video-clip event.
 
 # configure a dgenerate --sub-command image-process render loop
 
@@ -82,7 +93,7 @@ for event in rl.events():
 
 
 # if you wish to work with any image offered by an event object
-# in the event stream outside of the event handler you have written,
+# in the event stream outside the event handler you have written,
 # you should copy it out with arg.image.copy(). management of PIL.Image
 # lifetime is very aggressive and the image objects in events will be disposed
 # of when no longer needed for the event, IE. have .close() called on them

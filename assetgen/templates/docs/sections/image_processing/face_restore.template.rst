@@ -17,7 +17,7 @@ option, or run it on files with ``--sub-command image-process`` or the
 
 Use ``--image-processor-help face-restore`` for the full argument list:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --image-processor-help face-restore]
+@COMMAND_OUTPUT[dgenerate --image-processor-help face-restore]
 
 The ``fidelity`` argument applies to CodeFormer only (0 favors a cleaner
 reconstruction, 1 stays closer to the input face). GFPGAN and RestoreFormer

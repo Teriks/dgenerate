@@ -187,7 +187,7 @@ This option is also available as the config directive ``\directives_help``.
 
 Example output:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --directives-help]
+@COMMAND_OUTPUT[dgenerate --directives-help]
 
 Here are examples of other available directives such as ``\set``, ``\setp``, and
 ``\print`` as well as some basic Jinja2 templating usage. This example also covers

@@ -1586,34 +1586,63 @@ class GenerationArguments(_types.SetFromMixin):
 
     wan_segment_frame_length: _types.OptionalInteger = None
     """
-    Wan-Animate segment length, from ``--wan-segment-frame-lengths``.
+    Frames per segment for Wan-Animate and Wan-Animate-2.
+
+    From ``--wan-segment-frame-lengths``. The value is ``4N+1``. Wan-Animate
+    defaults to 77. Wan-Animate-2 defaults to 81.
     """
 
     wan_prev_segment_frames: _types.OptionalInteger = None
     """
-    Previous-segment overlap frames, from ``--wan-prev-segment-frames``.
+    Overlap frames carried into the next segment for Wan-Animate and Wan-Animate-2.
+
+    From ``--wan-prev-segment-frames``. Both default to 1.
     """
 
     wan_motion_encode_batch_size: _types.OptionalInteger = None
     """
-    Motion-encoder batch size, from ``--wan-motion-encode-batch-size``.
+    Batch size for the Wan-Animate motion encoder.
+
+    From ``--wan-motion-encode-batch-size``. This applies to Wan-Animate.
+    Wan-Animate-2 does not use this value.
     """
 
     wan_animate_preprocess: _types.OptionalBoolean = None
     """
-    Derive pose and face clips from ``wan-driving=``.
+    Derive pose and face frames from :py:attr:`wan_driving_video_frames`.
+
+    One frame is produced for each driving frame. Pose is ``openpose``. Face is
+    a square crop around the detected face. A clip already given in
+    :py:attr:`wan_pose_video_frames` or :py:attr:`wan_face_video_frames` is kept.
     """
 
     wan_animate_preprocess_output: _types.OptionalBoolean = None
     """
-    Write the derived pose and face clips to ``wan_animate_output_dir``.
+    Write the derived pose and face clips next to the generation output.
+
+    From ``--wan-animate-preprocess-output``. The clips are written only
+    when this is enabled. Their names come from
+    :py:attr:`wan_animate_preprocess_output_name`.
     """
 
-    wan_animate_output_dir: _types.OptionalPath = None
+    wan_animate_preprocess_output_dir: _types.OptionalPath = None
     """
-    Directory where derived Wan-Animate pose and face clips are written.
+    Directory that receives the derived pose and face mp4 files.
 
-    This is the generation output directory from ``--output-path``.
+    Used when :py:attr:`wan_animate_preprocess_output` is enabled. The render
+    loop sets this from ``--output-path``, which defaults to ``output``.
+    When this is left unset, the writer uses ``output``.
+    """
+
+    wan_animate_preprocess_output_name: _types.OptionalName = None
+    """
+    Filename stem for the derived pose and face mp4 files.
+
+    Used when :py:attr:`wan_animate_preprocess_output` is enabled.
+    ``motion.mp4`` produces ``motion.wan-pose.mp4`` and ``motion.wan-face.mp4``
+    in :py:attr:`wan_animate_preprocess_output_dir`. A missing value uses the
+    stem ``wan-animate``. A path is reduced to its filename stem and is not
+    opened. The frames are :py:attr:`wan_driving_video_frames`.
     """
 
     end_images: _types.OptionalImages = None
@@ -1663,17 +1692,21 @@ class GenerationArguments(_types.SetFromMixin):
 
     wan_driving_video_frames: _types.OptionalImages = None
     """
-    Driving clip for ``--wan-animate-preprocess``, from the image seed ``wan-driving`` argument.
-    """
+    Frames of the ``wan-driving=`` clip.
 
-    wan_driving_video_path: _types.OptionalPath = None
-    """
-    Original path of the driving clip, used to cache derived pose and face files.
+    Set these before calling the wrapper. The render loop fills them from the
+    image seed. Wan-Animate-2 uses them as the motion source. Wan-Animate
+    preprocessing derives pose and face frames from them.
     """
 
     wan_driving_video_fps: _types.OptionalFloat = None
     """
-    Frame rate of the driving clip, passed to Wan-Animate-2 as ``driving_video_fps``.
+    Frame rate of :py:attr:`wan_driving_video_frames`, in frames per second.
+
+    Wan-Animate-2 passes this as ``driving_video_fps`` and resamples the driving
+    frames to the output frame rate. The render loop sets it from a video or
+    animated image. A still image leaves it unset, and every loaded frame is
+    kept. The derived pose and face files are written at 16 fps.
     """
 
     vace_video_frames: _types.OptionalImages = None

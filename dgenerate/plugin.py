@@ -21,6 +21,7 @@
 import ast
 import collections.abc
 import importlib.machinery
+import importlib.util
 import inspect
 import itertools
 import os
@@ -818,6 +819,25 @@ class ModuleFileNotFoundError(FileNotFoundError):
     pass
 
 
+def _load_source_file(path: str) -> types.ModuleType:
+    """Load a plugin file without ``Loader.load_module``."""
+    loader = importlib.machinery.SourceFileLoader(path, path)
+    spec = importlib.util.spec_from_loader(path, loader)
+    if spec is None:
+        raise ModuleFileNotFoundError(path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[path] = module
+    try:
+        loader.exec_module(module)
+    except FileNotFoundError as e:
+        sys.modules.pop(path, None)
+        raise ModuleFileNotFoundError(e) from e
+    except Exception:
+        sys.modules.pop(path, None)
+        raise
+    return module
+
+
 def load_modules(paths: collections.abc.Iterable[str]) -> list[types.ModuleType]:
     """
     Load python modules from a folder, directly from a .py file, or from a python module
@@ -846,10 +866,7 @@ def load_modules(paths: collections.abc.Iterable[str]) -> list[types.ModuleType]
             if plugin_path in LOADED_PLUGIN_MODULES:
                 mod = LOADED_PLUGIN_MODULES[plugin_path]
             else:
-                try:
-                    mod = importlib.machinery.SourceFileLoader(plugin_path, plugin_path).load_module()
-                except FileNotFoundError as e:
-                    raise ModuleFileNotFoundError(e) from e
+                mod = _load_source_file(plugin_path)
                 LOADED_PLUGIN_MODULES[plugin_path] = mod
 
             r.append(mod)

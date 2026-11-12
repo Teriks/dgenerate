@@ -1709,12 +1709,23 @@ class RenderLoop:
                             processors,
                             owned_images)
                         yield from self._pre_generation_step(diffusion_arguments)
+                        scheduled = self._scheduled_video_clip(diffusion_arguments)
+                        starting_animation_event = None
+                        if scheduled is not None:
+                            fps, total_frames = scheduled
+                            starting_animation_event = StartingAnimationEvent(
+                                origin=self,
+                                total_frames=total_frames,
+                                fps=fps,
+                                frame_duration=1000.0 / fps if fps else 0.0)
+                            yield starting_animation_event
                         with pipeline_wrapper(diffusion_arguments) as generation_result:
                             self._run_postprocess(generation_result)
                             yield from self._write_video_clip(
                                 diffusion_arguments,
                                 generation_result,
-                                uri)
+                                uri,
+                                starting_animation_event=starting_animation_event)
                     finally:
                         self._close_owned_images(owned_images)
         finally:
@@ -1867,7 +1878,7 @@ class RenderLoop:
             driving_frames = self._load_video_media(
                 parsed.wan_driving_video, parsed, processors.get('wan_driving'), owned_images,
                 None, output_fps, fps_out=driving_fps, resample_fps=resample_driving)
-            diffusion_arguments.wan_driving_video_path = parsed.wan_driving_video
+            diffusion_arguments.wan_animate_preprocess_output_name = parsed.wan_driving_video
             diffusion_arguments.wan_driving_video_frames = driving_frames
             if driving_fps and driving_fps[0] is not None:
                 diffusion_arguments.wan_driving_video_fps = float(driving_fps[0])
@@ -1972,10 +1983,62 @@ class RenderLoop:
         align = parsed.resize_align if parsed.resize_align else 1
         return parsed.resize_resolution, aspect, align
 
+    def _scheduled_video_clip(self, diffusion_args) -> tuple[float, int] | None:
+        """
+        Frame rate and frame count known before the pipeline runs.
+
+        A requested ``--video-lengths`` uses the same snap as the video call.
+        Wan, Hunyuan, Motif, and Kandinsky snap with temporal stride 4, the
+        published VAE stride. LTX snaps to ``8k+1``. Wan-Animate follows the
+        pose clip, trimmed to ``4k+1``. A driving clip stands in for that pose
+        when the pose is derived from it. Wan-Animate-2 follows the driving
+        clip after resampling to the output frame rate. ``None`` when the
+        pipeline chooses the length itself.
+        """
+        model_type = self._c_config.model_type
+        fps = diffusion_args.video_fps
+        if fps is None:
+            import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+            fps = _featuredefaults.video_fps_default(model_type)
+        if fps is None:
+            return None
+        fps = float(fps)
+        if not fps:
+            return None
+        if _pipelinewrapper.model_type_is_wan_animate(model_type):
+            pose = getattr(diffusion_args, 'wan_pose_video_frames', None)
+            driving = getattr(diffusion_args, 'wan_driving_video_frames', None)
+            source = pose or driving
+            if not source:
+                return None
+            count = (len(source) - 1) // 4 * 4 + 1
+            if count < 1:
+                return None
+            return fps, count
+        if _pipelinewrapper.model_type_is_wan_animate_2(model_type):
+            driving = getattr(diffusion_args, 'wan_driving_video_frames', None)
+            if not driving:
+                return None
+            source_fps = getattr(diffusion_args, 'wan_driving_video_fps', None)
+            count = _videopipelines.wan.animate2._animate2_resampled_count(
+                len(driving), source_fps, fps)
+            if count < 1:
+                return None
+            return fps, count
+        length = diffusion_args.video_length
+        if length is None or diffusion_args.video_frames:
+            return None
+        if _pipelinewrapper.model_type_is_ltx_family(model_type):
+            frames = _videopipelines.ltx.ltx_num_frames(length, fps)
+        else:
+            frames = _videopipelines.wan.wan_num_frames(length, fps, 4)
+        return fps, frames
+
     def _write_video_clip(self,
                           diffusion_args: _pipelinewrapper.GenerationArguments,
                           generation_result: _pipelinewrapper.GenerationResult,
-                          image_seed_uri: str | None) -> RenderLoopEventStream:
+                          image_seed_uri: str | None,
+                          starting_animation_event: StartingAnimationEvent | None = None) -> RenderLoopEventStream:
         frames = list(generation_result.images or [])
         if not frames:
             raise RenderLoopConfigError('The video pipeline returned no frames.')
@@ -1997,12 +2060,36 @@ class RenderLoop:
         if image_seed_uri is not None:
             extra_opts.append(('--image-seeds', image_seed_uri))
 
-        starting_animation_event = StartingAnimationEvent(
-            origin=self,
-            total_frames=len(frames),
-            fps=fps,
-            frame_duration=frame_duration)
-        yield starting_animation_event
+        if starting_animation_event is None:
+            starting_animation_event = StartingAnimationEvent(
+                origin=self,
+                total_frames=len(frames),
+                fps=fps,
+                frame_duration=frame_duration)
+            yield starting_animation_event
+
+        # Same bracket as a frame-by-frame animation: the file is announced,
+        # the clip is delivered, the animation finishes, then the file finishes.
+        starting_file_event = None
+        filename = None
+        if not self.disable_writes and animation_format != 'frames':
+            if animation_format != 'mp4' and audio is not None:
+                _messages.warning(
+                    f'Audio is dropped because --animation-format is {animation_format}. '
+                    f'Use mp4 to keep the soundtrack.')
+                audio = None
+                sample_rate = None
+            self._ensure_output_path()
+            filename = self._reserve_video_filename(diffusion_args, animation_format)
+            _messages.log(f'Beginning Writes To Animation: "{filename}"', underline=True)
+            starting_file_event = StartingAnimationFileEvent(
+                origin=self,
+                path=filename,
+                total_frames=len(frames),
+                fps=fps,
+                frame_duration=frame_duration)
+            yield starting_file_event
+
         yield VideoGeneratedEvent(
             origin=self,
             frames=frames,
@@ -2017,32 +2104,21 @@ class RenderLoop:
             command_string=self._gen_dgenerate_command(diffusion_args, extra_opts=extra_opts),
             config_string=self._gen_dgenerate_config(diffusion_args, extra_opts=extra_opts))
 
+        if starting_animation_event.streams() and animation_format == 'frames':
+            raise RenderLoopConfigError(
+                'StartingAnimationEvent.file needs an animation container. '
+                '--animation-format frames writes one image per frame.')
+
+        config_filename = None
         if not self.disable_writes:
-            self._ensure_output_path()
             if animation_format == 'frames':
                 if audio is not None:
                     _messages.warning(
                         'Audio is dropped because --animation-format is frames. '
                         'Use mp4 to keep the soundtrack.')
+                self._ensure_output_path()
                 self._write_video_frame_files(diffusion_args, frames)
             else:
-                if animation_format != 'mp4' and audio is not None:
-                    _messages.warning(
-                        f'Audio is dropped because --animation-format is {animation_format}. '
-                        f'Use mp4 to keep the soundtrack.')
-                    audio = None
-                    sample_rate = None
-                filename = self._reserve_video_filename(diffusion_args, animation_format)
-                _messages.log(f'Beginning Writes To Animation: "{filename}"', underline=True)
-                starting_file_event = StartingAnimationFileEvent(
-                    origin=self,
-                    path=filename,
-                    total_frames=len(frames),
-                    fps=fps,
-                    frame_duration=frame_duration)
-                yield starting_file_event
-
-                config_filename = None
                 if self._c_config.output_configs:
                     config_filename = self._write_animation_config_file(
                         filename=os.path.splitext(filename)[0] + '.dgen',
@@ -2050,7 +2126,6 @@ class RenderLoop:
                         batch_index=0,
                         diffusion_args=diffusion_args,
                         generation_result=generation_result)
-
                 self._write_video_container(
                     filename,
                     frames,
@@ -2060,15 +2135,20 @@ class RenderLoop:
                     sample_rate)
                 self._written_animations.write(pathlib.Path(filename).absolute().as_posix() + '\n')
                 _messages.log(f'Wrote Animation File: "{filename}"', underline=True)
-                yield AnimationFileFinishedEvent(
-                    origin=self,
-                    path=filename,
-                    config_filename=config_filename,
-                    starting_event=starting_file_event)
+
+        self._write_animation_event_streams(
+            starting_animation_event, frames, fps, animation_format, audio, sample_rate)
 
         yield AnimationFinishedEvent(
             origin=self,
             starting_event=starting_animation_event)
+
+        if starting_file_event is not None:
+            yield AnimationFileFinishedEvent(
+                origin=self,
+                path=filename,
+                config_filename=config_filename,
+                starting_event=starting_file_event)
 
     def _reserve_video_filename(self, diffusion_args, animation_format: str) -> str:
         filename = self._gen_animation_filename(
@@ -2080,6 +2160,31 @@ class RenderLoop:
         return _filelock.touch_avoid_duplicate(
             self._c_config.output_path,
             path_maker=_filelock.suffix_path_maker(filename, suffix='_duplicate_'))
+
+    def _write_animation_event_streams(self,
+                                      starting_animation_event: StartingAnimationEvent,
+                                      frames: list[PIL.Image.Image],
+                                      fps: float,
+                                      animation_format: str,
+                                      audio,
+                                      sample_rate):
+        streams = starting_animation_event.streams()
+        if not streams:
+            return
+        if animation_format == 'frames':
+            raise RenderLoopConfigError(
+                'StartingAnimationEvent.file needs an animation container. '
+                '--animation-format frames writes one image per frame.')
+        if len(streams) != 1:
+            raise RenderLoopConfigError(
+                'This clip is one animation. StartingAnimationEvent.file needs one stream.')
+        _mediaoutput.write_animation(
+            streams[0],
+            frames,
+            fps,
+            animation_format=animation_format,
+            audio=audio,
+            audio_sample_rate=sample_rate)
 
     def _write_video_container(self,
                                filename: str,
@@ -2120,11 +2225,12 @@ class RenderLoop:
             self._written_images.write(pathlib.Path(filename).absolute().as_posix() + '\n')
             _messages.log(f'Wrote Frame: "{filename}"')
 
-    def _attach_animation_source_audio(self, anim_writer, image_seed):
+    def _animation_source_audio(self, image_seed):
         """
-        Copy the source soundtrack onto an mp4 built from that clip's frames.
+        Arguments for :py:meth:`MultiAnimationWriter.set_source_audio_file`, or ``None``.
 
-        GIF, WebP, APNG, and individual frames have nowhere to put the track.
+        The track is read from disk as frames are written. GIF, WebP, APNG,
+        and individual frames have nowhere to put the track.
         """
         paths = []
         for group in (image_seed.images, image_seed.control_images):
@@ -2136,27 +2242,28 @@ class RenderLoop:
                     paths.append(name)
         has_audio = any(_mediaoutput.source_has_audio(path) for path in paths)
         if not has_audio:
-            return
+            return None
         if self._c_config.animation_format != 'mp4':
             _messages.warning(
                 f'Audio is dropped because --animation-format is {self._c_config.animation_format}. '
                 'Use mp4 to keep the soundtrack.')
-            return
+            return None
         frame_start = int(getattr(image_seed, 'source_frame_start', 0) or 0)
-        loaded = None
         for path in paths:
-            loaded = _mediaoutput.read_source_audio(
-                path,
-                fps=image_seed.fps,
-                frame_start=frame_start,
-                frame_count=image_seed.total_frames)
-            if loaded:
-                _messages.log(f'Keeping the audio track from "{path}".')
-                break
-        if not loaded:
-            return
-        audio, sample_rate = loaded
-        anim_writer.set_source_audio(audio, sample_rate)
+            if not _mediaoutput.source_has_audio(path):
+                continue
+            _messages.log(f'Keeping the audio track from "{path}".')
+            return path, image_seed.fps, frame_start, image_seed.total_frames
+        return None
+
+    def _attach_animation_source_audio(self, anim_writer, image_seed):
+        """
+        Copy the source soundtrack onto an mp4 built from that clip's frames.
+        """
+        audio = RenderLoop._animation_source_audio(self, image_seed)
+        if audio is not None:
+            anim_writer.set_source_audio_file(*audio)
+        return audio
 
     def _render_animation(self,
                           pipeline_wrapper: _pipelinewrapper.PipelineWrapper,
@@ -2192,126 +2299,163 @@ class RenderLoop:
                 filename=base_filename,
                 fps=fps, allow_overwrites=self._c_config.output_overwrite)
 
-        with anim_writer:
+        stream_writer = None
+        audio_args = None
+        animation_streams = None
 
-            for diffusion_args in itertools.chain([first_diffusion_args], arg_iterator):
-                diffusion_args.batch_size = self._c_config.batch_size
-                diffusion_args.sdxl_refiner_edit = self._c_config.sdxl_refiner_edit
+        def finish_stream():
+            nonlocal stream_writer
+            if stream_writer is None:
+                return
+            stream_writer.end()
+            stream_writer = None
 
-                yield from self._pre_generation_step(
-                    diffusion_args, image_seed=parsed_image_seed)
+        try:
+            with anim_writer:
 
-                if next_args_terminates_anim:
-                    next_args_terminates_anim = False
+                for diffusion_args in itertools.chain([first_diffusion_args], arg_iterator):
+                    diffusion_args.batch_size = self._c_config.batch_size
+                    diffusion_args.sdxl_refiner_edit = self._c_config.sdxl_refiner_edit
 
-                    # this just starts a new file, the last file
-                    # has already been ended, and an event generated
-                    # for the finished animation file
-                    anim_writer.end(
-                        new_file=self._gen_animation_filename(
-                            diffusion_args,
-                            self._generation_step,
-                            ext=self._c_config.animation_format))
+                    yield from self._pre_generation_step(
+                        diffusion_args, image_seed=parsed_image_seed)
 
-                for image_seed_frame in image_seed_iterator():
-                    if image_seed_frame.frame_index == 0 and not not_writing_animation_file:
-                        self._attach_animation_source_audio(anim_writer, image_seed_frame)
+                    if next_args_terminates_anim:
+                        next_args_terminates_anim = False
 
-                    frame_duration = image_seed_frame.frame_duration
-                    fps = image_seed_frame.fps
-                    total_frames = image_seed_frame.total_frames
-
-                    if image_seed_frame.frame_index == 0:
-                        starting_animation_event = StartingAnimationEvent(
-                            origin=self,
-                            total_frames=total_frames,
-                            fps=fps,
-                            frame_duration=frame_duration)
-                        yield starting_animation_event
-
-                    with image_seed_frame:
-
-                        yield from self._animation_frame_pre_generation(image_seed_frame)
-
-                        set_wrapper_args_per_image_seed(diffusion_args, image_seed_frame)
-
-                        with pipeline_wrapper(diffusion_args) as generation_result:
-                            self._run_postprocess(generation_result)
-                            self._ensure_output_path()
-
-                            if generation_result.has_images:
-                                if generation_result.image_count > 1 and self._c_config.batch_grid_size is not None:
-                                    anim_writer.write(
-                                        generation_result.image_grid(self._c_config.batch_grid_size))
-                                else:
-                                    anim_writer.write(generation_result.images)
-                            elif generation_result.has_latents:
-                                # For latent output in animations, we need to decode to images for the animation writer
-                                # This is a limitation - animations require decoded images
-                                raise RenderLoopConfigError(
-                                    'Animated file output with latent output is not supported. '
-                                    'Latent output can only be used for individual frame output, '
-                                    'i.e. --animation-format "frames".'
-                                )
-
-                            if image_seed_frame.frame_index == 0:
-                                # Perform on first frame write
-
-                                if not not_writing_animation_file:
-
-                                    animation_filenames_message = \
-                                        '\n'.join(f'Beginning Writes To Animation: "{f}"'
-                                                  for f in anim_writer.filenames)
-
-                                    if self._c_config.output_configs:
-
-                                        _messages.log(animation_filenames_message)
-                                        config_filenames = []
-                                        for idx, filename in enumerate(anim_writer.filenames):
-                                            config_filenames.append(
-                                                self._write_animation_config_file(
-                                                    filename=os.path.splitext(filename)[0] + '.dgen',
-                                                    image_seed_uri=image_seed_frame.uri,
-                                                    batch_index=idx,
-                                                    diffusion_args=diffusion_args,
-                                                    generation_result=generation_result))
-                                    else:
-                                        _messages.log(animation_filenames_message, underline=True)
-
-                                    starting_animation_file_events = []
-                                    for f in anim_writer.filenames:
-                                        starting_animation_file_event = \
-                                            StartingAnimationFileEvent(
-                                                origin=self,
-                                                path=f,
-                                                total_frames=total_frames,
-                                                fps=fps,
-                                                frame_duration=frame_duration)
-                                        starting_animation_file_events.append(
-                                            starting_animation_file_event)
-                                        yield starting_animation_file_event
-
-                            yield from self._write_animation_frame(
+                        # this just starts a new file, the last file
+                        # has already been ended, and an event generated
+                        # for the finished animation file
+                        anim_writer.end(
+                            new_file=self._gen_animation_filename(
                                 diffusion_args,
-                                image_seed_frame,
-                                generation_result)
+                                self._generation_step,
+                                ext=self._c_config.animation_format))
+
+                    for image_seed_frame in image_seed_iterator():
+                        if image_seed_frame.frame_index == 0:
+                            audio_args = self._animation_source_audio(image_seed_frame)
+                            if audio_args is not None and not not_writing_animation_file:
+                                anim_writer.set_source_audio_file(*audio_args)
+
+                        frame_duration = image_seed_frame.frame_duration
+                        fps = image_seed_frame.fps
+                        total_frames = image_seed_frame.total_frames
+
+                        if image_seed_frame.frame_index == 0:
+                            starting_animation_event = StartingAnimationEvent(
+                                origin=self,
+                                total_frames=total_frames,
+                                fps=fps,
+                                frame_duration=frame_duration)
+                            yield starting_animation_event
+                            animation_streams = starting_animation_event.streams()
+                            if animation_streams and self._c_config.animation_format == 'frames':
+                                raise RenderLoopConfigError(
+                                    'StartingAnimationEvent.file needs an animation container. '
+                                    '--animation-format frames writes one image per frame.')
+
+                        with image_seed_frame:
+
+                            yield from self._animation_frame_pre_generation(image_seed_frame)
+
+                            set_wrapper_args_per_image_seed(diffusion_args, image_seed_frame)
+
+                            with pipeline_wrapper(diffusion_args) as generation_result:
+                                self._run_postprocess(generation_result)
+                                self._ensure_output_path()
+
+                                written = None
+                                if generation_result.has_images:
+                                    if generation_result.image_count > 1 and self._c_config.batch_grid_size is not None:
+                                        written = generation_result.image_grid(self._c_config.batch_grid_size)
+                                    else:
+                                        written = generation_result.images
+                                    anim_writer.write(written)
+                                    if animation_streams:
+                                        if stream_writer is None:
+                                            stream_writer = _mediaoutput.MultiAnimationWriter(
+                                                animation_format=self._c_config.animation_format,
+                                                filename='stream',
+                                                fps=fps,
+                                                allow_overwrites=True,
+                                                files=animation_streams)
+                                            if audio_args is not None:
+                                                stream_writer.set_source_audio_file(*audio_args)
+                                        try:
+                                            stream_writer.write(written)
+                                        except ValueError as error:
+                                            raise RenderLoopConfigError(str(error)) from error
+                                elif generation_result.has_latents:
+                                    # For latent output in animations, we need to decode to images for the animation writer
+                                    # This is a limitation - animations require decoded images
+                                    raise RenderLoopConfigError(
+                                        'Animated file output with latent output is not supported. '
+                                        'Latent output can only be used for individual frame output, '
+                                        'i.e. --animation-format "frames".'
+                                    )
+
+                                if image_seed_frame.frame_index == 0:
+                                    # Perform on first frame write
+
+                                    if not not_writing_animation_file:
+
+                                        animation_filenames_message = \
+                                            '\n'.join(f'Beginning Writes To Animation: "{f}"'
+                                                      for f in anim_writer.filenames)
+
+                                        if self._c_config.output_configs:
+
+                                            _messages.log(animation_filenames_message)
+                                            config_filenames = []
+                                            for idx, filename in enumerate(anim_writer.filenames):
+                                                config_filenames.append(
+                                                    self._write_animation_config_file(
+                                                        filename=os.path.splitext(filename)[0] + '.dgen',
+                                                        image_seed_uri=image_seed_frame.uri,
+                                                        batch_index=idx,
+                                                        diffusion_args=diffusion_args,
+                                                        generation_result=generation_result))
+                                        else:
+                                            _messages.log(animation_filenames_message, underline=True)
+
+                                        starting_animation_file_events = []
+                                        for f in anim_writer.filenames:
+                                            starting_animation_file_event = \
+                                                StartingAnimationFileEvent(
+                                                    origin=self,
+                                                    path=f,
+                                                    total_frames=total_frames,
+                                                    fps=fps,
+                                                    frame_duration=frame_duration)
+                                            starting_animation_file_events.append(
+                                                starting_animation_file_event)
+                                            yield starting_animation_file_event
+
+                                yield from self._write_animation_frame(
+                                    diffusion_args,
+                                    image_seed_frame,
+                                    generation_result)
 
                         next_args_terminates_anim = image_seed_frame.frame_index == (image_seed_frame.total_frames - 1)
 
-                yield AnimationFinishedEvent(
-                    origin=self,
-                    starting_event=starting_animation_event)
-
-                written_filenames = anim_writer.filenames.copy() if not not_writing_animation_file else []
-                anim_writer.end()
-                for idx, file in enumerate(written_filenames):
-                    self._written_animations.write(pathlib.Path(file).absolute().as_posix() + '\n')
-                    _messages.log(f'Wrote Animation File: "{file}"', underline=True)
-                    yield AnimationFileFinishedEvent(
+                    finish_stream()
+                    yield AnimationFinishedEvent(
                         origin=self,
-                        path=file,
-                        config_filename=config_filenames[idx] if self._c_config.output_configs else None,
-                        starting_event=starting_animation_file_events[idx])
+                        starting_event=starting_animation_event)
+
+                    written_filenames = anim_writer.filenames.copy() if not not_writing_animation_file else []
+                    anim_writer.end()
+                    for idx, file in enumerate(written_filenames):
+                        self._written_animations.write(pathlib.Path(file).absolute().as_posix() + '\n')
+                        _messages.log(f'Wrote Animation File: "{file}"', underline=True)
+                        yield AnimationFileFinishedEvent(
+                            origin=self,
+                            path=file,
+                            config_filename=config_filenames[idx] if self._c_config.output_configs else None,
+                            starting_event=starting_animation_file_events[idx])
+        finally:
+            finish_stream()
 
     def _write_animation_config_file(self,
                                      filename: str,

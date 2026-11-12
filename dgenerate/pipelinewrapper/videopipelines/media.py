@@ -44,69 +44,21 @@ def load_rgb_frames(path: str,
     """
     Open a local path or URL as a list of RGB frames.
 
-    A still image gives one frame. Videos and animated images are sliced by
-    ``frame_start`` and ``frame_end`` (inclusive), then cut to ``max_frames``.
-
-    :param path: file path or URL
-    :param local_files_only: refuse to download
-    :param resize_resolution: optional resize
-    :param aspect_correct: preserve aspect ratio when resizing
-    :param align: pixel alignment, ``1`` disables it
-    :param frame_start: first frame index to keep
-    :param frame_end: last frame index to keep, ``None`` for the end of the file
-    :param max_frames: stop after this many frames, ``None`` for no limit
-    :raise UnsupportedPipelineConfigError: if the slice selects no frames
-    :return: ``(frames, fps)``. ``fps`` is ``None`` for a still image.
+    This is :py:func:`dgenerate.mediainput.load_rgb_frames`. An empty slice is
+    reported as :py:class:`dgenerate.pipelinewrapper.UnsupportedPipelineConfigError`.
     """
-    mime_type, stream = _mediainput.fetch_media_data_stream(
-        path, local_files_only=local_files_only)
     try:
-        if _mediainput.mimetype_is_static_image(mime_type):
-            return [_mediainput.create_image(
-                stream,
-                file_source=path,
-                resize_resolution=resize_resolution,
-                aspect_correct=aspect_correct,
-                align=align)], None
-
-        if not (_mediainput.mimetype_is_video(mime_type) or
-                _mediainput.mimetype_is_animated_image(mime_type)):
-            raise _mediainput.UnknownMimetypeError(
-                f'Expected an image, animated image, or video for "{path}", '
-                f'got mimetype "{mime_type}".')
-
-        frames = []
-        try:
-            with _mediainput.create_animation_reader(
-                    mime_type,
-                    file_source=path,
-                    file=stream,
-                    resize_resolution=resize_resolution,
-                    aspect_correct=aspect_correct,
-                    align=align) as reader:
-                fps = float(reader.fps)
-                for index, frame in enumerate(reader):
-                    if frame_end is not None and index > frame_end:
-                        frame.close()
-                        break
-                    if index < frame_start:
-                        frame.close()
-                        continue
-                    frames.append(_to_rgb_image(frame))
-                    if max_frames is not None and len(frames) >= max_frames:
-                        break
-        except Exception:
-            for frame in frames:
-                frame.close()
-            raise
-
-        if not frames:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'No frames were read from "{path}" between frame {frame_start} '
-                f'and frame {"end" if frame_end is None else frame_end}.')
-        return frames, fps
-    finally:
-        stream.close()
+        return _mediainput.load_rgb_frames(
+            path,
+            local_files_only=local_files_only,
+            resize_resolution=resize_resolution,
+            aspect_correct=aspect_correct,
+            align=align,
+            frame_start=frame_start,
+            frame_end=frame_end,
+            max_frames=max_frames)
+    except _mediainput.FrameStartOutOfBounds as error:
+        raise _pipelines.UnsupportedPipelineConfigError(str(error)) from error
 
 
 def frames_from_output(value) -> list[PIL.Image.Image]:

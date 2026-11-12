@@ -29,7 +29,7 @@ video/animated file that you want.
 The help output of ``image-process`` is as follows:
 
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --sub-command image-process --help]
+@COMMAND_OUTPUT[dgenerate --sub-command image-process --help]
 
 
 Overview of specifying ``image-process`` inputs and outputs
@@ -173,7 +173,7 @@ This sub-command also exists as the config directive: ``\auto1111_metadata``.
 
 The help output of ``image-process`` is as follows:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --sub-command auto1111-metadata --help]
+@COMMAND_OUTPUT[dgenerate --sub-command auto1111-metadata --help]
 
 
 Example of using the ``auto1111-metadata`` sub-command with ``--output-metadata``
@@ -268,7 +268,7 @@ the models involved with the loaded pipeline are garbage collected immediately a
 
 The help output of ``to-diffusers`` is as follows:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --sub-command to-diffusers --help]
+@COMMAND_OUTPUT[dgenerate --sub-command to-diffusers --help]
 
 
 Sub Command: prompt-upscale
@@ -306,7 +306,7 @@ this sub-commands functionality is available in the `examples folder <https://gi
 
 The help output of ``prompt-upscale`` is as follows:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --sub-command prompt-upscale --help]
+@COMMAND_OUTPUT[dgenerate --sub-command prompt-upscale --help]
 
 
 Sub Command: assistant
@@ -451,7 +451,7 @@ the field changes. 49152 tokens is 3 GiB, and 262144 tokens is 16 GiB.
 
 The help output of ``assistant`` is as follows:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --sub-command assistant --help]
+@COMMAND_OUTPUT[dgenerate --sub-command assistant --help]
 
 
 Sub Command: kernel-warmup
@@ -480,5 +480,44 @@ specific quant kernels, you are not online.`` and exits with status 1.
 
 The help output of ``kernel-warmup`` is as follows:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --sub-command kernel-warmup --help]
+@COMMAND_OUTPUT[dgenerate --sub-command kernel-warmup --help]
+
+
+Sub Command: transpile
+----------------------
+
+The ``transpile`` sub-command reads a dgenerate config and writes a Python script
+that runs the same actions through dgenerate's Python API. A generation line
+becomes a ``DgenerateArguments`` object. ``{% if %}``, ``{% for %}``,
+``{% set %}``, ``{% filter %}``, and ``{% with %}`` become Python. Shell-parsed directives such as ``\image_process`` and
+``\download`` become calls that pass already split arguments. ``\set``,
+``\setp``, ``\print``, and ``\echo`` stay on their own handlers.
+
+The default script keeps the config interpreter's line numbers and error text.
+``--relaxed`` writes the same actions without that bookkeeping, so the script
+is easier to read and edit. ``--format`` wraps long lists and calls and leaves
+a blank line between invocations. Config comments are left out. ``--comments``
+keeps comments on their own line and comments at the end of a line. A syntax
+error in the config stops translation. Both modes run the config. Neither mode
+loads a diffusion model while translating it.
+
+The config is a path to a ``.dgen`` file. ``--stdin`` reads the config from
+stdin instead. The script is printed to stdout. ``-o`` / ``--output`` writes
+it to a file instead. ``--tree`` prints the parse tree and does not write a
+script.
+
+.. code-block:: bash
+
+    # Print the script
+    dgenerate --sub-command transpile examples/config_syntax/basic-syntax-config.dgen
+
+    # Write a readable script
+    dgenerate --sub-command transpile config.dgen --relaxed -o config.py
+
+    # Translate a config piped on stdin
+    dgenerate --sub-command transpile --stdin --relaxed < config.dgen
+
+The help output of ``transpile`` is as follows:
+
+@COMMAND_OUTPUT[dgenerate --sub-command transpile --help]
 

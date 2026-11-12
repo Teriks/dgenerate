@@ -1495,6 +1495,36 @@ class TestVideoModels(unittest.TestCase):
         finally:
             container.close()
 
+    def test_requested_video_length_is_known_before_generation(self):
+        from dgenerate.renderloop import RenderLoop
+
+        loop = RenderLoop.__new__(RenderLoop)
+        loop._c_config = types.SimpleNamespace(model_type=_pipelinewrapper.ModelType.WAN)
+        scheduled = loop._scheduled_video_clip(types.SimpleNamespace(
+            video_length=5, video_fps=16, video_frames=None))
+        self.assertEqual(scheduled, (16.0, 81))
+        loop._c_config.model_type = _pipelinewrapper.ModelType.LTX_VIDEO
+        self.assertEqual(
+            loop._scheduled_video_clip(types.SimpleNamespace(
+                video_length=4.84, video_fps=25, video_frames=None)),
+            (25.0, 121))
+        self.assertIsNone(loop._scheduled_video_clip(types.SimpleNamespace(
+            video_length=None, video_fps=16, video_frames=None)))
+        loop._c_config.model_type = _pipelinewrapper.ModelType.WAN_ANIMATE
+        self.assertEqual(
+            loop._scheduled_video_clip(types.SimpleNamespace(
+                video_length=None, video_fps=None, video_frames=None,
+                wan_pose_video_frames=[None] * 10,
+                wan_driving_video_frames=None)),
+            (30.0, 9))
+        loop._c_config.model_type = _pipelinewrapper.ModelType.WAN_ANIMATE_2
+        self.assertEqual(
+            loop._scheduled_video_clip(types.SimpleNamespace(
+                video_length=None, video_fps=8, video_frames=None,
+                wan_driving_video_frames=[None] * 49,
+                wan_driving_video_fps=30)),
+            (8.0, 13))
+
     def test_extra_weight_directories(self):
         self.assertEqual(
             _video_loading.extra_weight_directories_from_index(None),
@@ -3609,12 +3639,12 @@ class TestWanModels(unittest.TestCase):
 
         generated = next(preprocess.iterate_diffusion_args())
         self.assertIs(generated.wan_animate_preprocess_output, False)
-        self.assertIsNone(generated.wan_animate_output_dir)
+        self.assertIsNone(generated.wan_animate_preprocess_output_dir)
 
         preprocess.wan_animate_preprocess_output = True
         generated = next(preprocess.iterate_diffusion_args())
         self.assertTrue(generated.wan_animate_preprocess_output)
-        self.assertEqual(generated.wan_animate_output_dir, preprocess.output_path)
+        self.assertEqual(generated.wan_animate_preprocess_output_dir, preprocess.output_path)
 
         custom = _config(
             model_path='org/wan-animate',

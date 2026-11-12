@@ -2,7 +2,7 @@
 Help Output
 ===========
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --help]
+@COMMAND_OUTPUT[dgenerate --help]
 
 @INCLUDE[sections/install/network_installer.template.rst]
 

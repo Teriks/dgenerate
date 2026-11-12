@@ -904,7 +904,8 @@ is omitted, and on ``wan-pose=`` or ``wan-face=`` when those clips are given.
 into. ``--wan-segment-frame-lengths`` must be ``4N+1``. The default is 77.
 ``--wan-prev-segment-frames`` is the overlap from the previous segment. 1 or 5
 is recommended. The default is 1. ``--wan-motion-encode-batch-size`` trades
-memory for speed in the motion encoder.
+memory for speed in the Wan-Animate motion encoder. Wan-Animate-2 does not
+use this option.
 
 .. code-block:: bash
 

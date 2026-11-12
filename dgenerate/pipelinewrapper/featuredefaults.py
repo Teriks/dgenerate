@@ -300,6 +300,8 @@ def video_fps_default(model_type):
         return 24.0
     if _enums.model_type_is_kandinsky5_video(model_type):
         return 24.0
+    if _enums.model_type_is_kandinsky6_video(model_type):
+        return 24.0
     return None
 
 

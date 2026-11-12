@@ -31,7 +31,7 @@ prompt variations using a special prompting syntax.
     dgenerate --prompt-upscaler-help dynamicprompts
 
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-upscaler-help dynamicprompts]
+@COMMAND_OUTPUT[dgenerate --prompt-upscaler-help dynamicprompts]
 
 
 The magicprompt prompt upscaler
@@ -53,7 +53,7 @@ Which is a GPT2 finetune focused specifically on prompt generation.
     dgenerate --prompt-upscaler-help magicprompt
 
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-upscaler-help magicprompt]
+@COMMAND_OUTPUT[dgenerate --prompt-upscaler-help magicprompt]
 
 
 The llama prompt upscaler
@@ -108,7 +108,7 @@ Older NVIDIA, Windows AMD, and Intel Arc:
     dgenerate --prompt-upscaler-help llama
 
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-upscaler-help llama]
+@COMMAND_OUTPUT[dgenerate --prompt-upscaler-help llama]
 
 
 The attention prompt upscaler
@@ -128,7 +128,7 @@ This is supported for multiple languages, though, CLIP usually really only under
     dgenerate --prompt-upscaler-help attention
 
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-upscaler-help attention]
+@COMMAND_OUTPUT[dgenerate --prompt-upscaler-help attention]
 
 
 The translate prompt upscaler
@@ -155,7 +155,7 @@ This can be used to translate between any language supported by ``argostranslate
     dgenerate --prompt-upscaler-help translate
 
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-upscaler-help translate]
+@COMMAND_OUTPUT[dgenerate --prompt-upscaler-help translate]
 
 
 Basic prompt upscaling example

@@ -16,7 +16,7 @@ when combined with the Console UI's coordinate / bounding box selection utilitie
 provided in the image preview pane context menu.
 
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --image-processor-help u-sam]
+@COMMAND_OUTPUT[dgenerate --image-processor-help u-sam]
 
 You can combine this processor with the ``crop`` and ``paste`` processor to perform
 manual / interactive adetailer like editing.
@@ -43,4 +43,4 @@ The ``yolo-sam`` processor is especially valuable for:
 * Adapting detection-only YOLO models: Adding segmentation capabilities to YOLO models that only provide bounding boxes
 * Creating masks for specific detected objects using class / index filtering
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --image-processor-help yolo-sam]
+@COMMAND_OUTPUT[dgenerate --image-processor-help yolo-sam]

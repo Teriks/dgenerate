@@ -6173,7 +6173,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             dest='wan_motion_encode_batch_sizes', metavar="INTEGER",
             type=_type_segment_frames,
             help="""Motion-encoder batch size for Wan-Animate. Larger values
-                    use more memory and can be faster."""
+                    use more memory and can be faster. Wan-Animate-2 does not
+                    use this."""
         )
     )
 

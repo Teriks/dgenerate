@@ -55,6 +55,7 @@ import dgenerate.console.resources as _resources
 import dgenerate.console.showindirectory as _showindirectory
 import dgenerate.console.submodelselect as _submodelselect
 import dgenerate.console.themetext as _themetext
+import dgenerate.console.transpileform as _transpileform
 import dgenerate.console.initdgeneditor as _initdgeneditor
 import dgenerate.console.util as _util
 import dgenerate.textprocessing as _textprocessing
@@ -157,6 +158,10 @@ class DgenerateConsole(tk.Tk):
                                     command=self._load_input_entry_text)
         self._file_menu.add_command(label='Save',
                                     command=self._save_input_entry_text)
+        self._file_menu.add_separator()
+        self._file_menu.add_command(label='Transpile',
+                                    command=self._open_transpile_dialog)
+        self._transpile_dialog = None
 
         # Edit menu
         self._edit_menu = tk.Menu(self._menu_bar, tearoff=0)
@@ -858,6 +863,17 @@ class DgenerateConsole(tk.Tk):
         self._input_text.text.mark_set('insert', '1.0')
 
         self.multiline_mode(True)
+
+    def _open_transpile_dialog(self):
+        dialog = self._transpile_dialog
+        if dialog is not None and dialog.top.winfo_exists():
+            dialog.top.lift()
+            return
+        self._transpile_dialog = _transpileform.TranspileDialog(
+            self,
+            lambda: self._input_text.text.get('1.0', 'end-1c'),
+            DGENERATE_EXE,
+        )
 
     def _save_input_entry_text(self):
         fn = _filedialog.open_file_save_dialog(

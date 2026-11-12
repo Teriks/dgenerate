@@ -5,6 +5,7 @@ import unittest.mock
 import torch
 
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
 import dgenerate.pipelinewrapper.flux3 as _flux3
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.ggufcompat as _ggufcompat
@@ -36,6 +37,7 @@ class TestFlux3Kandinsky6(unittest.TestCase):
         self.assertTrue(_enums.model_type_supports_pipeline_prompt_enhance('kandinsky6-video'))
         self.assertIn('qwen3vl', _ggufcompat._TEXT_GGUF_ARCHITECTURES)
         self.assertIn('qwen2vl', _ggufcompat._TEXT_GGUF_ARCHITECTURES)
+        self.assertEqual(_featuredefaults.video_fps_default('kandinsky6-video'), 24.0)
 
     def test_flux3_pipeline_rejects_mask_and_controlnet(self):
         self.assertIs(

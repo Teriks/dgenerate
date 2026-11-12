@@ -187,11 +187,11 @@ covers the URI arguments and how they affect the quantization pre-process.
 
 The ``bitsandbytes`` backend documentation is as follows:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --quantizer-help bnb]
+@COMMAND_OUTPUT[dgenerate --quantizer-help bnb]
 
 And for ``sdnq``:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --quantizer-help sdnq]
+@COMMAND_OUTPUT[dgenerate --quantizer-help sdnq]
 
 A pre-quantized ``.gguf`` transformer or text encoder is a file format, not a
 ``--quantizer`` backend. Point ``--transformer`` or ``--text-encoders`` at the

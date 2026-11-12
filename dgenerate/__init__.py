@@ -549,6 +549,24 @@ def _run_init_dgen(runner):
                              level=dgenerate.messages.DEBUG)
 
 
+_STDIN_CONFIG_SKIP_FLAGS = frozenset({
+    '-h', '--help', '--version',
+    '--sub-command', '--sub-command-help',
+    '--templates-help', '--directives-help', '--functions-help',
+    '--quantizer-help', '--image-processor-help',
+    '--prompt-weighter-help', '--latents-processor-help',
+    '--prompt-upscaler-help',
+})
+
+
+def _skips_stdin_config(args):
+    """True when this command line prints help or runs a sub-command instead of a config."""
+    for arg in args:
+        if arg.split('=', 1)[0] in _STDIN_CONFIG_SKIP_FLAGS:
+            return True
+    return False
+
+
 def main(args: collections.abc.Sequence[str] | None = None):
     """
     Entry point for the dgenerate command line tool.
@@ -664,8 +682,10 @@ def main(args: collections.abc.Sequence[str] | None = None):
                     sys.exit(1)
 
         elif sys.stdin is not None and (
-                not dgenerate.files.stdin_is_tty() or meta_args.shell) and not meta_args.no_stdin:
-            # Not a terminal, batch process STDIN
+                not dgenerate.files.stdin_is_tty() or meta_args.shell) and not meta_args.no_stdin \
+                and not _skips_stdin_config(args):
+            # Not a terminal, batch process STDIN. Help, version, and sub-commands
+            # keep the pipe instead of running it as a config.
             runner = ConfigRunner(render_loop=render_loop,
                                   version=__version__,
                                   injected_args=args)

@@ -24,7 +24,7 @@ Using the option ``--image-processor-help`` with no arguments will yield a list 
 
 Output:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --image-processor-help]
+@COMMAND_OUTPUT[dgenerate --image-processor-help]
 
 
 Specifying one or more specific processors for example: ``--image-processor-help canny openpose`` will yield

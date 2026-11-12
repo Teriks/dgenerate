@@ -102,6 +102,14 @@ class StartingAnimationEvent(Event):
     Occurs when a sequence of images that belong to an animation are about to start being generated.
 
     This occurs whether an animation is going to be written to disk or not.
+    Assign :py:attr:`file` while handling the event to also receive the animation
+    on a binary stream. Writes to disk still happen when they are enabled.
+
+    .. code-block:: python
+
+        for event in render_loop.events():
+            if isinstance(event, StartingAnimationEvent):
+                event.file = stream
     """
 
     total_frames: int
@@ -119,6 +127,23 @@ class StartingAnimationEvent(Event):
     Frame duration of the generated file, (the time a frame is visible in milliseconds)
     """
 
+    file = None
+    """
+    Binary stream that also receives this animation, or a sequence of streams
+    when one frame produces several images.
+
+    Set this while handling the event. An mp4 receives each finished frame
+    while later frames are still generating, and its soundtrack is written
+    as those frames are encoded. GIF and WebP are written when the animation
+    finishes. The loop closes the container before
+    :py:class:`AnimationFinishedEvent`, and rewinds a seekable stream.
+
+    One stream is one animation file. The next animation yields another
+    :py:class:`StartingAnimationEvent`. ``frames`` writes one image per frame
+    and does not accept a stream. A video-pipeline clip is written here when
+    the clip returns, because its frames arrive together.
+    """
+
     def __init__(self,
                  origin,
                  total_frames: int,
@@ -128,6 +153,20 @@ class StartingAnimationEvent(Event):
         self.total_frames = total_frames
         self.fps = fps
         self.frame_duration = frame_duration
+        self.file = None
+
+    def streams(self) -> list:
+        """
+        Binary streams assigned to :py:attr:`file`.
+
+        One stream is returned as a one-item list. ``None`` returns an empty list.
+        """
+        file = self.file
+        if file is None:
+            return []
+        if callable(getattr(file, 'write', None)):
+            return [file]
+        return list(file)
 
 
 class StartingAnimationFileEvent(Event):
