@@ -104,7 +104,9 @@ a = Analysis(
         # Standard Windows modules
         'winreg',
         'ctypes',
-        'ctypes.wintypes'
+        'ctypes.wintypes',
+        # Imported when the user opts into the MSVC toolchain.
+        'network_installer.msvc_toolchain',
     ] if is_windows else [],
     hookspath=[],
     hooksconfig={},

@@ -3432,6 +3432,18 @@ for ``--version``, ``--branch``, and ``--extras``. A silent install overwrites a
 existing installation. ``--version`` and ``--branch`` cannot be used together.
 ``--uninstall`` removes the installation and does not open a window.
 
+On Windows, for dgenerate 6.0.0 and newer, ``--msvc`` installs the current
+Visual Studio Build Tools so ``torch.compile`` can find ``cl`` on CPU and Intel
+XPU. Older releases do not offer that option. With ``--silent`` the installer
+runs Microsoft's bootstrapper. Without ``--silent`` the window opens with that
+option selected. The checkbox on the extras screen does the same thing, and it
+starts selected when the installer detects an Intel XPU. A silent install still
+runs Build Tools only when ``--msvc`` is passed.
+dgenerate does not ship the compiler. The C++ workload is several GB.
+Microsoft's installer stays hidden; Windows asks for administrator approval,
+and continuing accepts Microsoft's license. An existing MSVC toolset is left
+as it is.
+
 ``--version`` is a release tag from that page, including the leading ``v``.
 ``--branch`` is a branch name. With neither one, ``--silent`` installs the
 ``master`` branch. Omit ``--extras`` and the installer chooses extras for the
@@ -3457,6 +3469,9 @@ that does not provide the subcommand skips the step.
 
     # name the extras instead of accepting the GPU defaults
     dgenerate-network-installer.exe --silent --extras bitsandbytes xllamacpp console_ui_vulkan
+
+    # also install the MSVC compiler used by torch.compile (Windows)
+    dgenerate-network-installer.exe --silent --msvc
 
     # remove the installation
     dgenerate-network-installer.exe --uninstall
@@ -3490,7 +3505,11 @@ The published packages install from Windows wheels. That includes the Rust
 extensions (``tokenizers``, ``safetensors``, ``hf-xet``, ``pydantic-core``) and
 the C extensions (``sentencepiece``, PyAV, ``patchmatch-cython``, spaCy and its
 compiled dependencies). Visual Studio Build Tools and a Rust compiler are not
-required. They are only needed if pip is told to build a package from source.
+required to install those wheels. They are only needed if pip is told to build
+a package from source. ``torch.compile`` on CPU and Intel XPU does need the
+MSVC compiler, starting with dgenerate 6.0.0. The network installer can run
+Microsoft's Build Tools installer when you select that option, or when you
+pass ``--msvc``. dgenerate does not redistribute the compiler.
 
 Install GIT for Windows:
 

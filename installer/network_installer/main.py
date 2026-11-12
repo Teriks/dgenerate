@@ -44,6 +44,7 @@ Examples:
   %(prog)s -v v5.0.0         # GUI with that release selected
   %(prog)s -s -v 3.5.0       # Install version 3.5.0 silently (no GUI)
   %(prog)s -s -b master      # Install master branch silently
+  %(prog)s -s --msvc         # Also install Visual Studio Build Tools (Windows)
   %(prog)s -u                # Uninstall dgenerate silently
         """
     )
@@ -58,17 +59,25 @@ Examples:
                              'without -s the GUI opens with Development Branch selected')
     parser.add_argument('-e', '--extras', type=str, nargs='+',
                         help='Specify extras to install (e.g. --extras bitsandbytes xllamacpp')
+    parser.add_argument('--msvc', action='store_true',
+                        help='Install Visual Studio Build Tools for torch.compile (Windows, dgenerate >= 6.0.0). '
+                             'With -s this runs Microsoft\'s installer; without -s the GUI '
+                             'opens with that option selected')
     parser.add_argument('-u', '--uninstall', action='store_true',
                         help='Uninstall dgenerate (no GUI)')
 
     return parser.parse_args()
 
 
-def run_silent_install(version=None, branch=None, extras=None):
+def run_silent_install(version=None, branch=None, extras=None, install_msvc=False):
     """Run silent installation without GUI."""
     try:
         print("dgenerate Network Installer - Silent Mode")
         print("=" * 50)
+
+        if install_msvc and os.name != 'nt':
+            print("ERROR: --msvc installs Visual Studio Build Tools and is Windows-only")
+            return False
 
         # Import non-GUI components
         from network_installer.github_client import GitHubClient
@@ -136,6 +145,23 @@ def run_silent_install(version=None, branch=None, extras=None):
         if not result.success:
             print(f"ERROR: Installation failed: {result.error}")
             return False
+
+        if install_msvc:
+            from network_installer.msvc_toolchain import install_vc_tools, supports_msvc_toolchain
+            package_version = installer.setup_analyzer.version if installer.setup_analyzer else None
+            if not supports_msvc_toolchain(package_version):
+                print(
+                    "Skipping Visual Studio Build Tools. "
+                    "That option is for dgenerate 6.0.0 and newer "
+                    f"(this source is {package_version})."
+                )
+            else:
+                print("Installing Visual Studio Build Tools...")
+                toolchain_ok, toolchain_error = install_vc_tools(print)
+                if not toolchain_ok:
+                    print(f"ERROR: {toolchain_error}")
+                    print("dgenerate itself installed. The C++ compiler installation did not finish.")
+                    return False
 
         print("Installation completed successfully!")
         return True
@@ -259,7 +285,8 @@ def main():
         success = run_silent_install(
             version=args.version,
             branch=args.branch,
-            extras=args.extras
+            extras=args.extras,
+            install_msvc=args.msvc,
         )
 
         sys.exit(0 if success else 1)
@@ -268,7 +295,7 @@ def main():
     try:
         # Import and run the GUI
         from network_installer.gui import main as gui_main
-        gui_main(version=args.version, branch=args.branch)
+        gui_main(version=args.version, branch=args.branch, install_msvc=args.msvc)
 
     except Exception as e:
         # Show error dialog if GUI fails to start

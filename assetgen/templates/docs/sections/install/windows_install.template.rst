@@ -23,7 +23,11 @@ The published packages install from Windows wheels. That includes the Rust
 extensions (``tokenizers``, ``safetensors``, ``hf-xet``, ``pydantic-core``) and
 the C extensions (``sentencepiece``, PyAV, ``patchmatch-cython``, spaCy and its
 compiled dependencies). Visual Studio Build Tools and a Rust compiler are not
-required. They are only needed if pip is told to build a package from source.
+required to install those wheels. They are only needed if pip is told to build
+a package from source. ``torch.compile`` on CPU and Intel XPU does need the
+MSVC compiler, starting with dgenerate 6.0.0. The network installer can run
+Microsoft's Build Tools installer when you select that option, or when you
+pass ``--msvc``. dgenerate does not redistribute the compiler.
 
 Install GIT for Windows:
 

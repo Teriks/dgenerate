@@ -59,15 +59,19 @@ class DGenerateInstallerGUI:
         from network_installer.uv_installer import UvInstaller
         return UvInstaller(log_callback=log_callback, source_dir=source_dir)
 
-    def __init__(self, preset_version: str | None = None, preset_branch: str | None = None):
+    def __init__(self, preset_version: str | None = None, preset_branch: str | None = None,
+                 preset_install_msvc: bool = False):
         """
         Initialize the DGenerateInstallerGUI.
 
         :param preset_version: Release tag to preselect on the source screen.
         :param preset_branch: Development branch to preselect on the source screen.
+        :param preset_install_msvc: Pre-check the Visual Studio Build Tools option.
         """
         self.preset_version = preset_version
         self.preset_branch = preset_branch
+        self.preset_install_msvc = preset_install_msvc
+        self.install_msvc = False
         self.root = tk.Tk()
         self.root.title("dgenerate network installer")
         self.root.resizable(False, False)  # Fixed size like MSI installers
@@ -659,7 +663,9 @@ class DGenerateInstallerGUI:
         extras_frame.columnconfigure(0, weight=1)
 
         # Create scrollable frame for extras
-        canvas = tk.Canvas(extras_frame)
+        # highlightthickness stays 0. A focused canvas draws a border around
+        # the extras list when a checkbox inside it is clicked.
+        canvas = tk.Canvas(extras_frame, highlightthickness=0, bd=0, takefocus=False)
         scrollbar = ttk.Scrollbar(extras_frame, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
 
@@ -787,6 +793,7 @@ class DGenerateInstallerGUI:
                                             text="No extras available for this platform/version.",
                                             font=("Arial", 10))
                 no_extras_label.grid(row=0, column=0, columnspan=2, pady=20)
+                self._add_msvc_option(parent_frame, 1, setup_analyzer.version, gpu_info)
                 return
 
             for extra_name, extra_deps in self.available_extras.items():
@@ -805,6 +812,7 @@ class DGenerateInstallerGUI:
 
                 row += 1
 
+            self._add_msvc_option(parent_frame, row, setup_analyzer.version, gpu_info)
             parent_frame.columnconfigure(1, weight=1)
 
         except Exception as e:
@@ -835,6 +843,56 @@ class DGenerateInstallerGUI:
             error_frame.columnconfigure(0, weight=1)
             error_frame.rowconfigure(0, weight=1)
             parent_frame.rowconfigure(1, weight=1)
+
+    def _add_msvc_option(self, parent_frame, row: int, version: str | None, gpu_info):
+        """Optional Visual Studio Build Tools checkbox. Windows, dgenerate >= 6.0.0."""
+        self.dgenerate_version = version
+        self.msvc_var = tk.BooleanVar(value=False)
+        if platform.system().lower() != 'windows':
+            return
+        from network_installer.msvc_toolchain import (
+            msvc_option_checked,
+            supports_msvc_toolchain,
+            vc_tools_installed,
+        )
+        if not supports_msvc_toolchain(version):
+            return
+        installed = vc_tools_installed()
+        intel_xpu = bool(getattr(gpu_info, 'has_intel', False) and getattr(gpu_info, 'xpu_version', None))
+        self.msvc_var.set(msvc_option_checked(
+            preset=self.preset_install_msvc,
+            installed=installed,
+            intel_xpu=intel_xpu,
+        ))
+        name_frame = ttk.Frame(parent_frame)
+        name_frame.grid(row=row, column=0, sticky=tk.NW, pady=(12, 2))
+        checkbox = ttk.Checkbutton(
+            name_frame,
+            variable=self.msvc_var,
+            state="disabled" if installed else "normal",
+        )
+        checkbox.grid(row=0, column=0, sticky=tk.N)
+        name_label = ttk.Label(
+            name_frame,
+            text="C++ compiler (already installed)" if installed
+            else "C++ compiler (Visual Studio Build Tools)",
+            wraplength=150,
+            justify=tk.LEFT,
+        )
+        name_label.grid(row=0, column=1, sticky=tk.W)
+        if not installed:
+            name_label.bind("<Button-1>", lambda _event: checkbox.invoke())
+        if installed:
+            desc = "Visual Studio C++ tools are already on this computer."
+        else:
+            desc = (
+                "Optional. torch.compile on CPU and Intel XPU needs Microsoft's "
+                "C++ compiler. Checking this installs the current Build Tools. "
+                "The only prompt is administrator approval, and continuing accepts "
+                "Microsoft's license. The download is several GB."
+            )
+        desc_label = ttk.Label(parent_frame, text=desc, wraplength=250, font=("Arial", 9))
+        desc_label.grid(row=row, column=1, sticky=(tk.W, tk.E), pady=(12, 2), padx=(10, 0))
 
     def _show_installation_screen(self):
         """
@@ -966,6 +1024,25 @@ class DGenerateInstallerGUI:
                     is_pre_release=self.is_pre_release,
                     skip_existing_check=True
                 )
+
+                if result.success and self.install_msvc:
+                    from network_installer.msvc_toolchain import install_vc_tools, supports_msvc_toolchain
+                    if not supports_msvc_toolchain(getattr(self, 'dgenerate_version', None)):
+                        self._log(
+                            "Skipping Visual Studio Build Tools. "
+                            "That option is for dgenerate 6.0.0 and newer."
+                        )
+                    else:
+                        self._update_install_status("Installing C++ compiler...")
+                        self._log("Installing Visual Studio Build Tools...")
+                        toolchain_ok, toolchain_error = install_vc_tools(self._log)
+                        if not toolchain_ok:
+                            result = type(result).failure_result(
+                                toolchain_error or "Visual Studio Build Tools installation failed"
+                            )
+                            self._log(
+                                "dgenerate itself installed. The C++ compiler installation did not finish."
+                            )
 
                 if result.success:
                     self._log("Installation completed successfully!")
@@ -1488,6 +1565,7 @@ class DGenerateInstallerGUI:
         """Prepare for installation."""
         # Get selected extras
         self.selected_extras = [extra for extra, var in self.extra_vars.items() if var.get()]
+        self.install_msvc = bool(getattr(self, 'msvc_var', None) and self.msvc_var.get())
 
         # Show installation screen
         self.current_screen = 4
@@ -1826,14 +1904,19 @@ class DGenerateInstallerGUI:
         self.root.mainloop()
 
 
-def main(version: str | None = None, branch: str | None = None):
+def main(version: str | None = None, branch: str | None = None, install_msvc: bool = False):
     """
     Main entry point for the GUI application.
 
     :param version: Release tag to preselect.
     :param branch: Development branch to preselect.
+    :param install_msvc: Pre-check the Visual Studio Build Tools option.
     """
-    app = DGenerateInstallerGUI(preset_version=version, preset_branch=branch)
+    app = DGenerateInstallerGUI(
+        preset_version=version,
+        preset_branch=branch,
+        preset_install_msvc=install_msvc,
+    )
     app.run()
 
 
