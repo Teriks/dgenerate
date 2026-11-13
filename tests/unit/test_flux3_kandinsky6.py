@@ -143,6 +143,17 @@ class TestFlux3Kandinsky6(unittest.TestCase):
         self.assertIs(bound.__self__, diffusers.Kandinsky6Transformer3DModel)
         self.assertEqual(
             pro.config_repo, 'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers')
+        # Q4_K stores visual_embeddings.in_layer.weight as packed bytes.
+        # The bias still has the real hidden width, and Comfy names the
+        # projection to_query rather than to_q.
+        packed = _ggufcompat.detect_gguf_layout({
+            'audio_embeddings.in_layer.weight': (256, 320),
+            'visual_embeddings.in_layer.weight': (256, 2112),
+            'visual_embeddings.in_layer.bias': (4096,),
+            'video_text_transformer_blocks.0.attn.to_query.weight': (4096, 4096),
+        })
+        self.assertEqual(
+            packed.config_repo, 'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers')
         kandinsky5 = _ggufcompat.detect_gguf_layout({
             'visual_transformer_blocks.0.visual_modulation.out_layer.weight': (1, 1792),
             'visual_transformer_blocks.0.self_attention.to_query.bias': (1792,),

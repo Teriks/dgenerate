@@ -273,15 +273,31 @@ def _detect_flux3_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
 
 
 def _kandinsky6_hidden(shapes: dict) -> int | None:
-    weight = _lookup_shape(
-        shapes,
+    """
+    Hidden width of a Kandinsky 6 transformer.
+
+    ``visual_embeddings.in_layer.weight`` is the natural place to read it, but
+    a Q4_K file stores that matrix as packed bytes, so neither dimension is
+    1792 or 4096. The bias and the video attention projection stay at the real
+    width.
+    """
+    names = (
+        'visual_embeddings.in_layer.bias',
+        'video_text_embeddings.in_layer.bias',
+        'video_text_transformer_blocks.0.attn.to_q.bias',
+        'video_text_transformer_blocks.0.attn.to_query.bias',
+        'video_text_transformer_blocks.0.attn.to_q.weight',
+        'video_text_transformer_blocks.0.attn.to_query.weight',
+        'visual_token_type_embeddings.weight',
         'visual_embeddings.in_layer.weight',
-        _COMFY_PREFIX + 'visual_embeddings.in_layer.weight')
-    if weight is None:
-        return None
-    for dim in weight:
-        if dim in _KANDINSKY6_BY_HIDDEN:
-            return dim
+    )
+    for name in names:
+        weight = _lookup_shape(shapes, name, _COMFY_PREFIX + name)
+        if weight is None:
+            continue
+        for dim in weight:
+            if dim in _KANDINSKY6_BY_HIDDEN:
+                return dim
     return None
 
 
@@ -912,16 +928,19 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
     if layout is None:
         return None, config, subfolder, False
 
-    _messages.debug_log(
-        f'GGUF transformer detected as {layout.kind}'
-        + (' (Comfy layout)' if layout.comfy else '')
-        + f'. Using {layout.config_repo}.')
-
     if config is None:
         config = layout.config_repo
         subfolder = subfolder or layout.subfolder
     elif subfolder is None:
         subfolder = layout.subfolder
+
+    message = (
+        f'GGUF transformer detected as {layout.kind}'
+        + (' (Comfy layout)' if layout.comfy else '')
+        + f'. Using {config}.')
+    if config != layout.config_repo:
+        message += f' Detected config was {layout.config_repo}.'
+    _messages.debug_log(message)
 
     if not layout.adapt:
         return None, config, subfolder, False

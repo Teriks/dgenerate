@@ -94,3 +94,19 @@ class TestEstimateModelMemoryUse(unittest.TestCase):
                     weight_name='gemma.safetensors',
                     local_files_only=True)
         self.assertEqual(size, 128)
+
+    def test_gguf_file_is_counted(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = os.path.join(root, 'model.gguf')
+            with open(path, 'wb') as handle:
+                handle.write(b'0' * 64)
+            size = _util.estimate_model_memory_use(path, local_files_only=True)
+        self.assertEqual(size, 64)
+
+    def test_subfolder_file_is_counted_when_the_caller_has_no_subfolder(self):
+        with mock.patch.object(
+                _util, 'fetch_model_files_with_size',
+                return_value=[('Diffusion Model/Full/model.gguf', 80)]):
+            size = _util.estimate_model_memory_use(
+                'https://huggingface.co/org/repo/blob/main/Diffusion%20Model/Full/model.gguf')
+        self.assertEqual(size, 80)

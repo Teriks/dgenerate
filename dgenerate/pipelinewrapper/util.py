@@ -906,6 +906,14 @@ def estimate_model_memory_use(repo_id: str,
 
     directories = {}
 
+    # A GGUF checkpoint is one file. The safetensors/bin search never sees it,
+    # so a 20GB transformer was reported as 0 bytes and the cache did not
+    # reserve room for it.
+    gguf_target = _hfhub.is_gguf_model(repo_id) or _hfhub.is_gguf_model(weight_name or '')
+    fetch_extensions = {'.safetensors', '.bin'}
+    if gguf_target:
+        fetch_extensions.add('.gguf')
+
     for file, size in fetch_model_files_with_size(repo_id,
                                                   revision=revision,
                                                   variant=variant,
@@ -913,8 +921,7 @@ def estimate_model_memory_use(repo_id: str,
                                                   weight_name=weight_name,
                                                   auth_token=auth_token,
                                                   local_files_only=local_files_only,
-                                                  extensions={'.safetensors',
-                                                              '.bin'},
+                                                  extensions=fetch_extensions,
                                                   sentencepiece=sentencepiece,
                                                   watermarker=watermarker):
         d = os.path.dirname(file).replace('\\', '/').strip('/')
@@ -933,6 +940,8 @@ def estimate_model_memory_use(repo_id: str,
         extensions = {'.safetensors'}
     else:
         extensions = {'.bin'}
+    if gguf_target:
+        extensions.add('.gguf')
 
     def estimate(forced_only=False):
         size_sum = 0
@@ -1003,7 +1012,10 @@ def estimate_model_memory_use(repo_id: str,
                     if not forced_only and ext not in extensions:
                         continue
 
-                    if counted is not None and file not in counted and not forced_include:
+                    # Shard selection only knows safetensors and bin. A GGUF
+                    # file is the whole checkpoint.
+                    if (counted is not None and file not in counted
+                            and not forced_include and ext != '.gguf'):
                         continue
 
                     size_sum += size
@@ -1017,6 +1029,11 @@ def estimate_model_memory_use(repo_id: str,
             directory = '.' if not subfolder else subfolder.replace('\\', '/').strip('/')
             directory = '.' if not directory else directory
             directory_entry = directories.get(directory)
+            # A blob link is parsed inside the file search, so the yielded
+            # path keeps its repo subfolder while this function's subfolder
+            # argument is still empty.
+            if not directory_entry and len(directories) == 1:
+                directory, directory_entry = next(iter(directories.items()))
 
             if not directory_entry:
                 return 0
@@ -1030,7 +1047,7 @@ def estimate_model_memory_use(repo_id: str,
 
             for file, size in directory_entry.items():
                 _, ext = os.path.splitext(file)
-                if ext not in extensions or file not in counted:
+                if ext not in extensions or (ext != '.gguf' and file not in counted):
                     continue
                 _messages.debug_log('Estimate Considering:',
                                     os.path.join(directory if directory != '.' else '', file) +
