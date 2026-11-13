@@ -20,7 +20,7 @@ title: Flux.3 Klein (ComfyUI Quant)
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/blob/main/diffusion_models/flux3-image-klein-int8-convrot.safetensors", "divider-after":true}]
-@imageseed[{"id":"image-seed", "label":"Reference Images", "arg":"--image-seeds", "file-types":["images-in"], "default":""}]
+@imageseed[{"id":"image-seed", "label":"Reference Images", "arg":"--image-seeds", "file-types":["images-in"], "default":"", "hide-float":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":16, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]
 @submodelbuilder[{"label":"Prompt Upsampler", "arg":"--prompt-upsampler", "model":"Prompt Upsampler", "divider-before":true}]
@@ -38,5 +38,7 @@ title: Flux.3 Klein (ComfyUI Quant)
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
 @imageformat[{}]
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
 --prompts "add your prompt here"

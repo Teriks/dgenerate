@@ -34,5 +34,7 @@ title: Qwen-Image 2.1 (GGUF)
 @imageformat[{}]
 @imagesize[{"id":"os", "label":"Output Size", "arg":"--output-size", "default":"1024x1024", "exclude":["qres"]}]
 @int[{"id":"qres", "label":"Target Resolution (Aspect-Correct)", "arg":"--qwen21-resolution", "optional":true, "min":256, "exclude":["os"]}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
 --prompts "add your prompt here"

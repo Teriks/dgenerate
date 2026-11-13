@@ -23,6 +23,9 @@ title: Motif-Video Text to Video (GGUF)
 @dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
 @seeds[{"label":"Seeds"}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@switch[{"label":"Output Configs", "arg":"--output-configs"}]
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"832x480"}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
 --prompts "add your prompt here"

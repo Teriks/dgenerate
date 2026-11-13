@@ -1,4 +1,6 @@
 title: Qwen-Image 2.1 Turbo (GGUF + Encoders)
+
+# The Turbo checkpoint uses its configured short sigma schedule.
 # Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"Qwen/Qwen-Image-2.1-Turbo", "optional":false, "file-types":["models"]}]
@@ -16,8 +18,6 @@ title: Qwen-Image 2.1 Turbo (GGUF + Encoders)
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Abiray/Qwen-Image-2.1-Turbo-GGUF/blob/main/qwen_image_2.1_turbo_Q4_K_M.gguf", "divider-after":true}]
 @imageseed[{"id":"image-seed", "label":"Condition Image", "arg":"--image-seeds", "file-types":["images-in"], "hide-float":true}]
-@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":8, "min":1}]
-@float[{"label":"True CFG Scale", "arg":"--guidance-scales", "default":1, "min":0}]
 @switch[{"id":"pipeline-prompt-enhance", "label":"Pipeline Prompt Enhance", "arg":"--pipeline-prompt-enhance", "divider-before":true}]
 @stringfile[{"label":"Enhancer System Prompt", "arg":"--pipeline-prompt-enhance", "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
 @seeds[{"label":"Enhancer Seeds", "optional":true, "default":"", "seeds-arg":"--pipeline-prompt-enhance-seeds", "count-arg":"--pipeline-prompt-enhance-gen-seeds", "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
@@ -33,5 +33,7 @@ title: Qwen-Image 2.1 Turbo (GGUF + Encoders)
 @imageformat[{}]
 @imagesize[{"id":"os", "label":"Output Size", "arg":"--output-size", "default":"1024x1024", "exclude":["qres"]}]
 @int[{"id":"qres", "label":"Target Resolution (Aspect-Correct)", "arg":"--qwen21-resolution", "optional":true, "min":256, "exclude":["os"]}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
 --prompts "add your prompt here"

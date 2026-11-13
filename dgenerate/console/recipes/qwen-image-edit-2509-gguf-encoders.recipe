@@ -20,7 +20,7 @@ title: Qwen-Image Edit 2509 (GGUF + Encoders)
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/QuantStack/Qwen-Image-Edit-2509-GGUF/blob/main/Qwen-Image-Edit-2509-Q4_K_S.gguf", "divider-after":true}]
-@imageseed[{"id":"image-seed", "label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "float-label":"Inpaint Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":""}]
+@imageseed[{"id":"image-seed", "optional":false, "label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "default":"", "hide-float":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1, "enabled-when":{"id":"re", "equals":false}}]
 @float[{"label":"True CFG Scale", "arg":"--guidance-scales", "default":4, "min":0}]
 @float[{"label":"Distilled Guidance Scale", "arg":"--qwen-guidance-scale", "min":0}]

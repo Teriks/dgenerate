@@ -17,7 +17,7 @@ title: Hunyuan-DiT
 @submodelbuilder[{"id":"ip-adapter", "label":"IP Adapter", "arg":"--ip-adapters", "model":"IP Adapter"}]
 @submodelbuilder[{"label":"Image Encoder", "arg":"--image-encoder", "model":"Image Encoder", "enabled-when":{"id":"ip-adapter","not-empty":true}}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "divider-after":true}]
-@imageseed[{"id":"image-seed", "label":"Control / IP Adapter Image", "arg":"--image-seeds", "file-types":["images-in"], "float-label":"Image Seed Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":""}]
+@imageseed[{"id":"image-seed", "label":"Control / IP Adapter Image", "arg":"--image-seeds", "file-types":["images-in"], "default":"", "hide-float":true}]
 @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor", "enabled-when":{"id":"image-seed","not-empty":true}}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor", "divider-after":true, "enabled-when":{"id":"image-seed","not-empty":true}}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]

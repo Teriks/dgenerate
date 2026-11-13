@@ -4,7 +4,7 @@ title: Flux.2 Dev (ComfyUI Quant + Encoders)
 # The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
 # NVFP4). Quantized layers stay packed and use hardware matmuls where available.
 
-# The repo is gated. There is no image seed.
+# The repo is gated. An image seed with no mask is a reference image and takes no strength. A mask is rejected.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 
@@ -28,6 +28,7 @@ title: Flux.2 Dev (ComfyUI Quant + Encoders)
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/diffusion_models/flux2_dev_fp8mixed.safetensors", "divider-after":true}]
+@imageseed[{"id":"image-seed", "label":"Reference Image", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "default":"", "hide-float":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":4, "min":0}]
 @float[{"label":"Caption Upsample Temperature", "arg":"--flux2-caption-upsample-temperature", "min":0}]

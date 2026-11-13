@@ -20,7 +20,7 @@ title: Flux.3 Klein (GGUF + Encoders)
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
 @submodelbuilder[{"label":"Transformer GGUF", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/molbal/Flux-3-Klein-GGUF/blob/main/flux3_image_klein_sd-Q4_K_M.gguf", "divider-after":true}]
-@imageseed[{"id":"image-seed", "label":"Reference Images", "arg":"--image-seeds", "file-types":["images-in"], "default":""}]
+@imageseed[{"id":"image-seed", "label":"Reference Images", "arg":"--image-seeds", "file-types":["images-in"], "default":"", "hide-float":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":16, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]
 @submodelbuilder[{"label":"Prompt Upsampler", "arg":"--prompt-upsampler", "model":"Prompt Upsampler", "divider-before":true}]
@@ -38,5 +38,7 @@ title: Flux.3 Klein (GGUF + Encoders)
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
 @imageformat[{}]
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
 --prompts "add your prompt here"

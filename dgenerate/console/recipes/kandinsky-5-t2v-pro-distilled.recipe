@@ -4,7 +4,8 @@ title: Kandinsky 5 Video Pro Distilled
 --model-type kandinsky5-video
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter":["FlowMatchEulerDiscreteScheduler"]}]
-@switchfile[{"label":"Use Cache-DiT", "arg":"--cache-dit", "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
+@spectrum[{"id": "sp", "divider-after": true}]
+@switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @torchcompile[{"model-type":"kandinsky5-video"}]
 @quantizer[{"model-type":"kandinsky5-video"}]

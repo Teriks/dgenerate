@@ -8,7 +8,8 @@ title: Krea 2 Raw (GGUF + Encoders)
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter":["FlowMatchEulerDiscreteScheduler"]}]
 @spectrum[{"id": "sp", "divider-after": true}]
-@dype[{"exclude":["sp"], "divider-after":true}]
+@switchfile[{"id":"cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
+@dype[{"exclude":["cd", "sp"], "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @torchcompile[{"model-type":"krea2"}]
 @quantizer[{"model-type":"krea2"}]
@@ -33,5 +34,7 @@ title: Krea 2 Raw (GGUF + Encoders)
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
 @imageformat[{}]
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
 --prompts "add your prompt here"

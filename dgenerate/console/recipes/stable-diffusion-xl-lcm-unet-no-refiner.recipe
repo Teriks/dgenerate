@@ -41,6 +41,7 @@ title: Stable Diffusion XL LCM UNet (no refiner)
 @float[{"label":"PAG Scale", "arg":"--pag-scales", "min":0}]
 @float[{"label":"Adaptive PAG Scale", "arg":"--pag-adaptive-scales", "min":0}]
 @string[{"label":"PAG Applied Layers", "arg":"--pag-applied-layers"}]
+@float[{"label":"T2I Adapter Factor", "arg":"--sdxl-t2i-adapter-factors", "min":0}]
 @float[{"label":"Aesthetic Score", "arg":"--sdxl-aesthetic-scores", "min":0}]
 @float[{"label":"Negative Aesthetic Score", "arg":"--sdxl-negative-aesthetic-scores", "min":0}]
 @string[{"label":"Crop Coords Top Left", "arg":"--sdxl-crops-coords-top-left"}]

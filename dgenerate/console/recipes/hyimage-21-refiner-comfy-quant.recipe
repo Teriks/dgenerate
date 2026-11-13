@@ -12,7 +12,7 @@ title: HunyuanImage 2.1 Refiner (ComfyUI Quant)
 @quantizer[{"model-type":"hyimage-21-refiner", "map-default":"text_encoder"}]
 @textencoders[{"model-type":"hyimage-21-refiner","arg":"--text-encoders", "divider-after":true}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/resolve/main/split_files/diffusion_models/hunyuanimage2.1_refiner_fp8_e4m3fn.safetensors", "divider-after":true}]
-@imageseed[{"id":"image-seed", "label":"Input Image", "arg":"--image-seeds", "file-types":["images-in"], "hide-float":true}]
+@imageseed[{"id":"image-seed", "optional":false, "label":"Input Image", "arg":"--image-seeds", "file-types":["images-in"], "hide-float":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4, "min":1}]
 @float[{"label":"Distilled Guidance Scale", "arg":"--guidance-scales", "default":3.25, "min":0}]
 @switch[{"id":"pipeline-prompt-enhance", "label":"Pipeline Prompt Enhance", "arg":"--pipeline-prompt-enhance", "divider-before":true}]

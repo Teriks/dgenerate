@@ -1143,6 +1143,7 @@ SPECTRUM_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.QWEN_IMAGE_21,
     ModelType.KREA2,
     ModelType.KANDINSKY5_IMAGE,
+    ModelType.KANDINSKY5_VIDEO,
     ModelType.FLUX3,
     ModelType.KANDINSKY6_VIDEO,
     ModelType.WAN,

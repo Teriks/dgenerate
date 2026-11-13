@@ -1762,7 +1762,7 @@ Help Output
             
             This is supported for: --model-type sd3, sd3-pix2pix, sdxl, sdxl-pix2pix, kolors, flux, flux-fill,
             flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
-            qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, flux3, kandinsky6-video, wan,
+            qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, kandinsky5-video, flux3, kandinsky6-video, wan,
             wan-animate, wan-animate-2, hyvideo-15, motif-video, hyimage-21, and hyimage-21-refiner.
             ----------------------------------------------------------------------------------------
       --spectrum-weights [FLOAT ...]

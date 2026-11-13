@@ -20,7 +20,7 @@ title: Kolors
 @checkboxwithtwointargs[{"label":"Refiner Use DeepCache", "help-arg":"--sdxl-refiner-deep-cache", "int1-label": "Refiner DeepCache Interval", "int1-arg":"--sdxl-refiner-deep-cache-intervals", "int1":5, "int1-min":1, "int2-label":"Refiner DeepCache Branch ID", "int2":1, "int2-arg": "--sdxl-refiner-deep-cache-branch-ids", "int2-min":0, "enabled-when":{"id":"refiner","not-empty":true}}]
 @switch[{"label":"Refiner Edit Mode", "arg":"--sdxl-refiner-edit", "enabled-when":{"id":"refiner","not-empty":true}}]
 @switchradio[{"labels":["Refiner CPU Offload", "Refiner Sequential Offload", "Refiner Group Offload"], "args":["--second-model-cpu-offload", "--second-model-sequential-offload", "--second-model-group-offload"], "enabled-when":{"id":"refiner","not-empty":true}}]
-@quantizer[{"model-type":"kolors", "label": "Refiner Quantizer", "arg":"--second-model-quantizer", "divider-after":true, "enabled-when":{"id":"refiner","not-empty":true}}]
+@quantizer[{"model-type":"sdxl", "label": "Refiner Quantizer", "arg":"--second-model-quantizer", "divider-after":true, "enabled-when":{"id":"refiner","not-empty":true}}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]

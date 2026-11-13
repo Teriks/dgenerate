@@ -353,8 +353,8 @@ class TestSpectrum(unittest.TestCase):
         self.assertTrue(_pipelinewrapper.model_type_supports_spectrum('kolors'))
         self.assertTrue(_pipelinewrapper.model_type_supports_dype('krea2'))
         for model_type in ('qwen-image-21', 'krea2', 'kandinsky5-image',
-                           'hyvideo-15', 'motif-video', 'hyimage-21',
-                           'hyimage-21-refiner'):
+                           'kandinsky5-video', 'hyvideo-15', 'motif-video',
+                           'hyimage-21', 'hyimage-21-refiner'):
             self.assertTrue(_pipelinewrapper.model_type_supports_spectrum(model_type))
         self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('sd'))
         self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('ltx2'))

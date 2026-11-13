@@ -14,7 +14,7 @@ title: Qwen-Image Layered (GGUF)
 @quantizer[{"model-type":"qwen-image-layered", "map-default":"text_encoder"}]
 @textencoders[{"model-type":"qwen-image-layered","arg":"--text-encoders", "divider-after":true}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/unsloth/Qwen-Image-Layered-GGUF/blob/main/qwen-image-layered-Q4_K_S.gguf", "divider-after":true}]
-@imageseed[{"id":"image-seed", "label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in"], "default":"", "float":""}]
+@imageseed[{"id":"image-seed", "optional":false, "label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in"], "default":"", "hide-float":true}]
 @int[{"label":"Layers", "arg":"--qwen-layered-layers", "default":4, "min":1}]
 @dropdown[{"label":"Resolution", "arg":"--qwen-layered-resolution", "options":["640", "1024"], "default":"640"}]
 @switch[{"label":"English Prompt", "arg":"--qwen-layered-use-en-prompt"}]

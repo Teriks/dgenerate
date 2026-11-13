@@ -44,6 +44,7 @@ title: Wan 2.1 VACE (GGUF)
 @switch[{"label":"Output Configs", "arg":"--output-configs"}]
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"832x480", "divider-after":true}]
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--mask-image-processors", "label":"Mask Clip Processor", "enabled-when":{"id":"image-seed","not-empty":true}}]
 @imageprocessor[{"arg":"--control-image-processors", "label":"Control Clip Processor", "enabled-when":{"any":[{"id":"image-seed","not-empty":true},{"id":"image-seed-2","not-empty":true},{"id":"image-seed-3","not-empty":true},{"id":"image-seed-4","not-empty":true}]}}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]

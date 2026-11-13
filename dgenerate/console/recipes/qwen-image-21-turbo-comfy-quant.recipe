@@ -1,5 +1,7 @@
 title: Qwen-Image 2.1 Turbo (ComfyUI Quant)
 
+# The Turbo checkpoint uses its configured short sigma schedule.
+
 # The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
 # NVFP4). Quantized layers stay packed and use hardware matmuls where available.
 
@@ -18,8 +20,6 @@ title: Qwen-Image 2.1 Turbo (ComfyUI Quant)
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors", "divider-after":true}]
 @imageseed[{"id":"image-seed", "label":"Condition Image", "arg":"--image-seeds", "file-types":["images-in"], "hide-float":true}]
-@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":8, "min":1}]
-@float[{"label":"True CFG Scale", "arg":"--guidance-scales", "default":1, "min":0}]
 @switch[{"id":"pipeline-prompt-enhance", "label":"Pipeline Prompt Enhance", "arg":"--pipeline-prompt-enhance", "divider-before":true}]
 @stringfile[{"label":"Enhancer System Prompt", "arg":"--pipeline-prompt-enhance", "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
 @seeds[{"label":"Enhancer Seeds", "optional":true, "default":"", "seeds-arg":"--pipeline-prompt-enhance-seeds", "count-arg":"--pipeline-prompt-enhance-gen-seeds", "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
@@ -35,5 +35,7 @@ title: Qwen-Image 2.1 Turbo (ComfyUI Quant)
 @imageformat[{}]
 @imagesize[{"id":"os", "label":"Output Size", "arg":"--output-size", "default":"1024x1024", "exclude":["qres"]}]
 @int[{"id":"qres", "label":"Target Resolution (Aspect-Correct)", "arg":"--qwen21-resolution", "optional":true, "min":256, "exclude":["os"]}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
 --prompts "add your prompt here"
