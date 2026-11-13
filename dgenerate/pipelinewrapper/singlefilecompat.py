@@ -71,6 +71,40 @@ def convert_ltx2_transformer_checkpoint(checkpoint: dict, **kwargs) -> dict:
     return convert_ltx2_transformer_to_diffusers(rename_ltx25_prompt_adaln(checkpoint), **kwargs)
 
 
+def split_flux3_fused_qkv(checkpoint: dict) -> dict:
+    """
+    Split a ComfyUI fused ``qkv`` projection into Diffusers' ``to_q``, ``to_k``,
+    and ``to_v``.
+
+    Diffusers' FLUX.3 converter renames separate ``q_proj`` / ``k_proj`` /
+    ``v_proj`` weights and leaves ``qkv`` untouched. Those attention parameters
+    then never receive a tensor and stay on the meta device.
+    """
+    for key in list(checkpoint):
+        if not key.endswith('.qkv.weight'):
+            continue
+        weight = checkpoint.pop(key)
+        if weight.ndim != 2 or weight.shape[0] % 3:
+            checkpoint[key] = weight
+            continue
+        if getattr(weight, 'quant_type', None) is not None:
+            from diffusers.quantizers.gguf.utils import dequantize_gguf_tensor
+            weight = dequantize_gguf_tensor(weight)
+        query, key_weight, value = torch.chunk(weight, 3, dim=0)
+        base = key[:-len('qkv.weight')]
+        checkpoint[base + 'attn.to_q.weight'] = query
+        checkpoint[base + 'attn.to_k.weight'] = key_weight
+        checkpoint[base + 'attn.to_v.weight'] = value
+    return checkpoint
+
+
+def convert_flux3_transformer_checkpoint(checkpoint: dict, **kwargs) -> dict:
+    """Diffusers' FLUX.3 conversion, plus ComfyUI's fused ``qkv`` projections."""
+    from diffusers.loaders.single_file_utils import convert_flux3_transformer_checkpoint_to_diffusers
+    return split_flux3_fused_qkv(
+        convert_flux3_transformer_checkpoint_to_diffusers(checkpoint, **kwargs))
+
+
 def convert_hunyuan_video15_transformer_checkpoint(checkpoint: dict, **kwargs) -> dict:
     """Convert original Hunyuan Video weights to the Diffusers 1.5 names."""
     from diffusers.loaders.single_file_utils import convert_hunyuan_video_transformer_to_diffusers
@@ -1264,6 +1298,12 @@ def register_single_file_classes() -> None:
     ltx2 = loadable.get('LTX2VideoTransformer3DModel')
     if ltx2 is not None:
         ltx2['checkpoint_mapping_fn'] = convert_ltx2_transformer_checkpoint
+
+    # ComfyUI FLUX.3 fuses q, k, and v. Diffusers' converter leaves that
+    # tensor named ``qkv``, so the three attention linears stay on meta.
+    flux3 = loadable.get('Flux3Transformer2DModel')
+    if flux3 is not None:
+        flux3['checkpoint_mapping_fn'] = convert_flux3_transformer_checkpoint
 
     if hasattr(diffusers, 'HunyuanImageTransformer2DModel'):
         loadable['HunyuanImageTransformer2DModel'] = {

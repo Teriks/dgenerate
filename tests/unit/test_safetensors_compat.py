@@ -712,6 +712,25 @@ class TestSafetensorsCompat(unittest.TestCase):
         self.assertIsNotNone(layer, key)
         return layer
 
+    def test_flux3_fused_qkv_stays_packed(self):
+        import dgenerate.pipelinewrapper.singlefilecompat as singlefilecompat
+
+        weight, formats = self._formats()
+        loaded, converted = self._convert(
+            {f'content_mode_blocks.image.0.qkv.{name}': value
+             for name, value in formats['int8'].items()},
+            singlefilecompat.convert_flux3_transformer_checkpoint)
+        self.assertIn('content_mode_blocks.image.0.qkv.weight', loaded.sources)
+        for index, key in enumerate((
+                'mode_blocks.image.0.attn.to_q.weight',
+                'mode_blocks.image.0.attn.to_k.weight',
+                'mode_blocks.image.0.attn.to_v.weight')):
+            layer = self._assembled(loaded, converted, key)
+            self.assertFalse(layer.weight.is_floating_point())
+            expected = weight[index * 128:(index + 1) * 128]
+            error = (layer.dequantize(torch.float32, (128, 256)) - expected).norm() / expected.norm()
+            self.assertLess(error.item(), 0.15)
+
     def test_conversion_split_keeps_layers_packed(self):
         # Fused qkv split into q, k, v (Flux, SD3, Z-Image, HunyuanVideo).
         weight, formats = self._formats()

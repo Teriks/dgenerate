@@ -647,9 +647,9 @@ def adapt_flux3_checkpoint(checkpoint: dict) -> dict:
 
     ``final_layer.image.adaLN_modulation.1.weight`` is stored packed in some
     GGUF files. The Diffusers converter swaps its scale and shift halves, so
-    that one tensor is dequantized first.
+    that one tensor is dequantized first. A ComfyUI fused ``qkv`` is split
+    into ``to_q``, ``to_k``, and ``to_v``.
     """
-    from diffusers.loaders.single_file_utils import convert_flux3_transformer_checkpoint_to_diffusers
     from diffusers.quantizers.gguf.utils import dequantize_gguf_tensor
 
     stripped = {}
@@ -660,7 +660,7 @@ def adapt_flux3_checkpoint(checkpoint: dict) -> dict:
     adaln = 'final_layer.image.adaLN_modulation.1.weight'
     if adaln in stripped and _is_gguf_parameter(stripped[adaln]):
         stripped[adaln] = dequantize_gguf_tensor(stripped[adaln])
-    return convert_flux3_transformer_checkpoint_to_diffusers(stripped)
+    return _singlefilecompat.convert_flux3_transformer_checkpoint(stripped)
 
 
 def _adapt_named_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,

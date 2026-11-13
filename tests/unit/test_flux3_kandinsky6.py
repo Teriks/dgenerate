@@ -10,6 +10,7 @@ import dgenerate.pipelinewrapper.flux3 as _flux3
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.ggufcompat as _ggufcompat
 import dgenerate.pipelinewrapper.pipelines as _pipelines
+import dgenerate.pipelinewrapper.singlefilecompat as _singlefilecompat
 import dgenerate.pipelinewrapper.textencoderschema as _textencoderschema
 import dgenerate.pipelinewrapper.videopipelines.loading as _video_loading
 import dgenerate.pipelinewrapper.videopipelines.single_image_video as _single_image_video
@@ -82,6 +83,33 @@ class TestFlux3Kandinsky6(unittest.TestCase):
         self.assertIn('single_transformer_blocks.0.ff.linear_in.weight', converted)
         self.assertIn('timestep_embedder.linear_1.weight', converted)
         self.assertIn('proj_out.weight', converted)
+
+    def test_flux3_comfy_fused_qkv_is_split(self):
+        import diffusers.loaders.single_file_model as single_file_model
+
+        _singlefilecompat.register_single_file_classes()
+        weight = torch.arange(12, dtype=torch.float32).reshape(6, 2)
+        separate = torch.arange(4, dtype=torch.float32).reshape(2, 2)
+        converted = _singlefilecompat.convert_flux3_transformer_checkpoint({
+            'content_mode_blocks.image.0.qkv.weight': weight,
+            'single_blocks.0.qkv.weight': weight.clone(),
+            'txt_mode_blocks.0.qkv.weight': weight.clone(),
+            'content_mode_blocks.image.1.q_proj.weight': separate,
+        })
+        self.assertTrue(torch.equal(
+            converted['mode_blocks.image.0.attn.to_q.weight'], weight[:2]))
+        self.assertTrue(torch.equal(
+            converted['mode_blocks.image.0.attn.to_k.weight'], weight[2:4]))
+        self.assertTrue(torch.equal(
+            converted['mode_blocks.image.0.attn.to_v.weight'], weight[4:]))
+        self.assertIn('single_transformer_blocks.0.attn.to_q.weight', converted)
+        self.assertIn('txt_mode_blocks.0.attn.to_q.weight', converted)
+        self.assertNotIn('mode_blocks.image.0.qkv.weight', converted)
+        self.assertTrue(torch.equal(
+            converted['mode_blocks.image.1.attn.to_q.weight'], separate))
+        mapping = single_file_model.SINGLE_FILE_LOADABLE_CLASSES[
+            'Flux3Transformer2DModel']['checkpoint_mapping_fn']
+        self.assertIs(mapping, _singlefilecompat.convert_flux3_transformer_checkpoint)
 
     def test_kandinsky6_gguf_does_not_steal_kandinsky5(self):
         lite = _ggufcompat.detect_gguf_layout({
