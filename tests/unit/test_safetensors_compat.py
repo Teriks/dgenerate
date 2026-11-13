@@ -319,6 +319,181 @@ class TestSafetensorsCompat(unittest.TestCase):
             self.addCleanup(state.clear)
         return module.to(device)
 
+    def _w4a8_linear(self, fmt, rows, inputs, group, fp8_scales=False, codebook=True,
+                     correction=False, convrot=64):
+        marker = {'format': fmt, 'group_size': group, 'convrot_groupsize': convrot}
+        if fmt == 'w6a8_int8':
+            codes = torch.randint(0, 64, (rows, inputs))
+            packed = _pack_int6(codes)
+        else:
+            codes = torch.randint(0, 16, (rows, inputs))
+            packed = ((codes[:, 0::2] & 0x0F) | ((codes[:, 1::2] & 0x0F) << 4)).to(torch.int8)
+        rel = torch.rand(rows, inputs // group) + 0.05
+        if fp8_scales:
+            rel = rel.to(torch.float8_e4m3fn)
+        channel = torch.rand(rows) + 0.01
+        tensors = {
+            'layer.weight': packed, 'layer.weight_s_rel': rel,
+            'layer.weight_s_channel': channel, 'layer.comfy_quant': _marker(marker)}
+        if codebook and fmt != 'w6a8_int8':
+            tensors['layer.weight_codebook'] = torch.tensor(_safetensorscompat._W4A8_CODEBOOK)
+        if correction:
+            tensors['layer.weight_correction'] = torch.randn(inputs // group, rows) * 0.01
+        layer = self._loaded_layer(tensors)
+        module = _safetensorscompat.ComfyQuantLinear(inputs, rows, layer)
+        state = {'weight': layer.weight, 'weight_scale': layer.scale, 'weight_scale_2': layer.scale_2}
+        if layer.codebook is not None:
+            state['weight_codebook'] = layer.codebook
+        if layer.correction is not None:
+            state['weight_correction'] = layer.correction
+        module.load_state_dict(state, assign=True)
+        return module
+
+    def test_w4a8_triton_candidate_follows_triton(self):
+        from unittest import mock
+
+        cuda = torch.device('cuda')
+        with mock.patch.object(_safetensorscompat, '_has_triton', return_value=True):
+            self.assertEqual(
+                _safetensorscompat._format_candidates('asym_w4a8_int8', cuda), ('w4a8-triton',))
+            self.assertEqual(
+                _safetensorscompat._format_candidates('w6a8_int8', cuda), ('w4a8-triton',))
+            self.assertEqual(
+                _safetensorscompat._format_candidates('asym_w4a8_int8', torch.device('cpu')), ())
+            self.assertEqual(
+                _safetensorscompat._format_candidates('asym_w4a8_int8', torch.device('mps')), ())
+        with mock.patch.object(_safetensorscompat, '_has_triton', return_value=False):
+            self.assertEqual(_safetensorscompat._format_candidates('asym_w4a8_int8', cuda), ())
+
+    def test_w4a8_correction_stays_on_the_decoded_matmul(self):
+        module = self._w4a8_linear('asym_w4a8_int8', 8, 64, 16, correction=True)
+        self.assertIsNone(_safetensorscompat._w4a8_triton(module, torch.randn(2, 64)))
+
+    def test_w4a8_triton_matches_dequantized(self):
+        if not torch.cuda.is_available():
+            self.skipTest('no CUDA device')
+        if not _safetensorscompat._has_triton():
+            self.skipTest('triton is not installed')
+        device = torch.device('cuda')
+        cases = (
+            ('codebook', 'asym_w4a8_int8', 128, 256, 16, False, True, 64),
+            ('fp8-scale', 'asym_w4a8_int8', 128, 256, 16, True, True, 256),
+            ('uniform', 'asym_w4a8_int8', 40, 96, 16, False, False, 16),
+            ('group-32', 'asym_w4a8_int8', 64, 256, 32, False, True, 64),
+            ('w6a8', 'w6a8_int8', 64, 256, 16, False, False, 64),
+        )
+        for name, fmt, rows, inputs, group, fp8_scales, codebook, convrot in cases:
+            module = self._w4a8_linear(
+                fmt, rows, inputs, group, fp8_scales=fp8_scales, codebook=codebook,
+                convrot=convrot).to(device)
+            for activation_rows in (1, 3, 40):
+                with self.subTest(layout=name, rows=activation_rows):
+                    activation = torch.randn(
+                        activation_rows, inputs, device=device, dtype=torch.bfloat16)
+                    output = _safetensorscompat._w4a8_triton(module, activation)
+                    self.assertIsNotNone(output)
+                    reference = module._dequantized_matmul(activation)
+                    error = _safetensorscompat._relative_error(output, reference)
+                    self.assertLess(error, _safetensorscompat._HARDWARE_TOLERANCE['w4a8-triton'])
+
+    def test_unpack_candidates_follow_triton(self):
+        from unittest import mock
+
+        cuda = torch.device('cuda')
+        with mock.patch.object(_safetensorscompat, '_has_triton', return_value=True), \
+                mock.patch('torch.cuda.get_device_capability', return_value=(8, 9)):
+            self.assertEqual(
+                _safetensorscompat._format_candidates('nvfp4', cuda), ('nvfp4-triton',))
+            self.assertEqual(
+                _safetensorscompat._format_candidates('mxfp8', cuda), ('mxfp8-triton',))
+            self.assertEqual(
+                _safetensorscompat._format_candidates('convrot_w4a4', cuda), ('w4a4-triton',))
+            self.assertEqual(
+                _safetensorscompat._format_candidates('mxfp8', torch.device('cpu')), ())
+            self.assertEqual(
+                _safetensorscompat._format_candidates('nvfp4', torch.device('mps')), ('nvfp4-mlx',))
+        with mock.patch.object(_safetensorscompat, '_has_triton', return_value=False), \
+                mock.patch('torch.cuda.get_device_capability', return_value=(8, 9)):
+            self.assertEqual(_safetensorscompat._format_candidates('nvfp4', cuda), ())
+            self.assertEqual(_safetensorscompat._format_candidates('convrot_w4a4', cuda), ())
+        for name in ('w4a4-triton', 'nvfp4-triton', 'mxfp8-triton'):
+            self.assertIn(name, _safetensorscompat._WEIGHT_ONLY)
+        if hasattr(torch.nn.functional, 'scaled_mm') and hasattr(torch, 'float4_e2m1fn_x2'):
+            with mock.patch.object(_safetensorscompat, '_has_triton', return_value=True), \
+                    mock.patch('torch.cuda.get_device_capability', return_value=(10, 0)), \
+                    mock.patch('torch.version.hip', None):
+                self.assertEqual(
+                    _safetensorscompat._format_candidates('nvfp4', cuda),
+                    ('nvfp4', 'nvfp4-triton'))
+
+    def _quant_module(self, tensors, inputs, outputs, device):
+        layer = self._loaded_layer(tensors)
+        module = _safetensorscompat.ComfyQuantLinear(inputs, outputs, layer)
+        state = {'weight': layer.weight, 'weight_scale': layer.scale}
+        if layer.scale_2 is not None:
+            state['weight_scale_2'] = layer.scale_2
+        module.load_state_dict(state, assign=True)
+        return module.to(device)
+
+    def test_triton_unpack_matches_dequantized(self):
+        if not torch.cuda.is_available():
+            self.skipTest('no CUDA device')
+        if not _safetensorscompat._has_triton():
+            self.skipTest('triton is not installed')
+        device = torch.device('cuda')
+        weight = torch.randn(128, 256) * 0.02
+        packed, scale = _quantize_int4_convrot(weight, 64)
+        marker = {'format': 'convrot_w4a4', 'convrot_groupsize': 64}
+        per_row = self._quant_module({
+            'layer.weight': packed, 'layer.weight_scale': scale,
+            'layer.comfy_quant': _marker(marker)}, 256, 128, device)
+        packed, scale = _quantize_int4_convrot(weight, 64, grouped=True)
+        grouped = self._quant_module({
+            'layer.weight': packed, 'layer.weight_scale': scale,
+            'layer.comfy_quant': _marker(marker)}, 256, 128, device)
+        packed, scale, tensor_scale = _quantize_nvfp4(weight)
+        nvfp4 = self._quant_module({
+            'layer.weight': packed, 'layer.weight_scale': scale,
+            'layer.weight_scale_2': tensor_scale,
+            'layer.comfy_quant': _marker({'format': 'nvfp4'})}, 256, 128, device)
+        packed, scale = _quantize_mxfp8(weight)
+        mxfp8 = self._quant_module({
+            'layer.weight': packed, 'layer.weight_scale': scale,
+            'layer.comfy_quant': _marker({'format': 'mxfp8'})}, 256, 128, device)
+        narrow = torch.randn(100, 200) * 0.02
+        packed, scale = _quantize_mxfp8(narrow)
+        mxfp8_padded = self._quant_module({
+            'layer.weight': packed, 'layer.weight_scale': scale,
+            'layer.comfy_quant': _marker({'format': 'mxfp8'})}, 200, 100, device)
+        cases = (
+            ('w4a4', per_row, _safetensorscompat._w4a4_triton, 256),
+            ('w4a4-grouped', grouped, _safetensorscompat._w4a4_triton, 256),
+            ('nvfp4', nvfp4, _safetensorscompat._nvfp4_triton, 256),
+            ('mxfp8', mxfp8, _safetensorscompat._mxfp8_triton, 256),
+            ('mxfp8-padded', mxfp8_padded, _safetensorscompat._mxfp8_triton, 200),
+        )
+        for name, module, function, inputs in cases:
+            limit = _safetensorscompat._HARDWARE_TOLERANCE['w4a4-triton' if 'w4a4' in name else 'nvfp4-triton']
+            for rows in (1, 8, 40):
+                with self.subTest(layout=name, rows=rows):
+                    activation = torch.randn(rows, inputs, device=device, dtype=torch.bfloat16)
+                    output = function(module, activation)
+                    self.assertIsNotNone(output)
+                    reference = module._dequantized_matmul(activation)
+                    self.assertLess(_safetensorscompat._relative_error(output, reference), limit)
+
+        per_row.full_precision_mm = True
+        grouped_rows = torch.randn(40, 256, device=device, dtype=torch.bfloat16)
+        from unittest import mock
+        with mock.patch.object(
+                _safetensorscompat, '_w4a8_int8_gemm', side_effect=AssertionError('int8')):
+            output = _safetensorscompat._w4a4_triton(per_row, grouped_rows)
+            self.assertIsNotNone(output)
+            output = _safetensorscompat._w4a4_triton(grouped, grouped_rows)
+            self.assertIsNotNone(output)
+        self.assertLess(
+            _safetensorscompat._relative_error(output, grouped._dequantized_matmul(grouped_rows)), 0.02)
+
     def test_hardware_matmul_matches_dequantized(self):
         if not torch.cuda.is_available():
             self.skipTest('no CUDA device')

@@ -9153,28 +9153,42 @@ Where the hardware has a matching kernel, quantized layers run as low precision
 matmuls. Otherwise each weight is decoded to the activation dtype for the matmul,
 which works on any device, CPU included.
 
-=========  ==========================================================================
-Format     Hardware kernels, in the order they are tried
-=========  ==========================================================================
-INT8       CUDA (sm75+) and XPU: ``torch._int_mm``. ROCm: AITER ``gemm_a8w8``,
-           then ``torch._int_mm``. MPS: MLX ``quantized_matmul``, then
-           ``torch._weight_int8pack_mm``
-FP8        CUDA (sm89+) and XPU: ``torch._scaled_mm``. ROCm MI300, MI350, and
-           RDNA4: AITER ``gemm_a8w8``, then ``torch._scaled_mm``. MPS: MLX
-           ``quantized_matmul``
-NVFP4      CUDA Blackwell: block scaled ``scaled_mm``. MPS: MLX ``quantized_matmul``
-=========  ==========================================================================
+===========  ==========================================================================
+Format       Hardware kernels, in the order they are tried
+===========  ==========================================================================
+INT8         CUDA (sm75+) and XPU: ``torch._int_mm``. ROCm: AITER ``gemm_a8w8``,
+             then ``torch._int_mm``. MPS: MLX ``quantized_matmul``, then
+             ``torch._weight_int8pack_mm``
+FP8          CUDA (sm89+) and XPU: ``torch._scaled_mm``. ROCm MI300, MI350, and
+             RDNA4: AITER ``gemm_a8w8``, then ``torch._scaled_mm``. MPS: MLX
+             ``quantized_matmul``
+NVFP4        CUDA Blackwell: block scaled ``scaled_mm``, then a Triton unpack
+             and a PyTorch GEMM. Other CUDA, ROCm, and XPU: the Triton unpack
+             when Triton is installed, including ``triton-windows``. MPS: MLX
+             ``quantized_matmul``
+MXFP8        CUDA, ROCm, and XPU with Triton: a Triton unpack and a PyTorch GEMM
+W4A4         CUDA, ROCm, and XPU with Triton. A grouped scale, a short
+             activation, and a full-precision layer unpack in Triton and use a
+             PyTorch GEMM. A longer per-row layer unpacks to INT8 and uses
+             ``torch._int_mm``
+W4A8, W6A8   CUDA, ROCm, and XPU when Triton is installed, including the
+             ``triton-windows`` extra. A short activation is a Triton matmul.
+             A longer one unpacks in Triton and multiplies with ``torch._int_mm``.
+             A correction term is decoded instead
+===========  ==========================================================================
 
-The CUDA, ROCm, and XPU kernels quantize the activations on the fly (W8A8, W4A4),
-as ComfyUI does. Layers a file marks ``full_precision_matrix_mult``, and plain FP8
-files, skip those kernels and decode instead, again as in ComfyUI. The MPS kernels
-decode the weights inside the matmul and keep the activations as they are, so they
-serve those layers too.
+The CUDA, ROCm, and XPU kernels quantize the activations on the fly (W8A8,
+Blackwell NVFP4, and a long per-row W4A4), as ComfyUI does. The long W4A8 and
+W6A8 path does the same. Layers a file marks ``full_precision_matrix_mult``,
+and plain FP8 files, skip those kernels and decode instead, again as in
+ComfyUI. A full-precision W4A8 or W6A8 layer keeps the Triton matmul, which
+leaves the activations as they are. A full-precision W4A4 layer, and the
+MXFP8 and NVFP4 Triton unpacks, also leave the activations as they are. The
+MPS kernels decode the weights inside the matmul and keep the activations as
+they are, so they serve those layers too.
 
-MXFP8, INT4 ConvRot, W4A8, and W6A8 are decoded to the activation dtype for the matmul.
-That runs on CUDA, ROCm, XPU, MPS, and CPU. The tensor-core kernels ComfyUI uses
-for them (Blackwell for MXFP8, SM 7.5 and newer for INT4, SM 8 and newer for W4A8)
-are not called.
+On MPS and CPU, MXFP8, NVFP4, and W4A4 are decoded to the activation dtype
+for the matmul. CUDA, ROCm, and XPU do that when Triton is not installed.
 
 The AITER (ROCm) and MLX (MPS) kernels are downloaded from the Hugging Face Hub
 through the ``kernels`` package, ``kernels-community/aiter-kernels`` and
@@ -9221,14 +9235,19 @@ recognized from its tensors. Do not set ``quantizer=`` on that URI, and do
 not use ``--quantizer gguf``. Loading requires the ``gguf`` package.
 
 Quantized linears stay packed, so a transformer needs roughly the size of
-its file. Each matmul dequantizes its weight. On CUDA of compute capability
-7.0 or newer, Diffusers can run that matmul with the ``Isotr0py/ggml`` kernel.
-``dgenerate --sub-command kernel-warmup`` downloads the build for this
-operating system. A machine with no published build dequantizes in PyTorch.
+its file. Each matmul dequantizes its weight. On CUDA, ROCm, and XPU with
+Triton installed, including the ``triton-windows`` extra, Q4_0, Q4_1, Q5_0,
+Q5_1, Q8_0, Q2_K, Q3_K, Q4_K, Q5_K, Q6_K, IQ4_NL, and IQ4_XS unpack in Triton
+and multiply with a PyTorch GEMM. On CUDA of compute capability 7.0 or newer,
+Diffusers can run that matmul with the ``Isotr0py/ggml`` kernel when that
+build is present. ``dgenerate --sub-command kernel-warmup`` downloads the
+build for this operating system. PyTorch dequantizes the weight when those
+kernels are not used.
 
 ComfyUI files prefix tensor names with ``model.diffusion_model.``. That
-prefix is removed on load. A Comfy linear stored transposed stays packed and
-is transposed after dequantization.
+prefix is removed on load. A Comfy linear stored transposed stays packed.
+Dequantization uses the Triton unpack on CUDA, ROCm, and XPU, then the weight
+is transposed.
 
 Transformers
 ------------

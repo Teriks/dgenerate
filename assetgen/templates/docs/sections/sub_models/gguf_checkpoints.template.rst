@@ -12,14 +12,19 @@ recognized from its tensors. Do not set ``quantizer=`` on that URI, and do
 not use ``--quantizer gguf``. Loading requires the ``gguf`` package.
 
 Quantized linears stay packed, so a transformer needs roughly the size of
-its file. Each matmul dequantizes its weight. On CUDA of compute capability
-7.0 or newer, Diffusers can run that matmul with the ``Isotr0py/ggml`` kernel.
-``dgenerate --sub-command kernel-warmup`` downloads the build for this
-operating system. A machine with no published build dequantizes in PyTorch.
+its file. Each matmul dequantizes its weight. On CUDA, ROCm, and XPU with
+Triton installed, including the ``triton-windows`` extra, Q4_0, Q4_1, Q5_0,
+Q5_1, Q8_0, Q2_K, Q3_K, Q4_K, Q5_K, Q6_K, IQ4_NL, and IQ4_XS unpack in Triton
+and multiply with a PyTorch GEMM. On CUDA of compute capability 7.0 or newer,
+Diffusers can run that matmul with the ``Isotr0py/ggml`` kernel when that
+build is present. ``dgenerate --sub-command kernel-warmup`` downloads the
+build for this operating system. PyTorch dequantizes the weight when those
+kernels are not used.
 
 ComfyUI files prefix tensor names with ``model.diffusion_model.``. That
-prefix is removed on load. A Comfy linear stored transposed stays packed and
-is transposed after dequantization.
+prefix is removed on load. A Comfy linear stored transposed stays packed.
+Dequantization uses the Triton unpack on CUDA, ROCm, and XPU, then the weight
+is transposed.
 
 Transformers
 ------------

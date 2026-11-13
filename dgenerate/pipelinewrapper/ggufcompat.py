@@ -26,6 +26,9 @@ checkpoints and adapt ComfyUI layouts so Diffusers can load them without a manua
 Text-encoder GGUF files (T5, UMT5, Qwen, Mistral, Gemma) are read here too. Their
 llama.cpp tensor names are renamed to Hugging Face names, and the packed weights
 stay packed for ``--text-encoders``.
+
+Packed linear matmuls on CUDA, ROCm, and XPU unpack in Triton and use a PyTorch
+GEMM. Triton is imported only when that matmul runs.
 """
 
 import contextlib
@@ -793,6 +796,354 @@ def adapt_qwen_layered_checkpoint(checkpoint: dict) -> dict:
     return checkpoint
 
 
+_kernels = None
+_triton_available = None
+_iq4_tables = {}
+
+# Same 16 levels Diffusers uses for IQ4_NL and IQ4_XS.
+_IQ4_LEVELS = (
+    -127, -104, -83, -65, -49, -35, -22, -10, 1, 13, 25, 38, 53, 69, 89, 113)
+
+
+def _has_triton() -> bool:
+    global _triton_available
+    if _triton_available is None:
+        import importlib.util
+        _triton_available = importlib.util.find_spec('triton') is not None
+    return _triton_available
+
+
+def _compile_gguf_kernels():
+    """One Triton kernel per GGUF type. Scales are prepared in PyTorch."""
+    global _kernels
+    if _kernels is not None:
+        return _kernels
+
+    import triton
+    import triton.language as tl
+
+    @triton.jit
+    def _nibbles(blocks, stride_b, pid, offset):
+        t = tl.arange(0, 32)
+        byte_index = tl.where(t < 16, t, t - 16)
+        shift = tl.where(t < 16, 0, 4)
+        raw = tl.load(blocks + pid * stride_b + offset + byte_index).to(tl.int32) & 0xFF
+        return t, (raw >> shift) & 0xF
+
+    @triton.jit
+    def q4_0(blocks, scale, out, stride_b, stride_o):
+        pid = tl.program_id(0)
+        t, nibble = _nibbles(blocks, stride_b, pid, 2)
+        d = tl.load(scale + pid)
+        tl.store(out + pid * stride_o + t, (nibble - 8).to(tl.float32) * d)
+
+    @triton.jit
+    def q4_1(blocks, scale, minimum, out, stride_b, stride_o):
+        pid = tl.program_id(0)
+        t, nibble = _nibbles(blocks, stride_b, pid, 4)
+        d = tl.load(scale + pid)
+        m = tl.load(minimum + pid)
+        tl.store(out + pid * stride_o + t, nibble.to(tl.float32) * d + m)
+
+    @triton.jit
+    def q5_0(blocks, scale, words, out, stride_b, stride_o):
+        pid = tl.program_id(0)
+        t, nibble = _nibbles(blocks, stride_b, pid, 6)
+        bit = (tl.load(words + pid) >> t) & 1
+        d = tl.load(scale + pid)
+        value = (nibble | (bit << 4)) - 16
+        tl.store(out + pid * stride_o + t, value.to(tl.float32) * d)
+
+    @triton.jit
+    def q5_1(blocks, scale, minimum, words, out, stride_b, stride_o):
+        pid = tl.program_id(0)
+        t, nibble = _nibbles(blocks, stride_b, pid, 8)
+        bit = (tl.load(words + pid) >> t) & 1
+        d = tl.load(scale + pid)
+        m = tl.load(minimum + pid)
+        value = (nibble | (bit << 4)).to(tl.float32)
+        tl.store(out + pid * stride_o + t, value * d + m)
+
+    @triton.jit
+    def q8_0(blocks, scale, out, stride_b, stride_o):
+        pid = tl.program_id(0)
+        t = tl.arange(0, 32)
+        raw = tl.load(blocks + pid * stride_b + 2 + t).to(tl.int32) & 0xFF
+        value = tl.where(raw >= 128, raw - 256, raw).to(tl.float32)
+        tl.store(out + pid * stride_o + t, value * tl.load(scale + pid))
+
+    @triton.jit
+    def iq4_nl(blocks, scale, table, out, stride_b, stride_o):
+        pid = tl.program_id(0)
+        t, nibble = _nibbles(blocks, stride_b, pid, 2)
+        level = tl.load(table + nibble)
+        tl.store(out + pid * stride_o + t, level * tl.load(scale + pid))
+
+    @triton.jit
+    def q4_k(blocks, scale, mins, out, stride_b, stride_s, stride_o):
+        # Lows of each 32-byte group, then its highs. Eight groups.
+        pid = tl.program_id(0)
+        t = tl.arange(0, 256)
+        group = t // 32
+        column = t % 32
+        byte = (group // 2) * 32 + column
+        shift = (group % 2) * 4
+        raw = tl.load(blocks + pid * stride_b + 16 + byte).to(tl.int32) & 0xFF
+        nibble = ((raw >> shift) & 0xF).to(tl.float32)
+        base = pid * stride_s + group
+        tl.store(
+            out + pid * stride_o + t,
+            nibble * tl.load(scale + base) - tl.load(mins + base))
+
+    @triton.jit
+    def q5_k(blocks, scale, mins, out, stride_b, stride_s, stride_o):
+        pid = tl.program_id(0)
+        t = tl.arange(0, 256)
+        group = t // 32
+        column = t % 32
+        byte = (group // 2) * 32 + column
+        shift = (group % 2) * 4
+        raw = tl.load(blocks + pid * stride_b + 48 + byte).to(tl.int32) & 0xFF
+        nibble = (raw >> shift) & 0xF
+        high = tl.load(blocks + pid * stride_b + 16 + column).to(tl.int32) & 0xFF
+        value = (nibble | (((high >> group) & 1) << 4)).to(tl.float32)
+        base = pid * stride_s + group
+        tl.store(
+            out + pid * stride_o + t,
+            value * tl.load(scale + base) - tl.load(mins + base))
+
+    @triton.jit
+    def q6_k(blocks, scale, out, stride_b, stride_s, stride_o):
+        pid = tl.program_id(0)
+        t = tl.arange(0, 256)
+        group = t // 32
+        column = t % 32
+        low_index = t // 64
+        low_byte = (low_index // 2) * 64 + (t % 64)
+        low_shift = (low_index % 2) * 4
+        low = tl.load(blocks + pid * stride_b + low_byte).to(tl.int32) & 0xFF
+        low = (low >> low_shift) & 0xF
+        high_shift = (group % 4) * 2
+        high_byte = (group // 4) * 32 + column
+        high = tl.load(blocks + pid * stride_b + 128 + high_byte).to(tl.int32) & 0xFF
+        high = (high >> high_shift) & 3
+        value = (low | (high << 4)) - 32
+        sc = tl.load(scale + pid * stride_s + (t // 16))
+        tl.store(out + pid * stride_o + t, value.to(tl.float32) * sc)
+
+    @triton.jit
+    def q3_k(blocks, scale, out, stride_b, stride_s, stride_o):
+        pid = tl.program_id(0)
+        t = tl.arange(0, 256)
+        column = t % 32
+        band = t // 32
+        shift = (band % 4) * 2
+        byte = (band // 4) * 32 + column
+        raw = tl.load(blocks + pid * stride_b + 32 + byte).to(tl.int32) & 0xFF
+        low = (raw >> shift) & 3
+        mask = tl.load(blocks + pid * stride_b + column).to(tl.int32) & 0xFF
+        high = ((mask >> band) & 1) ^ 1
+        value = low.to(tl.float32) - (high << 2).to(tl.float32)
+        sc = tl.load(scale + pid * stride_s + (t // 16))
+        tl.store(out + pid * stride_o + t, value * sc)
+
+    @triton.jit
+    def q2_k(blocks, scale, minimum, out, stride_b, stride_s, stride_o):
+        pid = tl.program_id(0)
+        t = tl.arange(0, 256)
+        column = t % 32
+        band = t // 32
+        shift = (band % 4) * 2
+        byte = (band // 4) * 32 + column
+        raw = tl.load(blocks + pid * stride_b + 16 + byte).to(tl.int32) & 0xFF
+        code = ((raw >> shift) & 3).to(tl.float32)
+        base = pid * stride_s + (t // 16)
+        tl.store(
+            out + pid * stride_o + t,
+            code * tl.load(scale + base) - tl.load(minimum + base))
+
+    @triton.jit
+    def iq4_xs(blocks, scale, table, out, stride_b, stride_s, stride_o):
+        pid = tl.program_id(0)
+        t = tl.arange(0, 256)
+        group = t // 32
+        pos = t % 32
+        byte = group * 16 + (pos % 16)
+        shift = (pos // 16) * 4
+        raw = tl.load(blocks + pid * stride_b + 8 + byte).to(tl.int32) & 0xFF
+        level = tl.load(table + ((raw >> shift) & 0xF))
+        sc = tl.load(scale + pid * stride_s + group)
+        tl.store(out + pid * stride_o + t, level * sc)
+
+    _kernels = {
+        'q4_0': q4_0, 'q4_1': q4_1, 'q5_0': q5_0, 'q5_1': q5_1, 'q8_0': q8_0,
+        'iq4_nl': iq4_nl, 'q4_k': q4_k, 'q5_k': q5_k, 'q6_k': q6_k,
+        'q3_k': q3_k, 'q2_k': q2_k, 'iq4_xs': iq4_xs,
+    }
+    return _kernels
+
+
+def _half(blocks, offset):
+    """fp16 field at a byte offset, one value per block, as float32."""
+    return blocks[:, offset:offset + 2].contiguous().view(torch.float16).reshape(-1).float()
+
+
+def _word(blocks, offset):
+    """Little-endian uint32 at a byte offset, kept as int32 bits."""
+    raw = blocks[:, offset:offset + 4].to(torch.int32)
+    return raw[:, 0] | (raw[:, 1] << 8) | (raw[:, 2] << 16) | (raw[:, 3] << 24)
+
+
+def _scale_min(scales):
+    """Q4_K / Q5_K 12-byte scale block -> ``(blocks, 8)`` scale and min codes."""
+    low = scales[:, 0:4].to(torch.int32)
+    high = scales[:, 4:8].to(torch.int32)
+    mixed = scales[:, 8:12].to(torch.int32)
+    sc = torch.cat([low & 0x3F, (mixed & 0x0F) | ((low >> 2) & 0x30)], dim=1)
+    minimum = torch.cat([high & 0x3F, (mixed >> 4) | ((high >> 2) & 0x30)], dim=1)
+    return sc.float(), minimum.float()
+
+
+def _iq4_table(device):
+    table = _iq4_tables.get(str(device))
+    if table is None:
+        table = torch.tensor(_IQ4_LEVELS, dtype=torch.float32, device=device)
+        _iq4_tables[str(device)] = table
+    return table
+
+
+def _launch_block(qtype, blocks, out):
+    """Run the kernel for ``qtype``. ``blocks`` is ``(n, type_size)`` uint8."""
+    kernels = _compile_gguf_kernels()
+    n = blocks.shape[0]
+    stride_b = blocks.stride(0)
+    stride_o = out.stride(0)
+    name = qtype.name.lower()
+
+    if name in ('q4_0', 'q8_0'):
+        kernels[name][(n,)](blocks, _half(blocks, 0), out, stride_b, stride_o)
+        return
+    if name == 'q4_1':
+        kernels[name][(n,)](
+            blocks, _half(blocks, 0), _half(blocks, 2), out, stride_b, stride_o)
+        return
+    if name == 'q5_0':
+        kernels[name][(n,)](
+            blocks, _half(blocks, 0), _word(blocks, 2), out, stride_b, stride_o)
+        return
+    if name == 'q5_1':
+        kernels[name][(n,)](
+            blocks, _half(blocks, 0), _half(blocks, 2), _word(blocks, 4),
+            out, stride_b, stride_o)
+        return
+    if name == 'iq4_nl':
+        kernels[name][(n,)](
+            blocks, _half(blocks, 0), _iq4_table(blocks.device), out, stride_b, stride_o)
+        return
+    if name in ('q4_k', 'q5_k'):
+        scale, minimum = _scale_min(blocks[:, 4:16])
+        scale = (_half(blocks, 0).unsqueeze(1) * scale).contiguous()
+        minimum = (_half(blocks, 2).unsqueeze(1) * minimum).contiguous()
+        kernels[name][(n,)](
+            blocks, scale, minimum, out, stride_b, scale.stride(0), stride_o)
+        return
+    if name == 'q6_k':
+        codes = blocks[:, 192:208].contiguous().view(torch.int8).float()
+        scale = (_half(blocks, 208).unsqueeze(1) * codes).contiguous()
+        kernels[name][(n,)](blocks, scale, out, stride_b, scale.stride(0), stride_o)
+        return
+    if name == 'q3_k':
+        index = torch.arange(16, device=blocks.device)
+        low = blocks[:, 96:104].to(torch.int32)
+        high = blocks[:, 104:108].to(torch.int32)
+        low = (low[:, index % 8] >> ((index // 8) * 4)) & 0xF
+        high = (high[:, index % 4] >> ((index // 4) * 2)) & 3
+        codes = (low | (high << 4)).to(torch.int8).float() - 32
+        scale = (_half(blocks, 108).unsqueeze(1) * codes).contiguous()
+        kernels[name][(n,)](blocks, scale, out, stride_b, scale.stride(0), stride_o)
+        return
+    if name == 'q2_k':
+        codes = blocks[:, :16].to(torch.int32)
+        scale = (_half(blocks, 80).unsqueeze(1) * (codes & 0xF).float()).contiguous()
+        minimum = (_half(blocks, 82).unsqueeze(1) * (codes >> 4).float()).contiguous()
+        kernels[name][(n,)](
+            blocks, scale, minimum, out, stride_b, scale.stride(0), stride_o)
+        return
+    if name == 'iq4_xs':
+        group = torch.arange(8, device=blocks.device)
+        low = blocks[:, 4:8].to(torch.int32)
+        high = blocks[:, 2:4].contiguous().view(torch.int16).reshape(-1).to(torch.int32)
+        low = (low[:, group // 2] >> ((group % 2) * 4)) & 0xF
+        high = (high.unsqueeze(1) >> (group * 2)) & 3
+        codes = (low | (high << 4)).float() - 32
+        scale = (_half(blocks, 0).unsqueeze(1) * codes).contiguous()
+        kernels[name][(n,)](
+            blocks, scale, _iq4_table(blocks.device), out,
+            stride_b, scale.stride(0), stride_o)
+        return
+    raise KeyError(name)
+
+
+def dequantize(param):
+    """
+    Dense float32 weight for a GGUF parameter, or ``None``.
+
+    ``None`` means Triton is unavailable, the device is not CUDA or XPU, or
+    the quant type is not one of the unpacked types. The shape matches
+    Diffusers ``dequantize_gguf_tensor``.
+    """
+    qtype = getattr(param, 'quant_type', None)
+    if qtype is None or not _has_triton() or param.device.type not in ('cuda', 'xpu'):
+        return None
+    import gguf
+    try:
+        qtype = gguf.GGMLQuantizationType(int(qtype))
+    except ValueError:
+        return None
+    if qtype.name.lower() not in (
+            'q4_0', 'q4_1', 'q5_0', 'q5_1', 'q8_0', 'q2_k', 'q3_k', 'q4_k',
+            'q5_k', 'q6_k', 'iq4_nl', 'iq4_xs'):
+        return None
+    block_size, type_size = gguf.GGML_QUANT_SIZES[qtype]
+    data = param.as_tensor() if hasattr(param, 'as_tensor') else param.detach()
+    data = data.view(torch.uint8)
+    if data.numel() % type_size:
+        return None
+    n_blocks = data.numel() // type_size
+    blocks = data.reshape(n_blocks, type_size)
+    if not blocks.is_contiguous():
+        blocks = blocks.contiguous()
+    out = torch.empty(n_blocks, block_size, device=blocks.device, dtype=torch.float32)
+    if n_blocks:
+        _launch_block(qtype, blocks, out)
+    shape = (*param.shape[:-1], param.shape[-1] // type_size * block_size)
+    return out.reshape(shape)
+
+
+def linear(module, inputs):
+    """
+    ``F.linear`` on a Triton-unpacked GGUF weight.
+
+    ``None`` leaves the caller on the Diffusers path. A Comfy transposed
+    weight is transposed after the unpack, same as the PyTorch path.
+    """
+    try:
+        weight = dequantize(module.weight)
+    except Exception as error:
+        _messages.debug_log(f'GGUF Triton dequant failed, using PyTorch: {error}')
+        return None
+    if weight is None:
+        return None
+    if getattr(module.weight, '_dgenerate_comfy_transpose', False):
+        weight = weight.transpose(0, 1).contiguous()
+    dtype = getattr(module, 'compute_dtype', None) or inputs.dtype
+    weight = weight.to(dtype)
+    bias = module.bias
+    if bias is not None:
+        bias = bias.to(dtype)
+    return torch.nn.functional.linear(inputs, weight, bias)
+
+
 def install_gguf_patches() -> None:
     """
     Let a Comfy quantized linear whose packed shape is transposed load
@@ -847,6 +1198,11 @@ def install_gguf_patches() -> None:
                 value, requires_grad=bool(value.requires_grad))
 
     def forward_native(self, inputs):
+        # Triton unpack plus a PyTorch GEMM. Comfy's transposed weights never
+        # enter Diffusers' CUDA kernel, so this is their hardware path too.
+        output = linear(self, inputs)
+        if output is not None:
+            return output
         if not getattr(self.weight, '_dgenerate_comfy_transpose', False):
             return original_forward(self, inputs)
         weight = gguf_utils.dequantize_gguf_tensor(self.weight)

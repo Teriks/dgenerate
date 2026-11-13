@@ -47,13 +47,14 @@ scaled fp8 files name their scales ``scale_weight`` and ``scale_input``.
 
 Quantized linears stay packed in :py:class:`ComfyQuantLinear`. Where the
 hardware has a matching matmul (INT8 and FP8 on CUDA, ROCm, XPU, and MPS,
-NVFP4 on Blackwell and MPS), including ``kernels`` Hub kernels on MPS and ROCm,
-it is used once verified for accuracy and speed.
-Otherwise the weight is decoded to the activation dtype on each forward with
-plain torch ops, which runs on CUDA, ROCm, XPU, MPS, and CPU alike. Every packed tensor, float32 scales
-included (as int32 bit views), is an integer parameter: Diffusers' load-time
-cast and later dtype casts leave it untouched, and offload hooks move it like
-any other parameter.
+NVFP4 on Blackwell and MPS, and Triton on CUDA, ROCm, and XPU for NVFP4,
+MXFP8, INT4 ConvRot, W4A8, and W6A8), including ``kernels`` Hub kernels on
+MPS and ROCm, it is used once verified for accuracy and speed. Otherwise the
+weight is decoded to the activation dtype on each forward with plain torch
+ops, which runs on CUDA, ROCm, XPU, MPS, and CPU alike. Every packed tensor, float32 scales included
+(as int32 bit views), is an integer parameter: Diffusers' load-time cast and
+later dtype casts leave it untouched, and offload hooks move it like any
+other parameter.
 """
 
 import contextlib
@@ -1539,7 +1540,12 @@ def _float8_matmul_format(device: torch.device) -> tuple[torch.dtype, float, flo
 
 
 # Kernels that decode the weight inside the matmul and leave activations alone.
-_WEIGHT_ONLY = frozenset({'int8-mlx', 'int8-pack', 'fp8-mlx', 'nvfp4-mlx'})
+# ``w4a8-triton`` and ``w4a4-triton`` quantize activations only for a long,
+# non-full-precision call.
+_WEIGHT_ONLY = frozenset({
+    'int8-mlx', 'int8-pack', 'fp8-mlx', 'nvfp4-mlx', 'w4a8-triton',
+    'w4a4-triton', 'nvfp4-triton', 'mxfp8-triton',
+})
 
 
 def _candidates(module: 'ComfyQuantLinear', device: torch.device) -> tuple[str, ...]:
@@ -1573,12 +1579,505 @@ def _format_candidates(fmt: str, device: torch.device) -> tuple[str, ...]:
     elif fmt == 'nvfp4':
         if device.type == 'mps':
             return ('nvfp4-mlx',)
-        if (device.type == 'cuda' and not hip
-                and torch.cuda.get_device_capability(device)[0] in (10, 12)
-                and hasattr(torch.nn.functional, 'scaled_mm')
-                and hasattr(torch, 'float4_e2m1fn_x2')):
+        blackwell = (
+            device.type == 'cuda' and not hip
+            and torch.cuda.get_device_capability(device)[0] in (10, 12)
+            and hasattr(torch.nn.functional, 'scaled_mm')
+            and hasattr(torch, 'float4_e2m1fn_x2'))
+        triton_unpack = device.type in ('cuda', 'xpu') and _has_triton()
+        if blackwell and triton_unpack:
+            return ('nvfp4', 'nvfp4-triton')
+        if blackwell:
             return ('nvfp4',)
+        if triton_unpack:
+            return ('nvfp4-triton',)
+    elif fmt == 'mxfp8' and device.type in ('cuda', 'xpu') and _has_triton():
+        return ('mxfp8-triton',)
+    elif fmt == 'convrot_w4a4' and device.type in ('cuda', 'xpu') and _has_triton():
+        return ('w4a4-triton',)
+    if fmt in _GROUPED_INT8_FORMATS and device.type in ('cuda', 'xpu') and _has_triton():
+        return ('w4a8-triton',)
     return ()
+
+
+_triton_available = None
+
+
+def _has_triton() -> bool:
+    """True when Triton, including the ``triton-windows`` build, can be imported."""
+    global _triton_available
+    if _triton_available is None:
+        import importlib.util
+        _triton_available = importlib.util.find_spec('triton') is not None
+    return _triton_available
+
+
+# A short activation stays on the fused Triton matmul. A longer one unpacks to
+# INT8 once and uses the tensor-core GEMM. 32 is the row padding ``_int_mm`` wants.
+_W4A8_INT8_GEMM_ROWS = 32
+
+_w4a8_kernels = None
+
+
+def _compile_w4a8_kernels():
+    """Triton unpack and matmul for ``asym_w4a8_int8`` and ``w6a8_int8``."""
+    global _w4a8_kernels
+    if _w4a8_kernels is not None:
+        return _w4a8_kernels
+    import triton
+    import triton.language as tl
+
+    @triton.jit
+    def _round_half_even(value):
+        # torch.round: nearest, ties to even. Levels are signed, so round the magnitude.
+        absolute = tl.abs(value)
+        floor = tl.math.floor(absolute)
+        fraction = absolute - floor
+        even = (floor.to(tl.int32) & 1) == 0
+        rounded = tl.where(
+            fraction > 0.5, floor + 1.0,
+            tl.where(fraction < 0.5, floor, tl.where(even, floor, floor + 1.0)))
+        return tl.where(value < 0, -rounded, rounded)
+
+    @triton.jit
+    def _codes(byte, hib, bcols, HAS_CODEBOOK: tl.constexpr, BITS: tl.constexpr, codebook_ptr):
+        low = byte & 0xF
+        high = (byte >> 4) & 0xF
+        if BITS == 6:
+            shift = (4 * (bcols & 1))[None, :]
+            low = low | (((hib >> shift) & 0x3) << 4)
+            high = high | (((hib >> (shift + 2)) & 0x3) << 4)
+        if HAS_CODEBOOK:
+            level_low = tl.load(codebook_ptr + low)
+            level_high = tl.load(codebook_ptr + high)
+        elif BITS == 6:
+            level_low = (low - 32).to(tl.float32)
+            level_high = (high - 32).to(tl.float32)
+        else:
+            level_low = (low - 8).to(tl.float32)
+            level_high = (high - 8).to(tl.float32)
+        return level_low, level_high
+
+    @triton.jit
+    def _quantize_pair(level_low, level_high, scale):
+        low = tl.minimum(tl.maximum(_round_half_even(level_low * scale), -127.0), 127.0)
+        high = tl.minimum(tl.maximum(_round_half_even(level_high * scale), -127.0), 127.0)
+        return low, high
+
+    @triton.jit
+    def dequant(
+            q_ptr, srel_ptr, codebook_ptr, out_ptr,
+            N, k_bytes, group_size,
+            stride_qn, stride_qk, stride_sn, stride_sg, stride_on, stride_ok,
+            HAS_CODEBOOK: tl.constexpr, BITS: tl.constexpr,
+            BLOCK_N: tl.constexpr, BLOCK_BYTES: tl.constexpr):
+        n_offsets = tl.program_id(0) * BLOCK_N + tl.arange(0, BLOCK_N)
+        bcols = tl.program_id(1) * BLOCK_BYTES + tl.arange(0, BLOCK_BYTES)
+        n_mask = n_offsets < N
+        b_mask = bcols < k_bytes
+        mask = n_mask[:, None] & b_mask[None, :]
+        byte = tl.load(
+            q_ptr + n_offsets[:, None] * stride_qn + bcols[None, :] * stride_qk,
+            mask=mask, other=0).to(tl.int32) & 0xFF
+        hib = byte
+        if BITS == 6:
+            hib = tl.load(
+                q_ptr + n_offsets[:, None] * stride_qn + (k_bytes + (bcols >> 1))[None, :] * stride_qk,
+                mask=mask, other=0).to(tl.int32) & 0xFF
+        level_low, level_high = _codes(byte, hib, bcols, HAS_CODEBOOK, BITS, codebook_ptr)
+        group = (2 * bcols) // group_size
+        scale = tl.load(
+            srel_ptr + n_offsets[:, None] * stride_sn + group[None, :] * stride_sg,
+            mask=mask, other=0.0)
+        low, high = _quantize_pair(level_low, level_high, scale)
+        tl.store(
+            out_ptr + n_offsets[:, None] * stride_on + (2 * bcols)[None, :] * stride_ok,
+            low.to(tl.int8), mask=mask)
+        tl.store(
+            out_ptr + n_offsets[:, None] * stride_on + (2 * bcols + 1)[None, :] * stride_ok,
+            high.to(tl.int8), mask=mask)
+
+    @triton.jit
+    def fused(
+            x_ptr, q_ptr, srel_ptr, channel_ptr, codebook_ptr, out_ptr,
+            M, N, k_bytes, group_size,
+            stride_xm, stride_xk, stride_qn, stride_qk,
+            stride_sn, stride_sg, stride_om, stride_on,
+            HAS_CODEBOOK: tl.constexpr, BITS: tl.constexpr, OUT_DTYPE: tl.constexpr,
+            BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, BLOCK_BYTES: tl.constexpr):
+        m_offsets = tl.program_id(0) * BLOCK_M + tl.arange(0, BLOCK_M)
+        n_offsets = tl.program_id(1) * BLOCK_N + tl.arange(0, BLOCK_N)
+        m_mask = m_offsets < M
+        n_mask = n_offsets < N
+        acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
+        for start in range(0, k_bytes, BLOCK_BYTES):
+            bcols = start + tl.arange(0, BLOCK_BYTES)
+            b_mask = bcols < k_bytes
+            byte = tl.load(
+                q_ptr + n_offsets[:, None] * stride_qn + bcols[None, :] * stride_qk,
+                mask=n_mask[:, None] & b_mask[None, :], other=0).to(tl.int32) & 0xFF
+            hib = byte
+            if BITS == 6:
+                hib = tl.load(
+                    q_ptr + n_offsets[:, None] * stride_qn
+                    + (k_bytes + (bcols >> 1))[None, :] * stride_qk,
+                    mask=n_mask[:, None] & b_mask[None, :], other=0).to(tl.int32) & 0xFF
+            level_low, level_high = _codes(byte, hib, bcols, HAS_CODEBOOK, BITS, codebook_ptr)
+            group = (2 * bcols) // group_size
+            scale = tl.load(
+                srel_ptr + n_offsets[:, None] * stride_sn + group[None, :] * stride_sg,
+                mask=n_mask[:, None] & b_mask[None, :], other=0.0)
+            low, high = _quantize_pair(level_low, level_high, scale)
+            k0 = 2 * bcols
+            k1 = k0 + 1
+            x0 = tl.load(
+                x_ptr + m_offsets[:, None] * stride_xm + k0[None, :] * stride_xk,
+                mask=m_mask[:, None] & b_mask[None, :], other=0.0).to(tl.float32)
+            x1 = tl.load(
+                x_ptr + m_offsets[:, None] * stride_xm + k1[None, :] * stride_xk,
+                mask=m_mask[:, None] & (k1[None, :] < k_bytes * 2), other=0.0).to(tl.float32)
+            # Rounded codes are exact in bfloat16. The dot is the activation times that code.
+            acc += tl.dot(x0.to(tl.bfloat16), tl.trans(low.to(tl.bfloat16))).to(tl.float32)
+            acc += tl.dot(x1.to(tl.bfloat16), tl.trans(high.to(tl.bfloat16))).to(tl.float32)
+        channel = tl.load(channel_ptr + n_offsets, mask=n_mask, other=0.0)
+        tl.store(
+            out_ptr + m_offsets[:, None] * stride_om + n_offsets[None, :] * stride_on,
+            (acc * channel[None, :]).to(OUT_DTYPE),
+            mask=m_mask[:, None] & n_mask[None, :])
+
+    _w4a8_kernels = (dequant, fused)
+    return _w4a8_kernels
+
+
+def _triton_dtype(dtype):
+    import triton.language as tl
+    if dtype == torch.float16:
+        return tl.float16
+    if dtype == torch.bfloat16:
+        return tl.bfloat16
+    return tl.float32
+
+
+def _w4a8_arguments(module: 'ComfyQuantLinear'):
+    """Packed storage and the float scales the Triton kernels multiply with."""
+    bits = 6 if module.quant_format == 'w6a8_int8' else 4
+    if not module.quant_group_size:
+        return None
+    try:
+        inputs = _grouped_inputs(module.weight.shape[1], bits)
+    except ComfyQuantError:
+        return None
+    if inputs % module.quant_group_size:
+        return None
+    rows = module.weight.shape[0]
+    groups = inputs // module.quant_group_size
+    scale = _stored_float(module.weight_scale)
+    if tuple(scale.shape) != (rows, groups):
+        return None
+    channel = _bits_float(module.weight_scale_2).reshape(-1)
+    if channel.numel() != rows:
+        return None
+    codebook = None
+    if module.weight_codebook is not None:
+        codebook = _bits_float(module.weight_codebook).reshape(-1).contiguous()
+        if codebook.numel() != 16:
+            return None
+    return {
+        'weight': module.weight,
+        'scale': scale.contiguous(),
+        'channel': channel.contiguous(),
+        'codebook': codebook,
+        'bits': bits,
+        'inputs': inputs,
+        'group_size': module.quant_group_size,
+    }
+
+
+def _w4a8_dequant_int8(arguments) -> torch.Tensor:
+    """Rounded group-scaled codes, ``(rows, inputs)`` int8. The channel scale stays outside."""
+    import triton
+
+    weight = arguments['weight']
+    rows, inputs = weight.shape[0], arguments['inputs']
+    k_bytes = inputs // 2
+    output = torch.empty(rows, inputs, dtype=torch.int8, device=weight.device)
+    block_n, block_bytes = 32, 128
+    codebook = arguments['codebook']
+    if codebook is None:
+        codebook = torch.empty(16, dtype=torch.float32, device=weight.device)
+    dequant, _fused = _compile_w4a8_kernels()
+    dequant[(triton.cdiv(rows, block_n), triton.cdiv(k_bytes, block_bytes))](
+        weight, arguments['scale'], codebook, output,
+        rows, k_bytes, arguments['group_size'],
+        weight.stride(0), weight.stride(1),
+        arguments['scale'].stride(0), arguments['scale'].stride(1),
+        output.stride(0), output.stride(1),
+        HAS_CODEBOOK=arguments['codebook'] is not None,
+        BITS=arguments['bits'],
+        BLOCK_N=block_n, BLOCK_BYTES=block_bytes)
+    return output
+
+
+def _w4a8_int8_gemm(x: torch.Tensor, weight: torch.Tensor, channel: torch.Tensor):
+    """INT8 GEMM of an already unpacked W4A8 weight. ``None`` when this device cannot run it."""
+    rows, inputs = x.shape
+    outputs = weight.shape[0]
+    if inputs % 8 or outputs % 8 or inputs != weight.shape[1]:
+        return None
+    quantized, x_scale = _quantize_int8_rows(x)
+    quantized = _pad_rows(quantized, max(32, _round_up(rows, 32)))
+    try:
+        accumulated = torch._int_mm(quantized, weight.t().contiguous())[:rows]
+    except Exception as error:
+        _messages.debug_log(f'W4A8 INT8 GEMM is not available on "{x.device}": {error}')
+        return None
+    w_scale = channel.reshape(1, -1)
+    if x.dtype == torch.bfloat16:
+        output = accumulated.to(x.dtype)
+        return output.mul_(x_scale.to(x.dtype)).mul_(w_scale.to(x.dtype))
+    return (accumulated.float() * x_scale * w_scale).to(x.dtype)
+
+
+def _w4a8_fused(x: torch.Tensor, arguments) -> torch.Tensor:
+    import triton
+
+    rows, inputs = x.shape
+    outputs = arguments['weight'].shape[0]
+    k_bytes = inputs // 2
+    output = torch.empty(rows, outputs, dtype=x.dtype, device=x.device)
+    block_m, block_n, block_bytes = 16, 64, 32
+    codebook = arguments['codebook']
+    if codebook is None:
+        codebook = torch.empty(16, dtype=torch.float32, device=x.device)
+    weight = arguments['weight']
+    scale = arguments['scale']
+    _dequant, fused = _compile_w4a8_kernels()
+    fused[(triton.cdiv(rows, block_m), triton.cdiv(outputs, block_n))](
+        x, weight, scale, arguments['channel'], codebook, output,
+        rows, outputs, k_bytes, arguments['group_size'],
+        x.stride(0), x.stride(1), weight.stride(0), weight.stride(1),
+        scale.stride(0), scale.stride(1), output.stride(0), output.stride(1),
+        HAS_CODEBOOK=arguments['codebook'] is not None,
+        BITS=arguments['bits'],
+        OUT_DTYPE=_triton_dtype(x.dtype),
+        BLOCK_M=block_m, BLOCK_N=block_n, BLOCK_BYTES=block_bytes)
+    return output
+
+
+def _w4a8_triton(module: 'ComfyQuantLinear', x: torch.Tensor) -> torch.Tensor | None:
+    """
+    ``x @ W.T`` for grouped W4A8 or W6A8.
+
+    ``forward`` has already applied ConvRot and ``pre_quant_scale``. A correction
+    term stays on the decoded matmul. A long activation unpacks to INT8 and uses
+    ``torch._int_mm``; a short one, and a full-precision layer, keep the
+    activations and decode inside the Triton matmul.
+    """
+    if module.weight_correction is not None:
+        return None
+    arguments = _w4a8_arguments(module)
+    if arguments is None or x.shape[1] != arguments['inputs']:
+        return None
+    if (not module.full_precision_mm and x.shape[0] > _W4A8_INT8_GEMM_ROWS
+            and x.device.type in ('cuda', 'xpu')):
+        unpacked = _w4a8_dequant_int8(arguments)
+        output = _w4a8_int8_gemm(x, unpacked, arguments['channel'])
+        if output is not None:
+            return output
+    return _w4a8_fused(x, arguments)
+
+
+_unpack_kernels = None
+_value_tables = {}
+
+
+def _compile_unpack_kernels():
+    """Triton unpack for NVFP4, MXFP8, and signed INT4. The GEMM stays in PyTorch."""
+    global _unpack_kernels
+    if _unpack_kernels is not None:
+        return _unpack_kernels
+
+    import triton
+    import triton.language as tl
+
+    @triton.jit
+    def w4a4(
+            q_ptr, scale_ptr, out_ptr, inputs, group_size,
+            stride_qn, stride_qk, stride_sn, stride_sg, stride_on, stride_ok,
+            OUT_DTYPE: tl.constexpr, STORE_INT8: tl.constexpr, BLOCK: tl.constexpr):
+        row = tl.program_id(0)
+        cols = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
+        mask = cols < inputs
+        raw = tl.load(
+            q_ptr + row * stride_qn + (cols // 2) * stride_qk, mask=mask, other=0).to(tl.int32) & 0xFF
+        nibble = (raw >> ((cols & 1) * 4)) & 0xF
+        signed = tl.where(nibble >= 8, nibble - 16, nibble)
+        if STORE_INT8:
+            tl.store(out_ptr + row * stride_on + cols * stride_ok, signed.to(tl.int8), mask=mask)
+        else:
+            scale = tl.load(
+                scale_ptr + row * stride_sn + (cols // group_size) * stride_sg,
+                mask=mask, other=0.0)
+            tl.store(
+                out_ptr + row * stride_on + cols * stride_ok,
+                (signed.to(tl.float32) * scale).to(OUT_DTYPE), mask=mask)
+
+    @triton.jit
+    def nvfp4(
+            q_ptr, scale_ptr, table_ptr, out_ptr, inputs,
+            stride_qn, stride_qk, stride_sn, stride_on, stride_ok,
+            OUT_DTYPE: tl.constexpr, BLOCK: tl.constexpr):
+        row = tl.program_id(0)
+        cols = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
+        mask = cols < inputs
+        # High nibble is the even input.
+        shift = tl.where((cols & 1) == 0, 4, 0)
+        raw = tl.load(
+            q_ptr + row * stride_qn + (cols // 2) * stride_qk, mask=mask, other=0).to(tl.int32) & 0xFF
+        value = tl.load(table_ptr + ((raw >> shift) & 0xF))
+        scale = tl.load(scale_ptr + row * stride_sn + (cols // 16), mask=mask, other=0.0)
+        tl.store(
+            out_ptr + row * stride_on + cols * stride_ok,
+            (value * scale).to(OUT_DTYPE), mask=mask)
+
+    @triton.jit
+    def mxfp8(
+            q_ptr, scale_ptr, table_ptr, out_ptr, inputs,
+            stride_qn, stride_qk, stride_sn, stride_on, stride_ok,
+            OUT_DTYPE: tl.constexpr, BLOCK: tl.constexpr):
+        row = tl.program_id(0)
+        cols = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
+        mask = cols < inputs
+        raw = tl.load(
+            q_ptr + row * stride_qn + cols * stride_qk, mask=mask, other=0).to(tl.int32) & 0xFF
+        value = tl.load(table_ptr + raw)
+        scale = tl.load(scale_ptr + row * stride_sn + (cols // 32), mask=mask, other=0.0)
+        tl.store(
+            out_ptr + row * stride_on + cols * stride_ok,
+            (value * scale).to(OUT_DTYPE), mask=mask)
+
+    _unpack_kernels = (w4a4, nvfp4, mxfp8)
+    return _unpack_kernels
+
+
+def _value_table(kind: str, device: torch.device) -> torch.Tensor:
+    key = (kind, str(device))
+    table = _value_tables.get(key)
+    if table is None:
+        if kind == 'nvfp4':
+            table = torch.tensor(_E2M1_VALUES, dtype=torch.float32, device=device)
+        else:
+            try:
+                table = torch.arange(256, dtype=torch.uint8, device=device).view(
+                    torch.float8_e4m3fn).float()
+            except (RuntimeError, TypeError, NotImplementedError):
+                table = _lookup_table('float8_e4m3fn', device, torch.float32).reshape(-1)
+        _value_tables[key] = table
+    return table
+
+
+def _launch_unpack(kernel, weight, scale, out, inputs, group_size=1, table=None, store_int8=False):
+    import triton
+
+    rows = out.shape[0]
+    block = 128
+    grid = (rows, triton.cdiv(inputs, block))
+    if table is None:
+        kernel[grid](
+            weight, scale, out, inputs, group_size,
+            weight.stride(0), weight.stride(1), scale.stride(0), scale.stride(1),
+            out.stride(0), out.stride(1),
+            OUT_DTYPE=_triton_dtype(out.dtype), STORE_INT8=store_int8, BLOCK=block)
+    else:
+        kernel[grid](
+            weight, scale, table, out, inputs,
+            weight.stride(0), weight.stride(1), scale.stride(0),
+            out.stride(0), out.stride(1),
+            OUT_DTYPE=_triton_dtype(out.dtype), BLOCK=block)
+
+
+def _w4a4_scales(module: 'ComfyQuantLinear', rows: int, inputs: int):
+    """``(rows, groups)`` float scales and the input group the kernel divides by."""
+    values = _bits_float(module.weight_scale).to(torch.float32).reshape(-1)
+    if values.numel() == 1:
+        return values.reshape(1, 1).expand(rows, 1).contiguous(), inputs
+    if values.numel() == rows:
+        return values.reshape(rows, 1).contiguous(), inputs
+    group = module.quant_group_size or _INT4_GROUP
+    if group and inputs % group == 0 and values.numel() == rows * (inputs // group):
+        return values.reshape(rows, inputs // group).contiguous(), group
+    return None, None
+
+
+def _w4a4_triton(module: 'ComfyQuantLinear', x: torch.Tensor) -> torch.Tensor | None:
+    """
+    Signed INT4, low nibble first.
+
+    ``forward`` has already applied ConvRot. A long per-row activation unpacks
+    to INT8 and uses ``torch._int_mm``. Grouped scales, short activations, and
+    full-precision layers unpack in Triton and use ``F.linear``.
+    """
+    outputs, inputs = module.out_features, module.in_features
+    weight = module.weight
+    if x.shape[1] != inputs or weight.shape[0] < outputs or weight.shape[1] * 2 != inputs:
+        return None
+    scales, group = _w4a4_scales(module, outputs, inputs)
+    if scales is None:
+        return None
+    stored = weight[:outputs]
+    w4a4, _nvfp4, _mxfp8 = _compile_unpack_kernels()
+    per_row = scales.shape[1] == 1
+    if (per_row and not module.full_precision_mm and x.shape[0] > _W4A8_INT8_GEMM_ROWS
+            and x.device.type in ('cuda', 'xpu')):
+        unpacked = torch.empty(outputs, inputs, dtype=torch.int8, device=x.device)
+        _launch_unpack(w4a4, stored, scales, unpacked, inputs, group, store_int8=True)
+        output = _w4a8_int8_gemm(x, unpacked, scales.reshape(-1))
+        if output is not None:
+            return output
+    decoded = torch.empty(outputs, inputs, dtype=x.dtype, device=x.device)
+    _launch_unpack(w4a4, stored, scales, decoded, inputs, group)
+    return torch.nn.functional.linear(x, decoded)
+
+
+def _nvfp4_triton(module: 'ComfyQuantLinear', x: torch.Tensor) -> torch.Tensor | None:
+    """NVFP4 unpacked in Triton, then ``F.linear``. Blackwell keeps ``scaled_mm`` ahead of this."""
+    outputs, inputs = module.out_features, module.in_features
+    weight = module.weight
+    packed_inputs = weight.shape[1] * 2
+    if x.shape[1] != inputs or weight.shape[0] < outputs or packed_inputs < inputs:
+        return None
+    blocks = packed_inputs // _NVFP4_BLOCK
+    if inputs == 0 or (inputs - 1) // _NVFP4_BLOCK >= blocks:
+        return None
+    scales = _unswizzle_block_scales(module.weight_scale, weight.shape[0], blocks)
+    scales = _decode_float8(scales, 'float8_e4m3fn', torch.float32)
+    tensor_scale = _bits_float(module.weight_scale_2).to(torch.float32)
+    scales = (scales * _broadcast_scale(tensor_scale, scales.shape[0]))[:outputs].contiguous()
+    decoded = torch.empty(outputs, inputs, dtype=x.dtype, device=x.device)
+    _w4a4, nvfp4, _mxfp8 = _compile_unpack_kernels()
+    _launch_unpack(
+        nvfp4, weight[:outputs], scales, decoded, inputs,
+        table=_value_table('nvfp4', x.device))
+    return torch.nn.functional.linear(x, decoded)
+
+
+def _mxfp8_triton(module: 'ComfyQuantLinear', x: torch.Tensor) -> torch.Tensor | None:
+    """MXFP8 unpacked in Triton (E4M3 times E8M0), then ``F.linear``."""
+    outputs, inputs = module.out_features, module.in_features
+    weight = module.weight
+    if x.shape[1] != inputs or weight.shape[0] < outputs or weight.shape[1] < inputs:
+        return None
+    blocks = weight.shape[1] // _MXFP8_BLOCK
+    if inputs == 0 or (inputs - 1) // _MXFP8_BLOCK >= blocks:
+        return None
+    scales = _unswizzle_block_scales(module.weight_scale.view(torch.uint8), weight.shape[0], blocks)
+    scales = _e8m0_to_float(scales)[:outputs].contiguous()
+    decoded = torch.empty(outputs, inputs, dtype=x.dtype, device=x.device)
+    _w4a4, _nvfp4, mxfp8 = _compile_unpack_kernels()
+    _launch_unpack(
+        mxfp8, weight[:outputs], scales, decoded, inputs,
+        table=_value_table('e4m3', x.device))
+    return torch.nn.functional.linear(x, decoded)
 
 
 def _pad_rows(tensor: torch.Tensor, rows: int) -> torch.Tensor:
@@ -1847,6 +2346,10 @@ _HARDWARE_MATMULS = {
     'fp8-aiter': _fp8_aiter,
     'fp8-scaled-mm': _fp8_scaled_mm,
     'nvfp4': _nvfp4_scaled_mm,
+    'w4a8-triton': _w4a8_triton,
+    'w4a4-triton': _w4a4_triton,
+    'nvfp4-triton': _nvfp4_triton,
+    'mxfp8-triton': _mxfp8_triton,
 }
 
 # Relative error allowed against the dequantized matmul. Weight only kernels
@@ -1856,6 +2359,10 @@ _HARDWARE_TOLERANCE = {
     'int8-aiter': 0.05, 'int8-mm': 0.05,
     'fp8-aiter': 0.08, 'fp8-scaled-mm': 0.08,
     'nvfp4': 0.25,
+    'w4a8-triton': 0.05,
+    'w4a4-triton': 0.05,
+    'nvfp4-triton': 0.02,
+    'mxfp8-triton': 0.02,
 }
 
 
