@@ -214,8 +214,7 @@ def _quantized(module) -> bool:
 def _bind_upsampler_generate(module, device):
     """Run the upsampler's ``generate()`` without filling shared GPU memory."""
     import dgenerate.pipelinewrapper.promptenhance as _promptenhance
-    _promptenhance.bind_rewriter_generate(
-        module, device, 'FLUX.3 prompt upsampler', park=True)
+    _promptenhance.bind_rewriter_generate(module, device, park=True)
 
 
 _DENOISER_NAMES = ('text_encoder', 'transformer', 'vae')

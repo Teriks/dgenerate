@@ -19,6 +19,7 @@ import dgenerate.arguments
 import dgenerate.batchprocess.configrunner as configrunner
 import dgenerate.invoker as invoker
 import dgenerate.messages as messages
+import dgenerate.plugin as plugin
 import dgenerate.renderloop as renderloop
 import dgenerate.renderloopconfig as renderloopconfig
 import dgenerate.textprocessing as textprocessing
@@ -820,6 +821,11 @@ def _config_failed(events) -> bool:
     return False
 
 
+def _restore_plugins(saved):
+    plugin.PLUGIN_PATHS.clear()
+    plugin.PLUGIN_PATHS.update(saved)
+
+
 def compare(source: str, work: Path, **transpile_options):
     """Return a difference summary, or None when the script matches the config.
 
@@ -827,20 +833,24 @@ def compare(source: str, work: Path, **transpile_options):
     ParseError, and that agrees with the interpreter when the config fails too.
     ``transpile_options`` are passed to ``transpile`` for the script side.
     """
+    saved_plugins = set(plugin.PLUGIN_PATHS)
     try:
-        config_events = _run_side(source, work, 'config')
         try:
-            script_events = _run_side(source, work, 'script', **transpile_options)
-        except transpile_config.ParseError as error:
-            if _config_failed(config_events):
-                return None
-            return f'transpile rejected a config that runs: {error}'
-        return _diff(
-            config_events, script_events,
-            relaxed=transpile_options.get('relaxed', False),
-        )
-    except Exception:
-        return traceback.format_exc().splitlines()[-1]
+            config_events = _run_side(source, work, 'config')
+            try:
+                script_events = _run_side(source, work, 'script', **transpile_options)
+            except transpile_config.ParseError as error:
+                if _config_failed(config_events):
+                    return None
+                return f'transpile rejected a config that runs: {error}'
+            return _diff(
+                config_events, script_events,
+                relaxed=transpile_options.get('relaxed', False),
+            )
+        except Exception:
+            return traceback.format_exc().splitlines()[-1]
+    finally:
+        _restore_plugins(saved_plugins)
 
 
 def main(echo=True):

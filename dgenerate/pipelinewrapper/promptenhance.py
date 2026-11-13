@@ -794,8 +794,7 @@ def rewrite_sampling(module, user_args, device):
             headroom = _rewrite_headroom(call)
             if headroom is not None and str(device) != 'cpu':
                 with _fast_encoder(
-                        module, device, True, headroom_bytes=headroom,
-                        label='Pipeline prompt enhance'):
+                        module, device, True, headroom_bytes=headroom):
                     return previous(*args, **kwargs)
             return previous(*args, **kwargs)
 
@@ -2143,6 +2142,13 @@ def _placement_log(message: str, *, debug: bool) -> None:
     _messages.log(message)
 
 
+def _placement_label(encoder, label: str | None) -> str:
+    """Name a placement log with the module class unless a caller set one."""
+    if label:
+        return label
+    return type(encoder).__name__
+
+
 def _log_layer_split(encoder, target: torch.device, layers, label: str, *, debug: bool = False) -> None:
     del debug
     gpu_layers = 0
@@ -2253,7 +2259,7 @@ def _count_gpu_layers(layers, target: torch.device) -> int:
 @contextlib.contextmanager
 def _fast_encoder(encoder, device, offload: bool, resident: bool = True,
                   headroom_bytes: int | None = None,
-                  label: str = 'Pipeline prompt enhance',
+                  label: str | None = None,
                   debug: bool = False):
     """Keep as many whole layers as fit on the GPU for the rewrite.
 
@@ -2263,11 +2269,13 @@ def _fast_encoder(encoder, device, offload: bool, resident: bool = True,
     enhancer that was only parked on CPU uses the same split and is returned
     to CPU afterward. Disk offload keeps the weights in safetensors and the
     parameters on the meta device; those are loaded for the rewrite and the
-    disk hooks are put back afterward.
+    disk hooks are put back afterward. The split line names the module class
+    unless ``label`` is set.
     """
     if not resident:
         yield
         return
+    label = _placement_label(encoder, label)
     with _borrowed_disk_weights(encoder):
         with _fast_encoder_from_memory(
                 encoder, device, offload,
@@ -2336,8 +2344,9 @@ def _borrowed_disk_weights(encoder):
 @contextlib.contextmanager
 def _fast_encoder_from_memory(encoder, device, offload: bool,
                               headroom_bytes: int | None = None,
-                              label: str = 'Pipeline prompt enhance',
+                              label: str | None = None,
                               debug: bool = False):
+    label = _placement_label(encoder, label)
     target = torch.device(device) if device is not None else torch.device('cpu')
     original_to = getattr(encoder, '_DGENERATE_ORIGINAL_TO_DISABLED', None)
     if _putil.is_loaded_in_8bit_bnb(encoder):
@@ -2512,7 +2521,7 @@ class _TokenCounter:
         if not self._open:
             return
         self._open = False
-        if not (_messages.LEVEL & _messages.INFO):
+        if not self._shows():
             return
         file = _messages.get_message_file()
         file.write('\n')
@@ -2534,8 +2543,12 @@ class _TokenCounter:
             _messages.set_before_log_callback(None)
         self._armed = False
 
+    def _shows(self) -> bool:
+        # ``--verbose`` sets LEVEL to DEBUG alone. That level still prints INFO.
+        return bool(_messages.LEVEL & (_messages.INFO | _messages.DEBUG))
+
     def _write(self):
-        if not (_messages.LEVEL & _messages.INFO):
+        if not self._shows():
             return
         if not self._armed:
             _messages.set_before_log_callback(self._on_before_log)
@@ -2549,8 +2562,11 @@ class _TokenCounter:
         file.flush()
 
 
-def bind_rewriter_generate(module, device, label: str, park: bool = False) -> None:
+def bind_rewriter_generate(module, device, park: bool = False) -> None:
     """Count tokens during ``generate()`` and keep the rewrite out of shared GPU memory.
+
+    The status line and the layer-split log both name ``type(module).__name__``,
+    the same way a pipeline text-encoder rewrite does.
 
     With an offload hook installed, the rewrite uses the same layer split as
     pipeline prompt enhance: only the prefix that fits in free dedicated GPU
@@ -2563,11 +2579,12 @@ def bind_rewriter_generate(module, device, label: str, park: bool = False) -> No
         return
     original = module.generate
     target = torch.device(device)
+    encoder_name = type(module).__name__
 
     def generate(*args, **kwargs):
         kwargs, call = _prepare_rewrite_generate(kwargs)
         maximum = int(kwargs.get('max_new_tokens') or 1)
-        counter = _TokenCounter(label, maximum)
+        counter = _TokenCounter(encoder_name, maximum)
         kwargs['streamer'] = _CountStreamer(counter)
         try:
             offloaded = getattr(module, '_DGENERATE_ORIGINAL_TO_DISABLED', None) is not None
@@ -2579,7 +2596,7 @@ def bind_rewriter_generate(module, device, label: str, park: bool = False) -> No
             # token counter opens its single-line status.
             if target.type != 'cpu':
                 with _fast_encoder(
-                        module, target, offload=park or offloaded, label=label,
+                        module, target, offload=park or offloaded, label=encoder_name,
                         headroom_bytes=headroom):
                     counter.show()
                     return original(*args, **kwargs)

@@ -447,6 +447,12 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         self.assertEqual(placed.device.type, 'cpu')
         self.assertEqual(placed.tolist(), [[1]])
 
+    def test_placement_label_defaults_to_the_module_class(self):
+        module = torch.nn.Linear(1, 1)
+        self.assertEqual(_promptenhance._placement_label(module, None), 'Linear')
+        self.assertEqual(
+            _promptenhance._placement_label(module, 'magicprompt'), 'magicprompt')
+
     def test_token_counter_updates_one_line(self):
         import io
         import dgenerate.messages as _messages
@@ -469,6 +475,32 @@ class TestPipelinePromptEnhance(unittest.TestCase):
             buf.getvalue(),
             '\rPipeline prompt enhance: Qwen3VLModel, 1 out of max 512 tokens, 1.0s'
             '\rPipeline prompt enhance: Qwen3VLModel, 2 out of max 512 tokens, 3.5s\n')
+        self.assertIsNone(_messages.get_before_log_callback())
+
+    def test_token_counter_shows_in_verbose_mode(self):
+        import io
+        import dgenerate.messages as _messages
+        buf = io.StringIO()
+        previous = _messages.get_message_file()
+        _messages.set_message_file(buf)
+        clock = iter((100.0, 101.0, 100.0, 101.0))
+        try:
+            with unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.promptenhance.time.monotonic',
+                    side_effect=lambda: next(clock)):
+                with _messages.with_level(_messages.DEBUG):
+                    counter = _promptenhance._TokenCounter('Qwen3VLModel', 512)
+                    counter.add()
+                    counter.finish()
+                with _messages.with_level(_messages.WARNING):
+                    hidden = _promptenhance._TokenCounter('Qwen3VLModel', 512)
+                    hidden.add()
+                    hidden.finish()
+        finally:
+            _messages.set_message_file(previous)
+        self.assertEqual(
+            buf.getvalue(),
+            '\rPipeline prompt enhance: Qwen3VLModel, 1 out of max 512 tokens, 1.0s\n')
         self.assertIsNone(_messages.get_before_log_callback())
 
     def test_token_counter_breaks_before_another_log_line(self):

@@ -1723,10 +1723,15 @@ class TestVideoModels(unittest.TestCase):
                 'importlib.util.find_spec', return_value=None):
             self.assertTrue(_wan.animate2._flex_attention_can_compile('mps'))
             self.assertFalse(_wan.animate2._flex_attention_can_compile('cuda'))
-        self.assertFalse(_wan.animate2._flex_attention_can_compile('cpu'))
+        self.assertEqual(
+            _wan.animate2._flex_attention_can_compile('cpu'),
+            _wan.animate2._pipelines.cpu_inductor_compiler_available())
         warnings = []
         with unittest.mock.patch.object(
-                _wan._messages, 'warning', side_effect=warnings.append):
+                _wan._messages, 'warning', side_effect=warnings.append), \
+                unittest.mock.patch.object(
+                    _wan.animate2._pipelines, 'inductor_can_compile',
+                    return_value=False):
             _wan.animate2.place_wan_animate_2(pipe(plain), 'cpu', False, False, False)
             _wan.animate2.place_wan_animate_2(pipe(model), 'cpu', False, False, False)
         self.assertIs(model.block.forward.__func__, original_forward)
@@ -1786,7 +1791,9 @@ class TestVideoModels(unittest.TestCase):
         with unittest.mock.patch.object(
                 _pipe_mod._messages, 'warning', side_effect=warnings.append):
             _pipe_mod.apply_torch_compile(pipe, 'cpu')
-        self.assertTrue(any('cannot compile' in message for message in warnings))
+        self.assertTrue(any(
+            'no repeated blocks' in message or 'C++ compiler' in message
+            for message in warnings))
 
         warnings.clear()
         denoiser = _Denoiser()

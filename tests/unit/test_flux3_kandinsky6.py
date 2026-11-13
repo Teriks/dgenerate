@@ -212,7 +212,7 @@ class TestFlux3Kandinsky6(unittest.TestCase):
         self.assertEqual(seen['ids'], 'cpu')
         self.assertFalse(seen['meta'])
         self.assertEqual(module.weight.device.type, 'cpu')
-        self.assertIsNotNone(seen['streamer'])
+        self.assertEqual(seen['streamer']._counter.encoder_name, 'Linear')
 
     def test_parked_upsampler_splits_onto_gpu_by_default(self):
         import contextlib
@@ -232,6 +232,7 @@ class TestFlux3Kandinsky6(unittest.TestCase):
             entered['device'] = torch.device(device)
             entered['offload'] = offload
             entered['headroom'] = kwargs.get('headroom_bytes')
+            entered['label'] = kwargs.get('label')
             yield
 
         with unittest.mock.patch.object(_promptenhance, '_fast_encoder', split):
@@ -240,6 +241,7 @@ class TestFlux3Kandinsky6(unittest.TestCase):
         self.assertEqual(entered['device'].type, 'cuda')
         self.assertTrue(entered['offload'])
         self.assertIsNone(entered['headroom'])
+        self.assertEqual(entered['label'], 'Linear')
         self.assertEqual(module.weight.device.type, 'cpu')
 
     def test_prompt_upsampler_block_can_be_removed(self):

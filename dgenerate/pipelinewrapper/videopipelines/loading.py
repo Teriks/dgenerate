@@ -905,7 +905,7 @@ def _create_cached_video_pipeline(model_path,
     if family == 'kandinsky6-video':
         import dgenerate.pipelinewrapper.promptenhance as _promptenhance
         _promptenhance.bind_rewriter_generate(
-            getattr(pipe, 'text_encoder', None), device, 'Kandinsky 6')
+            getattr(pipe, 'text_encoder', None), device)
     _quantization._pin_video_8bit_modules(pipe)
     _enable_vae_tiling(pipe)
     model_mode = None

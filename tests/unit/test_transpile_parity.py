@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import dgenerate.plugin as plugin
 import dgenerate.renderloop as renderloop
 import dgenerate.renderloopconfig as renderloopconfig
 
@@ -49,15 +50,23 @@ class TestTranspileParity(unittest.TestCase):
                     self.assertIsNone(difference, difference)
 
     def test_example_configs(self):
-        for mode in MODES:
-            with self.subTest(mode=_mode_label(mode)):
-                broken = parity.run_examples(echo=False, **mode)
-                self.assertFalse(
-                    broken,
-                    '\n'.join(
-                        f'{path}: {difference}' for path, difference in broken[:20]
-                    ),
-                )
+        # Example configs import plugin modules by name. That updates the
+        # process-wide plugin set, and a later mode still has to see it: a
+        # missing module fails both sides the same way. Restore afterwards so
+        # the rest of the suite does not try to import those names.
+        saved = set(plugin.PLUGIN_PATHS)
+        try:
+            for mode in MODES:
+                with self.subTest(mode=_mode_label(mode)):
+                    broken = parity.run_examples(echo=False, **mode)
+                    self.assertFalse(
+                        broken,
+                        '\n'.join(
+                            f'{path}: {difference}' for path, difference in broken[:20]
+                        ),
+                    )
+        finally:
+            parity._restore_plugins(saved)
 
 
 if __name__ == '__main__':
