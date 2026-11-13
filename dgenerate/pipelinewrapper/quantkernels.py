@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Hub kernels downloaded by the GGUF and ComfyUI quant loaders."""
+"""Hub kernels downloaded by the ComfyUI quant loader."""
 
 import dataclasses
 
@@ -31,15 +31,11 @@ OFFLINE_MESSAGE = (
 
 # ComfyUI quant matmuls. The loader asks for one of these, and only on the
 # device that has a Hub kernel. CUDA and XPU use kernels built into PyTorch.
+# GGUF linears unpack with Triton on CUDA, ROCm, and XPU.
 COMFY_HUB_KERNELS = {
     'mlx': ('kernels-community/mlx-quantization-metal-kernels', 2),
     'aiter': ('kernels-community/aiter-kernels', 2),
 }
-
-# Diffusers loads this when CUDA GGUF kernels are enabled. Compute capability
-# 7.0 is the same gate Diffusers uses. ``kernels`` then picks the build for
-# this operating system, so a Windows build is downloaded when one is published.
-GGUF_CUDA_KERNEL = 'Isotr0py/ggml'
 
 _CONNECTIVITY_TYPES = {
     'ConnectError', 'ConnectTimeout', 'ReadTimeout', 'WriteTimeout', 'PoolTimeout',
@@ -78,15 +74,13 @@ class QuantKernel:
 
 def quant_kernel_specs(device_type: str,
                        *,
-                       hip: bool = False,
-                       capability: tuple[int, int] | None = None) -> list[QuantKernel]:
+                       hip: bool = False) -> list[QuantKernel]:
     """
-    Kernels the GGUF and Comfy quant loaders download for ``device_type``.
+    Kernels the Comfy quant loader downloads for ``device_type``.
 
-    Other accelerators are omitted. A CUDA machine does not fetch the Metal
-    or ROCm kernels, and a Metal machine does not fetch the CUDA GGUF kernel.
-    The GGUF kernel is requested on any CUDA device of compute capability 7.0
-    or newer. The Hub build for this operating system is the one that downloads.
+    Apple Metal downloads the MLX kernel. AMD ROCm downloads the AITER kernel.
+    NVIDIA CUDA and Intel XPU use the matmuls that ship with PyTorch, so they
+    download nothing.
     """
     specs = []
     if device_type == 'mps':
@@ -95,10 +89,6 @@ def quant_kernel_specs(device_type: str,
     elif device_type == 'cuda' and hip:
         repo, version = COMFY_HUB_KERNELS['aiter']
         specs.append(QuantKernel(repo, version=version))
-    elif (device_type == 'cuda' and not hip
-          and capability is not None and capability[0] >= 7):
-        specs.append(QuantKernel(
-            GGUF_CUDA_KERNEL, revision='main', trust_remote_code=True))
     return specs
 
 
@@ -167,10 +157,7 @@ def current_quant_kernel_specs() -> list[QuantKernel]:
 
     device_type = _torchutil.default_device()
     hip = device_type == 'cuda' and bool(getattr(torch.version, 'hip', None))
-    capability = None
-    if device_type == 'cuda' and torch.cuda.is_available():
-        capability = tuple(torch.cuda.get_device_capability())
-    return quant_kernel_specs(device_type, hip=hip, capability=capability)
+    return quant_kernel_specs(device_type, hip=hip)
 
 
 def download_quant_kernels(specs: list[QuantKernel] | None = None) -> int:

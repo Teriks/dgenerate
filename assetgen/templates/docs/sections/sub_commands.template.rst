@@ -458,15 +458,14 @@ Sub Command: kernel-warmup
 --------------------------
 
 The ``kernel-warmup`` sub-command downloads the quant kernels for this computer.
-GGUF and ComfyUI quantized checkpoints fetch a platform-specific kernel from
-the Hugging Face Hub the first time they run. This command fetches the kernels
+ComfyUI quantized checkpoints fetch a platform-specific kernel from the
+Hugging Face Hub the first time they run. This command fetches the kernels
 for the current accelerator, and no others, so a later run can stay offline.
 
 CUDA and Intel XPU ComfyUI matmuls use kernels that ship with PyTorch, so there
-is nothing to download for those. Apple Metal downloads the MLX quant kernel.
-AMD ROCm downloads the AITER kernel. CUDA downloads the GGUF kernel when a
-build exists for this operating system. A machine with no published build
-skips that kernel.
+is nothing to download for those. GGUF linears unpack with Triton on CUDA, ROCm,
+and XPU. Apple Metal downloads the MLX quant kernel. AMD ROCm downloads the
+AITER kernel.
 
 The network installer runs this after a new install. An older dgenerate that
 does not provide the subcommand skips the step.

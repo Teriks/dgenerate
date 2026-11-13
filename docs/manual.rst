@@ -9238,11 +9238,8 @@ Quantized linears stay packed, so a transformer needs roughly the size of
 its file. Each matmul dequantizes its weight. On CUDA, ROCm, and XPU with
 Triton installed, including the ``triton-windows`` extra, Q4_0, Q4_1, Q5_0,
 Q5_1, Q8_0, Q2_K, Q3_K, Q4_K, Q5_K, Q6_K, IQ4_NL, and IQ4_XS unpack in Triton
-and multiply with a PyTorch GEMM. On CUDA of compute capability 7.0 or newer,
-Diffusers can run that matmul with the ``Isotr0py/ggml`` kernel when that
-build is present. ``dgenerate --sub-command kernel-warmup`` downloads the
-build for this operating system. PyTorch dequantizes the weight when those
-kernels are not used.
+and multiply with a PyTorch GEMM. PyTorch dequantizes the weight when Triton
+is not installed.
 
 ComfyUI files prefix tensor names with ``model.diffusion_model.``. That
 prefix is removed on load. A Comfy linear stored transposed stays packed.
@@ -15353,15 +15350,14 @@ Sub Command: kernel-warmup
 --------------------------
 
 The ``kernel-warmup`` sub-command downloads the quant kernels for this computer.
-GGUF and ComfyUI quantized checkpoints fetch a platform-specific kernel from
-the Hugging Face Hub the first time they run. This command fetches the kernels
+ComfyUI quantized checkpoints fetch a platform-specific kernel from the
+Hugging Face Hub the first time they run. This command fetches the kernels
 for the current accelerator, and no others, so a later run can stay offline.
 
 CUDA and Intel XPU ComfyUI matmuls use kernels that ship with PyTorch, so there
-is nothing to download for those. Apple Metal downloads the MLX quant kernel.
-AMD ROCm downloads the AITER kernel. CUDA downloads the GGUF kernel when a
-build exists for this operating system. A machine with no published build
-skips that kernel.
+is nothing to download for those. GGUF linears unpack with Triton on CUDA, ROCm,
+and XPU. Apple Metal downloads the MLX quant kernel. AMD ROCm downloads the
+AITER kernel.
 
 The network installer runs this after a new install. An older dgenerate that
 does not provide the subcommand skips the step.
@@ -15379,7 +15375,7 @@ The help output of ``kernel-warmup`` is as follows:
 
     usage: kernel-warmup [-h]
     
-    Download the GGUF and ComfyUI quant kernels for this computer so a later run can stay offline.
+    Download the ComfyUI quant kernels for this computer so a later run can stay offline.
     
     options:
       -h, --help
@@ -18335,7 +18331,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [53344088552113]
+            Value: [91556867413364]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

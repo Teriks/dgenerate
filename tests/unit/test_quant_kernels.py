@@ -24,24 +24,12 @@ class TestQuantKernelSpecs(unittest.TestCase):
             'kernels-community/mlx-quantization-metal-kernels', version=2)])
 
     def test_rocm_downloads_the_aiter_kernel_only(self):
-        specs = quantkernels.quant_kernel_specs(
-            'cuda', hip=True, capability=(9, 4))
+        specs = quantkernels.quant_kernel_specs('cuda', hip=True)
         self.assertEqual(specs, [QuantKernel(
             'kernels-community/aiter-kernels', version=2)])
 
-    def test_linux_cuda_downloads_the_gguf_kernel(self):
-        specs = quantkernels.quant_kernel_specs('cuda', capability=(8, 9))
-        self.assertEqual(specs, [QuantKernel(
-            'Isotr0py/ggml', revision='main', trust_remote_code=True)])
-
-    def test_windows_cuda_requests_the_gguf_kernel(self):
-        specs = quantkernels.quant_kernel_specs('cuda', capability=(12, 0))
-        self.assertEqual(specs, [QuantKernel(
-            'Isotr0py/ggml', revision='main', trust_remote_code=True)])
-
-    def test_old_cuda_skips_the_gguf_kernel(self):
-        specs = quantkernels.quant_kernel_specs('cuda', capability=(6, 1))
-        self.assertEqual(specs, [])
+    def test_nvidia_cuda_has_no_hub_kernel(self):
+        self.assertEqual(quantkernels.quant_kernel_specs('cuda'), [])
 
     def test_cpu_and_xpu_have_no_hub_kernel(self):
         self.assertEqual(quantkernels.quant_kernel_specs('cpu'), [])
@@ -53,7 +41,8 @@ class TestQuantKernelDownload(unittest.TestCase):
     def test_download_calls_get_kernel_for_each_spec(self):
         specs = [
             QuantKernel('kernels-community/aiter-kernels', version=2),
-            QuantKernel('Isotr0py/ggml', revision='main', trust_remote_code=True),
+            QuantKernel(
+                'kernels-community/mlx-quantization-metal-kernels', version=2),
         ]
         with mock.patch.object(quantkernels, '_get_kernel') as get_kernel, \
                 mock.patch.object(messages, 'log'):
@@ -73,7 +62,7 @@ class TestQuantKernelDownload(unittest.TestCase):
         error.assert_called_once_with(quantkernels.OFFLINE_MESSAGE)
 
     def test_missing_build_is_skipped(self):
-        spec = QuantKernel('Isotr0py/ggml', revision='main', trust_remote_code=True)
+        spec = QuantKernel('kernels-community/aiter-kernels', version=2)
         with mock.patch.object(
                 quantkernels, '_get_kernel',
                 side_effect=FileNotFoundError(
