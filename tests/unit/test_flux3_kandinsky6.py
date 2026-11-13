@@ -290,6 +290,45 @@ class TestFlux3Kandinsky6(unittest.TestCase):
         self.assertEqual(pipe.vae.destinations, ['cpu'])
         self.assertEqual(pipe.text_encoder.destinations, ['cpu'])
 
+    def test_comfy_quant_transformer_stays_resident_under_offload(self):
+        import dgenerate.pipelinewrapper.pipelines as pipelines
+        import dgenerate.pipelinewrapper.safetensorscompat as safetensorscompat
+
+        class Pipe:
+            def __init__(self):
+                self.transformer = torch.nn.Linear(1, 1)
+                self.text_encoder = torch.nn.Linear(1, 1)
+                self.vae = torch.nn.Linear(1, 1)
+
+            @property
+            def components(self):
+                return {
+                    'transformer': self.transformer,
+                    'text_encoder': self.text_encoder,
+                    'vae': self.vae,
+                }
+
+        pipe = Pipe()
+        placed = []
+        offloaded = []
+
+        def has_comfy(module):
+            return module is pipe.transformer
+
+        with unittest.mock.patch.object(
+                pipelines, 'place_quantized_module',
+                side_effect=lambda module, device: placed.append(module)), \
+                unittest.mock.patch(
+                    'accelerate.cpu_offload',
+                    side_effect=lambda module, *args, **kwargs: offloaded.append(module)), \
+                unittest.mock.patch.object(
+                    safetensorscompat, 'module_has_comfy_quant', side_effect=has_comfy):
+            _flux3.place_flux3(pipe, 'cuda', False, True, False)
+
+        self.assertIs(placed[0], pipe.transformer)
+        self.assertIn(pipe.text_encoder, offloaded)
+        self.assertNotIn(pipe.transformer, offloaded)
+
     def test_upsampler_step_logs_the_enhanced_prompt(self):
         class Track(torch.nn.Linear):
             def __init__(self):
