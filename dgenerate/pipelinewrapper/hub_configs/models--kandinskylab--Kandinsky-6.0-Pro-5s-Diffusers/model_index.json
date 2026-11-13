@@ -1,0 +1,40 @@
+{
+  "_class_name": "Kandinsky6TI2VAPipeline",
+  "_diffusers_version": "0.41.0.dev0",
+  "transformer": [
+    "diffusers",
+    "Kandinsky6Transformer3DModel"
+  ],
+  "vae": [
+    "diffusers",
+    "AutoencoderKLHunyuanVideo"
+  ],
+  "scheduler": [
+    "diffusers",
+    "FlowMatchEulerDiscreteScheduler"
+  ],
+  "text_encoder": [
+    "transformers",
+    "Qwen2_5_VLForConditionalGeneration"
+  ],
+  "tokenizer": [
+    "transformers",
+    "Qwen2_5_VLProcessor"
+  ],
+  "text_encoder_2": [
+    "transformers",
+    "CLIPTextModel"
+  ],
+  "tokenizer_2": [
+    "transformers",
+    "CLIPTokenizer"
+  ],
+  "audio_vae": [
+    "diffusers",
+    "MMAudioVAE"
+  ],
+  "vocoder": [
+    "diffusers",
+    "MMAudioVocoder"
+  ]
+}

@@ -164,6 +164,16 @@
     "32773329fbe7e81a90ef971740e8ba4b0364ecf3",
     "744ffacdd97c7c00"
   ],
+  "black-forest-labs/flux-3-image-klein": [
+    "black-forest-labs/flux-3-image-klein",
+    "09561231f44e41381c461caf53d5452005a60ac9",
+    "744ffacdd97c7c00"
+  ],
+  "black-forest-labs/flux-3-image-klein-base": [
+    "black-forest-labs/flux-3-image-klein-base",
+    "a83ce283b1daa2f3d782645ae7b06c8e73af1b41",
+    "744ffacdd97c7c00"
+  ],
   "diffusers/controlnet-canny-sdxl-1.0": [
     "diffusers/controlnet-canny-sdxl-1.0",
     "eb115a19a10d14909256db740ed109532ab1483c",
@@ -222,6 +232,26 @@
   "kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers": [
     "kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers",
     "7271a43778448e4756a0a822ceb9e46cf52a42b2",
+    "744ffacdd97c7c00"
+  ],
+  "kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers": [
+    "kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers",
+    "8ec017692475fd8e7908d8e75442bba0737649af",
+    "744ffacdd97c7c00"
+  ],
+  "kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers": [
+    "kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers",
+    "4c487e8b4aeeb9059e5a77905aa2ddb59ec28f81",
+    "744ffacdd97c7c00"
+  ],
+  "kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers": [
+    "kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers",
+    "7be18aed6fbd64653c0c4872fddfe4a3e3e109f5",
+    "744ffacdd97c7c00"
+  ],
+  "kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers": [
+    "kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers",
+    "80d5e6c7f646c5f512b684e2da0765618d805894",
     "744ffacdd97c7c00"
   ],
   "krea/Krea-2-Raw": [

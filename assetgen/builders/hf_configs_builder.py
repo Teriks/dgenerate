@@ -90,6 +90,11 @@ class HfConfigsBuilder:
             "black-forest-labs/FLUX.2-klein-base-9B",
             "black-forest-labs/FLUX.2-klein-9b-kv",
             #
+            ### Model type: Flux.3
+            # GGUF loading reads the transformer config from these repos.
+            "black-forest-labs/flux-3-image-klein",
+            "black-forest-labs/flux-3-image-klein-base",
+            #
             ### Model type: Z-Image
             # Base and Turbo share one transformer config. GGUF uses Turbo.
             "Tongyi-MAI/Z-Image",
@@ -132,6 +137,11 @@ class HfConfigsBuilder:
             "kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers",
             "kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers",
             "kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers",
+            # Kandinsky 6 Video. GGUF loading reads Lite and Pro transformer configs.
+            "kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers",
+            "kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers",
+            "kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers",
+            "kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers",
             # Motif Video
             "Motif-Technologies/Motif-Video-2B",
             # Krea 2

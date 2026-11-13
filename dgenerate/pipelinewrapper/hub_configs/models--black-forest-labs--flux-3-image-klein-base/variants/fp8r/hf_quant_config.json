@@ -1,0 +1,47 @@
+{
+  "producer": {
+    "name": "bfl"
+  },
+  "quantization": {
+    "quant_algo": "FP8_PER_CHANNEL_PER_TOKEN",
+    "exclude_modules": [
+      "emb_in.image",
+      "emb_in.image_cond",
+      "final_layer.image.adaLN_modulation.1",
+      "final_layer.image.linear",
+      "time_in.in_layer",
+      "time_in.out_layer",
+      "txt_in",
+      "txt_mode_blocks.0.attn_out",
+      "txt_mode_blocks.0.k_proj",
+      "txt_mode_blocks.0.mlp_in",
+      "txt_mode_blocks.0.mlp_out",
+      "txt_mode_blocks.0.q_proj",
+      "txt_mode_blocks.0.v_proj",
+      "txt_mode_blocks.1.attn_out",
+      "txt_mode_blocks.1.k_proj",
+      "txt_mode_blocks.1.mlp_in",
+      "txt_mode_blocks.1.mlp_out",
+      "txt_mode_blocks.1.q_proj",
+      "txt_mode_blocks.1.v_proj",
+      "txt_mode_blocks.2.attn_out",
+      "txt_mode_blocks.2.k_proj",
+      "txt_mode_blocks.2.mlp_in",
+      "txt_mode_blocks.2.mlp_out",
+      "txt_mode_blocks.2.q_proj",
+      "txt_mode_blocks.2.v_proj",
+      "txt_mode_blocks.3.attn_out",
+      "txt_mode_blocks.3.k_proj",
+      "txt_mode_blocks.3.mlp_in",
+      "txt_mode_blocks.3.mlp_out",
+      "txt_mode_blocks.3.q_proj",
+      "txt_mode_blocks.3.v_proj",
+      "txt_mode_blocks.4.attn_out",
+      "txt_mode_blocks.4.k_proj",
+      "txt_mode_blocks.4.mlp_in",
+      "txt_mode_blocks.4.mlp_out",
+      "txt_mode_blocks.4.q_proj",
+      "txt_mode_blocks.4.v_proj"
+    ]
+  }
+}

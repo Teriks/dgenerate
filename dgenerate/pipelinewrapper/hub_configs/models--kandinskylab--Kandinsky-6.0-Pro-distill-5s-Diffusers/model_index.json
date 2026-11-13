@@ -1,0 +1,51 @@
+{
+  "_class_name": "Kandinsky6TI2VAPipeline",
+  "_diffusers_version": "0.40.0.dev0",
+  "transformer": [
+    "diffusers",
+    "Kandinsky6Transformer3DModel"
+  ],
+  "vae": [
+    "diffusers",
+    "AutoencoderKLHunyuanVideo"
+  ],
+  "scheduler": [
+    "diffusers",
+    "PiflowScheduler"
+  ],
+  "text_encoder": [
+    "transformers",
+    "Qwen2_5_VLForConditionalGeneration"
+  ],
+  "tokenizer": [
+    "transformers",
+    "Qwen2_5_VLProcessor"
+  ],
+  "text_encoder_2": [
+    "transformers",
+    "CLIPTextModel"
+  ],
+  "tokenizer_2": [
+    "transformers",
+    "CLIPTokenizer"
+  ],
+  "_kandinsky6": {
+    "format_version": 1,
+    "source_checkpoint": "merged_bf16.safetensors",
+    "video_vae_implementation": "diffusers",
+    "uses_patched_diffusers": true,
+    "processor": "tokenizer",
+    "text_encoder_assets": {
+      "qwen": "text_encoder",
+      "clip": "text_encoder_2"
+    }
+  },
+  "audio_vae": [
+    "diffusers",
+    "MMAudioVAE"
+  ],
+  "vocoder": [
+    "diffusers",
+    "MMAudioVocoder"
+  ]
+}

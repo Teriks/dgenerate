@@ -1,0 +1,23 @@
+{
+  "_class_name": "PiflowScheduler",
+  "_diffusers_version": "0.40.0.dev0",
+  "base_image_seq_len": 256,
+  "base_shift": 0.5,
+  "eps": 1e-06,
+  "final_step_size_scale": 0.5,
+  "invert_sigmas": false,
+  "max_image_seq_len": 4096,
+  "max_shift": 1.15,
+  "n_grid": 10,
+  "nfe": null,
+  "num_policy_substeps": 128,
+  "num_train_timesteps": 1000,
+  "shift": 5.0,
+  "shift_terminal": null,
+  "stochastic_sampling": false,
+  "time_shift_type": "exponential",
+  "use_beta_sigmas": false,
+  "use_dynamic_shifting": false,
+  "use_exponential_sigmas": false,
+  "use_karras_sigmas": false
+}
