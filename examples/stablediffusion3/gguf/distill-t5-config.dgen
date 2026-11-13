@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# city96 SD3 Medium GGUF for the DiT. DistillT5 replaces T5-XXL, so the
+# text encoder is not quantized again. variant=null opts DistillT5 out of
+# --variant fp16.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type sd3
+--variant fp16
+--dtype float16
+--model-cpu-offload
+--transformer https://huggingface.co/city96/stable-diffusion-3-medium-gguf/blob/main/sd3_medium-Q4_K_S.gguf
+--text-encoders + + DistillT5EncoderModel;model=LifuWang/DistillT5;variant=null
+--inference-steps 28
+--guidance-scales 5
+--gen-seeds 1
+--output-path sd3-gguf-medium-distill-t5
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

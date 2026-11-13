@@ -20,7 +20,7 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --transformer https://huggingface.co/city96/stable-diffusion-3-medium-gguf/blob/main/sd3_medium-Q4_K_S.gguf
 --loras "ByteDance/Hyper-SD;weight-name=Hyper-SD3-4steps-CFG-lora.safetensors"
 --lora-fuse-scale 0.125
---text-encoders + + DistillT5EncoderModel;model=LifuWang/DistillT5
+--text-encoders + + DistillT5EncoderModel;model=LifuWang/DistillT5;variant=null
 --vae AutoencoderTiny;model=madebyollin/taesd3
 --inference-steps 4
 --guidance-scales 3

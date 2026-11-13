@@ -20,7 +20,7 @@ title: Stable Diffusion 3 (DistillT5)
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @torchcompile[{"model-type":"sd3"}]
 @quantizer[{"model-type":"sd3"}]
-@textencoders[{"model-type":"sd3","arg":"--text-encoders", "defaults":[null, null, "DistillT5EncoderModel;model=LifuWang/DistillT5"], "divider-after":true}]
+@textencoders[{"model-type":"sd3","arg":"--text-encoders", "defaults":[null, null, "DistillT5EncoderModel;model=LifuWang/DistillT5;variant=null"], "divider-after":true}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model": "LoRA"}]

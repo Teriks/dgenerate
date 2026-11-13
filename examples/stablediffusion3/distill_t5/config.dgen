@@ -1,0 +1,31 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# DistillT5 replaces T5-XXL. variant=null keeps --variant fp16 on the
+# pipeline from being applied to LifuWang/DistillT5, which publishes
+# only the default weight file.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type sd3 {{ optimization }}
+--variant fp16
+--dtype float16
+--text-encoders + + DistillT5EncoderModel;model=LifuWang/DistillT5;variant=null
+--inference-steps 30
+--guidance-scales 5.00
+--clip-skips 0
+--gen-seeds 2
+--output-path sd3-distill-t5
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
