@@ -267,22 +267,6 @@ def _clear_denoiser(pipe):
         torch.cuda.empty_cache()
 
 
-def _pin_packed_transformer(name: str, module) -> bool:
-    """
-    A ComfyUI packed transformer stays on the GPU for every denoising step.
-
-    ``accelerate.cpu_offload`` leaves that module on the meta device and
-    moves it for each forward. GGUF already takes the resident path because
-    its parameter type is recognized as quantized. Packed int8 weights are
-    ordinary tensors, so they need this check. The text encoder is called
-    once and can still be offloaded.
-    """
-    if name != 'transformer' and not name.startswith('transformer'):
-        return False
-    import dgenerate.pipelinewrapper.safetensorscompat as _safetensorscompat
-    return _safetensorscompat.module_has_comfy_quant(module)
-
-
 def _place_denoiser(pipe, device, offload: bool):
     """Put the text encoder, transformer, and VAE where denoising expects them."""
     import dgenerate.pipelinewrapper.pipelines as _pipelines
@@ -296,8 +280,7 @@ def _place_denoiser(pipe, device, offload: bool):
             module = getattr(pipe, name, None)
             if module is None or not hasattr(module, 'to') or _module_is_hooked(module):
                 continue
-            if (_pipelines.module_skips_group_offload(module)
-                    or _pin_packed_transformer(name, module)):
+            if _pipelines.module_skips_group_offload(module):
                 _pipelines.place_quantized_module(module, device)
                 continue
             accelerate.cpu_offload(
