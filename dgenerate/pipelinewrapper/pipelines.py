@@ -4528,7 +4528,19 @@ def _create_pipeline(
         import dgenerate.pipelinewrapper.flux3 as _flux3
         pipe_params = _flux3.declared_init_parameters(pipeline_class)
 
-    def load_text_encoder(uri: _uris.TextEncoderUri):
+    def load_text_encoder(uri: _uris.TextEncoderUri, encoder_name: str | None = None):
+        if single_file_pipeline_repo:
+            pipeline_repo = single_file_pipeline_repo
+            pipeline_revision = None
+            pipeline_subfolder = encoder_name
+        elif encoder_name and not _hfhub.is_single_file_model_load(model_path):
+            pipeline_repo = model_path
+            pipeline_revision = revision
+            pipeline_subfolder = os.path.join(subfolder, encoder_name) if subfolder else encoder_name
+        else:
+            pipeline_repo = None
+            pipeline_revision = None
+            pipeline_subfolder = None
         return uri.load(
             variant_fallback=variant,
             dtype_fallback=dtype,
@@ -4537,7 +4549,10 @@ def _create_pipeline(
             local_files_only=local_files_only,
             no_cache=bool(lora_uris) or submodules_on_pipeline,
             missing_ok=missing_submodules_ok,
-            device_map=get_device_map_for_quantizer(uri.quantizer)
+            device_map=get_device_map_for_quantizer(uri.quantizer),
+            pipeline_repo=pipeline_repo,
+            pipeline_subfolder=pipeline_subfolder,
+            pipeline_revision=pipeline_revision,
         )
 
     def load_vae(uri: _uris.VAEUri):
@@ -4734,7 +4749,8 @@ def _create_pipeline(
                 creation_kwargs[name] = load_default_text_encoder(encoder_class, name)
             elif not (needs_granular_caching and name in components_to_cache):
                 creation_kwargs[name] = load_text_encoder(
-                    _uris.TextEncoderUri.parse(encoder_uri)
+                    _uris.TextEncoderUri.parse(encoder_uri),
+                    encoder_name=name,
                 )
             # If granular caching is needed and this encoder is in components_to_cache,
             # skip direct loading - it will be handled by granular caching
@@ -5579,6 +5595,7 @@ def _get_component_cache_key(
                     variant=parsed_uri.variant,
                     subfolder=parsed_uri.subfolder,
                     weight_name=parsed_uri.weight_name,
+                    mmproj=parsed_uri.mmproj,
                     dtype=parsed_uri.dtype,
                     quantizer=None,
                     mode=parsed_uri.mode
@@ -5831,11 +5848,24 @@ def _create_minimal_pipeline_for_component_extraction(
                 variant=parsed_uri.variant,
                 subfolder=parsed_uri.subfolder,
                 weight_name=parsed_uri.weight_name,
+                mmproj=parsed_uri.mmproj,
                 dtype=parsed_uri.dtype,
                 quantizer=None,  # Explicitly set to None
                 mode=parsed_uri.mode
             )
 
+            if single_file_pipeline_repo:
+                pipeline_repo = single_file_pipeline_repo
+                pipeline_revision = None
+                pipeline_subfolder = encoder_param
+            elif not _hfhub.is_single_file_model_load(model_path):
+                pipeline_repo = model_path
+                pipeline_revision = revision
+                pipeline_subfolder = os.path.join(subfolder, encoder_param) if subfolder else encoder_param
+            else:
+                pipeline_repo = None
+                pipeline_revision = None
+                pipeline_subfolder = None
             creation_kwargs[encoder_param] = uri_without_quantizer.load(
                 variant_fallback=variant,
                 dtype_fallback=dtype,
@@ -5843,7 +5873,10 @@ def _create_minimal_pipeline_for_component_extraction(
                 auth_token=auth_token,
                 local_files_only=False,
                 no_cache=True,
-                missing_ok=False
+                missing_ok=False,
+                pipeline_repo=pipeline_repo,
+                pipeline_subfolder=pipeline_subfolder,
+                pipeline_revision=pipeline_revision,
             )
         else:
             # Load default text encoder for this parameter

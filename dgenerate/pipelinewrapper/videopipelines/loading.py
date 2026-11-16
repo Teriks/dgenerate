@@ -237,6 +237,12 @@ def pipeline_for_mode(pipe, mode: str, family: str = 'ltx2'):
             wan.common._require_image_encoder(pipe, 'wan-animate-2')
             return pipe
         cls = wan._wan_pipeline_class(mode, family)
+        if mode == 'wan-video':
+            from dgenerate.pipelinewrapper.videopipelines.wan.video2video import (
+                WanMoEVideoToVideoPipeline,
+                loaded_pipe_has_low_noise_expert)
+            if loaded_pipe_has_low_noise_expert(pipe):
+                cls = WanMoEVideoToVideoPipeline
         wan.common._require_image_encoder(pipe, mode)
     else:
         cls = _ltx._ltx_pipeline_class(mode, family)
@@ -245,6 +251,14 @@ def pipeline_for_mode(pipe, mode: str, family: str = 'ltx2'):
     accepted = set(inspect.signature(cls.__init__).parameters)
     accepted.discard('self')
     kwargs = {name: value for name, value in pipe.components.items() if name in accepted}
+    # ``boundary_ratio`` is pipeline config, not a module. Wan 2.2 stores the
+    # expert switch there. Copy config values the target constructor accepts
+    # so video-to-video keeps the low-noise split.
+    config = getattr(pipe, 'config', None)
+    if config is not None:
+        for name in accepted:
+            if name not in kwargs and name in config:
+                kwargs[name] = config[name]
     return cls(**kwargs)
 
 
@@ -351,7 +365,9 @@ def _text_encoder_slots(index: dict | None) -> list[str]:
 
 
 def _load_video_text_encoder(name, uri, dtype, auth_token, local_files_only,
-                             device, offload, force_unquantized):
+                             device, offload, force_unquantized,
+                             pipeline_repo=None, pipeline_subfolder=None,
+                             pipeline_revision=None):
     parsed = _uris.TextEncoderUri.parse(uri)
     if force_unquantized:
         parsed.quantizer = None
@@ -364,7 +380,10 @@ def _load_video_text_encoder(name, uri, dtype, auth_token, local_files_only,
         dtype_fallback=dtype,
         auth_token=auth_token,
         local_files_only=local_files_only,
-        device_map=device_map)
+        device_map=device_map,
+        pipeline_repo=pipeline_repo,
+        pipeline_subfolder=pipeline_subfolder,
+        pipeline_revision=pipeline_revision)
 
 
 def _check_video_text_encoder_uris(index, text_encoder_uris) -> None:
@@ -794,7 +813,10 @@ def _create_cached_video_pipeline(model_path,
             slot,
             lambda _slot=slot, _uri=uri: _load_video_text_encoder(
                 _slot, _uri, dtype, auth_token, local_files_only, device, offload,
-                _slot in text_force),
+                _slot in text_force,
+                pipeline_repo=pretrained_repo,
+                pipeline_subfolder=os.path.join(load_subfolder, _slot) if load_subfolder else _slot,
+                pipeline_revision=None if aux_repo else revision),
             injected, pending_modules)
     fused_lora_components = {}
     if not stream_from_disk and preflight_loras:

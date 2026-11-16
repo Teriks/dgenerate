@@ -22,7 +22,7 @@ title: Flux Dev (ComfyUI Quant + Encoders)
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @torchcompile[{"model-type":"flux"}]
 @quantizer[{"model-type":"flux", "map-default":"text_encoder"}]
-@textencoders[{"model-type": "flux", "arg": "--text-encoders", "divider-after": true, "defaults": [null, "T5EncoderModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp8_e4m3fn_scaled.safetensors"]}]
+@textencoders[{"model-type":"flux", "arg":"--text-encoders", "divider-after":true, "defaults":[null, "T5EncoderModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp8_e4m3fn_scaled.safetensors"], "suggestions":[null, [{"label":"fp8_e4m3fn_scaled", "value":"T5EncoderModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp8_e4m3fn_scaled.safetensors"}, {"label":"fp8_e4m3fn", "value":"T5EncoderModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp8_e4m3fn.safetensors"}]]}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]

@@ -171,6 +171,74 @@ class TestTextEncoderSlots(unittest.TestCase):
         finally:
             root.destroy()
 
+    def test_text_encoder_builder_keeps_mmproj(self):
+        import tkinter as tk
+
+        from dgenerate.console.textencoderselect import _TextEncoderUriDialog, _parse_initial
+
+        uri = (
+            'Qwen2_5_VLForConditionalGeneration;model=org/repo;'
+            'weight-name=text.gguf;mmproj=tower.gguf;compile=true')
+        parsed = _parse_initial(uri, ['Qwen2_5_VLForConditionalGeneration'])
+        self.assertEqual(parsed['mmproj'], 'tower.gguf')
+        self.assertEqual(parsed['weight-name'], 'text.gguf')
+
+        root = tk.Tk()
+        root.withdraw()
+        written = []
+        try:
+            dialog = _TextEncoderUriDialog(
+                slot={'encoders': ['Qwen2_5_VLForConditionalGeneration'], 'modes': []},
+                initial=uri,
+                insert=written.append,
+                master=root)
+            self.assertEqual(dialog._mmproj_label.cget('text'), 'Vision Tower (mmproj)')
+            self.assertEqual(dialog._mmproj_label.winfo_manager(), 'grid')
+            dialog._mmproj_var.set('other-tower.gguf')
+            dialog._insert_uri()
+        finally:
+            root.destroy()
+        self.assertEqual(
+            written,
+            ['Qwen2_5_VLForConditionalGeneration;model=org/repo;'
+             'mmproj=other-tower.gguf;weight-name=text.gguf;compile=true'])
+
+    def test_text_encoder_builder_hides_vision_tower_for_a_text_model(self):
+        import tkinter as tk
+
+        from dgenerate.console.textencoderselect import _TextEncoderUriDialog
+
+        root = tk.Tk()
+        root.withdraw()
+        written = []
+        try:
+            dialog = _TextEncoderUriDialog(
+                slot={'encoders': ['CLIPTextModel', 'Qwen2_5_VLForConditionalGeneration'],
+                      'modes': []},
+                initial='CLIPTextModel;model=org/repo;mmproj=tower.gguf',
+                insert=written.append,
+                master=root)
+            self.assertEqual(dialog._mmproj_label.winfo_manager(), '')
+            dialog._mmproj_var.set('tower.gguf')
+            dialog._insert_uri()
+            dialog = _TextEncoderUriDialog(
+                slot={'encoders': ['Qwen2_5_VLTextModel', 'Qwen2_5_VLForConditionalGeneration'],
+                      'modes': []},
+                initial=(
+                    'Qwen2_5_VLForConditionalGeneration;model=org/repo;mmproj=tower.gguf'),
+                insert=written.append,
+                master=root)
+            self.assertEqual(dialog._mmproj_label.winfo_manager(), 'grid')
+            dialog._encoder_var.set('Qwen2_5_VLTextModel')
+            self.assertEqual(dialog._mmproj_label.winfo_manager(), '')
+            dialog._insert_uri()
+        finally:
+            root.destroy()
+        self.assertEqual(
+            written,
+            ['CLIPTextModel;model=org/repo',
+             'Qwen2_5_VLTextModel;model=org/repo'])
+
     def test_checked_in_schema_matches_the_builder(self):
         on_disk = json.loads(_SCHEMA_PATH.read_text(encoding='utf-8'))
         self.assertEqual(on_disk, _slots.text_encoder_schema())

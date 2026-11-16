@@ -199,6 +199,45 @@ class TestSafetensorsCompat(unittest.TestCase):
     def _relative_error(self, output):
         return ((output - self.reference).norm() / self.reference.norm()).item()
 
+    def test_expert_bank_dequantizes_to_a_stack(self):
+        matrices = [torch.randn(32, 64) * 0.02 for _ in range(2)]
+        packed, scales = [], []
+        for matrix in matrices:
+            storage, scale = _quantize_fp8(matrix)
+            packed.append(storage)
+            scales.append(scale.reshape(()))
+        path = self._write({
+            'experts.weight': torch.stack(packed),
+            'experts.weight_scale': torch.stack(scales),
+            'experts.comfy_quant': _marker({'format': 'float8_e4m3fn', 'num_experts': 2}),
+        })
+        loaded = _safetensorscompat.load_checkpoint(path, torch.float32)
+        self.assertEqual(loaded.sources, {})
+        dense = loaded.checkpoint['experts.weight']
+        self.assertEqual(tuple(dense.shape), (2, 32, 64))
+        for index, matrix in enumerate(matrices):
+            error = (dense[index] - matrix).norm() / matrix.norm()
+            self.assertLess(error.item(), 0.05)
+
+        int8_weights, int8_scales = [], []
+        for matrix in matrices:
+            storage, scale = _quantize_int8_convrot(matrix, 64)
+            int8_weights.append(storage)
+            int8_scales.append(scale)
+        path = self._write({
+            'experts.weight': torch.stack(int8_weights),
+            'experts.weight_scale': torch.stack(int8_scales),
+            'experts.comfy_quant': _marker({
+                'format': 'int8_tensorwise', 'convrot': True, 'convrot_groupsize': 64,
+                'num_experts': 2}),
+        })
+        loaded = _safetensorscompat.load_checkpoint(path, torch.float32)
+        dense = loaded.checkpoint['experts.weight']
+        self.assertEqual(tuple(dense.shape), (2, 32, 64))
+        for index, matrix in enumerate(matrices):
+            error = (dense[index] - matrix).norm() / matrix.norm()
+            self.assertLess(error.item(), 0.05)
+
     def test_float8(self):
         weight, scale = _quantize_fp8(self.weight)
         module = self._layer({
@@ -1026,6 +1065,36 @@ class TestSafetensorsCompat(unittest.TestCase):
             expected = reference(tokens, output_hidden_states=True).hidden_states[-1]
             output = model(tokens, output_hidden_states=True).hidden_states[-1]
         self.assertLess(((output - expected).norm() / expected.norm()).item(), 0.05)
+
+    def test_untied_lm_head_uses_compute_dtype(self):
+        # Klein 9B sets tie_word_embeddings false. ComfyUI's encoder file has
+        # no lm_head, and Qwen3ForCausalLM.forward still multiplies it.
+        import json
+        import transformers
+        from dgenerate.pipelinewrapper.uris import textencoderuri
+
+        torch.manual_seed(0)
+        config = transformers.Qwen3Config(
+            vocab_size=128, hidden_size=64, intermediate_size=128, num_hidden_layers=2,
+            num_attention_heads=4, num_key_value_heads=2, head_dim=16,
+            tie_word_embeddings=False)
+        reference = transformers.Qwen3ForCausalLM(config).eval()
+        state = {k: v for k, v in reference.state_dict().items() if not k.startswith('lm_head')}
+        path = self._write(self._comfy_fp8_state(state))
+        handle, config_path = tempfile.mkstemp(suffix='.json')
+        os.close(handle)
+        self.addCleanup(os.remove, config_path)
+        with open(config_path, 'w') as file:
+            json.dump(config.to_dict(), file)
+
+        model = textencoderuri._load_language_model_from_single_file(
+            transformers.Qwen3ForCausalLM, path, config_path, torch.bfloat16)
+        self.assertEqual(model.lm_head.weight.dtype, torch.bfloat16)
+        self.assertIsNot(model.lm_head.weight, model.model.embed_tokens.weight)
+        tokens = torch.randint(0, 128, (1, 12))
+        with torch.no_grad():
+            hidden = model(tokens, output_hidden_states=True).hidden_states[-1]
+        self.assertEqual(hidden.dtype, torch.bfloat16)
 
     def test_trimmed_language_model_matches_full_model_hidden_state(self):
         # ComfyUI's Flux.2 Mistral file keeps 30 of 40 layers and no final norm;

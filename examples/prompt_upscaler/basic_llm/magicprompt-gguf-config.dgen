@@ -1,0 +1,36 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# magicprompt loads a GGUF. This repository publishes only the .gguf file:
+# there is no config.json and no tokenizer.json. The class is read from the
+# architecture stored in the file, and the tokenizer is the vocabulary stored
+# in the file. The file also stores the chat template, so "system" and
+# "preamble" are a system turn and a user turn. Thinking is left off.
+# "max-length" is the reply, not the chat transcript. "model" may be that file's URL, or a repository with
+# weight-name set to the .gguf. A vision tower is a separate file, given as
+# mmproj with its own path or URL. A file name is not looked up beside the
+# language GGUF. An image example of that tower is
+# examples/qwen_image_21/gguf/image-conditioned-config.dgen
+# and a prompt-upsampler GGUF is
+# examples/ltx2/pipeline_prompt_enhance/gguf-upsampler-config.dgen.
+
+\set llm_model https://huggingface.co/Qwen/Qwen3-4B-GGUF/blob/main/Qwen3-4B-Q4_K_M.gguf
+
+\set llm_system "Reply with one Stable Diffusion prompt and nothing else."
+
+\set llm_preamble "Enhance this description:"
+
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--clip-skips 0
+--gen-seeds 1
+--output-path magicprompt-qwen3-gguf
+--output-size 1024x1024
+--prompt-weighter sd-embed
+--prompt-upscaler magicprompt;model={{ llm_model }};system={{ llm_system }};preamble={{ llm_preamble }};temperature=0;max-length=256;seed=0
+--prompts "a horse in a field on a cloudy day"

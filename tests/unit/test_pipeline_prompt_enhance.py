@@ -55,8 +55,70 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         self.assertIsNot(
             _prompt_upsampler_uri._prompt_upsampler_cache,
             _transformer_uri._transformer_cache)
+        gguf = _uris.PromptUpsamplerUri.parse(
+            'unsloth/gemma-4-E4B-it-GGUF;weight-name=gemma-4-E4B-it-Q4_K_M.gguf;mmproj=mmproj-F16.gguf')
+        self.assertEqual(gguf.model, 'unsloth/gemma-4-E4B-it-GGUF')
+        self.assertEqual(gguf.weight_name, 'gemma-4-E4B-it-Q4_K_M.gguf')
+        self.assertEqual(gguf.mmproj, 'mmproj-F16.gguf')
         with self.assertRaises(_uris.InvalidPromptUpsamplerUriError):
-            _uris.PromptUpsamplerUri.parse('gemma.gguf')
+            _uris.PromptUpsamplerUri.parse('gemma.pt')
+        with self.assertRaises(_uris.InvalidPromptUpsamplerUriError):
+            _uris.PromptUpsamplerUri.parse('google/gemma-4-E2B-it;mmproj=mmproj.gguf')
+
+    def test_gguf_tokenizer_reads_the_vocabulary_when_autoconfig_rejects_the_file(self):
+        uri = _uris.PromptUpsamplerUri.parse(
+            'unsloth/gemma-4-E2B-it-GGUF;weight-name=gemma-4-E2B-it-Q4_K_M.gguf')
+        sentinel = object()
+        with unittest.mock.patch(
+                'transformers.AutoTokenizer.from_pretrained',
+                side_effect=TypeError('intermediate_size')), \
+                unittest.mock.patch(
+                    'transformers.TokenizersBackend.from_pretrained',
+                    return_value=sentinel) as backend:
+            loaded = uri._gguf_tokenizer('folder/model.gguf', OSError('no processor'))
+        self.assertIs(loaded, sentinel)
+        backend.assert_called_once_with(
+            'folder', gguf_file='model.gguf', local_files_only=True)
+
+    def test_gguf_control_tokens_are_marked_special(self):
+        import dgenerate.pipelinewrapper.uris.promptupsampleruri as uri_module
+
+        class Backend:
+            def __init__(self):
+                self.added = []
+
+            def add_special_tokens(self, pieces):
+                self.added.extend(piece.content for piece in pieces)
+
+        class Tokenizer:
+            unk_token_id = 0
+
+            def __init__(self):
+                self._tokenizer = Backend()
+
+            def convert_tokens_to_ids(self, token):
+                return {'<pad>': 1, 'fox': 2, '<turn|>': 106}.get(token, 0)
+
+            def decode(self, ids, skip_special_tokens=False):
+                del skip_special_tokens
+                return {1: '<pad>', 106: '<turn|>'}.get(ids[0], '')
+
+        tokens = ['<pad>', 'fox', '<turn|>', 'missing']
+        kinds = [3, 1, 3, 3]
+
+        def read_field(reader, field):
+            del reader
+            if field.endswith('tokens'):
+                return tokens
+            return kinds
+
+        tokenizer = Tokenizer()
+        with unittest.mock.patch('gguf.GGUFReader', return_value=object()), \
+                unittest.mock.patch(
+                    'transformers.modeling_gguf_pytorch_utils.read_field',
+                    side_effect=read_field):
+            uri_module._mark_gguf_control_tokens(tokenizer, 'model.gguf')
+        self.assertEqual(tokenizer._tokenizer.added, ['<pad>', '<turn|>'])
         rejected = _config(
             model_path='org/sd',
             model_type=_enums.ModelType.SD,

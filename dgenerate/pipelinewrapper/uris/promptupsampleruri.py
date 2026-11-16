@@ -33,6 +33,73 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 
+
+def _mark_gguf_control_tokens(tokenizer, model_path: str) -> None:
+    """Mark GGUF control tokens special so decoding skips them.
+
+    Gemma 4 stores ``<turn|>`` as a control token and stops on it. The
+    converted tokenizer leaves that piece as ordinary text, so the token
+    stays on the rewritten prompt.
+    """
+    try:
+        from gguf import GGUFReader
+        from tokenizers import AddedToken
+        from transformers.modeling_gguf_pytorch_utils import read_field
+    except Exception:
+        return
+    try:
+        reader = GGUFReader(model_path)
+        tokens = read_field(reader, 'tokenizer.ggml.tokens')
+        kinds = read_field(reader, 'tokenizer.ggml.token_type')
+    except Exception as error:
+        _messages.debug_log(
+            f'Could not read control tokens from "{model_path}": {error}')
+        return
+    backend = getattr(tokenizer, '_tokenizer', None)
+    if backend is None or not tokens or not kinds:
+        return
+    unk = getattr(tokenizer, 'unk_token_id', None)
+    pieces = []
+    seen = set()
+    for token, kind in zip(tokens, kinds):
+        if kind not in (3, 4) or not isinstance(token, str) or token in seen:
+            continue
+        seen.add(token)
+        token_id = tokenizer.convert_tokens_to_ids(token)
+        if token_id is None or token_id == unk:
+            continue
+        raw = tokenizer.decode([token_id], skip_special_tokens=False)
+        skipped = tokenizer.decode([token_id], skip_special_tokens=True)
+        if raw and raw != skipped:
+            continue
+        pieces.append(AddedToken(
+            token, rstrip=False, lstrip=False, normalized=False, special=True))
+    if not pieces:
+        return
+    try:
+        backend.add_special_tokens(pieces)
+    except Exception as error:
+        _messages.debug_log(
+            f'Could not mark GGUF control tokens special: {error}')
+
+
+class _GGUFTokenizerProcessor:
+    """A GGUF vocabulary used as the chat processor when the repository has no processor files.
+
+    Text prompts tokenize. An image needs the image processor beside the GGUF.
+    """
+
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+
+    def __call__(self, text=None, images=None, return_tensors=None, **kwargs):
+        if images is not None:
+            raise _exceptions.PromptUpsamplerUriLoadError(
+                'This GGUF has no image processor beside it. '
+                'A text prompt can be rewritten. An image needs that processor.')
+        return self.tokenizer(text, return_tensors=return_tensors, **kwargs)
+
+
 _prompt_upsampler_uri_parser = _textprocessing.ConceptUriParser(
     'Prompt Upsampler', [
         'model',
@@ -41,7 +108,9 @@ _prompt_upsampler_uri_parser = _textprocessing.ConceptUriParser(
         'subfolder',
         'dtype',
         'quantizer',
-        'compile'
+        'compile',
+        'weight-name',
+        'mmproj',
     ]
 )
 
@@ -79,7 +148,8 @@ class PromptUpsamplerUri:
     }
 
     FILE_ARGS = {
-        'model': {'mode': ['in', 'dir'], 'filetypes': [('Models', ['*.safetensors', '*.pt', '*.pth', '*.bin'])]}
+        'model': {'mode': ['in', 'dir'], 'filetypes': [('Models', ['*.safetensors', '*.gguf', '*.pt', '*.pth', '*.bin'])]},
+        'mmproj': {'mode': ['in'], 'filetypes': [('Models', ['*.gguf'])]},
     }
 
     @property
@@ -117,6 +187,23 @@ class PromptUpsamplerUri:
         """Compile this upsampler's decoder layers."""
         return self._compile
 
+    @property
+    def weight_name(self) -> _types.OptionalName:
+        """One weight file in the repository or folder, such as a GGUF."""
+        return self._weight_name
+
+    @property
+    def mmproj(self) -> _types.OptionalPath:
+        """
+        GGUF vision tower (llama.cpp mmproj) loaded beside a GGUF upsampler.
+
+        A local path or a URL, including a Hugging Face blob or resolve link.
+        A file name is not taken from the language file or its repository.
+        The LTX-2.5 Gemma enhancer and the FLUX.3 Qwen3.5 upsampler use it
+        when the quant is split into a language file and a tower.
+        """
+        return self._mmproj
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
@@ -124,17 +211,31 @@ class PromptUpsamplerUri:
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None,
                  quantizer: _types.OptionalUri = None,
-                 compile: bool = False):
-        if _hfhub.is_single_file_model_load(model):
+                 compile: bool = False,
+                 weight_name: _types.OptionalName = None,
+                 mmproj: _types.OptionalPath = None):
+        gguf_file = _hfhub.is_gguf_model(model) or bool(weight_name and _hfhub.is_gguf_model(weight_name))
+        safetensors_file = (
+            str(model).lower().endswith('.safetensors')
+            or bool(weight_name and str(weight_name).lower().endswith('.safetensors')))
+        if _hfhub.is_single_file_model_load(model) and not gguf_file and not safetensors_file:
             raise _exceptions.InvalidPromptUpsamplerUriError(
-                'A prompt upsampler URI loads a Transformers model repository or folder. '
-                'Single-file checkpoints, including GGUF, are denoiser weights and use --transformer.')
+                'A prompt upsampler file is a .gguf or a .safetensors quant. '
+                'Other single-file checkpoints are denoiser weights and use --transformer.')
+        if quantizer and gguf_file:
+            raise _exceptions.InvalidPromptUpsamplerUriError(
+                'A GGUF prompt upsampler is already quantized. Do not set the quantizer argument.')
+        if mmproj and not gguf_file:
+            raise _exceptions.InvalidPromptUpsamplerUriError(
+                'mmproj is a GGUF vision tower loaded beside a GGUF prompt upsampler.')
         self._model = model
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
         self._quantizer = quantizer
         self._compile = bool(compile)
+        self._weight_name = weight_name
+        self._mmproj = mmproj
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
         except ValueError:
@@ -180,6 +281,154 @@ class PromptUpsamplerUri:
             size_var='prompt_upsampler_size',
             new_object_size=new_size)
 
+    def _load_weight_file(self, torch_dtype, auth_token, local_files_only, no_cache, gguf_file):
+        """A GGUF or safetensors quant, with ``mmproj`` when the tower is a separate file."""
+        import os
+
+        import accelerate
+
+        from dgenerate.pipelinewrapper.uris.textencoderuri import (
+            _assign_gguf_text_encoder,
+            _fit_layer_count,
+            _load_gguf_text_encoder,
+            _materialize_mmproj,
+            _shipped_encoder_for_shape,
+            _tensor_signature,
+        )
+
+        try:
+            model_path, _subfolder = _hfhub.materialize_named_weight(
+                self.model,
+                weight_name=self.weight_name,
+                revision=self.revision,
+                subfolder=self.subfolder,
+                local_files_only=local_files_only,
+                auth_token=auth_token)
+        except Exception as error:
+            raise _exceptions.PromptUpsamplerUriLoadError(
+                f'Failed to find prompt upsampler weights "{self.weight_name or self.model}": {error}'
+            ) from error
+
+        mmproj_path = None
+        if gguf_file and self.mmproj:
+            try:
+                mmproj_path = _materialize_mmproj(
+                    self.mmproj, local_files_only, auth_token)
+            except _exceptions.TextEncoderUriLoadError as error:
+                raise _exceptions.PromptUpsamplerUriLoadError(str(error)) from error
+            if not _hfhub.is_gguf_model(mmproj_path):
+                raise _exceptions.PromptUpsamplerUriLoadError(
+                    f'mmproj "{self.mmproj}" must be a .gguf file.')
+
+        size = os.path.getsize(model_path) if os.path.isfile(model_path) else 0
+        if mmproj_path and os.path.isfile(mmproj_path):
+            size += os.path.getsize(mmproj_path)
+        self._enforce_cache_size(size)
+
+        if gguf_file:
+            _messages.debug_log(
+                f'Loading prompt upsampler "{model_path}" from GGUF.')
+            try:
+                model = _load_gguf_text_encoder(
+                    None, model_path, torch_dtype, mmproj_path=mmproj_path)
+            except _exceptions.TextEncoderUriLoadError as error:
+                raise _exceptions.PromptUpsamplerUriLoadError(str(error)) from error
+        else:
+            from dgenerate.pipelinewrapper import safetensorscompat
+            _messages.debug_log(
+                f'Loading prompt upsampler "{model_path}" from safetensors.')
+            try:
+                checkpoint = safetensorscompat.load_checkpoint(model_path, torch_dtype, dequantize=True)
+                signature = _tensor_signature(checkpoint.checkpoint)
+                if signature is None:
+                    raise _exceptions.PromptUpsamplerUriLoadError(
+                        f'Prompt upsampler "{model_path}" has no token embedding and decoder layers.')
+                _embed, shape, layers = signature
+                encoder, config_path = _shipped_encoder_for_shape(shape, layers)
+                if encoder is None:
+                    vocab, hidden = shape
+                    raise _exceptions.PromptUpsamplerUriLoadError(
+                        f'Prompt upsampler "{model_path}" (vocabulary {vocab}, hidden size {hidden}, '
+                        f'{layers} layers) does not match a configuration shipped with dgenerate.')
+                config = encoder.config_class.from_json_file(config_path)
+                trimmed = _fit_layer_count(config, layers)
+                with accelerate.init_empty_weights(include_buffers=False):
+                    model = encoder(config)
+                model = _assign_gguf_text_encoder(
+                    model, checkpoint.checkpoint, torch_dtype, rename=None, trimmed=trimmed)
+            except _exceptions.PromptUpsamplerUriLoadError:
+                raise
+            except _exceptions.TextEncoderUriLoadError as error:
+                raise _exceptions.PromptUpsamplerUriLoadError(str(error)) from error
+            except Exception as error:
+                raise _exceptions.PromptUpsamplerUriLoadError(
+                    f'Failed to load prompt upsampler "{model_path}": {error}') from error
+
+        model._dgenerate_prompt_processor = self._load_processor(
+            model_path, auth_token, local_files_only)
+        _util._patch_module_to_for_sized_cache(_prompt_upsampler_cache, model)
+        return model, _d_memoize.CachedObjectMetadata(size=size, skip=bool(no_cache))
+
+    def _load_processor(self, model_path, auth_token, local_files_only):
+        """The chat processor from the repository, or from files beside the weights."""
+        import os
+
+        from transformers import AutoProcessor
+
+        folder = os.path.dirname(model_path)
+        slug = (
+            self.weight_name and not os.path.isdir(self.model)
+            and not _hfhub.is_single_file_model_load(self.model)
+            and _hfhub.HFBlobLink.parse(self.model) is None)
+        source = self.model if slug else folder
+        kwargs = {
+            'token': auth_token,
+            'local_files_only': local_files_only,
+        }
+        if slug:
+            kwargs['revision'] = self.revision
+            if self.subfolder:
+                kwargs['subfolder'] = self.subfolder
+        try:
+            return AutoProcessor.from_pretrained(source, **kwargs)
+        except Exception as error:
+            tokenizer = self._gguf_tokenizer(model_path, error)
+            if tokenizer is None:
+                raise _exceptions.PromptUpsamplerUriLoadError(
+                    f'No processor for prompt upsampler "{self.model}". '
+                    f'The repository, or the folder beside the weights, needs the tokenizer '
+                    f'and image processor: {error}') from error
+            return _GGUFTokenizerProcessor(tokenizer)
+
+    def _gguf_tokenizer(self, model_path, error):
+        """The vocabulary stored in a GGUF, when the repository has no processor files."""
+        import os
+
+        from transformers import AutoTokenizer
+
+        if not model_path or not str(model_path).lower().endswith('.gguf'):
+            return None
+        folder = os.path.dirname(model_path)
+        gguf_file = os.path.basename(model_path)
+        # AutoTokenizer builds a model config from the GGUF first. Gemma 4
+        # stores intermediate_size as one integer per layer, and that config
+        # class rejects the list. The vocabulary itself is still in the file.
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(
+                folder, gguf_file=gguf_file, local_files_only=True)
+        except Exception as tokenizer_error:
+            try:
+                from transformers import TokenizersBackend
+                tokenizer = TokenizersBackend.from_pretrained(
+                    folder, gguf_file=gguf_file, local_files_only=True)
+            except Exception:
+                _messages.debug_log(
+                    f'No tokenizer in GGUF "{model_path}": {tokenizer_error}; '
+                    f'processor: {error}')
+                return None
+        _mark_gguf_control_tokens(tokenizer, model_path)
+        return tokenizer
+
     @_memoize(_prompt_upsampler_cache,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {
@@ -212,6 +461,15 @@ class PromptUpsamplerUri:
             variant = None
         else:
             variant = self.variant
+
+        gguf_file = _hfhub.is_gguf_model(self.model) or bool(
+            self.weight_name and _hfhub.is_gguf_model(self.weight_name))
+        safetensors_file = (
+            str(self.model).lower().endswith('.safetensors')
+            or bool(self.weight_name and str(self.weight_name).lower().endswith('.safetensors')))
+        if gguf_file or safetensors_file:
+            return self._load_weight_file(
+                torch_dtype, auth_token, local_files_only, no_cache, gguf_file)
 
         model_path = _hfhub.download_non_hf_slug_model(
             self.model, local_files_only=local_files_only, auth_token=auth_token)
@@ -314,6 +572,8 @@ class PromptUpsamplerUri:
                 quantizer=quantizer or None,
                 compile=_util.parse_compile_argument(
                     parsed.args.get('compile'),
-                    _exceptions.InvalidPromptUpsamplerUriError))
+                    _exceptions.InvalidPromptUpsamplerUriError),
+                weight_name=parsed.args.get('weight-name', None),
+                mmproj=parsed.args.get('mmproj', None))
         except _textprocessing.ConceptUriParseError as error:
             raise _exceptions.InvalidPromptUpsamplerUriError(error) from error

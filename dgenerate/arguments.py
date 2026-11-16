@@ -1789,8 +1789,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     A pre-quantized text encoder can be loaded with no "mode" and no "quantizer".
                     Point "model" at a .gguf file (a T5-XXL or UMT5-XXL GGUF, or a llama.cpp Qwen,
                     Mistral, or Gemma GGUF) or at a ComfyUI quantized .safetensors file. Name the
-                    encoder class that matches the file. The configuration is matched from the file
-                    against the configurations dgenerate ships with, and quantized linears stay packed.
+                    encoder class that matches the file. The configuration is one dgenerate ships,
+                    matched from the file's vocabulary, hidden size, and layer count. If none matches,
+                    the text encoder config from the pipeline is used: the --model repository or folder,
+                    or the repository detected for a single-file checkpoint. A quant does not ship
+                    config.json, and a config.json next to the file is not read.
+                    Quantized linears stay packed.
                     CLIP and the Flux / SD3 monolithic T5 checkpoints can still use "mode".
                     
                     Available encoder classes are:
@@ -1803,6 +1807,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     * DistillT5EncoderModel (see: LifuWang/DistillT5)
                     * ChatGLMModel (Kolors)
                     * Gemma3ForConditionalGeneration
+                    * Gemma4ForConditionalGeneration
                     * Gemma4UnifiedForConditionalGeneration (LTX-2.5)
                     * Mistral3ForConditionalGeneration (Flux.2)
                     * Qwen2_5_VLForConditionalGeneration (Qwen-Image, Kandinsky 5, Kandinsky 6)
@@ -1815,6 +1820,16 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     "weight-name" selects one file in a repository or a folder. "subfolder" is the directory
                     of that file: "CLIPTextModel;model=org/repo;subfolder=folder;weight-name=encoder.safetensors".
                     A .gguf text encoder uses the same shape, with no "quantizer".
+                    
+                    "mmproj" is the llama.cpp vision-tower GGUF written beside a Qwen2-VL, Qwen3-VL,
+                    or Gemma 4 text encoder (--llama, ComfyUI-GGUF, or a published file such as
+                    Unsloth mmproj-F16.gguf). It is that file's path or URL, including a blob or
+                    resolve link. A file name is not looked up beside the text GGUF or in its repository.
+                    Any other encoder class rejects "mmproj":
+                    
+                    NOWRAP!
+                    Qwen2_5_VLForConditionalGeneration;model=text_encoder-Q4_K.gguf;mmproj=mmproj-text_encoder-Q4_K.gguf
+                    Gemma4ForConditionalGeneration;model=unsloth/gemma-4-E4B-it-GGUF;weight-name=gemma-4-E4B-it-Q4_K_M.gguf;mmproj=https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/blob/main/mmproj-F16.gguf
                     
                     If you wish to load weights directly from a path on disk, you must point this argument at the folder
                     they exist in, which should also contain the config.json file for the Text Encoder.
@@ -6075,11 +6090,20 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             dest='prompt_upsampler',
             help="""Prompt upsampler URI. The arguments match --transformer:
                     revision, variant, subfolder, dtype, quantizer, and compile.
-                    compile=true compiles its decoder layers. It loads
-                    a Transformers causal or image-to-text model, not the denoiser.
-                    For example
-                    google/gemma-4-E2B-it or
-                    google/gemma-4-E2B-it;quantizer="sdnq;type=int4".
+                    weight-name selects one .gguf or .safetensors file in the
+                    repository or folder. mmproj is the llama.cpp vision tower
+                    loaded beside a GGUF: that file's path or URL, including a
+                    blob or resolve link. A file name is not looked up beside
+                    the language file or in its repository. compile=true
+                    compiles its decoder layers. It loads a Transformers causal or
+                    image-to-text model, not the denoiser. A repository load uses
+                    that repository's config and processor. A GGUF or safetensors
+                    quant uses a configuration dgenerate ships for that shape.
+                    A config.json next to the quant is not read. mmproj is only
+                    the file named on the URI.
+                    For example google/gemma-4-E2B-it or
+                    google/gemma-4-E2B-it;quantizer="sdnq;type=int4" or
+                    unsloth/gemma-4-E4B-it-GGUF;weight-name=gemma-4-E4B-it-Q4_K_M.gguf;mmproj=https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/blob/main/mmproj-F16.gguf.
                     Setting this turns prompt enhancement on and loads that model
                     instead of the default. --model-type ltx2 defaults to
                     google/gemma-4-E2B-it when only --pipeline-prompt-enhance is

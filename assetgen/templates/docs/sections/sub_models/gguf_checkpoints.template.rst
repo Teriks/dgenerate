@@ -18,6 +18,12 @@ Q5_1, Q8_0, Q2_K, Q3_K, Q4_K, Q5_K, Q6_K, IQ4_NL, and IQ4_XS unpack in Triton
 and multiply with a PyTorch GEMM. PyTorch dequantizes the weight when Triton
 is not installed.
 
+``F16``, ``F32``, and ``BF16`` are unquantized. Every tensor is that dtype,
+and the loader reads it directly. The ``quantize`` sub-command writes one
+from a diffusers component: ``--formats fp16`` is F16, ``--formats fp32`` is
+F32, and ``--formats bf16`` is BF16. ``--llama`` and ``--comfy`` still choose
+the tensor names. There is nothing to unpack, and ``quantizer`` stays unset.
+
 ComfyUI files prefix tensor names with ``model.diffusion_model.``. That
 prefix is removed on load. A Comfy linear stored transposed stays packed.
 Dequantization uses the Triton unpack on CUDA, ROCm, and XPU, then the weight
@@ -100,13 +106,18 @@ Text Encoders
 
 Point ``--text-encoders`` at a ``.gguf`` file and name the encoder class.
 There is no ``mode`` and no ``subfolder``. The configuration is matched from
-the file's vocabulary, hidden size, and layer count. Do not set ``quantizer``.
+the file's vocabulary, hidden size, and layer count. If none matches, the
+pipeline repository's text encoder config is used. A quant does not ship
+``config.json``, and a ``config.json`` next to the file is not read. Do not
+set ``quantizer``.
 
 llama.cpp architectures ``t5``, ``t5encoder``, ``llama``, ``qwen2vl``,
-``qwen3``, ``qwen3vl``, ``gemma3``, and ``gemma4`` are accepted. llama.cpp
+``qwen3``, ``qwen3vl``, ``qwen35``, ``gemma3``, and ``gemma4`` are accepted. llama.cpp
 tensor names are renamed to Hugging Face names, and the quantized linears
 stay packed. A file that already stores Hugging Face or ComfyUI names,
-including the LTX-2.5 Gemma 4 GGUF, is loaded as stored. T5 keeps its
+including the LTX-2.5 Gemma 4 GGUF, is loaded as stored. Llama and Mistral
+query and key rows are restored only when the file used llama.cpp names.
+T5 keeps its
 feed-forward output projection dense, because T5 runs that projection in
 float32. Gemma norms written by llama.cpp are converted back to the
 Hugging Face values.

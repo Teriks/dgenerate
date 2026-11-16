@@ -142,6 +142,7 @@ class TestMagicPromptLayerSplit(unittest.TestCase):
 
         upscaler = MagicPromptUpscaler.__new__(MagicPromptUpscaler)
         upscaler._quantizer = None
+        upscaler._gguf = None
         upscaler._gpu_headroom = 1.5
         upscaler._pipeline = types.SimpleNamespace(model=model)
         upscaler._PromptUpscaler__device = 'cuda'
@@ -198,7 +199,7 @@ class TestMagicPromptPresencePenalty(unittest.TestCase):
                          truncation=True, max_length=100):
                 return Encoded(input_ids=torch.tensor([[1, 2, 3]]))
 
-            def decode(self, output):
+            def decode(self, output, skip_special_tokens=False):
                 return 'ok'
 
         class Model(torch.nn.Module):

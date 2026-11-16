@@ -10,6 +10,15 @@ a checkpoint is a file format, not a ``--quantizer`` backend: point
 ``--transformer`` (or the model path, or ``--text-encoders``) at the file and it
 is recognized from its contents.
 
+A plain ``float16`` or ``float32`` safetensors file is not one of these
+quants. The ``quantize`` sub-command writes it with ``--formats float16`` or
+``--formats float32``. With ``--comfy``, the tensor names are ComfyUI's and
+the file has no quant metadata. dgenerate loads that file as an ordinary
+full-precision checkpoint. ComfyUI's usual loader reads it too. FLUX.2,
+Z-Image, CLIP, and Gemma 4 are converted this way, because ComfyUI-GGUF has
+no architecture for them. An F16 or F32 ComfyUI-GGUF file is the GGUF form of
+the same conversion, written with ``--formats f16`` or ``--formats f32``.
+
 Supported formats:
 
 * ``float8_e4m3fn`` and ``float8_e5m2``, with a per tensor or per row scale

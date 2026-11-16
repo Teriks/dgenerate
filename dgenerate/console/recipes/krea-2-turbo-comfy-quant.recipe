@@ -17,7 +17,7 @@ title: Krea 2 Turbo (ComfyUI Quant)
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
-@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_fp8_scaled.safetensors", "divider-after":true}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_fp8_scaled.safetensors", "divider-after":true, "suggestions":[{"label":"fp8_scaled", "value":"https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_fp8_scaled.safetensors"}, {"label":"nvfp4", "value":"https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_nvfp4.safetensors"}, {"label":"fp8", "value":"https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_fp8.safetensors"}, {"label":"int8_convrot", "value":"https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_int8_convrot.safetensors"}]}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":8, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":0, "min":0}]
 @switch[{"id":"pipeline-prompt-enhance", "label":"Pipeline Prompt Enhance", "arg":"--pipeline-prompt-enhance", "divider-before":true}]

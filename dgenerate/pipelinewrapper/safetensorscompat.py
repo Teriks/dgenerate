@@ -1305,6 +1305,45 @@ if hasattr(torch, 'float8_e8m0fnu'):
     _TORCH_DTYPES['F8_E8M0'] = torch.float8_e8m0fnu
 
 
+def _expert_value(value: torch.Tensor | None, index: int, experts: int, shared: bool) -> torch.Tensor | None:
+    """One expert's scale. A codebook and a 1D channel vector stay shared."""
+    if value is None:
+        return None
+    if value.ndim >= 2 and value.shape[0] == experts:
+        return value[index]
+    if not shared and value.ndim == 1 and value.shape[0] == experts:
+        return value[index]
+    return value
+
+
+def _dequantize_experts(raw: dict, name: str, kitchen_config: dict | None,
+                        dtype: torch.dtype) -> torch.Tensor:
+    """
+    A ComfyUI expert bank, ``(experts, rows, inputs)``, as a dense stack.
+
+    Per-expert scales have that expert count as their first dimension. A
+    codebook and a scalar scale are shared. Each matrix goes through the same
+    2D decoder as a linear.
+    """
+    weight = raw[name + '.weight']
+    experts = weight.shape[0]
+    decoded = []
+    for index in range(experts):
+        sliced = {name + '.weight': weight[index]}
+        marker = raw.get(name + '.comfy_quant')
+        if marker is not None:
+            sliced[name + '.comfy_quant'] = marker
+        for suffix in (
+                '.weight_scale', '.weight_scale_2', '.pre_quant_scale',
+                '.weight_s_rel', '.weight_s_channel', '.weight_codebook', '.weight_correction'):
+            sliced[name + suffix] = _expert_value(
+                raw.get(name + suffix), index, experts,
+                shared=suffix in {'.weight_codebook', '.pre_quant_scale'})
+        sliced = {key: value for key, value in sliced.items() if value is not None}
+        decoded.append(_extract_layer(sliced, name, kitchen_config).dequantize(torch.float32))
+    return torch.stack(decoded).to(dtype)
+
+
 def load_checkpoint(path: str, dtype: torch.dtype | None,
                     dequantize: bool = False, load=None) -> ComfyQuantCheckpoint:
     """
@@ -1328,6 +1367,11 @@ def load_checkpoint(path: str, dtype: torch.dtype | None,
     names = _quantized_layer_names(raw, kitchen)
     sources = {}
     for name in names:
+        if raw[name + '.weight'].ndim == 3:
+            # MoE banks are one quantized matrix per expert. They land as a
+            # dense (experts, rows, inputs) parameter.
+            raw[name + '.weight'] = _dequantize_experts(raw, name, kitchen.get(name), dtype)
+            continue
         layer = _extract_layer(raw, name, kitchen.get(name))
         sources[name + '.weight'] = layer
         raw[name + '.weight'] = layer.weight

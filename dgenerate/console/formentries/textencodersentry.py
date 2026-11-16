@@ -106,7 +106,12 @@ class _TextEncodersEntry(_entry._Entry):
                 initial = str(defaults[index])
             uri_var = tk.StringVar(value=initial)
             skip_var = tk.BooleanVar(value=False)
-            entry = _t_entry.TextEntry(self.master, textvariable=uri_var)
+            slot_suggestions = None
+            suggestions = self.config.get('suggestions') or []
+            if index < len(suggestions):
+                slot_suggestions = suggestions[index]
+            entry = _t_entry.value_entry(
+                self.master, uri_var, slot_suggestions)
             buttons = ttk.Frame(self.master)
 
             def pick_file(variable=uri_var):

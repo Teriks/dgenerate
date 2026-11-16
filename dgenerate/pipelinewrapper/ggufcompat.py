@@ -325,6 +325,35 @@ def _detect_kandinsky6_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
         adapt=True)
 
 
+def _orient_wan_patch(shape: tuple[int, ...]) -> tuple[int, ...]:
+    """Return a Wan patch embedding in PyTorch order, ``(out, in, k...)``.
+
+    city96 GGUFs store the conv as ``(k..., in, out)``, so a 14B text-to-video
+    weight is ``(2, 2, 1, 16, 5120)`` rather than ``(5120, 16, 1, 2, 2)``.
+    Diffusers reverses it while loading. Detection has to use the same order,
+    or the leading 2 is read as the hidden width and the file is treated as
+    image-to-video.
+    """
+    shape = _shape(shape)
+    if len(shape) < 2:
+        return shape
+    widths = (1536, 3072, 5120)
+    if shape[0] in widths:
+        return shape
+    if shape[-1] in widths:
+        return tuple(reversed(shape))
+    return shape
+
+
+def _wan_patch_embedding(shapes: dict):
+    patch = _lookup_shape(
+        shapes, 'patch_embedding.weight',
+        _COMFY_PREFIX + 'patch_embedding.weight')
+    if patch is None:
+        return None
+    return _orient_wan_patch(patch)
+
+
 def _detect_wan_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
     if not _has(shapes, 'head.modulation', 'patch_embedding.weight',
                 _COMFY_PREFIX + 'head.modulation',
@@ -332,9 +361,7 @@ def _detect_wan_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
         return None
     if _has(shapes, 'vace_blocks.0.after_proj.bias',
             _COMFY_PREFIX + 'vace_blocks.0.after_proj.bias'):
-        patch = _lookup_shape(
-            shapes, 'patch_embedding.weight',
-            _COMFY_PREFIX + 'patch_embedding.weight')
+        patch = _wan_patch_embedding(shapes)
         if patch is not None and patch[0] == 1536:
             return GGUFLayout(
                 'wan-vace-1.3B', 'Wan-AI/Wan2.1-VACE-1.3B-diffusers',
@@ -363,9 +390,7 @@ def _detect_wan_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
         return GGUFLayout(
             'wan-flf2v-14B', 'Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers',
             comfy=comfy, adapt=True)
-    patch = _lookup_shape(
-        shapes, 'patch_embedding.weight',
-        _COMFY_PREFIX + 'patch_embedding.weight')
+    patch = _wan_patch_embedding(shapes)
     if patch is None:
         return None
     width = patch[0]
@@ -606,12 +631,13 @@ def _materialize_wan_pos_embed(param):
     return tensor
 
 
-def adapt_wan_flf_checkpoint(checkpoint: dict) -> dict:
-    """Map ``img_emb.emb_pos`` onto the Diffusers first-last image embedding."""
-    checkpoint = _strip_comfy_prefix(dict(checkpoint))
-    if _wan_checkpoint_needs_convert(checkpoint):
-        from diffusers.loaders.single_file_utils import convert_wan_transformer_to_diffusers
-        checkpoint = convert_wan_transformer_to_diffusers(checkpoint)
+def assign_wan_flf_pos_embed(checkpoint: dict) -> dict:
+    """Copy ``img_emb.emb_pos`` onto ``condition_embedder.image_embedder.pos_embed``.
+
+    ``convert_wan_transformer_to_diffusers`` leaves the original name in place.
+    The Diffusers parameter is then never loaded and stays a meta tensor, and
+    moving the module fails with "Cannot copy out of meta tensor".
+    """
     source = checkpoint.pop(_WAN_FLF_POS_SOURCE, None)
     if source is None:
         source = checkpoint.get(_WAN_FLF_POS_EMBED)
@@ -622,6 +648,15 @@ def adapt_wan_flf_checkpoint(checkpoint: dict) -> dict:
         'Mapped Wan FLF2V img_emb.emb_pos onto '
         f'{_WAN_FLF_POS_EMBED} {_WAN_FLF_POS_SHAPE}.')
     return checkpoint
+
+
+def adapt_wan_flf_checkpoint(checkpoint: dict) -> dict:
+    """Map ``img_emb.emb_pos`` onto the Diffusers first-last image embedding."""
+    checkpoint = _strip_comfy_prefix(dict(checkpoint))
+    if _wan_checkpoint_needs_convert(checkpoint):
+        from diffusers.loaders.single_file_utils import convert_wan_transformer_to_diffusers
+        checkpoint = convert_wan_transformer_to_diffusers(checkpoint)
+    return assign_wan_flf_pos_embed(checkpoint)
 
 
 def adapt_qwen_checkpoint(checkpoint: dict) -> dict:
@@ -1344,7 +1379,9 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
 # llama.cpp text-encoder architectures. The tensor names are llama.cpp names
 # (``enc.blk.0.attn_q.weight``, ``blk.0.attn_q.weight``), not Hugging Face names.
 _TEXT_GGUF_ARCHITECTURES = frozenset({
-    't5', 't5encoder', 'llama', 'qwen2vl', 'qwen3', 'qwen3vl', 'gemma3', 'gemma4',
+    't5', 't5encoder', 'llama', 'qwen2', 'qwen2vl', 'qwen3', 'qwen3vl', 'qwen35', 'qwen35moe',
+    'gemma3', 'gemma4',
+    'clip', 'clip_l', 'clip_g',
 })
 
 # Replacements run in order, the same order ComfyUI-GGUF uses. A longer
@@ -1436,10 +1473,19 @@ def _remap_keys(state: dict, key_map: tuple) -> dict:
     return remapped
 
 
+def _clip_text_keys(keys) -> bool:
+    """Hugging Face CLIP text tower, the names Comfy clip files and our quantizer use."""
+    return any(
+        key.endswith('embeddings.token_embedding.weight') and 'vision' not in key
+        for key in keys)
+
+
 def _huggingface_names(keys, architecture: str) -> bool:
     """True when the file already stores Hugging Face parameter names."""
     if architecture in {'t5', 't5encoder'}:
         return any(key.startswith('encoder.block.') or key == 'shared.weight' for key in keys)
+    if architecture in {'clip', 'clip_l', 'clip_g'}:
+        return _clip_text_keys(keys) or any('.self_attn.' in key for key in keys)
     return any(key.endswith('embed_tokens.weight') or '.self_attn.' in key for key in keys)
 
 
@@ -1503,7 +1549,8 @@ def correct_gemma3_norms(state: dict) -> dict:
 
 def _gguf_model_tensor(name: str) -> bool:
     """A tensor the text encoder consumes, rather than a packed tokenizer or config."""
-    return name.endswith(('.weight', '.bias', 'layer_scalar', 'pos_embedding'))
+    # ``.weight.1`` is the second temporal slice of a Qwen patch embedding.
+    return name.endswith(('.weight', '.bias', '.weight.1', 'layer_scalar', 'pos_embedding'))
 
 
 def _read_text_encoder_gguf(path: str) -> dict:
@@ -1536,28 +1583,634 @@ def _read_text_encoder_gguf(path: str) -> dict:
     return state
 
 
-def load_text_encoder_gguf(path: str) -> tuple[str, dict]:
+# llama.cpp mmproj names for a Qwen2 / Qwen2.5 vision tower, back to Hugging Face.
+# Qwen3-VL keeps a fused qkv and names its merger ``mm.0`` / ``mm.2``, so it does
+# not use this map.
+_QWEN_VISION_MMPROJ = (
+    ('mm.', 'visual.merger.mlp.'),
+    ('v.post_ln.', 'visual.merger.ln_q.'),
+    ('v.patch_embd', 'visual.patch_embed.proj'),
+    ('v.blk.', 'visual.blocks.'),
+    ('ffn_up', 'mlp.up_proj'),
+    ('ffn_down', 'mlp.down_proj'),
+    ('ffn_gate', 'mlp.gate_proj'),
+    ('attn_out.', 'attn.proj.'),
+    ('ln1.', 'norm1.'),
+    ('ln2.', 'norm2.'),
+)
+
+
+def _dense_gguf_tensor(value):
+    if _is_gguf_parameter(value):
+        from diffusers.quantizers.gguf.utils import dequantize_gguf_tensor
+        return dequantize_gguf_tensor(value)
+    return value
+
+
+def _qwen3_mmproj(state: dict) -> bool:
+    """Qwen3-VL keeps ``attn_qkv`` fused and records DeepStack and a position embedding."""
+    return any(
+        'attn_qkv' in key or key.startswith('v.deepstack.') or 'position_embd' in key
+        for key in state)
+
+
+def _gemma4_patch_perm(length: int):
+    """Inverse of the column order llama.cpp writes for a Gemma 4 patch."""
+    if length % 3:
+        return None
+    side = length // 3
+    patch = int(side ** 0.5)
+    if patch * patch != side:
+        return None
+    index = torch.arange(length)
+    channel = index // side
+    row = (index % side) // patch
+    col = index % patch
+    perm = row * patch * 3 + col * 3 + channel
+    inverse = torch.empty_like(perm)
+    inverse[perm] = index
+    return inverse
+
+
+def _restore_gemma4_mmproj(state: dict) -> dict:
+    """``gemma4uv`` / ``gemma4ua`` tensors as ``model.embed_vision`` / ``model.embed_audio``."""
+    restored = {}
+    for key, value in state.items():
+        value = _dense_gguf_tensor(value)
+        if key == 'mm.a.input_projection.weight':
+            restored['model.embed_audio.embedding_projection.weight'] = value
+            continue
+        if key == 'mm.input_projection.weight':
+            restored['model.embed_vision.multimodal_embedder.embedding_projection.weight'] = value
+            continue
+        if key == 'v.position_embd.weight':
+            restored['model.embed_vision.pos_embedding'] = value.permute(1, 0, 2).contiguous()
+            continue
+        if key == 'v.patch_embd.weight':
+            inverse = _gemma4_patch_perm(value.shape[-1])
+            restored['model.embed_vision.patch_dense.weight'] = (
+                value.index_select(-1, inverse) if inverse is not None else value)
+            continue
+        if key == 'v.patch_embd.bias':
+            restored['model.embed_vision.patch_dense.bias'] = value
+            continue
+        if key.startswith('v.patch_norm.'):
+            rest = key[len('v.patch_norm.'):]
+            index, suffix = rest.split('.', 1)
+            target = {'1': 'patch_ln1', '2': 'patch_ln2', '3': 'pos_norm'}.get(index)
+            if target is None:
+                restored['model.embed_vision.' + key] = value
+                continue
+            if index == '1':
+                inverse = _gemma4_patch_perm(value.shape[0])
+                if inverse is not None:
+                    value = value.index_select(0, inverse)
+            restored[f'model.embed_vision.{target}.{suffix}'] = value
+            continue
+        restored['model.embed_vision.' + key] = value
+    return restored
+
+
+def _gemma4_unified_mmproj(state: dict) -> bool:
+    """LTX Gemma 4: the encoder-free embedder, named ``v.patch_norm``."""
+    return any(key.startswith('v.patch_norm.') for key in state)
+
+
+# ggml block stem -> (Hugging Face suffix, wrapped in Gemma4ClippableLinear).
+_GEMMA4V_VISION = {
+    'attn_q': ('self_attn.q_proj', True),
+    'attn_k': ('self_attn.k_proj', True),
+    'attn_v': ('self_attn.v_proj', True),
+    'attn_out': ('self_attn.o_proj', True),
+    'attn_q_norm': ('self_attn.q_norm', False),
+    'attn_k_norm': ('self_attn.k_norm', False),
+    'ln1': ('input_layernorm', False),
+    'attn_post_norm': ('post_attention_layernorm', False),
+    'ln2': ('pre_feedforward_layernorm', False),
+    'ffn_post_norm': ('post_feedforward_layernorm', False),
+    'ffn_gate': ('mlp.gate_proj', True),
+    'ffn_up': ('mlp.up_proj', True),
+    'ffn_down': ('mlp.down_proj', True),
+    'out_scale': ('layer_scalar', False),
+}
+
+_GEMMA4V_AUDIO = {
+    'attn_q': ('self_attn.q_proj', True),
+    'attn_k': ('self_attn.k_proj', True),
+    'attn_v': ('self_attn.v_proj', True),
+    'attn_out': ('self_attn.post', True),
+    'attn_k_rel': ('self_attn.relative_k_proj', False),
+    'attn_pre_norm': ('norm_pre_attn', False),
+    'attn_post_norm': ('norm_post_attn', False),
+    'ln2': ('norm_out', False),
+    'ffn_norm': ('feed_forward1.pre_layer_norm', False),
+    'ffn_post_norm': ('feed_forward1.post_layer_norm', False),
+    'ffn_up': ('feed_forward1.ffw_layer_1', True),
+    'ffn_down': ('feed_forward1.ffw_layer_2', True),
+    'ffn_norm_1': ('feed_forward2.pre_layer_norm', False),
+    'ffn_post_norm_1': ('feed_forward2.post_layer_norm', False),
+    'ffn_up_1': ('feed_forward2.ffw_layer_1', True),
+    'ffn_down_1': ('feed_forward2.ffw_layer_2', True),
+    'conv_norm': ('lconv1d.pre_layer_norm', False),
+    'norm_conv': ('lconv1d.conv_norm', False),
+    'conv_pw1': ('lconv1d.linear_start', True),
+    'conv_pw2': ('lconv1d.linear_end', True),
+}
+
+_GEMMA4_CLAMP = ('input_min', 'input_max', 'output_min', 'output_max')
+
+
+def _gemma4v_mmproj(state: dict) -> bool:
+    """Full Gemma 4 tower (Unsloth ``mmproj``): ``gemma4v`` / ``gemma4a``."""
+    return any(
+        key.startswith(('a.', 'mm.a.', 'mm.input_projection'))
+        or '.attn_post_norm.' in key or '.ffn_post_norm.' in key or '.attn_q_norm.' in key
+        for key in state)
+
+
+def _gemma4_tail(tail: str):
+    for suffix in ('weight', 'bias', *_GEMMA4_CLAMP):
+        marker = '.' + suffix
+        if tail.endswith(marker):
+            return tail[:-len(marker)], suffix
+    return tail, None
+
+
+def _inverse_softplus(value):
+    value = value.to(dtype=torch.float32)
+    return torch.where(value > 20, value, torch.log(torch.expm1(value.clamp_min(1e-6))))
+
+
+def _gemma4_place(prefix: str, index: str, table: dict, tail: str, value):
+    stem, suffix = _gemma4_tail(tail)
+    found = table.get(stem)
+    if found is None or suffix is None:
+        return None
+    path, clippable = found
+    target = f'{prefix}{index}.{path}'
+    if stem == 'out_scale':
+        return target, value.reshape(())
+    if clippable and suffix == 'weight':
+        return target + '.linear.weight', value
+    if clippable and suffix in _GEMMA4_CLAMP:
+        return target + '.' + suffix, value.reshape(())
+    if clippable and suffix == 'bias':
+        return target + '.linear.bias', value
+    return target + '.' + suffix, value
+
+
+def _restore_gemma4v_mmproj(state: dict) -> dict:
+    """``gemma4v`` / ``gemma4a`` tensors as the Gemma 4 vision and audio towers."""
+    restored = {}
+    for key, value in state.items():
+        value = _dense_gguf_tensor(value)
+        if key == 'v.patch_embd.weight' and value.ndim == 4:
+            out, channels, height, width = value.shape
+            value = value.permute(0, 2, 3, 1).contiguous().reshape(out, channels * height * width)
+            restored['model.vision_tower.patch_embedder.input_proj.weight'] = value
+            continue
+        if key == 'v.position_embd.weight':
+            restored['model.vision_tower.patch_embedder.position_embedding_table'] = value
+            continue
+        if key in ('v.std_bias', 'v.std_bias.weight'):
+            restored['model.vision_tower.std_bias'] = value.reshape(-1)
+            continue
+        if key in ('v.std_scale', 'v.std_scale.weight'):
+            restored['model.vision_tower.std_scale'] = value.reshape(-1)
+            continue
+        if key == 'mm.input_projection.weight':
+            restored['model.embed_vision.embedding_projection.weight'] = value
+            continue
+        if key == 'mm.a.input_projection.weight':
+            restored['model.embed_audio.embedding_projection.weight'] = value
+            continue
+        if key == 'a.input_projection.weight':
+            restored['model.audio_tower.subsample_conv_projection.input_proj_linear.weight'] = value
+            continue
+        if key in ('a.pre_encode.out.weight', 'a.pre_encode.out.bias'):
+            suffix = key.rsplit('.', 1)[1]
+            restored['model.audio_tower.output_proj.' + suffix] = value
+            continue
+        if key.startswith('a.conv1d.') and '.norm.' not in key:
+            layer = key.split('.')[2]
+            restored[f'model.audio_tower.subsample_conv_projection.layer{layer}.conv.weight'] = value
+            continue
+        if key.startswith('a.conv1d.') and key.endswith('.norm.weight'):
+            layer = key.split('.')[2]
+            restored[f'model.audio_tower.subsample_conv_projection.layer{layer}.norm.weight'] = value
+            continue
+        if key.startswith('v.blk.'):
+            index, tail = key[len('v.blk.'):].split('.', 1)
+            placed = _gemma4_place('model.vision_tower.encoder.layers.', index, _GEMMA4V_VISION, tail, value)
+            if placed is not None:
+                restored[placed[0]] = placed[1]
+            continue
+        if key.startswith('a.blk.'):
+            index, tail = key[len('a.blk.'):].split('.', 1)
+            if tail == 'conv_dw.weight':
+                restored[f'model.audio_tower.layers.{index}.lconv1d.depthwise_conv1d.weight'] = value.unsqueeze(1)
+                continue
+            if tail == 'per_dim_scale.weight':
+                restored[f'model.audio_tower.layers.{index}.self_attn.per_dim_scale'] = _inverse_softplus(value)
+                continue
+            placed = _gemma4_place('model.audio_tower.layers.', index, _GEMMA4V_AUDIO, tail, value)
+            if placed is not None:
+                restored[placed[0]] = placed[1]
+    return restored
+
+
+def restore_mmproj(state: dict, deepstack_indexes=None) -> dict:
+    """
+    llama.cpp mmproj tensors as Hugging Face vision names (``visual.*``).
+
+    A Qwen2 / Qwen2.5 file splits qkv and the temporal patch embedding. A
+    Qwen3-VL file keeps qkv fused. Gemma 4 unified vision and audio use the
+    ``gemma4uv`` / ``gemma4ua`` names. A full Gemma 4 tower (Unsloth ``mmproj``)
+    uses ``gemma4v`` / ``gemma4a``. ``deepstack_indexes`` are the vision-block
+    indexes stored in a Qwen3-VL file; the model lists those mergers in that
+    order. A file that already uses ``visual.*`` names is returned unchanged.
+    """
+    if any(key.startswith('visual.') or '.visual.' in key for key in state):
+        return dict(state)
+    if _gemma4_unified_mmproj(state):
+        return _restore_gemma4_mmproj(state)
+    if _gemma4v_mmproj(state):
+        return _restore_gemma4v_mmproj(state)
+    if _qwen3_mmproj(state):
+        return _restore_qwen3_mmproj(state, deepstack_indexes)
+    return _restore_qwen_vision_mmproj(state)
+
+
+def _restore_qwen_vision_mmproj(state: dict) -> dict:
+    renamed = {}
+    for key, value in state.items():
+        for source, target in _QWEN_VISION_MMPROJ:
+            key = key.replace(source, target)
+        renamed[key] = value
+    patch = renamed.get('visual.patch_embed.proj.weight')
+    patch_next = renamed.get('visual.patch_embed.proj.weight.1')
+    if patch is not None and patch_next is not None:
+        renamed['visual.patch_embed.proj.weight'] = torch.stack([
+            _dense_gguf_tensor(renamed.pop('visual.patch_embed.proj.weight')),
+            _dense_gguf_tensor(renamed.pop('visual.patch_embed.proj.weight.1')),
+        ], dim=2)
+    fused = {}
+    consumed = []
+    for key in list(renamed):
+        marker = '.attn_q.'
+        if marker not in key:
+            continue
+        stem, suffix = key.split(marker, 1)
+        key_k = stem + '.attn_k.' + suffix
+        key_v = stem + '.attn_v.' + suffix
+        if key_k not in renamed or key_v not in renamed:
+            continue
+        fused[stem + '.attn.qkv.' + suffix] = torch.cat([
+            _dense_gguf_tensor(renamed[key]),
+            _dense_gguf_tensor(renamed[key_k]),
+            _dense_gguf_tensor(renamed[key_v]),
+        ], dim=0)
+        consumed.extend((key, key_k, key_v))
+    for key in consumed:
+        renamed.pop(key, None)
+    renamed.update(fused)
+    return renamed
+
+
+def _restore_qwen3_mmproj(state: dict, deepstack_indexes) -> dict:
+    indexes = list(deepstack_indexes or [])
+    restored = {}
+    patch = {}
+    for key, value in state.items():
+        if key in ('v.patch_embd.weight', 'v.patch_embd.weight.1', 'v.patch_embd.bias'):
+            patch[key] = value
+            continue
+        if key.startswith('v.deepstack.'):
+            rest = key[len('v.deepstack.'):]
+            index, tail = rest.split('.', 1)
+            absolute = int(index)
+            position = indexes.index(absolute) if absolute in indexes else absolute
+            tail = tail.replace('fc1.', 'linear_fc1.').replace('fc2.', 'linear_fc2.')
+            restored[f'visual.deepstack_merger_list.{position}.{tail}'] = value
+            continue
+        if key.startswith('mm.0.'):
+            restored['visual.merger.linear_fc1.' + key[len('mm.0.'):]] = value
+            continue
+        if key.startswith('mm.2.'):
+            restored['visual.merger.linear_fc2.' + key[len('mm.2.'):]] = value
+            continue
+        if key.startswith('v.post_ln.'):
+            restored['visual.merger.norm.' + key[len('v.post_ln.'):]] = value
+            continue
+        if key == 'v.position_embd.weight':
+            restored['visual.pos_embed.weight'] = value
+            continue
+        name = key.replace('v.blk.', 'visual.blocks.')
+        name = name.replace('.ffn_up.', '.mlp.linear_fc1.')
+        name = name.replace('.ffn_down.', '.mlp.linear_fc2.')
+        name = name.replace('.attn_qkv.', '.attn.qkv.')
+        name = name.replace('attn_out.', 'attn.proj.')
+        name = name.replace('ln1.', 'norm1.')
+        name = name.replace('ln2.', 'norm2.')
+        restored[name] = value
+    if 'v.patch_embd.weight' in patch and 'v.patch_embd.weight.1' in patch:
+        restored['visual.patch_embed.proj.weight'] = torch.stack([
+            _dense_gguf_tensor(patch['v.patch_embd.weight']),
+            _dense_gguf_tensor(patch['v.patch_embd.weight.1']),
+        ], dim=2)
+    elif 'v.patch_embd.weight' in patch:
+        restored['visual.patch_embed.proj.weight'] = patch['v.patch_embd.weight']
+    if 'v.patch_embd.bias' in patch:
+        restored['visual.patch_embed.proj.bias'] = patch['v.patch_embd.bias']
+    return restored
+
+
+def load_mmproj_gguf(path: str, deepstack_indexes=None) -> dict:
+    """
+    Read a llama.cpp mmproj GGUF as Hugging Face vision tensors.
+
+    Names start with ``visual.``. The text-encoder loader attaches the
+    ``model.`` prefix when the encoder class keeps the tower there.
+
+    :raises ValueError: The file has no vision tensors, or a model weight uses
+        a quantization type Diffusers cannot decode.
+    """
+    state = _read_text_encoder_gguf(path)
+    if not state:
+        raise ValueError(f'GGUF file "{path}" has no vision tensors.')
+    restored = restore_mmproj(state, deepstack_indexes)
+    _messages.debug_log(f'GGUF mmproj "{path}": {len(restored)} vision tensors.')
+    return restored
+
+
+def _restore_gemma4_names(state: dict) -> dict:
+    """Gemma 4 tensors that are not in the Gemma 3 map, back to Hugging Face names.
+
+    ``token_embd`` is a substring of ``per_layer_token_embd``, so these names
+    are restored before that replacement. ``rope_freqs`` is synthesized for
+    llama.cpp and is not a checkpoint tensor.
+    """
+    restored = {}
+    for key, value in state.items():
+        if key == 'rope_freqs.weight' or key.startswith('rope_freqs.'):
+            continue
+        if key.startswith('per_layer_token_embd.'):
+            name = 'model.embed_tokens_per_layer.' + key[len('per_layer_token_embd.'):]
+        elif key.startswith('per_layer_model_proj.'):
+            name = 'model.per_layer_model_projection.' + key[len('per_layer_model_proj.'):]
+        elif key.startswith('per_layer_proj_norm.'):
+            name = 'model.per_layer_projection_norm.' + key[len('per_layer_proj_norm.'):]
+        else:
+            name = key
+            name = name.replace('inp_gate', 'per_layer_input_gate')
+            name = name.replace('post_norm', 'post_per_layer_input_norm')
+            name = name.replace('.proj.', '.per_layer_projection.')
+            if name.endswith('layer_output_scale.weight'):
+                name = name[:-len('layer_output_scale.weight')] + 'layer_scalar'
+        restored[name] = value
+    return restored
+
+
+def _qwen35_heads(text: dict | None):
+    """``(num_k, num_v, head_k, head_v)`` for the gated delta net, or ``None``."""
+    if not isinstance(text, dict):
+        return None
+    values = [text.get(name) for name in (
+        'linear_num_key_heads', 'linear_num_value_heads',
+        'linear_key_head_dim', 'linear_value_head_dim')]
+    if not all(isinstance(item, int) and item > 0 for item in values):
+        return None
+    num_k, num_v, head_k, head_v = values
+    if num_v % num_k:
+        return None
+    return num_k, num_v, head_k, head_v
+
+
+def _reorder_v_heads(tensor, dim: int, num_k: int, num_v_per_k: int, head_dim: int):
+    """V heads from grouped-by-K order to the tiled order llama.cpp broadcasts."""
+    shape = list(tensor.shape)
+    if dim < 0:
+        dim += len(shape)
+    view = shape[:dim] + [num_k, num_v_per_k, head_dim] + shape[dim + 1:]
+    tensor = tensor.reshape(*view)
+    order = list(range(len(view)))
+    order[dim], order[dim + 1] = order[dim + 1], order[dim]
+    return tensor.permute(*order).contiguous().reshape(*shape)
+
+
+def _qwen35_dense(value):
+    if getattr(value, 'quant_type', None) is None:
+        return value
+    from diffusers.quantizers.gguf.utils import dequantize_gguf_tensor
+    return dequantize_gguf_tensor(value)
+
+
+_QWEN35_NAME_PAIRS = (
+    ('.linear_attn.in_proj_qkv.', '.attn_qkv.'),
+    ('.linear_attn.in_proj_z.', '.attn_gate.'),
+    ('.linear_attn.in_proj_a.', '.ssm_alpha.'),
+    ('.linear_attn.in_proj_b.', '.ssm_beta.'),
+    ('.linear_attn.out_proj.', '.ssm_out.'),
+    ('.linear_attn.conv1d.', '.ssm_conv1d.'),
+    ('.linear_attn.norm.', '.ssm_norm.'),
+    ('.linear_attn.dt_bias', '.ssm_dt.bias'),
+    ('.linear_attn.A_log', '.ssm_a'),
+)
+
+
+def _qwen35_forward_value(key: str, value, heads):
+    import torch
+
+    num_k, num_v, head_k, head_v = heads
+    per = num_v // num_k
+    reorder = num_k != num_v
+    if key.endswith('.linear_attn.A_log'):
+        if reorder and value.ndim == 1:
+            value = _reorder_v_heads(value.unsqueeze(-1), 0, num_k, per, 1).squeeze(-1)
+        return -torch.exp(value.float())
+    if key.endswith('.linear_attn.dt_bias'):
+        if reorder and value.ndim == 1:
+            value = _reorder_v_heads(value.unsqueeze(-1), 0, num_k, per, 1).squeeze(-1)
+        return value
+    if key.endswith('.linear_attn.conv1d.weight'):
+        if value.ndim == 3 and value.shape[1] == 1:
+            value = value.squeeze(1)
+        if reorder and value.ndim >= 1:
+            qk = head_k * num_k * 2
+            kept, rest = value[:qk], value[qk:]
+            rest = _reorder_v_heads(rest, 0, num_k, per, head_v)
+            value = torch.cat((kept, rest), dim=0)
+        return value
+    if not reorder:
+        return value
+    if key.endswith('.linear_attn.in_proj_qkv.weight'):
+        width = head_k * num_k
+        query, key_rows, value_rows = value[:width], value[width:width * 2], value[width * 2:]
+        value_rows = _reorder_v_heads(value_rows, 0, num_k, per, head_v)
+        return torch.cat((query, key_rows, value_rows), dim=0)
+    if key.endswith('.linear_attn.in_proj_z.weight'):
+        return _reorder_v_heads(value, 0, num_k, per, head_v)
+    if key.endswith(('.linear_attn.in_proj_a.weight', '.linear_attn.in_proj_b.weight')):
+        return _reorder_v_heads(value, 0, num_k, per, 1)
+    if key.endswith('.linear_attn.out_proj.weight'):
+        return _reorder_v_heads(value, 1, num_k, per, head_v)
+    return value
+
+
+def qwen35_to_llama(state: dict, text: dict | None) -> dict:
+    """llama.cpp qwen35 names and the gated-delta layout its loader multiplies."""
+    heads = _qwen35_heads(text)
+    renamed = {}
+    for key, value in state.items():
+        if '.linear_attn.' in key:
+            if heads is None:
+                raise ValueError(
+                    'A Qwen3.5 linear attention tensor needs linear_num_key_heads, '
+                    'linear_num_value_heads, and the linear head sizes in config.json.')
+            value = _qwen35_forward_value(key, value, heads)
+        name = key.replace('ffn_norm', 'post_attention_norm')
+        for source, target in _QWEN35_NAME_PAIRS:
+            if source in name:
+                name = name.replace(source, target)
+                break
+        if '.linear_attn.' in name:
+            raise ValueError(f'Unexpected Qwen3.5 linear attention tensor "{key}".')
+        renamed[name] = value
+    return renamed
+
+
+def _qwen35_inverse_value(key: str, value, heads):
+    import torch
+
+    value = _qwen35_dense(value)
+    if heads is None:
+        if key.endswith('.ssm_a'):
+            return torch.log(-value.float())
+        if key.endswith('.ssm_conv1d.weight') and value.ndim == 2:
+            return value.unsqueeze(1)
+        return value
+    num_k, num_v, head_k, head_v = heads
+    per = num_v // num_k
+    reorder = num_k != num_v
+    if key.endswith('.ssm_a'):
+        value = torch.log(-value.float())
+        if reorder and value.ndim == 1:
+            value = _reorder_v_heads(value.unsqueeze(-1), 0, num_k, per, 1).squeeze(-1)
+        return value
+    if key.endswith('.ssm_dt.bias'):
+        if reorder and value.ndim == 1:
+            value = _reorder_v_heads(value.unsqueeze(-1), 0, num_k, per, 1).squeeze(-1)
+        return value
+    if key.endswith('.ssm_conv1d.weight'):
+        if reorder and value.ndim >= 1:
+            qk = head_k * num_k * 2
+            kept, rest = value[:qk], value[qk:]
+            rest = _reorder_v_heads(rest, 0, num_k, per, head_v)
+            value = torch.cat((kept, rest), dim=0)
+        if value.ndim == 2:
+            value = value.unsqueeze(1)
+        return value
+    if not reorder:
+        return value
+    if key.endswith('.attn_qkv.weight') and 'ssm' not in key:
+        # Only the linear stack's fused projection is attn_qkv. Full attention stays split.
+        width = head_k * num_k
+        if value.shape[0] == width * 2 + head_v * num_v:
+            query, key_rows, value_rows = value[:width], value[width:width * 2], value[width * 2:]
+            value_rows = _reorder_v_heads(value_rows, 0, num_k, per, head_v)
+            return torch.cat((query, key_rows, value_rows), dim=0)
+        return value
+    if key.endswith('.attn_gate.weight'):
+        return _reorder_v_heads(value, 0, num_k, per, head_v)
+    if key.endswith(('.ssm_alpha.weight', '.ssm_beta.weight')):
+        return _reorder_v_heads(value, 0, num_k, per, 1)
+    if key.endswith('.ssm_out.weight'):
+        return _reorder_v_heads(value, 1, num_k, per, head_v)
+    return value
+
+
+def _qwen35_heads_from_gguf(path: str, architecture: str):
+    import gguf
+
+    reader = gguf.GGUFReader(path)
+
+    def number(suffix):
+        field = reader.get_field(f'{architecture}.{suffix}')
+        if field is None or not field.types:
+            return None
+        raw = field.parts[field.data[-1]]
+        try:
+            return int(raw)
+        except TypeError:
+            return int(raw.reshape(-1)[0])
+
+    num_k = number('ssm.group_count')
+    num_v = number('ssm.time_step_rank')
+    head = number('ssm.state_size')
+    if not all(isinstance(item, int) and item > 0 for item in (num_k, num_v, head)):
+        return None
+    if num_v % num_k:
+        return None
+    return num_k, num_v, head, head
+
+
+def qwen35_from_llama(state: dict, heads=None) -> dict:
+    """Undo :func:`qwen35_to_llama` before the ordinary Qwen name restore.
+
+    RMSNorm weights written for llama.cpp already include the ``+ 1`` the
+    runtime multiplies. The linear-attention norm does not.
+    """
+    restored = {}
+    for key, value in state.items():
+        if any(marker in key for marker in (
+                '.ssm_', '.attn_qkv.', '.attn_gate.', '.ssm_a', '.ssm_dt.')):
+            value = _qwen35_inverse_value(key, value, heads)
+        elif key.endswith('norm.weight') and '.ssm_norm.' not in key:
+            value = _qwen35_dense(value).float() - 1
+        name = key.replace('post_attention_norm', 'ffn_norm')
+        for source, target in _QWEN35_NAME_PAIRS:
+            if target in name:
+                name = name.replace(target, source)
+                break
+        restored[name] = value
+    return restored
+
+
+def load_text_encoder_gguf(path: str) -> tuple[str, dict, bool]:
     """
     Read a text-encoder GGUF and rename llama.cpp tensors to Hugging Face names.
 
     Packed weights stay :py:class:`diffusers.quantizers.gguf.utils.GGUFParameter`.
     Float embeddings, norms, and biases stay dense tensors. A file that already
     stores Hugging Face or ComfyUI names, including the LTX-2.5 Gemma 4 GGUF,
-    is left as-is. Gemma norms written by llama.cpp are converted back to the
-    Hugging Face values. Sidecar tensors such as a packed tokenizer are skipped
-    when Diffusers cannot decode their type.
+    is left as-is. Gemma 3 norms written by llama.cpp are converted back to the
+    Hugging Face values. Gemma 4 does not add one, so those norms stay as stored.
+    Sidecar tensors such as a packed tokenizer are skipped when Diffusers cannot
+    decode their type.
 
-    :return: ``(architecture, state dict)``
+    :return: ``(architecture, state dict, llama.cpp names)``. The third value
+        is true when tensor names were llama.cpp names. Llama and Mistral
+        query and key rows are interleaved only in that layout.
     :raises ValueError: The file is not a text-encoder GGUF, or a model weight
         uses a quantization type Diffusers cannot decode.
     """
     architecture = _gguf_architecture(path)
+    state = None
+    # CLIP GGUFs written before this reader existed are labeled ``diffusion``
+    # and still store the CLIP module names.
+    if architecture == 'diffusion':
+        state = _read_text_encoder_gguf(path)
+        if _clip_text_keys(state):
+            architecture = 'clip'
+    if architecture in {'clip_l', 'clip_g'}:
+        architecture = 'clip'
     if architecture not in _TEXT_GGUF_ARCHITECTURES:
         raise ValueError(
             f'GGUF file "{path}" has architecture {architecture!r}, which is not a text encoder. '
             f'Text encoder files use one of: {", ".join(sorted(_TEXT_GGUF_ARCHITECTURES))}.')
 
-    state = _read_text_encoder_gguf(path)
+    if state is None:
+        state = _read_text_encoder_gguf(path)
     if architecture in {'t5', 't5encoder'}:
         key_map = _T5_GGUF_KEYS
     elif architecture in {'gemma3', 'gemma4'}:
@@ -1567,12 +2220,16 @@ def load_text_encoder_gguf(path: str) -> tuple[str, dict]:
 
     converted = not _huggingface_names(state, architecture)
     if converted:
+        if architecture == 'gemma4':
+            state = _restore_gemma4_names(state)
+        if architecture in {'qwen35', 'qwen35moe'}:
+            state = qwen35_from_llama(state, _qwen35_heads_from_gguf(path, architecture))
         state = _remap_keys(state, key_map)
-    if architecture in {'gemma3', 'gemma4'} and converted:
+    if architecture == 'gemma3' and converted:
         state = correct_gemma3_norms(state)
 
     _messages.debug_log(
         f'GGUF text encoder "{path}" architecture {architecture}'
         + (' (llama.cpp names)' if converted else ' (Hugging Face names)')
         + f', {len(state)} tensors.')
-    return architecture, state
+    return architecture, state, converted

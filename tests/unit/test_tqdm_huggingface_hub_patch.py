@@ -1,6 +1,7 @@
 import io
 import logging
 import os
+import sys
 import threading
 import unittest
 
@@ -28,9 +29,17 @@ class TestTqdmHuggingfaceHubPatch(unittest.TestCase):
         finally:
             _hf_utils.enable_progress_bars()
 
-        with _bar() as bar:
-            self.assertFalse(bar.disable)
-            self.assertIsInstance(bar, _patch.MainThreadTqdm)
+        previous_force = os.environ.get('DGENERATE_FORCE_TQDM')
+        os.environ['DGENERATE_FORCE_TQDM'] = '1'
+        try:
+            with _bar() as bar:
+                self.assertFalse(bar.disable)
+                self.assertIsInstance(bar, _patch.MainThreadTqdm)
+        finally:
+            if previous_force is None:
+                os.environ.pop('DGENERATE_FORCE_TQDM', None)
+            else:
+                os.environ['DGENERATE_FORCE_TQDM'] = previous_force
 
     def test_notset_log_level_disables(self):
         with _bar(logging.NOTSET) as bar:
@@ -47,20 +56,21 @@ class TestTqdmHuggingfaceHubPatch(unittest.TestCase):
         self.assertTrue(scope['make']()._dgenerate_no_tqdm_thread)
         self.assertFalse(threading.Thread(target=lambda: None)._dgenerate_no_tqdm_thread)
 
-    def test_force_tqdm_enables_without_nested_position(self):
-        previous_force = os.environ.get('DGENERATE_FORCE_TQDM')
+    def test_bars_default_on_without_a_terminal(self):
         previous_position = os.environ.get('TQDM_POSITION')
-        os.environ['DGENERATE_FORCE_TQDM'] = '1'
+        previous_force = os.environ.get('DGENERATE_FORCE_TQDM')
         os.environ.pop('TQDM_POSITION', None)
+        os.environ.pop('DGENERATE_FORCE_TQDM', None)
+        pipe = io.StringIO()
+        pipe.isatty = lambda: False
+        previous_stderr = sys.stderr
         try:
-            self.assertIs(_patch.is_tqdm_disabled(logging.INFO), False)
-
             buf = io.StringIO()
             bar = _create_progress_bar(
                 cls=hf_tqdm,
                 log_level=logging.WARNING,
-                name='huggingface_hub.http_get',
-                desc='model.safetensors.index.json',
+                name='huggingface_hub.xet_get',
+                desc='model.safetensors',
                 total=19900,
                 unit='B',
                 unit_scale=True,
@@ -71,15 +81,38 @@ class TestTqdmHuggingfaceHubPatch(unittest.TestCase):
             bar.update(19900)
             bar.close()
             self.assertNotIn('\x1b[A', buf.getvalue())
+
+            sys.stderr = pipe
+            with _bar() as http_bar:
+                self.assertFalse(http_bar.disable)
+                self.assertIsInstance(http_bar, _patch.MainThreadTqdm)
+
+            os.environ['DGENERATE_FORCE_TQDM'] = '0'
+            bar = _create_progress_bar(
+                cls=hf_tqdm,
+                log_level=logging.WARNING,
+                name='huggingface_hub.xet_get',
+                desc='model.safetensors',
+                total=19900,
+                unit='B',
+                unit_scale=True,
+                file=buf,
+            )
+            self.assertTrue(bar.disable)
+            bar.close()
+
+            with _bar() as http_bar:
+                self.assertTrue(http_bar.disable)
         finally:
-            if previous_force is None:
-                os.environ.pop('DGENERATE_FORCE_TQDM', None)
-            else:
-                os.environ['DGENERATE_FORCE_TQDM'] = previous_force
+            sys.stderr = previous_stderr
             if previous_position is None:
                 os.environ.pop('TQDM_POSITION', None)
             else:
                 os.environ['TQDM_POSITION'] = previous_position
+            if previous_force is None:
+                os.environ.pop('DGENERATE_FORCE_TQDM', None)
+            else:
+                os.environ['DGENERATE_FORCE_TQDM'] = previous_force
 
 
 if __name__ == '__main__':

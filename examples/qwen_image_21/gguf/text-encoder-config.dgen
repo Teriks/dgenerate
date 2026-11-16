@@ -3,9 +3,9 @@
 
 # Qwen-Image 2.1 with a GGUF transformer and the official Qwen3-VL 8B GGUF
 # as the text encoder. Base and Turbo share this encoder. The GGUF is the
-# language tower; its mmproj sidecar is not loaded, so this is for
-# text-to-image. Image conditioning should use the ComfyUI safetensors
-# encoder, which includes the vision tower:
+# language tower. Image conditioning loads the vision tower with mmproj:
+# examples/qwen_image_21/gguf/image-conditioned-config.dgen
+# The ComfyUI safetensors encoder carries that tower in the same file:
 # examples/qwen_image_21/comfy_quant/text-encoder-config.dgen
 # The file is already quantized. Do not set quantizer.
 

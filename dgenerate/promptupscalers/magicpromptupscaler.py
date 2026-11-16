@@ -21,11 +21,14 @@
 import contextlib
 import copy
 import gc
+import os
+import re
 import typing
 
 import torch
 import transformers
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
@@ -73,6 +76,14 @@ def _sampling_generate_kwargs(prompt_length: int, temperature: float, top_k: int
         generate_kwargs['logits_processor'] = [
             _PresencePenaltyLogitsProcessor(presence_penalty, prompt_length)]
     return generate_kwargs
+
+
+def _eos_token_id(config):
+    """One end-of-sequence id. Gemma configs store a list of them."""
+    eos = getattr(config, 'eos_token_id', None)
+    if isinstance(eos, (list, tuple)):
+        eos = eos[0] if eos else None
+    return eos
 
 
 def _model_input_device(model) -> torch.device:
@@ -194,16 +205,26 @@ class _TextGenerationPipeline:
         top_k = int(kwargs.pop('top_k', 50))
         top_p = float(kwargs.pop('top_p', 1.0))
         presence_penalty = float(kwargs.pop('presence_penalty', 0.0) or 0.0)
+        new_tokens_only = bool(kwargs.pop('new_tokens_only', False))
         results = []
         for i in range(0, len(prompts), batch_size):
             batch = prompts[i: i + batch_size]
 
+            # A chat transcript is not part of the reply. max-length is the
+            # reply. Truncating the transcript to that budget leaves only the
+            # opening sentence.
+            input_limit = max_length
+            if new_tokens_only:
+                model_limit = getattr(self.tokenizer, 'model_max_length', None)
+                if not isinstance(model_limit, int) or model_limit > 100_000:
+                    model_limit = 8192
+                input_limit = model_limit
             inputs = self.tokenizer(
                 batch,
                 return_tensors="pt",
                 padding=True,
                 truncation=True,
-                max_length=max_length)
+                max_length=input_limit)
 
             model_device = _model_input_device(self.model)
 
@@ -212,10 +233,14 @@ class _TextGenerationPipeline:
             # Prefer max_new_tokens so total length is prompt + generation,
             # not a hard cap that can equal the already-truncated prompt.
             prompt_len = int(inputs['input_ids'].shape[-1])
+            if new_tokens_only:
+                reply_tokens = max(1, int(max_length))
+            else:
+                reply_tokens = max(1, int(max_length) - prompt_len)
             generate_kwargs = dict(kwargs)
             generate_kwargs.update(_sampling_generate_kwargs(
                 prompt_len, temperature, top_k, top_p, presence_penalty,
-                max(1, int(max_length) - prompt_len)))
+                reply_tokens))
 
             with torch.no_grad():
                 outputs = self.model.generate(**inputs, **generate_kwargs)
@@ -226,7 +251,10 @@ class _TextGenerationPipeline:
             del inputs
 
             results.extend(
-                [self.tokenizer.decode(output) for output in outputs])
+                self.tokenizer.decode(
+                    output[prompt_len:] if new_tokens_only else output,
+                    skip_special_tokens=new_tokens_only)
+                for output in outputs)
 
         return results
 
@@ -323,11 +351,25 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
 
     The "model" specifies the model path for magicprompt, the
     default value is: "Gustavosta/MagicPrompt-Stable-Diffusion". This
-    can be a folder on disk or a Hugging Face repository slug.
+    can be a folder on disk, a Hugging Face repository slug, or a GGUF
+    file path or URL. "weight-name" selects one .gguf file in a repository
+    or folder. The class is the text encoder dgenerate would load for that
+    file: the architecture and the embedding shape pick it, and the config
+    is one dgenerate ships for that shape. A quant repository does not
+    supply config.json, and a config.json next to the file is not read.
+    The tokenizer comes from the repository, or from the vocabulary stored
+    in the GGUF.
+
+    "mmproj" is the llama.cpp vision-tower GGUF when that tower is a separate
+    file. It is that file's path or URL, including a blob or resolve link.
+    A file name is not looked up beside the language GGUF or in its repository.
+    With "image", a language-only GGUF needs this tower.
 
     An unquantized model keeps as many decoder layers as fit in free GPU
     memory. The rest stay in CPU memory and run on the GPU one layer at a
-    time. Quantized models stay on the single device given by "device".
+    time. Quantized models, including a GGUF, stay on the single device
+    given by "device". A GGUF is already quantized, so "quantizer" does not
+    apply to it.
 
     The "image" argument is a path or URL to an image. When it is set,
     "model" must be a vision-language model that transformers can load,
@@ -347,7 +389,8 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
     The "variations" argument specifies how many variations should be produced.
 
     The "max-length" argument is the max prompt length for a
-    generated prompt, this value defaults to 100.
+    generated prompt, this value defaults to 100. With a chat template
+    it is the length of the reply. The transcript is not counted.
 
     The "temperature" argument sets the sampling temperature
     to use when generating prompts. Larger values increase
@@ -367,7 +410,11 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
 
     The "system" argument sets the system instruction for the LLM.
     A value of "file:path.txt" reads that instruction from a UTF-8 text file. Shell-quote
-    the path when it contains spaces.
+    the path when it contains spaces.     A tokenizer that has a chat template
+    receives the system instruction and the preamble through that template.
+    A template that does not render a system role gets that instruction
+    at the start of the user message. Thinking is left off when the
+    template accepts that.
 
     The "preamble" argument sets a text input preamble for the LLM, this
     preamble will be removed from the output generated by the LLM.
@@ -433,7 +480,12 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
     }
 
     FILE_ARGS = {
-        'model': {'mode': 'dir'},
+        'model': {
+            'mode': ['in', 'dir'],
+            'filetypes': [('GGUF', ['*.gguf'])],
+        },
+        'weight-name': {'mode': 'in', 'filetypes': [('GGUF', ['*.gguf'])]},
+        'mmproj': {'mode': 'in', 'filetypes': [('GGUF', ['*.gguf'])]},
         'image': _util.image_file_argument(),
         'cleanup-config': {'mode': 'in', 'filetypes': [('Cleanup Config', ('*.json', '*.toml', '*.yaml', '*.yml'))]}
     }
@@ -441,6 +493,8 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
     def __init__(self,
                  part: str = 'both',
                  model: str = "Gustavosta/MagicPrompt-Stable-Diffusion",
+                 weight_name: str | None = None,
+                 mmproj: str | None = None,
                  image: str | None = None,
                  dtype: str = 'float32',
                  seed: int | None = None,
@@ -494,6 +548,18 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         else:
             quantization_config = None
 
+        weight_name = str(weight_name).strip() if weight_name else None
+        mmproj = str(mmproj).strip() if mmproj else None
+        gguf = _hfhub.is_gguf_model(model) or _hfhub.is_gguf_model(weight_name or '')
+        if weight_name and not _hfhub.is_gguf_model(weight_name):
+            raise self.argument_error('Argument "weight-name" must name a .gguf file.')
+        if gguf and quantizer:
+            raise self.argument_error(
+                'A GGUF model is already quantized. Do not set the "quantizer" argument.')
+        if mmproj and not gguf:
+            raise self.argument_error(
+                'Argument "mmproj" is a GGUF vision tower and requires a GGUF "model".')
+
         part = part.lower()
         if part not in {'both', 'positive', 'negative'}:
             raise self.argument_error(
@@ -540,20 +606,49 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             except ValueError as e:
                 raise self.argument_error(str(e)) from e
 
-        model_files = list(
-            _pipelinewrapper_util.fetch_model_files_with_size(
-                model,
-                local_files_only=self.local_files_only,
-                extensions={'.safetensors', '.bin'})
-        )
+        mmproj_path = None
+        gguf_path = None
+        if gguf:
+            try:
+                gguf_path, _subfolder = _hfhub.materialize_named_weight(
+                    model,
+                    weight_name=weight_name,
+                    local_files_only=self.local_files_only,
+                    auth_token=self.auth_token)
+            except Exception as error:
+                raise self.argument_error(
+                    f'Could not find GGUF "{weight_name or model}": {error}') from error
+            if not os.path.isfile(gguf_path):
+                raise self.argument_error(
+                    f'Argument "model" must be a GGUF file on disk or a URL, got "{model}".')
+            estimated_size = os.path.getsize(gguf_path)
+            if mmproj:
+                from dgenerate.pipelinewrapper.uris.textencoderuri import _materialize_mmproj
+                from dgenerate.pipelinewrapper.uris.exceptions import TextEncoderUriLoadError
+                try:
+                    mmproj_path = _materialize_mmproj(
+                        mmproj, self.local_files_only, self.auth_token)
+                except TextEncoderUriLoadError as error:
+                    raise self.argument_error(str(error)) from error
+                if not _hfhub.is_gguf_model(mmproj_path):
+                    raise self.argument_error(
+                        f'Argument "mmproj" must be a .gguf file, got "{mmproj}".')
+                estimated_size += os.path.getsize(mmproj_path)
+        else:
+            model_files = list(
+                _pipelinewrapper_util.fetch_model_files_with_size(
+                    model,
+                    local_files_only=self.local_files_only,
+                    extensions={'.safetensors', '.bin'})
+            )
 
-        if len(model_files) > 1:
-            model_files = [m for m in model_files if m[0].endswith('.safetensors')]
+            if len(model_files) > 1:
+                model_files = [m for m in model_files if m[0].endswith('.safetensors')]
 
-        estimated_size = 0
+            estimated_size = 0
 
-        for model_entry in model_files:
-            estimated_size += model_entry[1]
+            for model_entry in model_files:
+                estimated_size += model_entry[1]
 
         _messages.debug_log(
             f'Estimated the size of LLM model: '
@@ -579,6 +674,12 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                         '(float32 inputs would be cast every MatMul).')
                     torch_dtype = torch.float16
 
+            if gguf:
+                if (self.device or 'cpu') != 'cpu':
+                    self.memory_guard_device(self.device, self.size_estimate)
+                return self._load_gguf_pipeline(
+                    model, gguf_path, mmproj_path, dtype=torch_dtype,
+                    vision=vision_image is not None)
             if vision_image is not None:
                 return self._load_vision_pipeline(
                     model, dtype=torch_dtype, quantization_config=quantization_config)
@@ -586,8 +687,12 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
 
         self.set_size_estimate(estimated_size)
 
+        self._gguf = gguf
         self._pipeline = self.load_object_cached(
-            tag=model + (quantizer if quantizer else '') + dtype + (':vision' if vision_image is not None else ''),
+            tag='|'.join((
+                model, weight_name or '', mmproj or '',
+                quantizer or '', dtype,
+                'vision' if vision_image is not None else 'text')),
             estimated_size=estimated_size,
             method=load_method
         )
@@ -612,6 +717,115 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         self._max_attempts = max_attempts
         self._prepend_prompt = prepend_prompt
 
+
+    def _gguf_repository(self, model: str):
+        """Repository named by a slug or a blob link, for the config and tokenizer."""
+        blob = _hfhub.HFBlobLink.parse(model)
+        if blob is not None:
+            return blob.repo_id, blob.revision, blob.subfolder
+        if os.path.isdir(model) or _hfhub.is_single_file_model_load(model):
+            return None, None, None
+        return model, None, None
+
+    def _pretrained_source(self, model: str, model_path: str) -> tuple[str, dict]:
+        repo_id, revision, subfolder = self._gguf_repository(model)
+        kwargs = {
+            'token': self.auth_token,
+            'local_files_only': self.local_files_only,
+        }
+        if repo_id:
+            kwargs['revision'] = revision
+            if subfolder:
+                kwargs['subfolder'] = subfolder
+            return repo_id, kwargs
+        return os.path.dirname(model_path), kwargs
+
+    def _place_gguf(self, model):
+        device = self.device or 'cpu'
+        if device == 'cpu':
+            return model
+        try:
+            return model.to(device)
+        except Exception as error:
+            raise self.argument_error(
+                f'Could not move the GGUF model to "{device}": {error}') from error
+
+    def _vision_weights(self, model) -> bool | None:
+        """True when a vision tensor holds weights, False when those tensors are empty, None when there are none."""
+        from dgenerate.pipelinewrapper.ggufcompat import _is_gguf_parameter
+        saw = False
+        for name, param in model.named_parameters():
+            if not any(token in name for token in ('vision', 'visual', 'embed_vision')):
+                continue
+            saw = True
+            if _is_gguf_parameter(param):
+                return True
+            if param.device.type == 'meta':
+                continue
+            sample = param.detach().view(-1)[:1024]
+            if int(torch.count_nonzero(sample)) > 0:
+                return True
+        return False if saw else None
+
+    def _load_gguf_pipeline(self, model: str, model_path: str, mmproj_path: str | None,
+                            dtype: torch.dtype, vision: bool):
+        from dgenerate.pipelinewrapper.uris.exceptions import TextEncoderUriLoadError
+        from dgenerate.pipelinewrapper.uris.textencoderuri import _load_gguf_text_encoder
+
+        try:
+            loaded = _load_gguf_text_encoder(
+                None, model_path, dtype, mmproj_path=mmproj_path)
+        except TextEncoderUriLoadError as error:
+            raise self.argument_error(str(error)) from error
+
+        if vision:
+            present = self._vision_weights(loaded)
+            if present is None:
+                raise self.argument_error(
+                    f'GGUF "{model_path}" is not a vision-language model. '
+                    'Omit "image", or use a vision GGUF.')
+            if not present:
+                raise self.argument_error(
+                    f'GGUF "{model_path}" has no vision-tower weights. '
+                    'Set "mmproj" to that tower\'s path or URL.')
+
+        source, source_kwargs = self._pretrained_source(model, model_path)
+        loaded = self._place_gguf(loaded)
+        if vision:
+            try:
+                processor = transformers.AutoProcessor.from_pretrained(source, **source_kwargs)
+            except Exception as error:
+                raise self.argument_error(
+                    f'Could not load the image processor for "{model}": {error}') from error
+            return _ImageTextGenerationPipeline(loaded, processor, quantized=True)
+
+        try:
+            tokenizer = transformers.AutoTokenizer.from_pretrained(source, **source_kwargs)
+        except Exception as missing:
+            try:
+                tokenizer = transformers.AutoTokenizer.from_pretrained(
+                    os.path.dirname(model_path),
+                    gguf_file=os.path.basename(model_path),
+                    local_files_only=True)
+            except Exception:
+                # Gemma 4 GGUF metadata stores intermediate_size as a list.
+                # AutoTokenizer rejects that config. The vocabulary is still
+                # readable without building the model config.
+                try:
+                    tokenizer = transformers.TokenizersBackend.from_pretrained(
+                        os.path.dirname(model_path),
+                        gguf_file=os.path.basename(model_path),
+                        local_files_only=True)
+                except Exception as error:
+                    raise self.argument_error(
+                        f'Could not load the tokenizer for "{model}": {missing}') from error
+        if str(model_path).lower().endswith('.gguf'):
+            from dgenerate.pipelinewrapper.uris.promptupsampleruri import (
+                _mark_gguf_control_tokens,
+            )
+            _mark_gguf_control_tokens(tokenizer, model_path)
+        tokenizer.pad_token_id = _eos_token_id(loaded.config)
+        return _TextGenerationPipeline(loaded, tokenizer, quantized=True)
 
     def _load_pipeline(self,
                        model_name: str,
@@ -671,7 +885,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             )
         except Exception as e:
             raise self.argument_error(f'Could not load tokenizer for "{model_name}": {e}')
-        tokenizer.pad_token_id = model.config.eos_token_id
+        tokenizer.pad_token_id = _eos_token_id(model.config)
 
         return _TextGenerationPipeline(
             model, tokenizer,
@@ -736,30 +950,27 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         if self._vision_image is not None:
             return self._generate_vision_prompts(original_prompts)
 
-        def build_query(text):
-            if self._preamble:
-                return self._preamble + (' ' if not self._preamble.endswith(' ') else '') + text
-            return text
-
-        if self._system:
-            formatted_prompts = [
-                f"<|system|> {self._system} <|user|> {build_query(query)} <|assistant|>"
-                for query in original_prompts
-            ]
-        else:
-            formatted_prompts = [build_query(query) for query in original_prompts]
+        formatted_prompts = [
+            self._format_text_prompt(query) for query in original_prompts]
+        chat_template = self._text_chat_template()
 
         if not self._accepts_batch:
             generated_prompts = []
             for ptext in formatted_prompts:
-                generated_prompts.extend(self._call_pipeline([ptext]))
+                generated_prompts.extend(
+                    self._call_pipeline([ptext], new_tokens_only=chat_template))
         elif self._max_batch is not None:
             generated_prompts = []
             for batch_segment in range(0, len(formatted_prompts), self._max_batch):
                 segment = formatted_prompts[batch_segment:batch_segment + self._max_batch]
-                generated_prompts.extend(self._call_pipeline(segment))
+                generated_prompts.extend(
+                    self._call_pipeline(segment, new_tokens_only=chat_template))
         else:
-            generated_prompts = self._call_pipeline(formatted_prompts)
+            generated_prompts = self._call_pipeline(
+                formatted_prompts, new_tokens_only=chat_template)
+
+        if chat_template:
+            generated_prompts = [self._strip_thinking(text) for text in generated_prompts]
 
         generated_prompts = [
             self._clean_prompt(
@@ -776,23 +987,102 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
 
         return generated_prompts
 
+    def _text_chat_template(self):
+        tokenizer = getattr(self._pipeline, 'tokenizer', None)
+        return bool(getattr(tokenizer, 'chat_template', None))
+
+    def _template_renders_system(self, tokenizer) -> bool:
+        """Whether this chat template writes a system message into the prompt."""
+        cached = getattr(self, '_chat_template_renders_system', None)
+        if cached is not None:
+            return cached
+        probe = 'magicprompt-system-role-probe'
+        try:
+            rendered = tokenizer.apply_chat_template(
+                [
+                    {'role': 'system', 'content': probe},
+                    {'role': 'user', 'content': 'prompt'},
+                ],
+                tokenize=False,
+                add_generation_prompt=False,
+            )
+            renders = probe in str(rendered)
+        except Exception:
+            renders = True
+        self._chat_template_renders_system = renders
+        return renders
+
+    def _chat_messages(self, tokenizer, user: str) -> list[dict]:
+        if not self._system:
+            return [{'role': 'user', 'content': user}]
+        if self._template_renders_system(tokenizer):
+            return [
+                {'role': 'system', 'content': self._system},
+                {'role': 'user', 'content': user},
+            ]
+        # Phi-3's template skips a system role. llama.cpp pastes that text
+        # onto the user message, and the instruction is then part of the prompt.
+        _messages.debug_log(
+            'magicprompt: chat template does not render a system role, '
+            'so the system instruction is placed at the start of the user message.')
+        return [{'role': 'user', 'content': f'{self._system}\n{user}'}]
+
+    def _format_text_prompt(self, query: str) -> str:
+        if self._preamble:
+            user = self._preamble + (' ' if not self._preamble.endswith(' ') else '') + query
+        else:
+            user = query
+        tokenizer = getattr(self._pipeline, 'tokenizer', None)
+        if not getattr(tokenizer, 'chat_template', None):
+            if self._system:
+                return f"<|system|> {self._system} <|user|> {user} <|assistant|>"
+            return user
+        messages = self._chat_messages(tokenizer, user)
+        # Qwen3's template accepts this and writes an empty think block,
+        # so the reply is the prompt. A template without the variable
+        # raises, and the plain template is used.
+        if getattr(self, '_chat_template_no_thinking', True):
+            try:
+                return tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True,
+                    enable_thinking=False)
+            except Exception:
+                self._chat_template_no_thinking = False
+        return tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True)
+
+    def _strip_thinking(self, text: str) -> str:
+        return re.sub(
+            r'<think>.*?</think>', '', text or '', flags=re.DOTALL | re.IGNORECASE).strip()
+
     def _query_text(self, text: str) -> str:
         if self._preamble:
             return self._preamble + (' ' if not self._preamble.endswith(' ') else '') + text
         return text
 
     def _vision_conversations(self, texts: list[str]) -> list:
+        tokenizer = getattr(self._pipeline, 'tokenizer', None)
+        if tokenizer is None:
+            tokenizer = getattr(getattr(self._pipeline, 'processor', None), 'tokenizer', None)
+        merge_system = bool(
+            self._system and tokenizer is not None
+            and getattr(tokenizer, 'chat_template', None)
+            and not self._template_renders_system(tokenizer))
         conversations = []
         for text in texts:
             messages = []
-            if self._system:
+            if merge_system:
+                user_text = self._system if not text else f'{self._system}\n{text}'
+            else:
+                user_text = text
+            if self._system and not merge_system:
                 messages.append({
                     'role': 'system',
                     'content': [{'type': 'text', 'text': self._system}],
                 })
             content = [{'type': 'image', 'image': self._vision_image.copy()}]
-            if text:
-                content.append({'type': 'text', 'text': text})
+            if user_text:
+                content.append({'type': 'text', 'text': user_text})
             messages.append({'role': 'user', 'content': content})
             conversations.append(messages)
         return conversations
@@ -858,7 +1148,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             )
         return generated_prompts
 
-    def _call_pipeline(self, prompts: list[str]):
+    def _call_pipeline(self, prompts: list[str], new_tokens_only: bool = False):
         return self._pipeline(
             prompts,
             max_length=self._max_length,
@@ -866,12 +1156,13 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             top_k=self._top_k,
             top_p=self._top_p,
             presence_penalty=self._presence_penalty,
-            batch_size=len(prompts)
+            batch_size=len(prompts),
+            new_tokens_only=new_tokens_only,
         )
 
     @contextlib.contextmanager
     def _with_device(self):
-        if self._quantizer:
+        if self._quantizer or self._gguf:
             yield
             gc.collect()
             _memory.torch_gc()

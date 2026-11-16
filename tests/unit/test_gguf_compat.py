@@ -297,6 +297,21 @@ class TestGGUFCompat(unittest.TestCase):
         })
         self.assertEqual(t2v.kind, 'wan-t2v-14B')
 
+        # city96 stores the conv as (k..., in, out).
+        t2v_gguf = _ggufcompat.detect_gguf_layout({
+            'head.modulation': (5120, 2, 1),
+            'patch_embedding.weight': (2, 2, 1, 16, 5120),
+        })
+        self.assertEqual(t2v_gguf.kind, 'wan-t2v-14B')
+        self.assertEqual(t2v_gguf.config_repo, 'Wan-AI/Wan2.1-T2V-14B-Diffusers')
+
+        i2v_gguf = _ggufcompat.detect_gguf_layout({
+            'head.modulation': (5120, 2, 1),
+            'patch_embedding.weight': (2, 2, 1, 36, 5120),
+            'img_emb.proj.0.weight': (1280, 5120),
+        })
+        self.assertEqual(i2v_gguf.kind, 'wan-i2v-14B')
+
         vace = _ggufcompat.detect_gguf_layout({
             'head.modulation': (1536,),
             'patch_embedding.weight': (1536, 16, 2, 2),
@@ -362,6 +377,20 @@ class TestGGUFCompat(unittest.TestCase):
         })
         self.assertEqual(animate2_comfy.kind, 'wan-animate-2-14B')
         self.assertTrue(animate2_comfy.comfy)
+
+    def test_wan_single_file_convert_maps_emb_pos(self):
+        from diffusers.loaders.single_file_model import SINGLE_FILE_LOADABLE_CLASSES
+
+        table = torch.arange(514 * 1280, dtype=torch.float32).reshape(1, 514, 1280)
+        converted = SINGLE_FILE_LOADABLE_CLASSES['WanTransformer3DModel']['checkpoint_mapping_fn'](
+            checkpoint={
+                'img_emb.emb_pos': table,
+                'patch_embedding.weight': torch.zeros(1),
+            })
+        self.assertNotIn('img_emb.emb_pos', converted)
+        mapped = converted['condition_embedder.image_embedder.pos_embed']
+        self.assertEqual(tuple(mapped.shape), (1, 514, 1280))
+        self.assertTrue(torch.equal(mapped, table))
 
     def test_wan_flf_maps_emb_pos(self):
         table = torch.arange(514 * 1280, dtype=torch.float32).reshape(1, 514, 1280)

@@ -10,15 +10,15 @@ from huggingface_hub.utils.tqdm import tqdm as hf_tqdm
 
 class TestHfHubXetProgressPatch(unittest.TestCase):
     def test_standalone_xet_reporter_uses_one_bar(self):
-        previous = os.environ.get('TQDM_POSITION')
-        os.environ['TQDM_POSITION'] = '-1'
+        previous = os.environ.get('DGENERATE_FORCE_TQDM')
+        os.environ['DGENERATE_FORCE_TQDM'] = '1'
         try:
             self._run_single_bar_case()
         finally:
             if previous is None:
-                os.environ.pop('TQDM_POSITION', None)
+                os.environ.pop('DGENERATE_FORCE_TQDM', None)
             else:
-                os.environ['TQDM_POSITION'] = previous
+                os.environ['DGENERATE_FORCE_TQDM'] = previous
 
     def _run_single_bar_case(self):
         with XetDownloadProgressReporter(
@@ -50,15 +50,15 @@ class TestHfHubXetProgressPatch(unittest.TestCase):
         self.assertEqual(bar.n, 1000)
 
     def test_snapshot_download_progress_bars_share_one_display(self):
-        previous = os.environ.get('TQDM_POSITION')
-        os.environ['TQDM_POSITION'] = '-1'
+        previous = os.environ.get('DGENERATE_FORCE_TQDM')
+        os.environ['DGENERATE_FORCE_TQDM'] = '1'
         try:
             self._run_snapshot_bar_case()
         finally:
             if previous is None:
-                os.environ.pop('TQDM_POSITION', None)
+                os.environ.pop('DGENERATE_FORCE_TQDM', None)
             else:
-                os.environ['TQDM_POSITION'] = previous
+                os.environ['DGENERATE_FORCE_TQDM'] = previous
 
     def _run_snapshot_bar_case(self):
         transfer = _snapshot_download._create_progress_bar(
@@ -105,8 +105,8 @@ class TestHfHubXetProgressPatch(unittest.TestCase):
         transfer.close()
 
     def test_snapshot_empty_download_complete_is_discarded(self):
-        previous = os.environ.get('TQDM_POSITION')
-        os.environ['TQDM_POSITION'] = '-1'
+        previous = os.environ.get('DGENERATE_FORCE_TQDM')
+        os.environ['DGENERATE_FORCE_TQDM'] = '1'
         try:
             transfer = _snapshot_download._create_progress_bar(
                 cls=hf_tqdm,
@@ -133,9 +133,9 @@ class TestHfHubXetProgressPatch(unittest.TestCase):
             self.assertTrue(transfer._bar.disable)
         finally:
             if previous is None:
-                os.environ.pop('TQDM_POSITION', None)
+                os.environ.pop('DGENERATE_FORCE_TQDM', None)
             else:
-                os.environ['TQDM_POSITION'] = previous
+                os.environ['DGENERATE_FORCE_TQDM'] = previous
 
 
 if __name__ == '__main__':

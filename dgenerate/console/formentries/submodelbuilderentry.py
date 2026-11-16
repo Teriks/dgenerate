@@ -56,8 +56,8 @@ class _SubModelBuilderEntry(_entry._Entry):
         self.uri_var = \
             tk.StringVar(value=self.config.get('default', ''))
 
-        self.uri_entry = \
-            _t_entry.TextEntry(self.master, textvariable=self.uri_var)
+        self.uri_entry = _t_entry.value_entry(
+            self.master, self.uri_var, self.config.get('suggestions'))
 
         self.button_frame = ttk.Frame(self.master)
 

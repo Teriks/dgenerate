@@ -33,7 +33,6 @@ import dgenerate.promptupscalers.exceptions as _exceptions
 import dgenerate.prompt as _prompt
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
-import dgenerate.webcache as _webcache
 import dgenerate.promptupscalers.llmupscalermixin as _llmupscalermixin
 import dgenerate.promptupscalers.util as _util
 import dgenerate.hfhub as _hfhub
@@ -71,6 +70,35 @@ def _blank_to_none(value: str | None) -> str | None:
     return value or None
 
 
+def _gguf_has_chat_template(path: str) -> bool:
+    """True when the GGUF stores a non-empty tokenizer chat template."""
+    try:
+        from gguf import GGUFReader
+    except ImportError:
+        return True
+    reader = None
+    try:
+        reader = GGUFReader(path)
+        field = reader.get_field('tokenizer.chat_template')
+        if field is None:
+            return False
+        value = field.contents()
+    except Exception as error:
+        _messages.debug_log(
+            f'Could not read the chat template from "{path}": {error}')
+        return True
+    finally:
+        data = getattr(reader, 'data', None)
+        mapped = getattr(data, '_mmap', None)
+        if mapped is not None:
+            mapped.close()
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple)):
+        return any(str(item).strip() for item in value)
+    return bool(value)
+
+
 def _chat_text(content) -> str:
     if isinstance(content, str):
         return content
@@ -95,10 +123,13 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
     possible values are: "both", "positive", and "negative".
 
     The "model" argument is a path or URL to a GGUF file. The default is a
-    Phi-3 Mini abliterated Q4 GGUF.
+    Phi-3 Mini abliterated Q4 GGUF. A file with no chat template, such as
+    the original MagicPrompt weights, is completed directly instead of
+    through a chat request.
 
     The "mmproj" argument is a path or URL to the GGUF multimodal projector
-    for "model". It is required when "image" is set.
+    for "model". A URL is downloaded. A file name is not looked up beside
+    "model" or in its repository. It is required when "image" is set.
 
     The "image" argument is a path or URL to an image. The image is attached
     to every prompt sent to the model, and the prompt text is the instruction,
@@ -324,6 +355,13 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
             method=load_method
         )
 
+        # Chat completions stop at once on a base model. MagicPrompt is one.
+        self._raw_completion = not image_data_url and not _gguf_has_chat_template(model)
+        if self._raw_completion:
+            _messages.log(
+                'llama prompt upscaler: this GGUF has no chat template, '
+                'so the prompt is completed directly.')
+
         self._image_data_url = image_data_url
         self._preamble = preamble
         self._remove_prompt = remove_prompt
@@ -341,19 +379,18 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
         self._prepend_prompt = prepend_prompt
 
     def _resolve_gguf(self, argument: str, value: str) -> str:
-        if _webcache.is_downloadable_url(value):
-            try:
-                return _hfhub.webcache_or_hf_blob_download(
-                    value,
-                    local_files_only=self.local_files_only,
-                    auth_token=self.auth_token)
-            except Exception as e:
-                raise self.argument_error(
-                    f'Could not download argument "{argument}": "{value}", error: {e}') from e
-        if not os.path.exists(value):
+        try:
+            path = _hfhub.download_non_hf_slug_model(
+                value,
+                local_files_only=self.local_files_only,
+                auth_token=self.auth_token)
+        except Exception as e:
+            raise self.argument_error(
+                f'Could not download argument "{argument}": "{value}", error: {e}') from e
+        if not os.path.isfile(path):
             raise self.argument_error(
                 f'Argument "{argument}" must be a path to a GGUF file on disk if not a URL.')
-        return os.path.abspath(value)
+        return os.path.abspath(path)
 
     def _user_content(self, text: str):
         if not self._image_data_url:
@@ -366,18 +403,17 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
             content.append({'type': 'text', 'text': text})
         return content
 
-    def _complete(self, messages: list[dict]) -> str:
-        result = self._server.handle_chat_completions({
+    def _sampling(self) -> dict:
+        return {
             'max_tokens': self._max_length,
             'temperature': self._temperature,
             'top_k': self._top_k,
             'top_p': self._top_p,
             'min_p': self._min_p,
             'presence_penalty': self._presence_penalty,
-            'messages': messages,
-            # Templates that do not use this variable ignore it.
-            'chat_template_kwargs': {'enable_thinking': self._thinking},
-        })
+        }
+
+    def _decode_result(self, result):
         if isinstance(result, (bytes, bytearray)):
             result = result.decode('utf-8', errors='replace')
         if isinstance(result, str):
@@ -387,6 +423,26 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
             if isinstance(error, dict):
                 error = error.get('message', error)
             raise RuntimeError(str(error))
+        return result
+
+    def _complete(self, messages: list[dict]) -> str:
+        if self._raw_completion:
+            prompt = '\n'.join(
+                text for text in (
+                    _chat_text(message.get('content')).strip() for message in messages)
+                if text)
+            result = self._decode_result(self._server.handle_completions({
+                **self._sampling(),
+                'prompt': prompt,
+            }))
+            return str(result['choices'][0].get('text') or '').strip()
+
+        result = self._decode_result(self._server.handle_chat_completions({
+            **self._sampling(),
+            'messages': messages,
+            # Templates that do not use this variable ignore it.
+            'chat_template_kwargs': {'enable_thinking': self._thinking},
+        }))
         message = result['choices'][0]['message']
         text = _chat_text(message.get('content')).strip()
         if not text:

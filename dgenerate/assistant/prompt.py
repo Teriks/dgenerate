@@ -564,7 +564,7 @@ A still is hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v and keeps 
 guidance 5, 50 steps, --video-fps 24. Public, no HF_TOKEN. \
 Text-to-video Lite is kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers at 768x512. \
 Text-to-video Pro is kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers at 1024x768. \
-Its GGUF is --transformer https://huggingface.co/Ada321/Kandinsky-5.0-T2V-Pro-sft-5s-Q4_K_S.gguf/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf \
+Its GGUF is --transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sft-5s-GGUF/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf \
 on that Pro parent. \
 A still is kandinskylab/Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers at 768x512 and keeps that repository transformer. \
 Lite image-to-video is kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers.

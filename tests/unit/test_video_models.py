@@ -1150,6 +1150,38 @@ class TestVideoModels(unittest.TestCase):
         self.assertFalse(_ltx_legacy._legacy_ltx_schedule_finite(
             scheduler, 1024, 1024, 753, 50))
 
+    def test_one_step_shift_terminal_is_finite(self):
+        from diffusers import FlowMatchEulerDiscreteScheduler
+
+        scheduler = FlowMatchEulerDiscreteScheduler(
+            use_dynamic_shifting=True, shift_terminal=0.1)
+        scheduler.set_timesteps(1, mu=0.5)
+        self.assertTrue(scheduler.sigmas.isfinite().all())
+        self.assertAlmostEqual(float(scheduler.sigmas[0]), 0.1)
+        self.assertAlmostEqual(float(scheduler.sigmas[-1]), 0.0)
+
+        scheduler.set_timesteps(30, mu=0.5)
+        self.assertTrue(scheduler.sigmas.isfinite().all())
+        self.assertAlmostEqual(float(scheduler.sigmas[-2]), 0.1)
+
+    def test_one_step_image_seed_strength_keeps_a_timestep(self):
+        user_args = _pipelinewrapper.arguments.GenerationArguments()
+        user_args.inference_steps = 1
+        user_args.image_seed_strength = 0.7
+        pipeline_args = {}
+        _pipelinewrapper.PipelineWrapper._set_pipeline_strength(
+            None, user_args, pipeline_args)
+        strength = pipeline_args['strength']
+        self.assertEqual(min(int(1 * strength), 1), 1)
+
+        for steps in range(1, 65):
+            user_args.inference_steps = steps
+            user_args.image_seed_strength = 0.7 if steps == 1 else 0.5 / steps
+            pipeline_args = {}
+            _pipelinewrapper.PipelineWrapper._set_pipeline_strength(
+                None, user_args, pipeline_args)
+            self.assertGreaterEqual(int(steps * pipeline_args['strength']), 1)
+
     def test_frame_snap(self):
         self.assertEqual(_video_ltx.ltx_num_frames(5, 24), 121)
         self.assertEqual(_video_ltx.ltx_num_frames(2, 16), 33)
@@ -2344,6 +2376,155 @@ class TestVideoModels(unittest.TestCase):
         self.assertEqual(
             _video_ltx.audio_sample_rate_from_pipeline(Pipe(), audio),
             16000)
+
+    def test_wan_v2v_keeps_the_low_noise_expert(self):
+        from dgenerate.pipelinewrapper.videopipelines.wan.video2video import (
+            WanMoEVideoToVideoPipeline)
+
+        init_names = inspect.signature(WanMoEVideoToVideoPipeline.__init__).parameters
+        self.assertIn('transformer_2', init_names)
+        self.assertIn('boundary_ratio', init_names)
+        self.assertIn(
+            'guidance_scale_2',
+            inspect.signature(WanMoEVideoToVideoPipeline.__call__).parameters)
+
+        high = object()
+        low = object()
+
+        class Source:
+            def __init__(self):
+                self.components = {
+                    'tokenizer': object(),
+                    'text_encoder': object(),
+                    'transformer': high,
+                    'vae': object(),
+                    'scheduler': object(),
+                    'transformer_2': low,
+                }
+                self.config = {'boundary_ratio': 0.875, 'expand_timesteps': False}
+
+        def remember(self, tokenizer=None, text_encoder=None, transformer=None,
+                     vae=None, scheduler=None, transformer_2=None,
+                     boundary_ratio=None, expand_timesteps=False):
+            self.transformer = transformer
+            self.transformer_2 = transformer_2
+            self.boundary_ratio = boundary_ratio
+            self.expand_timesteps = expand_timesteps
+
+        with unittest.mock.patch.object(WanMoEVideoToVideoPipeline, '__init__', remember):
+            converted = _video_loading.pipeline_for_mode(Source(), 'wan-video', 'wan-t2v')
+        self.assertIsInstance(converted, WanMoEVideoToVideoPipeline)
+        self.assertIs(converted.transformer, high)
+        self.assertIs(converted.transformer_2, low)
+        self.assertEqual(converted.boundary_ratio, 0.875)
+        self.assertIs(converted.expand_timesteps, False)
+
+        class OneExpert:
+            def __init__(self):
+                self.components = {
+                    'tokenizer': object(),
+                    'text_encoder': object(),
+                    'transformer': high,
+                    'vae': object(),
+                    'scheduler': object(),
+                }
+                self.config = {}
+
+        class Stock:
+            def __init__(self, tokenizer=None, text_encoder=None, transformer=None,
+                         vae=None, scheduler=None):
+                self.transformer = transformer
+
+        with unittest.mock.patch(
+                'dgenerate.pipelinewrapper.videopipelines.wan._wan_pipeline_class',
+                return_value=Stock):
+            plain = _video_loading.pipeline_for_mode(OneExpert(), 'wan-video', 'wan-t2v')
+        self.assertIsInstance(plain, Stock)
+        self.assertIs(plain.transformer, high)
+
+    def test_wan_v2v_steps_switch_experts(self):
+        import contextlib
+
+        import diffusers
+        from dgenerate.pipelinewrapper.videopipelines.wan.video2video import (
+            WanMoEVideoToVideoPipeline)
+
+        class Expert:
+            def __init__(self, name, positive, negative):
+                self.name = name
+                self.positive = positive
+                self.negative = negative
+                self.dtype = torch.float32
+                self.calls = []
+
+            def cache_context(self, _name):
+                return contextlib.nullcontext()
+
+            def __call__(self, hidden_states, timestep, encoder_hidden_states,
+                         attention_kwargs=None, return_dict=False):
+                self.calls.append(float(timestep.flatten()[0]))
+                value = self.positive if float(encoder_hidden_states.flatten()[0]) == 0.0 else self.negative
+                return (torch.full_like(hidden_states, value),)
+
+        class Config:
+            def __init__(self):
+                self.in_channels = 16
+
+        class Scheduler:
+            order = 1
+            config = type('C', (), {'num_train_timesteps': 1000})()
+            seen = []
+
+            def set_timesteps(self, num_inference_steps, device=None, **kwargs):
+                self.timesteps = torch.tensor([900.0, 100.0])
+
+            def step(self, noise_pred, t, latents, return_dict=False):
+                self.seen.append((float(t), float(noise_pred.flatten()[0])))
+                return (latents,)
+
+        high = Expert('high', 10.0, 0.0)
+        high.config = Config()
+        low = Expert('low', 3.0, 1.0)
+        low.config = Config()
+
+        class Host(WanMoEVideoToVideoPipeline):
+            @property
+            def _execution_device(self):
+                return torch.device('cpu')
+
+            def check_inputs(self, *args, **kwargs):
+                return None
+
+            def encode_prompt(self, **kwargs):
+                return torch.zeros(1, 4), torch.ones(1, 4)
+
+            def prepare_latents(self, *args, **kwargs):
+                return args[8]
+
+            def maybe_free_model_hooks(self):
+                return None
+
+        pipe = Host.__new__(Host)
+        pipe._internal_dict = diffusers.configuration_utils.FrozenDict(
+            boundary_ratio=0.875, expand_timesteps=False)
+        pipe.transformer = high
+        pipe.transformer_2 = low
+        pipe.scheduler = Scheduler()
+        pipe.vae_scale_factor_spatial = 8
+        pipe._progress_bar_config = {'disable': True}
+
+        pipe(
+            prompt='a robot',
+            guidance_scale=4.0,
+            guidance_scale_2=3.0,
+            num_inference_steps=2,
+            strength=1.0,
+            latents=torch.zeros(1, 16, 1, 2, 2),
+            output_type='latent',
+        )
+        self.assertEqual(high.calls, [900.0, 900.0])
+        self.assertEqual(low.calls, [100.0, 100.0])
+        self.assertEqual(pipe.scheduler.seen, [(900.0, 40.0), (100.0, 7.0)])
 
     def test_pipeline_for_mode_shares_components(self):
         vae = object()

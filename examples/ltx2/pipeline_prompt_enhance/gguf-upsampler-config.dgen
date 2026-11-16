@@ -1,0 +1,36 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LTX-2.5 with Unsloth's Gemma 4 E2B GGUF as the prompt upsampler.
+# The language file and the vision tower are two blob links. mmproj is not
+# looked up beside the language file. A config.json beside the GGUF supplies
+# the class. A GGUF with no config, such as Qwen/Qwen3-4B-GGUF, takes its
+# class from the architecture and shape stored in the file. See
+# examples/prompt_upscaler/basic_llm/magicprompt-gguf-config.dgen.
+# The quantized full-precision upsampler is
+# examples/ltx2/pipeline_prompt_enhance/quantized-upsampler-config.dgen.
+# Setting --prompt-upsampler turns enhancement on.
+
+\set upsampler https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/blob/main/gemma-4-E2B-it-Q4_K_M.gguf
+
+\set upsampler_mmproj https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/blob/main/mmproj-F16.gguf
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx2
+--dtype bfloat16
+--model-sequential-offload
+--prompt-upsampler {{ upsampler }};mmproj={{ upsampler_mmproj }}
+--guidance-scales 1
+--gen-seeds 1
+--output-size 640x384
+--video-lengths 2
+--animation-format mp4
+--output-path ltx-gguf-upsampler
+--prompts "A red fox walks through snow."

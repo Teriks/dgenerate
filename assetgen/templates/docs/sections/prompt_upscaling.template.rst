@@ -174,6 +174,22 @@ Any LLM that is supported by ``transformers`` can be used to upscale prompts via
 Here is an example using `Phi-3 Mini Abliterated by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3>`_
 
 The ``magicprompt`` plugin supports quantization with ``bitsandbytes`` and ``sdnq``.
+It also loads a GGUF: ``model`` may be the file or its URL, or a repository with
+``weight-name`` set to the ``.gguf``. ``mmproj`` is the vision tower when that
+tower is a separate file, given as that file's path or URL. When the repository
+has no ``config.json``, the class is the text encoder dgenerate would load for
+that file: the architecture and the embedding shape pick it, for every text
+encoder dgenerate can load. The config is one dgenerate ships for that shape.
+The tokenizer is read from the vocabulary stored in the file when the
+repository does not include one. A tokenizer with a chat template receives
+``system`` and ``preamble`` through that template, and thinking is left off
+when the template accepts that. ``max-length`` is then the length of the
+reply. The transcript is not counted.
+
+This example loads `Qwen3-4B Q4_K_M <https://huggingface.co/Qwen/Qwen3-4B-GGUF>`_,
+a repository that publishes only the GGUF:
+
+@EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/basic_llm/magicprompt-gguf-config.dgen]
 
 Quantization backend packages will be installed by dgenerate's packaging on platforms where they are supported.
 
@@ -215,6 +231,7 @@ Writing prompts from an image
 instruction sent with the image, for example a request to describe it as an image-generation prompt.
 
 For ``llama``, pass the picture as ``image`` and the matching GGUF multimodal projector as ``mmproj``.
+``mmproj`` is that file's path or URL. A file name is not looked up beside the model.
 Vision models need a larger ``context-tokens`` value than text models, because the image occupies
 part of the context. Animated files use the first frame. ``thinking`` defaults to false so the
 reply is the prompt. Set it to true on models that support a thought before the answer.

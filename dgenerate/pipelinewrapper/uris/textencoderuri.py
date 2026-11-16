@@ -58,6 +58,7 @@ _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
         'variant',
         'subfolder',
         'weight-name',
+        'mmproj',
         'dtype',
         'quantizer',
         'mode',
@@ -206,7 +207,12 @@ def _flattened_clip_checkpoint_keys(model):
         loaded = original(checkpoint_file, device_map=device_map)
         if flattened:
             loaded = _translate_flattened_clip_checkpoint_keys(loaded, model_keys)
-        if projection is not None:
+        # A Comfy quant of this projection was already packed onto the module
+        # and removed from the checkpoint. Filling an identity here would
+        # overwrite that packed weight.
+        quantized = type(getattr(model, 'text_projection', None)).__name__ in (
+            'ComfyQuantLinear', 'GGUFLinear')
+        if projection is not None and not quantized:
             loaded = _supply_missing_clip_text_projection(loaded, model_keys, projection)
         return loaded
 
@@ -220,6 +226,10 @@ def _flattened_clip_checkpoint_keys(model):
 _LANGUAGE_MODEL_PREFIXES = (
     # checkpoint prefix -> model prefix, tried in order for each tensor
     ('', ''),
+    # Comfy clip and a diffusers CLIP component store the tower under
+    # ``text_model.``. Transformers 5 flattens that prefix off the module.
+    ('text_model.', ''),
+    ('', 'text_model.'),
     ('model.', ''),
     ('', 'model.'),
     # Qwen3-VL's base module (Krea 2) keeps the language model at
@@ -277,11 +287,8 @@ def _language_model_config(model_path: str, encoder) -> str | None:
         return None
     _, vocab, hidden, layers = layout
 
-    configs = pathlib.Path(__file__).parent.parent / 'hub_configs'
     best = None
-    for config_path in sorted(configs.glob('*/text_encoder*/config.json')):
-        with open(config_path, 'r', encoding='utf-8') as file:
-            config = json.load(file)
+    for config_path, config in _iter_shipped_text_configs():
         if config.get('model_type') != model_type:
             continue
         text = config.get('text_config') or config
@@ -322,9 +329,30 @@ def _language_model_rename(model_keys: set, checkpoint_keys) -> typing.Callable[
     checkpoint_keys = list(checkpoint_keys)
     # HunyuanVideo 1.5's text encoder is the Qwen2.5-VL text tower. ComfyUI's
     # file for it also stores the vision tower, which that class has no tensors for.
-    model_has_vision = any('visual' in key or 'vision' in key for key in model_keys)
-    comparable = checkpoint_keys if model_has_vision else [
-        key for key in checkpoint_keys if 'visual' not in key and 'vision' not in key]
+    # A Gemma 4 mmproj carries audio beside the vision tower; a class without
+    # that tower does not have to match those tensors.
+    def _kept(key):
+        if ('visual' in key or 'vision' in key) and not any(
+                'visual' in name or 'vision' in name for name in model_keys):
+            return False
+        if 'audio' in key and not any('audio' in name for name in model_keys):
+            return False
+        return True
+
+    def _shared_projection(key):
+        """A layer the class does not own, such as Gemma 4 shared key/value."""
+        if rename(key) in model_keys:
+            return False
+        parts = key.split('.')
+        layer = next((part for part in parts if part.isdigit()), None)
+        if layer is None or len(parts) < 2:
+            return False
+        leaf = '.'.join(parts[-2:])
+        return any(
+            name.endswith('.' + leaf) and f'.{layer}.' not in f'.{name}.'
+            for name in model_keys)
+
+    comparable = [key for key in checkpoint_keys if _kept(key) and not _shared_projection(key)]
     matches = sum(1 for key in comparable if rename(key) in model_keys)
     if not comparable or matches < 0.9 * len(comparable):
         raise _exceptions.TextEncoderUriLoadError(
@@ -400,13 +428,7 @@ def _load_language_model_from_single_file(model_class, model_path: str, config_p
         accelerate.utils.set_module_tensor_to_device(model, target, 'cpu', value=value, dtype=value_dtype)
 
     model.tie_weights()
-    missing = {name: tensor for name, tensor in
-               list(model.named_parameters()) + list(model.named_buffers())
-               if tensor.device.type == 'meta'}
-    for name, tensor in missing.items():
-        accelerate.utils.set_module_tensor_to_device(
-            model, name, 'cpu', value=torch.zeros(tensor.shape, dtype=tensor.dtype))
-    missing = list(missing)
+    missing = _materialize_missing_tensors(model, dtype)
     if missing:
         _messages.debug_log(
             f'Text encoder file "{model_path}" holds no weights for {len(missing)} tensors '
@@ -425,8 +447,17 @@ def _load_monolithic_checkpoint(
         # Keep its quantized linears packed, unless another quantizer already
         # replaced the linears and needs dense weights.
         quantized = getattr(model.config, 'quantization_config', None) is not None
+        header = _safetensorscompat._read_header(checkpoint) or {}
+        header.pop('__metadata__', None)
+        model_keys = set(model.state_dict().keys())
+        # Comfy clip stores ``text_model.``; a flattened CLIPTextModel does not.
+        # Scale tensors are not parameters, so they stay out of the match.
+        prefixed = any(key.startswith('text_model.') for key in header)
+        flattened = prefixed and not any(key.startswith('text_model.') for key in model_keys)
+        parameters = [key for key in header if key.endswith(('.weight', '.bias'))]
+        rename = _language_model_rename(model_keys, parameters) if flattened else None
         state = _safetensorscompat.prepare_text_encoder(
-            model, checkpoint, dtype, pack=not quantized)
+            model, checkpoint, dtype, pack=not quantized, rename=rename)
         with _safetensorscompat.accelerate_checkpoint(checkpoint, state):
             return _load_monolithic_state(
                 model, checkpoint, device_map, dtype, no_split_module_classes)
@@ -454,6 +485,37 @@ def _keep_in_fp32_module_names(model) -> list[str]:
     """Module names transformers refuses to quantize, such as T5 ``wo``."""
     names = getattr(model, '_keep_in_fp32_modules', None) or []
     return [name for name in names if name]
+
+
+def _materialize_missing_tensors(model, dtype: torch.dtype | None) -> list[str]:
+    """Put leftover meta tensors on CPU in the model's compute dtype.
+
+    ``init_empty_weights`` builds parameters as float32. A file that omits a
+    tensor, such as Klein's Qwen3 ``lm_head`` (``tie_word_embeddings`` is
+    false and the ComfyUI encoder file has no head), would stay float32.
+    ``Qwen3ForCausalLM.forward`` multiplies that head by the hidden states
+    even when the pipeline only reads those states.
+    """
+    keep_fp32 = set(_keep_in_fp32_module_names(model))
+    missing = {
+        name: tensor
+        for name, tensor in list(model.named_parameters()) + list(model.named_buffers())
+        if tensor.device.type == 'meta'
+    }
+    for name, tensor in missing.items():
+        value_dtype = tensor.dtype
+        if dtype is not None and tensor.is_floating_point():
+            module_name = name.rsplit('.', 1)[0] if '.' in name else ''
+            short = module_name.rsplit('.', 1)[-1]
+            if short not in keep_fp32 and module_name not in keep_fp32:
+                value_dtype = dtype
+        # dtype= is required. Without it, accelerate casts the value back to
+        # the meta parameter, which init_empty_weights created as float32.
+        accelerate.utils.set_module_tensor_to_device(
+            model, name, 'cpu',
+            value=torch.zeros(tensor.shape, dtype=value_dtype),
+            dtype=value_dtype)
+    return list(missing)
 
 
 def _cast_kept_fp32_modules(model) -> None:
@@ -932,6 +994,7 @@ _ENCODER_FOR_MODEL_TYPE = {
     # secret scanning reads that token as a Mistral API key.
     'mis' + 'tral3': 'Mistral3ForConditionalGeneration',
     'gemma3': 'Gemma3ForConditionalGeneration',
+    'gemma4': 'Gemma4ForConditionalGeneration',
     'gemma4_unified': 'Gemma4UnifiedForConditionalGeneration',
 }
 
@@ -951,7 +1014,13 @@ def _count_indexed(keys, marker: str) -> int:
 
 def _iter_shipped_text_configs():
     root = pathlib.Path(__file__).parent.parent / 'hub_configs'
-    for config_path in sorted(root.glob('*/text_encoder*/config.json')):
+    paths = []
+    for pattern in (
+            '*/text_encoder*/config.json',
+            '*/prompt_enhancer/config.json',
+            '*/prompt_upsampler/config.json'):
+        paths.extend(root.glob(pattern))
+    for config_path in sorted(set(paths)):
         with open(config_path, 'r', encoding='utf-8') as handle:
             yield str(config_path), json.load(handle)
 
@@ -982,6 +1051,206 @@ def _lookup_shipped_config(encoder, hidden: int, vocab: int, layers: int):
     if best is not None:
         return best[1], None
     return None, None if other is None else other[1]
+
+
+# llama.cpp architecture -> encoder classes dgenerate can build, generative
+# class first when a language file and a vision wrapper share a shape.
+_GGUF_ARCH_CLASSES = {
+    'clip': ('CLIPTextModel', 'CLIPTextModelWithProjection'),
+    't5': ('T5EncoderModel', 'UMT5EncoderModel'),
+    't5encoder': ('T5EncoderModel', 'UMT5EncoderModel'),
+    'llama': ('LlamaForCausalLM', 'Mistral3ForConditionalGeneration'),
+    'qwen2': ('Qwen2ForCausalLM',),
+    'qwen2vl': ('Qwen2_5_VLForConditionalGeneration', 'Qwen2_5_VLTextModel',
+                'Qwen2VLForConditionalGeneration'),
+    'qwen3': ('Qwen3ForCausalLM', 'Qwen3Model'),
+    'qwen3vl': ('Qwen3VLForConditionalGeneration', 'Qwen3VLModel'),
+    'qwen35': ('Qwen3_5ForConditionalGeneration',),
+    'qwen35moe': ('Qwen3_5MoeForConditionalGeneration',),
+    'gemma3': ('Gemma3ForConditionalGeneration',),
+    'gemma4': ('Gemma4ForConditionalGeneration', 'Gemma4UnifiedForConditionalGeneration'),
+}
+
+
+def _matching_shipped_config(encoder, shape: tuple[int, int], layers: int) -> str | None:
+    hidden, vocab = shape[1], shape[0]
+    path, _other = _lookup_shipped_config(encoder, hidden, vocab, layers)
+    if path is None and shape[0] != shape[1]:
+        path, _other = _lookup_shipped_config(encoder, shape[0], shape[1], layers)
+    return path
+
+
+def _gguf_encoder_class(architecture: str | None, shape: tuple[int, int], layers: int):
+    """The encoder class for a GGUF architecture and embedding shape.
+
+    The class is the one whose shipped config matches the vocabulary, hidden
+    size, and layer count. A generative class wins when a text tower and a
+    vision wrapper share that shape.
+    """
+    names = _GGUF_ARCH_CLASSES.get(architecture or '')
+    if not names:
+        return None
+    found = []
+    first = None
+    for name in names:
+        cls = TextEncoderUri._resolve_encoder_class(name)
+        if cls is None:
+            continue
+        if first is None:
+            first = cls
+        path = _matching_shipped_config(cls, shape, layers)
+        if path is None:
+            continue
+        with open(path, 'r', encoding='utf-8') as handle:
+            exact = name in (json.load(handle).get('architectures') or [])
+        found.append((0 if exact else 1, name, cls))
+    if not found:
+        return first
+    best = min(item[0] for item in found)
+    tied = [(name, cls) for score, name, cls in found if score == best]
+    for name, cls in tied:
+        if name.endswith('ForCausalLM') or name.endswith('ForConditionalGeneration'):
+            return cls
+    return tied[0][1]
+
+
+def _gguf_class_mismatch(encoder, architecture: str | None,
+                         shape: tuple[int, int], layers: int) -> str | None:
+    """A warning when a text-encoder URI names a class this GGUF is not.
+
+    A class whose shipped config names it for this shape is accepted. So is
+    a text tower of that file (``Qwen3Model``, ``Qwen3VLModel``,
+    ``Qwen2_5_VLTextModel``). A class with no such configuration is
+    reported, along with the class the file matches.
+    """
+    if encoder is None:
+        return None
+    preferred = _gguf_encoder_class(architecture, shape, layers)
+    if preferred is None or preferred.__name__ == encoder.__name__:
+        return None
+    if _matching_shipped_config(preferred, shape, layers) is None:
+        return None
+    named = _matching_shipped_config(encoder, shape, layers)
+    if named is not None:
+        with open(named, 'r', encoding='utf-8') as handle:
+            architectures = json.load(handle).get('architectures') or []
+        if encoder.__name__ in architectures:
+            return None
+        # A text tower of the same file: Qwen3Model, Qwen3VLModel, Qwen2_5_VLTextModel.
+        # CLIPTextModel is not one of those; a CLIP-G file is the projection class.
+        if encoder.__name__ in {'Qwen3Model'} or encoder.__name__.endswith(('VLModel', 'VLTextModel')):
+            return None
+    vocab, hidden = shape
+    return (
+        f'Text encoder class "{encoder.__name__}" does not match this GGUF '
+        f'(architecture {architecture}, vocabulary {vocab}, hidden size {hidden}, '
+        f'{layers} layers). The file matches {preferred.__name__}.')
+
+
+def _materialize_mmproj(mmproj, local_files_only, auth_token) -> str:
+    """The ``mmproj`` value itself: a local file, or a URL that is downloaded.
+
+    A bare file name is not looked up beside the language file or in its
+    repository. The value has to be the path or the blob or resolve link.
+    """
+    try:
+        downloaded = _hfhub.download_non_hf_slug_model(
+            mmproj, local_files_only=local_files_only, auth_token=auth_token)
+    except Exception as error:
+        raise _exceptions.TextEncoderUriLoadError(
+            f'mmproj "{mmproj}" could not be downloaded: {error}') from error
+    if not os.path.isfile(downloaded):
+        raise _exceptions.TextEncoderUriLoadError(
+            f'mmproj "{mmproj}" was not found. Give its file path or its URL.')
+    return downloaded
+
+
+def _config_matches_encoder(data: dict, encoder, shape: tuple[int, int], layers: int) -> bool:
+    """True when a config is this encoder's type and covers the GGUF shape."""
+    expected = getattr(getattr(encoder, 'config_class', None), 'model_type', None)
+    model_type, hidden, vocab, config_layers = _config_shape(data)
+    if expected and model_type != expected:
+        return False
+    if config_layers < layers:
+        return False
+    pairs = {(shape[1], shape[0])}
+    if shape[0] != shape[1]:
+        pairs.add((shape[0], shape[1]))
+    return (hidden, vocab) in pairs
+
+
+def _shipped_encoder_for_shape(shape: tuple[int, int], layers: int):
+    """``(encoder class, config path)`` for a quant that has no architecture header.
+
+    A lone ``.safetensors`` quant does not ship ``config.json``. The match is a
+    configuration dgenerate ships for this vocabulary, hidden size, and layer count.
+    """
+    hidden, vocab = shape[1], shape[0]
+    best = None
+    for config_path, config in _iter_shipped_text_configs():
+        _model_type, config_hidden, config_vocab, config_layers = _config_shape(config)
+        if config_layers < layers:
+            continue
+        if (config_hidden, config_vocab) != (hidden, vocab):
+            if shape[0] == shape[1] or (config_hidden, config_vocab) != (shape[0], shape[1]):
+                continue
+        names = [
+            name for name in (config.get('architectures') or [])
+            if TextEncoderUri._resolve_encoder_class(name) is not None]
+        if not names:
+            continue
+        chosen = names[0]
+        for name in names:
+            if name.endswith('ForCausalLM') or name.endswith('ForConditionalGeneration'):
+                chosen = name
+                break
+        score = (
+            config_layers,
+            0 if chosen.endswith(('ForCausalLM', 'ForConditionalGeneration')) else 1,
+            config_path)
+        if best is None or score < best[0]:
+            best = (score, chosen, config_path)
+    if best is None:
+        return None, None
+    return TextEncoderUri._resolve_encoder_class(best[1]), best[2]
+
+
+def _pipeline_encoder_config(repo, subfolder, revision, local_files_only, auth_token,
+                             encoder, shape: tuple[int, int], layers: int) -> str | None:
+    """The pipeline text-encoder ``config.json``, when it matches this GGUF.
+
+    ``repo`` is ``--model`` when that is a repository or folder, or the
+    repository detected for a single-file checkpoint. The file next to the
+    GGUF is not considered.
+    """
+    if not repo or _hfhub.is_single_file_model_load(repo):
+        return None
+    try:
+        if os.path.isdir(repo):
+            path = os.path.join(repo, subfolder or '', 'config.json')
+            if not os.path.isfile(path):
+                return None
+        else:
+            path = _hfhub.huggingface_hub.hf_hub_download(
+                repo_id=repo,
+                filename='config.json',
+                revision=revision,
+                subfolder=subfolder or None,
+                local_files_only=local_files_only,
+                token=_hfhub.resolve_auth_token(auth_token))
+    except Exception as error:
+        _messages.debug_log(
+            f'No text encoder config in "{repo}" ({subfolder}): {error}')
+        return None
+    try:
+        with open(path, 'r', encoding='utf-8') as handle:
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not _config_matches_encoder(data, encoder, shape, layers):
+        return None
+    _messages.debug_log(f'GGUF text encoder config from "{repo}" ({subfolder}).')
+    return path
 
 
 def _require_shipped_config(encoder, shape: tuple[int, int], layers: int, path: str) -> str:
@@ -1034,6 +1303,11 @@ def _tensor_signature(tensors: dict) -> tuple[str, tuple[int, int], int] | None:
     if embed_key is None and 'shared.weight' in tensors:
         embed_key = 'shared.weight'
     if embed_key is None:
+        for key in tensors:
+            if key.endswith('embeddings.token_embedding.weight') and 'vision' not in key:
+                embed_key = key
+                break
+    if embed_key is None:
         return None
     value = tensors[embed_key]
     if isinstance(value, dict):
@@ -1046,6 +1320,10 @@ def _tensor_signature(tensors: dict) -> tuple[str, tuple[int, int], int] | None:
     if embed_key.endswith('embed_tokens.weight'):
         marker = embed_key[:-len('embed_tokens.weight')] + 'layers.'
         layers = _count_indexed(tensors, marker)
+    elif embed_key.endswith('token_embedding.weight'):
+        layers = _count_indexed(tensors, 'text_model.encoder.layers.')
+        if layers < 1:
+            layers = _count_indexed(tensors, 'encoder.layers.')
     if layers < 1:
         # T5 and UMT5 number their blocks ``encoder.block.{i}``, including when
         # the embedding is stored as ``encoder.embed_tokens`` rather than ``shared``.
@@ -1064,6 +1342,29 @@ def _t5_family_config(model_path: str, encoder) -> str | None:
         return None
     header.pop('__metadata__', None)
     if not any(key.startswith('encoder.block.') for key in header):
+        return None
+    signature = _tensor_signature(header)
+    if signature is None:
+        return None
+    _, shape, layers = signature
+    return _require_shipped_config(encoder, shape, layers, model_path)
+
+
+def _clip_family_config(model_path: str, encoder) -> str | None:
+    """Shipped CLIP config for a monolithic safetensors file, or ``None``."""
+    if not str(model_path).lower().endswith('.safetensors') or not os.path.isfile(model_path):
+        return None
+    header = _safetensorscompat._read_header(model_path)
+    if not header:
+        return None
+    header.pop('__metadata__', None)
+    embeddings = [
+        key for key in header
+        if key.endswith('embeddings.token_embedding.weight') and 'vision' not in key]
+    if len(embeddings) != 1:
+        # An all-in-one checkpoint (SD3's CLIP-L and CLIP-G beside the
+        # transformer) is not one CLIP. The first tower would be built twice,
+        # and both pooled vectors would be that tower's width.
         return None
     signature = _tensor_signature(header)
     if signature is None:
@@ -1125,6 +1426,21 @@ def _load_configured_monolithic(
     except Exception as e:
         raise _exceptions.TextEncoderUriLoadError(
             f'Failed to load {label}: {e}') from e
+
+
+def _fill_identity_clip_projection(model, state: dict) -> None:
+    """Identity ``text_projection`` when a CLIP file stores the text tower only."""
+    if any(key == 'text_projection' or key.endswith('text_projection.weight') for key in state):
+        return
+    projection = getattr(model, 'text_projection', None)
+    weight = getattr(projection, 'weight', None)
+    if weight is None or weight.ndim != 2 or weight.shape[0] != weight.shape[1]:
+        return
+    eye = torch.eye(weight.shape[0])
+    accelerate.utils.set_module_tensor_to_device(
+        model, 'text_projection.weight', 'cpu', value=eye)
+    _messages.debug_log(
+        'CLIP text encoder file has no text_projection; using an identity projection.')
 
 
 def _dequantize_encoder_tensor(value):
@@ -1207,13 +1523,7 @@ def _assign_gguf_text_encoder(model, state: dict, dtype: torch.dtype, rename, tr
             model, target, 'cpu', value=value, dtype=value_dtype)
 
     model.tie_weights()
-    missing = {name: tensor for name, tensor in
-               list(model.named_parameters()) + list(model.named_buffers())
-               if tensor.device.type == 'meta'}
-    for name, tensor in missing.items():
-        accelerate.utils.set_module_tensor_to_device(
-            model, name, 'cpu', value=torch.zeros(tensor.shape, dtype=tensor.dtype))
-    missing = list(missing)
+    missing = _materialize_missing_tensors(model, dtype)
     if missing:
         _messages.debug_log(
             f'GGUF text encoder holds no weights for {len(missing)} tensors '
@@ -1222,17 +1532,43 @@ def _assign_gguf_text_encoder(model, state: dict, dtype: torch.dtype, rename, tr
     return model.eval()
 
 
+def _mmproj_lands(model, state: dict) -> bool:
+    """True when a restored ``visual.*`` tensor names a parameter of ``model``."""
+    model_keys = set(model.state_dict().keys())
+    for key in state:
+        if not (
+                key.startswith('visual.')
+                or 'embed_vision' in key or 'embed_audio' in key
+                or 'vision_tower' in key or 'audio_tower' in key):
+            continue
+        for source, target in _LANGUAGE_MODEL_PREFIXES:
+            if source and not key.startswith(source):
+                continue
+            if target + key[len(source):] in model_keys:
+                return True
+    return False
+
+
 def _load_gguf_text_encoder(encoder, model_path: str, dtype: torch.dtype | None,
-                            config_path: str | None = None):
+                            config_path: str | None = None,
+                            mmproj_path: str | None = None,
+                            pipeline_repo: str | None = None,
+                            pipeline_subfolder: str | None = None,
+                            pipeline_revision: str | None = None,
+                            local_files_only: bool = False,
+                            auth_token: str | None = None):
     """
     Load a ``.gguf`` text encoder. Quantized linears stay packed.
 
-    ``config_path`` skips the shipped-config match. Tests use that for a model
-    smaller than any configuration dgenerate ships.
+    ``encoder`` may be ``None``. The class is then the architecture and the
+    embedding shape in the file. ``config_path`` skips the shipped-config
+    match and the pipeline repository. Tests use that for a model smaller
+    than any configuration dgenerate ships. A ``config.json`` next to the
+    GGUF is not read.
     """
     dtype = dtype or torch.bfloat16
     try:
-        architecture, state = _ggufcompat.load_text_encoder_gguf(model_path)
+        architecture, state, llama_cpp_names = _ggufcompat.load_text_encoder_gguf(model_path)
     except _exceptions.TextEncoderUriLoadError:
         raise
     except Exception as e:
@@ -1244,6 +1580,24 @@ def _load_gguf_text_encoder(encoder, model_path: str, dtype: torch.dtype | None,
         raise _exceptions.TextEncoderUriLoadError(
             f'GGUF text encoder "{model_path}" has no token embedding and decoder layers.')
     _, shape, layers = signature
+    if encoder is not None:
+        mismatch = _gguf_class_mismatch(encoder, architecture, shape, layers)
+        if mismatch:
+            _messages.warning(mismatch)
+    if encoder is None:
+        encoder = _gguf_encoder_class(architecture, shape, layers)
+        if encoder is None:
+            raise _exceptions.TextEncoderUriLoadError(
+                f'GGUF text encoder "{model_path}" has architecture {architecture!r}, '
+                f'which is not a text encoder dgenerate can load.')
+        _messages.debug_log(
+            f'GGUF architecture {architecture} loads as {encoder.__name__}.')
+    if config_path is None:
+        config_path = _matching_shipped_config(encoder, shape, layers)
+    if config_path is None:
+        config_path = _pipeline_encoder_config(
+            pipeline_repo, pipeline_subfolder, pipeline_revision,
+            local_files_only, auth_token, encoder, shape, layers)
     if config_path is None:
         config_path = _require_shipped_config(encoder, shape, layers, model_path)
 
@@ -1253,17 +1607,42 @@ def _load_gguf_text_encoder(encoder, model_path: str, dtype: torch.dtype | None,
         raise _exceptions.TextEncoderUriLoadError(
             f'Failed to read the text encoder config "{config_path}": {e}') from e
 
-    if architecture == 'llama':
+    # llama.cpp interleaves query and key rows. A file that already stores
+    # Hugging Face names, including a quant written without --llama, does not.
+    if architecture == 'llama' and llama_cpp_names:
         text = getattr(config, 'text_config', None) or config
         n_head = getattr(text, 'num_attention_heads', None) or 0
         n_kv = getattr(text, 'num_key_value_heads', None) or n_head
         state = _ggufcompat.permute_llama_attention(state, n_head, n_kv)
 
     trimmed = _fit_layer_count(config, layers)
+    if mmproj_path:
+        vision_config = getattr(config, 'vision_config', None)
+        indexes = getattr(vision_config, 'deepstack_visual_indexes', None) if vision_config is not None else None
+        try:
+            vision = _ggufcompat.load_mmproj_gguf(mmproj_path, indexes)
+        except _exceptions.TextEncoderUriLoadError:
+            raise
+        except Exception as e:
+            raise _exceptions.TextEncoderUriLoadError(
+                f'Failed to read mmproj "{mmproj_path}": {e}') from e
+        overlap = set(vision).intersection(state)
+        if overlap:
+            sample = next(iter(overlap))
+            raise _exceptions.TextEncoderUriLoadError(
+                f'mmproj "{mmproj_path}" repeats tensors already in the text encoder '
+                f'(for example {sample}).')
+        state.update(vision)
     try:
         with accelerate.init_empty_weights(include_buffers=False):
             model = encoder(config)
-        return _assign_gguf_text_encoder(model, state, dtype, rename=None, trimmed=trimmed)
+        if mmproj_path and not _mmproj_lands(model, state):
+            raise _exceptions.TextEncoderUriLoadError(
+                f'Text encoder "{encoder.__name__}" has no tensors for the vision tower '
+                f'in "{mmproj_path}".')
+        loaded = _assign_gguf_text_encoder(model, state, dtype, rename=None, trimmed=trimmed)
+        _fill_identity_clip_projection(loaded, state)
+        return loaded
     except _exceptions.TextEncoderUriLoadError:
         raise
     except Exception as e:
@@ -1319,6 +1698,13 @@ class TextEncoderUri:
         return self._weight_name
 
     @property
+    def mmproj(self) -> _types.OptionalPath:
+        """
+        GGUF vision tower (llama.cpp mmproj) loaded beside a GGUF text encoder.
+        """
+        return self._mmproj
+
+    @property
     def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
@@ -1356,6 +1742,7 @@ class TextEncoderUri:
         'DistillT5EncoderModel': _models.DistillT5EncoderModel,
         'ChatGLMModel': diffusers.pipelines.kolors.ChatGLMModel,
         'Gemma3ForConditionalGeneration': transformers.Gemma3ForConditionalGeneration,
+        'Gemma4ForConditionalGeneration': transformers.Gemma4ForConditionalGeneration,
         'Gemma4UnifiedForConditionalGeneration': transformers.Gemma4UnifiedForConditionalGeneration,
         'Mistral3ForConditionalGeneration': transformers.Mistral3ForConditionalGeneration,
         'Qwen2_5_VLForConditionalGeneration': transformers.Qwen2_5_VLForConditionalGeneration,
@@ -1365,6 +1752,16 @@ class TextEncoderUri:
         'Qwen3VLForConditionalGeneration': transformers.Qwen3VLForConditionalGeneration,
         'Qwen3VLModel': transformers.Qwen3VLModel,
     }
+
+    # Classes whose module has a vision tower a llama.cpp mmproj can fill.
+    # The console text-encoder builder copies this set.
+    _VISION_TOWER_ENCODERS = frozenset({
+        'Gemma4ForConditionalGeneration',
+        'Gemma4UnifiedForConditionalGeneration',
+        'Qwen2_5_VLForConditionalGeneration',
+        'Qwen3VLForConditionalGeneration',
+        'Qwen3VLModel',
+    })
 
     _clip_modes = (
         'clip-l',
@@ -1420,7 +1817,8 @@ class TextEncoderUri:
     }
 
     FILE_ARGS = {
-        'model': {'mode': ['in', 'dir'], 'filetypes': [('Models', ['*.safetensors', '*.gguf', '*.pt', '*.pth', '*.cpkt', '*.bin'])]}
+        'model': {'mode': ['in', 'dir'], 'filetypes': [('Models', ['*.safetensors', '*.gguf', '*.pt', '*.pth', '*.cpkt', '*.bin'])]},
+        'mmproj': {'mode': ['in'], 'filetypes': [('Models', ['*.gguf'])]},
     }
 
     # ===
@@ -1432,6 +1830,7 @@ class TextEncoderUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  weight_name: _types.OptionalName = None,
+                 mmproj: _types.OptionalPath = None,
                  dtype: _enums.DataType | str | None = None,
                  quantizer: _types.OptionalUri = None,
                  mode: _types.OptionalString = None,
@@ -1459,11 +1858,20 @@ class TextEncoderUri:
 
         valid_modes = TextEncoderUri._valid_modes()
 
-        if quantizer and (
-                _hfhub.is_gguf_model(model) or (weight_name and _hfhub.is_gguf_model(weight_name))):
+        gguf_file = (
+            _hfhub.is_gguf_model(model) or bool(weight_name and _hfhub.is_gguf_model(weight_name)))
+        if quantizer and gguf_file:
             raise _exceptions.InvalidTextEncoderUriError(
                 'A GGUF text encoder file is already quantized. '
                 'Do not set the quantizer argument.')
+        if mmproj and encoder not in TextEncoderUri._VISION_TOWER_ENCODERS:
+            raise _exceptions.InvalidTextEncoderUriError(
+                'mmproj is the vision tower for '
+                f'{_textprocessing.oxford_comma(sorted(TextEncoderUri._VISION_TOWER_ENCODERS), "or")}. '
+                f'{encoder} has no vision tower.')
+        if mmproj and not gguf_file:
+            raise _exceptions.InvalidTextEncoderUriError(
+                'mmproj is a GGUF vision tower loaded beside a GGUF text encoder.')
 
         names_file = _hfhub.is_single_file_model_load(model) or (
             bool(weight_name) and _hfhub.is_single_file_model_load(weight_name))
@@ -1498,6 +1906,7 @@ class TextEncoderUri:
         self._variant = variant
         self._subfolder = subfolder
         self._weight_name = weight_name
+        self._mmproj = mmproj
         self._quantizer = quantizer
         self._compile = bool(compile)
         self._mode = mode
@@ -1516,7 +1925,10 @@ class TextEncoderUri:
              local_files_only: bool = False,
              no_cache: bool = False,
              missing_ok: bool = False,
-             device_map: str | None = None
+             device_map: str | None = None,
+             pipeline_repo: str | None = None,
+             pipeline_subfolder: str | None = None,
+             pipeline_revision: str | None = None,
              ) -> \
             typing.Union[
                 transformers.models.clip.CLIPTextModel,
@@ -1540,6 +1952,9 @@ class TextEncoderUri:
         :param missing_ok: If ``True``, when a VAE is not found inside a single file checkpoint as a sub model,
             just return ``None`` instead of throwing an error.
         :param device_map: device placement strategy for quantized models, defaults to ``None``
+        :param pipeline_repo: ``--model`` repository or folder, or the repository detected for a single-file checkpoint. A GGUF text encoder uses its text-encoder config when no shipped config matches.
+        :param pipeline_subfolder: Text encoder directory inside ``pipeline_repo``.
+        :param pipeline_revision: Revision of ``pipeline_repo`` when it is a Hugging Face repository.
 
         :raises ModelNotFoundError: If the model could not be found.
 
@@ -1588,7 +2003,10 @@ class TextEncoderUri:
               local_files_only: bool = False,
               no_cache: bool = False,
               missing_ok: bool = False,
-              device_map: str | None = None
+              device_map: str | None = None,
+              pipeline_repo: str | None = None,
+              pipeline_subfolder: str | None = None,
+              pipeline_revision: str | None = None,
               ) -> \
             typing.Union[
                 transformers.models.clip.CLIPTextModel,
@@ -1661,8 +2079,29 @@ class TextEncoderUri:
 
             if _hfhub.is_gguf_model(model_path):
                 # A GGUF text encoder is already quantized. Linears stay packed.
-                self._enforce_cache_size(os.path.getsize(model_path))
-                text_encoder = _load_gguf_text_encoder(encoder, model_path, torch_dtype)
+                # The config is one dgenerate ships, or the pipeline repository
+                # when that shape is not shipped. The quant's own repository
+                # does not supply config.json, and a file beside the GGUF is
+                # not read. mmproj is only the file named on the URI.
+                mmproj_path = None
+                if self.mmproj:
+                    mmproj_path = _materialize_mmproj(
+                        self.mmproj, local_files_only, auth_token)
+                    if not _hfhub.is_gguf_model(mmproj_path):
+                        raise _exceptions.TextEncoderUriLoadError(
+                            f'mmproj "{self.mmproj}" must be a .gguf file.')
+                gguf_bytes = os.path.getsize(model_path)
+                if mmproj_path and os.path.isfile(mmproj_path):
+                    gguf_bytes += os.path.getsize(mmproj_path)
+                self._enforce_cache_size(gguf_bytes)
+                text_encoder = _load_gguf_text_encoder(
+                    encoder, model_path, torch_dtype,
+                    mmproj_path=mmproj_path,
+                    pipeline_repo=pipeline_repo,
+                    pipeline_subfolder=pipeline_subfolder,
+                    pipeline_revision=pipeline_revision,
+                    local_files_only=local_files_only,
+                    auth_token=auth_token)
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
             elif self.mode == 'clip-l':
                 # Estimate memory directly based on model size
@@ -1828,6 +2267,26 @@ class TextEncoderUri:
                     encoder, model_path, language_model_config, torch_dtype)
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
             elif (encoder_library == 'transformers' and not self.mode
+                  and encoder.__name__ in ('CLIPTextModel', 'CLIPTextModelWithProjection')
+                  and (clip_config := _clip_family_config(model_path, encoder))):
+                # Monolithic CLIP, including Comfy clip_l / clip_g and a quant
+                # this subcommand writes. Both keep Hugging Face names.
+                if quant_config is not None and _safetensorscompat.is_comfy_quantized(model_path):
+                    raise _exceptions.TextEncoderUriLoadError(
+                        'A quantizer is not supported for a ComfyUI quantized text encoder. '
+                        'The file is already quantized.')
+                self._enforce_cache_size(os.path.getsize(model_path))
+                config = encoder.config_class.from_json_file(clip_config)
+                header = _safetensorscompat._read_header(model_path) or {}
+                header.pop('__metadata__', None)
+                signature = _tensor_signature(header)
+                if signature is not None:
+                    _fit_layer_count(config, signature[2])
+                text_encoder = _load_configured_monolithic(
+                    encoder, config, model_path, torch_dtype, quant_config, device_map,
+                    f'{encoder.__name__} text encoder')
+                estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
+            elif (encoder_library == 'transformers' and not self.mode
                   and (t5_config := _t5_family_config(model_path, encoder))):
                 # Monolithic T5 and UMT5 files, including ComfyUI quantized ones.
                 # Flux and SD3 T5 files can still pass mode=; this matches UMT5,
@@ -1978,6 +2437,7 @@ class TextEncoderUri:
                                   dtype=dtype,
                                   subfolder=r.args.get('subfolder', None),
                                   weight_name=r.args.get('weight-name', None),
+                                  mmproj=r.args.get('mmproj', None),
                                   quantizer=r.args.get('quantizer', False),
                                   mode=r.args.get('mode', None),
                                   compile=_util.parse_compile_argument(

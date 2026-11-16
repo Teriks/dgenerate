@@ -1824,8 +1824,13 @@ class PipelineWrapper:
             user_args.image_seed_strength = _constants.DEFAULT_IMAGE_SEED_STRENGTH
         strength = float(user_args.image_seed_strength)
         ifs = int(_types.default(user_args.inference_steps, _constants.DEFAULT_FALLBACK_INFERENCE_STEPS))
-        if (strength * ifs) < 1.0:
+        # Pipelines keep ``int(steps * strength)`` timesteps. A product below 1,
+        # including a one-step run at strength 0.7, keeps none. The denoising
+        # loop is skipped and the VAE is handed an empty latent batch.
+        if ifs > 0 and strength > 0 and (strength * ifs) < 1.0:
             strength = 1.0 / ifs
+            while int(ifs * strength) < 1:
+                strength = math.nextafter(strength, math.inf)
             _messages.warning(
                 f'image-seed-strength * inference-steps '
                 f'was calculated at < 1, image-seed-strength defaulting to (1.0 / inference-steps): {strength}'

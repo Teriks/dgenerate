@@ -31,6 +31,7 @@ from .prompt_upscale import PromptUpscaleSubCommand
 from .auto1111_metadata import Auto1111MetadataSubCommand
 from .assistant import AssistantSubCommand
 from .kernel_warmup import KernelWarmupSubCommand
+from .quantize import QuantizeSubCommand
 from .transpile import TranspileSubCommand
 
 __doc__ = """

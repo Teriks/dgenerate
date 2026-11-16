@@ -146,7 +146,7 @@ requested duration to the duration for which the checkpoint was trained.
 Checkpoint variants can have different guidance and step expectations. The
 16-step distilled T2V Lite checkpoint should be run with 16 inference steps and
 guidance 1, as should the distilled Pro checkpoints; no-CFG checkpoints should
-also use guidance 1. The GGUF example uses a community Q4_K_S quantization of
+also use guidance 1. The GGUF example uses a Q4_K_S quantization of
 the T2V Pro sft transformer. ``--torch-compile`` and Cache-DiT can be
 used to reduce denoising cost. The examples use sequential CPU offload; the
 other model offload modes are available as well.
@@ -599,26 +599,56 @@ Omit it and the missing-NATTEN path uses that size. NATTEN stays untiled unless 
 ``--ltx-decode-timesteps`` and ``--ltx-decode-noise-scales`` are the decode arguments.
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
-``--pipeline-prompt-enhance`` turns on LTX-2.5's optional Gemma prompt enhancer
-(``google/gemma-4-E2B-it``). With no value, LTX-2.5 selects its text-to-video or
-image-to-video system prompt. A value replaces that system prompt.
-Any other ``--pipeline-prompt-enhance-*`` option turns enhancement on with that
-built-in system prompt when ``--pipeline-prompt-enhance`` is omitted.
-FLUX.3 and Kandinsky 6 accept the same system-prompt value and the same sampling
-options for that generation. With no value, FLUX.3 keeps the upsampler's system
-prompt and decodes greedily. Kandinsky 6 keeps its expansion instruction.
+``--pipeline-prompt-enhance`` turns on the pipeline's prompt enhancer.
+LTX-2.5 uses ``google/gemma-4-E2B-it``. With no value, it selects the
+text-to-video or image-to-video system prompt. A value replaces that prompt.
+Any other ``--pipeline-prompt-enhance-*`` option turns enhancement on with
+that built-in prompt when ``--pipeline-prompt-enhance`` itself is omitted.
+
+FLUX.3 and Kandinsky 6 take the same system-prompt value and the same
+sampling options. With no value, FLUX.3 keeps the upsampler's system prompt
+and decodes greedily. Kandinsky 6 keeps its expansion instruction.
+
 ``--prompt-upsampler`` names a different upsampler and turns enhancement on
-by itself. Its arguments match ``--transformer`` (``revision``, ``variant``,
-``subfolder``, ``dtype``, and ``quantizer``), and it loads a Transformers
-causal or image-to-text model rather than the denoiser. FLUX.3 uses the
-same option for its Qwen3.5 prompt upsampler.
-See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/prompt-enhancer-config.dgen>`_,
+by itself. The model is a Transformers causal or image-to-text model. The
+denoiser stays on ``--transformer``. The URI arguments match
+``--transformer``: ``revision``, ``variant``, ``subfolder``, ``dtype``, and
+``quantizer``. FLUX.3 loads its Qwen3.5 prompt upsampler with this option.
+
+``weight-name`` selects one ``.gguf`` or ``.safetensors`` file. ``mmproj`` is
+the llama.cpp vision-tower GGUF loaded beside a language GGUF. Give that
+file's path or its URL. A bare file name is not searched for beside the
+language file or in its repository.
+
+A repository load uses that repository's config and processor. A GGUF or
+safetensors quant uses a configuration dgenerate ships for that shape. A
+``config.json`` next to the quant is not read. ``mmproj`` is only the file
+named on the URI.
+
+A quant of this model loads when the file keeps the original names, when it
+was written with ``--llama``, or when it is a Comfy safetensors file of those
+names. ComfyUI-GGUF has no Gemma 4 architecture, so a Gemma enhancer GGUF is
+for dgenerate and llama.cpp. FLUX.3's diffusion text encoder is Qwen3-VL 4B.
+The upsampler here is the Qwen3.5 model.
+
+LTX-2.5's built-in enhancer, including text-to-video, image-to-video, and a
+quantized upsampler:
+
+`examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/prompt-enhancer-config.dgen>`_,
 `examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen>`_,
 `examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen>`_,
 and `examples/ltx2/pipeline_prompt_enhance/quantized-upsampler-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/quantized-upsampler-config.dgen>`_.
-FLUX.3 quantizes its published Qwen3.5 upsampler the same way in
+
+A GGUF of that Gemma enhancer, as two blob links for the language file and ``mmproj``:
+
+`examples/ltx2/pipeline_prompt_enhance/gguf-upsampler-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/pipeline_prompt_enhance/gguf-upsampler-config.dgen>`_.
+
+FLUX.3's published Qwen3.5 upsampler, quantized the same way:
+
 `examples/flux3/pipeline_prompt_enhance/quantized-upsampler-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux3/pipeline_prompt_enhance/quantized-upsampler-config.dgen>`_.
-A custom system prompt and the sampling options are
+
+A custom system prompt and the sampling options:
+
 `examples/flux3/pipeline_prompt_enhance/sampling-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux3/pipeline_prompt_enhance/sampling-config.dgen>`_
 and
 `examples/kandinsky6/pipeline_prompt_enhance/sampling-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky6/pipeline_prompt_enhance/sampling-config.dgen>`_.

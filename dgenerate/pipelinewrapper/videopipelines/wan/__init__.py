@@ -450,9 +450,7 @@ def _call_wan(wrapper, user_args):
         kwargs['image'] = user_args.images[0]
         kwargs['last_image'] = user_args.end_images[0]
     elif mode == 'wan-video':
-        if user_args.image_seed_strength is None:
-            user_args.image_seed_strength = _constants.DEFAULT_IMAGE_SEED_STRENGTH
-        kwargs['strength'] = float(user_args.image_seed_strength)
+        wrapper._set_pipeline_strength(user_args, kwargs)
         if custom_timesteps is not None:
             kwargs['timesteps'] = custom_timesteps
     elif mode == 'wan-vace':

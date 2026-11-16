@@ -1,6 +1,6 @@
 title: HunyuanImage 2.1 (ComfyUI Quant)
 
-# Comfy-Org transformer safetensors (fp8_e4m3fn keeps packed FP8; bf16 is dense but same key layout).
+# Comfy-Org transformer safetensors (fp8_e4m3fn keeps packed FP8).
 # Match pipeline slug to transformer file — see Comfy-Org/Hunyuan-Image-2.1 split_files/diffusion_models.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"hunyuanvideo-community/HunyuanImage-2.1-Diffusers", "optional":false, "file-types":["models"]}]

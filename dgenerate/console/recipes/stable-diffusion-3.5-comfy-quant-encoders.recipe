@@ -24,7 +24,7 @@ title: Stable Diffusion 3.5 (ComfyUI Quant + Encoders)
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":0}]
 @torchcompile[{"model-type":"sd3"}]
 @quantizer[{"model-type":"sd3", "map-default":"text_encoder_3"}]
-@textencoders[{"model-type": "sd3", "arg": "--text-encoders", "divider-after": true, "defaults": [null, null, "T5EncoderModel;model=https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors"]}]
+@textencoders[{"model-type":"sd3", "arg":"--text-encoders", "divider-after":true, "defaults":[null, null, "T5EncoderModel;model=https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors"], "suggestions":[null, null, [{"label":"fp8_e4m3fn_scaled", "value":"T5EncoderModel;model=https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors"}, {"label":"fp8_e4m3fn", "value":"T5EncoderModel;model=https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/t5xxl_fp8_e4m3fn.safetensors"}]]}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model": "LoRA"}]

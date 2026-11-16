@@ -15,7 +15,7 @@ title: Qwen-Image 2.1 (ComfyUI Quant + Encoders)
 @torchcompile[{"model-type":"qwen-image-21"}]
 @switch[{"label":"Disable KV Cache", "arg":"--qwen21-no-kv-cache"}]
 @quantizer[{"model-type":"qwen-image-21"}]
-@textencoders[{"model-type": "qwen-image-21", "arg": "--text-encoders", "divider-after": true, "defaults": ["Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/text_encoders/qwen3vl_8b_int8_convrot.safetensors"]}]
+@textencoders[{"model-type":"qwen-image-21", "arg":"--text-encoders", "divider-after":true, "defaults":["Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/text_encoders/qwen3vl_8b_int8_convrot.safetensors"]}]
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]

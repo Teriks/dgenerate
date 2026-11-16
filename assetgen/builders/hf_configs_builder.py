@@ -94,6 +94,8 @@ class HfConfigsBuilder:
             # GGUF loading reads the transformer config from these repos.
             "black-forest-labs/flux-3-image-klein",
             "black-forest-labs/flux-3-image-klein-base",
+            # GGUF class detection reads the prompt upsampler config from this repo.
+            "black-forest-labs/flux-3-image-klein-pup",
             #
             ### Model type: Z-Image
             # Base and Turbo share one transformer config. GGUF uses Turbo.

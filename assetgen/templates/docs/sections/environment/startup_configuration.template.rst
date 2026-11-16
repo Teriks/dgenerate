@@ -25,6 +25,7 @@ Example ``~/.dgenerate/init.dgen`` for setting environment variables:
     # Performance and behavior
     \env DGENERATE_TORCH_COMPILE=1
     \env DGENERATE_OFFLINE_MODE=1
+    \env DGENERATE_FORCE_TQDM=1
     
     # Cache expiry. The default keeps model files and expires every other file after 12 hours.
     # "models;forever,images;days=1,videos;days=2,.png;hours=1,other;hours=12"

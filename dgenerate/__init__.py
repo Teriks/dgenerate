@@ -39,6 +39,11 @@ os.environ['PYTORCH_CUDA_ALLOC_CONF'] = os.environ.get(
 if not os.environ.get('HF_HUB_DOWNLOAD_TIMEOUT', '').strip():
     os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = '60'
 
+# hf_xet reads this from the environment. High performance uses more
+# bandwidth and CPU. An explicit value, including 0, is left alone.
+if not os.environ.get('HF_XET_HIGH_PERFORMANCE', '').strip():
+    os.environ['HF_XET_HIGH_PERFORMANCE'] = '1'
+
 __am_dgenerate_app = \
     os.path.splitext(
         os.path.basename(os.path.realpath(sys.argv[0])))[0] in {'dgenerate', 'dgenerate_windowed'}
@@ -102,6 +107,9 @@ if os.environ.get('DGENERATE_BACKEND_WARNINGS', '0') == '0':
 try:
     from dgenerate.resources import __version__
 
+    # Before libraries that construct tqdm bars at import or download time.
+    import dgenerate._patches.tqdm_patch
+
     # Import accelerate patch BEFORE any ML libraries that might use accelerate
     import dgenerate._patches.accelerate_device_fallback_patch
 
@@ -120,6 +128,8 @@ try:
     import dgenerate._patches.diffusers_wuerstchen_pipeline_patch
     import dgenerate._patches.diffusers_safety_checker_post_init_patch
     import dgenerate._patches.diffusers_group_offload_dtype_patch
+    import dgenerate._patches.diffusers_flow_match_terminal_patch
+    import dgenerate._patches.diffusers_wan_flf_pos_patch
     import dgenerate._patches.diffusers_sdnq_lora_shape_patch
     import dgenerate._patches.cache_dit_import_hook
 
@@ -371,6 +381,12 @@ _DEFAULT_INIT_DGEN_CONTENT = inspect.cleandoc("""
     # Performance and behavior
     # \\env DGENERATE_TORCH_COMPILE=1
     # \\env DGENERATE_OFFLINE_MODE=1
+
+    # Progress bars stay on when stderr is not a terminal.
+    # 0 draws a bar only when stderr is a terminal.
+    # \\env DGENERATE_FORCE_TQDM=0
+    # Hide every progress bar, including downloads and generation.
+    # \\env DGENERATE_DISABLE_TQDM=1
 
     # Cache expiry. The default is "models;forever,other;hours=12":
     # model files are kept, and every other file expires after 12 hours.

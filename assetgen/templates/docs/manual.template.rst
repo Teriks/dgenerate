@@ -130,4 +130,6 @@ Help Output
 
 @INCLUDE[sections/environment/torch_compile.template.rst]
 
+@INCLUDE[sections/environment/progress_bars.template.rst]
+
 @INCLUDE[sections/environment/startup_configuration.template.rst]

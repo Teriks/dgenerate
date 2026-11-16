@@ -9,6 +9,46 @@ from dgenerate.pipelinewrapper.uris.exceptions import InvalidTextEncoderUriError
 
 class TestTextEncoderUri(unittest.TestCase):
 
+    def test_mmproj_url_downloads_that_file(self):
+        import tempfile
+        url = ('https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/'
+               'mmproj-F16.gguf')
+        with tempfile.NamedTemporaryFile(suffix='.gguf') as cached:
+            with mock.patch(
+                    'dgenerate.hfhub.huggingface_hub.hf_hub_download',
+                    return_value=cached.name) as hub:
+                path = _textencoderuri._materialize_mmproj(url, False, 'token')
+            self.assertEqual(path, cached.name)
+            self.assertEqual(hub.call_args.kwargs['filename'], 'mmproj-F16.gguf')
+            self.assertEqual(hub.call_args.kwargs['repo_id'], 'unsloth/gemma-4-E4B-it-GGUF')
+
+    def test_mmproj_file_name_is_not_taken_from_the_model_repository(self):
+        from dgenerate.pipelinewrapper.uris.exceptions import TextEncoderUriLoadError
+        with mock.patch('dgenerate.hfhub.huggingface_hub.hf_hub_download') as hub:
+            with self.assertRaises(TextEncoderUriLoadError):
+                _textencoderuri._materialize_mmproj('mmproj-F16.gguf', False, None)
+        hub.assert_not_called()
+
+    def test_mmproj_is_parsed_for_a_gguf_encoder(self):
+        uri = "Qwen2_5_VLForConditionalGeneration;model=text.gguf;mmproj=mmproj-text.gguf"
+        result = _textencoderuri.TextEncoderUri.parse(uri)
+        self.assertEqual(result.mmproj, "mmproj-text.gguf")
+        with self.assertRaises(InvalidTextEncoderUriError):
+            _textencoderuri.TextEncoderUri.parse(
+                "CLIPTextModel;model=encoder.safetensors;mmproj=mmproj-text.gguf")
+
+    def test_mmproj_is_rejected_for_a_text_only_encoder(self):
+        for uri in (
+                "CLIPTextModel;model=encoder.gguf;mmproj=tower.gguf",
+                "Qwen2_5_VLTextModel;model=encoder.gguf;mmproj=tower.gguf",
+                "T5EncoderModel;model=org/repo;weight-name=encoder.gguf;mmproj=tower.gguf"):
+            with self.assertRaises(InvalidTextEncoderUriError) as caught:
+                _textencoderuri.TextEncoderUri.parse(uri)
+            self.assertIn('has no vision tower', str(caught.exception))
+        result = _textencoderuri.TextEncoderUri.parse(
+            "Qwen3VLModel;model=text.gguf;mmproj=tower.gguf")
+        self.assertEqual(result.mmproj, "tower.gguf")
+
     def test_basic_parsing(self):
         # Test basic model path parsing
         uri = "CLIPTextModel;model=path/to/model"
@@ -244,6 +284,37 @@ class TestTextEncoderUri(unittest.TestCase):
             adapter_name='0',
         )
         self.assertIn('0', getattr(text_encoder, 'peft_config', {}))
+
+    def test_all_in_one_checkpoint_is_not_one_clip(self):
+        import tempfile
+
+        import torch
+        from safetensors.torch import save_file
+        from transformers import CLIPTextModelWithProjection
+
+        from dgenerate.pipelinewrapper.uris.exceptions import TextEncoderUriLoadError
+
+        towers = {}
+        for name, hidden in (('clip_g', 1280), ('clip_l', 768)):
+            prefix = f'text_encoders.{name}.transformer.'
+            towers[prefix + 'text_model.embeddings.token_embedding.weight'] = torch.zeros(8, hidden)
+            towers[prefix + 'text_model.encoder.layers.0.layer_norm1.weight'] = torch.zeros(hidden)
+        towers['model.diffusion_model.pos_embed'] = torch.zeros(1, 4)
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = f'{directory}/sd3.safetensors'
+            save_file(towers, path)
+            self.assertIsNone(_textencoderuri._clip_family_config(
+                path, CLIPTextModelWithProjection))
+
+            one = {
+                'text_model.embeddings.token_embedding.weight': torch.zeros(8, 32),
+                'text_model.encoder.layers.0.layer_norm1.weight': torch.zeros(32),
+            }
+            save_file(one, f'{directory}/clip.safetensors')
+            with self.assertRaises(TextEncoderUriLoadError):
+                _textencoderuri._clip_family_config(
+                    f'{directory}/clip.safetensors', CLIPTextModelWithProjection)
 
     def test_flattened_clip_checkpoint_drops_text_model_prefix(self):
         import tempfile
@@ -659,6 +730,60 @@ class TestTextEncoderUri(unittest.TestCase):
         kwargs = from_pretrained.call_args.kwargs
         self.assertIn('dtype', kwargs)
         self.assertTrue(kwargs.get('local_files_only'))
+
+    def test_gguf_class_follows_the_architecture_and_shape(self):
+        choose = _textencoderuri._gguf_encoder_class
+        self.assertEqual(choose('qwen3', (151936, 2560), 36).__name__, 'Qwen3ForCausalLM')
+        self.assertEqual(
+            choose('qwen35', (248320, 4096), 32).__name__, 'Qwen3_5ForConditionalGeneration')
+        self.assertEqual(choose('t5encoder', (32128, 4096), 24).__name__, 'T5EncoderModel')
+        self.assertEqual(choose('t5encoder', (256384, 4096), 24).__name__, 'UMT5EncoderModel')
+        self.assertEqual(choose('gemma4', (262144, 1536), 35).__name__, 'Gemma4ForConditionalGeneration')
+        self.assertEqual(
+            choose('qwen2vl', (152064, 3584), 28).__name__,
+            'Qwen2_5_VLForConditionalGeneration')
+        self.assertEqual(choose('clip', (49408, 768), 12).__name__, 'CLIPTextModel')
+        self.assertEqual(
+            choose('clip', (49408, 1280), 32).__name__, 'CLIPTextModelWithProjection')
+        self.assertIsNone(choose('not-an-encoder', (1, 1), 1))
+
+    def test_gguf_warns_when_the_named_class_does_not_match(self):
+        mismatch = _textencoderuri._gguf_class_mismatch
+        named = _textencoderuri.TextEncoderUri._resolve_encoder_class
+        qwen = named('Qwen3ForCausalLM')
+        self.assertIsNone(mismatch(qwen, 'qwen3', (151936, 2560), 36))
+        t5_on_qwen = mismatch(named('T5EncoderModel'), 'qwen3', (151936, 2560), 36)
+        self.assertIn('Qwen3ForCausalLM', t5_on_qwen)
+        self.assertIn('T5EncoderModel', t5_on_qwen)
+        self.assertIsNone(mismatch(
+            named('Qwen2_5_VLTextModel'), 'qwen2vl', (152064, 3584), 28))
+        self.assertIsNone(mismatch(
+            named('Qwen3VLModel'), 'qwen3vl', (151936, 2560), 36))
+        clip_g = mismatch(named('CLIPTextModel'), 'clip', (49408, 1280), 32)
+        self.assertIn('CLIPTextModelWithProjection', clip_g)
+        umt5_on_t5 = mismatch(named('UMT5EncoderModel'), 't5encoder', (32128, 4096), 24)
+        self.assertIn('T5EncoderModel', umt5_on_t5)
+
+    def test_shared_key_value_layers_are_not_a_mismatch(self):
+        model_keys = {
+            f'model.language_model.layers.{index}.self_attn.q_proj.weight'
+            for index in range(35)}
+        model_keys.update(
+            f'model.language_model.layers.{index}.self_attn.k_proj.weight'
+            for index in range(15))
+        checkpoint = [f'model.layers.{index}.self_attn.q_proj.weight' for index in range(35)]
+        checkpoint += [f'model.layers.{index}.self_attn.k_proj.weight' for index in range(35)]
+        rename = _textencoderuri._language_model_rename(model_keys, checkpoint)
+        self.assertEqual(
+            rename('model.layers.0.self_attn.q_proj.weight'),
+            'model.language_model.layers.0.self_attn.q_proj.weight')
+
+    def test_unrelated_tensors_are_still_rejected(self):
+        from dgenerate.pipelinewrapper.uris.exceptions import TextEncoderUriLoadError
+        model_keys = {'model.language_model.layers.0.self_attn.q_proj.weight'}
+        checkpoint = [f'other.{index}.block.weight' for index in range(20)]
+        with self.assertRaises(TextEncoderUriLoadError):
+            _textencoderuri._language_model_rename(model_keys, checkpoint)
 
 
 if __name__ == '__main__':

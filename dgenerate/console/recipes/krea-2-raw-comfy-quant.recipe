@@ -19,7 +19,7 @@ title: Krea 2 Raw (ComfyUI Quant)
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model":"LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
-@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_raw_int8_convrot.safetensors", "divider-after":true}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_raw_int8_convrot.safetensors", "divider-after":true, "suggestions":[{"label":"int8_convrot", "value":"https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_raw_int8_convrot.safetensors"}, {"label":"fp8_scaled", "value":"https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_raw_fp8_scaled.safetensors"}]}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":28, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":4.5, "min":0}]
 @switch[{"id":"pipeline-prompt-enhance", "label":"Pipeline Prompt Enhance", "arg":"--pipeline-prompt-enhance", "divider-before":true}]

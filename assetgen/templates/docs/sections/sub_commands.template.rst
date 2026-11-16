@@ -271,6 +271,192 @@ The help output of ``to-diffusers`` is as follows:
 @COMMAND_OUTPUT[dgenerate --sub-command to-diffusers --help]
 
 
+Sub Command: quantize
+---------------------
+
+The ``quantize`` sub-command reads a diffusers model and writes quantized
+weights. The model is a folder on disk, a Hugging Face repository, one weight
+file, or a blob link to one weight file.
+``--subfolders`` selects component folders such as ``transformer`` and
+``text_encoder``. Without it, every component that has weights is quantized.
+Tokenizers and schedulers have no weights, so they are left out.
+``--weight-name`` selects a file inside that model, such as
+``model.fp16.safetensors``. A repo-relative path such as
+``text_encoder/model.fp16.safetensors`` selects that one file. The same name
+is used in every ``--subfolders`` component.
+
+``--formats`` is the list of quants to write, and every name in it is written
+in one run. A name can be a GGUF type (``Q4_K``, ``Q8_0``, ``Q6_K``, and the
+rest that dgenerate loads), a ComfyUI safetensors quant (``float8_e4m3fn``,
+``int8_tensorwise``, ``nvfp4``, ``mxfp8``, ``convrot_w4a4``, ``asym_w4a8_int8``,
+``w6a8_int8``, ``float8_e5m2``), a short name, or a preset.
+
+Short names: ``q4`` is ``Q4_K``, ``q8`` is ``Q8_0``, ``fp8`` is
+``float8_e4m3fn``, ``int8`` is ``int8_tensorwise``, ``int4`` is ConvRot INT4,
+``w4a8`` and ``w6a8`` are the grouped Comfy quants. ``Q4_0`` is requested by
+that name. ``--list-formats`` prints the full set.
+
+``f16``, ``fp16``, and ``F16`` are one format. ``f32``, ``fp32``, and ``F32``
+are another. ``bf16`` and ``BF16`` are a third. Each writes a GGUF in which
+every tensor is that dtype: linears, biases, norms, and embeddings. Nothing
+is packed. The file is a conversion of the component, and it is about the
+size of the weights in that dtype. ``float16`` and ``float32`` are the
+safetensors form of the same idea. Every floating tensor is cast to that
+dtype, integer tensors are left as they are, and the file has no quant
+metadata. ``fp8`` is not one of these. ``fp8`` is the ``float8_e4m3fn`` quant.
+
+The container is part of the name:
+
+* ``f16``, ``fp16``, or ``F16`` writes ``transformer-F16.gguf``. Every tensor is F16.
+* ``f32``, ``fp32``, or ``F32`` writes ``transformer-F32.gguf``. Every tensor is F32.
+* ``bf16`` or ``BF16`` writes ``transformer-BF16.gguf``. Every tensor is BF16.
+* ``float16`` writes ``transformer-float16.safetensors``. Floating tensors are
+  float16.
+* ``float32`` writes ``transformer-float32.safetensors``. Floating tensors are
+  float32.
+
+``--llama`` accepts the GGUF floats and refuses ``float16`` and ``float32``.
+A text encoder becomes ``text_encoder-F16-llama.gguf``. A Gemma 4 or Qwen
+vision tower is written beside it as ``mmproj-text_encoder-F16-llama.gguf``,
+in that same dtype, and the language file still stores the llama.cpp
+hyperparameters and tokenizer. dgenerate loads that GGUF the same way it loads
+a quantized one. Point ``--text-encoders`` at the file and leave ``quantizer``
+unset. The weights are already F16 or F32, so nothing is unpacked.
+
+``--comfy`` accepts both containers. ``--formats f16 --comfy`` writes
+``transformer-F16-comfy.gguf`` for an architecture ComfyUI-GGUF loads: FLUX.1,
+SD1, SDXL, SD3, Wan, Qwen-Image, and the GGUF text encoders. ``--formats
+float16 --comfy`` writes ``transformer-float16-comfy.safetensors``, which is
+what ComfyUI's usual loader reads. FLUX.2, Z-Image, CLIP, and Gemma 4 have no
+ComfyUI-GGUF architecture, so the safetensors file is the conversion for those.
+dgenerate loads the GGUF as it loads any other ComfyUI GGUF. It loads the
+safetensors file as an ordinary full-precision checkpoint, not as a quantized
+one. A component with no key map is still an error.
+
+Without ``--llama`` and without ``--comfy``, the file keeps the tensor names
+from the component folder. Load a diffusers-named GGUF with that component's
+option and leave the original repository as the model, so the config still
+comes from there.
+
+Presets: ``dgenerate`` writes ``Q4_K`` and ``Q8_0``. ``comfy`` writes FP8 and
+INT8. ``gguf`` writes every quantized GGUF type. It leaves out ``F16``,
+``F32``, and ``BF16``. ``comfy-all`` writes every Comfy safetensors quant. It
+leaves out ``float16`` and ``float32``. Ask for the plain formats by name.
+
+Files keep the tensor names of the component they came from, unless ``--comfy``
+is set. ``--comfy`` writes the names ComfyUI and ComfyUI-GGUF load. That covers
+FLUX.1, SD 1.5, SDXL, SD3, Wan, and Qwen-Image, plus FLUX.2 and Z-Image safetensors
+quants. GGUF text encoders cover T5, UMT5, Llama 3 / Mistral, Qwen2, Qwen3, and
+Gemma 3. A Qwen2-VL vision tower is written beside the text encoder as
+``mmproj-text_encoder-Q8_0-comfy.gguf``. ComfyUI-GGUF pairs that file by name, and
+it picks one mmproj when several quants share a folder, so write one GGUF format
+per folder when the model has a vision tower. CLIP is written as safetensors,
+which is what Comfy's CLIP loader reads. ComfyUI-GGUF has no architecture for
+FLUX.2, Z-Image, or CLIP, so those GGUF files are refused. Those files are named
+like ``transformer-Q4_K-comfy.gguf``. A component with no key map is an error, so
+the command does not write a file Comfy cannot load.
+
+``--llama`` writes llama.cpp tensor names instead, the layout Unsloth
+text-encoder GGUFs use and dgenerate loads. That covers T5, UMT5, Llama,
+Qwen, and Gemma, including Gemma 4. A full Gemma 4 model, such as the
+LTX-2.5 prompt enhancer, writes its vision and audio towers as a CLIP
+``mmproj`` (``gemma4v`` and ``gemma4a``) beside the language file. Qwen3.5,
+including the FLUX.3 prompt upsampler, is written as ``qwen35``. Its vision
+tower stays a Qwen3-VL mmproj. A Llama whose head counts are not the
+32 and 8 ComfyUI-GGUF hardcodes is included. Files are named like
+``text_encoder-Q4_K-llama.gguf``. ``--llama`` and ``--comfy`` cannot be used
+together, and ``--llama`` applies to GGUF formats. When ``config.json`` is
+beside the weights, the file stores the llama.cpp hyperparameters. A BPE
+``tokenizer.json`` (or ``vocab.json`` and ``merges.txt``) and
+``chat_template.json`` are stored too, from that folder or from the sibling
+``tokenizer`` folder. A tied embedding is also written as ``output.weight``.
+dgenerate loads either layout: a Llama or Mistral file written without
+``--llama`` keeps Hugging Face query and key order, and a ``--llama`` file
+is restored on load.
+
+``--quantizer`` writes an SDNQ or bitsandbytes diffusers repository from the
+same URI used when generating images. Quote it so the shell keeps the
+semicolons. ``sdnq;type=uint4;group-size=32;quant-conv=true;use-svd=true`` and
+``bnb;bits=4;bits4-quant-type=nf4;bits4-use-double-quant=true`` are written as
+separate folders named from the options that differ from the URI default.
+Several URIs write several repositories. Bitsandbytes quantization runs on
+CUDA. Point dgenerate at the folder and leave its ``--quantizer`` unset.
+Components you did not select are copied at full precision, including
+``model_index.json``. ``--comfy`` applies to the GGUF and Comfy safetensors
+files; these repositories keep diffusers tensor names.
+
+A single file is named from its parent folder when the filename is a generic
+component weight, so ``text_encoder/model.fp16.safetensors`` is written as
+``text_encoder-Q4_K.gguf``. ``config.json`` beside that file is read when it
+is there. A blob link to an index also downloads the shards that index names.
+``--quantizer`` still needs the whole diffusers model, and it honors
+``--variant`` rather than ``--weight-name``.
+
+Point a diffusers-named file at the matching component option and leave the
+original repository as the model, so the config still comes from there. A GGUF
+text encoder is read for T5, UMT5, Qwen, Mistral, Gemma, and CLIP. CLIP GGUF
+and a Comfy CLIP safetensors quant keep Hugging Face names, so either file
+loads with ``--text-encoders``. ``--comfy`` leaves those safetensors names in
+place. It does not write a CLIP GGUF, because ComfyUI-GGUF has no CLIP
+architecture.
+
+A quantized GGUF keeps tensors that cannot take the block size. A matrix whose
+width is not a multiple of the quant block is stored as BF16, and biases and
+norms are stored as F32. ``F16``, ``F32``, and ``BF16`` do not do that. Every
+tensor in that file is the dtype you named. A Comfy quant that fits no linear
+in a component is skipped. ``float16`` and ``float32`` are written whenever
+the component has tensors.
+
+.. code-block:: bash
+
+    # Q4_K, Q8_0, and FP8 of the transformer
+    dgenerate --sub-command quantize black-forest-labs/FLUX.1-dev \
+        --subfolders transformer --formats q4 q8 fp8 -o quants
+
+    # The short dgenerate pair and the short Comfy pair, every component
+    dgenerate --sub-command quantize ./model --formats dgenerate comfy -o quants
+
+    # SDNQ uint4 with a group size and a low-rank residual, and 4-bit NF4
+    dgenerate --sub-command quantize ./model -o quants \
+        --quantizer "sdnq;type=uint4;group-size=32;use-svd=true" \
+        "bnb;bits=4;bits4-quant-type=nf4"
+
+    # Q4_K and FP8 with ComfyUI tensor names
+    dgenerate --sub-command quantize ./model --subfolders transformer \
+        --formats q4 fp8 --comfy -o quants
+
+    # llama.cpp names for a text encoder, the Unsloth GGUF layout
+    dgenerate --sub-command quantize ./model --subfolders text_encoder \
+        --formats q4 --llama -o quants
+
+    # llama.cpp F16, no quant: text_encoder-F16-llama.gguf
+    dgenerate --sub-command quantize ./model --subfolders text_encoder \
+        --formats fp16 --llama -o quants
+
+    # ComfyUI-GGUF F16, no quant: transformer-F16-comfy.gguf
+    dgenerate --sub-command quantize ./model --subfolders transformer \
+        --formats f16 --comfy -o quants
+
+    # ComfyUI safetensors FP16, no quant: transformer-float16-comfy.safetensors
+    # FLUX.2, Z-Image, CLIP, and Gemma 4 use this file
+    dgenerate --sub-command quantize ./model --subfolders transformer \
+        --formats float16 --comfy -o quants
+
+    # One file inside a component, or a blob link to that file
+    dgenerate --sub-command quantize ./model --subfolders text_encoder \
+        --weight-name model.fp16.safetensors --formats q4 -o quants
+    dgenerate --sub-command quantize \
+        "https://huggingface.co/org/repo/blob/main/text_encoder/model.fp16.safetensors" \
+        --formats q4 -o quants
+
+    # Names, short names, and presets
+    dgenerate --sub-command quantize --list-formats
+
+The help output of ``quantize`` is as follows:
+
+@COMMAND_OUTPUT[dgenerate --sub-command quantize --help]
+
+
 Sub Command: prompt-upscale
 ---------------------------
 

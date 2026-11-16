@@ -39,7 +39,8 @@ class _StringEntry(_entry._Entry):
             self.master,
             text=self.get_label('String'), anchor='e')
 
-        self.entry = _t_entry.TextEntry(self.master, textvariable=self.text_var)
+        self.entry = _t_entry.value_entry(
+            self.master, self.text_var, self.config.get('suggestions'))
 
         self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')

@@ -37,10 +37,22 @@ _dialog_state = _util.DialogState(save_position=True, save_size=True)
 
 _URI_PARSER = _textprocessing.ConceptUriParser(
     'TextEncoder', [
-        'model', 'revision', 'variant', 'subfolder', 'dtype', 'quantizer', 'mode'])
+        'model', 'revision', 'variant', 'subfolder', 'weight-name',
+        'mmproj', 'dtype', 'quantizer', 'mode', 'compile'])
 
 _DTYPES = ('', 'auto', 'float16', 'bfloat16', 'float32')
 _FIELD_WIDTH = 48
+
+# Classes whose module has a vision tower a llama.cpp mmproj can fill.
+# Stays in sync with TextEncoderUri._VISION_TOWER_ENCODERS. Console code
+# does not import that module. Qwen2_5_VLTextModel is the language tower only.
+_VISION_TOWER_ENCODERS = frozenset({
+    'Gemma4ForConditionalGeneration',
+    'Gemma4UnifiedForConditionalGeneration',
+    'Qwen2_5_VLForConditionalGeneration',
+    'Qwen3VLForConditionalGeneration',
+    'Qwen3VLModel',
+})
 
 
 def _files_metadata() -> dict:
@@ -85,7 +97,18 @@ class _TextEncoderUriDialog(tk.Toplevel):
         ttk.Button(model_buttons, text='Directory', command=self._pick_directory).pack(side='left')
         row = self._add_labeled(frame, row, 'Model', model_entry, model_buttons)
 
+        self._mmproj_var = tk.StringVar(value=parsed['mmproj'])
+        self._mmproj_entry = _t_entry.TextEntry(
+            frame, textvariable=self._mmproj_var, width=_FIELD_WIDTH)
+        mmproj_buttons = ttk.Frame(frame)
+        ttk.Button(mmproj_buttons, text='File', command=self._pick_mmproj).pack(side='left')
+        self._mmproj_label = ttk.Label(frame, text='Vision Tower (mmproj)', anchor='e')
+        self._mmproj_widgets = (self._mmproj_label, self._mmproj_entry, mmproj_buttons)
+        row = self._grid_row(row, self._mmproj_label, self._mmproj_entry, mmproj_buttons)
+
         self._revision_var = tk.StringVar(value=parsed['revision'])
+        self._preserved = {
+            name: parsed[name] for name in ('weight-name', 'compile') if parsed[name]}
         self._variant_var = tk.StringVar(value=parsed['variant'])
         self._subfolder_var = tk.StringVar(value=parsed['subfolder'])
         self._revision_entry = _t_entry.TextEntry(
@@ -136,7 +159,9 @@ class _TextEncoderUriDialog(tk.Toplevel):
         buttons.grid(row=1, column=0, sticky='sew')
         ttk.Button(buttons, text='Insert', command=self._insert_uri).pack()
 
+        self._encoder_var.trace_add('write', lambda *_: self._sync_vision_tower(resize=True))
         self._sync_mode()
+        self._sync_vision_tower()
         _appearance.install(self)
         if help_label is not None:
             help_label.configure(wraplength=max(
@@ -158,11 +183,32 @@ class _TextEncoderUriDialog(tk.Toplevel):
 
     def _add_labeled(self, frame, row, text, widget, extra=None) -> int:
         label = ttk.Label(frame, text=text, anchor='e')
+        return self._grid_row(row, label, widget, extra)
+
+    def _grid_row(self, row, label, widget, extra=None) -> int:
         label.grid(row=row, column=0, padx=(0, 6), pady=3, sticky='e')
         widget.grid(row=row, column=1, pady=3, sticky='ew')
         if extra is not None:
             extra.grid(row=row, column=2, padx=(4, 0), sticky='w')
         return row + 1
+
+    def _vision_tower_applies(self) -> bool:
+        return self._encoder_var.get().strip() in _VISION_TOWER_ENCODERS
+
+    def _sync_vision_tower(self, resize=False):
+        show = self._vision_tower_applies()
+        for widget in self._mmproj_widgets:
+            if show:
+                widget.grid()
+            else:
+                widget.grid_remove()
+        if not resize:
+            return
+        self.update_idletasks()
+        width = max(self.winfo_width(), self.winfo_reqwidth())
+        height = max(self.winfo_height(), self.winfo_reqheight())
+        self.minsize(self.winfo_reqwidth(), self.winfo_reqheight())
+        self.geometry(f'{width}x{height}')
 
     def _sync_mode(self):
         selected = self._mode_var.get().strip() if self._modes else ''
@@ -193,6 +239,12 @@ class _TextEncoderUriDialog(tk.Toplevel):
         if chosen:
             self._model_var.set(chosen)
 
+    def _pick_mmproj(self):
+        chosen = _filedialog.open_file_dialog(
+            filetypes=[('Models', ['*.gguf'])])
+        if chosen:
+            self._mmproj_var.set(chosen)
+
     def _build_quantizer(self):
         import dgenerate.console.quantizerselect as _quantizerselect
 
@@ -219,6 +271,12 @@ class _TextEncoderUriDialog(tk.Toplevel):
                 value = variable.get().strip()
                 if value:
                     parts.append(f'{name}={value}')
+        if self._vision_tower_applies():
+            mmproj = self._mmproj_var.get().strip()
+            if mmproj:
+                parts.append(f'mmproj={mmproj}')
+        for name, value in self._preserved.items():
+            parts.append(f'{name}={value}')
         dtype = self._dtype_var.get().strip()
         if dtype:
             parts.append(f'dtype={dtype}')
@@ -246,7 +304,8 @@ def _field_pixels(*groups) -> int:
 def _parse_initial(uri: str, encoders: list[str]) -> dict[str, str]:
     empty = {
         'encoder': '', 'model': '', 'revision': '', 'variant': '',
-        'subfolder': '', 'dtype': '', 'quantizer': '', 'mode': ''}
+        'subfolder': '', 'weight-name': '', 'mmproj': '', 'dtype': '',
+        'quantizer': '', 'mode': '', 'compile': ''}
     text = (uri or '').strip()
     if not text or text in ('+', 'null'):
         return empty
@@ -262,7 +321,9 @@ def _parse_initial(uri: str, encoders: list[str]) -> dict[str, str]:
         return empty
     values = dict(empty)
     values['encoder'] = encoder
-    for name in ('model', 'revision', 'variant', 'subfolder', 'dtype', 'quantizer', 'mode'):
+    for name in (
+            'model', 'revision', 'variant', 'subfolder', 'weight-name',
+            'mmproj', 'dtype', 'quantizer', 'mode', 'compile'):
         value = parsed.args.get(name)
         if value is None:
             continue

@@ -1,12 +1,12 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Kandinsky 5 T2V Pro sft GGUF (Q4_K_S, ~14 GB):
-# https://huggingface.co/Ada321/Kandinsky-5.0-T2V-Pro-sft-5s-Q4_K_S.gguf
+# Kandinsky 5 T2V Pro sft GGUF (Q4_K_S, 10.1 GiB):
+# https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sft-5s-GGUF
 
 kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers
 --model-type kandinsky5-video
---transformer "https://huggingface.co/Ada321/Kandinsky-5.0-T2V-Pro-sft-5s-Q4_K_S.gguf/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf"
+--transformer "https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sft-5s-GGUF/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf"
 --dtype bfloat16
 --model-sequential-offload
 --inference-steps 50

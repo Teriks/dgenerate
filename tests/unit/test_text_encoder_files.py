@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import tempfile
 import unittest
 import unittest.mock
@@ -109,7 +110,9 @@ class TextEncoderFileTest(unittest.TestCase):
 
     def tearDown(self):
         for path in self._files:
-            if os.path.exists(path):
+            if os.path.isdir(path):
+                shutil.rmtree(path, ignore_errors=True)
+            elif os.path.exists(path):
                 os.remove(path)
 
     def _temp(self, suffix):
@@ -192,7 +195,7 @@ class TextEncoderFileTest(unittest.TestCase):
         writer.write_kv_data_to_file()
         writer.write_tensors_to_file()
         writer.close()
-        _, state = _ggufcompat.load_text_encoder_gguf(path)
+        _, state, _ = _ggufcompat.load_text_encoder_gguf(path)
         self.assertIn('model.embed_tokens.weight', state)
         self.assertNotIn('hf_asset__chat_template.jinja', state)
         self.assertNotIn('tokenizer_json', state)
@@ -205,12 +208,52 @@ class TextEncoderFileTest(unittest.TestCase):
             'vision_model.patch_dense.weight': torch.zeros(4, 4),
             'model.layers.0.input_layernorm.weight': torch.ones(4),
         })
-        architecture, state = _ggufcompat.load_text_encoder_gguf(path)
+        architecture, state, llama_cpp_names = _ggufcompat.load_text_encoder_gguf(path)
+        self.assertFalse(llama_cpp_names)
         self.assertEqual(architecture, 'gemma4')
         self.assertIn('model.embed_tokens.weight', state)
         self.assertIn('vision_model.patch_dense.weight', state)
         self.assertTrue(torch.equal(
             state['model.layers.0.input_layernorm.weight'], torch.ones(4)))
+
+    def test_mmproj_file_assigns_the_vision_tower(self):
+        qkv = torch.arange(12 * 4, dtype=torch.float32).reshape(12, 4)
+        patch = torch.arange(2 * 2 * 2 * 2 * 2, dtype=torch.float32).reshape(2, 2, 2, 2, 2)
+        path = self._temp('.gguf')
+        _write_gguf(path, 'clip', {
+            'v.blk.0.attn_q.weight': qkv[:4],
+            'v.blk.0.attn_k.weight': qkv[4:8],
+            'v.blk.0.attn_v.weight': qkv[8:],
+            'v.patch_embd.weight': patch[:, :, 0],
+            'v.patch_embd.weight.1': patch[:, :, 1],
+        })
+
+        class Block(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.attn = torch.nn.Module()
+                self.attn.qkv = torch.nn.Linear(4, 12, bias=False)
+
+        class Tower(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.visual = torch.nn.Module()
+                self.visual.blocks = torch.nn.ModuleList([Block()])
+                self.visual.patch_embed = torch.nn.Module()
+                self.visual.patch_embed.proj = torch.nn.Module()
+                self.visual.patch_embed.proj.weight = torch.nn.Parameter(
+                    torch.zeros(2, 2, 2, 2, 2))
+
+            def tie_weights(self):
+                return None
+
+        tower = Tower()
+
+        state = _ggufcompat.load_mmproj_gguf(path)
+        loaded = textencoderuri._assign_gguf_text_encoder(
+            tower, state, torch.float32, rename=None, trimmed=False)
+        self.assertTrue(torch.equal(loaded.visual.blocks[0].attn.qkv.weight, qkv))
+        self.assertTrue(torch.equal(loaded.visual.patch_embed.proj.weight, patch))
 
     def test_gguf_assign_copies_a_layer_scalar(self):
         class Encoder(torch.nn.Module):
@@ -237,10 +280,12 @@ class TextEncoderFileTest(unittest.TestCase):
             'blk.0.attn_q.weight': torch.zeros(4, 4),
             'blk.0.attn_norm.weight': torch.ones(4),
         })
-        _, state = _ggufcompat.load_text_encoder_gguf(path)
+        _, state, llama_cpp_names = _ggufcompat.load_text_encoder_gguf(path)
+        self.assertTrue(llama_cpp_names)
         self.assertIn('model.layers.0.self_attn.q_proj.weight', state)
+        # Gemma 4 checkpoints store the norm as the runtime value.
         self.assertTrue(torch.equal(
-            state['model.layers.0.input_layernorm.weight'], torch.zeros(4)))
+            state['model.layers.0.input_layernorm.weight'], torch.ones(4)))
 
     def test_gemma3_norm_correction(self):
         corrected = _ggufcompat.correct_gemma3_norms({
@@ -344,11 +389,81 @@ class TextEncoderFileTest(unittest.TestCase):
             output = loaded(tokens, output_hidden_states=True).hidden_states[-1]
         self.assertLess(((output - expected).norm() / expected.norm()).item(), 0.08)
 
+    def test_gguf_llama_keeps_huggingface_attention(self):
+        # The same architecture with Hugging Face names was never interleaved.
+        torch.manual_seed(0)
+        config = transformers.Qwen3Config(
+            vocab_size=128, hidden_size=64, intermediate_size=128, num_hidden_layers=2,
+            num_attention_heads=4, num_key_value_heads=2, head_dim=16, tie_word_embeddings=False)
+        reference = transformers.Qwen3ForCausalLM(config).eval()
+        path = self._temp('.gguf')
+        config_path = _config_file(config)
+        self._files.append(config_path)
+        _write_gguf(path, 'llama', reference.state_dict())
+
+        with unittest.mock.patch.object(
+                textencoderuri, '_require_shipped_config', return_value=config_path):
+            loaded = textencoderuri.TextEncoderUri.parse(
+                f'Qwen3ForCausalLM;model={path}').load(
+                dtype_fallback=_enums.DataType.FLOAT32, no_cache=True)
+        tokens = torch.randint(0, 128, (1, 8))
+        with torch.no_grad():
+            expected = reference(tokens, output_hidden_states=True).hidden_states[-1]
+            output = loaded(tokens, output_hidden_states=True).hidden_states[-1]
+        self.assertLess(((output - expected).norm() / expected.norm()).item(), 0.08)
+
     def test_gguf_rejects_a_quantizer(self):
         path = self._temp('.gguf')
         with self.assertRaises(InvalidTextEncoderUriError):
             textencoderuri.TextEncoderUri.parse(
                 f'T5EncoderModel;model={path};quantizer=bnb')
+
+    def test_gguf_does_not_read_config_beside_the_file(self):
+        directory = tempfile.mkdtemp()
+        self._files.append(directory)
+        path = os.path.join(directory, 'encoder.gguf')
+        _write_gguf(path, 't5encoder', {
+            'token_embd.weight': torch.zeros(16, 4),
+            'enc.blk.0.attn_q.weight': torch.zeros(4, 4),
+            'enc.blk.0.ffn_gate.weight': torch.zeros(8, 4),
+            'enc.blk.0.ffn_down.weight': torch.zeros(4, 8),
+        })
+        with open(os.path.join(directory, 'config.json'), 'w', encoding='utf-8') as handle:
+            json.dump({'model_type': 't5', 'vocab_size': 16, 'd_model': 4, 'num_layers': 1}, handle)
+        with unittest.mock.patch.object(
+                textencoderuri, '_matching_shipped_config', return_value=None):
+            with self.assertRaises(TextEncoderUriLoadError):
+                textencoderuri.TextEncoderUri.parse(
+                    f'T5EncoderModel;model={path}').load(
+                    dtype_fallback=_enums.DataType.FLOAT32, no_cache=True)
+
+    def test_gguf_uses_the_pipeline_text_encoder_config(self):
+        torch.manual_seed(0)
+        config = transformers.T5Config(
+            vocab_size=128, d_model=64, d_kv=16, d_ff=128, num_layers=2, num_heads=4,
+            feed_forward_proj='gated-gelu', tie_word_embeddings=False)
+        reference = transformers.T5EncoderModel(config).eval()
+        directory = tempfile.mkdtemp()
+        repo = tempfile.mkdtemp()
+        self._files.extend((directory, repo))
+        path = os.path.join(directory, 'encoder.gguf')
+        with open(os.path.join(directory, 'config.json'), 'w', encoding='utf-8') as handle:
+            json.dump({'model_type': 't5', 'vocab_size': 32, 'd_model': 32, 'num_layers': 1}, handle)
+        os.makedirs(os.path.join(repo, 'text_encoder'))
+        with open(os.path.join(repo, 'text_encoder', 'config.json'), 'w', encoding='utf-8') as handle:
+            json.dump(config.to_dict(), handle)
+        _write_gguf(path, 't5encoder', {
+            _replace(key, _T5_TO_GGUF): value
+            for key, value in reference.state_dict().items()})
+        with unittest.mock.patch.object(
+                textencoderuri, '_matching_shipped_config', return_value=None):
+            loaded = textencoderuri.TextEncoderUri.parse(
+                f'T5EncoderModel;model={path}').load(
+                dtype_fallback=_enums.DataType.FLOAT32,
+                no_cache=True,
+                pipeline_repo=repo,
+                pipeline_subfolder='text_encoder')
+        self.assertEqual(loaded.config.vocab_size, 128)
 
     def test_comfy_umt5_safetensors_stay_packed(self):
         import safetensors.torch
@@ -512,6 +627,115 @@ class TextEncoderFileTest(unittest.TestCase):
                          'layers.0.self_attn.q_proj.weight')
         self.assertEqual(rename('visual.blocks.0.attn.qkv.weight'),
                          'visual.blocks.0.attn.qkv.weight')
+
+    def _tiny_clip(self):
+        torch.manual_seed(0)
+        config = transformers.CLIPTextConfig(
+            vocab_size=32, hidden_size=64, intermediate_size=128, num_hidden_layers=1,
+            num_attention_heads=4, max_position_embeddings=8, projection_dim=64)
+        reference = transformers.CLIPTextModel(config).eval()
+        config_path = _config_file(config)
+        self._files.append(config_path)
+        return config, reference, config_path
+
+    def _comfy_clip_names(self, state):
+        """Comfy ``clip_l`` names, without a projection the text tower does not store."""
+        renamed = {}
+        for key, value in state.items():
+            if 'text_projection' in key:
+                continue
+            if not key.startswith('text_model.'):
+                key = 'text_model.' + key
+            renamed[key] = value
+        return renamed
+
+    def test_clip_gguf_matches_full_precision(self):
+        config, reference, config_path = self._tiny_clip()
+        native = self._temp('.gguf')
+        legacy = self._temp('.gguf')
+        _write_gguf(native, 'clip', reference.state_dict())
+        _write_gguf(legacy, 'diffusion', self._comfy_clip_names(reference.state_dict()))
+        tokens = torch.randint(0, 32, (1, 8))
+        with torch.no_grad():
+            expected = reference(tokens).last_hidden_state
+        for path in (native, legacy):
+            with unittest.mock.patch.object(
+                    textencoderuri, '_require_shipped_config', return_value=config_path):
+                loaded = textencoderuri.TextEncoderUri.parse(
+                    f'CLIPTextModel;model={path}').load(
+                    dtype_fallback=_enums.DataType.FLOAT32, no_cache=True)
+            layer = getattr(loaded, 'text_model', loaded).encoder.layers[0].self_attn
+            self.assertEqual(type(layer.q_proj).__name__, 'GGUFLinear')
+            with torch.no_grad():
+                output = loaded(tokens).last_hidden_state
+            self.assertLess(((output - expected).norm() / expected.norm()).item(), 0.08)
+
+    def test_comfy_clip_safetensors_stay_packed(self):
+        import safetensors.torch
+
+        config, reference, config_path = self._tiny_clip()
+        path = self._temp('.safetensors')
+        safetensors.torch.save_file(
+            _comfy_fp8(self._comfy_clip_names(reference.state_dict())), path)
+        tokens = torch.randint(0, 32, (1, 8))
+        with unittest.mock.patch.object(
+                textencoderuri, '_require_shipped_config', return_value=config_path):
+            loaded = textencoderuri.TextEncoderUri.parse(
+                f'CLIPTextModel;model={path}').load(
+                dtype_fallback=_enums.DataType.FLOAT32, no_cache=True)
+        layer = getattr(loaded, 'text_model', loaded).encoder.layers[0].self_attn
+        self.assertIsInstance(layer.q_proj, _safetensorscompat.ComfyQuantLinear)
+        with torch.no_grad():
+            expected = reference(tokens).last_hidden_state
+            output = loaded(tokens).last_hidden_state
+        self.assertLess(((output - expected).norm() / expected.norm()).item(), 0.12)
+
+    def test_clip_gguf_without_projection_uses_identity(self):
+        torch.manual_seed(0)
+        config = transformers.CLIPTextConfig(
+            vocab_size=32, hidden_size=64, intermediate_size=128, num_hidden_layers=1,
+            num_attention_heads=4, max_position_embeddings=8, projection_dim=64)
+        reference = transformers.CLIPTextModelWithProjection(config).eval()
+        config_path = _config_file(config)
+        self._files.append(config_path)
+        path = self._temp('.gguf')
+        _write_gguf(path, 'clip_l', self._comfy_clip_names(reference.state_dict()))
+        with unittest.mock.patch.object(
+                textencoderuri, '_require_shipped_config', return_value=config_path):
+            loaded = textencoderuri.TextEncoderUri.parse(
+                f'CLIPTextModelWithProjection;model={path}').load(
+                dtype_fallback=_enums.DataType.FLOAT32, no_cache=True)
+        self.assertTrue(torch.allclose(
+            loaded.text_projection.weight, torch.eye(64)))
+
+    def test_comfy_clip_projection_stays_packed(self):
+        import safetensors.torch
+
+        torch.manual_seed(0)
+        config = transformers.CLIPTextConfig(
+            vocab_size=32, hidden_size=64, intermediate_size=128, num_hidden_layers=1,
+            num_attention_heads=4, max_position_embeddings=8, projection_dim=64)
+        reference = transformers.CLIPTextModelWithProjection(config).eval()
+        config_path = _config_file(config)
+        self._files.append(config_path)
+        path = self._temp('.safetensors')
+        renamed = {}
+        for key, value in reference.state_dict().items():
+            if not key.startswith('text_model.') and not key.startswith('text_projection'):
+                key = 'text_model.' + key
+            renamed[key] = value
+        safetensors.torch.save_file(_comfy_fp8(renamed), path)
+        tokens = torch.randint(0, 32, (1, 8))
+        with unittest.mock.patch.object(
+                textencoderuri, '_require_shipped_config', return_value=config_path):
+            loaded = textencoderuri.TextEncoderUri.parse(
+                f'CLIPTextModelWithProjection;model={path}').load(
+                dtype_fallback=_enums.DataType.FLOAT32, no_cache=True)
+        self.assertIsInstance(loaded.text_projection, _safetensorscompat.ComfyQuantLinear)
+        with torch.no_grad():
+            expected = reference(tokens).text_embeds
+            output = loaded(tokens).text_embeds
+        self.assertLess(((output - expected).norm() / expected.norm()).item(), 0.15)
 
 
 if __name__ == '__main__':

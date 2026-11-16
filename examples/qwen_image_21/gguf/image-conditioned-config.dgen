@@ -1,0 +1,31 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image 2.1 image conditioning with the Qwen3-VL GGUF and its mmproj.
+# The language file and the vision tower are separate. mmproj is that tower's
+# URL. A file name is not looked up beside the language GGUF or in its
+# repository. The text-to-image config leaves the tower out:
+# examples/qwen_image_21/gguf/text-encoder-config.dgen
+# This repository has no config.json. The class is the one named here.
+# Naming a class the file is not, such as T5EncoderModel, warns and tells
+# you the class the file matches. The file is already quantized. Do not set
+# quantizer.
+
+\set transformer https://huggingface.co/molbal/Qwen-Image-2.1-GGUF/blob/main/qwen_image_2.1_Q4_0.gguf
+
+\set text_encoder https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF/blob/main/Qwen3VL-8B-Instruct-Q4_K_M.gguf
+
+\set text_encoder_mmproj https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF/blob/main/mmproj-Qwen3VL-8B-Instruct-F16.gguf
+
+
+Qwen/Qwen-Image-2.1
+--model-type qwen-image-21
+--transformer {{ transformer }}
+--text-encoders Qwen3VLForConditionalGeneration;model={{ text_encoder }};mmproj={{ text_encoder_mmproj }}
+--image-seeds ../../media/monalisa.png
+--dtype bfloat16
+--model-sequential-offload
+--qwen21-resolution 1024
+--gen-seeds 1
+--output-path qwen-image-21-gguf-mmproj
+--prompts "Keep the subject, but place it in a snowy mountain landscape at sunrise"

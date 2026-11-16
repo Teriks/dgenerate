@@ -840,10 +840,6 @@ class _AssistantForm(tk.Toplevel):
         env['PYTHONIOENCODING'] = 'utf-8'
         env['PYTHONUNBUFFERED'] = '1'
         env['COLUMNS'] = '80'
-        # huggingface_hub hides tqdm unless stderr is a terminal. Do not use
-        # TQDM_POSITION=-1 (tqdm treats it as nested position). Force via
-        # DGENERATE_FORCE_TQDM instead (see tqdm_huggingface_hub_patch).
-        env['DGENERATE_FORCE_TQDM'] = '1'
 
         kwargs = {}
         if platform.system() == 'Windows':

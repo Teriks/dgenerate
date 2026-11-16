@@ -4,7 +4,7 @@ title: Qwen-Image Edit (ComfyUI Quant + Encoders)
 # Pair Qwen/Qwen-Image-Edit with qwen_image_edit_* transformers (not 2509).
 # Edit 2509 / edit-plus uses a different pipeline; see the 2509 Comfy quant recipe.
 
-# The transformer is a ComfyUI quantized safetensors file (FP8 or BF16).
+# The transformer is a ComfyUI quantized safetensors file (FP8).
 # Quantized layers stay packed and use hardware matmuls where available.
 
 # The image seed is required. A mask selects edit-inpaint.
@@ -21,11 +21,11 @@ title: Qwen-Image Edit (ComfyUI Quant + Encoders)
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @torchcompile[{"model-type":"qwen-image-edit"}]
 @quantizer[{"model-type":"qwen-image-edit"}]
-@textencoders[{"model-type": "qwen-image-edit", "arg": "--text-encoders", "divider-after": true, "defaults": ["Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors"]}]
+@textencoders[{"model-type":"qwen-image-edit", "arg":"--text-encoders", "divider-after":true, "defaults":["Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors"], "suggestions":[[{"label":"fp8_scaled", "value":"Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors"}, {"label":"nvfp4", "value":"Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_nvfp4.safetensors"}]]}]
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
-@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors", "divider-after":true}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors", "divider-after":true}]
 @imageseed[{"id":"image-seed", "optional":false, "label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "float-label":"Inpaint Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":""}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "enabled-when":{"id":"image-seed","not-empty":true}}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor", "enabled-when":{"id":"image-seed","not-empty":true}}]

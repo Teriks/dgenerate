@@ -62,14 +62,38 @@ SD3 and SD3.5 specific modes:
 These SD3/SD3.5 specific modes are designed with the correct architecture parameters for
 each model variant.
 
-A pre-quantized text encoder loads with no ``mode`` and no ``quantizer``. Point ``model``
-at a ``.gguf`` file or a ComfyUI quantized ``.safetensors`` file and name the encoder class
-that matches it. dgenerate matches a configuration shipped with it from the file's
-vocabulary, hidden size, and layer count. Quantized linears stay packed. This is how a
-large encoder is loaded without the full-precision weights: a city96 T5-XXL or UMT5-XXL
-GGUF, a llama.cpp Qwen, Mistral, or Gemma GGUF, or a ComfyUI FP8, INT8, or NVFP4
-safetensors file of the same encoders. ``UMT5EncoderModel`` needs no ``mode``. CLIP and
-the Flux / SD3 T5 files can still use ``mode``.
+A pre-quantized text encoder loads with no ``mode`` and no ``quantizer``. Point
+``model`` at a ``.gguf`` file or a ComfyUI quantized ``.safetensors`` file, and
+name the encoder class that matches the file. Quantized linears stay packed, so
+the encoder loads without its full-precision weights. This covers a city96
+T5-XXL or UMT5-XXL GGUF, a llama.cpp Qwen, Mistral, or Gemma GGUF, and a ComfyUI
+FP8, INT8, or NVFP4 safetensors file of those same encoders.
+
+The configuration is one shipped with dgenerate, chosen from the file's
+vocabulary, hidden size, and layer count. If none matches, the text encoder
+config from the pipeline is used: the ``--model`` repository or folder, or the
+repository detected for a single-file checkpoint. A quant does not ship
+``config.json``, and a ``config.json`` next to the file is not read. If the
+class you named does not match the GGUF, dgenerate
+warns and names the class the file matches.
+
+``UMT5EncoderModel`` needs no ``mode``. CLIP and the Flux / SD3 T5 checkpoints
+can still use ``mode`` when the file is a monolithic full-precision checkpoint.
+
+``mmproj`` is a separate argument. It is the llama.cpp vision-tower GGUF for a
+Qwen2-VL, Qwen3-VL, or Gemma 4 text encoder, including a published file such as
+Unsloth's ``mmproj-F16.gguf``. Give that file's path or its URL. A bare file
+name is not searched for beside the text GGUF or in its repository. Any other
+encoder class rejects ``mmproj``.
+
+.. code-block::
+
+    Qwen2_5_VLForConditionalGeneration;model=text_encoder-Q4_K.gguf;mmproj=mmproj-text_encoder-Q4_K.gguf
+
+    Gemma4ForConditionalGeneration;model=unsloth/gemma-4-E4B-it-GGUF;weight-name=gemma-4-E4B-it-Q4_K_M.gguf;mmproj=https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/blob/main/mmproj-F16.gguf
+
+Qwen-Image 2.1 image conditioning with that tower is
+`examples/qwen_image_21/gguf/image-conditioned-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image_21/gguf/image-conditioned-config.dgen>`_.
 
 diffusers usually shards T5 / large weights for performance, though monolithic checkpoints
 are often available for use with ComfyUI or distributed on CivitAI. This is for compatibility 
@@ -84,6 +108,7 @@ Available encoder classes are:
 * ``DistillT5EncoderModel`` (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
 * ``ChatGLMModel`` (Kolors)
 * ``Gemma3ForConditionalGeneration``
+* ``Gemma4ForConditionalGeneration``
 * ``Gemma4UnifiedForConditionalGeneration`` (LTX-2.5)
 * ``Mistral3ForConditionalGeneration`` (Flux.2)
 * ``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image, Kandinsky 5)
@@ -245,6 +270,8 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
 @EXAMPLE[@PROJECT_DIR/examples/krea2/comfy_quant/text-encoder-config.dgen]
 
 @EXAMPLE[@PROJECT_DIR/examples/qwen_image_21/gguf/text-encoder-config.dgen]
+
+@EXAMPLE[@PROJECT_DIR/examples/qwen_image_21/gguf/image-conditioned-config.dgen]
 
 @EXAMPLE[@PROJECT_DIR/examples/qwen_image_21/comfy_quant/text-encoder-config.dgen]
 

@@ -605,9 +605,12 @@ Help Output
             
             A pre-quantized text encoder can be loaded with no "mode" and no "quantizer". Point "model" at a
             .gguf file (a T5-XXL or UMT5-XXL GGUF, or a llama.cpp Qwen, Mistral, or Gemma GGUF) or at a ComfyUI
-            quantized .safetensors file. Name the encoder class that matches the file. The configuration is
-            matched from the file against the configurations dgenerate ships with, and quantized linears stay
-            packed. CLIP and the Flux / SD3 monolithic T5 checkpoints can still use "mode".
+            quantized .safetensors file. Name the encoder class that matches the file. The configuration is one
+            dgenerate ships, matched from the file's vocabulary, hidden size, and layer count. If none matches,
+            the text encoder config from the pipeline is used: the --model repository or folder, or the
+            repository detected for a single-file checkpoint. A quant does not ship config.json, and a
+            config.json next to the file is not read. Quantized linears stay packed. CLIP and the Flux / SD3
+            monolithic T5 checkpoints can still use "mode".
             
             Available encoder classes are:
             
@@ -618,6 +621,7 @@ Help Output
             * DistillT5EncoderModel (see: LifuWang/DistillT5)
             * ChatGLMModel (Kolors)
             * Gemma3ForConditionalGeneration
+            * Gemma4ForConditionalGeneration
             * Gemma4UnifiedForConditionalGeneration (LTX-2.5)
             * Mistral3ForConditionalGeneration (Flux.2)
             * Qwen2_5_VLForConditionalGeneration (Qwen-Image, Kandinsky 5, Kandinsky 6)
@@ -630,6 +634,14 @@ Help Output
             "weight-name" selects one file in a repository or a folder. "subfolder" is the directory of that
             file: "CLIPTextModel;model=org/repo;subfolder=folder;weight-name=encoder.safetensors". A .gguf text
             encoder uses the same shape, with no "quantizer".
+            
+            "mmproj" is the llama.cpp vision-tower GGUF written beside a Qwen2-VL, Qwen3-VL, or Gemma 4 text
+            encoder (--llama, ComfyUI-GGUF, or a published file such as Unsloth mmproj-F16.gguf). It is that
+            file's path or URL, including a blob or resolve link. A file name is not looked up beside the text
+            GGUF or in its repository. Any other encoder class rejects "mmproj":
+            
+            Qwen2_5_VLForConditionalGeneration;model=text_encoder-Q4_K.gguf;mmproj=mmproj-text_encoder-Q4_K.gguf
+            Gemma4ForConditionalGeneration;model=unsloth/gemma-4-E4B-it-GGUF;weight-name=gemma-4-E4B-it-Q4_K_M.gguf;mmproj=https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/blob/main/mmproj-F16.gguf
             
             If you wish to load weights directly from a path on disk, you must point this argument at the folder
             they exist in, which should also contain the config.json file for the Text Encoder. For example, a
@@ -1762,9 +1774,10 @@ Help Output
             
             This is supported for: --model-type sd3, sd3-pix2pix, sdxl, sdxl-pix2pix, kolors, flux, flux-fill,
             flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
-            qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, kandinsky5-video, flux3, kandinsky6-video, wan,
-            wan-animate, wan-animate-2, hyvideo-15, motif-video, hyimage-21, and hyimage-21-refiner.
-            ----------------------------------------------------------------------------------------
+            qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, kandinsky5-video, flux3,
+            kandinsky6-video, wan, wan-animate, wan-animate-2, hyvideo-15, motif-video, hyimage-21, and
+            hyimage-21-refiner.
+            -------------------
       --spectrum-weights [FLOAT ...]
             Spectrum Chebyshev blend weights to try when --spectrum is enabled.
             
@@ -3298,15 +3311,21 @@ Help Output
             ------------------------------------------------------------------------------
       --prompt-upsampler URI
             Prompt upsampler URI. The arguments match --transformer: revision, variant, subfolder, dtype,
-            quantizer, and compile. compile=true compiles its decoder layers. It loads a Transformers causal or
-            image-to-text model, not the denoiser. For example google/gemma-4-E2B-it or
-            google/gemma-4-E2B-it;quantizer="sdnq;type=int4". Setting this turns prompt enhancement on and loads
-            that model instead of the default. --model-type ltx2 defaults to google/gemma-4-E2B-it when only
-            --pipeline-prompt-enhance is set. --model-type flux3 defaults to the checkpoint Qwen3.5 prompt
-            upsampler. Models that rewrite with the diffusion text encoder, including kandinsky6-video, reject
-            this option. A value on --pipeline-prompt-enhance replaces the built-in system prompt for that
-            generation on LTX-2, FLUX.3, and Kandinsky 6.
-            ---------------------------------------------
+            quantizer, and compile. weight-name selects one .gguf or .safetensors file in the repository or
+            folder. mmproj is the llama.cpp vision tower loaded beside a GGUF: that file's path or URL,
+            including a blob or resolve link. A file name is not looked up beside the language file or in its
+            repository. compile=true compiles its decoder layers. It loads a Transformers causal or
+            image-to-text model, not the denoiser. A repository load uses that repository's config and
+            processor. A GGUF or safetensors quant uses a configuration dgenerate ships for that shape. A
+            config.json next to the quant is not read. mmproj is only the file named on the URI. For example
+            google/gemma-4-E2B-it or google/gemma-4-E2B-it;quantizer="sdnq;type=int4" or
+            unsloth/gemma-4-E4B-it-GGUF;weight-name=gemma-4-E4B-it-Q4_K_M.gguf;mmproj=https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/blob/main/mmproj-F16.gguf.
+            Setting this turns prompt enhancement on and loads that model instead of the default. --model-type
+            ltx2 defaults to google/gemma-4-E2B-it when only --pipeline-prompt-enhance is set. --model-type
+            flux3 defaults to the checkpoint Qwen3.5 prompt upsampler. Models that rewrite with the diffusion
+            text encoder, including kandinsky6-video, reject this option. A value on --pipeline-prompt-enhance
+            replaces the built-in system prompt for that generation on LTX-2, FLUX.3, and Kandinsky 6.
+            ------------------------------------------------------------------------------------------
       --wan-low-noise-guidance-scales FLOAT [FLOAT ...]
             CFG scales for the Wan 2.2 MoE low-noise expert. When omitted, that expert copies --guidance-scales.
             ----------------------------------------------------------------------------------------------------
@@ -5039,7 +5058,7 @@ requested duration to the duration for which the checkpoint was trained.
 Checkpoint variants can have different guidance and step expectations. The
 16-step distilled T2V Lite checkpoint should be run with 16 inference steps and
 guidance 1, as should the distilled Pro checkpoints; no-CFG checkpoints should
-also use guidance 1. The GGUF example uses a community Q4_K_S quantization of
+also use guidance 1. The GGUF example uses a Q4_K_S quantization of
 the T2V Pro sft transformer. ``--torch-compile`` and Cache-DiT can be
 used to reduce denoising cost. The examples use sequential CPU offload; the
 other model offload modes are available as well.
@@ -5492,26 +5511,56 @@ Omit it and the missing-NATTEN path uses that size. NATTEN stays untiled unless 
 ``--ltx-decode-timesteps`` and ``--ltx-decode-noise-scales`` are the decode arguments.
 See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
-``--pipeline-prompt-enhance`` turns on LTX-2.5's optional Gemma prompt enhancer
-(``google/gemma-4-E2B-it``). With no value, LTX-2.5 selects its text-to-video or
-image-to-video system prompt. A value replaces that system prompt.
-Any other ``--pipeline-prompt-enhance-*`` option turns enhancement on with that
-built-in system prompt when ``--pipeline-prompt-enhance`` is omitted.
-FLUX.3 and Kandinsky 6 accept the same system-prompt value and the same sampling
-options for that generation. With no value, FLUX.3 keeps the upsampler's system
-prompt and decodes greedily. Kandinsky 6 keeps its expansion instruction.
+``--pipeline-prompt-enhance`` turns on the pipeline's prompt enhancer.
+LTX-2.5 uses ``google/gemma-4-E2B-it``. With no value, it selects the
+text-to-video or image-to-video system prompt. A value replaces that prompt.
+Any other ``--pipeline-prompt-enhance-*`` option turns enhancement on with
+that built-in prompt when ``--pipeline-prompt-enhance`` itself is omitted.
+
+FLUX.3 and Kandinsky 6 take the same system-prompt value and the same
+sampling options. With no value, FLUX.3 keeps the upsampler's system prompt
+and decodes greedily. Kandinsky 6 keeps its expansion instruction.
+
 ``--prompt-upsampler`` names a different upsampler and turns enhancement on
-by itself. Its arguments match ``--transformer`` (``revision``, ``variant``,
-``subfolder``, ``dtype``, and ``quantizer``), and it loads a Transformers
-causal or image-to-text model rather than the denoiser. FLUX.3 uses the
-same option for its Qwen3.5 prompt upsampler.
-See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/basic/prompt-enhancer-config.dgen>`_,
+by itself. The model is a Transformers causal or image-to-text model. The
+denoiser stays on ``--transformer``. The URI arguments match
+``--transformer``: ``revision``, ``variant``, ``subfolder``, ``dtype``, and
+``quantizer``. FLUX.3 loads its Qwen3.5 prompt upsampler with this option.
+
+``weight-name`` selects one ``.gguf`` or ``.safetensors`` file. ``mmproj`` is
+the llama.cpp vision-tower GGUF loaded beside a language GGUF. Give that
+file's path or its URL. A bare file name is not searched for beside the
+language file or in its repository.
+
+A repository load uses that repository's config and processor. A GGUF or
+safetensors quant uses a configuration dgenerate ships for that shape. A
+``config.json`` next to the quant is not read. ``mmproj`` is only the file
+named on the URI.
+
+A quant of this model loads when the file keeps the original names, when it
+was written with ``--llama``, or when it is a Comfy safetensors file of those
+names. ComfyUI-GGUF has no Gemma 4 architecture, so a Gemma enhancer GGUF is
+for dgenerate and llama.cpp. FLUX.3's diffusion text encoder is Qwen3-VL 4B.
+The upsampler here is the Qwen3.5 model.
+
+LTX-2.5's built-in enhancer, including text-to-video, image-to-video, and a
+quantized upsampler:
+
+`examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/basic/prompt-enhancer-config.dgen>`_,
 `examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/text-to-video-config.dgen>`_,
 `examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/i2v-config.dgen>`_,
 and `examples/ltx2/pipeline_prompt_enhance/quantized-upsampler-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/quantized-upsampler-config.dgen>`_.
-FLUX.3 quantizes its published Qwen3.5 upsampler the same way in
+
+A GGUF of that Gemma enhancer, as two blob links for the language file and ``mmproj``:
+
+`examples/ltx2/pipeline_prompt_enhance/gguf-upsampler-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/pipeline_prompt_enhance/gguf-upsampler-config.dgen>`_.
+
+FLUX.3's published Qwen3.5 upsampler, quantized the same way:
+
 `examples/flux3/pipeline_prompt_enhance/quantized-upsampler-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux3/pipeline_prompt_enhance/quantized-upsampler-config.dgen>`_.
-A custom system prompt and the sampling options are
+
+A custom system prompt and the sampling options:
+
 `examples/flux3/pipeline_prompt_enhance/sampling-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux3/pipeline_prompt_enhance/sampling-config.dgen>`_
 and
 `examples/kandinsky6/pipeline_prompt_enhance/sampling-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky6/pipeline_prompt_enhance/sampling-config.dgen>`_.
@@ -8284,6 +8333,15 @@ a checkpoint is a file format, not a ``--quantizer`` backend: point
 ``--transformer`` (or the model path, or ``--text-encoders``) at the file and it
 is recognized from its contents.
 
+A plain ``float16`` or ``float32`` safetensors file is not one of these
+quants. The ``quantize`` sub-command writes it with ``--formats float16`` or
+``--formats float32``. With ``--comfy``, the tensor names are ComfyUI's and
+the file has no quant metadata. dgenerate loads that file as an ordinary
+full-precision checkpoint. ComfyUI's usual loader reads it too. FLUX.2,
+Z-Image, CLIP, and Gemma 4 are converted this way, because ComfyUI-GGUF has
+no architecture for them. An F16 or F32 ComfyUI-GGUF file is the GGUF form of
+the same conversion, written with ``--formats f16`` or ``--formats f32``.
+
 Supported formats:
 
 * ``float8_e4m3fn`` and ``float8_e5m2``, with a per tensor or per row scale
@@ -9241,6 +9299,12 @@ Q5_1, Q8_0, Q2_K, Q3_K, Q4_K, Q5_K, Q6_K, IQ4_NL, and IQ4_XS unpack in Triton
 and multiply with a PyTorch GEMM. PyTorch dequantizes the weight when Triton
 is not installed.
 
+``F16``, ``F32``, and ``BF16`` are unquantized. Every tensor is that dtype,
+and the loader reads it directly. The ``quantize`` sub-command writes one
+from a diffusers component: ``--formats fp16`` is F16, ``--formats fp32`` is
+F32, and ``--formats bf16`` is BF16. ``--llama`` and ``--comfy`` still choose
+the tensor names. There is nothing to unpack, and ``quantizer`` stays unset.
+
 ComfyUI files prefix tensor names with ``model.diffusion_model.``. That
 prefix is removed on load. A Comfy linear stored transposed stays packed.
 Dequantization uses the Triton unpack on CUDA, ROCm, and XPU, then the weight
@@ -9487,13 +9551,18 @@ Text Encoders
 
 Point ``--text-encoders`` at a ``.gguf`` file and name the encoder class.
 There is no ``mode`` and no ``subfolder``. The configuration is matched from
-the file's vocabulary, hidden size, and layer count. Do not set ``quantizer``.
+the file's vocabulary, hidden size, and layer count. If none matches, the
+pipeline repository's text encoder config is used. A quant does not ship
+``config.json``, and a ``config.json`` next to the file is not read. Do not
+set ``quantizer``.
 
 llama.cpp architectures ``t5``, ``t5encoder``, ``llama``, ``qwen2vl``,
-``qwen3``, ``qwen3vl``, ``gemma3``, and ``gemma4`` are accepted. llama.cpp
+``qwen3``, ``qwen3vl``, ``qwen35``, ``gemma3``, and ``gemma4`` are accepted. llama.cpp
 tensor names are renamed to Hugging Face names, and the quantized linears
 stay packed. A file that already stores Hugging Face or ComfyUI names,
-including the LTX-2.5 Gemma 4 GGUF, is loaded as stored. T5 keeps its
+including the LTX-2.5 Gemma 4 GGUF, is loaded as stored. Llama and Mistral
+query and key rows are restored only when the file used llama.cpp names.
+T5 keeps its
 feed-forward output projection dense, because T5 runs that projection in
 float32. Gemma norms written by llama.cpp are converted back to the
 Hugging Face values.
@@ -10696,14 +10765,38 @@ SD3 and SD3.5 specific modes:
 These SD3/SD3.5 specific modes are designed with the correct architecture parameters for
 each model variant.
 
-A pre-quantized text encoder loads with no ``mode`` and no ``quantizer``. Point ``model``
-at a ``.gguf`` file or a ComfyUI quantized ``.safetensors`` file and name the encoder class
-that matches it. dgenerate matches a configuration shipped with it from the file's
-vocabulary, hidden size, and layer count. Quantized linears stay packed. This is how a
-large encoder is loaded without the full-precision weights: a city96 T5-XXL or UMT5-XXL
-GGUF, a llama.cpp Qwen, Mistral, or Gemma GGUF, or a ComfyUI FP8, INT8, or NVFP4
-safetensors file of the same encoders. ``UMT5EncoderModel`` needs no ``mode``. CLIP and
-the Flux / SD3 T5 files can still use ``mode``.
+A pre-quantized text encoder loads with no ``mode`` and no ``quantizer``. Point
+``model`` at a ``.gguf`` file or a ComfyUI quantized ``.safetensors`` file, and
+name the encoder class that matches the file. Quantized linears stay packed, so
+the encoder loads without its full-precision weights. This covers a city96
+T5-XXL or UMT5-XXL GGUF, a llama.cpp Qwen, Mistral, or Gemma GGUF, and a ComfyUI
+FP8, INT8, or NVFP4 safetensors file of those same encoders.
+
+The configuration is one shipped with dgenerate, chosen from the file's
+vocabulary, hidden size, and layer count. If none matches, the text encoder
+config from the pipeline is used: the ``--model`` repository or folder, or the
+repository detected for a single-file checkpoint. A quant does not ship
+``config.json``, and a ``config.json`` next to the file is not read. If the
+class you named does not match the GGUF, dgenerate
+warns and names the class the file matches.
+
+``UMT5EncoderModel`` needs no ``mode``. CLIP and the Flux / SD3 T5 checkpoints
+can still use ``mode`` when the file is a monolithic full-precision checkpoint.
+
+``mmproj`` is a separate argument. It is the llama.cpp vision-tower GGUF for a
+Qwen2-VL, Qwen3-VL, or Gemma 4 text encoder, including a published file such as
+Unsloth's ``mmproj-F16.gguf``. Give that file's path or its URL. A bare file
+name is not searched for beside the text GGUF or in its repository. Any other
+encoder class rejects ``mmproj``.
+
+.. code-block::
+
+    Qwen2_5_VLForConditionalGeneration;model=text_encoder-Q4_K.gguf;mmproj=mmproj-text_encoder-Q4_K.gguf
+
+    Gemma4ForConditionalGeneration;model=unsloth/gemma-4-E4B-it-GGUF;weight-name=gemma-4-E4B-it-Q4_K_M.gguf;mmproj=https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/blob/main/mmproj-F16.gguf
+
+Qwen-Image 2.1 image conditioning with that tower is
+`examples/qwen_image_21/gguf/image-conditioned-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image_21/gguf/image-conditioned-config.dgen>`_.
 
 diffusers usually shards T5 / large weights for performance, though monolithic checkpoints
 are often available for use with ComfyUI or distributed on CivitAI. This is for compatibility 
@@ -10718,6 +10811,7 @@ Available encoder classes are:
 * ``DistillT5EncoderModel`` (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
 * ``ChatGLMModel`` (Kolors)
 * ``Gemma3ForConditionalGeneration``
+* ``Gemma4ForConditionalGeneration``
 * ``Gemma4UnifiedForConditionalGeneration`` (LTX-2.5)
 * ``Mistral3ForConditionalGeneration`` (Flux.2)
 * ``Qwen2_5_VLForConditionalGeneration`` (Qwen-Image, Kandinsky 5)
@@ -11819,9 +11913,9 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     
     # Qwen-Image 2.1 with a GGUF transformer and the official Qwen3-VL 8B GGUF
     # as the text encoder. Base and Turbo share this encoder. The GGUF is the
-    # language tower; its mmproj sidecar is not loaded, so this is for
-    # text-to-image. Image conditioning should use the ComfyUI safetensors
-    # encoder, which includes the vision tower:
+    # language tower. Image conditioning loads the vision tower with mmproj:
+    # examples/qwen_image_21/gguf/image-conditioned-config.dgen
+    # The ComfyUI safetensors encoder carries that tower in the same file:
     # examples/qwen_image_21/comfy_quant/text-encoder-config.dgen
     # The file is already quantized. Do not set quantizer.
     
@@ -11835,6 +11929,40 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     --gen-seeds 1
     --output-path qwen-image-21-gguf-text-encoder
     --prompts "A small red fox reading a map beside a mossy forest stream, soft morning light"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # Qwen-Image 2.1 image conditioning with the Qwen3-VL GGUF and its mmproj.
+    # The language file and the vision tower are separate. mmproj is that tower's
+    # URL. A file name is not looked up beside the language GGUF or in its
+    # repository. The text-to-image config leaves the tower out:
+    # examples/qwen_image_21/gguf/text-encoder-config.dgen
+    # This repository has no config.json. The class is the one named here.
+    # Naming a class the file is not, such as T5EncoderModel, warns and tells
+    # you the class the file matches. The file is already quantized. Do not set
+    # quantizer.
+    
+    \set transformer https://huggingface.co/molbal/Qwen-Image-2.1-GGUF/blob/main/qwen_image_2.1_Q4_0.gguf
+    
+    \set text_encoder https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF/blob/main/Qwen3VL-8B-Instruct-Q4_K_M.gguf
+    
+    \set text_encoder_mmproj https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF/blob/main/mmproj-Qwen3VL-8B-Instruct-F16.gguf
+    
+    
+    Qwen/Qwen-Image-2.1
+    --model-type qwen-image-21
+    --transformer {{ transformer }}
+    --text-encoders Qwen3VLForConditionalGeneration;model={{ text_encoder }};mmproj={{ text_encoder_mmproj }}
+    --image-seeds ../../media/monalisa.png
+    --dtype bfloat16
+    --model-sequential-offload
+    --qwen21-resolution 1024
+    --gen-seeds 1
+    --output-path qwen-image-21-gguf-mmproj
+    --prompts "Keep the subject, but place it in a snowy mountain landscape at sunrise"
 
 .. code-block:: jinja
 
@@ -12095,7 +12223,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     --model-type kandinsky5-video
     --dtype bfloat16
     --model-sequential-offload
-    --transformer "https://huggingface.co/Ada321/Kandinsky-5.0-T2V-Pro-sft-5s-Q4_K_S.gguf/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf"
+    --transformer "https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sft-5s-GGUF/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf"
     --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors" +
     --inference-steps 50
     --guidance-scales 5
@@ -12122,7 +12250,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     --model-type kandinsky5-video
     --dtype bfloat16
     --model-sequential-offload
-    --transformer "https://huggingface.co/Ada321/Kandinsky-5.0-T2V-Pro-sft-5s-Q4_K_S.gguf/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf"
+    --transformer "https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sft-5s-GGUF/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf"
     --text-encoders "Qwen2_5_VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/text_encoders/qwen_2.5_vl_7b_nvfp4.safetensors" +
     --inference-steps 50
     --guidance-scales 5
@@ -12429,6 +12557,8 @@ Which is a GPT2 finetune focused specifically on prompt generation.
         arguments:
             part: str = "both"
             model: str = "Gustavosta/MagicPrompt-Stable-Diffusion"
+            weight-name: str | None = None
+            mmproj: str | None = None
             image: str | None = None
             dtype: str = "float32"
             seed: int | None = None
@@ -12459,10 +12589,20 @@ Which is a GPT2 finetune focused specifically on prompt generation.
         "positive", and "negative"
     
         The "model" specifies the model path for magicprompt, the default value is:
-        "Gustavosta/MagicPrompt-Stable-Diffusion". This can be a folder on disk or a Hugging Face repository slug.
+        "Gustavosta/MagicPrompt-Stable-Diffusion". This can be a folder on disk, a Hugging Face repository slug,
+        or a GGUF file path or URL. "weight-name" selects one .gguf file in a repository or folder. The class is
+        the text encoder dgenerate would load for that file: the architecture and the embedding shape pick it, and
+        the config is one dgenerate ships for that shape. A quant repository does not supply config.json, and a
+        config.json next to the file is not read. The tokenizer comes from the repository, or from the vocabulary
+        stored in the GGUF.
+    
+        "mmproj" is the llama.cpp vision-tower GGUF when that tower is a separate file. It is that file's path or
+        URL, including a blob or resolve link. A file name is not looked up beside the language GGUF or in its
+        repository. With "image", a language-only GGUF needs this tower.
     
         An unquantized model keeps as many decoder layers as fit in free GPU memory. The rest stay in CPU memory
-        and run on the GPU one layer at a time. Quantized models stay on the single device given by "device".
+        and run on the GPU one layer at a time. Quantized models, including a GGUF, stay on the single device
+        given by "device". A GGUF is already quantized, so "quantizer" does not apply to it.
     
         The "image" argument is a path or URL to an image. When it is set, "model" must be a vision-language model
         that transformers can load, such as heretic-org/MiniCPM-V-4.6-heretic. The image is attached to every
@@ -12479,6 +12619,7 @@ Which is a GPT2 finetune focused specifically on prompt generation.
         The "variations" argument specifies how many variations should be produced.
     
         The "max-length" argument is the max prompt length for a generated prompt, this value defaults to 100.
+        With a chat template it is the length of the reply. The transcript is not counted.
     
         The "temperature" argument sets the sampling temperature to use when generating prompts. Larger values
         increase creativity but decrease factuality.
@@ -12493,7 +12634,10 @@ Which is a GPT2 finetune focused specifically on prompt generation.
         leaves those tokens alone. A positive value reduces repetition. A negative value encourages it.
     
         The "system" argument sets the system instruction for the LLM. A value of "file:path.txt" reads that
-        instruction from a UTF-8 text file. Shell-quote the path when it contains spaces.
+        instruction from a UTF-8 text file. Shell-quote the path when it contains spaces.     A tokenizer that has
+        a chat template receives the system instruction and the preamble through that template. A template that
+        does not render a system role gets that instruction at the start of the user message. Thinking is left off
+        when the template accepts that.
     
         The "preamble" argument sets a text input preamble for the LLM, this preamble will be removed from the
         output generated by the LLM. A value of "file:path.txt" reads that preamble from a UTF-8 text file.
@@ -12626,10 +12770,12 @@ Older NVIDIA, Windows AMD, and Intel Arc:
         The "part" argument indicates which parts of the prompt to act on, possible values are: "both",
         "positive", and "negative".
     
-        The "model" argument is a path or URL to a GGUF file. The default is a Phi-3 Mini abliterated Q4 GGUF.
+        The "model" argument is a path or URL to a GGUF file. The default is a Phi-3 Mini abliterated Q4 GGUF. A
+        file with no chat template, such as the original MagicPrompt weights, is completed directly instead of
+        through a chat request.
     
-        The "mmproj" argument is a path or URL to the GGUF multimodal projector for "model". It is required when
-        "image" is set.
+        The "mmproj" argument is a path or URL to the GGUF multimodal projector for "model". A URL is downloaded.
+        A file name is not looked up beside "model" or in its repository. It is required when "image" is set.
     
         The "image" argument is a path or URL to an image. The image is attached to every prompt sent to the
         model, and the prompt text is the instruction, for example a request to write an image-generation prompt
@@ -12875,6 +13021,59 @@ Any LLM that is supported by ``transformers`` can be used to upscale prompts via
 Here is an example using `Phi-3 Mini Abliterated by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3>`_
 
 The ``magicprompt`` plugin supports quantization with ``bitsandbytes`` and ``sdnq``.
+It also loads a GGUF: ``model`` may be the file or its URL, or a repository with
+``weight-name`` set to the ``.gguf``. ``mmproj`` is the vision tower when that
+tower is a separate file, given as that file's path or URL. When the repository
+has no ``config.json``, the class is the text encoder dgenerate would load for
+that file: the architecture and the embedding shape pick it, for every text
+encoder dgenerate can load. The config is one dgenerate ships for that shape.
+The tokenizer is read from the vocabulary stored in the file when the
+repository does not include one. A tokenizer with a chat template receives
+``system`` and ``preamble`` through that template, and thinking is left off
+when the template accepts that. ``max-length`` is then the length of the
+reply. The transcript is not counted.
+
+This example loads `Qwen3-4B Q4_K_M <https://huggingface.co/Qwen/Qwen3-4B-GGUF>`_,
+a repository that publishes only the GGUF:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # magicprompt loads a GGUF. This repository publishes only the .gguf file:
+    # there is no config.json and no tokenizer.json. The class is read from the
+    # architecture stored in the file, and the tokenizer is the vocabulary stored
+    # in the file. The file also stores the chat template, so "system" and
+    # "preamble" are a system turn and a user turn. Thinking is left off.
+    # "max-length" is the reply, not the chat transcript. "model" may be that file's URL, or a repository with
+    # weight-name set to the .gguf. A vision tower is a separate file, given as
+    # mmproj with its own path or URL. A file name is not looked up beside the
+    # language GGUF. An image example of that tower is
+    # examples/qwen_image_21/gguf/image-conditioned-config.dgen
+    # and a prompt-upsampler GGUF is
+    # examples/ltx2/pipeline_prompt_enhance/gguf-upsampler-config.dgen.
+    
+    \set llm_model https://huggingface.co/Qwen/Qwen3-4B-GGUF/blob/main/Qwen3-4B-Q4_K_M.gguf
+    
+    \set llm_system "Reply with one Stable Diffusion prompt and nothing else."
+    
+    \set llm_preamble "Enhance this description:"
+    
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path magicprompt-qwen3-gguf
+    --output-size 1024x1024
+    --prompt-weighter sd-embed
+    --prompt-upscaler magicprompt;model={{ llm_model }};system={{ llm_system }};preamble={{ llm_preamble }};temperature=0;max-length=256;seed=0
+    --prompts "a horse in a field on a cloudy day"
 
 Quantization backend packages will be installed by dgenerate's packaging on platforms where they are supported.
 
@@ -13113,6 +13312,7 @@ Writing prompts from an image
 instruction sent with the image, for example a request to describe it as an image-generation prompt.
 
 For ``llama``, pass the picture as ``image`` and the matching GGUF multimodal projector as ``mmproj``.
+``mmproj`` is that file's path or URL. A file name is not looked up beside the model.
 Vision models need a larger ``context-tokens`` value than text models, because the image occupies
 part of the context. Animated files use the first frame. ``thinking`` defaults to false so the
 reply is the prompt. Set it to true on models that support a thought before the answer.
@@ -14990,6 +15190,270 @@ The help output of ``to-diffusers`` is as follows:
       -ofm, --offline-mode
             Prevent downloads of resources that do not exist on disk already.
             -----------------------------------------------------------------
+
+
+Sub Command: quantize
+---------------------
+
+The ``quantize`` sub-command reads a diffusers model and writes quantized
+weights. The model is a folder on disk, a Hugging Face repository, one weight
+file, or a blob link to one weight file.
+``--subfolders`` selects component folders such as ``transformer`` and
+``text_encoder``. Without it, every component that has weights is quantized.
+Tokenizers and schedulers have no weights, so they are left out.
+``--weight-name`` selects a file inside that model, such as
+``model.fp16.safetensors``. A repo-relative path such as
+``text_encoder/model.fp16.safetensors`` selects that one file. The same name
+is used in every ``--subfolders`` component.
+
+``--formats`` is the list of quants to write, and every name in it is written
+in one run. A name can be a GGUF type (``Q4_K``, ``Q8_0``, ``Q6_K``, and the
+rest that dgenerate loads), a ComfyUI safetensors quant (``float8_e4m3fn``,
+``int8_tensorwise``, ``nvfp4``, ``mxfp8``, ``convrot_w4a4``, ``asym_w4a8_int8``,
+``w6a8_int8``, ``float8_e5m2``), a short name, or a preset.
+
+Short names: ``q4`` is ``Q4_K``, ``q8`` is ``Q8_0``, ``fp8`` is
+``float8_e4m3fn``, ``int8`` is ``int8_tensorwise``, ``int4`` is ConvRot INT4,
+``w4a8`` and ``w6a8`` are the grouped Comfy quants. ``Q4_0`` is requested by
+that name. ``--list-formats`` prints the full set.
+
+``f16``, ``fp16``, and ``F16`` are one format. ``f32``, ``fp32``, and ``F32``
+are another. ``bf16`` and ``BF16`` are a third. Each writes a GGUF in which
+every tensor is that dtype: linears, biases, norms, and embeddings. Nothing
+is packed. The file is a conversion of the component, and it is about the
+size of the weights in that dtype. ``float16`` and ``float32`` are the
+safetensors form of the same idea. Every floating tensor is cast to that
+dtype, integer tensors are left as they are, and the file has no quant
+metadata. ``fp8`` is not one of these. ``fp8`` is the ``float8_e4m3fn`` quant.
+
+The container is part of the name:
+
+* ``f16``, ``fp16``, or ``F16`` writes ``transformer-F16.gguf``. Every tensor is F16.
+* ``f32``, ``fp32``, or ``F32`` writes ``transformer-F32.gguf``. Every tensor is F32.
+* ``bf16`` or ``BF16`` writes ``transformer-BF16.gguf``. Every tensor is BF16.
+* ``float16`` writes ``transformer-float16.safetensors``. Floating tensors are
+  float16.
+* ``float32`` writes ``transformer-float32.safetensors``. Floating tensors are
+  float32.
+
+``--llama`` accepts the GGUF floats and refuses ``float16`` and ``float32``.
+A text encoder becomes ``text_encoder-F16-llama.gguf``. A Gemma 4 or Qwen
+vision tower is written beside it as ``mmproj-text_encoder-F16-llama.gguf``,
+in that same dtype, and the language file still stores the llama.cpp
+hyperparameters and tokenizer. dgenerate loads that GGUF the same way it loads
+a quantized one. Point ``--text-encoders`` at the file and leave ``quantizer``
+unset. The weights are already F16 or F32, so nothing is unpacked.
+
+``--comfy`` accepts both containers. ``--formats f16 --comfy`` writes
+``transformer-F16-comfy.gguf`` for an architecture ComfyUI-GGUF loads: FLUX.1,
+SD1, SDXL, SD3, Wan, Qwen-Image, and the GGUF text encoders. ``--formats
+float16 --comfy`` writes ``transformer-float16-comfy.safetensors``, which is
+what ComfyUI's usual loader reads. FLUX.2, Z-Image, CLIP, and Gemma 4 have no
+ComfyUI-GGUF architecture, so the safetensors file is the conversion for those.
+dgenerate loads the GGUF as it loads any other ComfyUI GGUF. It loads the
+safetensors file as an ordinary full-precision checkpoint, not as a quantized
+one. A component with no key map is still an error.
+
+Without ``--llama`` and without ``--comfy``, the file keeps the tensor names
+from the component folder. Load a diffusers-named GGUF with that component's
+option and leave the original repository as the model, so the config still
+comes from there.
+
+Presets: ``dgenerate`` writes ``Q4_K`` and ``Q8_0``. ``comfy`` writes FP8 and
+INT8. ``gguf`` writes every quantized GGUF type. It leaves out ``F16``,
+``F32``, and ``BF16``. ``comfy-all`` writes every Comfy safetensors quant. It
+leaves out ``float16`` and ``float32``. Ask for the plain formats by name.
+
+Files keep the tensor names of the component they came from, unless ``--comfy``
+is set. ``--comfy`` writes the names ComfyUI and ComfyUI-GGUF load. That covers
+FLUX.1, SD 1.5, SDXL, SD3, Wan, and Qwen-Image, plus FLUX.2 and Z-Image safetensors
+quants. GGUF text encoders cover T5, UMT5, Llama 3 / Mistral, Qwen2, Qwen3, and
+Gemma 3. A Qwen2-VL vision tower is written beside the text encoder as
+``mmproj-text_encoder-Q8_0-comfy.gguf``. ComfyUI-GGUF pairs that file by name, and
+it picks one mmproj when several quants share a folder, so write one GGUF format
+per folder when the model has a vision tower. CLIP is written as safetensors,
+which is what Comfy's CLIP loader reads. ComfyUI-GGUF has no architecture for
+FLUX.2, Z-Image, or CLIP, so those GGUF files are refused. Those files are named
+like ``transformer-Q4_K-comfy.gguf``. A component with no key map is an error, so
+the command does not write a file Comfy cannot load.
+
+``--llama`` writes llama.cpp tensor names instead, the layout Unsloth
+text-encoder GGUFs use and dgenerate loads. That covers T5, UMT5, Llama,
+Qwen, and Gemma, including Gemma 4. A full Gemma 4 model, such as the
+LTX-2.5 prompt enhancer, writes its vision and audio towers as a CLIP
+``mmproj`` (``gemma4v`` and ``gemma4a``) beside the language file. Qwen3.5,
+including the FLUX.3 prompt upsampler, is written as ``qwen35``. Its vision
+tower stays a Qwen3-VL mmproj. A Llama whose head counts are not the
+32 and 8 ComfyUI-GGUF hardcodes is included. Files are named like
+``text_encoder-Q4_K-llama.gguf``. ``--llama`` and ``--comfy`` cannot be used
+together, and ``--llama`` applies to GGUF formats. When ``config.json`` is
+beside the weights, the file stores the llama.cpp hyperparameters. A BPE
+``tokenizer.json`` (or ``vocab.json`` and ``merges.txt``) and
+``chat_template.json`` are stored too, from that folder or from the sibling
+``tokenizer`` folder. A tied embedding is also written as ``output.weight``.
+dgenerate loads either layout: a Llama or Mistral file written without
+``--llama`` keeps Hugging Face query and key order, and a ``--llama`` file
+is restored on load.
+
+``--quantizer`` writes an SDNQ or bitsandbytes diffusers repository from the
+same URI used when generating images. Quote it so the shell keeps the
+semicolons. ``sdnq;type=uint4;group-size=32;quant-conv=true;use-svd=true`` and
+``bnb;bits=4;bits4-quant-type=nf4;bits4-use-double-quant=true`` are written as
+separate folders named from the options that differ from the URI default.
+Several URIs write several repositories. Bitsandbytes quantization runs on
+CUDA. Point dgenerate at the folder and leave its ``--quantizer`` unset.
+Components you did not select are copied at full precision, including
+``model_index.json``. ``--comfy`` applies to the GGUF and Comfy safetensors
+files; these repositories keep diffusers tensor names.
+
+A single file is named from its parent folder when the filename is a generic
+component weight, so ``text_encoder/model.fp16.safetensors`` is written as
+``text_encoder-Q4_K.gguf``. ``config.json`` beside that file is read when it
+is there. A blob link to an index also downloads the shards that index names.
+``--quantizer`` still needs the whole diffusers model, and it honors
+``--variant`` rather than ``--weight-name``.
+
+Point a diffusers-named file at the matching component option and leave the
+original repository as the model, so the config still comes from there. A GGUF
+text encoder is read for T5, UMT5, Qwen, Mistral, Gemma, and CLIP. CLIP GGUF
+and a Comfy CLIP safetensors quant keep Hugging Face names, so either file
+loads with ``--text-encoders``. ``--comfy`` leaves those safetensors names in
+place. It does not write a CLIP GGUF, because ComfyUI-GGUF has no CLIP
+architecture.
+
+A quantized GGUF keeps tensors that cannot take the block size. A matrix whose
+width is not a multiple of the quant block is stored as BF16, and biases and
+norms are stored as F32. ``F16``, ``F32``, and ``BF16`` do not do that. Every
+tensor in that file is the dtype you named. A Comfy quant that fits no linear
+in a component is skipped. ``float16`` and ``float32`` are written whenever
+the component has tensors.
+
+.. code-block:: bash
+
+    # Q4_K, Q8_0, and FP8 of the transformer
+    dgenerate --sub-command quantize black-forest-labs/FLUX.1-dev \
+        --subfolders transformer --formats q4 q8 fp8 -o quants
+
+    # The short dgenerate pair and the short Comfy pair, every component
+    dgenerate --sub-command quantize ./model --formats dgenerate comfy -o quants
+
+    # SDNQ uint4 with a group size and a low-rank residual, and 4-bit NF4
+    dgenerate --sub-command quantize ./model -o quants \
+        --quantizer "sdnq;type=uint4;group-size=32;use-svd=true" \
+        "bnb;bits=4;bits4-quant-type=nf4"
+
+    # Q4_K and FP8 with ComfyUI tensor names
+    dgenerate --sub-command quantize ./model --subfolders transformer \
+        --formats q4 fp8 --comfy -o quants
+
+    # llama.cpp names for a text encoder, the Unsloth GGUF layout
+    dgenerate --sub-command quantize ./model --subfolders text_encoder \
+        --formats q4 --llama -o quants
+
+    # llama.cpp F16, no quant: text_encoder-F16-llama.gguf
+    dgenerate --sub-command quantize ./model --subfolders text_encoder \
+        --formats fp16 --llama -o quants
+
+    # ComfyUI-GGUF F16, no quant: transformer-F16-comfy.gguf
+    dgenerate --sub-command quantize ./model --subfolders transformer \
+        --formats f16 --comfy -o quants
+
+    # ComfyUI safetensors FP16, no quant: transformer-float16-comfy.safetensors
+    # FLUX.2, Z-Image, CLIP, and Gemma 4 use this file
+    dgenerate --sub-command quantize ./model --subfolders transformer \
+        --formats float16 --comfy -o quants
+
+    # One file inside a component, or a blob link to that file
+    dgenerate --sub-command quantize ./model --subfolders text_encoder \
+        --weight-name model.fp16.safetensors --formats q4 -o quants
+    dgenerate --sub-command quantize \
+        "https://huggingface.co/org/repo/blob/main/text_encoder/model.fp16.safetensors" \
+        --formats q4 -o quants
+
+    # Names, short names, and presets
+    dgenerate --sub-command quantize --list-formats
+
+The help output of ``quantize`` is as follows:
+
+.. code-block:: text
+
+    usage: quantize [-h] [-sbf SUBFOLDERS [SUBFOLDERS ...]] [-f [FORMATS ...]] [--comfy | --llama] [-o OUTPUT]
+                    [-q QUANTIZER [QUANTIZER ...]] [--list-formats] [-wn WEIGHT_NAME] [-var VARIANT]
+                    [-rev REVISION] [-atk AUTH_TOKEN] [-ofm]
+                    [model]
+    
+    Quantize a diffusers model into GGUF files, ComfyUI safetensors quants, and SDNQ or bitsandbytes
+    repositories. Every format you list is written.
+    
+    positional arguments:
+      model
+            Diffusers folder, Hugging Face repository, weight file, or a blob link to one weight file.
+            ------------------------------------------------------------------------------------------
+    
+    options:
+      -h, --help
+            show this help message and exit
+            -------------------------------
+      -sbf, --subfolders SUBFOLDERS [SUBFOLDERS ...]
+            Component folders to quantize, such as transformer or text_encoder. Without this, every component
+            that has weights is quantized.
+            ------------------------------
+      -f, --formats [FORMATS ...]
+            Formats and presets to write. Every name is written. --list-formats prints the GGUF types, Comfy
+            safetensors quants, plain float16 and float32, short names, presets, and example file names. q4
+            means Q4_K. Q4_0 is requested by that name.
+            -------------------------------------------
+      --comfy
+            Write ComfyUI tensor names, so ComfyUI and ComfyUI-GGUF can load the files. Diffusion models:
+            FLUX.1, SD1, SDXL, SD3, Wan, and Qwen-Image. FLUX.2 and Z-Image are safetensors, because
+            ComfyUI-GGUF has no architecture for them. GGUF text encoders: T5, UMT5, Llama 3 / Mistral, Qwen2,
+            Qwen3, and Gemma 3. A Qwen2-VL vision tower is written as mmproj beside the text encoder. CLIP is
+            safetensors. Files are named like transformer-Q4_K-comfy.gguf. A component with no key map is an
+            error.
+            ------
+      --llama
+            Write llama.cpp tensor names, the layout Unsloth text-encoder GGUFs use and dgenerate loads. T5,
+            UMT5, Llama, Qwen, and Gemma, including Gemma 4. A full Gemma 4 model, such as the LTX-2.5 prompt
+            enhancer, writes its vision and audio towers as a CLIP mmproj (gemma4v and gemma4a) beside the
+            language file. Qwen3.5, including the FLUX.3 prompt upsampler, is written as qwen35. Its vision
+            tower stays a Qwen3-VL mmproj. A Llama whose head counts are not 32 and 8 is included. Files are
+            named like text_encoder-Q4_K-llama.gguf. Cannot be combined with --comfy.
+            -------------------------------------------------------------------------
+      -o, --output OUTPUT
+            Directory to write. Files are named like transformer-Q4_K.gguf, transformer-F16.gguf,
+            transformer-F16-comfy.gguf, text_encoder-F16-llama.gguf, text_encoder-float8_e4m3fn.safetensors, or
+            transformer-float16-comfy.safetensors. A --quantizer URI writes a diffusers repository in a
+            subdirectory named from that URI, such as sdnq-uint4-g32-svd. An existing file or repository of the
+            same name is replaced.
+            ----------------------
+      -q, --quantizer QUANTIZER [QUANTIZER ...]
+            Write an SDNQ or bitsandbytes diffusers repository from a quantizer URI. The URI is the same one
+            passed to --quantizer when generating images. Examples:
+            "sdnq;type=uint4;group-size=32;quant-conv=true;use-svd=true",
+            "bnb;bits=4;bits4-quant-type=nf4;bits4-use-double-quant=true;bits4-compute-dtype=bfloat16". Several
+            URIs write several repositories. Quote the URI so the shell keeps the semicolons.
+            ---------------------------------------------------------------------------------
+      --list-formats
+            Print GGUF types, Comfy safetensors quants, plain float16 and float32, short names, and presets,
+            then exit.
+            ----------
+      -wn, --weight-name WEIGHT_NAME
+            Weight file to read, such as model.fp16.safetensors. A path such as
+            text_encoder/model.fp16.safetensors selects that one file. The same name is used in every
+            --subfolders component.
+            -----------------------
+      -var, --variant VARIANT
+            Weight variant to read, such as fp16 (diffusion_pytorch_model.fp16.safetensors).
+            --------------------------------------------------------------------------------
+      -rev, --revision REVISION
+            Revision, when the model is a Hugging Face repository.
+            ------------------------------------------------------
+      -atk, --auth-token AUTH_TOKEN
+            Hugging Face token for a gated repository.
+            ------------------------------------------
+      -ofm, --offline-mode
+            Use weights already on disk. Do not download a repository.
+            ----------------------------------------------------------
 
 
 Sub Command: prompt-upscale
@@ -18331,7 +18795,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [91556867413364]
+            Value: [33327414466023]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -21007,6 +21471,23 @@ compile was skipped. Wan-Animate-2 then builds the full attention score
 matrix, which can run out of memory at video resolution. Set it in the
 environment or in ``init.dgen``.
 
+Progress Bars
+=============
+
+Download, hash, upscale, and generation progress bars are drawn when stderr
+is not a terminal. That includes the Console UI and output redirected to a
+log. The Console UI output pane handles carriage return and cursor-movement
+sequences, so the bars redraw in place.
+
+``DGENERATE_FORCE_TQDM`` defaults to ``1``. ``\env DGENERATE_FORCE_TQDM=0``
+draws a bar only when stderr is a terminal. Set it in the environment or in
+``init.dgen``.
+
+``\env DGENERATE_DISABLE_TQDM=1`` hides every tqdm bar: downloads, Xet,
+hashing, upscaling, and generation. It overrides ``DGENERATE_FORCE_TQDM``.
+
+``HF_HUB_DISABLE_PROGRESS_BARS=1`` hides Hugging Face download bars only.
+
 Startup Configuration
 =====================
 
@@ -21034,6 +21515,7 @@ Example ``~/.dgenerate/init.dgen`` for setting environment variables:
     # Performance and behavior
     \env DGENERATE_TORCH_COMPILE=1
     \env DGENERATE_OFFLINE_MODE=1
+    \env DGENERATE_FORCE_TQDM=1
     
     # Cache expiry. The default keeps model files and expires every other file after 12 hours.
     # "models;forever,images;days=1,videos;days=2,.png;hours=1,other;hours=12"

@@ -20,7 +20,7 @@ title: Flux.2 Dev (ComfyUI Quant + Encoders)
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @torchcompile[{"model-type":"flux2"}]
 @quantizer[{"model-type":"flux2"}]
-@textencoders[{"model-type": "flux2", "arg": "--text-encoders", "divider-after": true, "defaults": ["Mistral3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/text_encoders/mistral_3_small_flux2_fp8.safetensors"]}]
+@textencoders[{"model-type":"flux2", "arg":"--text-encoders", "divider-after":true, "defaults":["Mistral3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/text_encoders/mistral_3_small_flux2_fp8.safetensors"], "suggestions":[[{"label":"fp8", "value":"Mistral3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/text_encoders/mistral_3_small_flux2_fp8.safetensors"}, {"label":"fp4_mixed", "value":"Mistral3ForConditionalGeneration;model=https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/text_encoders/mistral_3_small_flux2_fp4_mixed.safetensors"}]]}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
