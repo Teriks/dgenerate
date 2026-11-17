@@ -543,6 +543,30 @@ class TestGGUFCompat(unittest.TestCase):
         self.assertEqual(type(parent.attn.weight).__name__, 'GGUFParameter')
         self.assertEqual(parent.attn.weight.quant_type, quant_type)
 
+    def test_bf16_gguf_norm_weight_is_materialized(self):
+        import gguf
+        import torch.nn as nn
+        from diffusers.quantizers.gguf.utils import GGUFParameter
+
+        norm = nn.RMSNorm(4)
+        values = torch.ones(4, dtype=torch.bfloat16)
+        norm.weight = GGUFParameter(
+            values.view(torch.uint8), quant_type=gguf.GGMLQuantizationType.BF16)
+        packed = torch.zeros(1, 144, dtype=torch.uint8)
+        holder = nn.Linear(256, 1, bias=False)
+        holder.weight = GGUFParameter(packed, quant_type=gguf.GGMLQuantizationType.Q4_K)
+        parent = nn.Module()
+        parent.norm = norm
+        parent.proj = holder
+
+        _ggufcompat.materialize_unquantized_parameters(parent)
+
+        self.assertEqual(norm.weight.dtype, torch.bfloat16)
+        self.assertEqual(tuple(norm.weight.shape), (4,))
+        self.assertEqual(type(holder.weight).__name__, 'GGUFParameter')
+        output = norm(torch.ones(2, 4))
+        self.assertEqual(tuple(output.shape), (2, 4))
+
 
 if __name__ == '__main__':
     unittest.main()

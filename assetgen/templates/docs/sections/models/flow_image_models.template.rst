@@ -65,7 +65,7 @@ Neither pipeline takes a negative prompt. There is no img2img strength and no Co
 A mask is Klein inpaint only. Full Flux.2 rejects a mask.
 
 Full Flux.2
-~~~~~~~~~~~
+-----------
 
 ``black-forest-labs/FLUX.2-dev`` is gated. Guidance 4 and 50 steps. The text encoder is Mistral.
 
@@ -93,7 +93,7 @@ Hidden width 6144 selects the dev config. Do not set ``quantizer=`` on that URI.
 See `examples/flux2/gguf/dev-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux2/gguf/dev-config.dgen>`_.
 
 Flux.2 Klein
-~~~~~~~~~~~~
+------------
 
 Klein encodes prompts with Qwen3. ``--flux2-text-encoder-out-layers`` defaults
 to ``9,18,27``.
@@ -121,7 +121,7 @@ base-9B transformer config.
 See `examples/flux2/gguf/klein-4b-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux2/gguf/klein-4b-config.dgen>`_.
 
 Flux.2 Klein KV
-~~~~~~~~~~~~~~~
+---------------
 
 ``--model-type flux2-klein-kv`` is ``black-forest-labs/FLUX.2-klein-9b-kv``. Gated.
 
@@ -183,7 +183,7 @@ The pipeline rebuilds the ControlNet with ``from_transformer`` against the loade
 On a Z-Image ControlNet the transformer is offloaded before the ControlNet, because those two objects share modules.
 
 Z-Image Omni
-~~~~~~~~~~~~
+------------
 
 ``--model-type z-image-omni`` is Z-Image with an optional SigLIP condition image.
 
@@ -244,7 +244,7 @@ See `examples/qwen_image/controlnet/canny-config.dgen <https://github.com/Teriks
 and `examples/qwen_image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/controlnet/inpaint-config.dgen>`_.
 
 Qwen-Image 2.1
-~~~~~~~~~~~~~~
+--------------
 
 ``--model-type qwen-image-21`` is Qwen-Image 2.1's text-to-image and image-conditioned pipeline.
 
@@ -272,7 +272,7 @@ Qwen-Image 2.1 also supports LoRAs, a GGUF transformer through ``--transformer``
 * `Cooperative denoising <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/latents_interchange/qwen_image_21/cooperative-denoising-config.dgen>`_
 
 Krea 2
-~~~~~~
+------
 
 ``--model-type krea2`` is text-to-image only. There is no image-seed editing, no inpaint, and no ControlNet.
 
@@ -292,7 +292,7 @@ Krea 2 supports transformer LoRAs and a GGUF transformer with ``--transformer``.
 * `Raw cooperative denoising <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/latents_interchange/krea2/cooperative-denoising-config.dgen>`_
 
 Kandinsky 5 Image
-~~~~~~~~~~~~~~~~~
+-----------------
 
 ``--model-type kandinsky5-image`` is text to image or instruction editing, depending on the checkpoint.
 
@@ -313,7 +313,7 @@ There is no Kandinsky 5 Image GGUF example yet. The Kandinsky 5 Video GGUF is a 
 * `Kandinsky 5 Image cooperative denoising <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/latents_interchange/kandinsky5_image/cooperative-denoising-config.dgen>`_
 
 Qwen-Image Edit
-~~~~~~~~~~~~~~~
+---------------
 
 ``--model-type qwen-image-edit`` is an instruction edit. The image seed is
 required. There is no strength.
@@ -331,7 +331,7 @@ See `examples/qwen_image/edit/base-config.dgen <https://github.com/Teriks/dgener
 and `examples/qwen_image/edit_inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/edit_inpaint/config.dgen>`_.
 
 Qwen-Image Layered
-~~~~~~~~~~~~~~~~~~
+------------------
 
 ``--model-type qwen-image-layered`` is ``Qwen/Qwen-Image-Layered``. One image in, one file per layer out.
 
@@ -343,7 +343,7 @@ See `examples/qwen_image/layered/config.dgen <https://github.com/Teriks/dgenerat
 and `examples/qwen_image/gguf/layered-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/gguf/layered-config.dgen>`_.
 
 HunyuanImage 2.1
-~~~~~~~~~~~~~~~~
+----------------
 
 ``--model-type hyimage-21`` is text to image on ``hunyuanvideo-community/HunyuanImage-2.1-Diffusers``.
 
@@ -355,6 +355,28 @@ The distilled checkpoint stays ``hyimage-21`` and uses guidance 3.25 as distille
 
 See `examples/hyimage_21/basic/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyimage_21/basic/config.dgen>`_
 and `examples/hyimage_21/refiner/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/hyimage_21/refiner/config.dgen>`_.
+
+MiniMax-H3-Image
+----------------
+
+``--model-type minimax-h3-image`` is ``MiniMaxAI/MiniMax-H3-Image``. One modular pipeline does text to image and reference editing.
+
+Guidance is distilled. The checkpoint samples six steps, and the transformer has one output head per step, so omit ``--inference-steps``, ``--sigmas``, ``--timesteps``, ``--guidance-scales``, and a negative prompt. ``--scheduler MiniMaxH3Scheduler`` overlays that checkpoint scheduler. The six-step sigma grid stays fixed.
+
+Latents interchange is not supported. Those six steps and their output heads are fixed, so a saved latent cannot be resumed by another stage. Omit ``--output-latents``, ``latents:``, ``--denoising-start``, and ``--denoising-end``.
+
+The default size is 2048. Width and height are multiples of 32. A request smaller than 2048×2048 is generated on a larger canvas of the same aspect ratio and resized back to the requested size.
+
+``--image-seeds`` are reference images, with no mask and no strength. Several references use the ``images:`` prefix and are one generation, for example ``images: a.png, b.png``. They may differ in size. The checkpoint resizes each one. The prompt refers to them in order as Picture 1, Picture 2, and so on. The prompt is encoded verbatim.
+
+Cache-DiT caches ``transformer_blocks``.
+
+See `examples/minimax_h3_image/text_to_image/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/text_to_image/config.dgen>`_,
+`examples/minimax_h3_image/references/one-reference-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/references/one-reference-config.dgen>`_,
+`examples/minimax_h3_image/references/two-references-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/references/two-references-config.dgen>`_,
+`examples/minimax_h3_image/gguf/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/gguf/config.dgen>`_,
+and `examples/minimax_h3_image/comfy_quant/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/comfy_quant/config.dgen>`_.
+A ComfyUI image file fuses the six output heads. They are split on load.
 
 Other call arguments
 --------------------
@@ -400,5 +422,10 @@ The Console UI recipes are:
 * ``HunyuanImage 2.1``
 * ``HunyuanImage 2.1 Distilled``
 * ``HunyuanImage 2.1 Refiner``
+* ``MiniMax-H3-Image``
+* ``MiniMax-H3-Image (GGUF)``
+* ``MiniMax-H3-Image (GGUF + Encoder)``
+* ``MiniMax-H3-Image (ComfyUI Quant)``
+* ``MiniMax-H3-Image (ComfyUI Quant + Encoder)``
 
 GGUF recipes for those models set ``--transformer`` to a quantized file and leave the parent repository as the model line.

@@ -1,0 +1,23 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Ordered omni-references. Up to 9 images, 3 videos, and 3 audio clips.
+# Audio cannot be the only reference. The order is part of the request.
+# A video reference keeps the frame rate and soundtrack in the file.
+# examples/media has no audio clip, so this uses the boxer still and the
+# rickroll gif. Add a wav or mp3 as a third reference to condition on a voice.
+
+MiniMaxAI/MiniMax-H3
+--model-type minimax-h3-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path minimax-h3-ref2va
+--output-size 1024x576
+--reference-image-processors "resize;size=768x512;align=32" + "resize;size=256x256;align=32"
+--image-seeds "reference=../../media/man-fighting-pose.jpg, ../../media/rickroll-roll.gif"
+--prompts "The man in the image dances with the motion in the video"

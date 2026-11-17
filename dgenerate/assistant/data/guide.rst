@@ -451,6 +451,20 @@ The flag takes no value, or one system prompt for that generation.
 ``--pipeline-prompt-enhance-*`` sampling options apply to that rewrite.
 It loads the Qwen3.5 upsampler.
 Without it the prompt is encoded as given.
+MiniMax-H3-Image is ``--model-type minimax-h3-image``. Repository ``MiniMaxAI/MiniMax-H3-Image``.
+It writes one still image. Guidance is distilled: no negative prompt, no guidance
+scale, and no ``--inference-steps``. The default size is 2048, and both sides are
+multiples of 32. ``--image-seeds`` are reference images, with no mask and no strength.
+The prompt names them Picture 1, Picture 2, and so on.
+MiniMax-H3 is ``--model-type minimax-h3-video``. Repository ``MiniMaxAI/MiniMax-H3``.
+It writes video and audio together at 24 fps, 30 steps. ``--video-lengths`` is 5 to
+15 seconds. No negative prompt and no guidance scale. A still image and
+``last-frame=`` are keyframes. ``reference=`` is images, videos, and audio, and
+cannot be combined with a keyframe. ``--control-nets`` is one Fun control branch,
+``alibaba-pai/MiniMax-H3-Fun-Controlnet-Union-2.0`` with
+``weight-name=MiniMax-H3-Fun-Controlnet-Union-2.0.safetensors``. A bare
+``--image-seeds`` path is the control video. ``mask=`` inpaints. It cannot be
+combined with a keyframe or ``reference=``. GGUF and Comfy quants load through ``--transformer``.
 Kandinsky 6 video is ``--model-type kandinsky6-video``, not Kandinsky 5.
 Lite distilled is ``Kandinsky-6.0-Lite-distill-5s-Diffusers``, 10 steps,
 guidance 1, with audio at 864x480 and 24 fps. Lite, full Lite, and Pro

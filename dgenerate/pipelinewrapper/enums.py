@@ -295,6 +295,12 @@ class ModelType(enum.Enum):
     KANDINSKY6_VIDEO = 39
     """Kandinsky 6.0 text-to-audio-video and image-to-audio-video."""
 
+    MINIMAX_H3 = 40
+    """MiniMax-H3 text, keyframe, and omni-reference to video with audio."""
+
+    MINIMAX_H3_IMAGE = 41
+    """MiniMax-H3-Image text-to-image and reference-image editing."""
+
 
 def supported_model_type_strings():
     """
@@ -338,7 +344,9 @@ def supported_model_type_strings():
             'hyimage-21',
             'hyimage-21-refiner',
             'flux3',
-            'kandinsky6-video']
+            'kandinsky6-video',
+            'minimax-h3-video',
+            'minimax-h3-image']
 
 
 def supported_model_type_enums() -> list[ModelType]:
@@ -407,7 +415,9 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'hyimage-21': ModelType.HYIMAGE_21,
                 'hyimage-21-refiner': ModelType.HYIMAGE_21_REFINER,
                 'flux3': ModelType.FLUX3,
-                'kandinsky6-video': ModelType.KANDINSKY6_VIDEO}[id_str.strip().lower()]
+                'kandinsky6-video': ModelType.KANDINSKY6_VIDEO,
+                'minimax-h3-video': ModelType.MINIMAX_H3,
+                'minimax-h3-image': ModelType.MINIMAX_H3_IMAGE}[id_str.strip().lower()]
     except KeyError:
         if id_str.strip().lower() == 'ltx':
             raise ValueError(_LTX_RENAMED_MESSAGE)
@@ -463,7 +473,9 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.HYIMAGE_21: 'hyimage-21',
             ModelType.HYIMAGE_21_REFINER: 'hyimage-21-refiner',
             ModelType.FLUX3: 'flux3',
-            ModelType.KANDINSKY6_VIDEO: 'kandinsky6-video'}[model_type]
+            ModelType.KANDINSKY6_VIDEO: 'kandinsky6-video',
+            ModelType.MINIMAX_H3: 'minimax-h3-video',
+            ModelType.MINIMAX_H3_IMAGE: 'minimax-h3-image'}[model_type]
 
 
 def model_type_is_sd(model_type: ModelType | str) -> bool:
@@ -722,6 +734,16 @@ def model_type_is_kandinsky6_video(model_type: ModelType | str) -> bool:
     return get_model_type_enum(model_type) == ModelType.KANDINSKY6_VIDEO
 
 
+def model_type_is_minimax_h3(model_type: ModelType | str) -> bool:
+    """MiniMax-H3 video and audio (``--model-type minimax-h3-video``)."""
+    return get_model_type_enum(model_type) == ModelType.MINIMAX_H3
+
+
+def model_type_is_minimax_h3_image(model_type: ModelType | str) -> bool:
+    """MiniMax-H3-Image (``--model-type minimax-h3-image``)."""
+    return get_model_type_enum(model_type) == ModelType.MINIMAX_H3_IMAGE
+
+
 def model_type_is_kandinsky5_family(model_type: ModelType | str) -> bool:
     """Kandinsky 5 image or video."""
     return (model_type_is_kandinsky5_image(model_type)
@@ -764,7 +786,22 @@ def model_type_image_is_condition(model_type: ModelType | str) -> bool:
             or model_type_is_qwen_image_21(model_type)
             or model_type_is_kandinsky5_image(model_type)
             or model_type_is_hyimage_21_refiner(model_type)
-            or model_type_is_flux3(model_type))
+            or model_type_is_flux3(model_type)
+            or model_type_is_minimax_h3_image(model_type))
+
+
+def model_type_seed_images_may_differ(model_type: ModelType | str) -> bool:
+    """Several images in one seed are independent references, not one canvas.
+
+    Stable Cascade, Qwen edit, Qwen-Image 2.1, Flux.2, FLUX.3, and
+    MiniMax-H3-Image resize each image. An img2img batch still has to match.
+    """
+    return (model_type_is_s_cascade_family(model_type)
+            or model_type_is_qwen_image_edit(model_type)
+            or model_type_is_qwen_image_21(model_type)
+            or model_type_is_flux2_family(model_type)
+            or model_type_is_flux3(model_type)
+            or model_type_is_minimax_h3_image(model_type))
 
 
 ADETAILER_NO_INPAINT = (
@@ -800,7 +837,8 @@ def model_type_is_flow_image_family(model_type: ModelType | str) -> bool:
             or model_type_is_krea2(model_type)
             or model_type_is_kandinsky5_image(model_type)
             or model_type_is_hyimage_21_family(model_type)
-            or model_type_is_flux3(model_type))
+            or model_type_is_flux3(model_type)
+            or model_type_is_minimax_h3_image(model_type))
 
 
 def model_type_is_ltx2(model_type: ModelType | str) -> bool:
@@ -851,7 +889,8 @@ def model_type_is_video_family(model_type: ModelType | str) -> bool:
             or model_type_is_hyvideo_15(model_type)
             or model_type_is_motif_video(model_type)
             or model_type_is_kandinsky5_video(model_type)
-            or model_type_is_kandinsky6_video(model_type))
+            or model_type_is_kandinsky6_video(model_type)
+            or model_type_is_minimax_h3(model_type))
 
 
 def model_type_is_ltx_family(model_type: ModelType | str) -> bool:
@@ -968,6 +1007,7 @@ CACHE_DIT_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.FLUX_KONTEXT,
     ModelType.FLUX2,
     ModelType.FLUX2_KLEIN_KV,
+    ModelType.FLUX3,
     ModelType.Z_IMAGE,
     ModelType.Z_IMAGE_OMNI,
     ModelType.QWEN_IMAGE,
@@ -982,6 +1022,9 @@ CACHE_DIT_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.WAN_ANIMATE_2,
     ModelType.HUNYUAN_VIDEO_15,
     ModelType.KANDINSKY5_VIDEO,
+    ModelType.KANDINSKY6_VIDEO,
+    ModelType.MINIMAX_H3,
+    ModelType.MINIMAX_H3_IMAGE,
 )
 """``--model-type`` values with Cache-DiT adapters."""
 

@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Pruned int8 ConvRot text and keyframe transformer.
+# https://huggingface.co/Comfy-Org/MiniMax-H3
+# The parent repo still supplies Qwen3-VL and the VAEs.
+# Pruned files replace the time embedder with adaln_t_table.
+
+MiniMaxAI/MiniMax-H3
+--model-type minimax-h3-video
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors
+--inference-steps 30
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path minimax-h3-comfy-int8
+--output-size 1024x576
+--prompts "A red fox trotting through a snowy pine forest, snow crunching underfoot"

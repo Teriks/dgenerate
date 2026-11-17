@@ -71,14 +71,26 @@ class TestImageSeedSelect(unittest.TestCase):
         finally:
             self._close(root, dialog)
 
-    def test_reference_requires_seed(self):
+    def test_reference_alone_is_a_minimax_seed(self):
         root, dialog, inserted = self._dialog()
         try:
             dialog._seeds.entries[0].delete(0, tk.END)
             dialog._references.add()
             dialog._references.entries[0].insert(0, 'earth.jpg')
             dialog._insert_click()
-            self.assertEqual(inserted, [])
+            self.assertEqual(inserted, ['reference=earth.jpg'])
+        finally:
+            self._close(root, dialog)
+
+    def test_audio_latents_and_align(self):
+        root, dialog, inserted = self._dialog()
+        try:
+            dialog._seeds.entries[0].delete(0, tk.END)
+            dialog._audio_entry.insert(0, 'audio.pt')
+            dialog._align.delete(0, tk.END)
+            dialog._align.insert(0, '32')
+            dialog._insert_click()
+            self.assertEqual(inserted, ['audio-latents=audio.pt;align=32'])
         finally:
             self._close(root, dialog)
 

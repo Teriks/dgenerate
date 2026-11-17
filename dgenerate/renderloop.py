@@ -1473,10 +1473,13 @@ class RenderLoop:
         This is needed for:
 
         - Models using image encoders (like Stable Cascade) where input size doesn't matter
+        - MiniMax-H3-Image, which resizes each reference on its own
         
         :return: True if resizing should be skipped, False otherwise
         """
-        return _pipelinewrapper.model_type_is_s_cascade_family(self._c_config.model_type)
+        model_type = self._c_config.model_type
+        return (_pipelinewrapper.model_type_is_s_cascade_family(model_type)
+                or _pipelinewrapper.model_type_is_minimax_h3_image(model_type))
 
     def _render_with_image_seeds_unmanaged(
             self,
@@ -1564,13 +1567,10 @@ class RenderLoop:
                         reference_image_processor=reference_image_processor,
                         adapter_image_processor=adapter_image_processor,
                         path_opener=self._get_media_reader_path_opener(),
-                        # Cascade style refs and Qwen edit-plus multi-image
-                        # seeds may differ in size; masks are still checked
-                        # later in the pipeline wrapper when present.
+                        # Independent references may differ in size. An inpaint
+                        # mask is still checked against its image in the wrapper.
                         check_dimensions_match=not (
-                            _pipelinewrapper.model_type_is_s_cascade_family(
-                                self._c_config.model_type)
-                            or _pipelinewrapper.model_type_is_qwen_image_edit(
+                            _pipelinewrapper.model_type_seed_images_may_differ(
                                 self._c_config.model_type)))
 
             if seed_info.is_animation:
@@ -1688,7 +1688,8 @@ class RenderLoop:
                     _messages.log(f'Processing Image Seed: "{uri}"', underline=True)
 
                 _videopipelines.classify_video_seed(
-                    self._c_config.model_type, parsed, bool(self._c_config.ltx_ic_lora_uri))
+                    self._c_config.model_type, parsed, bool(self._c_config.ltx_ic_lora_uri),
+                    controlnet=bool(self._c_config.controlnet_uris))
                 overrides = {}
                 if uri is not None and self._c_config.seeds_to_images:
                     overrides['seed'] = [seed_to_image]
@@ -1807,9 +1808,23 @@ class RenderLoop:
                 max_frames = _videopipelines.ltx.ltx_num_frames(
                     diffusion_arguments.video_length, fps)
         output_fps = fps
+        minimax_control = (
+            _pipelinewrapper.model_type_is_minimax_h3(model_type)
+            and bool(self._c_config.controlnet_uris))
         opening, end, control = _videopipelines.video_seed_slots(
-            parsed, bool(self._c_config.ltx_ic_lora_uri))
-        if opening:
+            parsed, bool(self._c_config.ltx_ic_lora_uri),
+            control_guidance=minimax_control)
+        if minimax_control:
+            if control:
+                diffusion_arguments.minimax_control_frames = self._load_minimax_control_clip(
+                    control, parsed, processors['control'], owned_images)
+            if opening and parsed.mask_images:
+                diffusion_arguments.minimax_inpaint_frames = self._load_minimax_control_clip(
+                    opening, parsed, processors['start'], owned_images)
+            if parsed.mask_images:
+                diffusion_arguments.minimax_mask_frames = self._load_minimax_control_clip(
+                    parsed.mask_images[0], parsed, processors['mask'], owned_images)
+        elif opening:
             frames = self._load_video_media(
                 opening, parsed, processors['start'], owned_images,
                 max_frames, output_fps)
@@ -1828,7 +1843,7 @@ class RenderLoop:
                 diffusion_arguments.end_images = frames
             else:
                 diffusion_arguments.end_video_frames = frames
-        if control:
+        if control and not minimax_control:
             frames = self._load_video_media(
                 control, parsed, processors['control'], owned_images,
                 max_frames, output_fps)
@@ -1836,13 +1851,16 @@ class RenderLoop:
                 diffusion_arguments.vace_video_frames = frames
             else:
                 diffusion_arguments.reference_video_frames = frames
-        if parsed.mask_images:
+        if parsed.mask_images and not minimax_control:
             frames = self._load_video_media(
                 parsed.mask_images[0], parsed, processors['mask'], owned_images,
                 max_frames, output_fps)
             diffusion_arguments.mask_video_frames = frames
             diffusion_arguments.vace_mask_frames = frames
-        if parsed.reference_images:
+        if parsed.reference_images and _pipelinewrapper.model_type_is_minimax_h3(model_type):
+            diffusion_arguments.reference_media_paths = self._load_minimax_references(
+                parsed, processors.get('reference'), owned_images)
+        elif parsed.reference_images:
             refs = []
             reference_processor = processors.get('reference')
             if not isinstance(reference_processor, list):
@@ -1870,6 +1888,16 @@ class RenderLoop:
             diffusion_arguments.wan_background_video_frames = self._load_video_media(
                 parsed.wan_background_video, parsed, processors.get('wan_background'), owned_images,
                 None, output_fps)
+        if _pipelinewrapper.model_type_is_minimax_h3(model_type):
+            if parsed.latents:
+                if len(parsed.latents) != 1:
+                    raise _pipelinewrapper.UnsupportedPipelineConfigError(
+                        'minimax-h3-video accepts one video latent file in latents=.')
+                diffusion_arguments.latents = _mediainput.load_tensor_file(
+                    parsed.latents[0], parsed.latents[0])
+            if parsed.audio_latents:
+                diffusion_arguments.audio_latents = _mediainput.load_tensor_file(
+                    parsed.audio_latents, parsed.audio_latents)
         if parsed.wan_driving_video:
             driving_fps = []
             # Wan-Animate-2 resamples the driving clip to --video-fps inside
@@ -1905,6 +1933,90 @@ class RenderLoop:
                     extra.ltx_condition_strength))
             if extras:
                 diffusion_arguments.ltx_extra_conditions = extras
+
+    def _load_minimax_references(self, parsed, processor, owned_images: list) -> list:
+        """
+        MiniMax-H3 ``reference=`` media, preprocessed when a processor or resize is set.
+
+        Audio stays a path. An image or a video is decoded, trimmed by the frame
+        range, resized by the image seed, and run through
+        ``--reference-image-processors``. A resize or a processor keeps that
+        pixel size. The pipeline otherwise scales an image to a 2048 short edge
+        and a video onto the 768 canvas.
+        """
+        import dgenerate.pipelinewrapper.minimaxh3 as _minimax
+
+        if isinstance(processor, list):
+            processors = processor
+        else:
+            processors = (
+                [processor] * len(parsed.reference_images)
+                if processor is not None else
+                [None] * len(parsed.reference_images))
+        frame_range = any(value is not None for value in (
+            parsed.frame_start, parsed.frame_end,
+            self._c_config.frame_start, self._c_config.frame_end))
+        sized = bool(parsed.resize_resolution)
+        loaded = []
+        for index, path in enumerate(parsed.reference_images):
+            chain = processors[index] if index < len(processors) else None
+            if _minimax.reference_kind(path) == 'audio':
+                if chain is not None:
+                    _messages.warning(
+                        '--reference-image-processors does not run on an audio reference. '
+                        f'Leaving "{path}" unchanged.')
+                loaded.append(path)
+                continue
+            if chain is None and not sized and not frame_range:
+                loaded.append(path)
+                continue
+            fps_out = []
+            frames = self._load_video_media(
+                path, parsed, chain, owned_images,
+                None, _minimax.FPS, fps_out=fps_out, resample_fps=True)
+            kind = 'video' if len(frames) > 1 or _minimax.reference_kind(path) == 'video' else 'image'
+            loaded.append({
+                'kind': kind,
+                'path': path,
+                'frames': frames,
+                'fps': fps_out[0] if fps_out else None,
+                'honor_size': chain is not None or sized,
+            })
+        return loaded
+
+    def _load_minimax_control_clip(self, path, parsed, processor, owned_images: list):
+        """One control, inpaint, or mask clip at 24 fps, without the LTX frame cap."""
+        import dgenerate.pipelinewrapper.minimaxh3 as _minimax
+
+        fps_out = []
+        frames = self._load_video_media(
+            path, parsed, processor, owned_images,
+            None, _minimax.FPS, fps_out=fps_out, resample_fps=False)
+        source_fps = fps_out[0] if fps_out else None
+        if source_fps is None or len(frames) <= 1 or abs(source_fps - _minimax.FPS) <= 0.5:
+            return frames
+        count = max(1, int(round(len(frames) * _minimax.FPS / source_fps)))
+        if count == len(frames):
+            return frames
+        if count == 1:
+            indices = [0]
+        else:
+            last = len(frames) - 1
+            indices = [min(last, int(round(i * last / (count - 1)))) for i in range(count)]
+        resampled = []
+        seen = set()
+        for index in indices:
+            frame = frames[index]
+            if index in seen:
+                frame = frame.copy()
+                owned_images.append(frame)
+            else:
+                seen.add(index)
+            resampled.append(frame)
+        _messages.log(
+            f'Resampled "{path}" from {source_fps:g} fps to {_minimax.FPS:g} fps '
+            f'({len(resampled)} frames).')
+        return resampled
 
     def _load_video_media(self, path, parsed, processor, owned_images: list,
                           max_frames: int | None, output_fps: float | None,

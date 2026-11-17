@@ -1,0 +1,23 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Same references as config.dgen, on the ref2va curve Q4_0 GGUF and the
+# int8 Qwen3-VL encoder. The parent repo supplies the VAEs.
+# https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF
+
+MiniMaxAI/MiniMax-H3
+--model-type minimax-h3-video
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/ref2va/MiniMax-H3-ref2va-curve-Q4_0.gguf
+--text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors"
+--inference-steps 30
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path minimax-h3-ref2va-gguf
+--output-size 1024x576
+--reference-image-processors "resize;size=768x512;align=32" + "resize;size=256x256;align=32"
+--image-seeds "reference=../../media/man-fighting-pose.jpg, ../../media/rickroll-roll.gif"
+--prompts "The man in the image dances with the motion in the video"

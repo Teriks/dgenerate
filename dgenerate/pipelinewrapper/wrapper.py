@@ -512,6 +512,9 @@ def _resolve_omitted_sampling(
         elif _enums.model_type_is_flux3(model_type):
             import dgenerate.pipelinewrapper.flux3 as _flux3
             user_args.inference_steps = 16 if _flux3.is_distilled(pipeline) else 50
+        elif _enums.model_type_is_minimax_h3_image(model_type):
+            import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+            user_args.inference_steps = _minimax_image.INFERENCE_STEPS
         else:
             _sampling.resolved_inference_steps(source, user_args)
 
@@ -526,6 +529,8 @@ def _resolve_omitted_sampling(
         elif _enums.model_type_is_flux3(model_type):
             import dgenerate.pipelinewrapper.flux3 as _flux3
             user_args.guidance_scale = 1.0 if _flux3.is_distilled(pipeline) else 3.5
+        elif _enums.model_type_is_minimax_h3_image(model_type):
+            user_args.guidance_scale = 1.0
         elif (_enums.model_type_is_hyimage_21_family(model_type)
               and (_enums.model_type_is_hyimage_21_refiner(model_type)
                    or _loaded_pipeline_config_flag(pipeline, 'guidance_embeds', False))):
@@ -820,7 +825,7 @@ class PipelineWrapper:
                     'qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, hydit, hyimage-21, '
                     'hyimage-21-refiner, ltx2, ltx-video, wan, wan-animate, '
                     'wan-animate-2, hyvideo-15, motif-video, kandinsky5-video, '
-                'kandinsky6-video, and flux3.')
+                'kandinsky6-video, minimax-h3-video, and flux3.')
 
         if wan_second_transformer_uri:
             if not (_enums.model_type_is_wan(model_type) or _enums.model_type_is_wan_animate(model_type)):
@@ -867,7 +872,8 @@ class PipelineWrapper:
             'text_encoder_3',
             'image_encoder',
             'controlnet',
-            'connectors'
+            'connectors',
+            'transformer_ref',
         ]
 
         if quantizer_map is not None:
@@ -2117,6 +2123,8 @@ class PipelineWrapper:
             return 32
         if _enums.model_type_is_hyimage_21_family(self._model_type):
             return 32
+        if _enums.model_type_is_minimax_h3_image(self._model_type):
+            return 32
         if _enums.model_type_is_hydit(self._model_type):
             return 16
         if _enums.model_type_is_flow_image_family(self._model_type):
@@ -2419,6 +2427,11 @@ class PipelineWrapper:
         elif _enums.model_type_is_hyimage_21_family(self._model_type):
             self._inference_height = _types.default(height, _constants.DEFAULT_HYIMAGE21_OUTPUT_HEIGHT)
             self._inference_width = _types.default(width, _constants.DEFAULT_HYIMAGE21_OUTPUT_WIDTH)
+        elif _enums.model_type_is_minimax_h3_image(self._model_type):
+            self._inference_height = _types.default(
+                height, _constants.DEFAULT_MINIMAX_H3_IMAGE_OUTPUT_HEIGHT)
+            self._inference_width = _types.default(
+                width, _constants.DEFAULT_MINIMAX_H3_IMAGE_OUTPUT_WIDTH)
         elif _enums.model_type_is_floyd_if(self._model_type):
             self._inference_height = _types.default(height, _constants.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
             self._inference_width = _types.default(width, _constants.DEFAULT_FLOYD_IF_OUTPUT_WIDTH)
@@ -3561,6 +3574,9 @@ class PipelineWrapper:
                     'The distilled FLUX.3 checkpoint has no classifier-free guidance. '
                     'The negative prompt is being ignored.')
             pipeline_args['output'] = 'latents' if user_args.output_latents else 'images'
+        elif _enums.model_type_is_minimax_h3_image(self._model_type):
+            import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+            _minimax_image.prepare_call(pipeline_args, user_args, prompt)
 
         self._set_accepted_call_argument(
             pipeline_args, 'caption_upsample_temperature',
@@ -3671,6 +3687,11 @@ class PipelineWrapper:
 
         flux3_system_prompt = contextlib.nullcontext()
         flux3_sampling = contextlib.nullcontext()
+        if _enums.model_type_is_minimax_h3_image(self._model_type):
+            import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+            _minimax_image.prepare_call(
+                pipeline_args, user_args,
+                _types.default(user_args.prompt, _prompt.Prompt()))
         if _enums.model_type_is_flux3(self._model_type):
             import dgenerate.pipelinewrapper.flux3 as _flux3_call
             import dgenerate.pipelinewrapper.promptenhance as _promptenhance
@@ -3706,6 +3727,10 @@ class PipelineWrapper:
             if _enums.model_type_is_flux3(self._model_type):
                 import dgenerate.pipelinewrapper.flux3 as _flux3
                 pipeline_output = type('_Flux3Images', (), {
+                    'images': _flux3.images_from_call(pipeline_output)})()
+            elif _enums.model_type_is_minimax_h3_image(self._model_type):
+                import dgenerate.pipelinewrapper.flux3 as _flux3
+                pipeline_output = type('_MiniMaxH3Images', (), {
                     'images': _flux3.images_from_call(pipeline_output)})()
             return self._create_pipeline_result(pipeline_output, output_type, user_args, pipeline_args)
 
@@ -3824,7 +3849,8 @@ class PipelineWrapper:
                 device=self._device,
                 offload_enabled=offload_enabled,
                 compile_enabled=self._torch_compile,
-                quantizer_enabled=quantizer_enabled) as configured_pipeline:
+                quantizer_enabled=quantizer_enabled,
+                guidance_scale=user_args.guidance_scale) as configured_pipeline:
             call_pipeline = configured_pipeline
             if getattr(configured_pipeline, '_cache_dit_ray_pipeline_enabled', False):
                 call_pipeline = _get_cache_dit_ray_pipeline_call_proxy(configured_pipeline)
@@ -3917,7 +3943,8 @@ class PipelineWrapper:
                     offload_enabled=(self._model_cpu_offload or self._model_sequential_offload or
                                      self._model_group_offload),
                     compile_enabled=self._torch_compile,
-                    quantizer_enabled=bool(self._quantizer_uri)
+                    quantizer_enabled=bool(self._quantizer_uri),
+                    guidance_scale=user_args.guidance_scale
             ) as configured_pipeline:
                 asdff_pipe = _asdff_base.AdPipelineBase(configured_pipeline)
 
@@ -5512,13 +5539,19 @@ class PipelineWrapper:
         return '\n\n'.join(help_text)
 
     def _set_scheduler_and_vae_settings(self, args):
+        scheduler_uri = args.scheduler_uri
+        if _enums.model_type_is_minimax_h3_image(self._model_type) and scheduler_uri:
+            import dgenerate.pipelinewrapper.videopipelines.minimax as _minimax_video
+            self._pipeline.scheduler = _minimax_video._overlay_scheduler(
+                self._pipeline.scheduler, scheduler_uri)
+            scheduler_uri = None
         second_model_scheduler_uri = _types.default(
             args.second_model_scheduler_uri,
-            args.scheduler_uri
+            scheduler_uri
         )
         _schedulers.load_scheduler(
             pipeline=self._pipeline,
-            scheduler_uri=args.scheduler_uri
+            scheduler_uri=scheduler_uri
         )
         if self._sdxl_refiner_pipeline:
             _schedulers.load_scheduler(
@@ -5535,6 +5568,16 @@ class PipelineWrapper:
             tiling=args.vae_tiling,
             slicing=args.vae_slicing
         )
+        if (_enums.model_type_is_minimax_h3_image(self._model_type)
+                and not args.vae_tiling
+                and getattr(self._pipeline, 'vae', None) is not None
+                and hasattr(self._pipeline.vae, 'enable_tiling')):
+            # The image VAE is built to decode in overlapping tiles. A full-frame
+            # decode leaves a dark edge on every 16-pixel latent cell.
+            self._pipeline.vae.enable_tiling()
+            _messages.debug_log(
+                'minimax-h3-image keeps VAE tiling enabled. '
+                'A full-frame decode draws a grid across the image.')
 
     def _auto_denoise_range_check(self, args: _arguments.GenerationArguments):
         if _enums.model_type_is_sdxl_family(self._model_type):
@@ -6106,8 +6149,12 @@ class PipelineWrapper:
             _, h, w = latents.shape
 
         # The scale factor is fixed at 8 due to the VAE architecture having 3 downsampling blocks
-        # This is true for SD1.5, SDXL, and most other stable diffusion VAEs
-        scale_factor = 8
+        # This is true for SD1.5, SDXL, and most other stable diffusion VAEs.
+        # MiniMax-H3-Image compresses each side by 16.
+        if _enums.model_type_is_minimax_h3_image(self.model_type):
+            scale_factor = getattr(self._pipeline, 'vae_spatial_compression_ratio', 16)
+        else:
+            scale_factor = 8
 
         # Calculate the decoded size
         height = h * scale_factor
@@ -6217,6 +6264,24 @@ class PipelineWrapper:
                 # Flux.1 and Z-Image: spatial latents with scale/shift.
                 latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
                 decoded_images = vae.decode(latents).sample
+            elif _enums.model_type_is_minimax_h3_image(self.model_type):
+                latents_mean = (
+                    torch.tensor(vae.config.latents_mean)
+                    .view(1, -1, 1, 1)
+                    .to(latents.device, latents.dtype)
+                )
+                latents_std = (
+                    torch.tensor(vae.config.latents_std)
+                    .view(1, -1, 1, 1)
+                    .to(latents.device, latents.dtype)
+                )
+                latents = latents * latents_std + latents_mean
+                decoded_images = vae.decode(latents, return_dict=False)[0]
+                pixel_mean = torch.tensor(
+                    (0.485, 0.456, 0.406), device=decoded_images.device).view(1, -1, 1, 1)
+                pixel_std = torch.tensor(
+                    (0.229, 0.224, 0.225), device=decoded_images.device).view(1, -1, 1, 1)
+                decoded_images = (decoded_images.float() * pixel_std + pixel_mean).clamp(0, 1)
             elif (_enums.model_type_is_flux2_family(self.model_type)
                     or _enums.model_type_is_flux3(self.model_type)):
                 # Stored unpatchified denoise-space latents. Flux.2 and FLUX.3

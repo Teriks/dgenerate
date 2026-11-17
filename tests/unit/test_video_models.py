@@ -319,7 +319,7 @@ class TestVideoModels(unittest.TestCase):
 
     def test_unknown_video_type_is_rejected(self):
         with self.assertRaises(ValueError):
-            _pipelinewrapper.get_model_type_enum('minimax-h3')
+            _pipelinewrapper.get_model_type_enum('not-a-video-model')
         with self.assertRaises(ValueError):
             _pipelinewrapper.get_model_type_enum('hunyuan-video')
         self.assertFalse(_pipelinewrapper.model_type_is_video_family(_pipelinewrapper.ModelType.FLUX))

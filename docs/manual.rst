@@ -281,8 +281,8 @@ Help Output
             flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
             qwen-image-layered, ltx2, ltx-video, wan, wan-animate, wan-animate-2, qwen-image-21, krea2,
             kandinsky5-image, kandinsky5-video, hyvideo-15, motif-video, hydit, hyimage-21, hyimage-21-refiner,
-            flux3, or kandinsky6-video. (default: sd)
-            -----------------------------------------
+            flux3, kandinsky6-video, minimax-h3-video, or minimax-h3-image. (default: sd)
+            -----------------------------------------------------------------------------
       -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -628,7 +628,7 @@ Help Output
             * Qwen2_5_VLTextModel (HunyuanVideo 1.5)
             * Qwen3ForCausalLM (Flux.2 Klein)
             * Qwen3Model (Z-Image)
-            * Qwen3VLForConditionalGeneration (Qwen-Image 2.1, FLUX.3)
+            * Qwen3VLForConditionalGeneration (Qwen-Image 2.1, FLUX.3, MiniMax-H3)
             * Qwen3VLModel (Krea 2)
             
             "weight-name" selects one file in a repository or a folder. "subfolder" is the directory of that
@@ -695,13 +695,15 @@ Help Output
             Specify a replacement diffusion transformer using a URI. compile=true compiles this transformer's
             repeated blocks. This is accepted for Stable Diffusion 3, Flux, Flux.2, Flux.2 Klein KV, FLUX.3,
             Z-Image, Z-Image Omni, Qwen-Image, Qwen-Image edit, Qwen-Image layered, Qwen-Image 2.1, Krea 2,
-            Kandinsky 5 image and video, Kandinsky 6 video, Hunyuan-DiT, HunyuanImage 2.1, HunyuanVideo 1.5,
-            Motif-Video, LTX, Wan, and Wan-Animate. ``--model-type ltx2``, ``ltx-video``, ``wan``,
-            ``wan-animate``, ``wan-animate-2``, and ``kandinsky6-video`` accept one replacement diffusion
-            transformer. Wan 2.2 MoE checkpoints can load the low-noise expert with --wan-second-transformer. A
-            FLUX.3 GGUF in Comfy layout is renamed onto Flux3Transformer2DModel. Pair a distilled GGUF with the
-            distilled Klein repository and a base GGUF with the base repository, so flow_map matches the
-            checkpoint.
+            Kandinsky 5 image and video, Kandinsky 6 video, MiniMax-H3, Hunyuan-DiT, HunyuanImage 2.1,
+            HunyuanVideo 1.5, Motif-Video, LTX, Wan, and Wan-Animate. ``--model-type ltx2``, ``ltx-video``,
+            ``wan``, ``wan-animate``, ``wan-animate-2``, ``kandinsky6-video``, and ``minimax-h3-video`` accept
+            one replacement diffusion transformer. Wan 2.2 MoE checkpoints can load the low-noise expert with
+            --wan-second-transformer. A MiniMax-H3 GGUF or Comfy safetensors file loads with
+            --transformer. Full files and pruned curve files both load. ``t2va`` and ``fl2va``
+            load the file as transformer/. ``ref2va`` loads it as transformer_ref/. A FLUX.3 GGUF in Comfy
+            layout is renamed onto Flux3Transformer2DModel. Pair a distilled GGUF with the distilled Klein
+            repository and a base GGUF with the base repository, so flow_map matches the checkpoint.
             
             Examples:
             
@@ -1309,8 +1311,15 @@ Help Output
             
             For --model-type kandinsky6-video the accepted names are FlowMatchEulerDiscreteScheduler and
             PiflowScheduler. A distilled checkpoint ships PiflowScheduler; omitting --scheduler keeps it. For
-            --model-type flux3, omit --scheduler. The modular pipeline keeps the checkpoint scheduler, and other
-            names are not registered.
+            --model-type minimax-h3-video, omit --scheduler. The checkpoint keeps a video scheduler at shift 12
+            and an audio scheduler at shift 3.
+            
+            For --model-type flux3 the only accepted scheduler is FlowMatchEulerDiscreteScheduler. URI arguments
+            overlay the checkpoint scheduler. Other names are rejected. Omitting this option keeps the checkpoint
+            scheduler.
+            
+            For --model-type minimax-h3-image the only accepted scheduler is MiniMaxH3Scheduler. URI arguments
+            overlay the checkpoint scheduler. The six-step sigma grid stays fixed. Other names are rejected.
             
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
@@ -1661,9 +1670,9 @@ Help Output
             --spectrum, --sada, --ras, or --dype.
             
             This is supported for: --model-type sd3, sd3-pix2pix, flux, flux-fill, flux-kontext, flux2,
-            flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, krea2,
-            kandinsky5-image, ltx2, ltx-video, wan, wan-animate, wan-animate-2, hyvideo-15, and
-            kandinsky5-video.
+            flux2-klein-kv, flux3, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered,
+            krea2, kandinsky5-image, ltx2, ltx-video, wan, wan-animate, wan-animate-2, hyvideo-15,
+            kandinsky5-video, kandinsky6-video, minimax-h3-video, and minimax-h3-image.
             
             See: https://cache-dit.readthedocs.io/en/latest/
             ------------------------------------------------
@@ -1732,12 +1741,12 @@ Help Output
             
             The file uses Cache-DiT's native YAML sections. Layerwise offload is configured as a mapping from
             pipeline component names to Cache-DiT layerwise_offload options. Supported --model-type values: sd3,
-            sd3-pix2pix, flux, flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni,
+            sd3-pix2pix, flux, flux-fill, flux-kontext, flux2, flux2-klein-kv, flux3, z-image, z-image-omni,
             qwen-image, qwen-image-edit, qwen-image-layered, krea2, kandinsky5-image, ltx2, ltx-video, wan,
-            wan-animate, wan-animate-2, hyvideo-15, and kandinsky5-video. See:
-            https://cache-dit.readthedocs.io/en/latest/user_guide/LOAD_CONFIGS/ Layerwise offload:
-            https://cache-dit.readthedocs.io/en/latest/user_guide/OFFLOAD/
-            --------------------------------------------------------------
+            wan-animate, wan-animate-2, hyvideo-15, kandinsky5-video, kandinsky6-video, minimax-h3-video, and
+            minimax-h3-image. See: https://cache-dit.readthedocs.io/en/latest/user_guide/LOAD_CONFIGS/ Layerwise
+            offload: https://cache-dit.readthedocs.io/en/latest/user_guide/OFFLOAD/
+            -----------------------------------------------------------------------
       -tcr, --tea-cache-rel-l1-thresholds [FLOAT ...]
             TeaCache relative L1 thresholds to try when --tea-cache is enabled.
             
@@ -2718,9 +2727,21 @@ Help Output
             strength. Several images are several references, up to 10. One reference keeps its own size unless
             --output-size is set.
             
+            For --model-type minimax-h3-image, --image-seeds are reference images. There is no mask and no
+            img2img strength. The prompt names them Picture 1, Picture 2, and so on. The checkpoint samples 6
+            steps with distilled guidance, so omit --inference-steps, --guidance-scales, a negative prompt, and
+            --scheduler. The default size is 2048. A smaller request is generated on a larger canvas and resized
+            back. Latents interchange is not supported: the six steps and their output heads are fixed, so omit
+            --output-latents, latents:, --denoising-start, and --denoising-end.
+            
             For --model-type kandinsky6-video, one still image is the first frame of the clip. A mask, a second
             image, or a control image is rejected.
-            --------------------------------------
+            
+            For --model-type minimax-h3-video, no image seed is text to video and audio. One still, last-frame=,
+            or both, are keyframes. reference= is an ordered mix of images, videos, and audio (at most 9 images,
+            3 videos, 3 audio, 12 total) and cannot be combined with a keyframe. Audio references cannot be the
+            only references. latents= replaces the video noise and audio-latents= replaces the audio noise.
+            -----------------------------------------------------------------------------------------------
       -sip, --seed-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on the primary img2img image(s) specified by
             --image-seeds.
@@ -3030,8 +3051,9 @@ Help Output
             Omitting this lets the pipeline choose. RegionE uses 28. Qwen-Image 2.1 uses 40, or the length of
             the checkpoint's sample sigma list when it has one. Krea 2 uses 8 when the checkpoint is distilled
             and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the refiner. Kandinsky 5 Image uses 50. FLUX.3
-            uses 16 on the distilled checkpoint and 50 on the base checkpoint. Kandinsky 6 video uses 10 when
-            the loaded scheduler is PiflowScheduler and 50 otherwise.
+            uses 16 on the distilled checkpoint and 50 on the base checkpoint.                     Kandinsky 6
+            video uses 10 when the loaded scheduler is PiflowScheduler and 50 otherwise. MiniMax-H3 uses 30.
+            That count includes the terminal sigma, so the model runs one evaluation fewer.
             
             For --model-type ltx-video, omitted values follow the loaded LTXPipeline __call__ defaults
             (typically guidance 3 and 50 steps). A value you set is passed as written.
@@ -3061,13 +3083,19 @@ Help Output
             Kandinsky 6 snaps the same way and is trained for 5 seconds at 24 fps (121 frames). The clip
             includes audio. There is no separate audio option.
             
+            MiniMax-H3 snaps up to the next 17n+5 frames at 24 fps. A request can be 5 to 15 seconds. The clip
+            comes out between 5.17 seconds (124 frames) and 14.38 seconds (345 frames). Omit this option and the
+            clip is 124 frames, 5.17 seconds. The soundtrack is generated with the video.
+            There is no separate audio length.
+            
             (default: model chooses)
             ------------------------
       --video-fps FPS [FPS ...]
             One or more output frame rates for video model types. Each value will be tried in turn.
             
-            Defaults to 24 for --model-type ltx2, ltx-video, motif-video, wan-animate-2, kandinsky5-video, and
-            kandinsky6-video; 15 for hyvideo-15; 16 for wan; and 30 for wan-animate.
+            Defaults to 24 for --model-type ltx2, ltx-video, motif-video, wan-animate-2, kandinsky5-video,
+            kandinsky6-video, and minimax-h3-video; 15 for hyvideo-15; 16 for wan; and 30 for wan-animate.
+            minimax-h3-video always generates at 24 fps.
             
             (default: model type default)
             -----------------------------
@@ -3400,7 +3428,8 @@ Help Output
             For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
             
             For SD3, Flux, Flux.2, FLUX.3, Qwen-Image, Qwen-Image 2.1, Krea 2, Kandinsky 5 Image, and Z-Image,
-            FlowMatchEulerDiscreteScheduler is supported.
+            FlowMatchEulerDiscreteScheduler is supported. --model-type minimax-h3-image does not support
+            --denoising-start. Its six steps each have their own output head.
             
             Example: --denoising-start 0.8
             
@@ -3428,7 +3457,8 @@ Help Output
             For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
             
             For SD3, Flux, Flux.2, FLUX.3, Qwen-Image, Qwen-Image 2.1, Krea 2, Kandinsky 5 Image, and Z-Image,
-            FlowMatchEulerDiscreteScheduler is supported.
+            FlowMatchEulerDiscreteScheduler is supported. --model-type minimax-h3-image does not support
+            --denoising-end. Its six steps each have their own output head.
             
             Example: --denoising-end 0.5
             
@@ -5044,6 +5074,101 @@ keeping the parent Diffusers repository as the model path.
 * `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/gguf/text-to-video-config.dgen>`_
 * `GGUF as the model <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/gguf/as-model-config.dgen>`_
 
+MiniMax-H3
+----------
+
+Use ``--model-type minimax-h3-video`` with ``MiniMaxAI/MiniMax-H3``. One denoising
+loop writes the video and a stereo soundtrack. There is no separate vocoder.
+The checkpoint is guidance-distilled, so omit ``--guidance-scales`` and do not
+pass a negative prompt. The only scheduler name is ``MiniMaxH3Scheduler``.
+``--scheduler`` overlays the video scheduler, which starts at shift 12.
+``--second-model-scheduler`` overlays the audio scheduler, which starts at
+shift 3, and does not inherit ``--scheduler``. Omitting either keeps that
+checkpoint scheduler. ``--inference-steps`` defaults to
+30. That count includes the terminal sigma, so the model runs 29 evaluations.
+
+The frame rate is 24. ``--video-lengths`` is seconds and snaps up to the next
+``17n+5`` frames. A request can be 5 to 15 seconds. The clip comes out between
+5.17 seconds (124 frames) and 14.38 seconds (345 frames). Omit the
+option and the clip is 124 frames, 5.17 seconds. Height and width are multiples of 32. Omit
+``--output-size`` and the canvas follows the first keyframe, or 16:9 when
+there is no keyframe.
+
+The image seed selects the workflow:
+
+* No image seed is text to video and audio. This loads ``transformer/``.
+* One still image is the opening keyframe. ``last-frame=`` is the closing
+  keyframe, alone or with the opening image. This also loads ``transformer/``.
+* ``reference=`` is an ordered list of images, videos, and audio clips and
+  loads ``transformer_ref/``. At most 9 images, 3 videos, 3 audio clips, and
+  12 references in total. An audio reference has to be paired with an image
+  or a video. A keyframe and ``reference=`` cannot be combined. A video
+  reference keeps the frame rate and soundtrack reported by the file.
+  With neither ``--reference-image-processors`` nor ``resize=``, an image
+  reference is scaled to a 2048 short edge and a video reference is placed on
+  the 768 canvas. With either one, that frame size, snapped to a multiple of
+  32, is what the video VAE encodes. An audio reference is left unchanged.
+
+``--control-nets`` loads one MiniMax-H3 Fun control branch on top of the text
+to video transformer. This is not a Diffusers ControlNet. The published weights
+are ``alibaba-pai/MiniMax-H3-Fun-Controlnet-Union-2.0`` with
+``weight-name=MiniMax-H3-Fun-Controlnet-Union-2.0.safetensors``. ``scale`` is
+the control strength. A bare ``--image-seeds`` path is the control video, for
+example canny, depth, or pose. ``"source.mp4;mask=mask.mp4"`` inpaints, and
+``control=`` can be added. White mask pixels are regenerated. Omit
+``--output-size`` and the canvas follows that video, snapped down to a multiple
+of 32. The branch was trained on text to video, so a keyframe or ``reference=``
+cannot be combined with it.
+
+``latents=`` replaces the video noise. ``audio-latents=`` replaces the audio noise.
+
+``--transformer`` replaces the denoiser and leaves Qwen3-VL and the VAEs on
+the model path. The file can be Diffusers weights, a ComfyUI safetensors file,
+or a GGUF. A name containing ``fl2va`` is the text and keyframe transformer.
+A name containing ``ref2va`` is the reference transformer.
+
+``--loras`` loads a LoRA onto the transformer for the workflow above. On a
+full-precision checkpoint it is fused into the weights. With ``--quantizer``,
+pass ``--lora-disk-fuse`` so that fuse is cached before quantization. A GGUF
+or Comfy ``--transformer`` keeps the LoRA on the packed weights.
+
+The examples use sequential CPU offload. ``--model-cpu-offload``,
+``--model-sequential-offload``, and ``--model-group-offload`` place the text
+encoder and transformer the same way: each visits the GPU for its forward
+and returns to CPU.
+
+See `examples/minimax_h3_video/text_to_video/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/text_to_video/config.dgen>`_,
+`examples/minimax_h3_video/keyframes/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/keyframes/config.dgen>`_,
+`examples/minimax_h3_video/references/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/references/config.dgen>`_,
+and `examples/minimax_h3_video/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/controlnet/config.dgen>`_.
+
+.. code-block:: shell
+
+    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
+        --model-sequential-offload --inference-steps 30 --video-lengths 5 \\
+        --animation-format mp4 --output-size 1344x768 \\
+        --prompts "A red fox trotting through a snowy pine forest, snow crunching underfoot"
+
+    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
+        --model-sequential-offload --video-lengths 5 --animation-format mp4 \\
+        --output-size 1024x576 \\
+        --image-seeds "examples/media/man-fighting-pose.jpg;last-frame=examples/media/beach.jpg" \\
+        --prompts "The man in the opening frame walks onto the beach in the closing frame"
+
+    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
+        --model-sequential-offload --video-lengths 5 --animation-format mp4 \\
+        --output-size 1024x576 \\
+        --image-seeds "reference=examples/media/man-fighting-pose.jpg, examples/media/rickroll-roll.gif" \\
+        --prompts "The man in the image dances with the motion in the video"
+
+    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
+        --model-sequential-offload --video-lengths 5 --animation-format mp4 \\
+        --output-size 1024x576 \\
+        --control-nets "alibaba-pai/MiniMax-H3-Fun-Controlnet-Union-2.0;weight-name=MiniMax-H3-Fun-Controlnet-Union-2.0.safetensors" \\
+        --control-image-processors "openpose;include-hand=true;include-face=true" \\
+        --image-seeds examples/media/rickroll-roll.gif \\
+        --prompts "A person dancing, following the pose in the control video"
+
 Kandinsky 5.0 Video
 -------------------
 
@@ -6002,7 +6127,7 @@ Neither pipeline takes a negative prompt. There is no img2img strength and no Co
 A mask is Klein inpaint only. Full Flux.2 rejects a mask.
 
 Full Flux.2
-~~~~~~~~~~~
+-----------
 
 ``black-forest-labs/FLUX.2-dev`` is gated. Guidance 4 and 50 steps. The text encoder is Mistral.
 
@@ -6030,7 +6155,7 @@ Hidden width 6144 selects the dev config. Do not set ``quantizer=`` on that URI.
 See `examples/flux2/gguf/dev-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/gguf/dev-config.dgen>`_.
 
 Flux.2 Klein
-~~~~~~~~~~~~
+------------
 
 Klein encodes prompts with Qwen3. ``--flux2-text-encoder-out-layers`` defaults
 to ``9,18,27``.
@@ -6058,7 +6183,7 @@ base-9B transformer config.
 See `examples/flux2/gguf/klein-4b-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/gguf/klein-4b-config.dgen>`_.
 
 Flux.2 Klein KV
-~~~~~~~~~~~~~~~
+---------------
 
 ``--model-type flux2-klein-kv`` is ``black-forest-labs/FLUX.2-klein-9b-kv``. Gated.
 
@@ -6120,7 +6245,7 @@ The pipeline rebuilds the ControlNet with ``from_transformer`` against the loade
 On a Z-Image ControlNet the transformer is offloaded before the ControlNet, because those two objects share modules.
 
 Z-Image Omni
-~~~~~~~~~~~~
+------------
 
 ``--model-type z-image-omni`` is Z-Image with an optional SigLIP condition image.
 
@@ -6181,7 +6306,7 @@ See `examples/qwen_image/controlnet/canny-config.dgen <https://github.com/Teriks
 and `examples/qwen_image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/controlnet/inpaint-config.dgen>`_.
 
 Qwen-Image 2.1
-~~~~~~~~~~~~~~
+--------------
 
 ``--model-type qwen-image-21`` is Qwen-Image 2.1's text-to-image and image-conditioned pipeline.
 
@@ -6209,7 +6334,7 @@ Qwen-Image 2.1 also supports LoRAs, a GGUF transformer through ``--transformer``
 * `Cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/qwen_image_21/cooperative-denoising-config.dgen>`_
 
 Krea 2
-~~~~~~
+------
 
 ``--model-type krea2`` is text-to-image only. There is no image-seed editing, no inpaint, and no ControlNet.
 
@@ -6229,7 +6354,7 @@ Krea 2 supports transformer LoRAs and a GGUF transformer with ``--transformer``.
 * `Raw cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/krea2/cooperative-denoising-config.dgen>`_
 
 Kandinsky 5 Image
-~~~~~~~~~~~~~~~~~
+-----------------
 
 ``--model-type kandinsky5-image`` is text to image or instruction editing, depending on the checkpoint.
 
@@ -6250,7 +6375,7 @@ There is no Kandinsky 5 Image GGUF example yet. The Kandinsky 5 Video GGUF is a 
 * `Kandinsky 5 Image cooperative denoising <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/latents_interchange/kandinsky5_image/cooperative-denoising-config.dgen>`_
 
 Qwen-Image Edit
-~~~~~~~~~~~~~~~
+---------------
 
 ``--model-type qwen-image-edit`` is an instruction edit. The image seed is
 required. There is no strength.
@@ -6268,7 +6393,7 @@ See `examples/qwen_image/edit/base-config.dgen <https://github.com/Teriks/dgener
 and `examples/qwen_image/edit_inpaint/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/edit_inpaint/config.dgen>`_.
 
 Qwen-Image Layered
-~~~~~~~~~~~~~~~~~~
+------------------
 
 ``--model-type qwen-image-layered`` is ``Qwen/Qwen-Image-Layered``. One image in, one file per layer out.
 
@@ -6280,7 +6405,7 @@ See `examples/qwen_image/layered/config.dgen <https://github.com/Teriks/dgenerat
 and `examples/qwen_image/gguf/layered-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/gguf/layered-config.dgen>`_.
 
 HunyuanImage 2.1
-~~~~~~~~~~~~~~~~
+----------------
 
 ``--model-type hyimage-21`` is text to image on ``hunyuanvideo-community/HunyuanImage-2.1-Diffusers``.
 
@@ -6292,6 +6417,25 @@ The distilled checkpoint stays ``hyimage-21`` and uses guidance 3.25 as distille
 
 See `examples/hyimage_21/basic/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyimage_21/basic/config.dgen>`_
 and `examples/hyimage_21/refiner/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyimage_21/refiner/config.dgen>`_.
+
+MiniMax-H3-Image
+----------------
+
+``--model-type minimax-h3-image`` is ``MiniMaxAI/MiniMax-H3-Image``. One modular pipeline does text to image and reference editing.
+
+Guidance is distilled. The checkpoint samples six steps, and the transformer has one output head per step, so omit ``--inference-steps``, ``--sigmas``, ``--timesteps``, ``--guidance-scales``, and a negative prompt. ``--scheduler MiniMaxH3Scheduler`` overlays that checkpoint scheduler. The six-step sigma grid stays fixed.
+
+Latents interchange is not supported. Those six steps and their output heads are fixed, so a saved latent cannot be resumed by another stage. Omit ``--output-latents``, ``latents:``, ``--denoising-start``, and ``--denoising-end``.
+
+The default size is 2048. Width and height are multiples of 32. A request smaller than 2048×2048 is generated on a larger canvas of the same aspect ratio and resized back to the requested size.
+
+``--image-seeds`` are reference images, with no mask and no strength. The prompt refers to them in order as Picture 1, Picture 2, and so on. The prompt is encoded verbatim.
+
+Cache-DiT caches ``transformer_blocks``.
+
+See `examples/minimax_h3_image/text_to_image/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/text_to_image/config.dgen>`_,
+`examples/minimax_h3_image/references/one-reference-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/references/one-reference-config.dgen>`_,
+and `examples/minimax_h3_image/references/two-references-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/references/two-references-config.dgen>`_.
 
 Other call arguments
 --------------------
@@ -6337,6 +6481,7 @@ The Console UI recipes are:
 * ``HunyuanImage 2.1``
 * ``HunyuanImage 2.1 Distilled``
 * ``HunyuanImage 2.1 Refiner``
+* ``MiniMax-H3-Image``
 
 GGUF recipes for those models set ``--transformer`` to a quantized file and leave the parent repository as the model line.
 
@@ -6603,6 +6748,9 @@ This is supported for SD1.5/2.x (with certain schedulers), SDXL, Kolors, SD3,
 Flux.1, Flux.2, Qwen-Image (not Layered), Qwen-Image 2.1, Krea 2 Raw,
 Kandinsky 5 Image, and Z-Image models. Flow-matching image models require
 ``FlowMatchEulerDiscreteScheduler`` for denoising splits.
+MiniMax-H3-Image is not included: it always runs the same six steps, and each
+step has its own output head, so omit ``--output-latents``, ``latents:``,
+``--denoising-start``, and ``--denoising-end``.
 
 The process works as follows:
 
@@ -7961,6 +8109,9 @@ Available encoder classes are:
 * AutoencoderKLQwenImage21
 * AutoencoderKLHunyuanImage
 * AutoencoderKLHunyuanImageRefiner
+* AutoencoderKLMiniMaxH3
+* AutoencoderKLMiniMaxH3Audio
+* AutoencoderKLMiniMaxH3Image
 * AutoencoderKLWan
 * AutoencoderKLLTXVideo
 * AutoencoderKLLTX2Video
@@ -17773,19 +17924,27 @@ and layerwise offload can reduce memory pressure; parallelism can spread work
 across GPUs. These options depend on the model, backend, and hardware, so they
 do not all apply to every pipeline.
 
-The Cache-DiT 1.5.2 cache adapters cover these dgenerate ``--model-type`` values:
-``sd3``, ``sd3-pix2pix``, ``flux``, ``flux-fill``, ``flux-kontext``, ``flux2``,
-``flux2-klein-kv``, ``z-image``, ``z-image-omni``, ``qwen-image``,
-``qwen-image-edit``, ``qwen-image-layered``, ``ltx2``, ``ltx-video``, and ``wan``. dgenerate
-also supplies custom Cache-DiT block adapters for ``wan-animate`` and
-``wan-animate-2`` (including the distilled Wan-Animate-2 family). These use the
-transformers' ``blocks`` lists with Cache-DiT's ``Pattern_2`` and ``Pattern_3``
-contracts, respectively. Wan-Animate-2 keeps its own reference K/V pass; its
-interaction with Cache-DiT caching should be checked with the target checkpoint
-and cache settings. Cache-DiT Ray mode is not supported for these custom
-adapters. Standard UNet model types such as ``sd`` and ``sdxl`` do not use this
-DiT cache. Check Cache-DiT's feature documentation for model-specific
-parallelism, attention, quantization, and offload support.
+Cache-DiT 1.5.3 supplies the adapters for the ``--model-type`` values accepted
+by ``--cache-dit``, except six that dgenerate registers itself because 1.5.3
+does not. ``wan-animate`` and ``wan-animate-2`` (including the distilled
+Wan-Animate-2 family) use the transformers' ``blocks`` lists with Cache-DiT's
+``Pattern_2`` and ``Pattern_3`` contracts. Wan-Animate-2 keeps its own reference
+K/V pass; its interaction with Cache-DiT caching should be checked with the
+target checkpoint and cache settings. ``flux3`` caches only the joint
+``single_transformer_blocks`` stack (``Pattern_1``). The per-mode stacks run on
+every step. A base FLUX.3 guider with more than one condition is separate CFG;
+the distilled pipeline is not. ``kandinsky6-video`` caches only
+``visual_transformer_blocks`` (``Pattern_0``), treating the audio stream as the
+second residual. Separate CFG follows the call's guidance scale, and a Piflow
+distilled checkpoint is a single forward when guidance is omitted.
+``minimax-h3-video`` caches ``transformer_blocks`` (``Pattern_3``). The block reads
+and returns one packed sequence, and the distilled checkpoint runs one forward
+per step. ``ref2va`` caches ``transformer_ref``. ``minimax-h3-image`` caches
+the same ``transformer_blocks`` contract on its image transformer. Cache-DiT
+Ray mode is not supported for these custom adapters. Standard UNet model types
+such as ``sd`` and ``sdxl`` do not use this DiT cache. Check Cache-DiT's
+feature documentation for model-specific parallelism, attention, quantization,
+and offload support.
 
 ``--cache-dit`` enables Cache-DiT with its defaults. Use ``--cache-dit-config``
 to supply Cache-DiT's YAML configuration; that option also enables Cache-DiT.

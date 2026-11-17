@@ -102,6 +102,9 @@ This is supported for SD1.5/2.x (with certain schedulers), SDXL, Kolors, SD3,
 Flux.1, Flux.2, Qwen-Image (not Layered), Qwen-Image 2.1, Krea 2 Raw,
 Kandinsky 5 Image, and Z-Image models. Flow-matching image models require
 ``FlowMatchEulerDiscreteScheduler`` for denoising splits.
+MiniMax-H3-Image is not included: it always runs the same six steps, and each
+step has its own output head, so omit ``--output-latents``, ``latents:``,
+``--denoising-start``, and ``--denoising-end``.
 
 The process works as follows:
 

@@ -1,0 +1,14 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Text to image. The checkpoint samples 6 steps. Guidance is distilled.
+# 2048 is the default canvas. A smaller request is generated larger and resized back.
+
+MiniMaxAI/MiniMax-H3-Image
+--model-type minimax-h3-image
+--dtype bfloat16
+--model-sequential-offload
+--gen-seeds 1
+--output-path minimax-h3-image
+--output-size 2048
+--prompts "A red fox standing in a snowy pine forest at sunrise, sharp detail"

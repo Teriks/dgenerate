@@ -3716,6 +3716,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 }
                 allowed = ('transformer, transformer_2, text_encoder, '
                            'text_encoder_2, or image_encoder')
+            elif _pipelinewrapper.model_type_is_minimax_h3(self.model_type):
+                video_quant_names = {
+                    'transformer', 'transformer_ref', 'text_encoder', 'controlnet'}
+                allowed = 'transformer, transformer_ref, text_encoder, or controlnet'
             else:
                 video_quant_names = {
                     'transformer', 'text_encoder', 'connectors'
@@ -3728,7 +3732,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             if unknown:
                 raise RenderLoopConfigError(
                     f'{a_namer("quantizer_map")} value {unknown[0]!r} cannot be used with '
-                    f'video model types. Use {allowed}.')
+                    f'--model-type {_pipelinewrapper.get_model_type_string(self.model_type)}. '
+                    f'Use {allowed}.')
 
         if not (_pipelinewrapper.model_type_is_ltx2(self.model_type)
                 or _pipelinewrapper.model_type_is_hyvideo_15(self.model_type)) and self.sigmas:
@@ -3779,9 +3784,16 @@ class RenderLoopConfig(_types.SetFromMixin):
             ('freeu_params', self.freeu_params),
         )
         for name, value in blocked:
-            if value:
+            if not value:
+                continue
+            if name == 'controlnet_uris':
+                if _pipelinewrapper.model_type_is_minimax_h3(self.model_type):
+                    continue
                 raise RenderLoopConfigError(
-                    f'{a_namer(name)} cannot be used with video model types.')
+                    f'{a_namer(name)} cannot be used with --model-type '
+                    f'{_pipelinewrapper.get_model_type_string(self.model_type)}.')
+            raise RenderLoopConfigError(
+                f'{a_namer(name)} cannot be used with video model types.')
 
         if self.vae_tiling:
             raise RenderLoopConfigError(
@@ -3820,6 +3832,13 @@ class RenderLoopConfig(_types.SetFromMixin):
             allowed = _videopipelines.single_image_video.KANDINSKY5_VIDEO_SCHEDULER_NAMES
             family = 'Kandinsky 5.0 Video'
             extra = ''
+        elif _pipelinewrapper.model_type_is_minimax_h3(self.model_type):
+            allowed = frozenset({'MiniMaxH3Scheduler'})
+            family = 'MiniMax-H3'
+            extra = (
+                ' --scheduler overlays the video scheduler and '
+                '--second-model-scheduler overlays the audio scheduler.'
+            )
         else:
             allowed = _videopipelines.ltx.LTX_SCHEDULER_NAMES
             family = 'LTX'
@@ -4265,13 +4284,41 @@ class RenderLoopConfig(_types.SetFromMixin):
         if any(p.reference_images for p in parsed_image_seeds):
             flux2 = _pipelinewrapper.model_type_is_flux2(self.model_type)
             wan = _pipelinewrapper.model_type_is_wan(self.model_type)
-            if not flux2 and not wan:
+            minimax = _pipelinewrapper.model_type_is_minimax_h3(self.model_type)
+            if not flux2 and not wan and not minimax:
                 raise RenderLoopConfigError(
-                    f'{a_namer("image_seeds")} reference= is only for --model-type flux2 or wan.')
+                    f'{a_namer("image_seeds")} reference= is only for --model-type flux2, wan, '
+                    f'or minimax-h3-video.')
             if flux2 and any(p.reference_images and not p.mask_images for p in parsed_image_seeds):
                 raise RenderLoopConfigError(
                     'reference= is the extra image next to a Flux.2 Klein inpaint. '
                     'Text-to-image references are the seed images themselves.')
+
+        if self.controlnet_uris and _pipelinewrapper.model_type_is_video_family(self.model_type):
+            if not _pipelinewrapper.model_type_is_minimax_h3(self.model_type):
+                raise RenderLoopConfigError(
+                    f'{a_namer("controlnet_uris")} is not supported for this video model. '
+                    'minimax-h3-video accepts one MiniMax-H3 Fun control branch.')
+            if len(self.controlnet_uris) != 1:
+                raise RenderLoopConfigError(
+                    'minimax-h3-video accepts one --control-nets model.')
+            try:
+                parsed_control = _pipelinewrapper.uris.ControlNetUri.parse(
+                    self.controlnet_uris[0], _pipelinewrapper.ModelType.MINIMAX_H3)
+            except _pipelinewrapper.uris.InvalidControlNetUriError as error:
+                raise RenderLoopConfigError(
+                    f'{a_namer("controlnet_uris")}: {error}') from error
+            if (parsed_control.start != 0.0 or parsed_control.end != 1.0
+                    or parsed_control.compile):
+                raise RenderLoopConfigError(
+                    'minimax-h3-video --control-nets accepts scale and quantizer. '
+                    'start, end, mode, and compile are not used.')
+
+        if (any(getattr(p, 'audio_latents', None) for p in parsed_image_seeds)
+                and not _pipelinewrapper.model_type_is_minimax_h3(self.model_type)):
+            raise RenderLoopConfigError(
+                'The image seed argument "audio-latents" is only supported for '
+                '--model-type minimax-h3-video.')
 
         if (_pipelinewrapper.model_type_image_is_condition(self.model_type)
                 and not self.adetailer_detector_uris
@@ -4449,16 +4496,26 @@ class RenderLoopConfig(_types.SetFromMixin):
             import dgenerate.pipelinewrapper.videopipelines as _videopipelines
             ic_lora = bool(self.ltx_ic_lora_uri)
             try:
-                _videopipelines.classify_video_seed(self.model_type, parsed, ic_lora)
+                _videopipelines.classify_video_seed(
+                    self.model_type, parsed, ic_lora,
+                    controlnet=bool(self.controlnet_uris))
             except _pipelinewrapper.UnsupportedPipelineConfigError as e:
                 raise RenderLoopConfigError(str(e)) from e
-            _, _, control = _videopipelines.video_seed_slots(parsed, ic_lora)
+            minimax_control = (
+                bool(self.controlnet_uris)
+                and _pipelinewrapper.model_type_is_minimax_h3(self.model_type))
+            _, _, control = _videopipelines.video_seed_slots(
+                parsed, ic_lora, control_guidance=minimax_control)
             if self.control_image_processors and control is None:
                 if _pipelinewrapper.model_type_is_ltx_family(self.model_type):
                     raise RenderLoopConfigError(
                         f'{a_namer("control_image_processors")} runs on the IC-LoRA control clip, '
                         f'and {a_namer("image_seeds")} "{uri}" has none. '
                         f'Load an IC-LoRA with {a_namer("ltx_ic_lora_uri")}.')
+                if minimax_control:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("control_image_processors")} runs on the control video, '
+                        f'and {a_namer("image_seeds")} "{uri}" has none.')
                 raise RenderLoopConfigError(
                     f'{a_namer("control_image_processors")} runs on the image seed control= clip, '
                     f'and {a_namer("image_seeds")} "{uri}" has none.')
@@ -4674,8 +4731,15 @@ class RenderLoopConfig(_types.SetFromMixin):
             qwen_inpaint_image = (
                 _pipelinewrapper.model_type_is_qwen_image(self.model_type)
                 and parsed.images and parsed.mask_images and parsed.control_images is None)
-            if qwen_inpaint_image:
+            minimax_inpaint = (
+                _pipelinewrapper.model_type_is_minimax_h3(self.model_type)
+                and parsed.images and parsed.mask_images and not parsed.control_images)
+            if qwen_inpaint_image or minimax_inpaint:
                 if len(self.controlnet_uris) != 1:
+                    if minimax_inpaint:
+                        raise RenderLoopConfigError(
+                            'minimax-h3-video inpaint uses one --control-nets model. '
+                            'Add control= when you also pass a control video.')
                     raise RenderLoopConfigError(
                         'Qwen-Image ControlNet inpaint uses the seed image as the control image. '
                         f'Pass one {a_namer("controlnet_uris")} model, or add control= for each model.')
@@ -4688,14 +4752,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'in order to use inpainting. If you want to use the control image alone '
                     f'without a mask, use {a_namer("image_seeds")} "{images_str}".')
 
-            if control_image_paths is None and not qwen_inpaint_image:
+            if control_image_paths is None and not qwen_inpaint_image and not minimax_inpaint:
                 raise RenderLoopConfigError(
                     f'You must specify controlnet guidance images in your {a_namer("image_seeds")} '
                     f'specification "{uri}" (for example: "img2img;mask=my-mask.png;control=control1.png, control2.png") '
                     f'when using {a_namer("controlnet_uris")}'
                 )
 
-            if not qwen_inpaint_image and num_control_images != len(self.controlnet_uris):
+            if not qwen_inpaint_image and not minimax_inpaint and num_control_images != len(self.controlnet_uris):
                 raise RenderLoopConfigError(
                     f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
                     f'control guidance image sources, and you have specified {len(self.controlnet_uris)} '

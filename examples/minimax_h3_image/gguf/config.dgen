@@ -1,0 +1,17 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Pruned Q4_K_M of the image transformer.
+# https://huggingface.co/unsloth/MiniMax-H3-Image-GGUF
+# The parent repo still supplies Qwen3-VL and the image VAE.
+# The six output heads are fused in the file and split on load.
+
+MiniMaxAI/MiniMax-H3-Image
+--model-type minimax-h3-image
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/unsloth/MiniMax-H3-Image-GGUF/blob/main/minimax_h3_image_pruned-Q4_K_M.gguf
+--gen-seeds 1
+--output-path minimax-h3-image-gguf
+--output-size 2048
+--prompts "A red fox standing in a snowy pine forest at sunrise, sharp detail"

@@ -38,6 +38,7 @@ import dgenerate.pipelinewrapper.util as _util
 _DEFAULT_QUANT_NAMES = {
     'transformer',
     'transformer_2',
+    'transformer_ref',
     'text_encoder',
     'text_encoder_2',
     'text_encoder_3',

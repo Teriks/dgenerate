@@ -119,8 +119,9 @@ what the model may change. Several masks need seed images.
 """
 
 _REFERENCE_HELP = f"""\
-Extra images written as reference=. They need a seed image, or a
-control clip. A reference alone is rejected.
+Extra images written as reference=. A seed image or a control clip
+can accompany them. A reference list alone is a MiniMax-H3 reference
+seed: images, videos, and audio, in the order you add them.
 
 A still is repeated across the animation. A video is read together
 with the seed and the mask, and the shortest animation sets the length.
@@ -176,6 +177,13 @@ One latent per seed. The counts have to match.
 
 Not for ControlNet, IP Adapter, or Stable Cascade img2img. Those
 read pixels.
+
+audio-latents= is one tensor file. MiniMax-H3 video uses it as the
+audio noise. The video noise stays on latents=.
+
+{_seed(audio_latents='audio.pt')}
+
+{_seed(latents='video.pt', audio_latents='audio.pt')}
 """
 
 _ADAPTER_HELP = f"""\
@@ -232,6 +240,15 @@ stretches the image to the size.
 {_seed(seed_images='seed.png', aspect=False)}
 
 {_seed(seed_images='seed.png', resize='800x600', aspect=False)}
+
+align= snaps each side of the loaded image down to a multiple of that
+number. The number is divisible by 8. Empty is omitted. 1 disables
+alignment. It can be used alone, or with a resize. resize=1000 with
+align=64 is 960x960.
+
+{_seed(seed_images='seed.png', align=64)}
+
+{_seed(seed_images='seed.png', resize='1000', align=64)}
 
 frame-start and frame-end trim a video, GIF, or animated WEBP.
 Indexes start at 0, and frame-end is included. Either one can be
@@ -355,6 +372,9 @@ Image-to-video. A still in Seed image, with none of these clips.
 class _ImageSeedSelect(tk.Toplevel):
     def __init__(self, insert: typing.Callable[[str], None], master=None, position: tuple[int, int] = None):
         super().__init__(master)
+        # The form calls update_idletasks while it is built. Without this the
+        # window is mapped at the top left and then jumps to its position.
+        self.withdraw()
         self.title('Insert Image Seed URI')
         self.configure(padx=10, pady=8)
         self.transient(master)
@@ -485,10 +505,14 @@ class _ImageSeedSelect(tk.Toplevel):
         self._row += 1
 
         self._section('Reference', _REFERENCE_HELP)
-        self._references = _FileRows(self, self._open_image, 'Reference image')
+        self._references = _FileRows(self, self._open_reference, 'Reference')
 
         self._section('Latents', _LATENTS_HELP)
         self._latents = _FileRows(self, self._open_latents, 'Latents')
+        self._audio_entry = self._file_row('Audio latents', self._open_latents)
+
+        self._section('Floyd', 'Deep Floyd stage image, written as floyd=.')
+        self._floyd_entry = self._file_row('Stage image')
 
         self._section('IP Adapter', _ADAPTER_HELP)
         self._adapters = _AdapterRows(self)
@@ -502,6 +526,7 @@ class _ImageSeedSelect(tk.Toplevel):
         ttk.Checkbutton(aspect_row, text='Keep aspect ratio', variable=self._aspect_var).pack(side=tk.LEFT)
         self._frame_start = self._labeled_spin('Frame start', 0, None)
         self._frame_end = self._labeled_spin('Frame end', 0, None)
+        self._align = self._labeled_spin('Align', 1, None)
 
         self._section('LTX', _LTX_HELP)
         end_row = ttk.Frame(self._inner)
@@ -558,7 +583,8 @@ class _ImageSeedSelect(tk.Toplevel):
         self._track(spin)
         return spin
 
-    def _wan_file(self, label):
+    def _file_row(self, label, opener=None):
+        opener = opener or self._open_image
         row = ttk.Frame(self._inner)
         row.grid(row=self._row, column=0, sticky=tk.EW, pady=2)
         self._row += 1
@@ -566,9 +592,12 @@ class _ImageSeedSelect(tk.Toplevel):
         ttk.Label(row, text=label).grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         entry = self._track(_t_entry.TextEntry(row))
         entry.grid(row=0, column=1, sticky=tk.EW)
-        ttk.Button(row, text='File', command=lambda e=entry: self._open_image(e)).grid(
+        ttk.Button(row, text='File', command=lambda e=entry: opener(e)).grid(
             row=0, column=2, padx=(4, 0))
         return entry
+
+    def _wan_file(self, label):
+        return self._file_row(label)
 
     def _place(self, widget):
         widget.grid(row=self._row, column=0, sticky=tk.EW, pady=(0, 4))
@@ -583,6 +612,15 @@ class _ImageSeedSelect(tk.Toplevel):
     def _open_image(self, entry):
         self._fill(entry, _filedialog.open_file_dialog(
             **_resources.get_file_dialog_args(['images-in', 'videos-in'])))
+
+    def _open_reference(self, entry):
+        dialog_args = _resources.get_file_dialog_args(['images-in', 'videos-in'])
+        filetypes = list(dialog_args.get('filetypes') or [])
+        filetypes.append((
+            'Audio',
+            '*.wav *.mp3 *.flac *.ogg *.m4a *.aac *.opus *.wma *.aiff *.aif'))
+        dialog_args['filetypes'] = filetypes
+        self._fill(entry, _filedialog.open_file_dialog(**dialog_args))
 
     def _open_latents(self, entry):
         self._fill(entry, _filedialog.open_file_dialog(
@@ -627,10 +665,6 @@ class _ImageSeedSelect(tk.Toplevel):
         if len(masks) > 1 and not seeds:
             self._masks.mark()
             return
-        if references and not seeds and not controls:
-            self._seeds.mark()
-            self._controls.mark()
-            return
         if len(masks) > 1 and len(masks) != len(seeds):
             self._masks.mark()
             return
@@ -661,6 +695,10 @@ class _ImageSeedSelect(tk.Toplevel):
         driving = _entry.shell_quote_if(self._driving_entry.get().strip(), strict=True) or None
         background = _entry.shell_quote_if(self._background_entry.get().strip(), strict=True) or None
         wan_extras = pose or face or driving or background
+        audio_latents = _entry.shell_quote_if(self._audio_entry.get().strip(), strict=True) or None
+        floyd_image = _entry.shell_quote_if(self._floyd_entry.get().strip(), strict=True) or None
+        align_value = self._align.get().strip()
+        align = int(align_value) if align_value else None
 
         try:
             adapters = self._adapters.values()
@@ -669,7 +707,8 @@ class _ImageSeedSelect(tk.Toplevel):
             _entry.invalid_colors(error.widget)
             return
 
-        latents_only = latents and not (seeds or controls or adapters or end_image or wan_extras)
+        latents_only = (latents or audio_latents) and not (
+            seeds or controls or adapters or end_image or wan_extras or floyd_image or references)
         if latents_only and (resize_value or aspect_value is False or
                              frame_start is not None or frame_end is not None or
                              ltx_index is not None or ltx_strength is not None or extras):
@@ -682,7 +721,8 @@ class _ImageSeedSelect(tk.Toplevel):
                 seeds or controls or latents or adapters or end_image):
             self._seeds.mark()
             return
-        if not (seeds or controls or latents or adapters or end_image):
+        if not (seeds or controls or latents or adapters or end_image or references
+                or audio_latents or floyd_image):
             self._seeds.mark()
             return
 
@@ -694,8 +734,11 @@ class _ImageSeedSelect(tk.Toplevel):
                 preserve_control=self._preserve_control_var.get(),
                 reference_images=self._paths_argument(references),
                 latents=self._paths_argument(latents),
+                audio_latents=audio_latents,
+                floyd_image=floyd_image,
                 adapter_images=self._paths_argument(adapters),
                 resize=resize_value or None,
+                align=align,
                 aspect=aspect_value,
                 frame_start=frame_start,
                 frame_end=frame_end,

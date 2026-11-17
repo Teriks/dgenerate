@@ -61,7 +61,8 @@ def apply_video_arg_rewrites(source, dest) -> None:
 
 def classify_video_seed(model_type: _enums.ModelType | str,
                         parsed: _mediainput.ImageSeedParseResult | None,
-                        ic_lora: bool = False) -> str:
+                        ic_lora: bool = False,
+                        controlnet: bool = False) -> str:
     """
     Decide which video conditioning mode an image seed selects.
 
@@ -72,6 +73,14 @@ def classify_video_seed(model_type: _enums.ModelType | str,
     :return: a mode name used by the loader
     """
     model_type = _enums.get_model_type_enum(model_type)
+    if _enums.model_type_is_minimax_h3(model_type):
+        if ic_lora:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '--ltx-ic-lora is only supported with --model-type ltx2.')
+        import dgenerate.pipelinewrapper.videopipelines.wan as wan
+        wan._reject_animate_keywords(parsed, 'minimax-h3-video')
+        import dgenerate.pipelinewrapper.minimaxh3 as _minimax
+        return _minimax.classify_seed(parsed, controlnet=controlnet)
     _reject_still_extras(
         parsed,
         _enums.get_model_type_string(model_type),
@@ -103,22 +112,25 @@ def classify_video_seed(model_type: _enums.ModelType | str,
 
 
 def video_seed_slots(parsed: _mediainput.ImageSeedParseResult | None,
-                     ic_lora: bool = False) -> tuple[str | None, str | None, str | None]:
+                     ic_lora: bool = False,
+                     control_guidance: bool = False) -> tuple[str | None, str | None, str | None]:
     """
     Split an image seed into its opening, end, and control paths.
 
-    With ``--ltx-ic-lora``, a plain seed path is the control clip, the same way a
-    plain path is the control image when ``--control-nets`` is given.
+    With ``--ltx-ic-lora``, or MiniMax-H3 ``--control-nets``, a plain seed path
+    is the control clip, the same way a plain path is the control image when
+    ``--control-nets`` is given to an image model.
 
     :param parsed: parsed ``--image-seeds`` value, or ``None``
     :param ic_lora: ``--ltx-ic-lora`` was given
+    :param control_guidance: a bare path is the control clip
     :return: ``(opening, end, control)``, each a path or ``None``
     """
     if parsed is None:
         return None, None, None
     opening = parsed.images[0] if parsed.images else None
     control = parsed.control_images[0] if parsed.control_images else None
-    if ic_lora and parsed.is_single_spec and not parsed.multi_image_mode:
+    if (ic_lora or control_guidance) and parsed.is_single_spec and not parsed.multi_image_mode:
         opening, control = None, opening
     return opening, parsed.end_image, control
 
@@ -150,6 +162,9 @@ def generate(wrapper, user_args) -> tuple[list[PIL.Image.Image], numpy.ndarray |
                 or _enums.model_type_is_kandinsky5_video(model_type)
                 or _enums.model_type_is_kandinsky6_video(model_type)):
             return _single_image_video._call_single_image_video(wrapper, user_args)
+        if _enums.model_type_is_minimax_h3(model_type):
+            import dgenerate.pipelinewrapper.videopipelines.minimax as _minimax_video
+            return _minimax_video.call_minimax_h3(wrapper, user_args)
     except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
         _d_exceptions.raise_if_not_cuda_oom(e)
         _memory.torch_gc()
@@ -255,7 +270,11 @@ def _video_pipeline(wrapper, mode: str, scheduler_uri=None, prompt_upsampler_uri
         kwargs['text_encoder_uris'] = tuple(text_encoder_uris)
     if prompt_upsampler_uri:
         kwargs['prompt_upsampler_uri'] = prompt_upsampler_uri
+    if _enums.model_type_is_minimax_h3(wrapper.model_type):
+        kwargs['minimax_workflow'] = mode
     held = _loading._create_cached_video_pipeline(**kwargs)
+    if held.family == 'minimax-h3-video':
+        return held.pipeline, held
     model_mode = getattr(held, 'model_mode', None)
     if model_mode is not None and mode != model_mode:
         expected = 'an image seed' if model_mode == 'image-to-video' else 'no image seed'

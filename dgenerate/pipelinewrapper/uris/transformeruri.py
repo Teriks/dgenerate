@@ -19,6 +19,8 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import contextlib
+
 import diffusers
 
 import dgenerate.hfhub as _hfhub
@@ -426,14 +428,33 @@ class TransformerUri:
                 if config_subfolder:
                     single_file_kwargs['subfolder'] = config_subfolder
             from_single_file = _singlefilecompat.bind_from_single_file(transformer_class)
-            if already_converted:
-                with _ggufcompat.skip_diffusers_reconvert():
-                    transformer = from_single_file(single_file_source, **single_file_kwargs)
-            elif comfy_quant is not None:
-                with comfy_quant.conversion_guard(transformer_class):
-                    transformer = from_single_file(single_file_source, **single_file_kwargs)
+            if getattr(transformer_class, '__name__', '') in (
+                    'MiniMaxH3Transformer3DModel', 'MiniMaxH3ImageTransformer2DModel'):
+                import dgenerate.pipelinewrapper.minimaxh3 as _minimax
+                curve_dim = _minimax.curve_time_embed_dim(single_file_source)
+                if curve_dim is None and isinstance(model_path, str):
+                    curve_dim = _minimax.curve_time_embed_dim(model_path)
+                if curve_dim is not None:
+                    single_file_kwargs['time_embed_dim'] = curve_dim
+            minimax_file = getattr(transformer_class, '__name__', '') in (
+                'MiniMaxH3Transformer3DModel', 'MiniMaxH3ImageTransformer2DModel')
+            if minimax_file:
+                import dgenerate.pipelinewrapper.minimaxh3 as _minimax_load
+                load_context = _minimax_load.keep_missing_weights_addressable()
             else:
-                transformer = from_single_file(single_file_source, **single_file_kwargs)
+                load_context = contextlib.nullcontext()
+            with load_context:
+                if already_converted:
+                    with _ggufcompat.skip_diffusers_reconvert():
+                        transformer = from_single_file(single_file_source, **single_file_kwargs)
+                elif comfy_quant is not None:
+                    with comfy_quant.conversion_guard(transformer_class):
+                        transformer = from_single_file(single_file_source, **single_file_kwargs)
+                else:
+                    transformer = from_single_file(single_file_source, **single_file_kwargs)
+            if getattr(transformer_class, '__name__', '') in (
+                    'MiniMaxH3Transformer3DModel', 'MiniMaxH3ImageTransformer2DModel'):
+                _minimax.install_cached_curve(transformer)
 
         else:
             if original_config:
@@ -464,6 +485,9 @@ class TransformerUri:
             if quant_config is not None:
                 load_kwargs['quantization_config'] = quant_config
             transformer = transformer_class.from_pretrained(model_path, **load_kwargs)
+
+        if gguf_file:
+            _ggufcompat.materialize_unquantized_parameters(transformer)
 
         _messages.debug_log('Estimated Torch Transformer Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))

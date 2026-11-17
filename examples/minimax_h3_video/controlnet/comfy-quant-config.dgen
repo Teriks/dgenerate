@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Same pose control as config.dgen, on the pruned fl2va int8 transformer
+# and the int8 Qwen3-VL encoder. The parent repo supplies the VAEs. The
+# control branch was trained on the text-to-video transformer, which is this file.
+# https://huggingface.co/Comfy-Org/MiniMax-H3
+
+MiniMaxAI/MiniMax-H3
+--model-type minimax-h3-video
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors
+--text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors"
+--inference-steps 30
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path minimax-h3-controlnet-comfy-int8
+--output-size 1024x576
+--control-nets "alibaba-pai/MiniMax-H3-Fun-Controlnet-Union-2.0;weight-name=MiniMax-H3-Fun-Controlnet-Union-2.0.safetensors"
+--control-image-processors "openpose;include-hand=true;include-face=true;output-file=openpose.png"
+--image-seeds "../../media/rickroll-roll.gif"
+--prompts "A person dancing, following the pose in the control video"

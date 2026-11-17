@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# One reference image. No mask and no strength.
+# The prompt names it Picture 1 and is encoded verbatim.
+
+MiniMaxAI/MiniMax-H3-Image
+--model-type minimax-h3-image
+--dtype bfloat16
+--model-sequential-offload
+--image-seeds "../../media/man-fighting-pose.jpg"
+--gen-seeds 1
+--output-path minimax-h3-image-reference
+--output-size 2048
+--prompts "Picture 1 standing in a snow-covered forest clearing at sunrise"

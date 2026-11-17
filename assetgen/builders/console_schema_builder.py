@@ -148,7 +148,8 @@ class ConsoleSchemaBuilder:
         schema_file = self.schemas_dir / 'karrasschedulers.json'
         scheduler_names = sorted(
             [e.name for e in diffusers.schedulers.scheduling_utils.KarrasDiffusionSchedulers] +
-            ['LCMScheduler', 'TCDScheduler', 'FlowMatchEulerDiscreteScheduler', 'DDPMWuerstchenScheduler'])
+            ['LCMScheduler', 'TCDScheduler', 'FlowMatchEulerDiscreteScheduler',
+             'DDPMWuerstchenScheduler', 'MiniMaxH3Scheduler'])
 
         schema = _pipelinewrapper.get_scheduler_uri_schema([getattr(diffusers, n) for n in scheduler_names])
 

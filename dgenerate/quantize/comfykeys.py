@@ -40,7 +40,7 @@ _QuantExportError = _quantexport.QuantExportError
 # ComfyUI-GGUF refuses an image GGUF whose general.architecture is not in this set.
 _GGUF_IMAGE_ARCHITECTURES = frozenset({
     'flux', 'sd1', 'sdxl', 'sd3', 'aura', 'hidream', 'cosmos',
-    'ltxv', 'hyvid', 'wan', 'lumina2', 'qwen_image',
+    'ltxv', 'hyvid', 'wan', 'lumina2', 'qwen_image', 'minimax_h3',
 })
 
 # ComfyUI-GGUF un-permutes llama GGUFs with these head counts hardcoded.
@@ -125,6 +125,10 @@ def _kind(state: dict, config: dict | None) -> str:
     keys = set(state)
     if 'Flux2' in name or any('to_qkv_mlp_proj' in key for key in keys):
         return 'flux2'
+    if 'Flux3' in name or any(
+            key.startswith('x_embedders.') or key.startswith('mode_blocks.')
+            or key.startswith('txt_mode_blocks.') for key in keys):
+        return 'flux3'
     if ('Flux' in name or (
             'x_embedder.weight' in keys
             and any(key.startswith('single_transformer_blocks.') for key in keys)
@@ -142,13 +146,48 @@ def _kind(state: dict, config: dict | None) -> str:
     if 'QwenImage' in name or any(
             key.startswith('transformer_blocks.') and 'img_mlp.net.' in key for key in keys):
         return 'qwen_image'
+    minimax_class = name in {
+        'MiniMaxH3Transformer3DModel',
+        'MiniMaxH3ImageTransformer2DModel',
+        'MiniMaxH3DiTModel',
+    }
+    minimax_keys = (
+        'video_patch_proj.weight' in keys
+        or 'pdd_proj_out.0.weight' in keys
+        or 'audio_proj_in.weight' in keys
+        or any(key.startswith('blocks.') and '.qkv_proj.' in key for key in keys))
+    if 'LTX2' in name or any(key.startswith('audio_time_embed.') for key in keys):
+        return 'ltx2'
+    if minimax_class or minimax_keys:
+        return 'minimax-h3'
+    if 'LTXVideo' in name:
+        return 'ltx'
+    if 'Krea2' in name or 'text_fusion.projector.weight' in keys:
+        return 'krea2'
+    if 'HunyuanDiT' in name or 'time_extra_emb.pooler.positional_embedding' in keys:
+        return 'hydit'
+    if 'HunyuanImage' in name:
+        return 'hunyuan-image'
+    if 'HunyuanVideo' in name or 'image_embedder.linear_1.weight' in keys:
+        return 'hunyuan-video'
+    if 'context_embedder.token_refiner.refiner_blocks.0.attn.to_q.weight' in keys:
+        return 'hunyuan-image'
+    if ('proj_in.weight' in keys and 'time_embed.timestep_embedder.linear_1.weight' in keys
+            and 'x_embedder.weight' not in keys and 'image_embedder.linear_1.weight' not in keys):
+        return 'ltx'
+    if 'Kandinsky5' in name or 'visual_embeddings.in_layer.weight' in keys:
+        return 'kandinsky5'
+    if 'StableCascade' in name or 'clip_txt_mapper.weight' in keys or 'clip_txt_pooled_mapper.weight' in keys:
+        return 'cascade'
     if 'UNet' in name or any('.resnets.' in key and key.startswith('down_blocks.') for key in keys):
         return 'unet'
     raise _QuantExportError(
         'No ComfyUI key map for this component. '
-        '--comfy converts FLUX.1, FLUX.2 safetensors, SD1, SDXL, SD3, Wan, Qwen-Image, '
-        'and Z-Image safetensors, plus text encoders T5, UMT5, Llama 3 / Mistral, Qwen2, '
-        'Qwen3, Gemma 3, and CLIP safetensors. A Qwen2-VL vision tower is written as mmproj.')
+        '--comfy converts FLUX.1, FLUX.2 and FLUX.3 safetensors, SD1, SDXL, SD3, Wan, Qwen-Image, '
+        'Z-Image, MiniMax-H3, LTX-Video, LTX-2, Krea 2, Hunyuan-DiT, HunyuanVideo 1.5, '
+        'HunyuanImage 2.1, Kandinsky 5, and Stable Cascade. '
+        'Text encoders: T5, UMT5, Llama 3 / Mistral, Qwen2, Qwen3, Gemma 3, and CLIP safetensors. '
+        'A Qwen2-VL vision tower is written as mmproj.')
 
 
 def _text_kind(config: dict | None, state: dict) -> str | None:
@@ -184,6 +223,12 @@ def _convert(state: dict, config: dict | None, kind: str, gguf: bool) -> tuple[d
                 'ComfyUI-GGUF does not load a FLUX.2 GGUF. '
                 'A safetensors quant uses the Comfy tensor names.')
         return _flux2(state), 'flux2'
+    if kind == 'flux3':
+        if gguf:
+            raise _QuantExportError(
+                'ComfyUI-GGUF does not load a FLUX.3 GGUF. '
+                'A safetensors quant uses the Comfy tensor names.')
+        return _flux3(state), 'flux3'
     if kind == 'flux':
         return _flux(state), 'flux'
     if kind == 'sd3':
@@ -196,6 +241,52 @@ def _convert(state: dict, config: dict | None, kind: str, gguf: bool) -> tuple[d
         return _qwen21(state), 'qwen_image'
     if kind == 'unet':
         return _unet(state, config)
+    if kind == 'minimax-h3':
+        return _minimax_h3(state), 'minimax_h3'
+    if kind == 'ltx':
+        return _ltx(state), 'ltxv'
+    if kind == 'ltx2':
+        if gguf:
+            raise _QuantExportError(
+                'ComfyUI-GGUF does not load an LTX-2 GGUF. '
+                'A safetensors quant uses the Comfy tensor names.')
+        return _ltx2(state), 'ltx2'
+    if kind == 'krea2':
+        if gguf:
+            raise _QuantExportError(
+                'ComfyUI-GGUF does not load a Krea 2 GGUF. '
+                'A safetensors quant uses the Comfy tensor names.')
+        return _krea2(state), 'krea2'
+    if kind == 'hydit':
+        if gguf:
+            raise _QuantExportError(
+                'ComfyUI-GGUF does not load a Hunyuan-DiT GGUF. '
+                'A safetensors quant uses the Comfy tensor names.')
+        return _hydit(state), 'hydit'
+    if kind == 'hunyuan-image':
+        if gguf:
+            raise _QuantExportError(
+                'ComfyUI-GGUF does not load a HunyuanImage GGUF. '
+                'A safetensors quant uses the Comfy tensor names.')
+        return _hunyuan_image(state), 'hunyuan-image'
+    if kind == 'hunyuan-video':
+        if gguf:
+            raise _QuantExportError(
+                'ComfyUI-GGUF does not load a HunyuanVideo 1.5 GGUF. '
+                'A safetensors quant uses the Comfy tensor names.')
+        return _hunyuan_video(state), 'hunyuan-video'
+    if kind == 'kandinsky5':
+        if gguf:
+            raise _QuantExportError(
+                'ComfyUI-GGUF does not load a Kandinsky 5 GGUF. '
+                'A safetensors quant keeps the tensor names Comfy and Diffusers share.')
+        return state, 'kandinsky5'
+    if kind == 'cascade':
+        if gguf:
+            raise _QuantExportError(
+                'ComfyUI-GGUF does not load a Stable Cascade GGUF. '
+                'A safetensors quant uses the Comfy tensor names.')
+        return _cascade(state), 'cascade'
     if kind in {'t5', 't5encoder', 'llama', 'qwen2', 'qwen2vl', 'qwen3', 'qwen3vl', 'gemma3', 'gemma4'}:
         converted = _text(state, config, kind, gguf)
         if gguf and kind == 'qwen2':
@@ -208,6 +299,15 @@ def _convert(state: dict, config: dict | None, kind: str, gguf: bool) -> tuple[d
             return converted, 'qwen3'
         return converted, kind
     raise _QuantExportError(f'No ComfyUI key map for {kind}.')
+
+
+def _minimax_h3(state: dict) -> dict:
+    """Diffusers MiniMax-H3 names onto the ComfyUI transformer, with fused qkv."""
+    import dgenerate.pipelinewrapper.minimaxh3 as _minimax
+    try:
+        return _minimax.diffusers_to_comfy(state)
+    except ValueError as error:
+        raise _QuantExportError(str(error)) from error
 
 
 def _take(state: dict, key: str) -> torch.Tensor:
@@ -931,6 +1031,546 @@ def _flux2(state: dict) -> dict:
                 renamed = target + renamed[len(source):]
                 break
         out[renamed] = state.pop(key)
+    _leftover(state)
+    return out
+
+
+_FLUX3_EXACT = (
+    ('timestep_embedder.linear_1', 'time_in.in_layer'),
+    ('timestep_embedder.linear_2', 'time_in.out_layer'),
+    ('target_timestep_embedder.linear_1', 'ref_time_in.in_layer'),
+    ('target_timestep_embedder.linear_2', 'ref_time_in.out_layer'),
+    ('proj_out', 'final_layer.image.linear'),
+)
+
+# Diffusers suffixes, longest first so ``to_qkv`` is not read as ``to_q``.
+_FLUX3_SUFFIXES = (
+    ('.attn.to_qkv.', '.qkv.'),
+    ('.attn.to_q.', '.q_proj.'),
+    ('.attn.to_k.', '.k_proj.'),
+    ('.attn.to_v.', '.v_proj.'),
+    ('.attn.to_out.0.', '.attn_out.'),
+    ('.attn.norm_q.weight', '.norm.query_norm.scale'),
+    ('.attn.norm_k.weight', '.norm.key_norm.scale'),
+    ('.ff.linear_in.', '.mlp_in.'),
+    ('.ff.linear_out.', '.mlp_out.'),
+)
+
+_FLUX3_PREFIXES = (
+    ('x_embedders.', 'emb_in.'),
+    ('context_embedder.', 'txt_in.'),
+    ('single_transformer_blocks.', 'single_blocks.'),
+    ('mode_blocks.', 'content_mode_blocks.'),
+)
+
+
+def _flux3(state: dict) -> dict:
+    """Diffusers FLUX.3 names onto the Comfy ``Flux3`` module.
+
+    The inverse of ``convert_flux3_transformer_checkpoint_to_diffusers``.
+    Comfy loads this state dict from a safetensors file. ``fused_qkv`` is
+    chosen there from ``single_blocks.0.qkv.weight``; a Diffusers checkpoint
+    stores separate ``to_q``, ``to_k``, and ``to_v``.
+    """
+    out = {}
+    for source, target in _FLUX3_EXACT:
+        if source + '.weight' not in state and source + '.bias' not in state:
+            continue
+        weight, bias = _pair(state, source)
+        _store(out, target, weight, bias)
+    if 'norm_out.linear.weight' in state:
+        out['final_layer.image.adaLN_modulation.1.weight'] = _swap_halves(
+            state.pop('norm_out.linear.weight'))
+    if 'norm_out.linear.bias' in state:
+        out['final_layer.image.adaLN_modulation.1.bias'] = _swap_halves(
+            state.pop('norm_out.linear.bias'))
+    for key in list(state):
+        renamed = key
+        for source, target in _FLUX3_SUFFIXES:
+            if source in renamed:
+                renamed = renamed.replace(source, target, 1)
+                break
+        for source, target in _FLUX3_PREFIXES:
+            if renamed.startswith(source):
+                renamed = target + renamed[len(source):]
+                break
+        renamed = renamed.replace('.linear.weight', '.lin.weight').replace('.linear.bias', '.lin.bias')
+        out[renamed] = state.pop(key)
+    _leftover(state)
+    return out
+
+
+def _rename_all(state: dict, pairs: tuple[tuple[str, str], ...]) -> dict:
+    """Replace substrings. Earlier pairs win, so a longer name has to come first."""
+    out = {}
+    for key, value in state.items():
+        renamed = key
+        for source, target in pairs:
+            if source in renamed:
+                renamed = renamed.replace(source, target)
+        out[renamed] = value
+    return out
+
+
+def _ltx(state: dict) -> dict:
+    """Diffusers LTX-Video names onto Comfy's ``LTXV`` module."""
+    return _rename_all(state, (
+        ('norm_q', 'q_norm'),
+        ('norm_k', 'k_norm'),
+        ('time_embed', 'adaln_single'),
+        ('proj_in', 'patchify_proj'),
+    ))
+
+
+def _ltx2(state: dict) -> dict:
+    """Diffusers LTX-2 names onto Comfy's ``LTXAV`` module, including the 2.5 prompt AdaLN."""
+    return _rename_all(state, (
+        ('audio_prompt_adaln.', 'audio_prompt_adaln_single.'),
+        ('prompt_adaln.', 'prompt_adaln_single.'),
+        ('audio_time_embed.', 'audio_adaln_single.'),
+        ('time_embed.', 'adaln_single.'),
+        ('av_cross_attn_video_scale_shift', 'av_ca_video_scale_shift_adaln_single'),
+        ('av_cross_attn_video_a2v_gate', 'av_ca_a2v_gate_adaln_single'),
+        ('av_cross_attn_audio_scale_shift', 'av_ca_audio_scale_shift_adaln_single'),
+        ('av_cross_attn_audio_v2a_gate', 'av_ca_v2a_gate_adaln_single'),
+        ('video_a2v_cross_attn_scale_shift_table', 'scale_shift_table_a2v_ca_video'),
+        ('audio_a2v_cross_attn_scale_shift_table', 'scale_shift_table_a2v_ca_audio'),
+        ('norm_q', 'q_norm'),
+        ('norm_k', 'k_norm'),
+        ('audio_proj_in', 'audio_patchify_proj'),
+        ('proj_in', 'patchify_proj'),
+    ))
+
+
+def _krea2(state: dict) -> dict:
+    """Diffusers Krea 2 names onto the Comfy checkpoint layout."""
+    out = {}
+    for key, value in list(state.items()):
+        renamed = key
+        if (renamed.startswith('transformer_blocks.') and renamed.endswith('.scale_shift_table')
+                and value.ndim == 2 and value.shape[0] == 6):
+            value = value.reshape(-1)
+        for source, target in (
+                ('.attn.norm_q.weight', '.attn.qknorm.qnorm.scale'),
+                ('.attn.norm_k.weight', '.attn.qknorm.knorm.scale'),
+                ('.attn.to_out.0.', '.attn.wo.'),
+                ('.attn.to_gate.', '.attn.gate.'),
+                ('.attn.to_q.', '.attn.wq.'),
+                ('.attn.to_k.', '.attn.wk.'),
+                ('.attn.to_v.', '.attn.wv.'),
+                ('.ff.', '.mlp.'),
+                ('.norm1.weight', '.prenorm.scale'),
+                ('.norm2.weight', '.postnorm.scale'),
+                ('.scale_shift_table', '.mod.lin')):
+            renamed = renamed.replace(source, target)
+        for source, target in (
+                ('img_in.', 'first.'),
+                ('time_embed.linear_1.', 'tmlp.0.'),
+                ('time_embed.linear_2.', 'tmlp.2.'),
+                ('time_mod_proj.', 'tproj.1.'),
+                ('txt_in.norm.weight', 'txtmlp.0.scale'),
+                ('txt_in.linear_1.', 'txtmlp.1.'),
+                ('txt_in.linear_2.', 'txtmlp.3.'),
+                ('text_fusion.', 'txtfusion.'),
+                ('transformer_blocks.', 'blocks.'),
+                ('final_layer.linear.', 'last.linear.'),
+                ('final_layer.norm.weight', 'last.norm.scale'),
+                ('final_layer.mod.lin', 'last.modulation.lin')):
+            if renamed.startswith(source) or renamed == source.rstrip('.'):
+                renamed = target + renamed[len(source):]
+                break
+        out[renamed] = value
+    return out
+
+
+def _fuse_qkv(state: dict, query: str, key: str, value: str, target: str) -> None:
+    if query not in state:
+        return
+    parts = [state.pop(query), state.pop(key), state.pop(value)]
+    state[target] = _cat(parts)
+
+
+def _hydit(state: dict) -> dict:
+    """Diffusers Hunyuan-DiT names onto the Tencent checkpoint Comfy loads."""
+    out = dict(state)
+    for index in _block_indices(out, 'blocks.'):
+        prefix = f'blocks.{index}.'
+        _fuse_qkv(
+            out, prefix + 'attn1.to_q.weight', prefix + 'attn1.to_k.weight', prefix + 'attn1.to_v.weight',
+            prefix + 'attn1.Wqkv.weight')
+        _fuse_qkv(
+            out, prefix + 'attn1.to_q.bias', prefix + 'attn1.to_k.bias', prefix + 'attn1.to_v.bias',
+            prefix + 'attn1.Wqkv.bias')
+        for source, target in (
+                ('attn1.norm_q.', 'attn1.q_norm.'),
+                ('attn1.norm_k.', 'attn1.k_norm.'),
+                ('attn1.to_out.0.', 'attn1.out_proj.'),
+                ('attn2.norm_q.', 'attn2.q_norm.'),
+                ('attn2.norm_k.', 'attn2.k_norm.'),
+                ('attn2.to_q.', 'attn2.q_proj.'),
+                ('attn2.to_out.0.', 'attn2.out_proj.'),
+                ('norm1.norm.', 'norm1.'),
+                ('norm1.linear.', 'default_modulation.1.'),
+                ('ff.net.0.proj.', 'mlp.fc1.'),
+                ('ff.net.2.', 'mlp.fc2.')):
+            for kind in ('weight', 'bias'):
+                name = prefix + source + kind
+                if name in out:
+                    out[prefix + target + kind] = out.pop(name)
+        if prefix + 'attn2.to_k.weight' in out:
+            out[prefix + 'attn2.kv_proj.weight'] = _cat([
+                out.pop(prefix + 'attn2.to_k.weight'), out.pop(prefix + 'attn2.to_v.weight')])
+            out[prefix + 'attn2.kv_proj.bias'] = _cat([
+                out.pop(prefix + 'attn2.to_k.bias'), out.pop(prefix + 'attn2.to_v.bias')])
+        # The converter swaps norm2 and norm3. Swap them back.
+        if prefix + 'norm2.weight' in out and prefix + 'norm3.weight' in out:
+            out[prefix + 'norm2.weight'], out[prefix + 'norm3.weight'] = (
+                out[prefix + 'norm3.weight'], out[prefix + 'norm2.weight'])
+            out[prefix + 'norm2.bias'], out[prefix + 'norm3.bias'] = (
+                out[prefix + 'norm3.bias'], out[prefix + 'norm2.bias'])
+    renamed = {}
+    for key, value in out.items():
+        name = key
+        for source, target in (
+                ('time_extra_emb.pooler.', 'pooler.'),
+                ('time_extra_emb.timestep_embedder.linear_1.', 't_embedder.mlp.0.'),
+                ('time_extra_emb.timestep_embedder.linear_2.', 't_embedder.mlp.2.'),
+                ('time_extra_emb.extra_embedder.linear_1.', 'extra_embedder.0.'),
+                ('time_extra_emb.extra_embedder.linear_2.', 'extra_embedder.2.'),
+                ('time_extra_emb.style_embedder.', 'style_embedder.'),
+                ('pos_embed.proj.', 'x_embedder.proj.'),
+                ('text_embedder.linear_1.', 'mlp_t5.0.'),
+                ('text_embedder.linear_2.', 'mlp_t5.2.')):
+            if name.startswith(source):
+                name = target + name[len(source):]
+                break
+        if name == 'norm_out.linear.weight':
+            value = _swap_halves(value)
+            name = 'final_layer.adaLN_modulation.1.weight'
+        elif name == 'norm_out.linear.bias':
+            value = _swap_halves(value)
+            name = 'final_layer.adaLN_modulation.1.bias'
+        elif name == 'proj_out.weight':
+            name = 'final_layer.linear.weight'
+        elif name == 'proj_out.bias':
+            name = 'final_layer.linear.bias'
+        renamed[name] = value
+    return renamed
+
+
+def _cascade(state: dict) -> dict:
+    """Fuse Diffusers Cascade attention back into Comfy's ``in_proj`` / ``out_proj``."""
+    out = {}
+    consumed = set()
+    for key in list(state):
+        if not key.endswith('.to_q.weight'):
+            continue
+        prefix = key[: -len('.to_q.weight')]
+        out[prefix + '.attn.in_proj_weight'] = _cat([
+            state[prefix + '.to_q.weight'],
+            state[prefix + '.to_k.weight'],
+            state[prefix + '.to_v.weight']])
+        out[prefix + '.attn.in_proj_bias'] = _cat([
+            state[prefix + '.to_q.bias'],
+            state[prefix + '.to_k.bias'],
+            state[prefix + '.to_v.bias']])
+        consumed.update(
+            prefix + '.' + name for name in (
+                'to_q.weight', 'to_k.weight', 'to_v.weight',
+                'to_q.bias', 'to_k.bias', 'to_v.bias'))
+    for key, value in state.items():
+        if key in consumed:
+            continue
+        if key.endswith('.to_out.0.weight'):
+            key = key[: -len('.to_out.0.weight')] + '.attn.out_proj.weight'
+        elif key.endswith('.to_out.0.bias'):
+            key = key[: -len('.to_out.0.bias')] + '.attn.out_proj.bias'
+        elif key.startswith('clip_txt_pooled_mapper.'):
+            key = 'clip_mapper.' + key[len('clip_txt_pooled_mapper.'):]
+        out[key] = value
+    return out
+
+
+def _hunyuan_image(state: dict) -> dict:
+    """Diffusers HunyuanImage 2.1 names onto the checkpoint Comfy's loader rewrites."""
+    out = {}
+
+    def move(source, target, swap=False):
+        if source not in state:
+            return
+        value = state.pop(source)
+        out[target] = _swap_halves(value) if swap else value
+
+    def fuse(prefix, names, target):
+        if prefix + names[0] not in state:
+            return
+        out[target] = _cat([state.pop(prefix + name) for name in names])
+
+    optional = (
+        ('context_embedder_2.norm.weight', 'byt5_in.layernorm.weight'),
+        ('context_embedder_2.norm.bias', 'byt5_in.layernorm.bias'),
+        ('context_embedder_2.linear_1.weight', 'byt5_in.fc1.weight'),
+        ('context_embedder_2.linear_1.bias', 'byt5_in.fc1.bias'),
+        ('context_embedder_2.linear_2.weight', 'byt5_in.fc2.weight'),
+        ('context_embedder_2.linear_2.bias', 'byt5_in.fc2.bias'),
+        ('context_embedder_2.linear_3.weight', 'byt5_in.fc3.weight'),
+        ('context_embedder_2.linear_3.bias', 'byt5_in.fc3.bias'),
+        ('time_guidance_embed.timestep_embedder_r.linear_1.weight', 'time_r_in.mlp.0.weight'),
+        ('time_guidance_embed.timestep_embedder_r.linear_1.bias', 'time_r_in.mlp.0.bias'),
+        ('time_guidance_embed.timestep_embedder_r.linear_2.weight', 'time_r_in.mlp.2.weight'),
+        ('time_guidance_embed.timestep_embedder_r.linear_2.bias', 'time_r_in.mlp.2.bias'),
+        ('time_guidance_embed.guidance_embedder.linear_1.weight', 'guidance_in.mlp.0.weight'),
+        ('time_guidance_embed.guidance_embedder.linear_1.bias', 'guidance_in.mlp.0.bias'),
+        ('time_guidance_embed.guidance_embedder.linear_2.weight', 'guidance_in.mlp.2.weight'),
+        ('time_guidance_embed.guidance_embedder.linear_2.bias', 'guidance_in.mlp.2.bias'),
+    )
+    for source, target in optional:
+        move(source, target)
+    move('x_embedder.proj.weight', 'img_in.proj.weight')
+    move('x_embedder.proj.bias', 'img_in.proj.bias')
+    move('context_embedder.proj_in.weight', 'txt_in.input_embedder.weight')
+    move('context_embedder.proj_in.bias', 'txt_in.input_embedder.bias')
+    for source, target in (
+            ('context_embedder.time_text_embed.timestep_embedder.linear_1', 'txt_in.t_embedder.mlp.0'),
+            ('context_embedder.time_text_embed.timestep_embedder.linear_2', 'txt_in.t_embedder.mlp.2'),
+            ('context_embedder.time_text_embed.text_embedder.linear_1', 'txt_in.c_embedder.linear_1'),
+            ('context_embedder.time_text_embed.text_embedder.linear_2', 'txt_in.c_embedder.linear_2'),
+            ('time_guidance_embed.timestep_embedder.linear_1', 'time_in.mlp.0'),
+            ('time_guidance_embed.timestep_embedder.linear_2', 'time_in.mlp.2')):
+        move(source + '.weight', target + '.weight')
+        move(source + '.bias', target + '.bias')
+    for index in _block_indices(state, 'context_embedder.token_refiner.refiner_blocks.'):
+        src = f'context_embedder.token_refiner.refiner_blocks.{index}.'
+        dst = f'txt_in.individual_token_refiner.blocks.{index}.'
+        move(src + 'norm1.weight', dst + 'norm1.weight')
+        move(src + 'norm1.bias', dst + 'norm1.bias')
+        move(src + 'norm2.weight', dst + 'norm2.weight')
+        move(src + 'norm2.bias', dst + 'norm2.bias')
+        fuse(src, ('attn.to_q.weight', 'attn.to_k.weight', 'attn.to_v.weight'), dst + 'self_attn_qkv.weight')
+        fuse(src, ('attn.to_q.bias', 'attn.to_k.bias', 'attn.to_v.bias'), dst + 'self_attn_qkv.bias')
+        move(src + 'attn.to_out.0.weight', dst + 'self_attn_proj.weight')
+        move(src + 'attn.to_out.0.bias', dst + 'self_attn_proj.bias')
+        move(src + 'ff.net.0.proj.weight', dst + 'mlp.fc1.weight')
+        move(src + 'ff.net.0.proj.bias', dst + 'mlp.fc1.bias')
+        move(src + 'ff.net.2.weight', dst + 'mlp.fc2.weight')
+        move(src + 'ff.net.2.bias', dst + 'mlp.fc2.bias')
+        move(src + 'norm_out.linear.weight', dst + 'adaLN_modulation.1.weight')
+        move(src + 'norm_out.linear.bias', dst + 'adaLN_modulation.1.bias')
+    for index in _block_indices(state, 'transformer_blocks.'):
+        src = f'transformer_blocks.{index}.'
+        dst = f'double_blocks.{index}.'
+        move(src + 'norm1.linear.weight', dst + 'img_mod.linear.weight')
+        move(src + 'norm1.linear.bias', dst + 'img_mod.linear.bias')
+        move(src + 'norm1_context.linear.weight', dst + 'txt_mod.linear.weight')
+        move(src + 'norm1_context.linear.bias', dst + 'txt_mod.linear.bias')
+        fuse(src, ('attn.to_q.weight', 'attn.to_k.weight', 'attn.to_v.weight'), dst + 'img_attn_qkv.weight')
+        fuse(src, ('attn.to_q.bias', 'attn.to_k.bias', 'attn.to_v.bias'), dst + 'img_attn_qkv.bias')
+        move(src + 'attn.norm_q.weight', dst + 'img_attn_q_norm.weight')
+        move(src + 'attn.norm_k.weight', dst + 'img_attn_k_norm.weight')
+        move(src + 'attn.to_out.0.weight', dst + 'img_attn_proj.weight')
+        move(src + 'attn.to_out.0.bias', dst + 'img_attn_proj.bias')
+        move(src + 'ff.net.0.proj.weight', dst + 'img_mlp.fc1.weight')
+        move(src + 'ff.net.0.proj.bias', dst + 'img_mlp.fc1.bias')
+        move(src + 'ff.net.2.weight', dst + 'img_mlp.fc2.weight')
+        move(src + 'ff.net.2.bias', dst + 'img_mlp.fc2.bias')
+        fuse(src, ('attn.add_q_proj.weight', 'attn.add_k_proj.weight', 'attn.add_v_proj.weight'),
+             dst + 'txt_attn_qkv.weight')
+        fuse(src, ('attn.add_q_proj.bias', 'attn.add_k_proj.bias', 'attn.add_v_proj.bias'),
+             dst + 'txt_attn_qkv.bias')
+        move(src + 'attn.norm_added_q.weight', dst + 'txt_attn_q_norm.weight')
+        move(src + 'attn.norm_added_k.weight', dst + 'txt_attn_k_norm.weight')
+        move(src + 'attn.to_add_out.weight', dst + 'txt_attn_proj.weight')
+        move(src + 'attn.to_add_out.bias', dst + 'txt_attn_proj.bias')
+        move(src + 'ff_context.net.0.proj.weight', dst + 'txt_mlp.fc1.weight')
+        move(src + 'ff_context.net.0.proj.bias', dst + 'txt_mlp.fc1.bias')
+        move(src + 'ff_context.net.2.weight', dst + 'txt_mlp.fc2.weight')
+        move(src + 'ff_context.net.2.bias', dst + 'txt_mlp.fc2.bias')
+    for index in _block_indices(state, 'single_transformer_blocks.'):
+        src = f'single_transformer_blocks.{index}.'
+        dst = f'single_blocks.{index}.'
+        move(src + 'norm.linear.weight', dst + 'modulation.linear.weight')
+        move(src + 'norm.linear.bias', dst + 'modulation.linear.bias')
+        move(src + 'attn.to_q.weight', dst + 'linear1_q.weight')
+        move(src + 'attn.to_q.bias', dst + 'linear1_q.bias')
+        move(src + 'attn.to_k.weight', dst + 'linear1_k.weight')
+        move(src + 'attn.to_k.bias', dst + 'linear1_k.bias')
+        move(src + 'attn.to_v.weight', dst + 'linear1_v.weight')
+        move(src + 'attn.to_v.bias', dst + 'linear1_v.bias')
+        move(src + 'attn.norm_q.weight', dst + 'q_norm.weight')
+        move(src + 'attn.norm_k.weight', dst + 'k_norm.weight')
+        move(src + 'proj_mlp.weight', dst + 'linear1_mlp.weight')
+        move(src + 'proj_mlp.bias', dst + 'linear1_mlp.bias')
+        move(src + 'proj_out.weight', dst + 'linear2.fc.weight')
+        move(src + 'proj_out.bias', dst + 'linear2.fc.bias')
+    move('proj_out.weight', 'final_layer.linear.weight')
+    move('proj_out.bias', 'final_layer.linear.bias')
+    move('norm_out.linear.weight', 'final_layer.adaLN_modulation.1.weight', swap=True)
+    move('norm_out.linear.bias', 'final_layer.adaLN_modulation.1.bias', swap=True)
+    _leftover(state)
+    return out
+
+
+def _hunyuan_video(state: dict) -> dict:
+    """Diffusers HunyuanVideo 1.5 names onto the checkpoint Comfy's loader rewrites.
+
+    The 1.5-only prefixes are restored first. The shared video converter is then
+    undone: fused attention, the single-block ``linear1``, and the embedder names.
+    ``linear1`` is rebuilt from the stored rows, so the width does not have to be 3072.
+    """
+    restored = {}
+    for key, value in state.items():
+        name = key
+        for source, target in (
+                ('image_embedder.norm_in.', 'vision_in.proj.0.'),
+                ('image_embedder.linear_1.', 'vision_in.proj.1.'),
+                ('image_embedder.linear_2.', 'vision_in.proj.3.'),
+                ('image_embedder.norm_out.', 'vision_in.proj.4.'),
+                ('context_embedder_2.linear_1.', 'byt5_in.net.0.proj.'),
+                ('context_embedder_2.linear_2.', 'byt5_in.net.2.'),
+                ('context_embedder_2.linear_3.', 'byt5_in.fc3.'),
+                ('context_embedder_2.norm.', 'byt5_in.layernorm.'),
+                ('time_embed.', 'time_text_embed.'),
+                ('cond_type_embed.', 'cond_type_embedding.')):
+            if name.startswith(source):
+                name = target + name[len(source):]
+                break
+        restored[name] = value
+    return _undo_hunyuan_video_diffusers(restored)
+
+
+def _undo_hunyuan_video_diffusers(state: dict) -> dict:
+    """Inverse of ``convert_hunyuan_video_transformer_to_diffusers``."""
+    out = {}
+    for index in _block_indices(state, 'single_transformer_blocks.'):
+        src = f'single_transformer_blocks.{index}.'
+        dst = f'single_blocks.{index}.'
+        if src + 'attn.to_q.weight' in state:
+            parts = [
+                state.pop(src + 'attn.to_q.weight'),
+                state.pop(src + 'attn.to_k.weight'),
+                state.pop(src + 'attn.to_v.weight')]
+            if src + 'proj_mlp.weight' in state:
+                parts.append(state.pop(src + 'proj_mlp.weight'))
+            out[dst + 'linear1.weight'] = _cat(parts)
+            if src + 'attn.to_q.bias' in state:
+                bias = [
+                    state.pop(src + 'attn.to_q.bias'),
+                    state.pop(src + 'attn.to_k.bias'),
+                    state.pop(src + 'attn.to_v.bias')]
+                if src + 'proj_mlp.bias' in state:
+                    bias.append(state.pop(src + 'proj_mlp.bias'))
+                out[dst + 'linear1.bias'] = _cat(bias)
+        for source, target in (
+                ('attn.norm_q.', 'q_norm.'),
+                ('attn.norm_k.', 'k_norm.'),
+                ('proj_out.', 'linear2.')):
+            for kind in ('weight', 'bias'):
+                name = src + source + kind
+                if name in state:
+                    out[dst + target + kind] = state.pop(name)
+    for index in _block_indices(state, 'transformer_blocks.'):
+        src = f'transformer_blocks.{index}.'
+        dst = f'double_blocks.{index}.'
+        if src + 'attn.to_q.weight' in state:
+            out[dst + 'img_attn_qkv.weight'] = _cat([
+                state.pop(src + 'attn.to_q.weight'),
+                state.pop(src + 'attn.to_k.weight'),
+                state.pop(src + 'attn.to_v.weight')])
+        if src + 'attn.to_q.bias' in state:
+            out[dst + 'img_attn_qkv.bias'] = _cat([
+                state.pop(src + 'attn.to_q.bias'),
+                state.pop(src + 'attn.to_k.bias'),
+                state.pop(src + 'attn.to_v.bias')])
+        if src + 'attn.add_q_proj.weight' in state:
+            out[dst + 'txt_attn_qkv.weight'] = _cat([
+                state.pop(src + 'attn.add_q_proj.weight'),
+                state.pop(src + 'attn.add_k_proj.weight'),
+                state.pop(src + 'attn.add_v_proj.weight')])
+        if src + 'attn.add_q_proj.bias' in state:
+            out[dst + 'txt_attn_qkv.bias'] = _cat([
+                state.pop(src + 'attn.add_q_proj.bias'),
+                state.pop(src + 'attn.add_k_proj.bias'),
+                state.pop(src + 'attn.add_v_proj.bias')])
+        for source, target in (
+                ('attn.norm_q.', 'img_attn_q_norm.'),
+                ('attn.norm_k.', 'img_attn_k_norm.'),
+                ('attn.to_out.0.', 'img_attn_proj.'),
+                ('attn.norm_added_q.', 'txt_attn_q_norm.'),
+                ('attn.norm_added_k.', 'txt_attn_k_norm.'),
+                ('attn.to_add_out.', 'txt_attn_proj.'),
+                ('norm1.linear.', 'img_mod.linear.'),
+                ('norm1.norm.', 'img_norm1.'),
+                ('norm2.', 'img_norm2.'),
+                ('ff.net.0.proj.', 'img_mlp.fc1.'),
+                ('ff.net.2.', 'img_mlp.fc2.'),
+                ('norm1_context.linear.', 'txt_mod.linear.'),
+                ('norm1_context.norm.', 'txt_norm1.'),
+                ('norm2_context.', 'txt_norm2.'),
+                ('ff_context.net.0.proj.', 'txt_mlp.fc1.'),
+                ('ff_context.net.2.', 'txt_mlp.fc2.')):
+            for kind in ('weight', 'bias'):
+                name = src + source + kind
+                if name in state:
+                    out[dst + target + kind] = state.pop(name)
+    for key, value in list(state.items()):
+        if key.startswith('context_embedder.'):
+            name = 'txt_in.' + key[len('context_embedder.'):]
+            name = name.replace('token_refiner.refiner_blocks.', 'individual_token_refiner.blocks.')
+            name = name.replace('time_text_embed.timestep_embedder.linear_1.', 't_embedder.mlp.0.')
+            name = name.replace('time_text_embed.timestep_embedder.linear_2.', 't_embedder.mlp.2.')
+            name = name.replace('time_text_embed.text_embedder.', 'c_embedder.')
+            name = name.replace('.ff.', '.mlp.')
+            name = name.replace('.mlp.net.0.proj.', '.mlp.fc1.')
+            name = name.replace('.mlp.net.2.', '.mlp.fc2.')
+            name = name.replace('.proj_in.', '.input_embedder.')
+            if any(piece in name for piece in ('.attn.to_q.', '.attn.to_k.', '.attn.to_v.')):
+                # self_attn_qkv was split. Fuse below once all three exist.
+                continue
+            if name.endswith('.norm_out.linear.weight') or name.endswith('.norm_out.linear.bias'):
+                name = name.replace('.norm_out.linear.', '.adaLN_modulation.1.')
+            if '.attn.to_out.0.' in name:
+                name = name.replace('.attn.to_out.0.', '.self_attn_proj.')
+            out[name] = state.pop(key)
+            continue
+        state[key] = value
+    # Fuse refiner qkv that was left in ``state`` under the diffusers names.
+    for index in _block_indices(state, 'context_embedder.token_refiner.refiner_blocks.'):
+        src = f'context_embedder.token_refiner.refiner_blocks.{index}.attn.'
+        dst = f'txt_in.individual_token_refiner.blocks.{index}.self_attn_qkv.'
+        if src + 'to_q.weight' in state:
+            out[dst + 'weight'] = _cat([
+                state.pop(src + 'to_q.weight'),
+                state.pop(src + 'to_k.weight'),
+                state.pop(src + 'to_v.weight')])
+        if src + 'to_q.bias' in state:
+            out[dst + 'bias'] = _cat([
+                state.pop(src + 'to_q.bias'),
+                state.pop(src + 'to_k.bias'),
+                state.pop(src + 'to_v.bias')])
+    for key, value in list(state.items()):
+        name = key
+        if name == 'norm_out.linear.weight':
+            out['final_layer.adaLN_modulation.1.weight'] = _swap_halves(value)
+            state.pop(key)
+            continue
+        if name == 'norm_out.linear.bias':
+            out['final_layer.adaLN_modulation.1.bias'] = _swap_halves(value)
+            state.pop(key)
+            continue
+        for source, target in (
+                ('x_embedder.', 'img_in.'),
+                ('time_text_embed.timestep_embedder.linear_1.', 'time_in.mlp.0.'),
+                ('time_text_embed.timestep_embedder.linear_2.', 'time_in.mlp.2.'),
+                ('time_text_embed.guidance_embedder.linear_1.', 'guidance_in.mlp.0.'),
+                ('time_text_embed.guidance_embedder.linear_2.', 'guidance_in.mlp.2.'),
+                ('time_text_embed.text_embedder.linear_1.', 'vector_in.in_layer.'),
+                ('time_text_embed.text_embedder.linear_2.', 'vector_in.out_layer.'),
+                ('proj_out.', 'final_layer.linear.'),
+                ('norm_out.norm.', 'final_layer.norm_final.')):
+            if name.startswith(source):
+                name = target + name[len(source):]
+                break
+        out[name] = state.pop(key)
     _leftover(state)
     return out
 

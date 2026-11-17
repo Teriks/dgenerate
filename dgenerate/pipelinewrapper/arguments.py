@@ -1650,6 +1650,17 @@ class GenerationArguments(_types.SetFromMixin):
     Last-frame conditioning image for LTX, from the image seed ``end`` argument.
     """
 
+    reference_media_paths: list | None = None
+    """
+    Ordered MiniMax-H3 ``reference=`` media. A string is a file path. A dict is
+    media already decoded and run through ``--reference-image-processors``.
+    """
+
+    audio_latents: typing.Any = None
+    """
+    Pre-generated MiniMax-H3 audio noise from the image seed ``audio-latents`` argument.
+    """
+
     video_frames: _types.OptionalImages = None
     """
     Leading conditioning clip for LTX, used when the image seed path is a video
@@ -1722,6 +1733,21 @@ class GenerationArguments(_types.SetFromMixin):
     vace_reference_images: _types.OptionalImages = None
     """
     Wan VACE reference stills, from the image seed ``reference`` argument.
+    """
+
+    minimax_control_frames: _types.OptionalImages = None
+    """
+    MiniMax-H3 Fun control clip, from ``--image-seeds`` when ``--control-nets`` is set.
+    """
+
+    minimax_inpaint_frames: _types.OptionalImages = None
+    """
+    Source clip kept outside the inpaint mask for MiniMax-H3 ``--control-nets``.
+    """
+
+    minimax_mask_frames: _types.OptionalImages = None
+    """
+    Inpaint mask for MiniMax-H3 ``--control-nets``. White is regenerated.
     """
 
     inference_steps: _types.OptionalInteger = None

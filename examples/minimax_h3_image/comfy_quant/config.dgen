@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Pruned int8 ConvRot image transformer.
+# https://huggingface.co/Comfy-Org/MiniMax-H3-Image
+# The parent repo still supplies Qwen3-VL and the image VAE.
+
+MiniMaxAI/MiniMax-H3-Image
+--model-type minimax-h3-image
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/MiniMax-H3-Image/blob/main/diffusion_models/minimax_h3_image_pruned_int8_convrot.safetensors
+--gen-seeds 1
+--output-path minimax-h3-image-comfy-int8
+--output-size 2048
+--prompts "A red fox standing in a snowy pine forest at sunrise, sharp detail"

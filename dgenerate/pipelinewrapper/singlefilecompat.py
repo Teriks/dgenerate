@@ -98,6 +98,18 @@ def split_flux3_fused_qkv(checkpoint: dict) -> dict:
     return checkpoint
 
 
+def convert_minimax_h3_transformer_checkpoint(checkpoint: dict, **kwargs) -> dict:
+    """ComfyUI MiniMax-H3 names onto ``MiniMaxH3Transformer3DModel``."""
+    import dgenerate.pipelinewrapper.minimaxh3 as _minimax
+    return _minimax.convert_minimax_h3_checkpoint(checkpoint, **kwargs)
+
+
+def convert_minimax_h3_image_transformer_checkpoint(checkpoint: dict, **kwargs) -> dict:
+    """ComfyUI MiniMax-H3-Image names onto ``MiniMaxH3ImageTransformer2DModel``."""
+    import dgenerate.pipelinewrapper.minimaxh3 as _minimax
+    return _minimax.convert_minimax_h3_image_checkpoint(checkpoint, **kwargs)
+
+
 def convert_flux3_transformer_checkpoint(checkpoint: dict, **kwargs) -> dict:
     """Diffusers' FLUX.3 conversion, plus ComfyUI's fused ``qkv`` projections."""
     from diffusers.loaders.single_file_utils import convert_flux3_transformer_checkpoint_to_diffusers
@@ -1290,6 +1302,22 @@ def register_single_file_classes() -> None:
         loadable.setdefault(
             'Kandinsky6Transformer3DModel', {
                 'checkpoint_mapping_fn': lambda checkpoint, **kwargs: checkpoint,
+                'default_subfolder': 'transformer',
+            })
+
+    # ComfyUI MiniMax-H3 fuses qkv and uses blocks.N names. Diffusers splits
+    # them, and its converter refuses pruned curve checkpoints. Ours keeps the
+    # curve table and installs it after the load.
+    if hasattr(diffusers, 'MiniMaxH3Transformer3DModel'):
+        loadable['MiniMaxH3Transformer3DModel'] = {
+            'checkpoint_mapping_fn': convert_minimax_h3_transformer_checkpoint,
+            'default_subfolder': 'transformer',
+        }
+
+    if hasattr(diffusers, 'MiniMaxH3ImageTransformer2DModel'):
+        loadable.setdefault(
+            'MiniMaxH3ImageTransformer2DModel', {
+                'checkpoint_mapping_fn': convert_minimax_h3_image_transformer_checkpoint,
                 'default_subfolder': 'transformer',
             })
 

@@ -31,6 +31,7 @@ Diffusion Model Feature Support Tables
    * ``--model-type hydit`` (Hunyuan-DiT)
    * ``--model-type hyimage-21`` (HunyuanImage 2.1)
    * ``--model-type hyimage-21-refiner`` (HunyuanImage 2.1 Refiner)
+   * ``--model-type minimax-h3-image`` (MiniMax-H3-Image)
    * ``--model-type ltx2`` (LTX-2 / LTX-2.5, see `Video Model Feature Support`_)
    * ``--model-type ltx-video`` (LTX-Video, see `Video Model Feature Support`_)
    * ``--model-type wan`` (Wan 2.1 / 2.2 - T2V, I2V, FLF2V, V2V, VACE, see `Video Model Feature Support`_)
@@ -40,6 +41,7 @@ Diffusion Model Feature Support Tables
    * ``--model-type motif-video`` (Motif-Video, see `Video Model Feature Support`_)
    * ``--model-type kandinsky5-video`` (Kandinsky 5.0 Video, see `Video Model Feature Support`_)
    * ``--model-type kandinsky6-video`` (Kandinsky 6.0 Video, see `Video Model Feature Support`_)
+   * ``--model-type minimax-h3-video`` (MiniMax-H3 video and audio, see `Video Model Feature Support`_)
 
 .. list-table:: Generation modes by ``--model-type``
    :widths: 40 10 10 10
@@ -198,6 +200,11 @@ Diffusion Model Feature Support Tables
    * - ``kandinsky5-image``
      - ✅
      - ✅
+     - ❌
+
+   * - ``minimax-h3-image``
+     - ✅
+     - ❌
      - ❌
 
 .. list-table:: Guidance by ``--model-type``
@@ -421,6 +428,13 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
 
+   * - ``minimax-h3-image``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
 .. list-table:: Adapters by ``--model-type``
    :widths: 40 10 10
    :header-rows: 1
@@ -546,6 +560,10 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``kandinsky5-image``
+     - ❌
+     - ❌
+
+   * - ``minimax-h3-image``
      - ❌
      - ❌
 
@@ -704,6 +722,11 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``kandinsky5-image``
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``minimax-h3-image``
      - ❌
      - ❌
      - ❌
@@ -1197,11 +1220,25 @@ is omitted. Kandinsky 6 still loads its text encoder, because denoising uses it.
      - ❌
      - ✅
      - ❌
+
+   * - ``minimax-h3-image``
+     - ❌
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
 Video Model Feature Support
 ---------------------------
 
 Every video model type (``ltx2``, ``ltx-video``, ``wan``, ``wan-animate``, ``wan-animate-2``,
-``hyvideo-15``, ``motif-video``, and ``kandinsky5-video``) generates a whole
+``hyvideo-15``, ``motif-video``, ``kandinsky5-video``, ``kandinsky6-video``, and
+``minimax-h3-video``) generates a whole
 clip in one pipeline call. Clip length and frame rate are the shared ``--video-lengths``
 and ``--video-fps`` options.
 
@@ -1488,7 +1525,7 @@ LTX supports Cache-DiT and ``--torch-compile``, but not Spectrum or DyPE. GGUF t
 are tested with LTX-Video. LTX video conditioning covers first and last frames, reference audio, and IC-LoRA.
 ``--loras`` loads Diffusers-format LoRAs. ``--ltx-ic-lora`` is separate and can be fused with ``--loras``.
 
-No video model accepts ``--control-loras`` or ``--control-nets``. ``--loras`` is supported on every video model type.
+No video model accepts ``--control-loras``. ``--control-nets`` is MiniMax-H3-Fun-Controlnet-Union-2.0 on ``minimax-h3-video`` only. ``--loras`` is supported on every video model type.
 
 Wan video-to-video is the only Wan mode that uses ``--timesteps``. Wan accepts
 ``FlowMatchEulerDiscreteScheduler`` (``shift`` and ``use-dynamic-shifting``) and the checkpoint
@@ -1506,10 +1543,16 @@ checkpoints for text-to-video and image-to-video. GGUF transformer replacement i
 the only published Kandinsky 5.0 Video GGUF checkpoints are T2V Pro. These three pipelines do not return
 audio in dgenerate.
 
+``minimax-h3-video`` is MiniMax-H3. One denoising loop writes the video and a stereo
+soundtrack. No image seed is text to video. A still and ``last-frame=`` are
+keyframes. ``reference=`` loads the reference transformer and cannot be combined
+with a keyframe. Guidance is distilled. ``--transformer`` loads a Diffusers
+transformer, a ComfyUI safetensors file, or a GGUF.
+
 Flow Image Model Notes
 ----------------------
 
-``flux2``, ``flux2-klein-kv``, ``flux3``, ``z-image-omni``, ``qwen-image-edit``, and
+``flux2``, ``flux2-klein-kv``, ``flux3``, ``minimax-h3-image``, ``z-image-omni``, ``qwen-image-edit``, and
 ``qwen-image-layered`` take an ``--image-seeds`` value with no mask as a
 condition image. That is the Txt2Img column above. There is no img2img
 strength.
@@ -1531,6 +1574,17 @@ upsampler loads only when ``--pipeline-prompt-enhance`` or
 ``--prompt-upsampler`` is set. Saved latents are unpatchified denoise-space
 tensors in the Flux.2 layout, so cooperative denoising continues them with
 ``latents:``. Examples are under ``examples/flux3``.
+
+``minimax-h3-image`` is MiniMax-H3-Image, ``MiniMaxAI/MiniMax-H3-Image``.
+It writes one still image. Guidance is distilled, and the checkpoint samples
+a fixed 6-step schedule, so omit ``--guidance-scales``, a negative prompt,
+``--scheduler``, and ``--inference-steps``. The default size is 2048 and both
+sides are multiples of 32. A request smaller than 2048×2048 is generated on a
+larger canvas of the same aspect ratio and resized back. ``--image-seeds``
+are reference images, with no mask and no strength. The prompt names them
+Picture 1, Picture 2, and so on, and is encoded verbatim. Cache-DiT caches
+``transformer_blocks`` with ``Pattern_3``. Examples are under
+``examples/minimax_h3_image``.
 
 ``qwen-image-edit`` inpainting is the edit pipeline with a mask. Edit-Plus has
 no inpaint pipeline.
@@ -1564,7 +1618,8 @@ ControlNet on ``z-image`` and ``qwen-image`` is text-to-image and inpaint.
 The model-specific rows above show LoRA, Cache-DiT, DyPE, and Spectrum support. In particular,
 ``qwen-image-21`` and ``hyimage-21`` (including the refiner) support Spectrum but not
 Cache-DiT or DyPE; ``kandinsky5-image`` supports Cache-DiT and Spectrum but not DyPE;
-``krea2`` supports all three; ``flux3`` supports DyPE and Spectrum but not Cache-DiT.
+``krea2`` supports all three; ``flux3`` supports DyPE and Spectrum but not Cache-DiT;
+``minimax-h3-image`` supports Cache-DiT but not DyPE or Spectrum.
 These flow image models do not support textual inversions,
 IP adapters, T2I adapters, prompt weighters, PAG, DeepCache, TeaCache, SADA, Microsoft RAS,
 or Hi-Diffusion, except where noted for ``hydit`` above.

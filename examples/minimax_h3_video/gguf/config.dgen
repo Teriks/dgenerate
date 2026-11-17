@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Pruned curve Q4_0 of the text and keyframe transformer.
+# https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF
+# The parent repo still supplies Qwen3-VL and the VAEs.
+# fl2va is text-to-video and keyframes. ref2va is the reference transformer.
+
+MiniMaxAI/MiniMax-H3
+--model-type minimax-h3-video
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q4_0.gguf
+--inference-steps 30
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path minimax-h3-gguf
+--output-size 1024x576
+--prompts "A red fox trotting through a snowy pine forest, snow crunching underfoot"

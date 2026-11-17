@@ -284,6 +284,8 @@ def component_directories(root: str,
         return found
 
     index_path = os.path.join(root, 'model_index.json')
+    if not os.path.isfile(index_path):
+        index_path = os.path.join(root, 'modular_model_index.json')
     names = None
     if os.path.isfile(index_path):
         with open(index_path, encoding='utf-8') as handle:
@@ -315,6 +317,20 @@ def component_directories(root: str,
         variant_note = f' for variant "{variant}"' if variant else ''
         raise QuantExportError(f'"{root}" has no diffusers component weights{variant_note}.')
     return found
+
+
+def _progress(items, desc: str, unit: str):
+    """A bar with a count and a percent. One item is returned as it is."""
+    from tqdm.auto import tqdm
+
+    items = list(items)
+    if len(items) <= 1:
+        yield from items
+        return
+    with tqdm(total=len(items), desc=desc, unit=unit, dynamic_ncols=True) as bar:
+        for item in items:
+            yield item
+            bar.update()
 
 
 def _load_shard(path: str) -> dict:
@@ -353,13 +369,12 @@ def load_component_state(directory: str,
     with open(path, encoding='utf-8') as handle:
         weight_map = json.load(handle)['weight_map']
     folder = os.path.dirname(path)
-    shards = {}
-    state = {}
-    for key, shard in weight_map.items():
-        if shard not in shards:
-            shards[shard] = _load_shard(os.path.join(folder, shard))
-        state[key] = shards[shard][key]
-    return state
+    label = os.path.basename(os.path.abspath(directory)) or 'weights'
+    unique = list(dict.fromkeys(weight_map.values()))
+    shards = {
+        shard: _load_shard(os.path.join(folder, shard))
+        for shard in _progress(unique, f'Loading {label}', 'shard')}
+    return {key: shards[shard][key] for key, shard in weight_map.items()}
 
 
 def load_component_config(directory: str) -> dict | None:
@@ -785,9 +800,10 @@ def _write_comfy(state: dict, path: str, fmt: str) -> int | None:
     tensors = {}
     layers = {}
     quantized = 0
-    for name, tensor in state.items():
-        if not isinstance(tensor, torch.Tensor):
-            continue
+    entries = [
+        (name, tensor) for name, tensor in state.items()
+        if isinstance(tensor, torch.Tensor)]
+    for name, tensor in _progress(entries, fmt, 'tensor'):
         packed = quantize(tensor.detach().cpu()) if _linear_weight(name, tensor) else None
         if packed is None:
             tensors[name] = _dense_tensor(tensor)
@@ -843,10 +859,11 @@ def _write_gguf(state: dict,
         writer.add_string(key, value)
     quantized = 0
     stored = 0
+    tensors = [
+        (name, tensor) for name, tensor in state.items()
+        if isinstance(tensor, torch.Tensor)]
     try:
-        for name, tensor in state.items():
-            if not isinstance(tensor, torch.Tensor):
-                continue
+        for name, tensor in _progress(tensors, fmt, 'tensor'):
             array = tensor.detach().to(torch.float32).cpu().contiguous().numpy()
             logical_shape = tuple(int(dim) for dim in array.shape)
             raw = None
@@ -1066,7 +1083,13 @@ _TEXT_SIDECARS = (
 
 
 def _copy_text_sidecars(source_dir: str | None, output_dir: str, config: dict | None) -> None:
-    """Config and processor files beside a text quant, so the folder can be loaded."""
+    """Config, tokenizer, and processor files beside a text quant.
+
+    Loading the quant for generation does not read ``config.json``. The copy
+    is there for a later quantize of that file, and for anything else that
+    looks beside the weights for the architecture. A folder that already has
+    ``config.json`` is left alone.
+    """
     if not source_dir or not isinstance(config, dict):
         return
     if _text_architecture(str(config.get('model_type') or '')) is None:

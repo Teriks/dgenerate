@@ -85,41 +85,139 @@ class UnsupportedPipelineConfigError(Exception):
     pass
 
 
-def _cache_dit_custom_block_adapter(cache_dit, pipeline):
-    """Build Cache-DiT adapters for Wan-Animate transformers.
+def _kandinsky6_cache_has_separate_cfg(pipeline, guidance_scale) -> bool:
+    """Whether this Kandinsky 6 call runs a separate unconditional forward.
 
-    Cache-DiT's built-in Wan adapter only accepts WanTransformer3DModel and
-    WanVACETransformer3DModel. Wan-Animate uses the same WanTransformerBlock
-    collection, while Wan-Animate-2 has its own single-hidden-state blocks.
+    The base pipeline defaults to guidance 5 and calls the transformer twice.
+    A Piflow (distilled) checkpoint, and any call whose guidance is at most 1,
+    runs one forward. Cache-DiT pairs those forwards when this flag is true.
+    """
+    if guidance_scale is not None:
+        return float(guidance_scale) > 1.0
+    scheduler_name = type(getattr(pipeline, 'scheduler', None)).__name__
+    if scheduler_name == 'PiflowScheduler':
+        return False
+    return True
+
+
+def _cache_dit_custom_block_adapter(cache_dit, pipeline, guidance_scale=None):
+    """Build Cache-DiT adapters for transformers 1.5.3 does not register.
+
+    Wan-Animate is outside the built-in Wan adapter. FLUX.3 and Kandinsky 6
+    are not in the 1.5.3 registry at all. The block contracts match the
+    adapters added on Cache-DiT's main branch after 1.5.3.
     """
     transformer = getattr(pipeline, 'transformer', None)
+    if transformer is None:
+        transformer = getattr(pipeline, 'transformer_ref', None)
     if transformer is None:
         return None
 
     transformer_type = type(transformer).__name__
     if transformer_type == 'WanAnimateTransformer3DModel':
-        pattern = cache_dit.ForwardPattern.Pattern_2
-    elif transformer_type == 'WanAnimate2Transformer3DModel':
-        pattern = cache_dit.ForwardPattern.Pattern_3
-    else:
-        return None
-
-    blocks = getattr(transformer, 'blocks', None)
-    if not isinstance(blocks, torch.nn.ModuleList) or not blocks:
-        raise ValueError(
-            f'{transformer_type} does not expose a non-empty transformer.blocks ModuleList.')
-
-    return cache_dit.BlockAdapter(
-        pipe=pipeline,
-        transformer=transformer,
-        blocks=blocks,
-        forward_pattern=pattern,
-        has_separate_cfg=True,
-        # dgenerate compiles repeated block forwards before call time; torch.compile
-        # can hide the concrete method signature from Cache-DiT's introspection.
-        # The exact transformer classes above establish these two known contracts.
-        check_forward_pattern=False,
-    )
+        blocks = getattr(transformer, 'blocks', None)
+        if not isinstance(blocks, torch.nn.ModuleList) or not blocks:
+            raise ValueError(
+                f'{transformer_type} does not expose a non-empty transformer.blocks ModuleList.')
+        return cache_dit.BlockAdapter(
+            pipe=pipeline,
+            transformer=transformer,
+            blocks=blocks,
+            forward_pattern=cache_dit.ForwardPattern.Pattern_2,
+            has_separate_cfg=True,
+            # dgenerate compiles repeated block forwards before call time; torch.compile
+            # can hide the concrete method signature from Cache-DiT's introspection.
+            # The exact transformer classes above establish these known contracts.
+            check_forward_pattern=False,
+        )
+    if transformer_type == 'WanAnimate2Transformer3DModel':
+        blocks = getattr(transformer, 'blocks', None)
+        if not isinstance(blocks, torch.nn.ModuleList) or not blocks:
+            raise ValueError(
+                f'{transformer_type} does not expose a non-empty transformer.blocks ModuleList.')
+        return cache_dit.BlockAdapter(
+            pipe=pipeline,
+            transformer=transformer,
+            blocks=blocks,
+            forward_pattern=cache_dit.ForwardPattern.Pattern_3,
+            has_separate_cfg=True,
+            check_forward_pattern=False,
+        )
+    if transformer_type == 'Flux3Transformer2DModel':
+        # The joint stack holds the full token sequence. The per-mode stacks stay
+        # uncached so a reused joint residual is still conditioned on this step.
+        blocks = getattr(transformer, 'single_transformer_blocks', None)
+        if not isinstance(blocks, torch.nn.ModuleList) or not blocks:
+            raise ValueError(
+                'Flux3Transformer2DModel does not expose a non-empty '
+                'transformer.single_transformer_blocks ModuleList.')
+        guider = getattr(pipeline, 'guider', None)
+        has_separate_cfg = bool(
+            guider is not None and getattr(guider, 'num_conditions', 1) > 1)
+        return cache_dit.BlockAdapter(
+            pipe=pipeline,
+            transformer=transformer,
+            blocks=blocks,
+            forward_pattern=cache_dit.ForwardPattern.Pattern_1,
+            check_forward_pattern=True,
+            has_separate_cfg=has_separate_cfg,
+        )
+    if transformer_type == 'Kandinsky6Transformer3DModel':
+        # The fused video/audio stack is the denoiser. The text stacks run once
+        # per step over the prompt. The block returns (video, audio); Pattern_0
+        # treats the audio stream as the second residual. Its parameters are
+        # named vis/aud, so the signature check is off.
+        blocks = getattr(transformer, 'visual_transformer_blocks', None)
+        if not isinstance(blocks, torch.nn.ModuleList) or not blocks:
+            raise ValueError(
+                'Kandinsky6Transformer3DModel does not expose a non-empty '
+                'transformer.visual_transformer_blocks ModuleList.')
+        return cache_dit.BlockAdapter(
+            pipe=pipeline,
+            transformer=transformer,
+            blocks=blocks,
+            blocks_name='visual_transformer_blocks',
+            forward_pattern=cache_dit.ForwardPattern.Pattern_0,
+            check_forward_pattern=False,
+            check_num_outputs=False,
+            has_separate_cfg=_kandinsky6_cache_has_separate_cfg(
+                pipeline, guidance_scale),
+        )
+    if transformer_type == 'MiniMaxH3Transformer3DModel':
+        # One packed sequence. The block reads hidden_states and returns it.
+        # Guidance is distilled, so each step is a single forward.
+        blocks = getattr(transformer, 'transformer_blocks', None)
+        if not isinstance(blocks, torch.nn.ModuleList) or not blocks:
+            raise ValueError(
+                'MiniMaxH3Transformer3DModel does not expose a non-empty '
+                'transformer.transformer_blocks ModuleList.')
+        return cache_dit.BlockAdapter(
+            pipe=pipeline,
+            transformer=transformer,
+            blocks=blocks,
+            blocks_name='transformer_blocks',
+            forward_pattern=cache_dit.ForwardPattern.Pattern_3,
+            check_forward_pattern=False,
+            has_separate_cfg=False,
+        )
+    if transformer_type == 'MiniMaxH3ImageTransformer2DModel':
+        # One packed sequence. The block reads hidden_states and returns it.
+        # Guidance is distilled, so each step is a single forward.
+        blocks = getattr(transformer, 'transformer_blocks', None)
+        if not isinstance(blocks, torch.nn.ModuleList) or not blocks:
+            raise ValueError(
+                'MiniMaxH3ImageTransformer2DModel does not expose a non-empty '
+                'transformer.transformer_blocks ModuleList.')
+        return cache_dit.BlockAdapter(
+            pipe=pipeline,
+            transformer=transformer,
+            blocks=blocks,
+            blocks_name='transformer_blocks',
+            forward_pattern=cache_dit.ForwardPattern.Pattern_3,
+            check_forward_pattern=False,
+            has_separate_cfg=False,
+        )
+    return None
 
 
 def _configure_cache_dit_logging() -> None:
@@ -147,11 +245,30 @@ def _configure_cache_dit_logging() -> None:
 def _capture_cache_dit_transformer_forwards(pipeline):
     """Capture forward entry points that temporary Cache-DiT setup may replace."""
     captured = []
-    for name in ('transformer', 'transformer_2'):
+    for name in ('transformer', 'transformer_2', 'transformer_ref'):
         transformer = getattr(pipeline, name, None)
         if isinstance(transformer, torch.nn.Module):
             captured.append((transformer, transformer.forward))
     return captured
+
+
+def _preserve_cache_dit_forward_signatures(pipeline) -> None:
+    """Keep the transformer's original forward parameters visible.
+
+    Cache-DiT 1.5.3 replaces ``forward`` with a ``*args, **kwargs`` wrapper.
+    FLUX.3's modular denoiser forwards only parameters that ``inspect.signature``
+    still lists, so inputs such as ``img_ids`` would otherwise be dropped.
+    """
+    for name in ('transformer', 'transformer_2', 'transformer_ref'):
+        transformer = getattr(pipeline, name, None)
+        original = getattr(transformer, '_original_forward', None)
+        forward = getattr(transformer, 'forward', None)
+        if original is None or forward is None:
+            continue
+        try:
+            forward.__signature__ = inspect.signature(original)
+        except (TypeError, ValueError):
+            continue
 
 
 def _restore_cache_dit_transformer_forwards(captured) -> None:
@@ -167,7 +284,8 @@ def cache_dit_context(pipeline: diffusers.DiffusionPipeline,
                       device: str = 'cuda',
                       offload_enabled: bool = False,
                       compile_enabled: bool = False,
-                      quantizer_enabled: bool = False):
+                      quantizer_enabled: bool = False,
+                      guidance_scale: float | None = None):
     """Enable Cache-DiT for one call and remove its temporary hooks afterward.
 
     Parallelism, quantization, and attention backend settings mutate the loaded
@@ -273,11 +391,13 @@ def cache_dit_context(pipeline: diffusers.DiffusionPipeline,
                     'torch.distributed in the host application.')
 
         cache_configs = cache_dit.load_configs(native_config, return_dict=True)
-        custom_block_adapter = _cache_dit_custom_block_adapter(cache_dit, pipeline)
+        custom_block_adapter = _cache_dit_custom_block_adapter(
+            cache_dit, pipeline, guidance_scale=guidance_scale)
         if ray_enabled and custom_block_adapter is not None:
             raise ValueError(
-                'Cache-DiT Ray parallelism does not support custom BlockAdapter models, '
-                'including Wan-Animate and Wan-Animate-2.')
+                'Cache-DiT Ray parallelism does not support dgenerate custom block '
+                'adapters. That includes Wan-Animate, Wan-Animate-2, FLUX.3, '
+                'Kandinsky 6, and MiniMax-H3.')
 
         def _make_modifier(modifier_config):
             if isinstance(modifier_config, list):
@@ -422,7 +542,7 @@ def cache_dit_context(pipeline: diffusers.DiffusionPipeline,
     active_pipeline = state['pipeline'] if state is not None else pipeline
     cache_target = (
         state.get('cache_target', active_pipeline) if state is not None else pipeline)
-    # Cache-DiT 1.5.2 restores Accelerate-offloaded transformers to _old_forward
+    # Cache-DiT 1.5.3 restores Accelerate-offloaded transformers to _old_forward
     # when disabling its hooks. That skips Accelerate's pre-forward weight load,
     # leaving offloaded parameters on meta when this cached pipeline is reused.
     # Preserve the exact pre-Cache-DiT entry point for temporary configurations.
@@ -449,6 +569,7 @@ def cache_dit_context(pipeline: diffusers.DiffusionPipeline,
             else:
                 active_pipeline = enabled_target
                 cache_target = enabled_target
+            _preserve_cache_dit_forward_signatures(pipeline)
             if has_persistent_config:
                 setattr(pipeline, state_attribute, {
                     'signature': config_signature,
@@ -3085,6 +3206,8 @@ def diffusion_transformer_class(model_type: _enums.ModelType):
         return diffusers.FluxTransformer2DModel
     if _enums.model_type_is_flux3(model_type):
         return diffusers.Flux3Transformer2DModel
+    if _enums.model_type_is_minimax_h3_image(model_type):
+        return diffusers.MiniMaxH3ImageTransformer2DModel
     if _enums.model_type_is_flux2_family(model_type):
         return diffusers.Flux2Transformer2DModel
     if _enums.model_type_is_z_image_family(model_type):
@@ -3180,6 +3303,17 @@ def _flow_image_pipeline_class(
                 '--model-type flux3 has no img2img or inpaint pipeline. '
                 '--image-seeds are reference images and take no mask or strength.')
         return diffusers.Flux3ModularPipeline
+
+    if _enums.model_type_is_minimax_h3_image(model_type):
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type minimax-h3-image does not support --control-nets. '
+                'Reference images are the edit input.')
+        if pipeline_type != _enums.PipelineType.TXT2IMG and not help_mode:
+            raise UnsupportedPipelineConfigError(
+                '--model-type minimax-h3-image has no img2img or inpaint pipeline. '
+                '--image-seeds are reference images and take no mask or strength.')
+        return diffusers.MiniMaxH3ImageModularPipeline
 
     if _enums.model_type_is_qwen_image_21(model_type):
         if controlnet_uris:
@@ -3327,6 +3461,7 @@ def _flow_image_pipeline_class(
 
 
 _MODEL_INDEX_CHECKS = [
+    (_enums.model_type_is_minimax_h3_image, ('^MiniMaxH3Image', 'MiniMax-H3-Image')),
     (_enums.model_type_is_flux3, ('^Flux3', 'FLUX.3')),
     (_enums.model_type_is_flux2_klein_kv, ('^Flux2Klein', 'Flux.2 Klein KV')),
     (_enums.model_type_is_flux2, ('^Flux2', 'Flux.2')),
@@ -3536,7 +3671,7 @@ def get_pipeline_class(
                 'qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, hydit, hyimage-21, '
                 'hyimage-21-refiner, ltx2, ltx-video, wan, wan-animate, '
                 'wan-animate-2, hyvideo-15, motif-video, kandinsky5-video, '
-                'kandinsky6-video, and flux3.')
+                'kandinsky6-video, minimax-h3-video, and flux3.')
 
     # Incompatible combinations
     if controlnet_uris and t2i_adapter_uris:
@@ -4104,7 +4239,8 @@ def _create_pipeline(
         'text_encoder_2',
         'text_encoder_3',
         'controlnet',
-        'connectors'
+        'connectors',
+        'transformer_ref',
     ]
 
     if quantizer_map is not None:
@@ -4195,7 +4331,8 @@ def _create_pipeline(
     text_encoder_count = len(
         [a for a in inspect.getfullargspec(pipeline_class.__init__).args
          if _is_text_encoder_component(a)])
-    if _enums.model_type_is_flux3(model_type):
+    if (_enums.model_type_is_flux3(model_type)
+            or _enums.model_type_is_minimax_h3_image(model_type)):
         text_encoder_count = max(text_encoder_count, 1)
 
     if not text_encoder_uris:
@@ -4527,6 +4664,9 @@ def _create_pipeline(
     if _enums.model_type_is_flux3(model_type):
         import dgenerate.pipelinewrapper.flux3 as _flux3
         pipe_params = _flux3.declared_init_parameters(pipeline_class)
+    elif _enums.model_type_is_minimax_h3_image(model_type):
+        import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+        pipe_params = _minimax_image.declared_init_parameters(pipeline_class)
 
     def load_text_encoder(uri: _uris.TextEncoderUri, encoder_name: str | None = None):
         if single_file_pipeline_repo:
@@ -4768,10 +4908,13 @@ def _create_pipeline(
             _messages.debug_log(lambda:
                                 f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
         elif 'vae' in pipe_params:
+            # MiniMax publishes two VAEs. ``vae/`` is MiniMaxH3ImageVAE.
+            # AutoencoderKLMiniMaxH3Image loads ``vae_diffusers/``.
+            vae_name = 'vae_diffusers' if _enums.model_type_is_minimax_h3_image(model_type) else 'vae'
             if _hfhub.is_single_file_model_load(model_path):
-                vae_subfolder = 'vae'
+                vae_subfolder = vae_name
             else:
-                vae_subfolder = os.path.join(subfolder, 'vae') if subfolder else 'vae'
+                vae_subfolder = os.path.join(subfolder, vae_name) if subfolder else vae_name
 
             vae_param = pipe_params['vae'].annotation
 
@@ -5192,6 +5335,12 @@ def _create_pipeline(
                             revision=revision, variant=variant,
                             prompt_upsampler_uri=prompt_upsampler_uri,
                             token=auth_token, local_files_only=local_files_only)
+                    elif _enums.model_type_is_minimax_h3_image(model_type):
+                        import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+                        pipeline = _minimax_image.load_pipeline(
+                            single_file_pipeline_repo, creation_kwargs, dtype,
+                            revision=revision, variant=variant,
+                            token=auth_token, local_files_only=local_files_only)
                     else:
                         pipeline = _pipeline_creation_args_debug(
                             backend='Torch',
@@ -5231,6 +5380,12 @@ def _create_pipeline(
                     model_path, creation_kwargs, dtype,
                     revision=revision, variant=variant, subfolder=subfolder,
                     prompt_upsampler_uri=prompt_upsampler_uri,
+                    token=auth_token, local_files_only=local_files_only)
+            elif _enums.model_type_is_minimax_h3_image(model_type):
+                import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+                pipeline = _minimax_image.load_pipeline(
+                    model_path, creation_kwargs, dtype,
+                    revision=revision, variant=variant, subfolder=subfolder,
                     token=auth_token, local_files_only=local_files_only)
             else:
                 pipeline = _pipeline_creation_args_debug(
@@ -5368,6 +5523,10 @@ def _create_pipeline(
         if _enums.model_type_is_flux3(model_type):
             import dgenerate.pipelinewrapper.flux3 as _flux3
             _flux3.place_flux3(
+                pipeline, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
+        elif _enums.model_type_is_minimax_h3_image(model_type):
+            import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+            _minimax_image.place(
                 pipeline, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
         elif sequential_cpu_offload:
             enable_sequential_cpu_offload(pipeline, device)
@@ -5827,6 +5986,9 @@ def _create_minimal_pipeline_for_component_extraction(
     if _enums.model_type_is_flux3(model_type):
         import dgenerate.pipelinewrapper.flux3 as _flux3
         pipe_params = _flux3.declared_init_parameters(pipeline_class)
+    elif _enums.model_type_is_minimax_h3_image(model_type):
+        import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+        pipe_params = _minimax_image.declared_init_parameters(pipeline_class)
     text_encoder_params = [name for name in pipe_params.keys() if _is_text_encoder_component(name)]
 
     # Load ALL text encoders that the pipeline expects, even if not being cached
@@ -6053,6 +6215,12 @@ def _create_minimal_pipeline_for_component_extraction(
                         revision=revision, variant=variant,
                         prompt_upsampler_uri=prompt_upsampler_uri,
                         token=auth_token, local_files_only=local_files_only)
+                elif _enums.model_type_is_minimax_h3_image(model_type):
+                    import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+                    pipeline = _minimax_image.load_pipeline(
+                        single_file_pipeline_repo, creation_kwargs, dtype,
+                        revision=revision, variant=variant,
+                        token=auth_token, local_files_only=local_files_only)
                 else:
                     pipeline = pipeline_class.from_pretrained(
                         single_file_pipeline_repo,
@@ -6086,6 +6254,12 @@ def _create_minimal_pipeline_for_component_extraction(
                     model_path, creation_kwargs, dtype,
                     revision=revision, variant=variant, subfolder=subfolder,
                     prompt_upsampler_uri=prompt_upsampler_uri,
+                    token=auth_token, local_files_only=False)
+            elif _enums.model_type_is_minimax_h3_image(model_type):
+                import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+                pipeline = _minimax_image.load_pipeline(
+                    model_path, creation_kwargs, dtype,
+                    revision=revision, variant=variant, subfolder=subfolder,
                     token=auth_token, local_files_only=False)
             else:
                 pipeline = pipeline_class.from_pretrained(

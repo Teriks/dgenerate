@@ -149,6 +149,10 @@ class HfConfigsBuilder:
             # Krea 2
             "krea/Krea-2-Raw",
             "krea/Krea-2-Turbo",
+            # MiniMax-H3. Single-file transformers and the Qwen3-VL encoder
+            # read these configs. Video and image are different checkpoints.
+            "MiniMaxAI/MiniMax-H3",
+            "MiniMaxAI/MiniMax-H3-Image",
             ### Model type: SD3x
             # SD3m
             "stabilityai/stable-diffusion-3-medium-diffusers",

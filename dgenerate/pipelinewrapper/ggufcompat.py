@@ -225,6 +225,13 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
     if kandinsky6 is not None:
         return kandinsky6
 
+    minimax_image = _detect_minimax_h3_image_layout(shapes, comfy)
+    if minimax_image is not None:
+        return minimax_image
+    minimax = _detect_minimax_h3_layout(shapes, comfy)
+    if minimax is not None:
+        return minimax
+
     if _has(shapes, 'visual_transformer_blocks.0.visual_modulation.out_layer.weight',
             _COMFY_PREFIX + 'visual_transformer_blocks.0.visual_modulation.out_layer.weight'):
         # Always adapt: files store some unquantized tensors with extra
@@ -352,6 +359,64 @@ def _wan_patch_embedding(shapes: dict):
     if patch is None:
         return None
     return _orient_wan_patch(patch)
+
+
+def _detect_minimax_h3_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
+    """MiniMax-H3. Comfy names use ``video_patch_proj`` and fused ``qkv_proj``."""
+    diffusers_layout = _has(
+        shapes,
+        'audio_proj_in.weight',
+        'audio_proj_out.weight',
+        _COMFY_PREFIX + 'audio_proj_in.weight',
+        _COMFY_PREFIX + 'audio_proj_out.weight')
+    native_layout = _has(
+        shapes,
+        'video_patch_proj.weight',
+        'audio_patch_proj.weight',
+        'blocks.0.attn.qkv_proj.weight',
+        _COMFY_PREFIX + 'video_patch_proj.weight',
+        _COMFY_PREFIX + 'audio_patch_proj.weight',
+        _COMFY_PREFIX + 'blocks.0.attn.qkv_proj.weight')
+    # Image files share video_patch_proj and qkv_proj. Audio is what makes
+    # this the video transformer.
+    if not _has(
+            shapes,
+            'audio_patch_proj.weight',
+            'audio_proj_in.weight',
+            'audio_proj_out.weight',
+            _COMFY_PREFIX + 'audio_patch_proj.weight',
+            _COMFY_PREFIX + 'audio_proj_in.weight',
+            _COMFY_PREFIX + 'audio_proj_out.weight'):
+        return None
+    if not diffusers_layout and not native_layout:
+        return None
+    return GGUFLayout(
+        'minimax-h3',
+        'MiniMaxAI/MiniMax-H3',
+        comfy=comfy or native_layout,
+        adapt=True)
+
+
+def _detect_minimax_h3_image_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
+    """MiniMax-H3-Image. The Comfy file is the video DiT without audio, plus one fused output."""
+    if _has(shapes,
+            'audio_patch_proj.weight',
+            'audio_proj_in.weight',
+            _COMFY_PREFIX + 'audio_patch_proj.weight',
+            _COMFY_PREFIX + 'audio_proj_in.weight'):
+        return None
+    native = (
+        _has(shapes, 'video_patch_proj.weight', _COMFY_PREFIX + 'video_patch_proj.weight')
+        and _has(shapes, 'blocks.0.attn.qkv_proj.weight',
+                 _COMFY_PREFIX + 'blocks.0.attn.qkv_proj.weight'))
+    diffusers_layout = _has(shapes, 'pdd_proj_out.0.weight')
+    if not native and not diffusers_layout:
+        return None
+    return GGUFLayout(
+        'minimax-h3-image',
+        'MiniMaxAI/MiniMax-H3-Image',
+        comfy=comfy or native,
+        adapt=True)
 
 
 def _detect_wan_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
@@ -750,7 +815,73 @@ def adapt_kandinsky6_checkpoint(checkpoint: dict, config_repo: str, subfolder: s
         'Kandinsky 6', token, local_files_only)
 
 
+def adapt_minimax_h3_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
+                                token=None, local_files_only: bool = False) -> dict:
+    """Comfy MiniMax-H3 names become Diffusers names. Diffusers names are aligned."""
+    import dgenerate.pipelinewrapper.minimaxh3 as _minimax
+    import diffusers
+
+    checkpoint = _strip_comfy_prefix(dict(checkpoint))
+    if _minimax._is_comfy_state(checkpoint):
+        return _minimax.comfy_to_diffusers(checkpoint)
+    return _adapt_named_checkpoint(
+        checkpoint, config_repo, subfolder, diffusers.MiniMaxH3Transformer3DModel,
+        'MiniMax-H3', token, local_files_only)
+
+
+def adapt_minimax_h3_image_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
+                                      token=None, local_files_only: bool = False) -> dict:
+    """Comfy MiniMax-H3-Image names become the image transformer's per-step heads."""
+    import dgenerate.pipelinewrapper.minimaxh3 as _minimax
+    import diffusers
+
+    checkpoint = _strip_comfy_prefix(dict(checkpoint))
+    if _minimax._is_comfy_state(checkpoint):
+        return _minimax.convert_minimax_h3_image_checkpoint(checkpoint)
+    return _adapt_named_checkpoint(
+        checkpoint, config_repo, subfolder, diffusers.MiniMaxH3ImageTransformer2DModel,
+        'MiniMax-H3-Image', token, local_files_only)
+
+
 _QWEN_LAYERED_ADDITION_T = 'time_text_embed.addition_t_embedding.weight'
+
+
+def materialize_unquantized_parameters(module) -> None:
+    """Replace BF16, F16, and F32 GGUF parameters with plain floating tensors.
+
+    Quantized linears stay packed. Norms, biases, and other full-precision
+    tensors are stored as GGUF bytes, and ops such as RMSNorm read that byte
+    width as the parameter shape.
+    """
+    import gguf
+
+    plain = {
+        gguf.GGMLQuantizationType.F32,
+        gguf.GGMLQuantizationType.F16,
+        gguf.GGMLQuantizationType.BF16,
+    }
+    for child in module.modules():
+        for name, param in list(child.named_parameters(recurse=False)):
+            if getattr(param, 'quant_type', None) not in plain:
+                continue
+            decoded = as_float_tensor(param).detach()
+            child._parameters[name] = torch.nn.Parameter(decoded, requires_grad=False)
+
+
+def as_float_tensor(value, dtype=None):
+    """Plain floating tensor for a parameter, including a packed GGUF bias.
+
+    A GGUF linear dequantizes its weight and then adds the bias. Biases on
+    these checkpoints are often BF16 stored as bytes, so casting them with
+    ``.to()`` leaves the packed storage in place.
+    """
+    if value is None:
+        return None
+    if type(value).__name__ == 'GGUFParameter' or _is_gguf_parameter(value):
+        value = _gguf_float_tensor(value)
+    if dtype is not None and value.dtype != dtype:
+        value = value.to(dtype)
+    return value
 
 
 def _gguf_float_tensor(param):
@@ -1157,9 +1288,9 @@ def dequantize(param):
 
 def linear(module, inputs):
     """
-    ``F.linear`` on a Triton-unpacked GGUF weight.
+    F.linear on a Triton-unpacked GGUF weight.
 
-    ``None`` leaves the caller on the Diffusers path. A Comfy transposed
+    None leaves the caller on the PyTorch dequant path. A Comfy transposed
     weight is transposed after the unpack, same as the PyTorch path.
     """
     try:
@@ -1173,10 +1304,7 @@ def linear(module, inputs):
         weight = weight.transpose(0, 1).contiguous()
     dtype = getattr(module, 'compute_dtype', None) or inputs.dtype
     weight = weight.to(dtype)
-    bias = module.bias
-    if bias is not None:
-        bias = bias.to(dtype)
-    return torch.nn.functional.linear(inputs, weight, bias)
+    return torch.nn.functional.linear(inputs, weight, as_float_tensor(module.bias, dtype))
 
 
 def install_gguf_patches() -> None:
@@ -1196,7 +1324,6 @@ def install_gguf_patches() -> None:
     original_should_convert = single_file_model._should_convert_state_dict_to_diffusers
     original_check = gguf_quantizer.GGUFQuantizer.check_quantized_param_shape
     original_create = gguf_quantizer.GGUFQuantizer.create_quantized_param
-    original_forward = gguf_utils.GGUFLinear.forward_native
     original_new = gguf_utils.GGUFParameter.__new__
     original_torch_function = gguf_utils.GGUFParameter.__torch_function__
 
@@ -1233,17 +1360,23 @@ def install_gguf_patches() -> None:
                 value, requires_grad=bool(value.requires_grad))
 
     def forward_native(self, inputs):
-        # Triton unpack plus a PyTorch GEMM. Comfy's transposed weights never
-        # enter Diffusers' CUDA kernel, so this is their hardware path too.
+        # Triton unpack plus a PyTorch GEMM. Comfy's transposed weights are
+        # unpacked and transposed, because the packed axis is flipped.
         output = linear(self, inputs)
         if output is not None:
             return output
-        if not getattr(self.weight, '_dgenerate_comfy_transpose', False):
-            return original_forward(self, inputs)
         weight = gguf_utils.dequantize_gguf_tensor(self.weight)
-        weight = weight.transpose(0, 1).contiguous().to(self.compute_dtype)
-        bias = self.bias.to(self.compute_dtype) if self.bias is not None else None
+        if getattr(self.weight, '_dgenerate_comfy_transpose', False):
+            weight = weight.transpose(0, 1).contiguous()
+        weight = weight.to(self.compute_dtype)
+        bias = as_float_tensor(self.bias, self.compute_dtype)
         return torch.nn.functional.linear(inputs, weight, bias)
+
+    def forward(self, inputs):
+        # Diffusers' CUDA path calls ggml_dequantize. Those ops are not built
+        # for every platform, so the Triton path runs first and the PyTorch
+        # dequant is the fallback.
+        return self.forward_native(inputs)
 
     def parameter_new(cls, data, requires_grad=False, quant_type=None):
         # Accelerate rebuilds the parameter class when offloading to meta and
@@ -1285,6 +1418,7 @@ def install_gguf_patches() -> None:
     gguf_quantizer.GGUFQuantizer.check_quantized_param_shape = check_shape
     gguf_quantizer.GGUFQuantizer.create_quantized_param = create_quantized_param
     gguf_utils.GGUFLinear.forward_native = forward_native
+    gguf_utils.GGUFLinear.forward = forward
     gguf_utils.GGUFParameter.__new__ = parameter_new
     gguf_utils.GGUFParameter.__torch_function__ = classmethod(torch_function)
     _patches_installed = True
@@ -1363,6 +1497,16 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
             checkpoint, config, subfolder or 'transformer',
             token=token, local_files_only=local_files_only)
         return checkpoint, config, subfolder, False
+    if layout.kind == 'minimax-h3':
+        checkpoint = adapt_minimax_h3_checkpoint(
+            checkpoint, config, subfolder or 'transformer',
+            token=token, local_files_only=local_files_only)
+        return checkpoint, config, subfolder, True
+    if layout.kind == 'minimax-h3-image':
+        checkpoint = adapt_minimax_h3_image_checkpoint(
+            checkpoint, config, subfolder or 'transformer',
+            token=token, local_files_only=local_files_only)
+        return checkpoint, config, subfolder, True
     if layout.kind == 'qwen-image-layered':
         return adapt_qwen_layered_checkpoint(checkpoint), config, subfolder, False
     if layout.kind == 'hyimage21':

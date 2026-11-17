@@ -375,7 +375,9 @@ def _load_language_model_from_single_file(model_class, model_path: str, config_p
     Mistral keeps the 30 of 40 layers whose hidden states the pipeline reads)
     builds that many layers. Without the final norm in the file, the norm is
     an identity, so the last hidden state is the raw output of the last layer,
-    as it is at that index in the full model.
+    as it is at that index in the full model. A file of exactly 50 layers
+    (MiniMax-H3's Qwen3-VL) builds one extra layer so ``hidden_states[50]``
+    stays that raw output instead of the post-norm state.
     """
     config = model_class.config_class.from_json_file(config_path)
     dtype = dtype or torch.bfloat16
@@ -384,12 +386,17 @@ def _load_language_model_from_single_file(model_class, model_path: str, config_p
     embed, _, _, layers = _language_model_layout(header)
 
     text_config = getattr(config, 'text_config', None) or config
-    trimmed = layers < text_config.num_hidden_layers
+    config_layers = text_config.num_hidden_layers
+    trimmed = layers < config_layers
+    # MiniMax-H3 reads hidden_states[50]. Transformers replaces the last
+    # captured state with the post-norm output, so a file of exactly 50
+    # layers cannot supply that index. One extra layer keeps it raw.
+    build_layers = layers + 1 if trimmed and layers == 50 else layers
     if trimmed:
-        text_config.num_hidden_layers = layers
+        text_config.num_hidden_layers = build_layers
         layer_types = getattr(text_config, 'layer_types', None)
         if layer_types:
-            text_config.layer_types = list(layer_types)[:layers]
+            text_config.layer_types = list(layer_types)[:build_layers]
 
     with accelerate.init_empty_weights(include_buffers=False):
         model = model_class(config)

@@ -1127,6 +1127,37 @@ class TestSafetensorsCompat(unittest.TestCase):
             output = model(tokens, output_hidden_states=True).hidden_states[3]
         self.assertLess(((output - expected).norm() / expected.norm()).item(), 0.05)
 
+    def test_fifty_layer_file_keeps_hidden_state_50_raw(self):
+        # MiniMax-H3 reads hidden_states[50]. A file of exactly 50 layers would
+        # make that index the last one, which transformers replaces with the
+        # post-norm state. One extra layer keeps index 50 raw.
+        import json
+        import transformers
+        from dgenerate.pipelinewrapper.uris import textencoderuri
+
+        torch.manual_seed(0)
+        config = transformers.Qwen3Config(
+            vocab_size=128, hidden_size=32, intermediate_size=64, num_hidden_layers=51,
+            num_attention_heads=4, num_key_value_heads=2, head_dim=8)
+        reference = transformers.Qwen3ForCausalLM(config).eval()
+        state = {key: value for key, value in reference.state_dict().items()
+                 if not key.startswith(('lm_head', 'model.norm', 'model.layers.50.'))}
+        path = self._write(self._comfy_fp8_state(state))
+        handle, config_path = tempfile.mkstemp(suffix='.json')
+        os.close(handle)
+        self.addCleanup(os.remove, config_path)
+        with open(config_path, 'w') as file:
+            json.dump(config.to_dict(), file)
+
+        model = textencoderuri._load_language_model_from_single_file(
+            transformers.Qwen3ForCausalLM, path, config_path, torch.float32)
+        self.assertEqual(len(model.model.layers), 51)
+        tokens = torch.randint(0, 128, (1, 8))
+        with torch.no_grad():
+            expected = reference(tokens, output_hidden_states=True).hidden_states[50]
+            output = model(tokens, output_hidden_states=True).hidden_states[50]
+        self.assertLess(((output - expected).norm() / expected.norm()).item(), 0.05)
+
     def test_language_model_rename_resolves_each_tensor(self):
         from dgenerate.pipelinewrapper.uris import textencoderuri
 

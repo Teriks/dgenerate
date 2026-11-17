@@ -4,7 +4,7 @@ title: Stable Diffusion 1.5 LCM LoRA
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"]}]
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16", "bf16"]}]
---scheduler LCMScheduler
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "default":"LCMScheduler"}]
 @checkboxwithtwointargs[{"id": "dc", "label":"Use DeepCache", "help-arg":"--deep-cache", "int1-label": "DeepCache Interval", "int1-arg":"--deep-cache-intervals", "int1":5, "int1-min":1, "int2-label":"DeepCache Branch ID", "int2":1, "int2-arg": "--deep-cache-branch-ids", "int2-min":0}]
 @conditionalcheckboxes[{"id": "hd", "labels":["Use HiDiffusion", "HiDiffusion No Window Attention", "HiDiffusion No RAUNet"], "args":["--hi-diffusion", "--hi-diffusion-no-win-attn", "--hi-diffusion-no-raunet"]}]
 @sada[{"id": "sada", "preset": "sd", "exclude": ["hd", "dc"], "divider-after": true}]

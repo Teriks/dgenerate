@@ -105,10 +105,86 @@ class TestFlowImagePipelines(unittest.TestCase):
                     _config(model_path='org/model', model_type=model_type,
                             cache_dit=True).check()
         for model_type in (_pipelinewrapper.ModelType.KREA2,
-                           _pipelinewrapper.ModelType.KANDINSKY5_IMAGE):
+                           _pipelinewrapper.ModelType.KANDINSKY5_IMAGE,
+                           _pipelinewrapper.ModelType.FLUX3,
+                           _pipelinewrapper.ModelType.KANDINSKY6_VIDEO):
             with self.subTest(model_type=model_type):
                 _config(model_path='org/model', model_type=model_type,
                         cache_dit=True).check()
+
+    def test_cache_dit_custom_adapters_for_flux3_and_kandinsky6(self):
+        import torch
+
+        import cache_dit
+        from diffusers.models.transformers.transformer_flux3 import Flux3SingleTransformerBlock
+
+        self.assertIn('flux3', _pipelinewrapper.CACHE_DIT_MODEL_TYPES)
+        self.assertIn('kandinsky6-video', _pipelinewrapper.CACHE_DIT_MODEL_TYPES)
+
+        class Flux3Transformer2DModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.single_transformer_blocks = torch.nn.ModuleList([
+                    Flux3SingleTransformerBlock(
+                        dim=32, num_attention_heads=2, attention_head_dim=16)])
+
+            def forward(self, hidden_states, encoder_hidden_states, timestep,
+                        img_ids, txt_ids, image_cond_hidden_states=None,
+                        image_cond_ids=None, target_timestep=None,
+                        attention_kwargs=None, return_dict=True):
+                return hidden_states
+
+        class Guider:
+            num_conditions = 2
+
+        flux3 = types.SimpleNamespace(
+            transformer=Flux3Transformer2DModel(),
+            guider=Guider())
+        flux3_adapter = _pipelines._cache_dit_custom_block_adapter(cache_dit, flux3)
+        self.assertIs(flux3_adapter.forward_pattern, cache_dit.ForwardPattern.Pattern_1)
+        self.assertTrue(flux3_adapter.has_separate_cfg)
+        flux3.guider = None
+        self.assertFalse(
+            _pipelines._cache_dit_custom_block_adapter(cache_dit, flux3).has_separate_cfg)
+
+        class KandinskyBlock(torch.nn.Module):
+            def forward(self, vis, aud, text_v, text_a, time_embed,
+                        vis_rope, aud_rope, attn_mask=None):
+                return vis, aud
+
+        class Kandinsky6Transformer3DModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.visual_transformer_blocks = torch.nn.ModuleList([KandinskyBlock()])
+
+        class PiflowScheduler:
+            pass
+
+        kandinsky = types.SimpleNamespace(
+            transformer=Kandinsky6Transformer3DModel(),
+            scheduler=PiflowScheduler())
+        distilled = _pipelines._cache_dit_custom_block_adapter(cache_dit, kandinsky)
+        self.assertIs(distilled.forward_pattern, cache_dit.ForwardPattern.Pattern_0)
+        self.assertFalse(distilled.has_separate_cfg)
+        self.assertEqual(distilled.blocks_name, 'visual_transformer_blocks')
+        guided = _pipelines._cache_dit_custom_block_adapter(
+            cache_dit, kandinsky, guidance_scale=5.0)
+        self.assertTrue(guided.has_separate_cfg)
+        self.assertFalse(_pipelines._cache_dit_custom_block_adapter(
+            cache_dit, kandinsky, guidance_scale=1.0).has_separate_cfg)
+
+        class _Flux3Pipe:
+            def __call__(self, *args, **kwargs):
+                return None
+
+        pipe = _Flux3Pipe()
+        pipe.transformer = Flux3Transformer2DModel()
+        pipe.guider = Guider()
+        adapter = _pipelines._cache_dit_custom_block_adapter(cache_dit, pipe)
+        cache_dit.enable_cache(adapter)
+        _pipelines._preserve_cache_dit_forward_signatures(pipe)
+        self.assertIn(
+            'img_ids', inspect.signature(pipe.transformer.forward).parameters)
 
     def test_enum_parsing(self):
         self.assertEqual(_pipelinewrapper.get_model_type_enum('flux2'), _pipelinewrapper.ModelType.FLUX2)
@@ -177,6 +253,14 @@ class TestFlowImagePipelines(unittest.TestCase):
         self.assertTrue(_pipelinewrapper.model_type_is_s_cascade_decoder('s-cascade-decoder'))
         self.assertFalse(_pipelinewrapper.model_type_is_s_cascade_decoder('s-cascade'))
         self.assertFalse(_pipelinewrapper.model_type_is_flow_image_family('flux'))
+        for model_type in (
+                's-cascade', 'qwen-image-edit', 'qwen-image-21', 'flux2',
+                'flux2-klein-kv', 'flux3', 'minimax-h3-image'):
+            self.assertTrue(_pipelinewrapper.model_type_seed_images_may_differ(model_type))
+        for model_type in (
+                'sd', 'sdxl', 'flux', 'qwen-image', 'z-image', 'z-image-omni',
+                'kandinsky5-image', 'hyimage-21-refiner', 'qwen-image-layered'):
+            self.assertFalse(_pipelinewrapper.model_type_seed_images_may_differ(model_type))
 
         parsed = _arguments.parse_args([
             'org/qwen-image-2.1', '--model-type', 'qwen-image-21',

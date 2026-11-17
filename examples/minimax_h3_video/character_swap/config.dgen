@@ -1,0 +1,26 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Character swap on the reference transformer.
+# The boxer is examples/media/man-fighting-pose.jpg.
+# The dance is examples/media/rickroll-roll.gif (54 frames at 25 fps).
+# h3_character_swap_v1.5 was trained on Ref2VA. reference= selects that
+# partition, and the loader converts the Comfy qkv LoRA onto it.
+# 960x544 is the smaller 16:9 canvas. The Comfy int8 and GGUF configs
+# apply this same LoRA on the packed Ref2VA weights.
+
+MiniMaxAI/MiniMax-H3
+--model-type minimax-h3-video
+--dtype bfloat16
+--model-sequential-offload
+--loras "https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/blob/main/h3_character_swap_v1.5.safetensors;scale=1.0"
+--inference-steps 30
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path minimax-h3-character-swap
+--output-size 960x544
+--reference-image-processors "resize;size=768x512;align=32" + "resize;size=256x256;align=32"
+--image-seeds "reference=../../media/man-fighting-pose.jpg, ../../media/rickroll-roll.gif"
+--prompts "Replace the dancer in the video with the boxer in the image. Keep the boxer's face, hair, and clothing. Follow the dancer's pose, gaze, expression, and movement. Preserve the scene."

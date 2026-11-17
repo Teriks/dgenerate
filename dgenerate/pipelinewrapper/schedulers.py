@@ -129,6 +129,10 @@ def get_compatible_schedulers(pipeline_cls: type[diffusers.DiffusionPipeline]) -
         elif param_type is diffusers.schedulers.KarrasDiffusionSchedulers:
             compatible_schedulers.update(_KARRAS_SCHEDULERS_MAP.values())
 
+    # The modular pipeline constructor does not annotate its scheduler.
+    if pipeline_cls.__name__ == 'Flux3ModularPipeline':
+        return [diffusers.FlowMatchEulerDiscreteScheduler]
+
     # Published Wan 2.1 and 2.2 checkpoints use UniPCMultistepScheduler.
     # The pipeline annotation only names FlowMatchEulerDiscreteScheduler, so
     # flow-shift on that checkpoint scheduler would otherwise be rejected.
@@ -225,6 +229,10 @@ _scheduler_option_args = {
 
     diffusers.FlowMatchEulerDiscreteScheduler: {
         "time_shift_type": ["exponential", "linear"]
+    },
+
+    diffusers.MiniMaxH3Scheduler: {
+        "euler_update_form": ["blend", "velocity"]
     },
 
     diffusers.HeunDiscreteScheduler: {

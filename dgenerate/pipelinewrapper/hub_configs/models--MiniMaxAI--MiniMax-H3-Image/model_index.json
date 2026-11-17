@@ -1,0 +1,45 @@
+{
+  "_class_name": "MiniMaxH3ImagePipeline",
+  "_diffusers_version": "0.37.0",
+  "_minimax_h3": {
+    "partition": "image",
+    "pdd_fused_heads": "pdd_fused_heads.safetensors",
+    "schema_version": 1,
+    "task_aliases": {},
+    "tasks": [
+      "t2i",
+      "edit"
+    ]
+  },
+  "processor": [
+    "transformers",
+    "Qwen3VLProcessor"
+  ],
+  "scheduler": null,
+  "text_encoder": [
+    "transformers",
+    "Qwen3VLForConditionalGeneration",
+    {
+      "type_hint": [
+        "transformers",
+        "Qwen3VLForConditionalGeneration"
+      ],
+      "pretrained_model_name_or_path": "MiniMaxAI/MiniMax-H3",
+      "subfolder": "text_encoder",
+      "variant": null,
+      "revision": null
+    }
+  ],
+  "tokenizer": [
+    "transformers",
+    "Qwen2TokenizerFast"
+  ],
+  "transformer": [
+    "diffusers",
+    "MiniMaxH3DiTModel"
+  ],
+  "vae": [
+    "diffusers",
+    "MiniMaxH3ImageVAE"
+  ]
+}

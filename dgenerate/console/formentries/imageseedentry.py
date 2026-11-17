@@ -32,6 +32,10 @@ class _ImageSeedEntry(_uriwithfloatargentry._UriWithFloatArgEntry):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        if not hasattr(self, 'button_frame'):
+            self.button_frame = ttk.Frame(self.master)
+            self.button_frame.grid(row=self.row, column=2, padx=(2, 5), sticky='w')
+
         self.build_uri_button = ttk.Button(
             self.button_frame,
             text='Build URI',

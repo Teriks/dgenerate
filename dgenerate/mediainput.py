@@ -1040,6 +1040,13 @@ class ImageSeedParseResult:
         * ``--image-seeds "img2img.png;adapter=adapter-image1.png + adapter-image2.png;mask=inpaint-mask.png;control=control.png"``
     """
 
+    audio_latents: _types.OptionalPath = None
+    """
+    Optional MiniMax-H3 audio noise from the image-seed keyword ``audio-latents``.
+
+    One ``.pt``, ``.pth``, or ``.safetensors`` file. The video noise stays on ``latents``.
+    """
+
     latents: _types.Paths | None = None
     """
     Optional raw latent tensor paths (.pt, .pth, .safetensors files).
@@ -1263,6 +1270,7 @@ class ImageSeedParseResult:
             and self.reference_images is None \
             and self.adapter_images is None \
             and self.latents is None \
+            and self.audio_latents is None \
             and self.wan_pose_video is None \
             and self.wan_face_video is None \
             and self.wan_background_video is None \
@@ -1604,6 +1612,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
                     'floyd',
                     'last-frame',
                     'reference',
+                    'audio-latents',
                     'wan-pose',
                     'wan-face',
                     'wan-background',
@@ -1855,6 +1864,20 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
         else:
             _ensure_exists(reference_images, 'Reference image')
             result.reference_images = [reference_images]
+
+    audio_latents = parse_result.args.get('audio-latents', None)
+    if audio_latents is not None:
+        if isinstance(audio_latents, (list, tuple)):
+            if len(audio_latents) != 1:
+                raise ImageSeedArgumentError(
+                    'The image seed "audio-latents" argument accepts one tensor file.')
+            audio_latents = audio_latents[0]
+        if not is_tensor_file(audio_latents):
+            raise ImageSeedParseError(
+                f'Audio latent file "{audio_latents}" must be a tensor file '
+                f'(.pt, .pth, or .safetensors).')
+        _ensure_exists(audio_latents, 'Audio latent tensor')
+        result.audio_latents = audio_latents
 
     resize = parse_result.args.get('resize', None)
 
@@ -3302,9 +3325,9 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         Extra processors compared to adapter groups will cause :py:exc:`ValueError` to be raised.
 
     :param check_dimensions_match: Check the dimensions of input images, mask images,
-        and control images to confirm that they match? For pipelines like stable cascade
-        or Qwen-Image edit-plus, this does not matter: seed images may differ in size
-        (style / multi-image edit refs), and are not a shared noise canvas.
+        and control images to confirm that they match? Stable Cascade, Qwen edit,
+        Qwen-Image 2.1, Flux.2, FLUX.3, and MiniMax-H3-Image resize each reference,
+        so those seeds may differ in size. An img2img batch is one canvas.
 
     :param path_opener: a function that opens a file stream from a path,
         defaults to :py:func:`dgenerate.media.fetch_media_data_stream`.

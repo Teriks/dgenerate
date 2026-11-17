@@ -202,9 +202,15 @@ class QuantizeSubCommand(_subcommand.SubCommand):
 
     Tensor names stay as that component stored them, unless --comfy is set. --comfy
     writes the names ComfyUI and ComfyUI-GGUF load, for FLUX.1, SD3, Wan,
-    Qwen-Image 2.1, Z-Image safetensors, and the GGUF text encoders T5, UMT5,
-    Llama 3 / Mistral, Qwen2, Qwen3, and Gemma 3. Those files are named like
-    transformer-Q4_K-comfy.gguf.
+    Qwen-Image 2.1, Z-Image, and MiniMax-H3 video and image safetensors, and
+    the GGUF text encoders T5, UMT5, Llama 3 / Mistral, Qwen2, Qwen3, and Gemma 3.
+    Those files are named like transformer-Q4_K-comfy.gguf.
+
+    MiniMax-H3 video: ``--subfolders transformer`` is text and keyframes,
+    ``transformer_ref`` is references, and ``text_encoder`` is Qwen3-VL.
+    MiniMax-H3-Image: ``transformer`` is already Comfy names, and
+    ``transformer_diffusers`` is the Diffusers copy with six output heads.
+    ``--comfy`` writes both as the Comfy layout.
 
     Load a diffusers-named file with the matching component option and keep the
     original repository as the model:
@@ -246,8 +252,14 @@ class QuantizeSubCommand(_subcommand.SubCommand):
         naming.add_argument(
             '--comfy', action='store_true',
             help='Write ComfyUI tensor names, so ComfyUI and ComfyUI-GGUF can load the files. '
-                 'Diffusion models: FLUX.1, SD1, SDXL, SD3, Wan, and Qwen-Image. '
-                 'FLUX.2 and Z-Image are safetensors, because ComfyUI-GGUF has no architecture for them. '
+                 'Diffusion models: FLUX.1, SD1, SDXL, SD3, Wan, Qwen-Image, and MiniMax-H3 '
+                 'video and image, and LTX-Video. '
+                 'FLUX.2, FLUX.3, Z-Image, LTX-2, Krea 2, Hunyuan-DiT, HunyuanVideo 1.5, '
+                 'HunyuanImage 2.1, Kandinsky 5, and Stable Cascade are safetensors, because '
+                 'ComfyUI-GGUF has no architecture for them. MiniMax-H3 video uses '
+                 '--subfolders transformer (text and keyframes) or transformer_ref '
+                 '(references). MiniMax-H3-Image transformer is already Comfy names; '
+                 'transformer_diffusers is the Diffusers copy. '
                  'GGUF text encoders: T5, UMT5, Llama 3 / Mistral, Qwen2, Qwen3, and Gemma 3. '
                  'A Qwen2-VL vision tower is written as mmproj beside the text encoder. '
                  'CLIP is safetensors. Files are named like transformer-Q4_K-comfy.gguf. '

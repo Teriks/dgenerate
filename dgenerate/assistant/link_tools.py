@@ -296,6 +296,10 @@ def _specific_model_type(label: str) -> str | None:
         return 'hydit'
     if re.search(r'hunyuan-?video-?1\.5|hunyuanvideo1\.5|hyvideo-15|\bhyvideo\b', label):
         return 'hyvideo-15'
+    if re.search(r'minimax-h3|minimax h3|minmax-h3|minmax h3', label):
+        if re.search(r'image', label):
+            return 'minimax-h3-image'
+        return 'minimax-h3-video'
     if re.search(r'kandinsky-6|kandinsky6', label):
         return 'kandinsky6-video'
     if re.search(r'kandinsky-5|kandinsky5', label) and not re.search(r'kandinsky-6|kandinsky6', label):

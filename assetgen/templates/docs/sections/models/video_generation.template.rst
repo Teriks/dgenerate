@@ -132,6 +132,101 @@ keeping the parent Diffusers repository as the model path.
 * `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/gguf/text-to-video-config.dgen>`_
 * `GGUF as the model <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/motif_video/gguf/as-model-config.dgen>`_
 
+MiniMax-H3
+----------
+
+Use ``--model-type minimax-h3-video`` with ``MiniMaxAI/MiniMax-H3``. One denoising
+loop writes the video and a stereo soundtrack. There is no separate vocoder.
+The checkpoint is guidance-distilled, so omit ``--guidance-scales`` and do not
+pass a negative prompt. The only scheduler name is ``MiniMaxH3Scheduler``.
+``--scheduler`` overlays the video scheduler, which starts at shift 12.
+``--second-model-scheduler`` overlays the audio scheduler, which starts at
+shift 3, and does not inherit ``--scheduler``. Omitting either keeps that
+checkpoint scheduler. ``--inference-steps`` defaults to
+30. That count includes the terminal sigma, so the model runs 29 evaluations.
+
+The frame rate is 24. ``--video-lengths`` is seconds and snaps up to the next
+``17n+5`` frames. A request can be 5 to 15 seconds. The clip comes out between
+5.17 seconds (124 frames) and 14.38 seconds (345 frames). Omit the
+option and the clip is 124 frames, 5.17 seconds. Height and width are multiples of 32. Omit
+``--output-size`` and the canvas follows the first keyframe, or 16:9 when
+there is no keyframe.
+
+The image seed selects the workflow:
+
+* No image seed is text to video and audio. This loads ``transformer/``.
+* One still image is the opening keyframe. ``last-frame=`` is the closing
+  keyframe, alone or with the opening image. This also loads ``transformer/``.
+* ``reference=`` is an ordered list of images, videos, and audio clips and
+  loads ``transformer_ref/``. At most 9 images, 3 videos, 3 audio clips, and
+  12 references in total. An audio reference has to be paired with an image
+  or a video. A keyframe and ``reference=`` cannot be combined. A video
+  reference keeps the frame rate and soundtrack reported by the file.
+  With neither ``--reference-image-processors`` nor ``resize=``, an image
+  reference is scaled to a 2048 short edge and a video reference is placed on
+  the 768 canvas. With either one, that frame size, snapped to a multiple of
+  32, is what the video VAE encodes. An audio reference is left unchanged.
+
+``--control-nets`` loads one MiniMax-H3 Fun control branch on top of the text
+to video transformer. This is not a Diffusers ControlNet. The published weights
+are ``alibaba-pai/MiniMax-H3-Fun-Controlnet-Union-2.0`` with
+``weight-name=MiniMax-H3-Fun-Controlnet-Union-2.0.safetensors``. ``scale`` is
+the control strength. A bare ``--image-seeds`` path is the control video, for
+example canny, depth, or pose. ``"source.mp4;mask=mask.mp4"`` inpaints, and
+``control=`` can be added. White mask pixels are regenerated. Omit
+``--output-size`` and the canvas follows that video, snapped down to a multiple
+of 32. The branch was trained on text to video, so a keyframe or ``reference=``
+cannot be combined with it.
+
+``latents=`` replaces the video noise. ``audio-latents=`` replaces the audio noise.
+
+``--transformer`` replaces the denoiser and leaves Qwen3-VL and the VAEs on
+the model path. The file can be Diffusers weights, a ComfyUI safetensors file,
+or a GGUF. A name containing ``fl2va`` is the text and keyframe transformer.
+A name containing ``ref2va`` is the reference transformer.
+
+``--loras`` loads a LoRA onto the transformer for the workflow above. On a
+full-precision checkpoint it is fused into the weights. With ``--quantizer``,
+pass ``--lora-disk-fuse`` so that fuse is cached before quantization. A GGUF
+or Comfy ``--transformer`` keeps the LoRA on the packed weights.
+
+The examples use sequential CPU offload. ``--model-cpu-offload``,
+``--model-sequential-offload``, and ``--model-group-offload`` place the text
+encoder and transformer the same way: each visits the GPU for its forward
+and returns to CPU.
+
+See `examples/minimax_h3_video/text_to_video/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/text_to_video/config.dgen>`_,
+`examples/minimax_h3_video/keyframes/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/keyframes/config.dgen>`_,
+`examples/minimax_h3_video/references/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/references/config.dgen>`_,
+and `examples/minimax_h3_video/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/controlnet/config.dgen>`_.
+
+.. code-block:: shell
+
+    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
+        --model-sequential-offload --inference-steps 30 --video-lengths 5 \\
+        --animation-format mp4 --output-size 1344x768 \\
+        --prompts "A red fox trotting through a snowy pine forest, snow crunching underfoot"
+
+    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
+        --model-sequential-offload --video-lengths 5 --animation-format mp4 \\
+        --output-size 1024x576 \\
+        --image-seeds "examples/media/man-fighting-pose.jpg;last-frame=examples/media/beach.jpg" \\
+        --prompts "The man in the opening frame walks onto the beach in the closing frame"
+
+    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
+        --model-sequential-offload --video-lengths 5 --animation-format mp4 \\
+        --output-size 1024x576 \\
+        --image-seeds "reference=examples/media/man-fighting-pose.jpg, examples/media/rickroll-roll.gif" \\
+        --prompts "The man in the image dances with the motion in the video"
+
+    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
+        --model-sequential-offload --video-lengths 5 --animation-format mp4 \\
+        --output-size 1024x576 \\
+        --control-nets "alibaba-pai/MiniMax-H3-Fun-Controlnet-Union-2.0;weight-name=MiniMax-H3-Fun-Controlnet-Union-2.0.safetensors" \\
+        --control-image-processors "openpose;include-hand=true;include-face=true" \\
+        --image-seeds examples/media/rickroll-roll.gif \\
+        --prompts "A person dancing, following the pose in the control video"
+
 Kandinsky 5.0 Video
 -------------------
 

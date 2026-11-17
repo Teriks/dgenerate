@@ -8,19 +8,27 @@ and layerwise offload can reduce memory pressure; parallelism can spread work
 across GPUs. These options depend on the model, backend, and hardware, so they
 do not all apply to every pipeline.
 
-The Cache-DiT 1.5.2 cache adapters cover these dgenerate ``--model-type`` values:
-``sd3``, ``sd3-pix2pix``, ``flux``, ``flux-fill``, ``flux-kontext``, ``flux2``,
-``flux2-klein-kv``, ``z-image``, ``z-image-omni``, ``qwen-image``,
-``qwen-image-edit``, ``qwen-image-layered``, ``ltx2``, ``ltx-video``, and ``wan``. dgenerate
-also supplies custom Cache-DiT block adapters for ``wan-animate`` and
-``wan-animate-2`` (including the distilled Wan-Animate-2 family). These use the
-transformers' ``blocks`` lists with Cache-DiT's ``Pattern_2`` and ``Pattern_3``
-contracts, respectively. Wan-Animate-2 keeps its own reference K/V pass; its
-interaction with Cache-DiT caching should be checked with the target checkpoint
-and cache settings. Cache-DiT Ray mode is not supported for these custom
-adapters. Standard UNet model types such as ``sd`` and ``sdxl`` do not use this
-DiT cache. Check Cache-DiT's feature documentation for model-specific
-parallelism, attention, quantization, and offload support.
+Cache-DiT 1.5.3 supplies the adapters for the ``--model-type`` values accepted
+by ``--cache-dit``, except six that dgenerate registers itself because 1.5.3
+does not. ``wan-animate`` and ``wan-animate-2`` (including the distilled
+Wan-Animate-2 family) use the transformers' ``blocks`` lists with Cache-DiT's
+``Pattern_2`` and ``Pattern_3`` contracts. Wan-Animate-2 keeps its own reference
+K/V pass; its interaction with Cache-DiT caching should be checked with the
+target checkpoint and cache settings. ``flux3`` caches only the joint
+``single_transformer_blocks`` stack (``Pattern_1``). The per-mode stacks run on
+every step. A base FLUX.3 guider with more than one condition is separate CFG;
+the distilled pipeline is not. ``kandinsky6-video`` caches only
+``visual_transformer_blocks`` (``Pattern_0``), treating the audio stream as the
+second residual. Separate CFG follows the call's guidance scale, and a Piflow
+distilled checkpoint is a single forward when guidance is omitted.
+``minimax-h3-video`` caches ``transformer_blocks`` (``Pattern_3``). The block reads
+and returns one packed sequence, and the distilled checkpoint runs one forward
+per step. ``ref2va`` caches ``transformer_ref``. ``minimax-h3-image`` caches
+the same ``transformer_blocks`` contract on its image transformer. Cache-DiT
+Ray mode is not supported for these custom adapters. Standard UNet model types
+such as ``sd`` and ``sdxl`` do not use this DiT cache. Check Cache-DiT's
+feature documentation for model-specific parallelism, attention, quantization,
+and offload support.
 
 ``--cache-dit`` enables Cache-DiT with its defaults. Use ``--cache-dit-config``
 to supply Cache-DiT's YAML configuration; that option also enables Cache-DiT.

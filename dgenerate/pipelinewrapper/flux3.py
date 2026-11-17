@@ -279,7 +279,11 @@ def _place_denoiser(pipe, device, offload: bool):
             module = getattr(pipe, name, None)
             if module is None or not hasattr(module, 'to') or _module_is_hooked(module):
                 continue
-            if _pipelines.module_skips_group_offload(module):
+            # Group offload cannot stream packed weights. CPU offload can:
+            # it moves the whole module for one forward and returns it.
+            # Leaving a GGUF transformer resident keeps it on the GPU while
+            # the text encoder visits, which is the extra memory.
+            if _pipelines._module_is_8bit_bnb(module):
                 _pipelines.place_quantized_module(module, device)
                 continue
             accelerate.cpu_offload(
@@ -451,9 +455,17 @@ def place_flux3(pipe, device, model_cpu_offload, sequential_cpu_offload,
 
 
 def images_from_call(result):
-    """The image list a modular ``output='images'`` call returned."""
+    """The image list a modular ``output='images'`` call returned.
+
+    A call that does not name ``output`` returns the whole ``PipelineState``.
+    The images are the ``images`` value on that state.
+    """
     if isinstance(result, dict):
         result = result.get('images', result.get('image'))
+    else:
+        values = getattr(result, 'values', None)
+        if isinstance(values, dict) and ('images' in values or 'image' in values):
+            result = values.get('images', values.get('image'))
     if isinstance(result, (list, tuple)):
         return list(result)
     return result

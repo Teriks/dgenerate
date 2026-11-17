@@ -33,6 +33,26 @@ _ARCHITECTURE_SKIP_ALIASES = {
 # Classes SDNQ does not list. LTX-Video (1.x) shares the non-audio embed /
 # projection layout with LTX-2's video path, plus AdaLN scale_shift_table.
 _ARCHITECTURE_SKIP_EXTRA = {
+    'MiniMaxH3Transformer3DModel': [
+        'proj_in',
+        'audio_proj_in',
+        'context_embedder',
+        'time_embedder',
+        'time_proj',
+        'token_refiner',
+        'norm_out',
+        'proj_out',
+        'audio_proj_out',
+    ],
+    'MiniMaxH3ImageTransformer2DModel': [
+        'proj_in',
+        'context_embedder',
+        'time_embedder',
+        'time_proj',
+        'token_refiner',
+        'norm_out',
+        'pdd_proj_out',
+    ],
     'LTXVideoTransformer3DModel': [
         'time_embed',
         'caption_projection',

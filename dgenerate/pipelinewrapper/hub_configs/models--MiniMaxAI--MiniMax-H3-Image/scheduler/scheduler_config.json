@@ -1,0 +1,6 @@
+{
+  "_class_name": "MiniMaxH3Scheduler",
+  "_diffusers_version": "0.42.0.dev0",
+  "shift_provided_sigmas": false,
+  "euler_update_form": "velocity"
+}

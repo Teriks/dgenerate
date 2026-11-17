@@ -32,6 +32,7 @@ QUANTIZER_MAP_SUBMODULES = (
     'unet',
     'transformer',
     'transformer_2',
+    'transformer_ref',
     'text_encoder',
     'text_encoder_2',
     'text_encoder_3',
@@ -83,6 +84,8 @@ _QUANTIZER_MAP_BY_MODEL_TYPE = {
     'motif-video': ('transformer', 'text_encoder'),
     'kandinsky5-video': ('transformer', 'text_encoder', 'text_encoder_2'),
     'kandinsky6-video': ('transformer', 'text_encoder', 'text_encoder_2'),
+    'minimax-h3-video': ('transformer', 'transformer_ref', 'text_encoder', 'controlnet'),
+    'minimax-h3-image': ('transformer', 'text_encoder'),
 }
 
 

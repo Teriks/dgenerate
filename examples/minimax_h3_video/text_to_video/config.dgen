@@ -1,0 +1,18 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Text to video and audio. 30 steps include the terminal sigma.
+# 1344x768 is the trained 16:9 canvas. 960x544 is faster.
+
+MiniMaxAI/MiniMax-H3
+--model-type minimax-h3-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path minimax-h3-t2va
+--output-size 1344x768
+--prompts "A red fox trotting through a snowy pine forest, snow crunching underfoot"

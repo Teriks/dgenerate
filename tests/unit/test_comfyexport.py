@@ -481,6 +481,188 @@ class TestComfyKeys(unittest.TestCase):
         with self.assertRaises(quantexport.QuantExportError):
             comfykeys.comfy_state(converted, config, gguf=True)
 
+    def test_flux3_safetensors_round_trip_and_gguf_refuses(self):
+        from diffusers.loaders.single_file_utils import convert_flux3_transformer_checkpoint_to_diffusers
+        state = _flux3_comfy_state()
+        converted = convert_flux3_transformer_checkpoint_to_diffusers(_clone(state))
+        config = {'_class_name': 'Flux3Transformer2DModel'}
+        restored, label = comfykeys.comfy_state(converted, config, gguf=False)
+        self.assertEqual(label, 'flux3')
+        _same(self, restored, state)
+        with self.assertRaises(quantexport.QuantExportError):
+            comfykeys.comfy_state(converted, config, gguf=True)
+
+    def test_ltx_gguf_round_trip(self):
+        from diffusers.loaders.single_file_utils import convert_ltx_transformer_checkpoint_to_diffusers
+        state = {
+            'patchify_proj.weight': _filled((4, 4)),
+            'adaln_single.linear.weight': _filled((4, 4)),
+            'transformer_blocks.0.attn1.q_norm.weight': _filled((4,)),
+            'transformer_blocks.0.attn1.k_norm.weight': _filled((4,)),
+        }
+        converted = convert_ltx_transformer_checkpoint_to_diffusers(_clone(state))
+        restored, label = comfykeys.comfy_state(
+            converted, {'_class_name': 'LTXVideoTransformer3DModel'}, gguf=True)
+        self.assertEqual(label, 'ltxv')
+        _same(self, restored, state)
+
+    def test_ltx2_safetensors_round_trip_and_gguf_refuses(self):
+        from diffusers.loaders.single_file_utils import convert_ltx2_transformer_to_diffusers
+        state = {
+            'patchify_proj.weight': _filled((4, 4)),
+            'audio_patchify_proj.weight': _filled((4, 4)),
+            'adaln_single.linear.weight': _filled((4, 4)),
+            'audio_adaln_single.linear.weight': _filled((4, 4)),
+            'prompt_adaln_single.linear.weight': _filled((4, 4)),
+            'audio_prompt_adaln_single.linear.weight': _filled((4, 4)),
+            'transformer_blocks.0.attn1.q_norm.weight': _filled((4,)),
+            'av_ca_video_scale_shift_adaln_single.linear.weight': _filled((4, 4)),
+        }
+        import dgenerate.pipelinewrapper.singlefilecompat as singlefilecompat
+        converted = convert_ltx2_transformer_to_diffusers(
+            singlefilecompat.rename_ltx25_prompt_adaln(_clone(state)))
+        restored, label = comfykeys.comfy_state(
+            converted, {'_class_name': 'LTX2VideoTransformer3DModel'}, gguf=False)
+        self.assertEqual(label, 'ltx2')
+        _same(self, restored, state)
+        with self.assertRaises(quantexport.QuantExportError):
+            comfykeys.comfy_state(converted, {'_class_name': 'LTX2VideoTransformer3DModel'}, gguf=True)
+
+    def test_krea2_safetensors_round_trip(self):
+        from diffusers.loaders.single_file_utils import convert_krea2_transformer_checkpoint_to_diffusers
+        flat = _filled((24,))
+        state = {
+            'first.weight': _filled((4, 4)),
+            'tmlp.0.weight': _filled((4, 4)),
+            'tmlp.2.weight': _filled((4, 4)),
+            'txtmlp.0.scale': _filled((4,)),
+            'blocks.0.attn.wq.weight': _filled((4, 4)),
+            'blocks.0.attn.qknorm.qnorm.scale': _filled((4,)),
+            'blocks.0.mod.lin': flat,
+            'blocks.0.prenorm.scale': _filled((4,)),
+            'last.linear.weight': _filled((4, 4)),
+            'last.norm.scale': _filled((4,)),
+        }
+        converted = convert_krea2_transformer_checkpoint_to_diffusers(_clone(state))
+        restored, label = comfykeys.comfy_state(
+            converted, {'_class_name': 'Krea2Transformer2DModel'}, gguf=False)
+        self.assertEqual(label, 'krea2')
+        _same(self, restored, state)
+
+    def test_kandinsky5_names_are_already_shared(self):
+        state = {'visual_embeddings.in_layer.weight': _filled((4, 4))}
+        restored, label = comfykeys.comfy_state(
+            state, {'_class_name': 'Kandinsky5Transformer3DModel'}, gguf=False)
+        self.assertEqual(label, 'kandinsky5')
+        _same(self, restored, state)
+        with self.assertRaises(quantexport.QuantExportError):
+            comfykeys.comfy_state(state, {'_class_name': 'Kandinsky5Transformer3DModel'}, gguf=True)
+
+    def test_cascade_fuses_attention(self):
+        from diffusers.loaders.single_file_utils import convert_stable_cascade_unet_single_file_to_diffusers
+        qkv = _filled((6, 4))
+        bias = _filled((6,))
+        state = {
+            'down_blocks.0.attn.in_proj_weight': qkv,
+            'down_blocks.0.attn.in_proj_bias': bias,
+            'down_blocks.0.attn.out_proj.weight': _filled((4, 4)),
+            'down_blocks.0.attn.out_proj.bias': _filled((4,)),
+            'clip_mapper.weight': _filled((4, 4)),
+        }
+        converted = convert_stable_cascade_unet_single_file_to_diffusers(_clone(state))
+        restored, label = comfykeys.comfy_state(
+            converted, {'_class_name': 'StableCascadeUNet'}, gguf=False)
+        self.assertEqual(label, 'cascade')
+        _same(self, restored, state)
+
+    def test_hydit_round_trip(self):
+        import dgenerate.pipelinewrapper.singlefilecompat as singlefilecompat
+        block = 'blocks.0.'
+        state = {
+            block + 'attn1.Wqkv.weight': _filled((6, 4)),
+            block + 'attn1.Wqkv.bias': _filled((6,)),
+            block + 'attn1.q_norm.weight': _filled((4,)),
+            block + 'attn1.q_norm.bias': _filled((4,)),
+            block + 'attn1.k_norm.weight': _filled((4,)),
+            block + 'attn1.k_norm.bias': _filled((4,)),
+            block + 'attn1.out_proj.weight': _filled((4, 4)),
+            block + 'attn1.out_proj.bias': _filled((4,)),
+            block + 'attn2.kv_proj.weight': _filled((4, 4)),
+            block + 'attn2.kv_proj.bias': _filled((4,)),
+            block + 'attn2.q_proj.weight': _filled((2, 4)),
+            block + 'attn2.q_proj.bias': _filled((2,)),
+            block + 'attn2.q_norm.weight': _filled((4,)),
+            block + 'attn2.q_norm.bias': _filled((4,)),
+            block + 'attn2.k_norm.weight': _filled((4,)),
+            block + 'attn2.k_norm.bias': _filled((4,)),
+            block + 'attn2.out_proj.weight': _filled((4, 4)),
+            block + 'attn2.out_proj.bias': _filled((4,)),
+            block + 'norm2.weight': _filled((4,)),
+            block + 'norm2.bias': _filled((4,)),
+            block + 'norm3.weight': _filled((4,)) + 3,
+            block + 'norm3.bias': _filled((4,)) + 5,
+            block + 'norm1.weight': _filled((4,)),
+            block + 'norm1.bias': _filled((4,)),
+            block + 'default_modulation.1.weight': _filled((8, 4)),
+            block + 'default_modulation.1.bias': _filled((8,)),
+            block + 'mlp.fc1.weight': _filled((4, 4)),
+            block + 'mlp.fc1.bias': _filled((4,)),
+            block + 'mlp.fc2.weight': _filled((4, 4)),
+            block + 'mlp.fc2.bias': _filled((4,)),
+            'pooler.positional_embedding': _filled((4, 4)),
+            'pooler.q_proj.weight': _filled((4, 4)),
+            'pooler.q_proj.bias': _filled((4,)),
+            'pooler.k_proj.weight': _filled((4, 4)),
+            'pooler.k_proj.bias': _filled((4,)),
+            'pooler.v_proj.weight': _filled((4, 4)),
+            'pooler.v_proj.bias': _filled((4,)),
+            'pooler.c_proj.weight': _filled((4, 4)),
+            'pooler.c_proj.bias': _filled((4,)),
+            't_embedder.mlp.0.weight': _filled((4, 4)),
+            't_embedder.mlp.0.bias': _filled((4,)),
+            't_embedder.mlp.2.weight': _filled((4, 4)),
+            't_embedder.mlp.2.bias': _filled((4,)),
+            'x_embedder.proj.weight': _filled((4, 4)),
+            'x_embedder.proj.bias': _filled((4,)),
+            'mlp_t5.0.weight': _filled((4, 4)),
+            'mlp_t5.0.bias': _filled((4,)),
+            'mlp_t5.2.weight': _filled((4, 4)),
+            'mlp_t5.2.bias': _filled((4,)),
+            'extra_embedder.0.weight': _filled((4, 4)),
+            'extra_embedder.0.bias': _filled((4,)),
+            'extra_embedder.2.weight': _filled((4, 4)),
+            'extra_embedder.2.bias': _filled((4,)),
+            'final_layer.adaLN_modulation.1.weight': _filled((8, 4)),
+            'final_layer.adaLN_modulation.1.bias': _filled((8,)),
+            'final_layer.linear.weight': _filled((4, 4)),
+            'final_layer.linear.bias': _filled((4,)),
+        }
+        converted = singlefilecompat.convert_hydit_transformer_checkpoint_to_diffusers(_clone(state))
+        restored, label = comfykeys.comfy_state(
+            converted, {'_class_name': 'HunyuanDiT2DModel'}, gguf=False)
+        self.assertEqual(label, 'hydit')
+        _same(self, restored, state)
+
+    def test_hunyuan_image_and_video_round_trip(self):
+        import dgenerate.pipelinewrapper.singlefilecompat as singlefilecompat
+        image = _hunyuan_image_comfy_state()
+        converted = singlefilecompat.convert_hunyuanimage_transformer_checkpoint_to_diffusers(
+            _clone(image), use_byt5=False)
+        restored, label = comfykeys.comfy_state(
+            converted, {'_class_name': 'HunyuanImageTransformer2DModel'}, gguf=False)
+        self.assertEqual(label, 'hunyuan-image')
+        _same(self, restored, image)
+
+        video = _hunyuan_video_comfy_state()
+        converted = singlefilecompat.convert_hunyuan_video15_transformer_checkpoint(_clone(video))
+        restored, label = comfykeys.comfy_state(
+            converted, {'_class_name': 'HunyuanVideo15Transformer3DModel'}, gguf=False)
+        self.assertEqual(label, 'hunyuan-video')
+        _same(self, restored, video)
+        with self.assertRaises(quantexport.QuantExportError):
+            comfykeys.comfy_state(
+                converted, {'_class_name': 'HunyuanVideo15Transformer3DModel'}, gguf=True)
+
     def test_mmproj_names_round_trip_and_the_file_is_written(self):
         qkv = _filled((12, 4))
         patch = _filled((2, 2, 2, 2, 2))
@@ -756,5 +938,127 @@ def _flux2_comfy_state():
     put(single + 'linear2', 4, 4)
     put(single + 'norm.query_norm', 4, scale=True)
     put(single + 'norm.key_norm', 4, scale=True)
+    return state
+
+
+def _matrix(rows, cols=None):
+    count = rows if cols is None else rows * cols
+    tensor = torch.arange(count, dtype=torch.float32)
+    return tensor.reshape((rows,) if cols is None else (rows, cols))
+
+
+def _hunyuan_image_comfy_state():
+    state = {
+        'img_in.proj.weight': _matrix(4, 4),
+        'img_in.proj.bias': _matrix(4),
+        'txt_in.input_embedder.weight': _matrix(4, 4),
+        'txt_in.input_embedder.bias': _matrix(4),
+        'txt_in.t_embedder.mlp.0.weight': _matrix(4, 4),
+        'txt_in.t_embedder.mlp.0.bias': _matrix(4),
+        'txt_in.t_embedder.mlp.2.weight': _matrix(4, 4),
+        'txt_in.t_embedder.mlp.2.bias': _matrix(4),
+        'txt_in.c_embedder.linear_1.weight': _matrix(4, 4),
+        'txt_in.c_embedder.linear_1.bias': _matrix(4),
+        'txt_in.c_embedder.linear_2.weight': _matrix(4, 4),
+        'txt_in.c_embedder.linear_2.bias': _matrix(4),
+        'time_in.mlp.0.weight': _matrix(4, 4),
+        'time_in.mlp.0.bias': _matrix(4),
+        'time_in.mlp.2.weight': _matrix(4, 4),
+        'time_in.mlp.2.bias': _matrix(4),
+        'final_layer.linear.weight': _matrix(4, 4),
+        'final_layer.linear.bias': _matrix(4),
+        'final_layer.adaLN_modulation.1.weight': _matrix(8, 4),
+        'final_layer.adaLN_modulation.1.bias': _matrix(8),
+    }
+    for index in (0, 1):
+        prefix = f'txt_in.individual_token_refiner.blocks.{index}.'
+        state[prefix + 'norm1.weight'] = _matrix(4)
+        state[prefix + 'norm1.bias'] = _matrix(4)
+        state[prefix + 'norm2.weight'] = _matrix(4)
+        state[prefix + 'norm2.bias'] = _matrix(4)
+        state[prefix + 'self_attn_qkv.weight'] = _matrix(6, 4)
+        state[prefix + 'self_attn_qkv.bias'] = _matrix(6)
+        state[prefix + 'self_attn_proj.weight'] = _matrix(4, 4)
+        state[prefix + 'self_attn_proj.bias'] = _matrix(4)
+        state[prefix + 'mlp.fc1.weight'] = _matrix(4, 4)
+        state[prefix + 'mlp.fc1.bias'] = _matrix(4)
+        state[prefix + 'mlp.fc2.weight'] = _matrix(4, 4)
+        state[prefix + 'mlp.fc2.bias'] = _matrix(4)
+        state[prefix + 'adaLN_modulation.1.weight'] = _matrix(4, 4)
+        state[prefix + 'adaLN_modulation.1.bias'] = _matrix(4)
+    prefix = 'double_blocks.0.'
+    state[prefix + 'img_mod.linear.weight'] = _matrix(4, 4)
+    state[prefix + 'img_mod.linear.bias'] = _matrix(4)
+    state[prefix + 'txt_mod.linear.weight'] = _matrix(4, 4)
+    state[prefix + 'txt_mod.linear.bias'] = _matrix(4)
+    state[prefix + 'img_attn_qkv.weight'] = _matrix(6, 4)
+    state[prefix + 'img_attn_qkv.bias'] = _matrix(6)
+    state[prefix + 'img_attn_q_norm.weight'] = _matrix(4)
+    state[prefix + 'img_attn_k_norm.weight'] = _matrix(4)
+    state[prefix + 'img_attn_proj.weight'] = _matrix(4, 4)
+    state[prefix + 'img_attn_proj.bias'] = _matrix(4)
+    state[prefix + 'img_mlp.fc1.weight'] = _matrix(4, 4)
+    state[prefix + 'img_mlp.fc1.bias'] = _matrix(4)
+    state[prefix + 'img_mlp.fc2.weight'] = _matrix(4, 4)
+    state[prefix + 'img_mlp.fc2.bias'] = _matrix(4)
+    state[prefix + 'txt_attn_qkv.weight'] = _matrix(6, 4)
+    state[prefix + 'txt_attn_qkv.bias'] = _matrix(6)
+    state[prefix + 'txt_attn_q_norm.weight'] = _matrix(4)
+    state[prefix + 'txt_attn_k_norm.weight'] = _matrix(4)
+    state[prefix + 'txt_attn_proj.weight'] = _matrix(4, 4)
+    state[prefix + 'txt_attn_proj.bias'] = _matrix(4)
+    state[prefix + 'txt_mlp.fc1.weight'] = _matrix(4, 4)
+    state[prefix + 'txt_mlp.fc1.bias'] = _matrix(4)
+    state[prefix + 'txt_mlp.fc2.weight'] = _matrix(4, 4)
+    state[prefix + 'txt_mlp.fc2.bias'] = _matrix(4)
+    return state
+
+
+def _hunyuan_video_comfy_state():
+    return {
+        'img_in.proj.weight': _matrix(4, 4),
+        'time_in.mlp.0.weight': _matrix(4, 4),
+        'double_blocks.0.img_attn_qkv.weight': _matrix(6, 4),
+        'double_blocks.0.img_mod.linear.weight': _matrix(4, 4),
+        'txt_in.input_embedder.weight': _matrix(4, 4),
+        'txt_in.individual_token_refiner.blocks.0.self_attn_qkv.weight': _matrix(6, 4),
+        'txt_in.individual_token_refiner.blocks.0.mlp.fc1.weight': _matrix(4, 4),
+        'single_blocks.0.q_norm.weight': _matrix(4),
+        'final_layer.linear.weight': _matrix(4, 4),
+        'final_layer.adaLN_modulation.1.weight': _matrix(8, 4),
+        'vision_in.proj.1.weight': _matrix(4, 4),
+        'byt5_in.fc3.weight': _matrix(4, 4),
+        'cond_type_embedding.weight': _matrix(4, 4),
+    }
+
+
+def _flux3_comfy_state():
+    state = {}
+
+    def put(key, rows, cols=None):
+        if cols is None:
+            state[key] = _filled((rows,))
+            return
+        state[key] = _filled((rows, cols))
+
+    for name in (
+            'emb_in.image', 'emb_in.image_cond', 'txt_in',
+            'time_in.in_layer', 'time_in.out_layer',
+            'ref_time_in.in_layer', 'ref_time_in.out_layer',
+            'final_layer.image.linear'):
+        put(name + '.weight', 4, 4)
+    put('final_layer.image.adaLN_modulation.1.weight', 8, 4)
+    for mode in ('image', 'image_cond', 'txt'):
+        put(f'early_stream_modulations.{mode}.lin.weight', 12, 4)
+        put(f'single_stream_modulations.{mode}.lin.weight', 12, 4)
+    for prefix in (
+            'content_mode_blocks.image.0.',
+            'content_mode_blocks.image_cond.0.',
+            'txt_mode_blocks.0.',
+            'single_blocks.0.'):
+        for name in ('q_proj', 'k_proj', 'v_proj', 'attn_out', 'mlp_in', 'mlp_out'):
+            put(prefix + name + '.weight', 4, 4)
+        put(prefix + 'norm.query_norm.scale', 4)
+        put(prefix + 'norm.key_norm.scale', 4)
     return state
 

@@ -179,6 +179,9 @@ def _video_transformer_class(model_type, family: str = 'ltx2'):
         return wan._wan_transformer_class(model_type, family)
     if model_type in _single_image_video.SINGLE_IMAGE_VIDEO_MODEL_TYPES:
         return _single_image_video._single_image_video_transformer_class(family)
+    if _enums.model_type_is_minimax_h3(model_type):
+        from diffusers import MiniMaxH3Transformer3DModel
+        return MiniMaxH3Transformer3DModel
     raise _pipelines.UnsupportedPipelineConfigError(
         f'{_enums.get_model_type_string(model_type)} does not take --transformer.')
 
@@ -595,7 +598,20 @@ def _create_cached_video_pipeline(model_path,
                                   vae_uri=None,
                                   text_encoder_uris=None,
                                   prompt_upsampler_uri=None,
-                                  lora_disk_fuse=False):
+                                  lora_disk_fuse=False,
+                                  minimax_workflow=None):
+    if _enums.model_type_is_minimax_h3(model_type):
+        import dgenerate.pipelinewrapper.minimaxh3 as _minimax
+        return _minimax.create_pipeline(
+            model_path, model_type, revision, variant, subfolder, dtype, device,
+            model_cpu_offload, sequential_cpu_offload, model_group_offload,
+            torch_compile, local_files_only, auth_token,
+            transformer_uri=transformer_uri, lora_uris=lora_uris,
+            lora_fuse_scale=lora_fuse_scale, quantizer_uri=quantizer_uri,
+            quantizer_map=quantizer_map, vae_uri=vae_uri,
+            text_encoder_uris=text_encoder_uris,
+            lora_disk_fuse=lora_disk_fuse,
+            minimax_workflow=minimax_workflow or 't2va')
     all_lora_uris = list(lora_uris or ()) + ([ltx_ic_lora_uri] if ltx_ic_lora_uri else [])
     aux_repo = None
     if _hfhub.is_single_file_model_load(model_path):

@@ -128,6 +128,16 @@ DEFAULT_HYIMAGE21_OUTPUT_HEIGHT: int = 2048
 Default output height for HunyuanImage 2.1 txt2img.
 """
 
+DEFAULT_MINIMAX_H3_IMAGE_OUTPUT_WIDTH: int = 2048
+"""
+Default output width for MiniMax-H3-Image.
+"""
+
+DEFAULT_MINIMAX_H3_IMAGE_OUTPUT_HEIGHT: int = 2048
+"""
+Default output height for MiniMax-H3-Image.
+"""
+
 DEFAULT_FLOYD_IF_OUTPUT_WIDTH: int = 64
 """
 Default output width for Deep Floyd IF txt2img first stage.

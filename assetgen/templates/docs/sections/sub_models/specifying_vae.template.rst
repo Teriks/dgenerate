@@ -64,6 +64,9 @@ Available encoder classes are:
 * AutoencoderKLQwenImage21
 * AutoencoderKLHunyuanImage
 * AutoencoderKLHunyuanImageRefiner
+* AutoencoderKLMiniMaxH3
+* AutoencoderKLMiniMaxH3Audio
+* AutoencoderKLMiniMaxH3Image
 * AutoencoderKLWan
 * AutoencoderKLLTXVideo
 * AutoencoderKLLTX2Video

@@ -1,0 +1,26 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Same character swap as config.dgen, on the pruned Ref2VA int8 transformer
+# and the int8 Qwen3-VL encoder. The LoRA is added on each packed linear
+# and the base weights stay packed.
+# The boxer is examples/media/man-fighting-pose.jpg.
+# The dance is examples/media/rickroll-roll.gif.
+
+MiniMaxAI/MiniMax-H3
+--model-type minimax-h3-video
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors
+--text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors"
+--loras "https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/blob/main/h3_character_swap_v1.5.safetensors;scale=1.0"
+--inference-steps 30
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path minimax-h3-character-swap-comfy-int8
+--output-size 960x544
+--reference-image-processors "resize;size=768x512;align=32" + "resize;size=256x256;align=32"
+--image-seeds "reference=../../media/man-fighting-pose.jpg, ../../media/rickroll-roll.gif"
+--prompts "Replace the dancer in the video with the boxer in the image. Keep the boxer's face, hair, and clothing. Follow the dancer's pose, gaze, expression, and movement. Preserve the scene."

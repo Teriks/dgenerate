@@ -1822,8 +1822,10 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                           reference_images: str | collections.abc.Iterable[str] | None = None,
                           adapter_images: str | collections.abc.Iterable[str] | None = None,
                           latents: str | collections.abc.Iterable[str] | None = None,
+                          audio_latents: str | None = None,
                           floyd_image: str | None = None,
                           resize: str | tuple[int | str, int | str] | None = None,
+                          align: int | None = None,
                           aspect: bool = True,
                           frame_start: int | None = None,
                           frame_end: int | None = None,
@@ -1857,7 +1859,7 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                        if LTX condition arguments are used with ``floyd_image``.
                        if too many mask images are provided.
                        if too few mask images are provided.
-                       if ``reference_images`` are specified without ``seed_images`` or ``control_images``.
+                       if ``align`` is not an integer.
                        if no arguments are provided.
 
     :param seed_images: Seed image path(s)
@@ -1868,8 +1870,10 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     :param reference_images: Extra reference image path(s), written as ``reference=``
     :param adapter_images: Adapter image path(s)
     :param latents: Raw latent tensor path(s) (.pt, .pth, .safetensors files)
+    :param audio_latents: One MiniMax-H3 audio-noise tensor, written as ``audio-latents=``
     :param floyd_image: Path to a Floyd image
     :param resize: Optional resize dimension (WxH string)
+    :param align: Pixel alignment, written as ``align=`` when set
     :param aspect: Preserve aspect ratio?
     :param frame_start: Optional frame start index
     :param frame_end: Optional frame end index
@@ -1941,6 +1945,15 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     if isinstance(floyd_image, str):
         floyd_image = _quote_ltx_path(floyd_image)
 
+    if isinstance(audio_latents, str):
+        audio_latents = _quote_ltx_path(audio_latents)
+
+    if align is not None:
+        try:
+            align = int(align)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f'invalid align value: {e}') from e
+
     if isinstance(end_image, str):
         end_image = _quote_ltx_path(end_image)
 
@@ -1954,14 +1967,14 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                 components.append(str(component))
 
     # Validate inputs. A control clip can carry mask= and reference= with no seed
-    # image; that is a Wan VACE input. A mask or reference alone still needs a seed.
+    # image; that is a Wan VACE input. A mask alone still needs a seed. A
+    # reference list alone is a MiniMax-H3 reference seed.
     if mask_images and not seed_images and not floyd_image and not control_images:
         raise ValueError(
             'mask_images cannot be specified without seed_images or control_images.')
 
-    if reference_images and not seed_images and not control_images:
-        raise ValueError(
-            'reference_images cannot be specified without seed_images or control_images.')
+    # A reference list with no seed image is a MiniMax-H3 reference seed:
+    # reference=image.png, clip.mp4, voice.wav
 
     if adapter_images and floyd_image:
         raise ValueError('adapter_images cannot be specified with floyd_image.')
@@ -2022,7 +2035,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
 
     # Special case: adapter images only
     if adapter_images and not any([
-            seed_images, mask_images, control_images, reference_images, latents, floyd_image, end_image]):
+            seed_images, mask_images, control_images, reference_images, latents,
+            audio_latents, floyd_image, end_image, align is not None]):
         components.append('adapter:' + adapter_images)
         return ";".join(components)
 
@@ -2032,6 +2046,10 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         add_component_if_valid(floyd_image, "floyd")
         if reference_images:
             add_component_if_valid(reference_images, "reference")
+        if audio_latents:
+            add_component_if_valid(audio_latents, "audio-latents")
+        if align is not None:
+            add_component_if_valid(align, "align")
         return ";".join(components)
 
     # Handle base image (seed, control, or latents)
@@ -2059,6 +2077,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         not latents and
         not floyd_image and
         not end_image and
+        not audio_latents and
+        align is None and
         not reference_images and
         not wan_pose_video and
         not wan_face_video and
@@ -2106,6 +2126,12 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
             add_component_if_valid(control_images, "control")
         if reference_images:
             add_component_if_valid(reference_images, "reference")
+        if audio_latents:
+            add_component_if_valid(audio_latents, "audio-latents")
+        if floyd_image and not (seed_images or mask_images):
+            add_component_if_valid(floyd_image, "floyd")
+        if align is not None:
+            add_component_if_valid(align, "align")
         if wan_pose_video:
             add_component_if_valid(_quote_ltx_path(wan_pose_video), "wan-pose")
         if wan_face_video:

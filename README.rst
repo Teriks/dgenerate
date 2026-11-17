@@ -15,7 +15,7 @@ dgenerate
 
 |Documentation| |Latest Release| |Support Dgenerate|
 
-``dgenerate`` is a scriptable command-line tool (and library) for generating and editing images, generating whole video clips with LTX, Wan, and Kandinsky,
+``dgenerate`` is a scriptable command-line tool (and library) for generating and editing images, generating whole video clips with LTX, Wan, Hunyuan, Kandinsky, MiniMax, and Motif,
 and processing animated inputs with AI.
 
 Whether you're generating or editing single images, batch processing hundreds of variations, generating a short mp4 from a prompt,
@@ -29,8 +29,8 @@ What You Can Do
 Image Generation
 ----------------
 
-* Text to image, image to image, inpainting, and diffusion-based upscaling with SD 1.5 / 2.x, SDXL, SD3 / SD3.5, Stable Cascade, DeepFloyd IF, Kolors, Flux, Flux.2 (dev and Klein), Flux.3 Klein, Z-Image, Qwen-Image, Qwen-Image 2.1, Krea 2, and Kandinsky 5
-* Edit images with instruction or reference based pipelines: Flux Fill and Kontext, Flux.2, Flux.3 references, Z-Image Omni, Qwen-Image Edit and Layered, and InstructPix2Pix (SD 1.5, SDXL, SD3)
+* Text to image, image to image, inpainting, and diffusion-based upscaling with SD 1.5 / 2.x, SDXL, SD3 / SD3.5, Stable Cascade, DeepFloyd IF, Kolors, Flux, Flux.2 (dev and Klein), Flux.3 Klein, Hunyuan-DiT, HunyuanImage 2.1, MiniMax-H3-Image, Z-Image, Qwen-Image, Qwen-Image 2.1, Krea 2, and Kandinsky 5
+* Edit images with instruction or reference based pipelines: Flux Fill and Kontext, Flux.2, Flux.3 references, MiniMax-H3-Image references, Z-Image Omni, Qwen-Image Edit and Layered, and InstructPix2Pix (SD 1.5, SDXL, SD3)
 * Control Nets, T2I Adapters, IP Adapters, LoRA, and Textual Inversion (embeddings), with models from HuggingFace and CivitAI
 * Advanced prompt weighting (LPW), SD-WebUI (Common syntax), InvokeAI syntax, and ``llm4gen`` (SD1.5 only)
 * Run large models on limited hardware with inference optimizations, quantization, and pre-quantized GGUF and ComfyUI FP8 / INT8 / NVFP4 checkpoints, with hardware accelerated quantized matmuls where supported
@@ -39,12 +39,13 @@ Image Generation
 Video Generation
 ----------------
 
-* Generate whole clips in one pipeline call: LTX-2.5 (``--model-type ltx2``) and LTX-Video (``--model-type ltx-video``), Wan 2.1 / 2.2 (``--model-type wan``), Hunyuan Video 1.5 (``hyvideo-15``), Kandinsky 5 Video (``kandinsky5-video``), Kandinsky 6 Video (``kandinsky6-video``, video and audio), and Motif Video (``motif-video``)
+* Generate whole clips in one pipeline call: LTX-2.5 (``--model-type ltx2``) and LTX-Video (``--model-type ltx-video``), Wan 2.1 / 2.2 (``--model-type wan``), Hunyuan Video 1.5 (``hyvideo-15``), Kandinsky 5 Video (``kandinsky5-video``), Kandinsky 6 Video (``kandinsky6-video``, video and audio), MiniMax-H3 (``minimax-h3-video``, video and audio), and Motif Video (``motif-video``)
 * Text-to-video, or image-to-video with a still in ``--image-seeds`` as the opening frame. With LTX, use a clip as the opening, ``last-frame=`` as the closing frame (a still or clip), or both, to extend existing footage or generate a lead-in; slice with ``--frame-start`` / ``--frame-end``
 * Wan modes: image-to-video, first-last-frame, video-to-video, and VACE; ``--model-type wan-animate`` and ``wan-animate-2`` animate a character still from a driving clip (``wan-driving=``, ``wan-pose=``, ``wan-face=``, ``--wan-animate-preprocess``)
 * LTX-2.5 guided by an IC-LoRA from ``--ltx-ic-lora`` (canny, depth, pose, etc.) using a reference clip processed by ``--control-image-processors``, and style or effect LoRAs from ``--loras``
-* Set clip length and frame rate with ``--video-lengths`` and ``--video-fps`` (LTX-2.5 can predict duration from the prompt; LTX-2.5 and Kandinsky 6 mux generated audio into mp4 output); compile blocks with ``--torch-compile``
-* Example configs under ``examples/ltx2``, ``examples/ltx_video``, ``examples/wan``, ``examples/wan_animate``, ``examples/wan_animate_2``, and ``examples/kandinsky6``; see the `video generation manual <https://dgenerate.readthedocs.io/en/version_6.0.0/manual.html#video-generation>`_
+* MiniMax-H3-Fun-Controlnet-Union-2.0 through ``--control-nets``
+* Set clip length and frame rate with ``--video-lengths`` and ``--video-fps`` (LTX-2.5 can predict duration from the prompt; LTX-2.5, Kandinsky 6, and MiniMax-H3 mux generated audio into mp4 output); compile blocks with ``--torch-compile``
+* Example configs under ``examples/ltx2``, ``examples/ltx_video``, ``examples/wan``, ``examples/wan_animate``, ``examples/wan_animate_2``, ``examples/hyvideo_15``, ``examples/kandinsky5``, ``examples/kandinsky6``, ``examples/minimax_h3_video``, and ``examples/motif_video``; see the `video generation manual <https://dgenerate.readthedocs.io/en/version_6.0.0/manual.html#video-generation>`_
 
 Image Processing
 ----------------

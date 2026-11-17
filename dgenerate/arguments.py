@@ -992,7 +992,8 @@ def _type_quantizer_map(val: str):
         'text_encoder_3',
         'image_encoder',
         'controlnet',
-        'connectors'
+        'connectors',
+        'transformer_ref',
     ]
 
     if val not in vals:
@@ -1814,7 +1815,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     * Qwen2_5_VLTextModel (HunyuanVideo 1.5)
                     * Qwen3ForCausalLM (Flux.2 Klein)
                     * Qwen3Model (Z-Image)
-                    * Qwen3VLForConditionalGeneration (Qwen-Image 2.1, FLUX.3)
+                    * Qwen3VLForConditionalGeneration (Qwen-Image 2.1, FLUX.3, MiniMax-H3)
                     * Qwen3VLModel (Krea 2)
                     
                     "weight-name" selects one file in a repository or a folder. "subfolder" is the directory
@@ -1905,12 +1906,16 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     This is accepted for Stable Diffusion 3, Flux, Flux.2, Flux.2 Klein KV,
                     FLUX.3, Z-Image, Z-Image Omni, Qwen-Image, Qwen-Image edit,
                     Qwen-Image layered, Qwen-Image 2.1, Krea 2, Kandinsky 5 image and video,
-                    Kandinsky 6 video, Hunyuan-DiT, HunyuanImage 2.1, HunyuanVideo 1.5,
+                    Kandinsky 6 video, MiniMax-H3, Hunyuan-DiT, HunyuanImage 2.1, HunyuanVideo 1.5,
                     Motif-Video, LTX, Wan, and Wan-Animate.
                     ``--model-type ltx2``, ``ltx-video``, ``wan``, ``wan-animate``,
-                    ``wan-animate-2``, and ``kandinsky6-video`` accept one
+                    ``wan-animate-2``, ``kandinsky6-video``, and ``minimax-h3-video`` accept one
                     replacement diffusion transformer. Wan 2.2 MoE checkpoints can
                     load the low-noise expert with --wan-second-transformer.
+                    A MiniMax-H3 GGUF or Comfy safetensors file loads with
+                    --transformer. Full files and pruned curve files both load.
+                    ``t2va`` and ``fl2va`` load the file as transformer/.
+                    ``ref2va`` loads it as transformer_ref/.
                     A FLUX.3 GGUF in Comfy layout is renamed onto Flux3Transformer2DModel.
                     Pair a distilled GGUF with the distilled Klein repository and a base
                     GGUF with the base repository, so flow_map matches the checkpoint.
@@ -2629,12 +2634,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             quantization.
             
             Accepted values are: "unet", "transformer", "transformer_2",
-            "text_encoder", "text_encoder_2", "text_encoder_3", "image_encoder",
-            "controlnet", "connectors".
+            "transformer_ref", "text_encoder", "text_encoder_2", "text_encoder_3",
+            "image_encoder", "controlnet", "connectors".
             
             Video models also accept the subset that applies to their checkpoint
             (for example Wan MoE "transformer_2" and I2V "image_encoder",
-            or LTX-2 "connectors"). The VAE is never quantized.
+            LTX-2 "connectors", or MiniMax-H3 "transformer_ref").
+            MiniMax-H3-Image accepts "transformer" and "text_encoder".
+            The VAE is never quantized.
             """
         )
     )
@@ -2685,8 +2692,20 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     For --model-type kandinsky6-video the accepted names are
                     FlowMatchEulerDiscreteScheduler and PiflowScheduler. A distilled
                     checkpoint ships PiflowScheduler; omitting --scheduler keeps it.
-                    For --model-type flux3, omit --scheduler. The modular pipeline
-                    keeps the checkpoint scheduler, and other names are not registered.
+                    For --model-type minimax-h3-video the only accepted scheduler is
+                    MiniMaxH3Scheduler. URI arguments overlay the checkpoint video
+                    scheduler (shift 12). --second-model-scheduler overlays the audio
+                    scheduler (shift 3) and does not inherit --scheduler. Other names
+                    are rejected. Omitting either option keeps that checkpoint scheduler.
+                    
+                    For --model-type flux3 the only accepted scheduler is
+                    FlowMatchEulerDiscreteScheduler. URI arguments overlay the
+                    checkpoint scheduler. Other names are rejected. Omitting this
+                    option keeps the checkpoint scheduler.
+
+                    For --model-type minimax-h3-image the only accepted scheduler is
+                    MiniMaxH3Scheduler. URI arguments overlay the checkpoint scheduler.
+                    The six-step sigma grid stays fixed. Other names are rejected.
                     
                     You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
                     """
@@ -2700,10 +2719,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--second-model-schedulers',
             dest='second_model_scheduler_uri',
             nargs='+', action='store', default=None, metavar="SCHEDULER_URI",
-            help="""Specify a scheduler (sampler) by URI for the SDXL Refiner or Stable Cascade Decoder pass. 
+            help="""Specify a scheduler (sampler) by URI for the SDXL Refiner or Stable Cascade Decoder pass.
+                 For --model-type minimax-h3-video this overlays the audio scheduler instead.
                  Operates the exact same way as --scheduler including the "help" option. Passing 'helpargs' will 
                  yield a help message with a list of overridable arguments for each scheduler and their 
-                 typical defaults. Defaults to the value of --scheduler.
+                 typical defaults. Defaults to the value of --scheduler for the refiner and decoder.
+                 minimax-h3-video does not inherit --scheduler; omitting this keeps audio shift 3.
                  
                  You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
                  """
@@ -5011,9 +5032,30 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     several references, up to 10. One reference keeps its own size
                     unless --output-size is set.
 
+                    For --model-type minimax-h3-image, --image-seeds are reference
+                    images. There is no mask and no img2img strength. Several
+                    references use the images: prefix and are one generation,
+                    for example "images: a.png, b.png". The files may differ in
+                    size. The prompt names them
+                    Picture 1, Picture 2, and so on. The checkpoint
+                    samples 6 steps with distilled guidance, so omit
+                    --inference-steps, --guidance-scales, a negative prompt, and
+                    --scheduler. The default size is 2048. A smaller request is
+                    generated on a larger canvas and resized back. Latents
+                    interchange is not supported: the six steps and their output
+                    heads are fixed, so omit --output-latents, latents:,
+                    --denoising-start, and --denoising-end.
+
                     For --model-type kandinsky6-video, one still image is the first
                     frame of the clip. A mask, a second image, or a control image
                     is rejected.
+
+                    For --model-type minimax-h3-video, no image seed is text to video and
+                    audio. One still, last-frame=, or both, are keyframes. reference=
+                    is an ordered mix of images, videos, and audio (at most 9 images,
+                    3 videos, 3 audio, 12 total) and cannot be combined with a keyframe.
+                    Audio references cannot be the only references. latents= replaces
+                    the video noise and audio-latents= replaces the audio noise.
                     """
         )
     )
@@ -5178,7 +5220,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             dest='reference_image_processors',
             help="""Specify one or more image processor actions to perform on
                     reference= images in --image-seeds. Use + to separate a chain
-                    per reference image. See: --image-processor-help."""
+                    per reference image. MiniMax-H3 also runs each chain on a
+                    reference video, one frame at a time. The processed frame size
+                    is what the video VAE encodes. An audio reference is left
+                    unchanged. See: --image-processor-help."""
         )
     )
 
@@ -5519,9 +5564,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     distilled and 28 otherwise. HunyuanImage 2.1 uses 50, or 4 for the
                     refiner.
                     Kandinsky 5 Image uses 50. FLUX.3 uses 16 on the distilled
-                    checkpoint and 50 on the base checkpoint. Kandinsky 6 video
+                    checkpoint and 50 on the base checkpoint.                     Kandinsky 6 video
                     uses 10 when the loaded scheduler is PiflowScheduler and 50
-                    otherwise.
+                    otherwise. MiniMax-H3 uses 30. That count includes the terminal
+                    sigma, so the model runs one evaluation fewer.
                     
                     For --model-type ltx-video, omitted values follow the loaded
                     LTXPipeline __call__ defaults (typically guidance 3 and 50 steps).
@@ -5563,6 +5609,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     at 24 fps (121 frames). The clip includes audio. There is no
                     separate audio option.
 
+                    MiniMax-H3 snaps up to the next 17n+5 frames at 24 fps. A request
+                    can be 5 to 15 seconds. The clip comes out between 5.17 seconds
+                    (124 frames) and 14.38 seconds (345 frames). Omit this option
+                    and the clip is 124 frames, 5.17 seconds. The soundtrack is generated with
+                    the video. There is no separate audio length.
+
                     NOWRAP!
                     (default: model chooses)"""
         )
@@ -5576,8 +5628,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     Each value will be tried in turn.
 
                     Defaults to 24 for --model-type ltx2, ltx-video, motif-video,
-                    wan-animate-2, kandinsky5-video, and kandinsky6-video; 15 for hyvideo-15;
-                    16 for wan; and 30 for wan-animate.
+                    wan-animate-2, kandinsky5-video, kandinsky6-video, and minimax-h3-video;
+                    15 for hyvideo-15; 16 for wan; and 30 for wan-animate.
+                    minimax-h3-video always generates at 24 fps.
 
                     NOWRAP!
                     (default: model type default)"""
@@ -6286,6 +6339,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     For SD3, Flux, Flux.2, FLUX.3, Qwen-Image, Qwen-Image 2.1, Krea 2,
                     Kandinsky 5 Image, and Z-Image, FlowMatchEulerDiscreteScheduler is supported.
+                    --model-type minimax-h3-image does not support --denoising-start.
+                    Its six steps each have their own output head.
                     
                     NOWRAP!
                     Example: --denoising-start 0.8
@@ -6323,6 +6378,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     For SD3, Flux, Flux.2, FLUX.3, Qwen-Image, Qwen-Image 2.1, Krea 2,
                     Kandinsky 5 Image, and Z-Image, FlowMatchEulerDiscreteScheduler is supported.
+                    --model-type minimax-h3-image does not support --denoising-end.
+                    Its six steps each have their own output head.
                     
                     NOWRAP!
                     Example: --denoising-end 0.5

@@ -585,6 +585,20 @@ GGUF: --transformer https://huggingface.co/realrebelai/Kandinsky-6.0-Pro-5s_GGUF
 on the Pro parent, 50 steps, guidance 5. That parent is gated, so the config still needs HF_TOKEN. \
 INT8 Lite distilled: --transformer https://huggingface.co/kabachuha/Kandinsky-6.0-Lite-distill-5s-int8-convrot/blob/main/Kandinsky-6.0-Lite-Distilled-5s-int8-convrot.safetensors. \
 This is not Kandinsky 5.
+- MiniMax-H3: --model-type minimax-h3-video, --dtype bfloat16, --model-sequential-offload. \
+Repository MiniMaxAI/MiniMax-H3. Public. 24 fps, 30 steps, audio in the mp4. \
+No negative prompt, no --guidance-scales. --video-lengths is 5 to 15 seconds. \
+No image seed is text to video. One still and optional last-frame= are keyframes. \
+reference= is images, videos, and audio and cannot be combined with a keyframe. \
+--control-nets is one Fun branch. A bare --image-seeds path is the control video \
+and cannot be combined with a keyframe or reference=. \
+Output size is a multiple of 32, or omit it. GGUF and Comfy quants go on --transformer.
+- MiniMax-H3-Image: --model-type minimax-h3-image, --dtype bfloat16, --model-sequential-offload. \
+Repository MiniMaxAI/MiniMax-H3-Image. Public. One image. Guidance is distilled: \
+no negative prompt, no --guidance-scales, no --inference-steps. \
+Default size is 2048. Sides are multiples of 32. \
+--image-seeds are reference images, named Picture 1, Picture 2, and so on in the prompt. \
+No mask and no strength.
 - DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
 - Animate a still or make a clip. When the user says ltx2, LTX-2, or LTX, use the LTX-2.5 recipes. \
 Use Lightricks/LTX-2 and Gemma 3 only when they name 19B, LTX-2.0, or Gemma 3. \
@@ -1289,7 +1303,7 @@ def _memory_spec(kind: str | None, cuda: bool, gib: float, bitsandbytes: bool, s
 _SEQUENTIAL_TYPES = frozenset({
     'krea2', 'wan', 'wan-animate', 'wan-animate-2', 'ltx2',
     'hyvideo-15', 'motif-video', 'kandinsky5-image', 'kandinsky5-video',
-    'kandinsky6-video', 'flux3',
+    'kandinsky6-video', 'minimax-h3-video', 'minimax-h3-image', 'flux3',
     'hyimage-21', 'hyimage-21-refiner', 'qwen-image-21',
     'if', 'ifs', 'ifs-img2img',
 })
@@ -1601,7 +1615,7 @@ def offload_plan(cuda: bool, gib: float, bitsandbytes: bool, sdnq: bool) -> str:
         block('krea2, quantized transformer and quantized text encoder', 'krea2-packed', 'No quantizer.'),
         block(
             'krea2 otherwise, and wan, wan-animate, wan-animate-2, ltx2, hyvideo-15, '
-            'motif-video, kandinsky5-image, kandinsky5-video, kandinsky6-video, flux3, hyimage-21, '
+            'motif-video, kandinsky5-image, kandinsky5-video, kandinsky6-video, minimax-h3-video, minimax-h3-image, flux3, hyimage-21, '
             'hyimage-21-refiner, qwen-image-21, if, ifs, ifs-img2img',
             'sequential', 'No quantizer, including a GGUF or FP8 file.'),
         block('ltx-video, full checkpoint', 'ltx-full', 'No quantizer.'),

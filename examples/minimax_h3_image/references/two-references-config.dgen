@@ -1,0 +1,17 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Two reference images. No mask and no strength.
+# images: passes every file in one call. The files may differ in size.
+# The prompt names them Picture 1 and Picture 2, and is encoded verbatim.
+# A second --image-seeds value is a separate generation.
+
+MiniMaxAI/MiniMax-H3-Image
+--model-type minimax-h3-image
+--dtype bfloat16
+--model-sequential-offload
+--image-seeds "images: ../../media/man-fighting-pose.jpg, ../../media/earth.jpg"
+--gen-seeds 1
+--output-path minimax-h3-image-edit
+--output-size 2048
+--prompts "Picture 1 standing in a snow-covered forest clearing at sunrise, with Picture 2 in the sky"

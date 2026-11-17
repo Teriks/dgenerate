@@ -1,0 +1,20 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# First frame, last frame, or both. last-frame= alone generates up to that
+# frame. Both axes of --output-size must be multiples of 32, so this does
+# not follow the source photos (1380x920 and 1280x853).
+
+MiniMaxAI/MiniMax-H3
+--model-type minimax-h3-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path minimax-h3-fl2va
+--output-size 1024x576
+--image-seeds "../../media/man-fighting-pose.jpg;last-frame=../../media/beach.jpg"
+--prompts "The man in the opening frame walks onto the beach in the closing frame"

@@ -40,6 +40,14 @@ class TestFlux3Kandinsky6(unittest.TestCase):
         self.assertIn('qwen2vl', _ggufcompat._TEXT_GGUF_ARCHITECTURES)
         self.assertEqual(_featuredefaults.video_fps_default('kandinsky6-video'), 24.0)
 
+    def test_flux3_scheduler_overlay_accepts_only_flow_match(self):
+        import dgenerate.pipelinewrapper.schedulers as _schedulers
+        names = [
+            scheduler.__name__
+            for scheduler in _schedulers.get_compatible_schedulers(
+                __import__('diffusers').Flux3ModularPipeline)]
+        self.assertEqual(names, ['FlowMatchEulerDiscreteScheduler'])
+
     def test_flux3_pipeline_rejects_mask_and_controlnet(self):
         self.assertIs(
             _pipelines.get_pipeline_class(_enums.ModelType.FLUX3),
@@ -335,6 +343,40 @@ class TestFlux3Kandinsky6(unittest.TestCase):
                     safetensorscompat, 'module_has_comfy_quant',
                     side_effect=lambda module: module is pipe.transformer):
             _flux3.place_flux3(pipe, 'cuda', False, True, False)
+
+        self.assertIn(pipe.transformer, offloaded)
+        self.assertIn(pipe.text_encoder, offloaded)
+        self.assertNotIn(pipe.transformer, placed)
+
+    def test_gguf_transformer_offloads_instead_of_staying_resident(self):
+        import dgenerate.pipelinewrapper.pipelines as pipelines
+        from diffusers.quantizers.gguf.utils import GGUFLinear
+
+        class Pipe:
+            def __init__(self):
+                self.transformer = GGUFLinear(4, 4)
+                self.text_encoder = torch.nn.Linear(1, 1)
+                self.vae = torch.nn.Linear(1, 1)
+
+            @property
+            def components(self):
+                return {
+                    'transformer': self.transformer,
+                    'text_encoder': self.text_encoder,
+                    'vae': self.vae,
+                }
+
+        pipe = Pipe()
+        placed = []
+        offloaded = []
+
+        with unittest.mock.patch.object(
+                pipelines, 'place_quantized_module',
+                side_effect=lambda module, device: placed.append(module)), \
+                unittest.mock.patch(
+                    'accelerate.cpu_offload',
+                    side_effect=lambda module, *args, **kwargs: offloaded.append(module)):
+            _flux3._place_denoiser(pipe, 'cuda', True)
 
         self.assertIn(pipe.transformer, offloaded)
         self.assertIn(pipe.text_encoder, offloaded)
