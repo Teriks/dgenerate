@@ -325,10 +325,13 @@ unset. The weights are already F16 or F32, so nothing is unpacked.
 
 ``--comfy`` accepts both containers. ``--formats f16 --comfy`` writes
 ``transformer-F16-comfy.gguf`` for an architecture ComfyUI-GGUF loads: FLUX.1,
-SD1, SDXL, SD3, Wan, Qwen-Image, and the GGUF text encoders. ``--formats
-float16 --comfy`` writes ``transformer-float16-comfy.safetensors``, which is
-what ComfyUI's usual loader reads. FLUX.2, Z-Image, CLIP, and Gemma 4 have no
-ComfyUI-GGUF architecture, so the safetensors file is the conversion for those.
+SD1, SDXL, SD3, Wan, Qwen-Image, MiniMax-H3 video and image, LTX-Video, and
+the GGUF text encoders. ``--formats float16 --comfy`` writes
+``transformer-float16-comfy.safetensors``, which is what ComfyUI's usual
+loader reads. FLUX.2, FLUX.3, Z-Image, LTX-2, Krea 2, Hunyuan-DiT,
+HunyuanVideo 1.5, HunyuanImage 2.1, Kandinsky 5, Stable Cascade, CLIP, and
+Gemma 4 have no ComfyUI-GGUF architecture, so the safetensors file is the
+conversion for those.
 dgenerate loads the GGUF as it loads any other ComfyUI GGUF. It loads the
 safetensors file as an ordinary full-precision checkpoint, not as a quantized
 one. A component with no key map is still an error.
@@ -345,15 +348,22 @@ leaves out ``float16`` and ``float32``. Ask for the plain formats by name.
 
 Files keep the tensor names of the component they came from, unless ``--comfy``
 is set. ``--comfy`` writes the names ComfyUI and ComfyUI-GGUF load. That covers
-FLUX.1, SD 1.5, SDXL, SD3, Wan, and Qwen-Image, plus FLUX.2 and Z-Image safetensors
-quants. GGUF text encoders cover T5, UMT5, Llama 3 / Mistral, Qwen2, Qwen3, and
-Gemma 3. A Qwen2-VL vision tower is written beside the text encoder as
-``mmproj-text_encoder-Q8_0-comfy.gguf``. ComfyUI-GGUF pairs that file by name, and
-it picks one mmproj when several quants share a folder, so write one GGUF format
-per folder when the model has a vision tower. CLIP is written as safetensors,
-which is what Comfy's CLIP loader reads. ComfyUI-GGUF has no architecture for
-FLUX.2, Z-Image, or CLIP, so those GGUF files are refused. Those files are named
-like ``transformer-Q4_K-comfy.gguf``. A component with no key map is an error, so
+FLUX.1, SD 1.5, SDXL, SD3, Wan, Qwen-Image, MiniMax-H3 video and image, and
+LTX-Video, plus safetensors quants of FLUX.2, FLUX.3, Z-Image, LTX-2, Krea 2,
+Hunyuan-DiT, HunyuanVideo 1.5, HunyuanImage 2.1, Kandinsky 5, and Stable
+Cascade. MiniMax-H3 video uses ``--subfolders transformer`` for text and
+keyframes, or ``transformer_ref`` for references. The MiniMax-H3-Image
+``transformer`` folder is already Comfy names; ``transformer_diffusers`` is
+the Diffusers copy. GGUF text encoders cover T5, UMT5, Llama 3 / Mistral,
+Qwen2, Qwen3, and Gemma 3. A Qwen2-VL vision tower is written beside the text
+encoder as ``mmproj-text_encoder-Q8_0-comfy.gguf``. ComfyUI-GGUF pairs that
+file by name, and it picks one mmproj when several quants share a folder, so
+write one GGUF format per folder when the model has a vision tower. CLIP is
+written as safetensors, which is what Comfy's CLIP loader reads.
+ComfyUI-GGUF has no architecture for FLUX.2, FLUX.3, Z-Image, LTX-2, Krea 2,
+Hunyuan-DiT, HunyuanVideo 1.5, HunyuanImage 2.1, Kandinsky 5, Stable Cascade,
+CLIP, or Gemma 4, so those GGUF files are refused. Those files are named like
+``transformer-Q4_K-comfy.gguf``. A component with no key map is an error, so
 the command does not write a file Comfy cannot load.
 
 ``--llama`` writes llama.cpp tensor names instead, the layout Unsloth

@@ -376,7 +376,6 @@ See `examples/minimax_h3_image/text_to_image/config.dgen <https://github.com/Ter
 `examples/minimax_h3_image/references/two-references-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/references/two-references-config.dgen>`_,
 `examples/minimax_h3_image/gguf/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/gguf/config.dgen>`_,
 and `examples/minimax_h3_image/comfy_quant/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/comfy_quant/config.dgen>`_.
-A ComfyUI image file fuses the six output heads. They are split on load.
 
 Other call arguments
 --------------------

@@ -699,11 +699,11 @@ Help Output
             HunyuanVideo 1.5, Motif-Video, LTX, Wan, and Wan-Animate. ``--model-type ltx2``, ``ltx-video``,
             ``wan``, ``wan-animate``, ``wan-animate-2``, ``kandinsky6-video``, and ``minimax-h3-video`` accept
             one replacement diffusion transformer. Wan 2.2 MoE checkpoints can load the low-noise expert with
-            --wan-second-transformer. A MiniMax-H3 GGUF or Comfy safetensors file loads with
-            --transformer. Full files and pruned curve files both load. ``t2va`` and ``fl2va``
-            load the file as transformer/. ``ref2va`` loads it as transformer_ref/. A FLUX.3 GGUF in Comfy
-            layout is renamed onto Flux3Transformer2DModel. Pair a distilled GGUF with the distilled Klein
-            repository and a base GGUF with the base repository, so flow_map matches the checkpoint.
+            --wan-second-transformer. A MiniMax-H3 GGUF or Comfy safetensors file loads with --transformer. Full
+            files and pruned curve files both load. ``t2va`` and ``fl2va`` load the file as transformer/.
+            ``ref2va`` loads it as transformer_ref/. A FLUX.3 GGUF in Comfy layout is renamed onto
+            Flux3Transformer2DModel. Pair a distilled GGUF with the distilled Klein repository and a base GGUF
+            with the base repository, so flow_map matches the checkpoint.
             
             Examples:
             
@@ -1281,12 +1281,13 @@ Help Output
             When using --quantizer, you can use this argument to specify exactly which sub-modules undergo
             quantization.
             
-            Accepted values are: "unet", "transformer", "transformer_2", "text_encoder", "text_encoder_2",
-            "text_encoder_3", "image_encoder", "controlnet", "connectors".
+            Accepted values are: "unet", "transformer", "transformer_2", "transformer_ref", "text_encoder",
+            "text_encoder_2", "text_encoder_3", "image_encoder", "controlnet", "connectors".
             
             Video models also accept the subset that applies to their checkpoint (for example Wan MoE
-            "transformer_2" and I2V "image_encoder", or LTX-2 "connectors"). The VAE is never quantized.
-            --------------------------------------------------------------------------------------------
+            "transformer_2" and I2V "image_encoder", LTX-2 "connectors", or MiniMax-H3 "transformer_ref").
+            MiniMax-H3-Image accepts "transformer" and "text_encoder". The VAE is never quantized.
+            --------------------------------------------------------------------------------------
       -q2, --second-model-quantizer QUANTIZER_URI
             Global quantization configuration via URI for the secondary model, such as the SDXL Refiner or
             Stable Cascade decoder. See: --quantizer for syntax examples.
@@ -1311,12 +1312,14 @@ Help Output
             
             For --model-type kandinsky6-video the accepted names are FlowMatchEulerDiscreteScheduler and
             PiflowScheduler. A distilled checkpoint ships PiflowScheduler; omitting --scheduler keeps it. For
-            --model-type minimax-h3-video, omit --scheduler. The checkpoint keeps a video scheduler at shift 12
-            and an audio scheduler at shift 3.
+            --model-type minimax-h3-video the only accepted scheduler is MiniMaxH3Scheduler. URI arguments
+            overlay the checkpoint video scheduler (shift 12). --second-model-scheduler overlays the audio
+            scheduler (shift 3) and does not inherit --scheduler. Other names are rejected. Omitting either
+            option keeps that checkpoint scheduler.
             
             For --model-type flux3 the only accepted scheduler is FlowMatchEulerDiscreteScheduler. URI arguments
-            overlay the checkpoint scheduler. Other names are rejected. Omitting this option keeps the checkpoint
-            scheduler.
+            overlay the checkpoint scheduler. Other names are rejected. Omitting this option keeps the
+            checkpoint scheduler.
             
             For --model-type minimax-h3-image the only accepted scheduler is MiniMaxH3Scheduler. URI arguments
             overlay the checkpoint scheduler. The six-step sigma grid stays fixed. Other names are rejected.
@@ -1324,10 +1327,12 @@ Help Output
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
       -sch2, --second-model-scheduler, --second-model-schedulers SCHEDULER_URI [SCHEDULER_URI ...]
-            Specify a scheduler (sampler) by URI for the SDXL Refiner or Stable Cascade Decoder pass. Operates
-            the exact same way as --scheduler including the "help" option. Passing 'helpargs' will yield a help
-            message with a list of overridable arguments for each scheduler and their typical defaults. Defaults
-            to the value of --scheduler.
+            Specify a scheduler (sampler) by URI for the SDXL Refiner or Stable Cascade Decoder pass. For
+            --model-type minimax-h3-video this overlays the audio scheduler instead. Operates the exact same way
+            as --scheduler including the "help" option. Passing 'helpargs' will yield a help message with a list
+            of overridable arguments for each scheduler and their typical defaults. Defaults to the value of
+            --scheduler for the refiner and decoder. minimax-h3-video does not inherit --scheduler; omitting
+            this keeps audio shift 3.
             
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
@@ -2728,11 +2733,13 @@ Help Output
             --output-size is set.
             
             For --model-type minimax-h3-image, --image-seeds are reference images. There is no mask and no
-            img2img strength. The prompt names them Picture 1, Picture 2, and so on. The checkpoint samples 6
-            steps with distilled guidance, so omit --inference-steps, --guidance-scales, a negative prompt, and
-            --scheduler. The default size is 2048. A smaller request is generated on a larger canvas and resized
-            back. Latents interchange is not supported: the six steps and their output heads are fixed, so omit
-            --output-latents, latents:, --denoising-start, and --denoising-end.
+            img2img strength. Several references use the images: prefix and are one generation, for example
+            "images: a.png, b.png". The files may differ in size. The prompt names them Picture 1, Picture 2,
+            and so on. The checkpoint samples 6 steps with distilled guidance, so omit --inference-steps,
+            --guidance-scales, a negative prompt, and --scheduler. The default size is 2048. A smaller request
+            is generated on a larger canvas and resized back. Latents interchange is not supported: the six
+            steps and their output heads are fixed, so omit --output-latents, latents:, --denoising-start, and
+            --denoising-end.
             
             For --model-type kandinsky6-video, one still image is the first frame of the clip. A mask, a second
             image, or a control image is rejected.
@@ -2851,8 +2858,10 @@ Help Output
             ----------------------------
       --reference-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on reference= images in --image-seeds. Use +
-            to separate a chain per reference image. See: --image-processor-help.
-            ---------------------------------------------------------------------
+            to separate a chain per reference image. MiniMax-H3 also runs each chain on a reference video, one
+            frame at a time. The processed frame size is what the video VAE encodes. An audio reference is left
+            unchanged. See: --image-processor-help.
+            ---------------------------------------
       --adapter-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on adapter= / adapter: IP adapter images in
             --image-seeds. Use + to separate a chain per adapter group. See: --image-processor-help.
@@ -3085,8 +3094,8 @@ Help Output
             
             MiniMax-H3 snaps up to the next 17n+5 frames at 24 fps. A request can be 5 to 15 seconds. The clip
             comes out between 5.17 seconds (124 frames) and 14.38 seconds (345 frames). Omit this option and the
-            clip is 124 frames, 5.17 seconds. The soundtrack is generated with the video.
-            There is no separate audio length.
+            clip is 124 frames, 5.17 seconds. The soundtrack is generated with the video. There is no separate
+            audio length.
             
             (default: model chooses)
             ------------------------
@@ -6429,13 +6438,16 @@ Latents interchange is not supported. Those six steps and their output heads are
 
 The default size is 2048. Width and height are multiples of 32. A request smaller than 2048×2048 is generated on a larger canvas of the same aspect ratio and resized back to the requested size.
 
-``--image-seeds`` are reference images, with no mask and no strength. The prompt refers to them in order as Picture 1, Picture 2, and so on. The prompt is encoded verbatim.
+``--image-seeds`` are reference images, with no mask and no strength. Several references use the ``images:`` prefix and are one generation, for example ``images: a.png, b.png``. They may differ in size. The checkpoint resizes each one. The prompt refers to them in order as Picture 1, Picture 2, and so on. The prompt is encoded verbatim.
 
 Cache-DiT caches ``transformer_blocks``.
 
 See `examples/minimax_h3_image/text_to_image/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/text_to_image/config.dgen>`_,
 `examples/minimax_h3_image/references/one-reference-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/references/one-reference-config.dgen>`_,
-and `examples/minimax_h3_image/references/two-references-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/references/two-references-config.dgen>`_.
+`examples/minimax_h3_image/references/two-references-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/references/two-references-config.dgen>`_,
+`examples/minimax_h3_image/gguf/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/gguf/config.dgen>`_,
+and `examples/minimax_h3_image/comfy_quant/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/comfy_quant/config.dgen>`_.
+A ComfyUI image file fuses the six output heads. They are split on load.
 
 Other call arguments
 --------------------
@@ -6482,6 +6494,10 @@ The Console UI recipes are:
 * ``HunyuanImage 2.1 Distilled``
 * ``HunyuanImage 2.1 Refiner``
 * ``MiniMax-H3-Image``
+* ``MiniMax-H3-Image (GGUF)``
+* ``MiniMax-H3-Image (GGUF + Encoder)``
+* ``MiniMax-H3-Image (ComfyUI Quant)``
+* ``MiniMax-H3-Image (ComfyUI Quant + Encoder)``
 
 GGUF recipes for those models set ``--transformer`` to a quantized file and leave the parent repository as the model line.
 
@@ -15397,10 +15413,13 @@ unset. The weights are already F16 or F32, so nothing is unpacked.
 
 ``--comfy`` accepts both containers. ``--formats f16 --comfy`` writes
 ``transformer-F16-comfy.gguf`` for an architecture ComfyUI-GGUF loads: FLUX.1,
-SD1, SDXL, SD3, Wan, Qwen-Image, and the GGUF text encoders. ``--formats
-float16 --comfy`` writes ``transformer-float16-comfy.safetensors``, which is
-what ComfyUI's usual loader reads. FLUX.2, Z-Image, CLIP, and Gemma 4 have no
-ComfyUI-GGUF architecture, so the safetensors file is the conversion for those.
+SD1, SDXL, SD3, Wan, Qwen-Image, MiniMax-H3 video and image, LTX-Video, and
+the GGUF text encoders. ``--formats float16 --comfy`` writes
+``transformer-float16-comfy.safetensors``, which is what ComfyUI's usual
+loader reads. FLUX.2, FLUX.3, Z-Image, LTX-2, Krea 2, Hunyuan-DiT,
+HunyuanVideo 1.5, HunyuanImage 2.1, Kandinsky 5, Stable Cascade, CLIP, and
+Gemma 4 have no ComfyUI-GGUF architecture, so the safetensors file is the
+conversion for those.
 dgenerate loads the GGUF as it loads any other ComfyUI GGUF. It loads the
 safetensors file as an ordinary full-precision checkpoint, not as a quantized
 one. A component with no key map is still an error.
@@ -15417,15 +15436,22 @@ leaves out ``float16`` and ``float32``. Ask for the plain formats by name.
 
 Files keep the tensor names of the component they came from, unless ``--comfy``
 is set. ``--comfy`` writes the names ComfyUI and ComfyUI-GGUF load. That covers
-FLUX.1, SD 1.5, SDXL, SD3, Wan, and Qwen-Image, plus FLUX.2 and Z-Image safetensors
-quants. GGUF text encoders cover T5, UMT5, Llama 3 / Mistral, Qwen2, Qwen3, and
-Gemma 3. A Qwen2-VL vision tower is written beside the text encoder as
-``mmproj-text_encoder-Q8_0-comfy.gguf``. ComfyUI-GGUF pairs that file by name, and
-it picks one mmproj when several quants share a folder, so write one GGUF format
-per folder when the model has a vision tower. CLIP is written as safetensors,
-which is what Comfy's CLIP loader reads. ComfyUI-GGUF has no architecture for
-FLUX.2, Z-Image, or CLIP, so those GGUF files are refused. Those files are named
-like ``transformer-Q4_K-comfy.gguf``. A component with no key map is an error, so
+FLUX.1, SD 1.5, SDXL, SD3, Wan, Qwen-Image, MiniMax-H3 video and image, and
+LTX-Video, plus safetensors quants of FLUX.2, FLUX.3, Z-Image, LTX-2, Krea 2,
+Hunyuan-DiT, HunyuanVideo 1.5, HunyuanImage 2.1, Kandinsky 5, and Stable
+Cascade. MiniMax-H3 video uses ``--subfolders transformer`` for text and
+keyframes, or ``transformer_ref`` for references. The MiniMax-H3-Image
+``transformer`` folder is already Comfy names; ``transformer_diffusers`` is
+the Diffusers copy. GGUF text encoders cover T5, UMT5, Llama 3 / Mistral,
+Qwen2, Qwen3, and Gemma 3. A Qwen2-VL vision tower is written beside the text
+encoder as ``mmproj-text_encoder-Q8_0-comfy.gguf``. ComfyUI-GGUF pairs that
+file by name, and it picks one mmproj when several quants share a folder, so
+write one GGUF format per folder when the model has a vision tower. CLIP is
+written as safetensors, which is what Comfy's CLIP loader reads.
+ComfyUI-GGUF has no architecture for FLUX.2, FLUX.3, Z-Image, LTX-2, Krea 2,
+Hunyuan-DiT, HunyuanVideo 1.5, HunyuanImage 2.1, Kandinsky 5, Stable Cascade,
+CLIP, or Gemma 4, so those GGUF files are refused. Those files are named like
+``transformer-Q4_K-comfy.gguf``. A component with no key map is an error, so
 the command does not write a file Comfy cannot load.
 
 ``--llama`` writes llama.cpp tensor names instead, the layout Unsloth
@@ -15556,12 +15582,15 @@ The help output of ``quantize`` is as follows:
             -------------------------------------------
       --comfy
             Write ComfyUI tensor names, so ComfyUI and ComfyUI-GGUF can load the files. Diffusion models:
-            FLUX.1, SD1, SDXL, SD3, Wan, and Qwen-Image. FLUX.2 and Z-Image are safetensors, because
-            ComfyUI-GGUF has no architecture for them. GGUF text encoders: T5, UMT5, Llama 3 / Mistral, Qwen2,
-            Qwen3, and Gemma 3. A Qwen2-VL vision tower is written as mmproj beside the text encoder. CLIP is
-            safetensors. Files are named like transformer-Q4_K-comfy.gguf. A component with no key map is an
-            error.
-            ------
+            FLUX.1, SD1, SDXL, SD3, Wan, Qwen-Image, and MiniMax-H3 video and image, and LTX-Video. FLUX.2,
+            FLUX.3, Z-Image, LTX-2, Krea 2, Hunyuan-DiT, HunyuanVideo 1.5, HunyuanImage 2.1, Kandinsky 5, and
+            Stable Cascade are safetensors, because ComfyUI-GGUF has no architecture for them. MiniMax-H3 video
+            uses --subfolders transformer (text and keyframes) or transformer_ref (references). MiniMax-H3-Image
+            transformer is already Comfy names; transformer_diffusers is the Diffusers copy. GGUF text encoders:
+            T5, UMT5, Llama 3 / Mistral, Qwen2, Qwen3, and Gemma 3. A Qwen2-VL vision tower is written as mmproj
+            beside the text encoder. CLIP is safetensors. Files are named like transformer-Q4_K-comfy.gguf. A
+            component with no key map is an error.
+            --------------------------------------
       --llama
             Write llama.cpp tensor names, the layout Unsloth text-encoder GGUFs use and dgenerate loads. T5,
             UMT5, Llama, Qwen, and Gemma, including Gemma 4. A full Gemma 4 model, such as the LTX-2.5 prompt
@@ -18954,7 +18983,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [33327414466023]
+            Value: [2904931653638]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -19160,7 +19189,7 @@ The dgenerate specific jinja2 functions/filters are:
         "512x512"
     
     ========================================================================================================
-    format_image_seed(seed_images: str | collections.abc.Iterable[str] | None = None, mask_images: str | collections.abc.Iterable[str] | None = None, control_images: str | collections.abc.Iterable[str] | None = None, reference_images: str | collections.abc.Iterable[str] | None = None, adapter_images: str | collections.abc.Iterable[str] | None = None, latents: str | collections.abc.Iterable[str] | None = None, floyd_image: str | None = None, resize: str | tuple[int | str, int | str] | None = None, aspect: bool = True, frame_start: int | None = None, frame_end: int | None = None, end_image: str | None = None, wan_pose_video: str | None = None, wan_face_video: str | None = None, wan_background_video: str | None = None, wan_driving_video: str | None = None, ltx_index: int | None = None, ltx_strength: float | None = None, ltx_extra_conditions: collections.abc.Sequence | None = None, preserve_control: bool = False) -> str:
+    format_image_seed(seed_images: str | collections.abc.Iterable[str] | None = None, mask_images: str | collections.abc.Iterable[str] | None = None, control_images: str | collections.abc.Iterable[str] | None = None, reference_images: str | collections.abc.Iterable[str] | None = None, adapter_images: str | collections.abc.Iterable[str] | None = None, latents: str | collections.abc.Iterable[str] | None = None, audio_latents: str | None = None, floyd_image: str | None = None, resize: str | tuple[int | str, int | str] | None = None, align: int | None = None, aspect: bool = True, frame_start: int | None = None, frame_end: int | None = None, end_image: str | None = None, wan_pose_video: str | None = None, wan_face_video: str | None = None, wan_background_video: str | None = None, wan_driving_video: str | None = None, ltx_index: int | None = None, ltx_strength: float | None = None, ltx_extra_conditions: collections.abc.Sequence | None = None, preserve_control: bool = False) -> str:
     
         Format image seed arguments into a ``--image-seeds`` URI.
     
