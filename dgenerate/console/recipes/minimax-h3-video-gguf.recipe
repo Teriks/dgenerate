@@ -1,7 +1,7 @@
 title: MiniMax-H3-Video Text to Video (GGUF)
 
 # Pruned curve GGUF of the text and keyframe transformer. The parent repo
-# supplies Qwen3-VL and the VAEs. fl2va is text and keyframes. ref2va is references.
+# supplies Qwen3-VL and the VAEs. The file is the text and keyframe transformer.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"MiniMaxAI/MiniMax-H3", "optional":false, "file-types":["models"]}]
 --model-type minimax-h3-video
@@ -13,7 +13,7 @@ title: MiniMax-H3-Video Text to Video (GGUF)
 @torchcompile[{"model-type":"minimax-h3-video"}]
 @quantizer[{"model-type":"minimax-h3-video", "map-default":"text_encoder"}]
 @textencoders[{"model-type":"minimax-h3-video","arg":"--text-encoders", "divider-after":true}]
-@submodelbuilder[{"label":"Transformer GGUF", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q4_0.gguf", "divider-after":true, "suggestions":[{"label":"fl2va curve Q4_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q4_0.gguf"}, {"label":"fl2va curve Q5_1", "value":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q5_1.gguf"}, {"label":"fl2va curve Q8_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q8_0.gguf"}, {"label":"fl2va Q4_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-Q4_0.gguf"}, {"label":"fl2va Q5_1", "value":"https://huggingface.co/joeygambino/MiniMax-H3-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-Q5_1.gguf"}, {"label":"ref2va curve Q4_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/ref2va/MiniMax-H3-ref2va-curve-Q4_0.gguf"}]}]
+@submodelbuilder[{"label":"Transformer GGUF", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q4_0.gguf", "divider-after":true, "suggestions":[{"label":"fl2va curve Q4_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q4_0.gguf"}, {"label":"fl2va curve Q5_1", "value":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q5_1.gguf"}, {"label":"fl2va curve Q8_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q8_0.gguf"}, {"label":"fl2va Q4_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-Q4_0.gguf"}, {"label":"fl2va Q5_1", "value":"https://huggingface.co/joeygambino/MiniMax-H3-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-Q5_1.gguf"}]}]
 @int[{"label":"Inference Steps","arg":"--inference-steps","default":30,"min":1}]
 @float[{"label":"Video Length (seconds)", "arg":"--video-lengths", "default":5.17, "min":5, "max":15}]
 @float[{"label":"Video FPS", "arg":"--video-fps", "default":24, "min":1}]
