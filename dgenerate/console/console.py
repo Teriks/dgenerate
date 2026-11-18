@@ -198,6 +198,9 @@ class DgenerateConsole(tk.Tk):
         self._run_menu.add_checkbutton(label='Debug Mode',
                                        variable=self._debug_mode_var)
 
+        # After Run: Assistant writes a config, then Options, View, and Help.
+        self._show_assistant = importlib.util.find_spec('xllamacpp') is not None
+
         # Options menu
 
         # Create the Multi-line Input Checkbutton
@@ -292,6 +295,10 @@ class DgenerateConsole(tk.Tk):
         self._menu_bar.add_cascade(label='File', menu=self._file_menu)
         self._menu_bar.add_cascade(label='Edit', menu=self._edit_menu)
         self._menu_bar.add_cascade(label='Run', menu=self._run_menu)
+        if self._show_assistant:
+            self._menu_bar.add_command(
+                label='Assistant',
+                command=self._input_text_generate_with_assistant)
         self._menu_bar.add_cascade(label='Options', menu=self._options_menu)
         self._menu_bar.add_cascade(label='View', menu=self._view_menu)
         self._menu_bar.add_cascade(label='Help', menu=self._help_menu)
@@ -1410,9 +1417,6 @@ class DgenerateConsole(tk.Tk):
         menu.add_command(label='Format Code',
                          accelerator='Ctrl+Shift+F',
                          command=self._format_code)
-        if importlib.util.find_spec('xllamacpp') is not None:
-            menu.add_command(label='Generate Code',
-                             command=self._input_text_generate_with_assistant)
         menu.add_separator()
 
         # Code submenu

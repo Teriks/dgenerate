@@ -97,7 +97,7 @@ def _saved_model(key: str, default: str) -> str:
 
 
 def ctx_value(text: str) -> int:
-    """Context tokens from the Generate Code field. Invalid text uses the default."""
+    """Context tokens from the Assistant field. Invalid text uses the default."""
     try:
         value = int(str(text).strip())
     except ValueError:
@@ -204,7 +204,7 @@ class _AssistantForm(tk.Toplevel):
                  position: tuple[int, int] = None,
                  size: tuple[int, int] = None):
         super().__init__(master)
-        self.title('Generate Code')
+        self.title('Assistant')
         self.configure(padx=5, pady=5)
         self.transient(master)
 
