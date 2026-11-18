@@ -140,31 +140,39 @@ Matrix Multiplication
 
 Where the hardware has a matching kernel, quantized layers run as low precision
 matmuls. Otherwise each weight is decoded to the activation dtype for the matmul,
-which works on any device, CPU included.
+which works on any device, CPU included. The kernels for a format are tried in
+the order listed.
 
-===========  ==========================================================================
-Format       Hardware kernels, in the order they are tried
-===========  ==========================================================================
-INT8         CUDA (sm75+) and XPU: ``torch._int_mm``. ROCm: AITER ``gemm_a8w8``,
-             then ``torch._int_mm``. MPS: MLX ``quantized_matmul``, then
-             ``torch._weight_int8pack_mm``
-FP8          CUDA (sm89+) and XPU: ``torch._scaled_mm``. ROCm MI300, MI350, and
-             RDNA4: AITER ``gemm_a8w8``, then ``torch._scaled_mm``. MPS: MLX
-             ``quantized_matmul``
-NVFP4        CUDA Blackwell: block scaled ``scaled_mm``, then a Triton unpack
-             and a PyTorch GEMM. Other CUDA, ROCm, and XPU: the Triton unpack
-             when Triton is installed, including ``triton-windows``. MPS: MLX
-             ``quantized_matmul``
-MXFP8        CUDA, ROCm, and XPU with Triton: a Triton unpack and a PyTorch GEMM
-W4A4         CUDA, ROCm, and XPU with Triton. A grouped scale, a short
-             activation, and a full-precision layer unpack in Triton and use a
-             PyTorch GEMM. A longer per-row layer unpacks to INT8 and uses
-             ``torch._int_mm``
-W4A8, W6A8   CUDA, ROCm, and XPU when Triton is installed, including the
-             ``triton-windows`` extra. A short activation is a Triton matmul.
-             A longer one unpacks in Triton and multiplies with ``torch._int_mm``.
-             A correction term is decoded instead
-===========  ==========================================================================
+INT8
+    CUDA (sm75+) and XPU: ``torch._int_mm``. ROCm: AITER ``gemm_a8w8``,
+    then ``torch._int_mm``. MPS: MLX ``quantized_matmul``, then
+    ``torch._weight_int8pack_mm``.
+
+FP8
+    CUDA (sm89+) and XPU: ``torch._scaled_mm``. ROCm MI300, MI350, and
+    RDNA4: AITER ``gemm_a8w8``, then ``torch._scaled_mm``. MPS: MLX
+    ``quantized_matmul``.
+
+NVFP4
+    CUDA Blackwell: block scaled ``scaled_mm``, then a Triton unpack
+    and a PyTorch GEMM. Other CUDA, ROCm, and XPU: the Triton unpack
+    when Triton is installed, including ``triton-windows``. MPS: MLX
+    ``quantized_matmul``.
+
+MXFP8
+    CUDA, ROCm, and XPU with Triton: a Triton unpack and a PyTorch GEMM.
+
+W4A4
+    CUDA, ROCm, and XPU with Triton. A grouped scale, a short
+    activation, and a full-precision layer unpack in Triton and use a
+    PyTorch GEMM. A longer per-row layer unpacks to INT8 and uses
+    ``torch._int_mm``.
+
+W4A8, W6A8
+    CUDA, ROCm, and XPU when Triton is installed, including the
+    ``triton-windows`` extra. A short activation is a Triton matmul.
+    A longer one unpacks in Triton and multiplies with ``torch._int_mm``.
+    A correction term is decoded instead.
 
 The CUDA, ROCm, and XPU kernels quantize the activations on the fly (W8A8,
 Blackwell NVFP4, and a long per-row W4A4), as ComfyUI does. The long W4A8 and
