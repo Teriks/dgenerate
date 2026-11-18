@@ -15,4 +15,4 @@ hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v
 --gen-seeds 1
 --output-path hyvideo-15-t2v
 --output-size 848x480
---prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+--prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement"

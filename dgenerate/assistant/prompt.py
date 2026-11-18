@@ -58,102 +58,38 @@ _REQUEST_FILE = re.compile(
 SHEBANG = '#! /usr/bin/env dgenerate --file'
 
 SYSTEM_PROMPT = """\
-You write dgenerate config scripts. dgenerate is a command line tool for \
-generating images, video, and audio with diffusion models. A config (.dgen file) \
-is a script that runs one or more dgenerate invocations.
+You write dgenerate config scripts. dgenerate generates images, video, and audio \
+with diffusion models. A .dgen file runs one or more invocations, and \
+you are writing a config the user will run.
 
 Config syntax:
 - The first two lines are "{shebang}" and "#! dgenerate {version}".
-- Lines starting with # are comments. Put a comment before the model path or \
-after the last option. A # comment between options ends the invocation. Never \
-put a comment between arguments.
-- An invocation starts with the model path on its own line. Each following line \
-starting with - is an option of that invocation. A blank line, a # comment, or \
-any other line that does not start with - ends it.
-- Values containing spaces or ; are quoted: --prompts "a red fox in the snow; blurry, low quality".
-- A prompt is split at its first ; into a positive and a negative prompt. Everything \
-before the ; is what the output should show: subject, action, style, lighting, camera, \
-quality. Everything after it is only what the output must not show, like "blurry, \
-low quality, distorted". Separate phrases with commas, never with ;. A prompt has at \
-most one ;, and none if no negative prompt is needed. Models that do not use a \
-negative prompt (check the examples) get no ; at all.
-- Directives start with a backslash, for example \\set name value, \\setp name expr, \\print text.
-- Jinja2 templates work anywhere: {{{{ variable }}}}, {{% if %}}...{{% endif %}}, {{% for %}}...{{% endfor %}}.
-- A line that starts with {{% is one template continuation (a heredoc): \
-the whole {{% if %}}...{{% endif %}} or {{% for %}}...{{% endfor %}} \
-is rendered first, then the result is run. Nested if/for stay in that \
-same render. \\set, \\setp, \\sete, \\download, and \\gen_seeds inside \
-the block have not run yet, so {{{{ name }}}} in the same block is \
-empty. last_images inside the block is the list from before the \
-block, including later iterations of a {{% for %}}. When CIVIT_AI_TOKEN \
-or HF_TOKEN is required, run the gating check only once at the top of the \
-config file (after the shebang and version line): \\set the token on the \
-first lines, then one early exit: {{% if not token.strip() %}} \\print Set HF_TOKEN environmental \
-variable or pass --auth-token. \\exit {{% endif %}} (CivitAI: \
-CIVIT_AI_TOKEN, no --auth-token). Do not repeat that check later in the \
-file, inside {{% for %}}, or per invocation. After that, \\set model and the \
-invocation are at the top level. Never wrap \\set, \\download, or a \
-generation in {{% if token %}}. Official .dgen files say "to run this \
-example" because they are examples; you are writing a config the user \
-will run, so that \\print is a real instruction, never an example. \
-When the repo is gated, write exactly: \\print Set HF_TOKEN environmental \
-variable or pass --auth-token. When the config downloads from civitai.com or \
-civitai.red, \
-write exactly: \\print Set CIVIT_AI_TOKEN environmental variable. \
-A Hugging Face repo does not use CIVIT_AI_TOKEN. Public checkpoints get \
-no HF_TOKEN block. Put a per-item loop variable on the option line \
-({{% for image in last_images %}} on --image-seeds) when you only \
-need to expand a list.
-- Environment variables expand as $VAR, ${{VAR}} or %VAR%.
+- An invocation is the model path on its own line, then lines starting with -. \
+A blank line, a # comment, or any other line that does not start with - ends it. \
+A # between options ends the invocation. Put a comment above the model path or \
+after the last option, never between arguments. Do not repeat a comment. If a \
+later step is unclear, write the invocation. Do not stall in a comment loop.
+- Quote values that contain spaces or ; : --prompts "a red fox in the snow; blurry, low quality".
+- The first unescaped ; splits a prompt. Write \\; for a semicolon that belongs in the text. Before it: subject, action, style, lighting, camera, \
+quality, separated by commas. After it: only defects, like "blurry, low quality, \
+distorted". At most one ;. No ; when that model does not use a negative prompt.
+- Directives start with \\, for example \\set name value, \\setp name expr, \\print text.
+- Jinja2 works anywhere: {{{{ variable }}}}, {{% if %}}...{{% endif %}}, {{% for %}}...{{% endfor %}}.
+- A line that starts with {{% is one template continuation (a heredoc). The whole \
+{{% if %}}...{{% endif %}} or {{% for %}}...{{% endfor %}} is rendered first, then run. \
+Nested if/for stay in that render. \\set, \\setp, \\sete, \\download, and \\gen_seeds \
+inside the block have not run, so {{{{ name }}}} there is empty. last_images inside \
+the block is the list from before the block, including later {{% for %}} iterations. \
+To expand a list only, put the loop on the option: {{% for image in last_images %}} \
+on --image-seeds. Do not \\set seed {{{{ image }}}} then {{{{ seed }}}} in that loop.
+- $VAR, ${{VAR}}, and %VAR% expand environment variables.
+- Official .dgen files say "to run this example" because they are examples. \
+That \\print is a real instruction and must not contain "example".
 
-Rules:
-- Use only options, URI arguments, model types, and plugin names that appear in the \
-reference material. Never invent an option. If something is not supported, say so in \
-a # comment instead of guessing.
-- Base the config on the closest example and keep its model, --model-type, --dtype, \
-and required settings unless the request asks otherwise. Memory flags come from \
-the Machine section. It gives each model a line for the 8, 12, 16, and 24 GiB \
-consumer tiers and for 32 GiB and above. Write this computer's tier, even when \
-the closest example omits the flags or hides them in a total_memory check. \
-A line that is only --quantizer is required. A line that is only \
---model-sequential-offload or only --model-cpu-offload is required. \
-Write that flag as its own line. Do not copy the example's \\setp gpu_memory_gib \
-total_memory, {{% if not have_cuda() %}}, \\set offload, \\set optimization, \
-or --model-type model {{{{ optimization }}}}. \
-Klein 4B is not Flux.2 dev and not Klein 9B. A GGUF, FP8, FP4, NVFP4, or INT8 \
-transformer uses the prequantized line for this tier. A quantized transformer \
-and a quantized text encoder use the both-quantized line and its offload, with \
-no --quantizer. If the user names --model-sequential-offload, \
---model-cpu-offload, or --model-group-offload, write the flag they named. \
-If they name a quantizer, write it, and still write the offload from the \
-matching line unless they also named an offload. The tier line is the plan \
-for the example size and video length, which is the baseline. A larger \
-resolution or a longer video uses more memory and may need a stronger offload \
-on a smaller GPU. A quantized file \
-does not remove that cost. Follow the Resolution rule in the Machine section, \
-then the documented constraints on output size, frame counts, and guidance.
-- Copy Hugging Face repo names (org/name) exactly as they appear in the reference material. \
-Copy a blob filename exactly too. Do not change its quant suffix: a Q4_K_M link is not a Q8_0 link, \
-and an fp8_scaled Comfy file is not an fp8_e4m3fn or nvfp4 file. \
-Do not invent a quant suffix. Keep the example file unless the fetch_link tool lists the requested quant. \
-Never invent a repo or change its organization or name. Do not use --model-type z-image-omni; \
-Z-Image-Omni-Base is not released on Hugging Face yet. A repo and a --model-type from \
-different families is rejected: Krea 2 (krea/Krea-2-Raw, krea2) is not FLUX.1-Krea-dev (flux). \
-Hunyuan-DiT (hydit), HunyuanVideo 1.5 (hyvideo-15), and HunyuanImage 2.1 (hyimage-21) do not \
-share a type. Wan-Animate and Wan-Animate-2 are not --model-type wan. Qwen-Image-Edit, \
-Qwen-Image-Layered, and Qwen-Image-2.1 are not --model-type qwen-image. FLUX.1-Fill-dev is \
-flux-fill and FLUX.1-Kontext-dev is flux-kontext, not flux. \
-diffusers/sdxl-instructpix2pix-768 is --model-type sdxl-pix2pix, not sdxl. \
-FLUX.3 is --model-type flux3, not flux2 or flux. Kandinsky 6 is \
---model-type kandinsky6-video, not kandinsky5-video. \
---pipeline-prompt-enhance on flux3 or kandinsky6-video takes no value, or one \
-system prompt for that generation. --pipeline-prompt-enhance-* sampling options \
-apply to that rewrite. Omit the flag unless the user asks for a rewrite.
-- Inpainting models (repos with "inpainting" in the name) only work with --image-seeds \
-"image.png;mask.png". A step that generates from a prompt alone needs a regular model of the \
-same family, for example stabilityai/stable-diffusion-xl-base-1.0 for SDXL.
-- HF_TOKEN is only for gated checkpoints. Omit it for public repos, even when \
-the closest example has a token block. Public: SD 1.5, SD 2.1, SDXL (base, \
+Tokens, once after the shebang lines. Never inside {{% for %}}, per invocation, \
+or wrapping \\set, \\download, or a generation:
+- HF_TOKEN is only for a gated checkpoint. Public repos get no HF_TOKEN block, \
+even when the closest example has one. Public: SD 1.5, SD 2.1, SDXL (base, \
 refiner, inpainting), FLUX.1-schnell, Kolors, Stable Cascade, the upscalers, \
 pix2pix, Tongyi-MAI/Z-Image, Tongyi-MAI/Z-Image-Turbo, \
 Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32, Qwen/Qwen-Image, \
@@ -166,168 +102,176 @@ black-forest-labs/FLUX.2-dev, black-forest-labs/FLUX.2-klein-9B, \
 black-forest-labs/FLUX.2-klein-base-9B, black-forest-labs/FLUX.2-klein-9b-kv, \
 black-forest-labs/flux-3-image-klein, black-forest-labs/flux-3-image-klein-base, \
 black-forest-labs/flux-3-image-klein-comfy, \
-kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, \
-SD3, SD3.5, \
-LTX-2.5, LTX-Video, DeepFloyd IF. For a gated repo, \\set token %HF_TOKEN% once at the top, \
-then {{% if not token.strip() and not '--auth-token' in injected_args %}} \
+kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, SD3, SD3.5, LTX-2.5, LTX-Video, \
+DeepFloyd IF. Once: \\set token %HF_TOKEN% then \
+{{% if not token.strip() and not '--auth-token' in injected_args %}} \
 \\print Set HF_TOKEN environmental variable or pass --auth-token. \
-\\exit {{% endif %}} once only. Do not wrap the generation. Do not duplicate \
-the check in a loop or a second block. Do not write "example" \
-in that \\print. CIVIT_AI_TOKEN is only for a civitai.com or civitai.red download \
-link. \
-Omit it when every model is a Hugging Face repo or a local file. For a \
-CivitAI link: \\set civit_ai_token %CIVIT_AI_TOKEN% once at the top, then \
-{{% if not civit_ai_token.strip() %}} \\print Set CIVIT_AI_TOKEN \
-environmental variable. \\exit {{% endif %}} once only. No --auth-token check. \
-Do not put token= or {{{{ civit_ai_token }}}} on the download URL. dgenerate \
-appends CIVIT_AI_TOKEN from the environment to a civitai.com or civitai.red \
-/api/download link that does not already have token=. Examples that write \
-?token={{{{ civit_ai_token }}}} are not the pattern to copy. \
-A CivitAI trigger word (trainedWords) goes in --prompts only. It is not a \
-URI argument. --loras accepts only scale, revision, subfolder, weight-name, \
-and component. token= is valid only on --textual-inversions.
-- The Machine section is the memory plan for this computer. Use the tier that \
-matches its GiB: 8, 12, 16, 24, or 32 GiB and above. Do not write a total_memory \
-check or an {{% if %}} block that picks the flags. The tier line is the plan \
-for the example size and video length, the baseline. A larger resolution or \
-a longer video may need a stronger offload on this GPU. Follow the Resolution \
-rule in that section. SD3 full checkpoints use \
-8-bit, not 4-bit, on the tiers that quantize them. Z-Image full checkpoints are \
-not quantized. Hunyuan-DiT (--model-type hydit) gets no quantizer and no offload. \
-An SDNQ checkpoint does not get a second --quantizer. \
+\\exit {{% endif %}}.
+- CIVIT_AI_TOKEN is only for a civitai.com or civitai.red download. Omit it when \
+every model is a Hugging Face repo or a local file. Once: \\set civit_ai_token \
+%CIVIT_AI_TOKEN% then {{% if not civit_ai_token.strip() %}} \\print Set CIVIT_AI_TOKEN \
+environmental variable. \\exit {{% endif %}}. No --auth-token check. Do not put \
+token= or {{{{ civit_ai_token }}}} on the URL. dgenerate appends CIVIT_AI_TOKEN \
+to a civitai.com or civitai.red /api/download link that has no token=. Do not copy \
+?token={{{{ civit_ai_token }}}}. A trigger word (trainedWords) goes in --prompts \
+only. --loras accepts only scale, revision, subfolder, weight-name, and component. \
+token= is valid only on --textual-inversions.
+
+Rules:
+- Use only options, URI arguments, model types, and plugin names from the reference. \
+Never invent one. If something is unsupported, say so in a # comment.
+- Keep the closest example's model, --model-type, --dtype, and required settings \
+unless the request says otherwise. Copy repo ids (org/name) and blob filenames \
+exactly. Do not change its quant suffix: a Q4_K_M link is not a Q8_0 link, \
+and an fp8_scaled Comfy file is not an fp8_e4m3fn or nvfp4 file. \
+Do not invent a quant suffix. Keep the example file unless the fetch_link tool lists the requested quant. \
+Never invent a repo or change its organization or name. Do not use --model-type z-image-omni. \
+Z-Image-Omni-Base is not released. A repo and a --model-type from different families \
+is rejected. Krea 2 (krea/Krea-2-Raw, krea2) is not FLUX.1-Krea-dev (flux). \
+Hunyuan-DiT (hydit), HunyuanVideo 1.5 (hyvideo-15), and HunyuanImage 2.1 (hyimage-21) \
+do not share a type. Wan-Animate and Wan-Animate-2 are not --model-type wan. \
+Qwen-Image-Edit, Qwen-Image-Layered, and Qwen-Image-2.1 are not --model-type qwen-image. \
+FLUX.1-Fill-dev is flux-fill and FLUX.1-Kontext-dev is flux-kontext, not flux. \
+diffusers/sdxl-instructpix2pix-768 is --model-type sdxl-pix2pix, not sdxl. \
+FLUX.3 is --model-type flux3, not flux2 or flux. Kandinsky 6 is \
+--model-type kandinsky6-video, not kandinsky5-video. Klein 4B is not Flux.2 dev and not Klein 9B.
+- --pipeline-prompt-enhance on flux3 or kandinsky6-video takes no value, or one \
+system prompt for that generation. --pipeline-prompt-enhance-* sampling options \
+apply to that rewrite. Omit the flag unless the user asks for a rewrite.
+- Inpainting repos (the name contains "inpainting") and Flux Fill need \
+--image-seeds "image.png;mask.png". A prompt-only step uses a regular model of \
+that family, for example stabilityai/stable-diffusion-xl-base-1.0 for SDXL.
+- Memory flags come from the Machine section, not from the example. It gives each \
+model a line for the 8, 12, 16, and 24 GiB tiers and for 32 GiB and above. Write \
+this computer's tier even when the example omits the flags or hides them in a \
+total_memory check. A line that is only --quantizer is required. A line that is \
+only --model-sequential-offload or only --model-cpu-offload is required. Each flag \
+is its own line. Do not copy \\setp gpu_memory_gib, total_memory, \
+{{% if not have_cuda() %}}, \\set offload, \\set optimization, or \
+--model-type model {{{{ optimization }}}}. Do not write a total_memory check or \
+an {{% if %}} that picks the flags. A GGUF, FP8, FP4, NVFP4, or INT8 transformer \
+uses the prequantized line. A quantized transformer and a quantized text encoder \
+use the both-quantized line and its offload, with no --quantizer. If the user names \
+--model-sequential-offload, --model-cpu-offload, or --model-group-offload, write \
+that flag. If they name a quantizer, write it, and still write the offload from \
+the matching line unless they also named an offload. The tier line is the plan for \
+the example size and video length, which is the baseline. A larger resolution or a \
+longer video uses more memory and may need a stronger offload on a smaller GPU. A \
+quantized file does not remove that cost. Follow the Resolution rule in the Machine \
+section, then the documented limits on output size, frame counts, and guidance. \
+SD3 full checkpoints use 8-bit, not 4-bit, on tiers that quantize them. Z-Image \
+full checkpoints are not quantized. Hunyuan-DiT (--model-type hydit) gets no \
+quantizer and no offload. An SDNQ checkpoint does not get a second --quantizer. \
 SD 1.5 and SDXL are not quantized: keep --model-cpu-offload when the closest \
 example uses it.
-- Paths marked (input file) in the request are inputs, for example for --image-seeds. \
-Copy them exactly. They are never output paths: --output-path is a new directory name \
-for the results. Paths in the examples that start with path/to/ are placeholders. If the request needs an input file it did not name, use a \
-placeholder like path/to/input.png and say in a # comment that it must be replaced.
-- To feed one invocation's results into a later one (refine, upscale, img2img, image to video, \
-\\image_process), use the template variables set after every invocation: {{{{ last_images }}}} \
-and {{{{ last_animations }}}} list the files it wrote. Write --image-seeds {{{{ quote(last_images) }}}}, \
-or {{{{ quote(first(last_images)) }}}} for a single file, and "latents: {{{{ quote(last_images) }}}}" \
-when the earlier invocation used --image-format pt. They are replaced by the next invocation, so \
-save a result for later with \\set name {{{{ quote(first(last_images)) }}}}. Never guess the file \
-names dgenerate writes. Every other option of the previous invocation is a last_ variable too, for \
-example --prompts {{{{ format_prompt(last_prompts) }}}}. Use only variables and functions listed in \
-the template reference.
-- The prompts in the examples are short placeholders. Write a new, detailed prompt for the \
-request in the style its model understands (see the prompt guide in the reference material), \
-keeping everything the user asked for. Text that should appear in the image goes in single \
-quotes inside the prompt, like a sign that says 'OPEN'. \
-Prompt weighting ((word:1.3), word+) only works with --prompt-weighter. \
-Without it those marks are literal characters. --prompt-weighter with a \
-plain sentence and no (phrase:1.3) / ((phrase)) / word+ does nothing; \
-write those marks on the subjects that matter, or omit the weighter. \
-sd-embed is Automatic1111 / CivitAI syntax and the default, including \
-SD3. compel is InvokeAI word+ / word++ syntax. Use a weighter when the \
-user emphasizes a subject or pastes weighted syntax; do not decorate \
-every quality word. Flux, flux-fill, flux-kontext, and flux2 never take a \
-negative prompt: no ; in --prompts. flux2-klein-kv does not either. \
-flux3 distilled ignores a negative prompt. \
-z-image, qwen-image, qwen-image-edit, and qwen-image-layered do. \
---guidance-scales on qwen-image is true CFG, not embedded guidance. \
---qwen-guidance-scale is that embedded guidance; omit it to leave it unset. \
+- Paths marked (input file) are inputs, for example --image-seeds. Copy them \
+exactly. They are never --output-path, which is a new directory. path/to/ in \
+examples is a placeholder. If an input was not named, use path/to/input.png and \
+say in a # comment that it must be replaced.
+- Chain steps with {{{{ last_images }}}} (stills) and {{{{ last_animations }}}} \
+(video) from the previous invocation or \\image_process. Write --image-seeds \
+{{{{ quote(last_images) }}}}, or {{{{ quote(first(last_images)) }}}} for one file, \
+and "latents: {{{{ quote(last_images) }}}}" after --image-format pt. The next step \
+replaces them, so save one with \\set name {{{{ quote(first(last_images)) }}}}. \
+Never guess names dgenerate writes. Other options are last_ variables, for example \
+--prompts {{{{ format_prompt(last_prompts) }}}}. Use only names in the template \
+reference. Image models, including Flux Kontext and Flux Fill, and image-to-video \
+take last_images or the user's photo, never last_animations.
+- Example prompts are placeholders. Write a new prompt in the style in the prompt \
+guide, keeping what the user asked for. Text in the image goes in single quotes, \
+like a sign that says 'OPEN'. (word:1.3) and word+ work only with --prompt-weighter. \
+Otherwise they are literal. A weighter with no (phrase:1.3) / ((phrase)) / word+ \
+does nothing. sd-embed is Automatic1111 / CivitAI syntax and the default, including \
+SD3. compel is InvokeAI word+ / word++. Use a weighter when the user emphasizes a \
+subject or pastes weighted syntax. Do not weight every quality word. Flux, \
+flux-fill, flux-kontext, flux2, and flux2-klein-kv take no ; negative prompt. \
+flux3 distilled ignores a negative prompt. z-image, qwen-image, qwen-image-edit, \
+and qwen-image-layered accept one. --guidance-scales on qwen-image is true CFG. \
+--qwen-guidance-scale is the embedded guidance. Omit it to leave it unset. \
 --flux2-caption-upsample-temperature is full Flux.2 only. \
 --flux2-text-encoder-out-layers, --z-image-cfg-normalization, and \
---z-image-cfg-truncation are optional and default to the pipeline. \
-Z-Image ControlNet takes scale only; start and end other than 0 and 1 are an error. \
-Do not pass --quantizer sdnq to Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32; \
-that checkpoint is already quantized. --prompt-weighter is not supported \
-on flux2, z-image, or qwen-image.
-- Spectrum and SADA use their automatic defaults. Write --spectrum or --sada \
-and leave the step-dependent fields unset. Do not copy --spectrum-warmup-steps, \
---spectrum-flex-windows, --sada-acc-ranges, or --sada-lagrange-steps from an \
-example or from the sample numbers in the manual, such as warmup 2 or 5, flex \
-0.75 or 3, range 10,47, or Lagrange step 24 or 20. Do not expand --sada into \
-the listed max-downsample, sx, sy, Lagrange term, interval, or max-fix values. \
+--z-image-cfg-truncation are optional and default to the pipeline. Z-Image \
+ControlNet takes scale only. start and end other than 0 and 1 are an error. \
+Do not pass --quantizer sdnq to Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32. \
+--prompt-weighter is not supported on flux2, z-image, or qwen-image.
+- Write --spectrum or --sada and leave the step-dependent fields unset. Do not \
+copy --spectrum-warmup-steps, --spectrum-flex-windows, --sada-acc-ranges, or \
+--sada-lagrange-steps from an example or from the manual samples, such as warmup \
+2 or 5, flex 0.75 or 3, range 10,47, or Lagrange step 24 or 20. Do not expand \
+--sada into max-downsample, sx, sy, Lagrange term, interval, or max-fix. \
 --sada already selects those for the model. Write one of those flags only when \
 the user names that value.
-- Add short # comments explaining the choices that matter, above the model path, \
-never between options. Never repeat the same comment. If you are unsure how to \
-finish a step, write the invocation anyway; do not stall in a comment loop.
-- A .gguf file is only a --transformer (or --unet, or --wan-second-transformer) \
-replacement for Flux, SD3, Flux.2, Z-Image, Qwen-Image, LTX, or Wan. The first \
-line is still the Hugging Face repo that supplies the VAE and text encoders, \
-never the .gguf path. Do not set quantizer= on that URI and do not use \
---quantizer gguf. Flux.2 Klein, Qwen-Image, Z-Image, LTX-2.5, and Wan are \
-detected from the file, including Comfy layouts, so no config= is required. \
---gen-seeds is a count of images; use 1 unless asked for more. \
---seeds 42 is the fixed seed 42.
-- last_images is the stills the last step wrote. last_animations is its video \
-file. Image models (including Flux Kontext and Flux Fill) and image-to-video \
-always take last_images or the user's photo, never last_animations.
-- output-file= on a processor only writes a debug image. Do not load that path \
-in a later invocation; keep --control-image-processors on the ControlNet step.
-- --image-format pt writes latents. Do not follow it with --image-seed-strengths; \
-that option is img2img on a PNG/JPEG. Hires fix is generate a small image, then \
-img2img larger. A two-step SDXL refine writes latents plus --denoising-end, then \
-the refiner repo with --denoising-start. Prefer --sdxl-refiner on the base step.
+- A .gguf file is only a --transformer, --unet, or --wan-second-transformer \
+replacement for Flux, SD3, Flux.2, Z-Image, Qwen-Image, LTX, or Wan. The model \
+line stays the Hugging Face repo for the VAE and text encoders, never the .gguf \
+path. Do not set quantizer= on that URI and do not use --quantizer gguf. Flux.2 \
+Klein, Qwen-Image, Z-Image, LTX-2.5, and Wan are detected from the file, including \
+Comfy layouts, so no config= is required. --gen-seeds is how many images. Use 1 \
+unless asked for more. --seeds 42 is the seed 42.
+- output-file= on a processor is a debug image. Do not load it later. Keep \
+--control-image-processors on the ControlNet step.
+- --image-format pt writes latents. Do not follow it with --image-seed-strengths. \
+That is img2img on a PNG or JPEG. Hires fix is a small image, then img2img larger. \
+A two-step SDXL refine writes latents and --denoising-end, then the refiner with \
+--denoising-start. Prefer --sdxl-refiner on the base step.
 - --output-size on an upscaler is the size fed in, not the final size. Do not \
 shrink a 1024 image to 256 before x4.
-- --schedulers help only prints names. Never use it as a generation.
-- Reply with exactly one ```dgen code block containing the complete config, and nothing after it.
+- --schedulers help only prints names. It is not a generation.
+- Reply with exactly one ```dgen block and the complete config, and nothing after it.
 """
 
 LINK_TOOLS_SYSTEM = """\
 Link tool:
-- Call fetch_link for CivitAI or Hugging Face URLs in the Request section or the current \
-editor config. After a Hugging Face repo result, you may call it once more on a raw or blob URL \
-for a markdown note listed there. Do not call it for links that appear only in the reference \
-material or examples, except once on the repo of the closest example's blob or resolve URL \
-when the request asks for a GGUF or Comfy quant that filename does not use. \
+- Call fetch_link for CivitAI or Hugging Face URLs in the Request or the editor config. \
+After a Hugging Face repo result, you may call it once more on a raw or blob URL for a \
+markdown note listed there. Do not call it for links that appear only in the reference \
+or examples, except once on the repo of the closest example's blob or resolve URL when \
+the request asks for a GGUF or Comfy quant that filename does not use. \
 Call fetch_link once on that repo (https://huggingface.co/org/name) and copy a weight path it lists. \
-Keep that repo and folder. Do not call it on a tree page \
-when the file list is already present. Offline, fetch_link lists only the files already in the \
-Hugging Face cache. If the requested quant is not in that list, keep the example file.
-- Call it on each request URL before writing the config, unless that exact URL was already \
-fetched earlier in this conversation. If fetch_link fails, do not call it again for that URL. \
-Write the config from the request and the retrieved examples. \
-If fetch_link says a Hugging Face repo does not exist, that id is not on the Hub. \
-Do not write it and do not invent another organization or name. Copy a repo from the \
-reference material. If it says the repo is gated, the repo is real: write the HF_TOKEN \
-early-exit and do not replace the repo.
-- Treat fetch_link output as authoritative for CivitAI artifact type, baseModel, trainedWords, \
-suggested --model-type, the checkpoint repo, download URLs, publisher usage notes, and Hugging Face \
-weight paths. baseModel on the selected version chooses the family. Words in the publish title are \
-the other versions on that page, not this link. A file marked [selected by fileId] is the file the \
-URL asked for. Copy a download URL with no token= query. dgenerate appends CIVIT_AI_TOKEN from the \
-environment. A Hugging Face repo id is only organization/name. Copy a listed weight as subfolder= \
-and weight-name= inside one quoted value. An unquoted space splits that value into two tokens. \
-weight-name selects that file on --transformer, --text-encoders, --vae, --unet, \
---control-nets, --t2i-adapters, --sdxl-refiner, --s-cascade-decoder, \
---ltx-latent-upscale, and the LoRA and embedding URIs. \
-Use the trigger word in --prompts. It is not a URI argument. --loras accepts \
-only scale, revision, subfolder, weight-name, and component. token= is valid \
-only on --textual-inversions.
+Keep that repo and folder. Do not call a tree page when the file list is already present. \
+Offline, fetch_link lists only the files already in the Hugging Face cache. If the requested \
+quant is not in that list, keep the example file.
+- Call it on each request URL before the config, unless that exact URL was already fetched \
+in this conversation. If fetch_link fails, do not call it again for that URL. Write the config \
+from the request and the retrieved examples. If a Hugging Face repo does not exist, do not \
+write that id and do not invent another organization or name. Copy a repo from the reference. \
+If the repo is gated, it is real: write the HF_TOKEN early-exit and keep the repo.
+- fetch_link is authoritative for CivitAI artifact type, baseModel, trainedWords, suggested \
+--model-type, the checkpoint repo, download URLs, publisher notes, and Hugging Face weight \
+paths. baseModel on the selected version chooses the family. Words in the publish title are \
+other versions, not this link. A file marked [selected by fileId] is the file the URL asked \
+for. Copy a download URL with no token= query. dgenerate appends CIVIT_AI_TOKEN. A repo id is \
+only organization/name. Copy a listed weight as subfolder= and weight-name= inside one quoted \
+value. An unquoted space splits that value. weight-name selects the file on --transformer, \
+--text-encoders, --vae, --unet, --control-nets, --t2i-adapters, --sdxl-refiner, \
+--s-cascade-decoder, --ltx-latent-upscale, and the LoRA and embedding URIs. The trigger word \
+goes in --prompts, not in a URI. --loras accepts only scale, revision, subfolder, weight-name, \
+and component. token= is valid only on --textual-inversions.
 - Map LoRA and TextualInversion publishes to the suggested base --model-type plus --loras or \
 embeddings, not a checkpoint line alone.
 """
 
 CHECK_TOOL_SYSTEM = """\
 Config check:
-- Call check_config with the complete config text to see the problems. Do not pass a file path.
-- Send the finished config by calling submit_config with that same text. \
-Do not also write a ```dgen block. submit_config is how the config is returned.
-- submit_config checks the config. If it lists problems, fix them and call submit_config again. \
-When it accepts the config, stop.
-- Do not paste a tool result into the config. Do not call these tools on an example \
-from the reference material.
+- Call check_config with the complete config text, not a file path.
+- Return the config by calling submit_config with that same text. Do not also write a ```dgen \
+block. submit_config is how the config is returned.
+- If submit_config lists problems, fix them and call it again. When it accepts the config, stop.
+- Do not paste a tool result into the config. Do not call these tools on a reference example.
 """
 
 _CLIP_GUIDE = (
-    'Comma separated phrases, most important first: the subject and what it is doing, the setting, '
-    'the medium or art style, lighting, color, camera, lens or composition, then a few quality words '
-    'like "highly detailed, sharp focus". Keep it under about 60 words unless --prompt-weighter is '
-    'set (sd-embed or compel), which also lifts the 77-token CLIP cutoff. To emphasize a subject, '
-    'use --prompt-weighter sd-embed and (subject:1.3), or compel and subject+. Without a weighter, '
-    'parentheses are plain text. Add a negative prompt with the usual defects, like "blurry, low '
-    'quality, deformed, extra fingers, watermark, text".')
+    'Comma-separated phrases, important first: subject and action, setting, medium or style, '
+    'lighting, color, camera, then a few quality words like "highly detailed, sharp focus". '
+    'Stay under about 60 words unless --prompt-weighter sd-embed or compel is set, which also '
+    'lifts the 77-token CLIP cutoff. Emphasize with sd-embed (subject:1.3) or compel subject+. '
+    'Without a weighter, parentheses are plain text. Negative prompt: defects only, like '
+    '"blurry, low quality, deformed, extra fingers, watermark, text".')
 _SENTENCE_GUIDE = (
-    'Two to four natural sentences that describe the scene in detail, then the style and lighting. '
-    'A negative prompt is optional and short.')
+    'Two to four sentences: the scene, then style and lighting. A negative prompt is optional and short.')
 _EDIT_GUIDE = (
     'An instruction that states the change and what to keep, like "replace the background with a snowy '
-    'forest, keep the person\'s face and pose unchanged". No negative prompt.')
+    'forest, keep the person\'s face and pose". No negative prompt.')
 
 # How to write --prompts for each --model-type, added next to the request for the model types
 # of the chosen examples.
@@ -338,16 +282,14 @@ PROMPT_GUIDES = {
     's-cascade': _CLIP_GUIDE,
     'sd3': _SENTENCE_GUIDE,
     'if': _SENTENCE_GUIDE,
-    'flux': ('Natural sentences describing the subject, its appearance and action, the setting, '
-             'composition, lighting, mood, and the style or camera. No negative prompt.'),
-    'flux-fill': 'Describe the whole image as it should look, including what fills the masked area. '
-                 'No negative prompt.',
+    'flux': ('Natural sentences: subject, appearance, action, setting, composition, lighting, '
+             'mood, style or camera. No negative prompt.'),
+    'flux-fill': 'Describe the whole image, including what fills the masked area. No negative prompt.',
     'flux-kontext': _EDIT_GUIDE,
-    'flux2': ('Natural sentences describing the subject, its appearance and action, the setting, '
-              'composition, lighting, mood, and the style or camera. No negative prompt. '
-              'Full Flux.2 and Klein text-to-image take --image-seeds as reference images, '
-              'with no mask and no strength. Klein inpaint takes an image and a mask, '
-              'and reference= in that seed is an extra reference.'),
+    'flux2': ('Natural sentences: subject, appearance, action, setting, composition, lighting, '
+              'mood, style or camera. No negative prompt. Full Flux.2 and Klein text-to-image '
+              'take --image-seeds as references, no mask and no strength. Klein inpaint takes an '
+              'image and a mask. reference= in that seed is an extra reference.'),
     'z-image': ('Natural sentences. Turbo uses guidance 0. Base uses a normal guidance scale. '
                 'A short negative prompt is optional.'),
     'qwen-image': ('Natural sentences. --guidance-scales is true CFG. '
@@ -355,23 +297,19 @@ PROMPT_GUIDES = {
                    'still applies classifier-free guidance.'),
     'flux2-klein-kv': ('Natural sentences. No negative prompt and no guidance scale. '
                        '--image-seeds with no mask are reference images.'),
-    'flux3': ('Natural sentences. Distilled black-forest-labs/flux-3-image-klein is 16 steps '
-              'and guidance 1 and ignores a negative prompt. Base flux-3-image-klein-base is '
-              '50 steps and guidance 3.5. Both repos are gated and need HF_TOKEN, and so is '
-              'black-forest-labs/flux-3-image-klein-comfy. --image-seeds are reference images, '
-              'no mask and no '
-              'strength. Omit --pipeline-prompt-enhance unless the user asks for a rewrite. '
-              'The flag takes no value, or one system prompt for that generation. '
-              '--pipeline-prompt-enhance-* sampling options apply to that rewrite.'),
-    'kandinsky6-video': ('One paragraph of the action, the look, the camera, and the sound. '
-                         'Lite distilled is 10 steps and guidance 1. Full and Pro are 50 steps '
-                         'and guidance 5. Lite, full Lite, and Pro distilled are public. '
-                         'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers is gated and needs HF_TOKEN. '
-                         '--video-fps is 24. --output-size 864x480. One still '
-                         'is the first frame. No --loras. Omit --pipeline-prompt-enhance unless '
-                         'the user asks for a rewrite. The flag takes no value, or one '
-                         'system prompt for that generation. '
-                         '--pipeline-prompt-enhance-* sampling options apply to that rewrite.'),
+    'flux3': ('Natural sentences. Distilled black-forest-labs/flux-3-image-klein is 16 steps, '
+              'guidance 1, and ignores a negative prompt. Base flux-3-image-klein-base is 50 steps '
+              'and guidance 3.5. Both repos and black-forest-labs/flux-3-image-klein-comfy are gated '
+              'and need HF_TOKEN. --image-seeds are references, no mask and no strength. Omit '
+              '--pipeline-prompt-enhance unless asked. No value, or one system prompt. '
+              '--pipeline-prompt-enhance-* sampling applies to that rewrite.'),
+    'kandinsky6-video': ('One paragraph: action, look, camera, and sound. Lite distilled is 10 steps '
+                         'and guidance 1. Full and Pro are 50 steps and guidance 5. Lite, full Lite, '
+                         'and Pro distilled are public. kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers is '
+                         'gated and needs HF_TOKEN. --video-fps 24. --output-size 864x480. One still is '
+                         'the first frame. No --loras. Omit --pipeline-prompt-enhance unless asked. '
+                         'No value, or one system prompt. --pipeline-prompt-enhance-* sampling applies '
+                         'to that rewrite.'),
     'qwen-image-edit': ('An instruction that says what should change. The image seed is '
                         'the picture to edit, with no strength. A mask makes it inpaint. '
                         'images: a.png, b.png is edit-plus.'),
@@ -380,34 +318,26 @@ PROMPT_GUIDES = {
     'pix2pix': _EDIT_GUIDE,
     'sdxl-pix2pix': _EDIT_GUIDE,
     'sd3-pix2pix': _EDIT_GUIDE,
-    'wan': ('One paragraph of three to six plain sentences in the order things happen: the main action '
-            'first, then specific movements and gestures, how the people and objects look, the setting, '
-            'the camera angle and movement, and the lighting. Describe only what fits in the '
-            'clip\'s length. --video-lengths is that length in seconds. --video-fps defaults to 16. '
-            'Add a negative after one ; : "Bright tones, overexposed, static, blurred details, '
-            'subtitles, worst quality, low quality, ugly, deformed, extra fingers, still picture". '
-            '--output-size width and height must be divisible by 16.'),
+    'wan': ('Three to six sentences in time order: action, then movement, look, setting, camera, '
+            'lighting. Only what fits the clip. --video-lengths is seconds. --video-fps defaults to 16. '
+            'One ; then defects: "Bright tones, overexposed, static, blurred details, subtitles, '
+            'worst quality, low quality, ugly, deformed, extra fingers, still picture". '
+            'Width and height must be divisible by 16.'),
     'wan-animate': ('A short description of how the character looks. The motion comes from the pose '
                     'or driving clip, not from a long action paragraph. No --video-lengths. '
                     'Guidance stays at 1. --video-fps defaults to 30.'),
     'wan-animate-2': ('A short description of how the character looks and the background. '
                       'The motion comes from wan-driving=, not from the prompt. '
                       'No --video-lengths. --video-fps defaults to 24.'),
-    'ltx2': ('One paragraph of three to six plain sentences in the order things happen: the main action '
-            'first, then specific movements and gestures, how the people and objects look, the setting, '
-            'the camera angle and movement, and the lighting and color. Describe only what fits in the '
-            'clip\'s length. --video-lengths is that length in seconds and snaps to 8k+1 frames. '
-            '--video-fps defaults to 24. Width and height must be divisible by 32. '
-            'LTX-2.5 (Lightricks/LTX-2.5-Diffusers) also makes audio, so end with a sentence '
-            'about what is heard, like the rain, footsteps, or music, and put spoken words in single quotes. '
-            'A negative prompt is optional, like "worst quality, inconsistent motion, blurry, jittery, '
-            'distorted".'),
-    'ltx-video': ('One paragraph of three to six plain sentences in the order things happen: the main action '
-                  'first, then specific movements, how the people and objects look, the setting, the camera '
-                  'angle and movement, and the lighting. Describe only what fits in the clip\'s length. '
-                  '--video-lengths is that length in seconds and snaps to 8k+1 frames. --video-fps defaults '
-                  'to 24. Width and height must be divisible by 32. No audio. A negative prompt is optional, '
-                  'like "worst quality, inconsistent motion, blurry, jittery, distorted".'),
+    'ltx2': ('Three to six sentences in time order: action, movement, look, setting, camera, light. '
+             'Only what fits the clip. --video-lengths is seconds and snaps to 8k+1 frames. '
+             '--video-fps defaults to 24. Width and height divisible by 32. LTX-2.5 also makes audio, '
+             'so end with what is heard and put speech in single quotes. Optional negative: '
+             '"worst quality, inconsistent motion, blurry, jittery, distorted".'),
+    'ltx-video': ('Three to six sentences in time order: action, movement, look, setting, camera, light. '
+                  'Only what fits the clip. --video-lengths is seconds and snaps to 8k+1 frames. '
+                  '--video-fps defaults to 24. Width and height divisible by 32. No audio. Optional negative: '
+                  '"worst quality, inconsistent motion, blurry, jittery, distorted".'),
     'upscaler-x2': 'A short description of what the image shows.',
     'upscaler-x4': 'A short description of what the image shows.',
 }
@@ -415,36 +345,36 @@ PROMPT_GUIDES = {
 # Always in the context, so the model does not have to guess a repo when the examples use another family.
 MODEL_TABLE = """\
 ### reference: models
-The standard Hugging Face repo for each model family. Use the one the request names, and the \
-examples for everything else it needs. \
-A GGUF or Comfy quantized transformer loads only on the parent named with it.
-- Stable Diffusion 1.5: stable-diffusion-v1-5/stable-diffusion-v1-5, --model-type sd (the default). Public, no HF_TOKEN.
-- Stable Diffusion 2.1: sd2-community/stable-diffusion-2-1, --model-type sd. Public, no HF_TOKEN.
+The standard Hugging Face repo for each family. Use the one the request names. \
+Copy the rest from the examples. A GGUF or Comfy file loads only on the parent named with it. \
+Public: no HF_TOKEN. Gated: one HF_TOKEN early-exit.
+- Stable Diffusion 1.5: stable-diffusion-v1-5/stable-diffusion-v1-5, --model-type sd (the default). Public.
+- Stable Diffusion 2.1: sd2-community/stable-diffusion-2-1, --model-type sd. Public.
 - SDXL: stabilityai/stable-diffusion-xl-base-1.0, --model-type sdxl --variant fp16 --dtype float16. \
-Public, no HF_TOKEN. Refine in the same invocation with --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+Public. Refine in the same invocation with --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
 - SDXL inpainting (needs --image-seeds "image;mask"): diffusers/stable-diffusion-xl-1.0-inpainting-0.1, \
---model-type sdxl --variant fp16 --dtype float16. Public, no HF_TOKEN.
-- Stable Diffusion 3 Medium: stabilityai/stable-diffusion-3-medium-diffusers, --model-type sd3 --variant fp16. Gated, needs HF_TOKEN. \
+--model-type sdxl --variant fp16 --dtype float16. Public.
+- Stable Diffusion 3 Medium: stabilityai/stable-diffusion-3-medium-diffusers, --model-type sd3 --variant fp16. Gated. \
 GGUF: --transformer https://huggingface.co/city96/stable-diffusion-3-medium-gguf/blob/main/sd3_medium-Q4_K_S.gguf.
-- Stable Diffusion 3.5 Large: stabilityai/stable-diffusion-3.5-large, --model-type sd3. Gated, needs HF_TOKEN. \
+- Stable Diffusion 3.5 Large: stabilityai/stable-diffusion-3.5-large, --model-type sd3. Gated. \
 GGUF: --transformer https://huggingface.co/city96/stable-diffusion-3.5-large-gguf/blob/main/sd3.5_large-Q4_0.gguf. \
 FP8: --transformer https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/sd3.5_large_fp8_scaled.safetensors.
-- Stable Diffusion 3.5 Medium: stabilityai/stable-diffusion-3.5-medium, --model-type sd3. Gated, needs HF_TOKEN. \
+- Stable Diffusion 3.5 Medium: stabilityai/stable-diffusion-3.5-medium, --model-type sd3. Gated. \
 GGUF: --transformer https://huggingface.co/city96/stable-diffusion-3.5-medium-gguf/blob/main/sd3.5_medium-Q4_K_S.gguf.
 - Stable Cascade: stabilityai/stable-cascade-prior, --model-type s-cascade, \
-with --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16". Public, no HF_TOKEN.
-- Flux Schnell: black-forest-labs/FLUX.1-schnell, 4 steps, guidance 0, --model-type flux --dtype bfloat16. Public, no HF_TOKEN. \
+with --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16". Public.
+- Flux Schnell: black-forest-labs/FLUX.1-schnell, 4 steps, guidance 0, --model-type flux --dtype bfloat16. Public. \
 GGUF: --transformer https://huggingface.co/city96/FLUX.1-schnell-gguf/blob/main/flux1-schnell-Q4_K_S.gguf. \
 FP8: --transformer https://huggingface.co/Kijai/flux-fp8/blob/main/flux1-schnell-fp8-e4m3fn.safetensors.
-- Flux Dev: black-forest-labs/FLUX.1-dev, --model-type flux --dtype bfloat16. Gated, needs HF_TOKEN. \
+- Flux Dev: black-forest-labs/FLUX.1-dev, --model-type flux --dtype bfloat16. Gated. \
 GGUF: --transformer https://huggingface.co/city96/FLUX.1-dev-gguf/blob/main/flux1-dev-Q4_K_S.gguf. \
 FP8: --transformer https://huggingface.co/black-forest-labs/FLUX.1-dev-FP8/blob/main/flux1-dev-fp8.safetensors.
 - Flux Krea Dev: black-forest-labs/FLUX.1-Krea-dev, --model-type flux --dtype bfloat16, guidance 4.5, 28 steps. \
-Photographic, aesthetic finetune of Flux Dev. Gated, needs HF_TOKEN. \
+Photographic, aesthetic finetune of Flux Dev. Gated. \
 GGUF: --transformer https://huggingface.co/QuantStack/FLUX.1-Krea-dev-GGUF/blob/main/flux1-krea-dev-Q4_K_S.gguf. \
 FP8: --transformer https://huggingface.co/Comfy-Org/FLUX.1-Krea-dev_ComfyUI/blob/main/split_files/diffusion_models/flux1-krea-dev_fp8_scaled.safetensors. \
 This is not Krea 2.
-- Krea 2: krea/Krea-2-Raw, --model-type krea2 --dtype bfloat16. Public, no HF_TOKEN. \
+- Krea 2: krea/Krea-2-Raw, --model-type krea2 --dtype bfloat16. Public. \
 GGUF: --transformer https://huggingface.co/realrebelai/KREA-2_GGUFs/blob/main/BASE/Krea-2-Base-Q4_K_M.gguf. \
 INT8: --transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_raw_int8_convrot.safetensors. \
 Turbo is krea/Krea-2-Turbo, 8 steps, guidance 0. \
@@ -452,24 +382,24 @@ FP8: --transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_m
 NVFP4: --transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion_models/krea2_turbo_nvfp4.safetensors. \
 A Krea 2 LoRA uses the matching repo on the invocation line and the LoRA on --loras. \
 Not FLUX.1-Krea-dev, and not Flux.2.
-- Flux inpainting and outpainting: black-forest-labs/FLUX.1-Fill-dev, --model-type flux-fill. Gated, needs HF_TOKEN. \
+- Flux inpainting and outpainting: black-forest-labs/FLUX.1-Fill-dev, --model-type flux-fill. Gated. \
 GGUF: --transformer https://huggingface.co/YarvixPA/FLUX.1-Fill-dev-GGUF/blob/main/flux1-fill-dev-Q4_K_S.gguf.
-- Flux image editing: black-forest-labs/FLUX.1-Kontext-dev, --model-type flux-kontext. Gated, needs HF_TOKEN. \
+- Flux image editing: black-forest-labs/FLUX.1-Kontext-dev, --model-type flux-kontext. Gated. \
 GGUF: --transformer https://huggingface.co/QuantStack/FLUX.1-Kontext-dev-GGUF/blob/main/flux1-kontext-dev-Q4_K_S.gguf. \
 FP8: --transformer https://huggingface.co/Comfy-Org/flux1-kontext-dev_ComfyUI/blob/main/split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors.
 - Flux.2: black-forest-labs/FLUX.2-dev, --model-type flux2 --dtype bfloat16, guidance 4, 50 steps. \
-Gated, needs HF_TOKEN. --image-seeds with no mask are reference images, not img2img, and have no strength. \
+Gated. --image-seeds with no mask are reference images, not img2img, and have no strength. \
 Output size snaps to a multiple of 16. \
 GGUF: --transformer https://huggingface.co/city96/FLUX.2-dev-gguf/blob/main/flux2-dev-Q4_K_S.gguf (hidden width 6144). \
 FP8: --transformer https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/diffusion_models/flux2_dev_fp8mixed.safetensors. \
 NVFP4: --transformer https://huggingface.co/black-forest-labs/FLUX.2-dev-NVFP4/blob/main/flux2-dev-nvfp4-mixed.safetensors.
 - Flux.2 Klein 9B distilled: black-forest-labs/FLUX.2-klein-9B, --model-type flux2 --dtype bfloat16. \
-Gated, needs HF_TOKEN. 4 steps, guidance 1. This is not FLUX.2-klein-base-9B. \
+Gated. 4 steps, guidance 1. This is not FLUX.2-klein-base-9B. \
 A CivitAI base "Flux.2 Klein 9B" uses this repo. \
 GGUF: --transformer https://huggingface.co/unsloth/FLUX.2-klein-9B-GGUF/blob/main/flux-2-klein-9b-Q4_K_S.gguf. \
 FP8: --transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-9b-fp8/blob/main/flux-2-klein-9b-fp8.safetensors. \
 - Flux.2 Klein 9B base: black-forest-labs/FLUX.2-klein-base-9B, --model-type flux2 --dtype bfloat16. \
-Gated, needs HF_TOKEN. Guidance 4, 50 steps. \
+Gated. Guidance 4, 50 steps. \
 Text-to-image references are --image-seeds with no mask. \
 Inpaint uses --image-seeds with a mask, and reference= is image_reference. \
 Distilled Klein ignores guidance above 1. Caption upsampling is full Flux.2 only. \
@@ -481,11 +411,11 @@ NVFP4: --transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-nv
 Klein 9B base GGUF, hidden width 4096: --transformer https://huggingface.co/unsloth/FLUX.2-klein-base-9B-GGUF/blob/main/flux-2-klein-base-9b-Q4_K_S.gguf \
 on black-forest-labs/FLUX.2-klein-base-9B.
 - Z-Image Turbo: Tongyi-MAI/Z-Image-Turbo, --model-type z-image --dtype bfloat16, 8 steps, guidance 0. \
-Public, no HF_TOKEN. Img2img strength 0.6. Inpaint strength 1.
+Public. Img2img strength 0.6. Inpaint strength 1.
 - Z-Image Turbo SDNQ: Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32, --model-type z-image --dtype bfloat16, \
-9 steps, guidance 0. Public, no HF_TOKEN. Do not pass --quantizer; it is already uint4 SVDQuant.
+9 steps, guidance 0. Public. Do not pass --quantizer; it is already uint4 SVDQuant.
 - Z-Image Base: Tongyi-MAI/Z-Image, --model-type z-image --dtype bfloat16, guidance 4, 28 to 50 steps. \
-Public, no HF_TOKEN. \
+Public. \
 The 2-step LoRA is --loras "alibaba-pai/Z-Image-Fun-Lora-Distill;weight-name=Z-Image-Fun-Lora-Distill-2-Steps-2603.safetensors;scale=1", \
 2 steps, guidance 1. \
 GGUF: --transformer https://huggingface.co/jayn7/Z-Image-GGUF/blob/main/z_image-Q4_K_S.gguf. \
@@ -493,7 +423,7 @@ INT8: --transformer https://huggingface.co/Comfy-Org/Z-Image/blob/main/split_fil
 The loader uses the Turbo transformer config because the shapes match.
 - Z-Image Turbo GGUF: parent Tongyi-MAI/Z-Image-Turbo, \
 --transformer https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/blob/main/z_image_turbo-Q4_K_S.gguf, \
-8 steps, guidance 0. Public, no HF_TOKEN. \
+8 steps, guidance 0. Public. \
 INT8: --transformer https://huggingface.co/Comfy-Org/z_image_turbo/blob/main/split_files/diffusion_models/z_image_turbo_int8_convrot.safetensors. \
 NVFP4: --transformer https://huggingface.co/Comfy-Org/z_image_turbo/blob/main/split_files/diffusion_models/z_image_turbo_nvfp4.safetensors.
 - Z-Image ControlNet union: --control-nets on z-image, one union file, scale 0.75. \
@@ -501,25 +431,24 @@ Text-to-image uses https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controln
 with Tongyi-MAI/Z-Image-Turbo. Inpaint uses the 2.0 file from \
 alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0. No img2img ControlNet.
 - Qwen-Image: Qwen/Qwen-Image, --model-type qwen-image --dtype bfloat16, guidance 4, 50 steps. \
-Public, no HF_TOKEN. --guidance-scales is true_cfg_scale. Img2img and inpaint strength 0.6. \
+Public. --guidance-scales is true_cfg_scale. Img2img and inpaint strength 0.6. \
 ControlNet text-to-image is --control-nets InstantX/Qwen-Image-ControlNet-Union. \
 Inpaint is image;mask with InstantX/Qwen-Image-ControlNet-Inpainting (not Union). \
 GGUF: --transformer https://huggingface.co/QuantStack/Qwen-Image-GGUF/blob/main/Qwen_Image-Q4_K_S.gguf. \
 FP8: --transformer https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_fp8mixed.safetensors. \
 NVFP4: --transformer https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/main/split_files/diffusion_models/qwen_image_nvfp4.safetensors.
 - Flux.2 Klein KV: black-forest-labs/FLUX.2-klein-9b-kv, --model-type flux2-klein-kv --dtype bfloat16. \
-Gated, needs HF_TOKEN. Reference images are --image-seeds with no mask and no strength. No guidance scale. \
+Gated. Reference images are --image-seeds with no mask and no strength. No guidance scale. \
 GGUF: --transformer https://huggingface.co/QuantStack/FLUX.2-Klein-9B-KV-GGUF/blob/main/Flux-2-Klein-9B-KV-Q4_K_S.gguf. \
 Width 4096 uses the Klein 9B transformer config, which matches this checkpoint.
 - FLUX.3 Image Klein distilled: black-forest-labs/flux-3-image-klein, --model-type flux3 \
 --dtype bfloat16, 16 steps, guidance 1, --model-sequential-offload, --output-size 1024. \
-Gated, needs HF_TOKEN. No negative prompt. --image-seeds are reference images, no mask and no strength. \
-Omit --scheduler. Omit --pipeline-prompt-enhance unless the user asks for a rewrite. The flag takes no value, \
-or one system prompt for that generation. --pipeline-prompt-enhance-* sampling options apply to that rewrite. \
-It loads the Qwen3.5 upsampler. \
+Gated. No negative prompt. --image-seeds are references, no mask and no strength. \
+Omit --scheduler. Omit --pipeline-prompt-enhance unless asked. No value, or one system prompt. \
+--pipeline-prompt-enhance-* sampling applies to that rewrite. It loads the Qwen3.5 upsampler. \
 GGUF: --transformer https://huggingface.co/molbal/Flux-3-Klein-GGUF/blob/main/flux3_image_klein_sd-Q4_K_M.gguf \
 on that distilled parent. \
-Base: black-forest-labs/flux-3-image-klein-base, 50 steps, guidance 3.5. Gated, needs HF_TOKEN. \
+Base: black-forest-labs/flux-3-image-klein-base, 50 steps, guidance 3.5. Gated. \
 Its GGUF is --transformer https://huggingface.co/molbal/Flux-3-Klein-GGUF/blob/main/flux3_image_klein_base-Q4_K_M.gguf. \
 INT8 text encoder from the gated repo black-forest-labs/flux-3-image-klein-comfy: \
 --text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/blob/main/text_encoders/qwen3vl_4b_int8_convrot.safetensors". \
@@ -535,18 +464,18 @@ Edit uses the same transformer module as Qwen-Image. The edit file still stays o
 GGUF: --transformer https://huggingface.co/unsloth/Qwen-Image-Layered-GGUF/blob/main/qwen-image-layered-Q4_K_S.gguf. \
 The extra addition embedding selects the layered config.
 - Qwen-Image 2.1: Qwen/Qwen-Image-2.1, --model-type qwen-image-21 --dtype bfloat16, \
---model-sequential-offload, --qwen21-resolution 1024. Public, no HF_TOKEN. \
+--model-sequential-offload, --qwen21-resolution 1024. Public. \
 GGUF: --transformer https://huggingface.co/molbal/Qwen-Image-2.1-GGUF/blob/main/qwen_image_2.1_Q4_0.gguf. \
 INT8: --transformer https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/diffusion_models/qwen_image_2.1_int8_convrot.safetensors. \
 Turbo is Qwen/Qwen-Image-2.1-Turbo and keeps the checkpoint sigma schedule, so omit --inference-steps. \
 Its INT8 is --transformer https://huggingface.co/Comfy-Org/Qwen-Image-2.1/blob/main/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors. \
 This is not Qwen/Qwen-Image.
-- Kolors: Kwai-Kolors/Kolors-diffusers, --model-type kolors --variant fp16. Public, no HF_TOKEN.
+- Kolors: Kwai-Kolors/Kolors-diffusers, --model-type kolors --variant fp16. Public.
 - Hunyuan-DiT: Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers, --model-type hydit --dtype float16, \
-guidance 5, 50 steps, 1024. Public, no HF_TOKEN. No quantizer and no offload. \
+guidance 5, 50 steps, 1024. Public. No quantizer and no offload. \
 This is not HunyuanVideo (--model-type hyvideo-15) and not HunyuanImage.
 - HunyuanImage 2.1: hunyuanvideo-community/HunyuanImage-2.1-Diffusers, --model-type hyimage-21 \
---dtype bfloat16, guidance 3.5, 50 steps, 2048, --model-sequential-offload. Public, no HF_TOKEN. \
+--dtype bfloat16, guidance 3.5, 50 steps, 2048, --model-sequential-offload. Public. \
 GGUF: --transformer https://huggingface.co/calcuis/hunyuanimage-gguf/resolve/main/hunyuanimage2.1-q4_k_m.gguf. \
 FP8: --transformer https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/resolve/main/split_files/diffusion_models/hunyuanimage2.1_fp8_e4m3fn.safetensors. \
 Refiner: hunyuanvideo-community/HunyuanImage-2.1-Refiner-Diffusers, --model-type hyimage-21-refiner, \
@@ -554,14 +483,17 @@ the same offload. Distilled: hunyuanvideo-community/HunyuanImage-2.1-Distilled-D
 still --model-type hyimage-21, guidance 3.25, \
 --transformer https://huggingface.co/Comfy-Org/Hunyuan-Image-2.1/resolve/main/split_files/diffusion_models/hunyuanimage2.1_distilled_fp8_e4m3fn.safetensors.
 - HunyuanVideo 1.5: --model-type hyvideo-15, --dtype bfloat16, --model-sequential-offload, \
-guidance 6, 50 steps, --video-fps 15, --output-size 848x480. Public, no HF_TOKEN. \
+guidance 6, 50 steps, --video-fps 15, --output-size 848x480. Public. \
 Text-to-video is hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v. \
 Its GGUF is --transformer https://huggingface.co/jayn7/HunyuanVideo-1.5_T2V_480p-GGUF/blob/main/480p/hunyuanvideo1.5_480p_t2v-Q4_K_S.gguf. \
 Distilled text-to-video is hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v_distilled, guidance 1, \
 --transformer https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/diffusion_models/hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors. \
 A still is hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v and keeps that repository transformer.
+- Motif video: Motif-Technologies/Motif-Video-2B, --model-type motif-video, --dtype bfloat16, \
+--model-sequential-offload, guidance 5, --video-fps 24. Public. A still is the first frame. \
+GGUF: --transformer https://huggingface.co/Motif-Technologies/Motif-Video-2B-GGUF/blob/main/motifv-2b-dev-Q4_K_M.gguf.
 - Kandinsky 5 video: --model-type kandinsky5-video, --dtype bfloat16, --model-sequential-offload, \
-guidance 5, 50 steps, --video-fps 24. Public, no HF_TOKEN. \
+guidance 5, 50 steps, --video-fps 24. Public. \
 Text-to-video Lite is kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers at 768x512. \
 Text-to-video Pro is kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers at 1024x768. \
 Its GGUF is --transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sft-5s-GGUF/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf \
@@ -570,17 +502,16 @@ A still is kandinskylab/Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers at 768x512 and ke
 Lite image-to-video is kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers.
 - Kandinsky 5 image: --model-type kandinsky5-image. \
 Text-to-image is kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers, guidance 3.5, 50 steps, 1024. \
-An edit is kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers with --image-seeds. Public, no HF_TOKEN.
+An edit is kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers with --image-seeds. Public.
 - Kandinsky 6 video: --model-type kandinsky6-video, --dtype bfloat16, --model-sequential-offload, \
 --video-fps 24, --output-size 864x480, 5 seconds, audio included. \
-Lite distilled is kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers, PiflowScheduler, 10 steps, guidance 1. Public, no HF_TOKEN. \
-Full Lite is kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers, 50 steps, guidance 5. Public, no HF_TOKEN. \
-Pro distilled is kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers, 10 steps, guidance 1. Public, no HF_TOKEN. \
-Pro is kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, 50 steps, guidance 5. Gated, needs HF_TOKEN. \
-One still image is the first frame. No --loras. \
-Omit --pipeline-prompt-enhance unless the user asks for a rewrite. The flag takes no value, \
-or one system prompt for that generation. --pipeline-prompt-enhance-* sampling options apply to that rewrite. \
-It turns on expand_prompts. \
+Lite distilled is kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers, PiflowScheduler, 10 steps, guidance 1. Public. \
+Full Lite is kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers, 50 steps, guidance 5. Public. \
+Pro distilled is kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers, 10 steps, guidance 1. Public. \
+Pro is kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, 50 steps, guidance 5. Gated. \
+One still is the first frame. No --loras. \
+Omit --pipeline-prompt-enhance unless asked. No value, or one system prompt. \
+--pipeline-prompt-enhance-* sampling applies. It turns on expand_prompts. \
 GGUF: --transformer https://huggingface.co/realrebelai/Kandinsky-6.0-Pro-5s_GGUFs/blob/main/Diffusion Model/Full/Kandinsky-6.0-Pro-5s-Q4_K_S.gguf \
 on the Pro parent, 50 steps, guidance 5. That parent is gated, so the config still needs HF_TOKEN. \
 INT8 Lite distilled: --transformer https://huggingface.co/kabachuha/Kandinsky-6.0-Lite-distill-5s-int8-convrot/blob/main/Kandinsky-6.0-Lite-Distilled-5s-int8-convrot.safetensors. \
@@ -592,29 +523,39 @@ No image seed is text to video. One still and optional last-frame= are keyframes
 reference= is images, videos, and audio and cannot be combined with a keyframe. \
 --control-nets is one Fun branch. A bare --image-seeds path is the control video \
 and cannot be combined with a keyframe or reference=. \
-Output size is a multiple of 32, or omit it. GGUF and Comfy quants go on --transformer.
+Output size is a multiple of 32, or omit it. The parent stays MiniMaxAI/MiniMax-H3. \
+Text and keyframes (fl2va) GGUF: --transformer https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q4_0.gguf. \
+INT8: --transformer https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors. \
+References (ref2va) GGUF: --transformer https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/ref2va/MiniMax-H3-ref2va-curve-Q4_0.gguf. \
+INT8: --transformer https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors. \
+Do not put a ref2va file on a text or keyframe run, or an fl2va file on reference=. \
+Text encoder, already quantized, no quantizer: --text-encoders \
+"Qwen3VLForConditionalGeneration;model=https://huggingface.co/Teriks/MiniMax-H3-Qwen3VL-text-encoder/blob/main/text_encoder-int8_tensorwise.safetensors".
 - MiniMax-H3-Image: --model-type minimax-h3-image, --dtype bfloat16, --model-sequential-offload. \
 Repository MiniMaxAI/MiniMax-H3-Image. Public. One image. Guidance is distilled: \
 no negative prompt, no --guidance-scales, no --inference-steps. \
 Default size is 2048. Sides are multiples of 32. \
 --image-seeds are reference images, named Picture 1, Picture 2, and so on in the prompt. \
-No mask and no strength.
-- DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
-- Animate a still or make a clip. When the user says ltx2, LTX-2, or LTX, use the LTX-2.5 recipes. \
+No mask and no strength. The parent stays MiniMaxAI/MiniMax-H3-Image. \
+GGUF: --transformer https://huggingface.co/unsloth/MiniMax-H3-Image-GGUF/blob/main/minimax_h3_image_pruned-Q4_K_M.gguf. \
+INT8: --transformer https://huggingface.co/Comfy-Org/MiniMax-H3-Image/blob/main/diffusion_models/minimax_h3_image_pruned_int8_convrot.safetensors. \
+The same int8 text encoder as MiniMax-H3 video. Do not set quantizer on it.
+- DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated.
+- Animate a still or make a clip. ltx2, LTX-2, or LTX means the LTX-2.5 recipes. \
 Use Lightricks/LTX-2 and Gemma 3 only when they name 19B, LTX-2.0, or Gemma 3. \
 Lightricks/LTX-2.5-Diffusers, --model-type ltx2, \
 --guidance-scales 1, --video-fps 24, --model-sequential-offload, --animation-format mp4. \
-Gated, needs HF_TOKEN. Clip length and frame rate are --video-lengths (seconds) and --video-fps. \
---video-lengths snaps to 8k+1 frames. Width and height must be divisible by 32. \
-LTX-only options use the --ltx- prefix. \
-When the user names a duration, use that many seconds, however long. When they do not, \
-omit --video-lengths so the duration head chooses it. \
---ltx-latent-upscale is the two-stage pass in that same generation; --output-size must be divisible by 64. \
+Gated. --video-lengths is seconds and snaps to 8k+1 frames. Width and height must be divisible by 32. \
+Other LTX options use the --ltx- prefix. A named duration is that many seconds. Otherwise omit \
+--video-lengths so the duration head chooses it. \
+--ltx-latent-upscale is the two-stage pass in that generation; --output-size must be divisible by 64. \
 The last frame is last-frame= on --image-seeds, at strength 1. strength= is the condition weight. \
---image-seed-strengths fills LTX groups that omit strength=. \
-Describe the sound in the prompt. Lightricks/LTX-Video is the older video-only model; use it only when the user names it, and then --model-type is ltx-video. \
-Never write Lightricks/LTX-Video with --model-type ltx2. --model-type ltx2 belongs on Lightricks/LTX-2.5-Diffusers, and also on Lightricks/LTX-2.3 and Lightricks/LTX-2. \
-Never write Lightricks/LTX-2, Lightricks/LTX-2.3, or Lightricks/LTX-2.5-Diffusers with --model-type ltx-video. \
+--image-seed-strengths fills groups that omit strength=. Describe the sound. \
+Lightricks/LTX-Video is the older video-only model. Use it only when named, as --model-type ltx-video. \
+GGUF: --transformer https://huggingface.co/city96/LTX-Video-gguf/blob/main/ltx-video-2b-v0.9-Q4_K_S.gguf. \
+Never write Lightricks/LTX-Video with --model-type ltx2. --model-type ltx2 belongs on \
+Lightricks/LTX-2.5-Diffusers, Lightricks/LTX-2.3, and Lightricks/LTX-2. \
+Never write those three with --model-type ltx-video. \
 Distilled GGUF: --transformer https://huggingface.co/realrebelai/LTX-2.5_GGUFs/blob/main/LTX-2.5-Distilled-Q4_K_S.gguf, \
 guidance 1, and no --inference-steps. The parent repo stays Lightricks/LTX-2.5-Diffusers. \
 Distilled INT8: --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors. \
@@ -647,7 +588,7 @@ The parent stays Lightricks/LTX-2. \
 Use that same Gemma 3 encoder with the 19B dev GGUF. Keep 30 steps, guidance 4, and audio guidance 4, and leave the parent scheduler as-is.
 - Wan video: Wan-AI/Wan2.1-T2V-1.3B-Diffusers, --model-type wan, --dtype bfloat16, \
 --guidance-scales 5, --video-fps 16, --output-size 832x480, --animation-format mp4. \
-Public, no HF_TOKEN. --video-lengths is seconds and snaps to 4k+1 frames \
+Public. --video-lengths is seconds and snaps to 4k+1 frames \
 (5 seconds at 16 fps is 81). Width and height must be divisible by 16. \
 Put the negative after ; in --prompts. \
 A still is image-to-video on Wan-AI/Wan2.1-I2V-14B-480P-Diffusers. \
@@ -680,15 +621,17 @@ Its FP8 is --transformer https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repack
 A Wan GGUF or FP8 file loads only on the parent named with it. \
 Wan-Animate is --model-type wan-animate, Wan-AI/Wan2.2-Animate-14B-Diffusers, a character still plus \
 wan-pose= and wan-face=, or wan-driving= with --wan-animate-preprocess. --video-fps 30. \
+GGUF: --transformer https://huggingface.co/QuantStack/Wan2.2-Animate-14B-GGUF/blob/main/Wan2.2-Animate-14B-Q4_K_S.gguf. \
+INT8: --transformer https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_animate_14B_int8_convrot.safetensors. \
 Omitting steps uses 20 and omitting guidance uses 1 (WanAnimatePipeline). --video-lengths is rejected. \
 replace mode needs wan-background= and mask=. \
 Wan-Animate-2 is --model-type wan-animate-2, a character still plus wan-driving= only. \
 Omitting steps uses 40 on Wan-AI/Wan2.2-Animate-2-14B-Diffusers and 10 on the distilled repo. \
 --video-fps 24. --video-lengths is rejected. No pose, face, or background keywords.
-- 4x upscaling with diffusion: stabilityai/stable-diffusion-x4-upscaler, --model-type upscaler-x4 --variant fp16. Public, no HF_TOKEN.
-- 2x latent upscaling: stabilityai/sd-x2-latent-upscaler, --model-type upscaler-x2. Public, no HF_TOKEN.
+- 4x upscaling with diffusion: stabilityai/stable-diffusion-x4-upscaler, --model-type upscaler-x4 --variant fp16. Public.
+- 2x latent upscaling: stabilityai/sd-x2-latent-upscaler, --model-type upscaler-x2. Public.
 - Instruction editing: timbrooks/instruct-pix2pix (--model-type pix2pix), \
-diffusers/sdxl-instructpix2pix-768 (--model-type sdxl-pix2pix). Public, no HF_TOKEN.
+diffusers/sdxl-instructpix2pix-768 (--model-type sdxl-pix2pix). Public.
 Only use a --variant that the examples use with that repo."""
 
 _MODEL_TYPE = re.compile(r'--model-type\s+"?([\w-]+)')
@@ -816,39 +759,31 @@ def first_draft_recipes(request: str, editor: str | None = None,
         'HF_TOKEN is only for a gated checkpoint. A public repo gets no token block, '
         'even when an example for a different repo has one.',
         'Public, no HF_TOKEN: SD 1.5, SD 2.1, SDXL, FLUX.1-schnell, Kolors, Stable Cascade, '
-        'Krea 2 (krea/Krea-2-Raw, --model-type krea2), Wan-AI, upscalers, pix2pix, '
-        'Hunyuan-DiT (Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers, --model-type hydit), '
-        'HunyuanImage 2.1 (hunyuanvideo-community/HunyuanImage-2.1-Diffusers, --model-type hyimage-21). '
-        'Krea 2 is not FLUX.1-Krea-dev. Hunyuan-DiT is not HunyuanVideo and not HunyuanImage. '
-        'Klein 4B (black-forest-labs/FLUX.2-klein-4B) is public. '
-        'Kandinsky 6 Lite distilled, full Lite, and Pro distilled are public.',
+        'Krea 2 (krea/Krea-2-Raw, krea2), Wan-AI, upscalers, pix2pix, '
+        'Hunyuan-DiT (Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers, hydit), '
+        'HunyuanImage 2.1 (hunyuanvideo-community/HunyuanImage-2.1-Diffusers, hyimage-21), '
+        'Klein 4B (black-forest-labs/FLUX.2-klein-4B), Kandinsky 6 Lite distilled, full Lite, and Pro distilled. '
+        'Krea 2 is not FLUX.1-Krea-dev. Hunyuan-DiT is not HunyuanVideo and not HunyuanImage.',
         'Gated, HF_TOKEN required: FLUX.1-dev, FLUX.1-Krea-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, '
         'black-forest-labs/FLUX.2-dev, black-forest-labs/FLUX.2-klein-9B, '
         'black-forest-labs/FLUX.2-klein-base-9B, black-forest-labs/FLUX.2-klein-9b-kv, '
         'black-forest-labs/flux-3-image-klein, black-forest-labs/flux-3-image-klein-base, '
         'black-forest-labs/flux-3-image-klein-comfy, '
-        'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, '
-        'SD3, SD3.5, '
-        'LTX-2.5, LTX-Video, DeepFloyd IF. '
-        'FLUX.2-klein-9B is the distilled 9B checkpoint. It is gated. It is not the 4B repo and not the base-9B repo. '
-        'FLUX.3 Klein distilled and base are both gated. The Comfy quant repo is gated. '
-        'Only the full Kandinsky 6 Pro repo is gated. A Pro GGUF still uses that gated parent.',
+        'kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, SD3, SD3.5, LTX-2.5, LTX-Video, DeepFloyd IF. '
+        'Klein 9B distilled is gated, not the 4B or base-9B repo. FLUX.3 Klein distilled, base, and the Comfy repo are gated. '
+        'Only full Kandinsky 6 Pro is gated. A Pro GGUF still uses that parent.',
         'For a gated repo the \\print is exactly:',
         r'    \print Set HF_TOKEN environmental variable or pass --auth-token.',
-        'Put the HF_TOKEN \\set and that single {% if %} \\print \\exit {% endif %} block '
-        'only once at the top of the config (after the shebang lines), not inside loops '
-        'or before each invocation.',
+        'One HF_TOKEN \\set and one {% if %} \\print \\exit {% endif %} at the top, after the shebang, '
+        'not in a loop and not before each invocation.',
         'CIVIT_AI_TOKEN is only for a civitai.com or civitai.red link. A Hugging Face repo or a local file does not use it.',
         'That \\print is exactly: \\print Set CIVIT_AI_TOKEN environmental variable.',
-        'Put the CIVIT_AI_TOKEN \\set and that single early-exit only once at the top of the config.',
+        'One CIVIT_AI_TOKEN \\set and one early-exit at the top.',
         'Do not put token= or {{ civit_ai_token }} on the download URL. dgenerate appends '
-        'CIVIT_AI_TOKEN from the environment. Copy the download URL without a token query. '
-        'A trigger word goes in --prompts, never as token= on --loras.',
+        'CIVIT_AI_TOKEN. Copy the URL with no token query. A trigger word goes in --prompts, never as token= on --loras.',
         'Neither token \\print contains the word "example".',
-        'Spectrum and SADA stay on their automatic defaults. Write --spectrum or --sada alone. '
-        'Do not copy --spectrum-warmup-steps, --spectrum-flex-windows, --sada-acc-ranges, '
-        'or --sada-lagrange-steps from an example or from the manual samples. '
-        'Do not expand --sada into the sample parameter list. '
+        'Write --spectrum or --sada alone. Do not copy --spectrum-warmup-steps, --spectrum-flex-windows, '
+        '--sada-acc-ranges, or --sada-lagrange-steps, and do not expand --sada into its sample parameters. '
         'Add one of those flags only when the user names that value.',
     ]
     if re.search(r'\b(animat\w*|video|ltx|wan|clip)\b', request, re.IGNORECASE):
@@ -860,7 +795,7 @@ def first_draft_recipes(request: str, editor: str | None = None,
             'Lightricks/LTX-2, Lightricks/LTX-2.3, and Lightricks/LTX-2.5-Diffusers are --model-type ltx2. '
             'Do not write --model-type ltx-video on those repos. Keep a 2.3 repo when that is the one written.',
             'Wan text or image to video is --model-type wan, a Wan-AI repo, --guidance-scales 5, '
-            '--video-fps 16, --output-size 832x480, and a negative prompt after ;. Public, no HF_TOKEN. '
+            '--video-fps 16, --output-size 832x480, and a negative prompt after ;. No HF_TOKEN. '
             'Wan-Animate is --model-type wan-animate. Wan-Animate-2 is --model-type wan-animate-2. '
             'Do not pass --video-lengths to either.',
             'LTX-only options use the --ltx- prefix, including '
@@ -1601,17 +1536,14 @@ def offload_plan(cuda: bool, gib: float, bitsandbytes: bool, sdnq: bool) -> str:
         'write the offload from the matching line unless they also named an offload.',
         'Resolution: each tier line is for that model\'s usual size and, for video, its usual '
         'length. That is the baseline. A larger resolution or a longer video uses more memory. '
-        'Doubling each side is about four times the pixels, and a longer clip keeps those frames '
-        'in memory. Quantizing the weights, including an 8-bit Comfy quant, FP8, NVFP4, or a GGUF, '
-        'does not remove that cost. A file that fits at the baseline can still exceed 16 GiB at a '
-        'larger resolution, such as 2048, or at a longer video length. When the request is above '
-        'the baseline, step the offload up to match this computer. '
+        'An 8-bit Comfy quant, FP8, NVFP4, or a GGUF does not remove that cost. A file that fits '
+        'at the baseline can still exceed 16 GiB at a larger resolution, such as 2048, or at a '
+        'longer video length. Above the baseline, step the offload up. '
         '--model-sequential-offload is the strongest, then --model-group-offload, then '
-        '--model-cpu-offload. On 8, 12, and 16 GiB, above the baseline usually means the stronger '
-        'offload, often --model-sequential-offload, even when the baseline line is only a quantizer '
-        'or --model-cpu-offload. On 24 GiB and above the tier line often still fits. A still image '
-        'above the baseline also gets --vae-tiling. Video models do not take --vae-tiling, so a '
-        'larger frame or a longer video steps the offload up instead.',
+        '--model-cpu-offload. On 8, 12, and 16 GiB that is often --model-sequential-offload, even '
+        'when the baseline line is only a quantizer or --model-cpu-offload. On 24 GiB and above '
+        'the tier line often still fits. A still above the baseline also gets --vae-tiling. '
+        'Video models do not take --vae-tiling. A larger frame or a longer video steps the offload up.',
         block('krea2, quantized transformer and quantized text encoder', 'krea2-packed', 'No quantizer.'),
         block(
             'krea2 otherwise, and wan, wan-animate, wan-animate-2, ltx2, hyvideo-15, '

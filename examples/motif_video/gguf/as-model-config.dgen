@@ -16,4 +16,4 @@ https://huggingface.co/Motif-Technologies/Motif-Video-2B-GGUF/blob/main/motifv-2
 --gen-seeds 1
 --output-path motif-video-gguf-as-model
 --output-size 832x480
---prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+--prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement"

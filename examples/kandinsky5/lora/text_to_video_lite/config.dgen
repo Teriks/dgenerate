@@ -17,4 +17,4 @@ kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers
 --gen-seeds 1
 --output-path kandinsky5-video-t2v-lite-lora
 --output-size 768x512
---prompts "r0t4tION orb1t, 360-degree camera orbit. A small red lighthouse stands on a rocky coast as waves roll past at sunset; smooth cinematic motion; worst quality, blurry, jittery, distorted"
+--prompts "r0t4tION orb1t, 360-degree camera orbit. A small red lighthouse stands on a rocky coast as waves roll past at sunset, smooth cinematic motion; worst quality, blurry, jittery, distorted"

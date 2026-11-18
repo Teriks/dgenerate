@@ -47,25 +47,38 @@ import dgenerate.webcache as _webcache
 
 
 def _format_prompt_single(prompt):
-    pos = prompt.positive
-    neg = prompt.negative
-
-    if pos is None:
+    if prompt.positive is None:
         raise _batchprocessor.BatchProcessError('Attempt to format a prompt with no positive prompt value.')
 
-    if pos and neg:
-        return _textprocessing.shell_quote(f"{pos}; {neg}")
-    return _textprocessing.shell_quote(pos)
+    # Prompt.__str__ writes \; for a semicolon that belongs in the text.
+    return _textprocessing.shell_quote(str(prompt))
 
 
 def format_prompt(
         prompts: _prompt.Prompt | collections.abc.Iterable[_prompt.Prompt]) -> str:
     """
-    Format a prompt object, or a list of prompt objects, into quoted string(s)
+    Format a prompt object, or a list of prompt objects, into quoted string(s).
+
+    A semicolon that belongs in the text is written \\;, matching Prompt.parse.
     """
     if isinstance(prompts, _prompt.Prompt):
         return _format_prompt_single(prompts)
     return ' '.join(_format_prompt_single(p) for p in prompts)
+
+
+def prompt(pos: str, neg: str | None = None) -> str:
+    """
+    Shell-quote a prompt from positive text and an optional negative text.
+
+    Semicolons in either part stay in that part. They are escaped, so the caller
+    does not write \\;. Omit "neg", or pass an empty string, for no negative
+    prompt.
+    """
+    if not isinstance(pos, str) or not pos.strip():
+        raise _batchprocessor.BatchProcessError(
+            'prompt() requires positive prompt text.')
+    negative = neg if isinstance(neg, str) and neg.strip() else None
+    return _textprocessing.shell_quote(str(_prompt.Prompt(positive=pos, negative=negative)))
 
 
 def format_size(size: collections.abc.Iterable[int]) -> str:
@@ -98,10 +111,10 @@ def format_image_seed(seed_images: str | collections.abc.Iterable[str] | None = 
                       ltx_extra_conditions: collections.abc.Sequence | None = None,
                       preserve_control: bool = False) -> str:
     """
-    Format image seed arguments into a ``--image-seeds`` URI.
+    Format image seed arguments into a --image-seeds URI.
 
     Supports all seed URI options, including LTX condition frames and Wan video inputs.
-    Set ``preserve_control=True`` to keep a control-only input in ``control=`` instead
+    Set preserve_control=True to keep a control-only input in control= instead
     of shortening it to the seed slot.
     """
     return _textprocessing.format_image_seed_uri(
@@ -147,8 +160,8 @@ def format_image_processors(processors: collections.abc.Iterable[str | None]) ->
     preserved when another item has a processor. If every item is empty, an
     empty string is returned.
 
-    For example, ``['flip', None, 'grayscale']`` becomes
-    ``flip +  + grayscale``, leaving the middle image unprocessed.
+    For example, ['flip', None, 'grayscale'] becomes
+    "flip +  + grayscale", leaving the middle image unprocessed.
     """
     processors = list(processors)
     if not any(processors):
@@ -166,7 +179,7 @@ def quote(
 
     The "double" argument allows you to change the outer quote character to double quotes.
 
-    The "quotes" argument determines whether to ddd quotes. If ``False``, only add the
+    The "quotes" argument determines whether to ddd quotes. If False, only add the
     proper escape sequences and no surrounding quotes. This can be useful for templating
     extra string content into an existing string.
     """
@@ -516,8 +529,8 @@ def image_width(file: str) -> int:
     """
     Return the width of an image file on disk as an integer.
 
-    Useful for arithmetic in ``\\setp``, for example:
-    ``\\setp w image_width("input.png") * 2``
+    Useful for arithmetic in \\setp, for example:
+    \\setp w image_width("input.png") * 2
     """
     with PIL.Image.open(file) as img:
         return img.width
@@ -527,16 +540,37 @@ def image_height(file: str) -> int:
     """
     Return the height of an image file on disk as an integer.
 
-    Useful for arithmetic in ``\\setp``, for example:
-    ``\\setp h image_height("input.png") * 2``
+    Useful for arithmetic in \\setp, for example:
+    \\setp h image_height("input.png") * 2
     """
     with PIL.Image.open(file) as img:
         return img.height
 
 
+def read_text(file: str, encoding: str = 'utf-8') -> str:
+    """
+    Read a whole text file and return its contents as a string.
+
+    "encoding" is the file's encoding. The text is decoded into a Unicode
+    string, so a caption saved as cp1252 or utf-16 can be used in a
+    prompt. Newlines are translated to \\n.
+
+    NOWRAP!
+    \\setp caption read_text('caption.txt', encoding='cp1252')
+
+    NOWRAP!
+    --prompts {{ prompt(read_text('caption.txt')) }}
+    """
+    try:
+        return pathlib.Path(file).read_text(encoding=encoding)
+    except (OSError, UnicodeError, LookupError) as e:
+        raise _batchprocessor.BatchProcessError(
+            f'Could not read "{file}" as {encoding}: {e}') from e
+
+
 def _parse_scale_factors(scale: float | int | str | collections.abc.Sequence) -> tuple[float, float]:
     """
-    Parse a uniform or per-axis scale into ``(scale_width, scale_height)``.
+    Parse a uniform or per-axis scale into (scale_width, scale_height).
     """
     if isinstance(scale, bool):
         raise _batchprocessor.BatchProcessError(
@@ -595,8 +629,8 @@ def scale_size(
     "scale" may be:
 
     * a single number applied to both width and height
-    * a ``(scale_width, scale_height)`` sequence for independent axes
-    * a ``"WxH"`` string of scale factors such as ``"2x1.5"``
+    * a (scale_width, scale_height) sequence for independent axes
+    * a "WxH" string of scale factors such as "2x1.5"
 
     Results are rounded to the nearest integer and clamped to a minimum of 1.
 
@@ -608,7 +642,7 @@ def scale_size(
     scale_size("512x768", (2, 1)) -> "1024x768",
     scale_size("512x768", "2x1.5") -> "1024x1152",
     scale_size("photo.png", 2) -> scaled dimensions of photo.png,
-    ``\\setp out_size scale_size("input.png", (2, 1))``
+    \\setp out_size scale_size("input.png", (2, 1))
     """
     scale_w, scale_h = _parse_scale_factors(scale)
 

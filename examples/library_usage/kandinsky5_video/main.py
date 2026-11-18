@@ -25,7 +25,7 @@ config.video_fps = [24]
 config.animation_format = 'mp4'
 config.output_size = (768, 512)
 
-config.prompts = [Prompt.parse('A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement; worst quality, blurry, jittery, distorted')]
+config.prompts = [Prompt.parse('A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement; worst quality, blurry, jittery, distorted')]
 
 config.device = device
 

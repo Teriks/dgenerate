@@ -21,4 +21,4 @@ kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers
 --gen-seeds 1
 --output-path kandinsky5-comfy-quant-text-encoder
 --output-size 1024x768
---prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+--prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement"

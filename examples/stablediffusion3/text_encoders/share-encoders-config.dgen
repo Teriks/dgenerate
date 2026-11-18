@@ -15,10 +15,9 @@
 \set optimization --model-sequential-offload
 
     
-# this model will load all three text encoders,
-# they are not cached individually as we did not explicitly
-# specify any of them, they are cached with the pipeline
-# as a whole
+# this model loads all three text encoders. Sequential offload
+# keeps them with the pipeline, so they are not entered in
+# the text encoder cache
 
 stabilityai/stable-diffusion-3-medium-diffusers
 --model-type sd3 {{ optimization }}

@@ -4727,7 +4727,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""One or more prompts to try, an image group is generated for each prompt,
                     prompt data is split by ; (semi-colon). The first value is the positive
                     text influence, things you want to see. The Second value is negative
-                    influence IE. things you don't want to see.
+                    influence IE. things you don't want to see. A semicolon that belongs
+                    in the text is written \\;.
                     
                     NOWRAP!
                     Example: --prompts "photo of a horse in a field; artwork, painting, rain".

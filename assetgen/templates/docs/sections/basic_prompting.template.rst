@@ -24,6 +24,59 @@ or ``horse wearing a saddle`` etc.
     --output-size 512x512
 
 
+A semicolon that belongs in the prompt text is written ``\\;``. The first
+``;`` that is not escaped starts the negative prompt. The dgenerate config
+shell, Bash, cmd, and PowerShell all leave ``\\;`` unchanged inside quotes,
+so the spelling is the same in each. The examples below produce the positive
+text ``a sign that says hello; world`` and the negative text ``blurry``.
+
+In a ``.dgen`` file:
+
+.. code-block:: jinja
+
+    --prompts "a sign that says hello\; world; blurry"
+
+Bash:
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    dgenerate sd2-community/stable-diffusion-2-1 \
+    --prompts "a sign that says hello\; world; blurry"
+
+cmd:
+
+.. code-block:: text
+
+    dgenerate sd2-community/stable-diffusion-2-1 --prompts "a sign that says hello\; world; blurry"
+
+PowerShell:
+
+.. code-block:: powershell
+
+    dgenerate sd2-community/stable-diffusion-2-1 --prompts "a sign that says hello\; world; blurry"
+
+Quote the prompt in PowerShell. An unquoted ``;`` starts a new statement.
+Do not write ``\\\\;``. Bash removes one of those backslashes and PowerShell
+does not, so the two shells would not agree.
+
+In a config template, ``prompt(pos, neg)`` escapes the semicolons for you.
+``neg`` can be omitted. The result is already shell-quoted:
+
+.. code-block:: jinja
+
+    --prompts {{ prompt('a sign that says hello; world', 'blurry; rain') }}
+
+``read_text(path, encoding='utf-8')`` reads a whole text file. The encoding
+is the file's own encoding. The result is a Unicode string:
+
+.. code-block:: jinja
+
+    \setp caption read_text('caption.txt', encoding='cp1252')
+    --prompts {{ prompt(caption) }}
+
+
 Multiple Prompts
 ================
 

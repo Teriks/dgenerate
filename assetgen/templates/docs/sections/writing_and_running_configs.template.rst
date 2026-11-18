@@ -11,21 +11,33 @@ Loading the necessary libraries and bringing models into memory is quite slow, s
 this way allows for multiple invocations using different arguments, without needing to load the
 machine learning libraries and models multiple times in a row.
 
-When a model is loaded dgenerate caches it in memory with it's creation parameters, which includes
-among other things the pipeline mode (basic, img2img, inpaint), user specified UNets, VAEs, LoRAs,
-Textual Inversions, and ControlNets.
+When a pipeline is created, dgenerate keeps that pipeline in an in-memory cache together
+with the arguments that created it. Those arguments include the pipeline type
+(txt2img, img2img, or inpaint), LoRAs, textual inversions, and any UNet, transformer,
+VAE, text encoder, image encoder, ControlNet, or T2I adapter given with a URI. A later
+invocation with the same arguments is taken from that cache.
 
-If another invocation of the model occurs with creation parameters that are identical, it will be
-loaded out of an in memory cache, which greatly increases the speed of the invocation.
+UNets, transformers, VAEs, text encoders, image encoders, ControlNets, T2I adapters,
+and prompt upsamplers each have their own cache as well. On an image pipeline, the
+model's UNet or transformer, its VAE, and its text encoders are entered in those
+caches, including the copies that ship with the checkpoint. An image encoder, ControlNet,
+or T2I adapter is entered when you specify one. A video pipeline keeps the checkpoint's
+own components with the pipeline. A replacement ``--transformer``, ``--vae``, or
+``--text-encoders`` value is also entered in the matching component cache, and a prompt
+upsampler is entered in the prompt upsampler cache.
 
-Diffusion Pipelines, user specified UNets, VAEs, Text Encoders, Image Encoders, ControlNet,
-and T2I Adapter models are cached individually.
+A few loads are left out of the component caches and stay with the pipeline:
 
-All user specifiable model objects can be reused by diffusion pipelines in certain
-situations and this is taken advantage of by using an in memory cache of these objects.
+* ``--model-cpu-offload``, ``--model-sequential-offload``, and ``--model-group-offload``
+  do this for an image pipeline's modules. A Z-Image ControlNet stays with the pipeline
+  in every case, because it is built from that pipeline's transformer.
+* A quantized UNet, transformer, text encoder, or ControlNet is left out. A quantized
+  prompt upsampler is left out of the prompt upsampler cache.
+* While LoRAs are applied on an image pipeline, the UNet, transformer, and text encoders
+  are left out. An IP adapter leaves the UNet out.
 
-In effect, the creation of a diffusion pipeline is memoized, as well as the creation of
-any pipeline subcomponents when you have specified them explicitly with a URI.
+``\save_modules`` and ``\use_modules`` can hand one of those modules to the next
+invocation when it was left out of its component cache.
 
 A number of things effect cache hit or miss upon a dgenerate invocation, extensive information
 regarding runtime caching behavior of a pipelines and other models can be observed using ``-v/--verbose``

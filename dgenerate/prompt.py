@@ -94,12 +94,14 @@ class Prompt:
             self._embedded_args = dict()
 
     def __str__(self):
-        if self._positive and self._negative:
-            return f'{self._positive}{self._delimiter} {self._negative}'
-        elif self._positive:
-            return self._positive
-        elif self._negative:
-            return self._delimiter + self._negative
+        positive = _escape_delimiter(self._positive, self._delimiter)
+        negative = _escape_delimiter(self._negative, self._delimiter)
+        if positive and negative:
+            return f'{positive}{self._delimiter} {negative}'
+        elif positive:
+            return positive
+        elif negative:
+            return self._delimiter + negative
         else:
             return ''
 
@@ -385,7 +387,9 @@ class Prompt:
         Parse the positive and negative prompt from a string and return a prompt object.
 
         :param value: the string
-        :param delimiter: The prompt delimiter character
+        :param delimiter: The prompt delimiter character. A delimiter preceded by a
+            backslash is literal text and does not split the prompt. ``\\;`` is a
+            semicolon in the text when the delimiter is ``;``.
         :param parse_embedded_args: parse embedded args? ``< arg: value >``
         :param embedded_arg_names: list of embedded argument names to parse, if ``None``, all are parsed.
 
@@ -411,16 +415,7 @@ class Prompt:
             if upscaler is not None:
                 embedded_args.pop('upscaler')
 
-        parse = value.split(delimiter, 1)
-        if len(parse) == 1:
-            positive = parse[0].strip()
-            negative = None
-        elif len(parse) == 2:
-            positive = parse[0].strip()
-            negative = parse[1].strip()
-        else:
-            positive = None
-            negative = None
+        positive, negative = _split_prompt(value, delimiter)
 
         return Prompt(positive=positive,
                       negative=negative,
@@ -435,5 +430,45 @@ Prompts = collections.abc.Sequence[Prompt]
 PromptOrPrompts = typing.Union[Prompt, collections.abc.Sequence[Prompt]]
 OptionalPrompts = typing.Optional[Prompts]
 OptionalPromptOrPrompts = typing.Optional[PromptOrPrompts]
+
+def _split_prompt(value: str, delimiter: str) -> tuple[str, str | None]:
+    """
+    Split on the first delimiter that is not escaped with a backslash.
+
+    ``\\;`` is a semicolon that belongs in the text when ``delimiter`` is ``;``.
+    The backslash is removed. A backslash before any other character stays.
+    """
+    positive = []
+    i = 0
+    while i < len(value):
+        if value[i] == '\\' and i + 1 < len(value) and value[i + 1] == delimiter:
+            positive.append(delimiter)
+            i += 2
+            continue
+        if value[i] == delimiter:
+            return ''.join(positive).strip(), _unescape_delimiter(value[i + 1:], delimiter).strip()
+        positive.append(value[i])
+        i += 1
+    return ''.join(positive).strip(), None
+
+
+def _unescape_delimiter(value: str, delimiter: str) -> str:
+    out = []
+    i = 0
+    while i < len(value):
+        if value[i] == '\\' and i + 1 < len(value) and value[i + 1] == delimiter:
+            out.append(delimiter)
+            i += 2
+            continue
+        out.append(value[i])
+        i += 1
+    return ''.join(out)
+
+
+def _escape_delimiter(value: str | None, delimiter: str) -> str | None:
+    if not value:
+        return value
+    return value.replace(delimiter, '\\' + delimiter)
+
 
 __all__ = _types.module_all()

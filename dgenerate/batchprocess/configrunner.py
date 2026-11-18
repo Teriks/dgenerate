@@ -177,6 +177,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'unquote': _configrunnerbuiltins.unquote,
             'quote': _configrunnerbuiltins.quote,
             'format_prompt': _configrunnerbuiltins.format_prompt,
+            'prompt': _configrunnerbuiltins.prompt,
             'format_size': _configrunnerbuiltins.format_size,
             'format_image_seed': _configrunnerbuiltins.format_image_seed,
             'format_image_processors': _configrunnerbuiltins.format_image_processors,
@@ -185,6 +186,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'image_size': _configrunnerbuiltins.image_size,
             'image_width': _configrunnerbuiltins.image_width,
             'image_height': _configrunnerbuiltins.image_height,
+            'read_text': _configrunnerbuiltins.read_text,
             'scale_size': _configrunnerbuiltins.scale_size,
             'size_is_aligned': _configrunnerbuiltins.size_is_aligned,
             'size_is_pow2': _configrunnerbuiltins.size_is_pow2,
@@ -341,7 +343,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     @staticmethod
     def _clear_object_cache(args: collections.abc.Sequence[str]):
         """
-        Clear a specific dgenerate object cache, such as: unet, vae, text_encoder, etc.
+        Clear a specific dgenerate object cache, such as: pipeline, unet, transformer, vae, text_encoder, etc.
 
         Calling with no arguments clears all object caches.
 

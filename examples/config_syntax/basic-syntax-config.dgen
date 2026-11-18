@@ -61,8 +61,10 @@ sd2-community/stable-diffusion-2-1 --prompts "a martian riding a horse"
 
 \clear_object_cache
 
-# Additionally these other directives exist to clear user loaded models
-# out of dgenerate's in memory cache individually
+# Clear one component cache at a time. On an image pipeline the
+# checkpoint's own UNet or transformer, VAE, and text encoders are
+# in these caches, as are components named with a URI.
+# \list_object_caches prints every cache name.
 
 # Clear specifically torch diffusion pipelines
 
@@ -72,6 +74,10 @@ sd2-community/stable-diffusion-2-1 --prompts "a martian riding a horse"
 
 \clear_object_cache unet
 
+# Clear specifically Transformer models
+
+\clear_object_cache transformer
+
 # Clear specifically VAE models
 
 \clear_object_cache vae
@@ -80,9 +86,21 @@ sd2-community/stable-diffusion-2-1 --prompts "a martian riding a horse"
 
 \clear_object_cache text_encoder
 
+# Clear specifically Image Encoder models
+
+\clear_object_cache image_encoder
+
 # Clear specifically ControlNet models
 
 \clear_object_cache controlnet
+
+# Clear specifically T2I Adapter models
+
+\clear_object_cache t2i_adapter
+
+# Clear specifically prompt upsamplers
+
+\clear_object_cache prompt_upsampler
 
 
 # This model was used before but will have to be fully instantiated from scratch again

@@ -13,4 +13,4 @@ Motif-Technologies/Motif-Video-2B
 --gen-seeds 1
 --output-path motif-video-t2v
 --output-size 832x480
---prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement; worst quality, blurry, jittery, distorted"
+--prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement; worst quality, blurry, jittery, distorted"

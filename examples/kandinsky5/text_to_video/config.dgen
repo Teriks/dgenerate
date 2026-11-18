@@ -13,4 +13,4 @@ kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers
 --gen-seeds 1
 --output-path kandinsky5-video-t2v
 --output-size 768x512
---prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement; worst quality, blurry, jittery, distorted"
+--prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement; worst quality, blurry, jittery, distorted"

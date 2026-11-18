@@ -628,7 +628,11 @@ class PipelineWrapper:
         pipeline as needed in order to handle provided generation arguments using lazy
         initialization.
 
-        Pipelines and user specified sub models are memoized and their lifetimes are managed via
+        Pipelines are memoized. On an image pipeline the UNet or transformer, VAE, and text
+        encoders are memoized on their own, including the copies that ship with the checkpoint.
+        Specified image encoders, ControlNets, T2I adapters, prompt upsamplers, and video
+        replacement components are memoized on their own. CPU offload, quantization, and some
+        LoRA loads leave those modules in the pipeline cache only. Lifetimes are managed via
         heuristics based on system memory and available resources.
 
         All arguments to this constructor should be provided as keyword arguments, using this

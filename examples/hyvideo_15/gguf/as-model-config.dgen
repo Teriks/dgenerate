@@ -18,4 +18,4 @@ https://huggingface.co/jayn7/HunyuanVideo-1.5_T2V_480p-GGUF/blob/main/480p/hunyu
 --gen-seeds 1
 --output-path hyvideo-15-gguf-as-model
 --output-size 848x480
---prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+--prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement"

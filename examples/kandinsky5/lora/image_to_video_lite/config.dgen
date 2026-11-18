@@ -18,4 +18,4 @@ kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers
 --output-path kandinsky5-video-i2v-lite-lora
 --output-size 768x512
 --image-seeds "../../../media/beach.jpg"
---prompts "r0t4tION orb1t, 360-degree camera orbit. A sailboat glides along the coast at sunset; gentle cinematic movement; worst quality, blurry, jittery, distorted"
+--prompts "r0t4tION orb1t, 360-degree camera orbit. A sailboat glides along the coast at sunset, gentle cinematic movement; worst quality, blurry, jittery, distorted"

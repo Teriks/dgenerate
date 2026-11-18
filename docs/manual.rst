@@ -2561,7 +2561,8 @@ Help Output
       -p, --prompts PROMPT [PROMPT ...]
             One or more prompts to try, an image group is generated for each prompt, prompt data is split by ;
             (semi-colon). The first value is the positive text influence, things you want to see. The Second
-            value is negative influence IE. things you don't want to see.
+            value is negative influence IE. things you don't want to see. A semicolon that belongs in the text
+            is written \;.
             
             Example: --prompts "photo of a horse in a field; artwork, painting, rain".
             
@@ -4431,6 +4432,59 @@ or ``horse wearing a saddle`` etc.
     --inference-steps 50 \
     --guidance-scales 10 \
     --output-size 512x512
+
+
+A semicolon that belongs in the prompt text is written ``\\;``. The first
+``;`` that is not escaped starts the negative prompt. The dgenerate config
+shell, Bash, cmd, and PowerShell all leave ``\\;`` unchanged inside quotes,
+so the spelling is the same in each. The examples below produce the positive
+text ``a sign that says hello; world`` and the negative text ``blurry``.
+
+In a ``.dgen`` file:
+
+.. code-block:: jinja
+
+    --prompts "a sign that says hello\; world; blurry"
+
+Bash:
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    dgenerate sd2-community/stable-diffusion-2-1 \
+    --prompts "a sign that says hello\; world; blurry"
+
+cmd:
+
+.. code-block:: text
+
+    dgenerate sd2-community/stable-diffusion-2-1 --prompts "a sign that says hello\; world; blurry"
+
+PowerShell:
+
+.. code-block:: powershell
+
+    dgenerate sd2-community/stable-diffusion-2-1 --prompts "a sign that says hello\; world; blurry"
+
+Quote the prompt in PowerShell. An unquoted ``;`` starts a new statement.
+Do not write ``\\\\;``. Bash removes one of those backslashes and PowerShell
+does not, so the two shells would not agree.
+
+In a config template, ``prompt(pos, neg)`` escapes the semicolons for you.
+``neg`` can be omitted. The result is already shell-quoted:
+
+.. code-block:: jinja
+
+    --prompts {{ prompt('a sign that says hello; world', 'blurry; rain') }}
+
+``read_text(path, encoding='utf-8')`` reads a whole text file. The encoding
+is the file's own encoding. The result is a Unicode string:
+
+.. code-block:: jinja
+
+    \setp caption read_text('caption.txt', encoding='cp1252')
+    --prompts {{ prompt(caption) }}
 
 
 Multiple Prompts
@@ -11114,10 +11168,9 @@ and using ``null`` will override it.
     \set optimization --model-sequential-offload
     
         
-    # this model will load all three text encoders,
-    # they are not cached individually as we did not explicitly
-    # specify any of them, they are cached with the pipeline
-    # as a whole
+    # this model loads all three text encoders. Sequential offload
+    # keeps them with the pipeline, so they are not entered in
+    # the text encoder cache
     
     stabilityai/stable-diffusion-3-medium-diffusers
     --model-type sd3 {{ optimization }}
@@ -12388,7 +12441,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     --gen-seeds 1
     --output-path kandinsky5-comfy-quant-text-encoder
     --output-size 1024x768
-    --prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+    --prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement"
 
 .. code-block:: jinja
 
@@ -12415,7 +12468,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     --gen-seeds 1
     --output-path kandinsky5-comfy-quant-text-encoder-nvfp4
     --output-size 1024x768
-    --prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+    --prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement"
 
 .. code-block:: jinja
 
@@ -12442,7 +12495,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     --gen-seeds 1
     --output-path hyvideo-15-comfy-quant-text-encoder
     --output-size 848x480
-    --prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+    --prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement"
 
 .. code-block:: jinja
 
@@ -12470,7 +12523,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     --gen-seeds 1
     --output-path hyvideo-15-comfy-quant-text-encoder-nvfp4
     --output-size 848x480
-    --prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+    --prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement"
 
 .. code-block:: jinja
 
@@ -12497,7 +12550,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     --gen-seeds 1
     --output-path hyvideo-15-gguf-text-encoder
     --output-size 848x480
-    --prompts "A red kite glides above a windswept coastal meadow at golden hour; smooth cinematic camera movement"
+    --prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement"
 
 .. code-block:: jinja
 
@@ -18137,21 +18190,33 @@ Loading the necessary libraries and bringing models into memory is quite slow, s
 this way allows for multiple invocations using different arguments, without needing to load the
 machine learning libraries and models multiple times in a row.
 
-When a model is loaded dgenerate caches it in memory with it's creation parameters, which includes
-among other things the pipeline mode (basic, img2img, inpaint), user specified UNets, VAEs, LoRAs,
-Textual Inversions, and ControlNets.
+When a pipeline is created, dgenerate keeps that pipeline in an in-memory cache together
+with the arguments that created it. Those arguments include the pipeline type
+(txt2img, img2img, or inpaint), LoRAs, textual inversions, and any UNet, transformer,
+VAE, text encoder, image encoder, ControlNet, or T2I adapter given with a URI. A later
+invocation with the same arguments is taken from that cache.
 
-If another invocation of the model occurs with creation parameters that are identical, it will be
-loaded out of an in memory cache, which greatly increases the speed of the invocation.
+UNets, transformers, VAEs, text encoders, image encoders, ControlNets, T2I adapters,
+and prompt upsamplers each have their own cache as well. On an image pipeline, the
+model's UNet or transformer, its VAE, and its text encoders are entered in those
+caches, including the copies that ship with the checkpoint. An image encoder, ControlNet,
+or T2I adapter is entered when you specify one. A video pipeline keeps the checkpoint's
+own components with the pipeline. A replacement ``--transformer``, ``--vae``, or
+``--text-encoders`` value is also entered in the matching component cache, and a prompt
+upsampler is entered in the prompt upsampler cache.
 
-Diffusion Pipelines, user specified UNets, VAEs, Text Encoders, Image Encoders, ControlNet,
-and T2I Adapter models are cached individually.
+A few loads are left out of the component caches and stay with the pipeline:
 
-All user specifiable model objects can be reused by diffusion pipelines in certain
-situations and this is taken advantage of by using an in memory cache of these objects.
+* ``--model-cpu-offload``, ``--model-sequential-offload``, and ``--model-group-offload``
+  do this for an image pipeline's modules. A Z-Image ControlNet stays with the pipeline
+  in every case, because it is built from that pipeline's transformer.
+* A quantized UNet, transformer, text encoder, or ControlNet is left out. A quantized
+  prompt upsampler is left out of the prompt upsampler cache.
+* While LoRAs are applied on an image pipeline, the UNet, transformer, and text encoders
+  are left out. An IP adapter leaves the UNet out.
 
-In effect, the creation of a diffusion pipeline is memoized, as well as the creation of
-any pipeline subcomponents when you have specified them explicitly with a URI.
+``\save_modules`` and ``\use_modules`` can hand one of those modules to the next
+invocation when it was left out of its component cache.
 
 A number of things effect cache hit or miss upon a dgenerate invocation, extensive information
 regarding runtime caching behavior of a pipelines and other models can be observed using ``-v/--verbose``
@@ -18295,8 +18360,10 @@ The following is a config file example that covers the most basic syntax concept
     
     \clear_object_cache
     
-    # Additionally these other directives exist to clear user loaded models
-    # out of dgenerate's in memory cache individually
+    # Clear one component cache at a time. On an image pipeline the
+    # checkpoint's own UNet or transformer, VAE, and text encoders are
+    # in these caches, as are components named with a URI.
+    # \list_object_caches prints every cache name.
     
     # Clear specifically torch diffusion pipelines
     
@@ -18306,6 +18373,10 @@ The following is a config file example that covers the most basic syntax concept
     
     \clear_object_cache unet
     
+    # Clear specifically Transformer models
+    
+    \clear_object_cache transformer
+    
     # Clear specifically VAE models
     
     \clear_object_cache vae
@@ -18314,9 +18385,21 @@ The following is a config file example that covers the most basic syntax concept
     
     \clear_object_cache text_encoder
     
+    # Clear specifically Image Encoder models
+    
+    \clear_object_cache image_encoder
+    
     # Clear specifically ControlNet models
     
     \clear_object_cache controlnet
+    
+    # Clear specifically T2I Adapter models
+    
+    \clear_object_cache t2i_adapter
+    
+    # Clear specifically prompt upsamplers
+    
+    \clear_object_cache prompt_upsampler
     
     
     # This model was used before but will have to be fully instantiated from scratch again
@@ -19056,7 +19139,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [77917556657227]
+            Value: [10134480529904]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -19247,15 +19330,25 @@ The dgenerate specific jinja2 functions/filters are:
     
         The "double" argument allows you to change the outer quote character to double quotes.
     
-        The "quotes" argument determines whether to ddd quotes. If ``False``, only add the proper escape sequences
-        and no surrounding quotes. This can be useful for templating extra string content into an existing string.
+        The "quotes" argument determines whether to ddd quotes. If False, only add the proper escape sequences and
+        no surrounding quotes. This can be useful for templating extra string content into an existing string.
     
     ==============================================================================================================
     format_prompt(prompts: dgenerate.prompt.Prompt | collections.abc.Iterable[dgenerate.prompt.Prompt]) -> str:
     
-        Format a prompt object, or a list of prompt objects, into quoted string(s)
+        Format a prompt object, or a list of prompt objects, into quoted string(s).
     
-    ==============================================================================
+        A semicolon that belongs in the text is written \;, matching Prompt.parse.
+    
+    ===============================================================================
+    prompt(pos: str, neg: str | None = None) -> str:
+    
+        Shell-quote a prompt from positive text and an optional negative text.
+    
+        Semicolons in either part stay in that part. They are escaped, so the caller does not write \;. Omit
+        "neg", or pass an empty string, for no negative prompt.
+    
+    ========================================================================================================
     format_size(size: collections.abc.Iterable[int]) -> str:
     
         Join an iterable of integers into a string separated by the character 'x', for example (512, 512) ->
@@ -19264,13 +19357,12 @@ The dgenerate specific jinja2 functions/filters are:
     ========================================================================================================
     format_image_seed(seed_images: str | collections.abc.Iterable[str] | None = None, mask_images: str | collections.abc.Iterable[str] | None = None, control_images: str | collections.abc.Iterable[str] | None = None, reference_images: str | collections.abc.Iterable[str] | None = None, adapter_images: str | collections.abc.Iterable[str] | None = None, latents: str | collections.abc.Iterable[str] | None = None, audio_latents: str | None = None, floyd_image: str | None = None, resize: str | tuple[int | str, int | str] | None = None, align: int | None = None, aspect: bool = True, frame_start: int | None = None, frame_end: int | None = None, end_image: str | None = None, wan_pose_video: str | None = None, wan_face_video: str | None = None, wan_background_video: str | None = None, wan_driving_video: str | None = None, ltx_index: int | None = None, ltx_strength: float | None = None, ltx_extra_conditions: collections.abc.Sequence | None = None, preserve_control: bool = False) -> str:
     
-        Format image seed arguments into a ``--image-seeds`` URI.
+        Format image seed arguments into a --image-seeds URI.
     
         Supports all seed URI options, including LTX condition frames and Wan video inputs. Set
-        ``preserve_control=True`` to keep a control-only input in ``control=`` instead of shortening it to the
-        seed slot.
+        preserve_control=True to keep a control-only input in control= instead of shortening it to the seed slot.
     
-    ==========================================================================================================
+    =============================================================================================================
     format_image_processors(processors: collections.abc.Iterable[str | None]) -> str:
     
         Format image processor chains for use with image-processor arguments. Per-image + separated chains are
@@ -19284,7 +19376,7 @@ The dgenerate specific jinja2 functions/filters are:
         arguments, use None or an empty string for an image that should have no processor; its empty slot is
         preserved when another item has a processor. If every item is empty, an empty string is returned.
     
-        For example, ``['flip', None, 'grayscale']`` becomes ``flip +  + grayscale``, leaving the middle image
+        For example, ['flip', None, 'grayscale'] becomes "flip +  + grayscale", leaving the middle image
         unprocessed.
     
     ==============================================================================================================
@@ -19321,16 +19413,28 @@ The dgenerate specific jinja2 functions/filters are:
     
         Return the width of an image file on disk as an integer.
     
-        Useful for arithmetic in ``\setp``, for example: ``\setp w image_width("input.png") * 2``
+        Useful for arithmetic in \setp, for example: \setp w image_width("input.png") * 2
     
-    =============================================================================================
+    =====================================================================================
     image_height(file: str) -> int:
     
         Return the height of an image file on disk as an integer.
     
-        Useful for arithmetic in ``\setp``, for example: ``\setp h image_height("input.png") * 2``
+        Useful for arithmetic in \setp, for example: \setp h image_height("input.png") * 2
     
-    ==============================================================================================
+    ======================================================================================
+    read_text(file: str, encoding: str = 'utf-8') -> str:
+    
+        Read a whole text file and return its contents as a string.
+    
+        "encoding" is the file's encoding. The text is decoded into a Unicode string, so a caption saved as cp1252
+        or utf-16 can be used in a prompt. Newlines are translated to \n.
+    
+        \setp caption read_text('caption.txt', encoding='cp1252')
+    
+        --prompts {{ prompt(read_text('caption.txt')) }}
+    
+    ==============================================================================================================
     scale_size(size: str | tuple, scale: float | int | str | collections.abc.Sequence = 1, format_size: bool = True) -> str | tuple:
     
         Scale a dimension or an image file's dimensions by a factor.
@@ -19340,8 +19444,8 @@ The dgenerate specific jinja2 functions/filters are:
     
         "scale" may be:
     
-        * a single number applied to both width and height * a ``(scale_width, scale_height)`` sequence for
-        independent axes * a ``"WxH"`` string of scale factors such as ``"2x1.5"``
+        * a single number applied to both width and height * a (scale_width, scale_height) sequence for
+        independent axes * a "WxH" string of scale factors such as "2x1.5"
     
         Results are rounded to the nearest integer and clamped to a minimum of 1.
     
@@ -19350,10 +19454,10 @@ The dgenerate specific jinja2 functions/filters are:
     
         Examples: scale_size("512x512", 2) -> "1024x1024", scale_size((512, 768), 1.5) -> "768x1152",
         scale_size("512x768", (2, 1)) -> "1024x768", scale_size("512x768", "2x1.5") -> "1024x1152",
-        scale_size("photo.png", 2) -> scaled dimensions of photo.png, ``\setp out_size scale_size("input.png", (2,
-        1))``
+        scale_size("photo.png", 2) -> scaled dimensions of photo.png, \setp out_size scale_size("input.png", (2,
+        1))
     
-    ==============================================================================================================
+    ============================================================================================================
     size_is_aligned(size: str | tuple, align: int) -> bool:
     
         Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700) is aligned to a
@@ -20071,6 +20175,11 @@ such as VAEs etc. outside of relying on the caching system.
     sd2-community/stable-diffusion-2-1 --prompts "prompt 1" "prompt 2" "prompt 3"
     
     sd2-community/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
+    
+    # prompt() builds a quoted prompt from text. Semicolons in either part
+    # stay in that part; the function writes the \; for you.
+    
+    sd2-community/stable-diffusion-2-1 --prompts {{ prompt('a sign that says hello; world', 'blurry') }}
     
     
     # Execute additional config with full templating.
