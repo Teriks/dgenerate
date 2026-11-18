@@ -515,12 +515,16 @@ def _load_one_lora(
         kwargs['load_into_transformer_2'] = True
     import dgenerate.pipelinewrapper.krea2_lora as _krea2_lora
     import dgenerate.pipelinewrapper.lokr as _lokr
+    # HunyuanVideo 1.5 accepts lora_strength on load_lora_weights, so it is
+    # already in kwargs for that call. These probes take it as their own argument.
+    probe_kwargs = {
+        key: value for key, value in kwargs.items() if key != 'lora_strength'}
     lokr_mode = _lokr.load_lokr_if_present(
         pipeline, model_path, adapter_name,
         lora_strength=lora_strength,
         fuse=fuse,
         fuse_scale=fuse_scale,
-        **kwargs)
+        **probe_kwargs)
     if lokr_mode:
         return lokr_mode
     if _pipeline_is_krea2(pipeline):
@@ -529,7 +533,7 @@ def _load_one_lora(
             lora_strength=lora_strength,
             fuse=fuse,
             fuse_scale=fuse_scale,
-            **kwargs)
+            **probe_kwargs)
 
     if not _pipeline_is_z_image(pipeline):
         pipeline.load_lora_weights(model_path, adapter_name=adapter_name, **kwargs)

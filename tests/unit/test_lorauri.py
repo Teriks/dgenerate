@@ -287,6 +287,24 @@ class TestLoraUri(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             wrapped.merge()
 
+    def test_pipeline_lora_strength_is_not_forwarded_into_the_lokr_probe(self):
+        class Pipe:
+            def load_lora_weights(
+                    self, model_path, adapter_name=None,
+                    hotswap=False, lora_strength=1.0, **kwargs):
+                self.seen = (model_path, adapter_name, lora_strength, dict(kwargs))
+
+        pipeline = Pipe()
+        _lorauri._load_one_lora(
+            pipeline, 'missing-lora.safetensors', '0',
+            lora_strength=0.75, weight_name='missing-lora.safetensors')
+
+        self.assertEqual(pipeline.seen[0], 'missing-lora.safetensors')
+        self.assertEqual(pipeline.seen[1], '0')
+        self.assertEqual(pipeline.seen[2], 0.75)
+        self.assertEqual(pipeline.seen[3]['weight_name'], 'missing-lora.safetensors')
+        self.assertNotIn('lora_strength', pipeline.seen[3])
+
 
 if __name__ == '__main__':
-    unittest.main() 
+    unittest.main()
