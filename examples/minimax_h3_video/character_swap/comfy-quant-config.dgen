@@ -2,8 +2,8 @@
 #! dgenerate 6.0.0
 
 # Same character swap as config.dgen, on the pruned Ref2VA int8 transformer
-# and the int8 Qwen3-VL encoder. The LoRA is added on each packed linear
-# and the base weights stay packed.
+# and an int8 Qwen3-VL encoder that keeps the language-model head. The LoRA
+# is added on each packed linear and the base weights stay packed.
 # The boxer is examples/media/man-fighting-pose.jpg.
 # The dance is examples/media/rickroll-roll.gif.
 
@@ -12,7 +12,7 @@ MiniMaxAI/MiniMax-H3
 --dtype bfloat16
 --model-sequential-offload
 --transformer https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors
---text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors"
+--text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Teriks/MiniMax-H3-Qwen3VL-text-encoder/blob/main/text_encoder-int8_tensorwise.safetensors"
 --loras "https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/blob/main/h3_character_swap_v1.5.safetensors;scale=1.0"
 --inference-steps 30
 --video-lengths 5

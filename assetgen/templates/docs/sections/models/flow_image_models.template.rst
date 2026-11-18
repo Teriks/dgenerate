@@ -99,6 +99,7 @@ Klein encodes prompts with Qwen3. ``--flux2-text-encoder-out-layers`` defaults
 to ``9,18,27``.
 
 * Base 9B: ``black-forest-labs/FLUX.2-klein-base-9B``. Gated. Guidance 4, 50 steps.
+* Base 4B: ``black-forest-labs/FLUX.2-klein-base-4B``. Public. Guidance 4, 50 steps.
 * Distilled 4B: ``black-forest-labs/FLUX.2-klein-4B``. Public. Four steps.
   A distilled Klein checkpoint ignores ``--guidance-scales`` above 1.
 
@@ -368,6 +369,7 @@ Latents interchange is not supported. Those six steps and their output heads are
 The default size is 2048. Width and height are multiples of 32. A request smaller than 2048×2048 is generated on a larger canvas of the same aspect ratio and resized back to the requested size.
 
 ``--image-seeds`` are reference images, with no mask and no strength. Several references use the ``images:`` prefix and are one generation, for example ``images: a.png, b.png``. They may differ in size. The checkpoint resizes each one. The prompt refers to them in order as Picture 1, Picture 2, and so on. The prompt is encoded verbatim.
+``--pipeline-prompt-enhance`` rewrites it first, in the language of the prompt. With reference images the rewrite keeps the Picture 1, Picture 2 labels.
 
 Cache-DiT caches ``transformer_blocks``.
 
@@ -395,36 +397,3 @@ multiply the number of images.
   paste, is passed as ``padding_mask_crop`` on Klein and Qwen inpaint. The
   pipeline then crops and pastes. A two-sided or four-sided padding, a feather,
   or masked paste stays on dgenerate's crop.
-
-Console recipes
----------------
-
-The Console UI recipes are:
-
-* ``Flux.2 Dev``
-* ``Flux.2 Klein``
-* ``Flux.2 Klein KV``
-* ``Z-Image Turbo``
-* ``Z-Image Turbo (SDNQ)``
-* ``Z-Image Base (2-step LoRA)``
-* ``Z-Image ControlNet``
-* ``Z-Image Omni``
-* ``Qwen-Image``
-* ``Qwen-Image Edit``
-* ``Qwen-Image Layered``
-* ``Qwen-Image 2.1``
-* ``Qwen-Image 2.1 Turbo``
-* ``Krea 2 Raw``
-* ``Krea 2 Turbo``
-* ``Kandinsky 5 Image``
-* ``Kandinsky 5 Image Edit``
-* ``HunyuanImage 2.1``
-* ``HunyuanImage 2.1 Distilled``
-* ``HunyuanImage 2.1 Refiner``
-* ``MiniMax-H3-Image``
-* ``MiniMax-H3-Image (GGUF)``
-* ``MiniMax-H3-Image (GGUF + Encoder)``
-* ``MiniMax-H3-Image (ComfyUI Quant)``
-* ``MiniMax-H3-Image (ComfyUI Quant + Encoder)``
-
-GGUF recipes for those models set ``--transformer`` to a quantized file and leave the parent repository as the model line.

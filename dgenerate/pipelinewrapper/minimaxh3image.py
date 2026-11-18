@@ -23,6 +23,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import inspect
 
 import torch
@@ -133,6 +135,32 @@ def _quantized(module) -> bool:
     return 'gguf' in name or 'sdnq' in name or 'bitsandbytes' in name or 'quant' in name
 
 
+_defer_place = contextvars.ContextVar('dgenerate_defer_minimax_image_place', default=False)
+
+
+@contextlib.contextmanager
+def defer_place():
+    """Build the pipeline without moving the VAE onto the generation device.
+
+    Prompt enhance then uses that device for the text encoder. Placement runs
+    after the rewrite, through :func:`finish_deferred_place`.
+    """
+    token = _defer_place.set(True)
+    try:
+        yield
+    finally:
+        _defer_place.reset(token)
+
+
+def finish_deferred_place(pipe) -> None:
+    """Run placement that :func:`defer_place` postponed."""
+    pending = getattr(pipe, '_dgenerate_minimax_image_place', None)
+    if pending is None:
+        return
+    pipe._dgenerate_minimax_image_place = None
+    place(pipe, *pending)
+
+
 def place(pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload):
     """
     Place MiniMax-H3-Image components.
@@ -140,7 +168,13 @@ def place(pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_o
     The modular pipeline has no ``model_cpu_offload_seq``. Any offload flag
     hooks the text encoder and transformer so each visits the GPU for its
     forward and returns to CPU. The VAE stays on the generation device.
+    A prompt rewrite postpones this until the text encoder is finished, so
+    the VAE is not on that device during the rewrite.
     """
+    if _defer_place.get():
+        pipe._dgenerate_minimax_image_place = (
+            device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
+        return
     import dgenerate.pipelinewrapper.flux3 as _flux3
     import dgenerate.pipelinewrapper.minimaxh3 as _minimax
 

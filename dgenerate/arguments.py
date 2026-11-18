@@ -6129,7 +6129,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             type=_type_non_negative_float,
             help="""GiB of free GPU memory to leave unused when splitting the
                     text encoder across GPU and CPU, on top of 10 percent of
-                    free memory. The default is 2. Raise it when the rewrite
+                    free memory. The default is 2. Packed integer weights also
+                    reserve room for the bf16 copy of the largest matrix, which
+                    the speed test allocates on the GPU. Raise it when the rewrite
                     runs out of memory. Lower it to keep more layers on the GPU.
                     Also turns --pipeline-prompt-enhance on when that flag is omitted.
                     FLUX.3 splits the prompt upsampler. Kandinsky 6 video splits

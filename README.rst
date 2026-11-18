@@ -34,6 +34,7 @@ Image Generation
 * Control Nets, T2I Adapters, IP Adapters, LoRA, and Textual Inversion (embeddings), with models from HuggingFace and CivitAI
 * Advanced prompt weighting (LPW), SD-WebUI (Common syntax), InvokeAI syntax, and ``llm4gen`` (SD1.5 only)
 * Run large models on limited hardware with inference optimizations, quantization, and pre-quantized GGUF and ComfyUI FP8 / INT8 / NVFP4 checkpoints, with hardware accelerated quantized matmuls where supported
+* Write those GGUF and ComfyUI safetensors files, or an SDNQ or bitsandbytes repository, with ``dgenerate --sub-command quantize``
 * Batch process parameter combinations combinatorially to generate variations
 
 Video Generation
@@ -43,7 +44,7 @@ Video Generation
 * Text-to-video, or image-to-video with a still in ``--image-seeds`` as the opening frame. With LTX, use a clip as the opening, ``last-frame=`` as the closing frame (a still or clip), or both, to extend existing footage or generate a lead-in; slice with ``--frame-start`` / ``--frame-end``
 * Wan modes: image-to-video, first-last-frame, video-to-video, and VACE; ``--model-type wan-animate`` and ``wan-animate-2`` animate a character still from a driving clip (``wan-driving=``, ``wan-pose=``, ``wan-face=``, ``--wan-animate-preprocess``)
 * LTX-2.5 guided by an IC-LoRA from ``--ltx-ic-lora`` (canny, depth, pose, etc.) using a reference clip processed by ``--control-image-processors``, and style or effect LoRAs from ``--loras``
-* MiniMax-H3-Fun-Controlnet-Union-2.0 through ``--control-nets``
+* MiniMax-H3-Fun-Controlnet-Union-2.0 support through ``--control-nets``
 * Set clip length and frame rate with ``--video-lengths`` and ``--video-fps`` (LTX-2.5 can predict duration from the prompt; LTX-2.5, Kandinsky 6, and MiniMax-H3 mux generated audio into mp4 output); compile blocks with ``--torch-compile``
 * Example configs under ``examples/ltx2``, ``examples/ltx_video``, ``examples/wan``, ``examples/wan_animate``, ``examples/wan_animate_2``, ``examples/hyvideo_15``, ``examples/kandinsky5``, ``examples/kandinsky6``, ``examples/minimax_h3_video``, and ``examples/motif_video``; see the `video generation manual <https://dgenerate.readthedocs.io/en/version_6.0.0/manual.html#video-generation>`_
 

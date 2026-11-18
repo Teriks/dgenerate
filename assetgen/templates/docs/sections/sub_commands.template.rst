@@ -275,7 +275,9 @@ Sub Command: quantize
 ---------------------
 
 The ``quantize`` sub-command reads a diffusers model and writes quantized
-weights. The model is a folder on disk, a Hugging Face repository, one weight
+weights. This sub-command also exists as the config directive: ``\quantize``
+
+The model is a folder on disk, a Hugging Face repository, one weight
 file, or a blob link to one weight file.
 ``--subfolders`` selects component folders such as ``transformer`` and
 ``text_encoder``. Without it, every component that has weights is quantized.
@@ -395,6 +397,34 @@ Components you did not select are copied at full precision, including
 ``model_index.json``. ``--comfy`` applies to the GGUF and Comfy safetensors
 files; these repositories keep diffusers tensor names.
 
+``--hf-upload user/name`` uploads the written files to that Hugging Face model
+repository after the quant finishes. A new repository is public unless
+``--hf-private`` is set or the account default is private. An existing
+repository keeps its visibility.
+
+One ``--quantizer`` repository and no ``--formats`` is uploaded at the repo
+root, so dgenerate can load it as a model. Several files keep the names
+written under ``--output``.
+
+The token is ``--auth-token``, ``HF_TOKEN``, or a saved ``huggingface-cli``
+login.
+
+``--hf-upload-card`` writes a ``README.md`` model card. With no value, the
+card is built from the source model, the formats, every quantizer setting,
+and the command that produced the files. Quote a value when it contains
+spaces. Without this option, the upload has no model card.
+
+* ``extra:TEXT`` and ``extra-file:PATH`` insert that text into the generated
+  card, after the introduction.
+* ``file:PATH`` uses that UTF-8 file as the whole card.
+* ``text:TEXT`` uses that text as the whole card.
+
+``--hf-upload-card-preview`` prints that card and does not quantize or upload.
+Pass ``--output`` to also write ``README.md`` there. With no
+``--hf-upload-card``, the preview is the generated card. ``extra:`` and
+``extra-file:`` are inserted into that card. ``file:`` and ``text:`` replace
+it. Use the preview to read the card before a long quant or a publish.
+
 A single file is named from its parent folder when the filename is a generic
 component weight, so ``text_encoder/model.fp16.safetensors`` is written as
 ``text_encoder-Q4_K.gguf``. ``config.json`` beside that file is read when it
@@ -462,6 +492,25 @@ the component has tensors.
     # Names, short names, and presets
     dgenerate --sub-command quantize --list-formats
 
+    # Publish Q4_K with a generated model card. --hf-upload-card-preview
+    # prints the card and does not quantize or upload.
+    dgenerate --sub-command quantize ./model --subfolders transformer \
+        --formats q4 -o quants --hf-upload user/model-q4 --hf-upload-card
+    dgenerate --sub-command quantize ./model --hf-upload-card-preview \
+        --quantizer "sdnq;type=uint4;group-size=32;use-svd=true"
+
+    # Use a file, or the text after text:, as the model card
+    dgenerate --sub-command quantize ./model --formats q4 -o quants \
+        --hf-upload user/model-q4 --hf-upload-card file:README.md
+    dgenerate --sub-command quantize ./model --formats q4 -o quants \
+        --hf-upload user/model-q4 --hf-upload-card "text:# My quant"
+
+    # Add a note to the generated card
+    dgenerate --sub-command quantize ./model --formats q4 -o quants \
+        --hf-upload user/model-q4 --hf-upload-card "extra:Use guidance 3.5."
+    dgenerate --sub-command quantize ./model --formats q4 -o quants \
+        --hf-upload user/model-q4 --hf-upload-card extra-file:notes.md
+
 The help output of ``quantize`` is as follows:
 
 @COMMAND_OUTPUT[dgenerate --sub-command quantize --help]
@@ -509,6 +558,8 @@ Sub Command: assistant
 ----------------------
 
 The ``assistant`` sub-command writes a dgenerate config from a plain language request.
+This sub-command also exists as the config directive: ``\assistant``
+
 A local Qwen model, running through the ``xllamacpp`` extra, writes the config. It is
 guided by the closest example configs and documentation, retrieved from an index of
 the dgenerate examples and docs that ships with dgenerate. The config is then checked
@@ -654,6 +705,8 @@ Sub Command: kernel-warmup
 --------------------------
 
 The ``kernel-warmup`` sub-command downloads the quant kernels for this computer.
+This sub-command also exists as the config directive: ``\kernel_warmup``
+
 ComfyUI quantized checkpoints fetch a platform-specific kernel from the
 Hugging Face Hub the first time they run. This command fetches the kernels
 for the current accelerator, and no others, so a later run can stay offline.
@@ -682,7 +735,10 @@ Sub Command: transpile
 ----------------------
 
 The ``transpile`` sub-command reads a dgenerate config and writes a Python script
-that runs the same actions through dgenerate's Python API. A generation line
+that runs the same actions through dgenerate's Python API. This sub-command also
+exists as the config directive: ``\transpile``
+
+A generation line
 becomes a ``DgenerateArguments`` object. ``{% if %}``, ``{% for %}``,
 ``{% set %}``, ``{% filter %}``, and ``{% with %}`` become Python. Shell-parsed directives such as ``\image_process`` and
 ``\download`` become calls that pass already split arguments. ``\set``,

@@ -1,15 +1,17 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Pruned int8 ConvRot transformer and the matching Qwen3-VL int8 encoder.
+# Pruned int8 ConvRot transformer and an int8 Qwen3-VL encoder that keeps
+# the language-model head.
 # https://huggingface.co/Comfy-Org/MiniMax-H3
+# https://huggingface.co/Teriks/MiniMax-H3-Qwen3VL-text-encoder
 
 MiniMaxAI/MiniMax-H3
 --model-type minimax-h3-video
 --dtype bfloat16
 --model-sequential-offload
 --transformer https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors
---text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors"
+--text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Teriks/MiniMax-H3-Qwen3VL-text-encoder/blob/main/text_encoder-int8_tensorwise.safetensors"
 --inference-steps 30
 --video-lengths 5
 --video-fps 24

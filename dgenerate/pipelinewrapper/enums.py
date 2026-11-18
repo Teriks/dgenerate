@@ -1132,6 +1132,8 @@ PIPELINE_PROMPT_ENHANCE_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.KANDINSKY5_IMAGE,
     ModelType.KANDINSKY5_VIDEO,
     ModelType.KANDINSKY6_VIDEO,
+    ModelType.MINIMAX_H3,
+    ModelType.MINIMAX_H3_IMAGE,
     ModelType.KREA2,
     ModelType.LTX2,
 )

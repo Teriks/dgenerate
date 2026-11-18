@@ -29,6 +29,42 @@ def _parsed(**values):
 
 
 class TestMiniMaxH3(unittest.TestCase):
+    def test_video_prompt_enhance_uses_the_loaded_encoder(self):
+        import dgenerate.pipelinewrapper.videopipelines.minimax as _call
+        import dgenerate.pipelinewrapper.videopipelines.media as _media
+
+        prompt = types.SimpleNamespace(positive='a fox', negative=None)
+        user_args = types.SimpleNamespace(
+            sigmas=None, timesteps=None, video_frames=None, end_video_frames=None,
+            prompt=prompt, guidance_scale=1.0, video_fps=24, inference_steps=30,
+            images=None, end_images=None, reference_media_paths=None,
+            scheduler_uri=None, second_model_scheduler_uri=None,
+            video_length=5, width=1024, height=576, vae_slicing=False,
+            latents=None, audio_latents=None, pipeline_prompt_enhance=True, seed=1)
+        wrapper = types.SimpleNamespace(
+            controlnet_uris=None, model_cpu_offload=True,
+            model_sequential_offload=False, model_group_offload=False, device='cpu')
+        pipe = object()
+
+        def enhance(wrapper, pipe_arg, args, references=None):
+            self.assertIs(pipe_arg, pipe)
+            self.assertIsNone(references)
+            args.prompt = types.SimpleNamespace(positive='rewritten fox', negative=None)
+
+        def invoke(wrapper, pipe_arg, kwargs, user_args=None):
+            self.assertEqual(kwargs['prompt'], 'rewritten fox')
+            return {'videos': [], 'audio': None, 'sampling_rate': 24000}
+
+        with unittest.mock.patch.object(
+                _videopipelines, '_video_pipeline', return_value=(pipe, None)), \
+                unittest.mock.patch(
+                    'dgenerate.pipelinewrapper.videopipelines.single_image_video._enhance_loaded_video_prompt',
+                    enhance), \
+                unittest.mock.patch.object(_videopipelines, '_invoke', invoke), \
+                unittest.mock.patch.object(_media, 'frames_from_output', return_value=[]), \
+                unittest.mock.patch.object(_media, 'audio_to_numpy', return_value=None):
+            _call.call_minimax_h3(wrapper, user_args)
+
     def test_model_type_registration(self):
         self.assertEqual(
             _enums.get_model_type_enum('minimax-h3-video'), _enums.ModelType.MINIMAX_H3)

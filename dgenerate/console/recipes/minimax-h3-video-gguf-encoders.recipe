@@ -1,6 +1,6 @@
 title: MiniMax-H3-Video Text to Video (GGUF + Encoder)
 
-# Curve Q4_0 transformer and the ComfyUI int8 ConvRot Qwen3-VL encoder.
+# Curve Q4_0 transformer and an int8 Qwen3-VL encoder that keeps the language-model head.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"MiniMaxAI/MiniMax-H3", "optional":false, "file-types":["models"]}]
 --model-type minimax-h3-video
@@ -11,7 +11,7 @@ title: MiniMax-H3-Video Text to Video (GGUF + Encoder)
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @torchcompile[{"model-type":"minimax-h3-video"}]
 @quantizer[{"model-type":"minimax-h3-video"}]
-@textencoders[{"model-type":"minimax-h3-video", "arg":"--text-encoders", "divider-after":true, "defaults":["Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors"]}]
+@textencoders[{"model-type":"minimax-h3-video", "arg":"--text-encoders", "divider-after":true, "defaults":["Qwen3VLForConditionalGeneration;model=https://huggingface.co/Teriks/MiniMax-H3-Qwen3VL-text-encoder/blob/main/text_encoder-int8_tensorwise.safetensors"], "suggestions":[[{"label":"int8","value":"Qwen3VLForConditionalGeneration;model=https://huggingface.co/Teriks/MiniMax-H3-Qwen3VL-text-encoder/blob/main/text_encoder-int8_tensorwise.safetensors"},{"label":"nvfp4","value":"Qwen3VLForConditionalGeneration;model=https://huggingface.co/Teriks/MiniMax-H3-Qwen3VL-text-encoder/blob/main/text_encoder-nvfp4.safetensors"}]]}]
 @submodelbuilder[{"label":"Transformer GGUF", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q4_0.gguf", "divider-after":true, "suggestions":[{"label":"fl2va curve Q4_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q4_0.gguf"}, {"label":"fl2va curve Q8_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q8_0.gguf"}, {"label":"fl2va Q4_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-Q4_0.gguf"}]}]
 @int[{"label":"Inference Steps","arg":"--inference-steps","default":30,"min":1}]
 @float[{"label":"Video Length (seconds)", "arg":"--video-lengths", "default":5.17, "min":5, "max":15}]
@@ -21,6 +21,16 @@ title: MiniMax-H3-Video Text to Video (GGUF + Encoder)
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
 @switch[{"label":"Output Configs", "arg":"--output-configs"}]
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1344x768"}]
+@switch[{"id":"pipeline-prompt-enhance", "label":"Pipeline Prompt Enhance", "arg":"--pipeline-prompt-enhance", "divider-before":true}]
+@stringfile[{"label":"Enhancer System Prompt", "arg":"--pipeline-prompt-enhance", "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@seeds[{"label":"Enhancer Seeds", "optional":true, "default":"", "seeds-arg":"--pipeline-prompt-enhance-seeds", "count-arg":"--pipeline-prompt-enhance-gen-seeds", "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@float[{"label":"Enhancer Temperature", "arg":"--pipeline-prompt-enhance-temperature", "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@float[{"label":"Enhancer Top-P", "arg":"--pipeline-prompt-enhance-top-p", "min":0, "max":1, "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@int[{"label":"Enhancer Top-K", "arg":"--pipeline-prompt-enhance-top-k", "min":0, "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@float[{"label":"Enhancer Presence Penalty", "arg":"--pipeline-prompt-enhance-presence-penalty", "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@int[{"label":"Enhancer Max New Tokens", "arg":"--pipeline-prompt-enhance-max-new-tokens", "min":1, "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@int[{"label":"Enhancer Min New Tokens", "arg":"--pipeline-prompt-enhance-min-new-tokens", "min":0, "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@float[{"label":"Enhancer GPU Headroom (GiB)", "arg":"--pipeline-prompt-enhance-gpu-headroom", "min":0, "divider-after":true, "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]

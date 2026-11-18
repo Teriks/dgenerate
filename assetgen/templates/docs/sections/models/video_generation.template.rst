@@ -195,6 +195,14 @@ The examples use sequential CPU offload. ``--model-cpu-offload``,
 encoder and transformer the same way: each visits the GPU for its forward
 and returns to CPU.
 
+``--pipeline-prompt-enhance`` rewrites the prompt with that Qwen3-VL encoder
+before the prompt is encoded. The rewrite stays in the language of the prompt.
+The opening frame is shown as Picture 1 and the last frame as Picture 2.
+A last frame alone is Picture 1. A reference list is shown in order:
+an image is Picture N, a video is Video N shown as its opening frame, and
+audio is Audio N with no picture. The rewrite keeps those labels. An argument value
+can replace the built-in system prompt, see ``--help`` for usage details.
+
 See `examples/minimax_h3_video/text_to_video/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/text_to_video/config.dgen>`_,
 `examples/minimax_h3_video/keyframes/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/keyframes/config.dgen>`_,
 `examples/minimax_h3_video/references/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/references/config.dgen>`_,

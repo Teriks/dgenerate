@@ -6396,11 +6396,23 @@ class PipelineWrapper:
                                 lambda: _textprocessing.debug_format_args(
                                     copy_args.get_pipeline_wrapper_kwargs()))
 
-            self._lazy_init_pipeline(copy_args)
-            if (copy_args.pipeline_prompt_enhance
-                    and not _enums.model_type_is_flux3(self._model_type)):
-                import dgenerate.pipelinewrapper.promptenhance as _promptenhance
-                _promptenhance.enhance_diffusion_arguments(self, copy_args)
+            defer_minimax_place = (
+                copy_args.pipeline_prompt_enhance
+                and _enums.model_type_is_minimax_h3_image(self._model_type))
+            if defer_minimax_place:
+                import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+                with _minimax_image.defer_place():
+                    self._lazy_init_pipeline(copy_args)
+            else:
+                self._lazy_init_pipeline(copy_args)
+            try:
+                if (copy_args.pipeline_prompt_enhance
+                        and not _enums.model_type_is_flux3(self._model_type)):
+                    import dgenerate.pipelinewrapper.promptenhance as _promptenhance
+                    _promptenhance.enhance_diffusion_arguments(self, copy_args)
+            finally:
+                if defer_minimax_place:
+                    _minimax_image.finish_deferred_place(self._pipeline)
             self._auto_regione_check(copy_args)
             self._apply_pag_applied_layers(self._pipeline, copy_args.pag_applied_layers)
             self._apply_pag_applied_layers(

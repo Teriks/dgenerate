@@ -3296,10 +3296,10 @@ Help Output
             LTX-2 and FLUX.3. LTX-Video (T5) is not supported. Supported --model-type values: flux2,
             flux2-klein-kv, flux3, z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered,
             qwen-image-21, hyimage-21, hyimage-21-refiner, kandinsky5-image, kandinsky5-video, kandinsky6-video,
-            krea2, and ltx2. Any other --pipeline-prompt-enhance-* option, including
-            --pipeline-prompt-enhance-seeds, turns enhancement on with the built-in system prompt when this flag
-            is omitted. This is separate from --prompt-upscaler.
-            ----------------------------------------------------
+            minimax-h3-video, minimax-h3-image, krea2, and ltx2. Any other --pipeline-prompt-enhance-* option,
+            including --pipeline-prompt-enhance-seeds, turns enhancement on with the built-in system prompt when
+            this flag is omitted. This is separate from --prompt-upscaler.
+            --------------------------------------------------------------
       --pipeline-prompt-enhance-seeds SEED [SEED ...]
             One or more seeds for prompt enhancement. Each value is tried in turn with the other arguments,
             including --seeds. These seeds are used only by the enhancer. The image or video still uses --seeds
@@ -3342,10 +3342,12 @@ Help Output
             -------------------------------------------------------------------------------------------
       --pipeline-prompt-enhance-gpu-headroom GIB
             GiB of free GPU memory to leave unused when splitting the text encoder across GPU and CPU, on top of
-            10 percent of free memory. The default is 2. Raise it when the rewrite runs out of memory. Lower it
-            to keep more layers on the GPU. Also turns --pipeline-prompt-enhance on when that flag is omitted.
-            FLUX.3 splits the prompt upsampler. Kandinsky 6 video splits the text encoder.
-            ------------------------------------------------------------------------------
+            10 percent of free memory. The default is 2. Packed integer weights also reserve room for the bf16
+            copy of the largest matrix, which the speed test allocates on the GPU. Raise it when the rewrite
+            runs out of memory. Lower it to keep more layers on the GPU. Also turns --pipeline-prompt-enhance on
+            when that flag is omitted. FLUX.3 splits the prompt upsampler. Kandinsky 6 video splits the text
+            encoder.
+            --------
       --prompt-upsampler URI
             Prompt upsampler URI. The arguments match --transformer: revision, variant, subfolder, dtype,
             quantizer, and compile. weight-name selects one .gguf or .safetensors file in the repository or
@@ -5146,6 +5148,14 @@ The examples use sequential CPU offload. ``--model-cpu-offload``,
 encoder and transformer the same way: each visits the GPU for its forward
 and returns to CPU.
 
+``--pipeline-prompt-enhance`` rewrites the prompt with that Qwen3-VL encoder
+before the prompt is encoded. The rewrite stays in the language of the prompt.
+The opening frame is shown as Picture 1 and the last frame as Picture 2.
+A last frame alone is Picture 1. A reference list is shown in order:
+an image is Picture N, a video is Video N shown as its opening frame, and
+audio is Audio N with no picture. The rewrite keeps those labels. An argument value
+can replace the built-in system prompt, see ``--help`` for usage details.
+
 See `examples/minimax_h3_video/text_to_video/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/text_to_video/config.dgen>`_,
 `examples/minimax_h3_video/keyframes/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/keyframes/config.dgen>`_,
 `examples/minimax_h3_video/references/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/references/config.dgen>`_,
@@ -6170,6 +6180,7 @@ Klein encodes prompts with Qwen3. ``--flux2-text-encoder-out-layers`` defaults
 to ``9,18,27``.
 
 * Base 9B: ``black-forest-labs/FLUX.2-klein-base-9B``. Gated. Guidance 4, 50 steps.
+* Base 4B: ``black-forest-labs/FLUX.2-klein-base-4B``. Public. Guidance 4, 50 steps.
 * Distilled 4B: ``black-forest-labs/FLUX.2-klein-4B``. Public. Four steps.
   A distilled Klein checkpoint ignores ``--guidance-scales`` above 1.
 
@@ -6439,6 +6450,7 @@ Latents interchange is not supported. Those six steps and their output heads are
 The default size is 2048. Width and height are multiples of 32. A request smaller than 2048×2048 is generated on a larger canvas of the same aspect ratio and resized back to the requested size.
 
 ``--image-seeds`` are reference images, with no mask and no strength. Several references use the ``images:`` prefix and are one generation, for example ``images: a.png, b.png``. They may differ in size. The checkpoint resizes each one. The prompt refers to them in order as Picture 1, Picture 2, and so on. The prompt is encoded verbatim.
+``--pipeline-prompt-enhance`` rewrites it first, in the language of the prompt. With reference images the rewrite keeps the Picture 1, Picture 2 labels.
 
 Cache-DiT caches ``transformer_blocks``.
 
@@ -6447,7 +6459,6 @@ See `examples/minimax_h3_image/text_to_image/config.dgen <https://github.com/Ter
 `examples/minimax_h3_image/references/two-references-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/references/two-references-config.dgen>`_,
 `examples/minimax_h3_image/gguf/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/gguf/config.dgen>`_,
 and `examples/minimax_h3_image/comfy_quant/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/comfy_quant/config.dgen>`_.
-A ComfyUI image file fuses the six output heads. They are split on load.
 
 Other call arguments
 --------------------
@@ -6467,39 +6478,6 @@ multiply the number of images.
   paste, is passed as ``padding_mask_crop`` on Klein and Qwen inpaint. The
   pipeline then crops and pastes. A two-sided or four-sided padding, a feather,
   or masked paste stays on dgenerate's crop.
-
-Console recipes
----------------
-
-The Console UI recipes are:
-
-* ``Flux.2 Dev``
-* ``Flux.2 Klein``
-* ``Flux.2 Klein KV``
-* ``Z-Image Turbo``
-* ``Z-Image Turbo (SDNQ)``
-* ``Z-Image Base (2-step LoRA)``
-* ``Z-Image ControlNet``
-* ``Z-Image Omni``
-* ``Qwen-Image``
-* ``Qwen-Image Edit``
-* ``Qwen-Image Layered``
-* ``Qwen-Image 2.1``
-* ``Qwen-Image 2.1 Turbo``
-* ``Krea 2 Raw``
-* ``Krea 2 Turbo``
-* ``Kandinsky 5 Image``
-* ``Kandinsky 5 Image Edit``
-* ``HunyuanImage 2.1``
-* ``HunyuanImage 2.1 Distilled``
-* ``HunyuanImage 2.1 Refiner``
-* ``MiniMax-H3-Image``
-* ``MiniMax-H3-Image (GGUF)``
-* ``MiniMax-H3-Image (GGUF + Encoder)``
-* ``MiniMax-H3-Image (ComfyUI Quant)``
-* ``MiniMax-H3-Image (ComfyUI Quant + Encoder)``
-
-GGUF recipes for those models set ``--transformer`` to a quantized file and leave the parent repository as the model line.
 
 Animation Slicing
 =================
@@ -12319,9 +12297,10 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     #! dgenerate 6.0.0
     
     # Flux.2 Klein 9B with Black Forest Labs' official FP8 transformer and
-    # ComfyUI's FP8 mixed Qwen3-8B text encoder. Klein 4B's Qwen3-4B file does
-    # not match this checkpoint. The text encoder is already quantized. Do not
-    # set quantizer. Distilled Klein ignores guidance above 1.
+    # a float8 Qwen3-8B text encoder that keeps the language-model head.
+    # Klein 4B's Qwen3-4B file does not match this checkpoint. The text encoder
+    # is already quantized. Do not set quantizer. Distilled Klein ignores
+    # guidance above 1.
     
     \set token %HF_TOKEN%
     
@@ -12335,7 +12314,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     --dtype bfloat16
     --model-cpu-offload
     --transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-9b-fp8/blob/main/flux-2-klein-9b-fp8.safetensors
-    --text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Comfy-Org/flux2-klein-9B/blob/main/split_files/text_encoders/qwen_3_8b_fp8mixed.safetensors"
+    --text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Teriks/FLUX.2-klein-9B-Qwen3-text-encoder/blob/main/text_encoder-float8_e4m3fn.safetensors"
     --scheduler FlowMatchEulerDiscreteScheduler
     --inference-steps 4
     --guidance-scales 1
@@ -12350,9 +12329,10 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     #! dgenerate 6.0.0
     
     # Flux.2 Klein 9B with Black Forest Labs' official FP8 transformer and
-    # ComfyUI's FP4 mixed Qwen3-8B text encoder. Klein 4B's Qwen3-4B file does
-    # not match this checkpoint. The text encoder is already quantized. Do not
-    # set quantizer. Distilled Klein ignores guidance above 1.
+    # an NVFP4 Qwen3-8B text encoder that keeps the language-model head.
+    # Klein 4B's Qwen3-4B file does not match this checkpoint. The text encoder
+    # is already quantized. Do not set quantizer. Distilled Klein ignores
+    # guidance above 1.
     
     \set token %HF_TOKEN%
     
@@ -12366,7 +12346,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     --dtype bfloat16
     --model-cpu-offload
     --transformer https://huggingface.co/black-forest-labs/FLUX.2-klein-9b-fp8/blob/main/flux-2-klein-9b-fp8.safetensors
-    --text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Comfy-Org/flux2-klein-9B/blob/main/split_files/text_encoders/qwen_3_8b_fp4mixed.safetensors"
+    --text-encoders "Qwen3ForCausalLM;model=https://huggingface.co/Teriks/FLUX.2-klein-9B-Qwen3-text-encoder/blob/main/text_encoder-nvfp4.safetensors"
     --scheduler FlowMatchEulerDiscreteScheduler
     --inference-steps 4
     --guidance-scales 1
@@ -15363,7 +15343,9 @@ Sub Command: quantize
 ---------------------
 
 The ``quantize`` sub-command reads a diffusers model and writes quantized
-weights. The model is a folder on disk, a Hugging Face repository, one weight
+weights. This sub-command also exists as the config directive: ``\quantize``
+
+The model is a folder on disk, a Hugging Face repository, one weight
 file, or a blob link to one weight file.
 ``--subfolders`` selects component folders such as ``transformer`` and
 ``text_encoder``. Without it, every component that has weights is quantized.
@@ -15483,6 +15465,34 @@ Components you did not select are copied at full precision, including
 ``model_index.json``. ``--comfy`` applies to the GGUF and Comfy safetensors
 files; these repositories keep diffusers tensor names.
 
+``--hf-upload user/name`` uploads the written files to that Hugging Face model
+repository after the quant finishes. A new repository is public unless
+``--hf-private`` is set or the account default is private. An existing
+repository keeps its visibility.
+
+One ``--quantizer`` repository and no ``--formats`` is uploaded at the repo
+root, so dgenerate can load it as a model. Several files keep the names
+written under ``--output``.
+
+The token is ``--auth-token``, ``HF_TOKEN``, or a saved ``huggingface-cli``
+login.
+
+``--hf-upload-card`` writes a ``README.md`` model card. With no value, the
+card is built from the source model, the formats, every quantizer setting,
+and the command that produced the files. Quote a value when it contains
+spaces. Without this option, the upload has no model card.
+
+* ``extra:TEXT`` and ``extra-file:PATH`` insert that text into the generated
+  card, after the introduction.
+* ``file:PATH`` uses that UTF-8 file as the whole card.
+* ``text:TEXT`` uses that text as the whole card.
+
+``--hf-upload-card-preview`` prints that card and does not quantize or upload.
+Pass ``--output`` to also write ``README.md`` there. With no
+``--hf-upload-card``, the preview is the generated card. ``extra:`` and
+``extra-file:`` are inserted into that card. ``file:`` and ``text:`` replace
+it. Use the preview to read the card before a long quant or a publish.
+
 A single file is named from its parent folder when the filename is a generic
 component weight, so ``text_encoder/model.fp16.safetensors`` is written as
 ``text_encoder-Q4_K.gguf``. ``config.json`` beside that file is read when it
@@ -15550,13 +15560,33 @@ the component has tensors.
     # Names, short names, and presets
     dgenerate --sub-command quantize --list-formats
 
+    # Publish Q4_K with a generated model card. --hf-upload-card-preview
+    # prints the card and does not quantize or upload.
+    dgenerate --sub-command quantize ./model --subfolders transformer \
+        --formats q4 -o quants --hf-upload user/model-q4 --hf-upload-card
+    dgenerate --sub-command quantize ./model --hf-upload-card-preview \
+        --quantizer "sdnq;type=uint4;group-size=32;use-svd=true"
+
+    # Use a file, or the text after text:, as the model card
+    dgenerate --sub-command quantize ./model --formats q4 -o quants \
+        --hf-upload user/model-q4 --hf-upload-card file:README.md
+    dgenerate --sub-command quantize ./model --formats q4 -o quants \
+        --hf-upload user/model-q4 --hf-upload-card "text:# My quant"
+
+    # Add a note to the generated card
+    dgenerate --sub-command quantize ./model --formats q4 -o quants \
+        --hf-upload user/model-q4 --hf-upload-card "extra:Use guidance 3.5."
+    dgenerate --sub-command quantize ./model --formats q4 -o quants \
+        --hf-upload user/model-q4 --hf-upload-card extra-file:notes.md
+
 The help output of ``quantize`` is as follows:
 
 .. code-block:: text
 
     usage: quantize [-h] [-sbf SUBFOLDERS [SUBFOLDERS ...]] [-f [FORMATS ...]] [--comfy | --llama] [-o OUTPUT]
                     [-q QUANTIZER [QUANTIZER ...]] [--list-formats] [-wn WEIGHT_NAME] [-var VARIANT]
-                    [-rev REVISION] [-atk AUTH_TOKEN] [-ofm]
+                    [-rev REVISION] [-atk AUTH_TOKEN] [--hf-upload REPO] [--hf-upload-card [CARD]]
+                    [--hf-upload-card-preview] [--hf-private] [-ofm]
                     [model]
     
     Quantize a diffusers model into GGUF files, ComfyUI safetensors quants, and SDNQ or bitsandbytes
@@ -15629,8 +15659,36 @@ The help output of ``quantize`` is as follows:
             Revision, when the model is a Hugging Face repository.
             ------------------------------------------------------
       -atk, --auth-token AUTH_TOKEN
-            Hugging Face token for a gated repository.
-            ------------------------------------------
+            Hugging Face token for a gated repository and for --hf-upload. When this is omitted, HF_TOKEN or a
+            saved huggingface-cli login is used.
+            ------------------------------------
+      --hf-upload REPO
+            Upload the written files to this Hugging Face model repository. Accepts a repo ID for example:
+            user/repo-name. A huggingface.co URL for that repository is accepted. A new repository is created
+            when it does not exist. It is public unless --hf-private is set or the account default is private.
+            An existing repository keeps its visibility. One --quantizer repository and no --formats uploads
+            that diffusers folder at the repo root, so it can be loaded as a model. Several files upload under
+            the names written to --output. Pass --hf-upload-card to write a README.md model card. The token is
+            --auth-token, HF_TOKEN, or a saved login.
+            -----------------------------------------
+      --hf-upload-card [CARD]
+            README.md to write with the quant files, and to upload with --hf-upload. Omitted, no model card is
+            written. With no value, the card is built from the source model, the formats, the quantizer
+            settings, and the command. extra:TEXT and extra-file:PATH insert that text into the generated card,
+            after the introduction. file:PATH uses that UTF-8 file as the whole card. text:TEXT uses that text
+            as the whole card. Quote the value when it contains spaces, as in --hf-upload-card "extra:Use
+            guidance 3.5."
+            --------------
+      --hf-upload-card-preview
+            Print the model card and do not quantize or upload. Pass --output to also write README.md there.
+            With no --hf-upload-card, the preview is the generated card. extra: and extra-file: are inserted
+            into that card. file: and text: are printed as the whole card. With --hf-upload, the card names that
+            repository and nothing is uploaded.
+            -----------------------------------
+      --hf-private
+            Create the --hf-upload repository as private when it does not already exist. An existing repository
+            keeps its visibility.
+            ---------------------
       -ofm, --offline-mode
             Use weights already on disk. Do not download a repository.
             ----------------------------------------------------------
@@ -15715,6 +15773,8 @@ Sub Command: assistant
 ----------------------
 
 The ``assistant`` sub-command writes a dgenerate config from a plain language request.
+This sub-command also exists as the config directive: ``\assistant``
+
 A local Qwen model, running through the ``xllamacpp`` extra, writes the config. It is
 guided by the closest example configs and documentation, retrieved from an index of
 the dgenerate examples and docs that ships with dgenerate. The config is then checked
@@ -15994,6 +16054,8 @@ Sub Command: kernel-warmup
 --------------------------
 
 The ``kernel-warmup`` sub-command downloads the quant kernels for this computer.
+This sub-command also exists as the config directive: ``\kernel_warmup``
+
 ComfyUI quantized checkpoints fetch a platform-specific kernel from the
 Hugging Face Hub the first time they run. This command fetches the kernels
 for the current accelerator, and no others, so a later run can stay offline.
@@ -16031,7 +16093,10 @@ Sub Command: transpile
 ----------------------
 
 The ``transpile`` sub-command reads a dgenerate config and writes a Python script
-that runs the same actions through dgenerate's Python API. A generation line
+that runs the same actions through dgenerate's Python API. This sub-command also
+exists as the config directive: ``\transpile``
+
+A generation line
 becomes a ``DgenerateArguments`` object. ``{% if %}``, ``{% for %}``,
 ``{% set %}``, ``{% filter %}``, and ``{% with %}`` become Python. Shell-parsed directives such as ``\image_process`` and
 ``\download`` become calls that pass already split arguments. ``\set``,
@@ -18983,7 +19048,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [2904931653638]
+            Value: [77917556657227]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -19817,6 +19882,7 @@ Example output:
 
     Available config directives:
     
+        "\assistant"
         "\auto1111_metadata"
         "\cd"
         "\civitai_links"
@@ -19837,6 +19903,7 @@ Example output:
         "\image_processor_help"
         "\import"
         "\import_plugins"
+        "\kernel_warmup"
         "\latents_processor_help"
         "\list_object_caches"
         "\ls"
@@ -19849,6 +19916,7 @@ Example output:
         "\prompt_weighter_help"
         "\pushd"
         "\pwd"
+        "\quantize"
         "\quantizer_help"
         "\reset_lineno"
         "\rm"
@@ -19859,6 +19927,7 @@ Example output:
         "\setp"
         "\templates_help"
         "\to_diffusers"
+        "\transpile"
         "\unset"
         "\unset_env"
         "\use_modules"

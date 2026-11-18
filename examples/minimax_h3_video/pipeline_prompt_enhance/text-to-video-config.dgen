@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# The Qwen3-VL encoder rewrites the prompt in the language it was written in,
+# then the rewritten prompt is encoded for the video.
+
+MiniMaxAI/MiniMax-H3
+--model-type minimax-h3-video
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--pipeline-prompt-enhance
+--gen-seeds 1
+--output-path minimax-h3-pipeline-prompt-enhance
+--output-size 1024x576
+--prompts "A red fox trotting through a snowy pine forest, snow crunching underfoot"

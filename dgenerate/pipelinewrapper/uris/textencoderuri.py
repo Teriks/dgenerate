@@ -436,6 +436,7 @@ def _load_language_model_from_single_file(model_class, model_path: str, config_p
 
     model.tie_weights()
     missing = _materialize_missing_tensors(model, dtype)
+    _mark_missing_language_head(model, missing)
     if missing:
         _messages.debug_log(
             f'Text encoder file "{model_path}" holds no weights for {len(missing)} tensors '
@@ -492,6 +493,16 @@ def _keep_in_fp32_module_names(model) -> list[str]:
     """Module names transformers refuses to quantize, such as T5 ``wo``."""
     names = getattr(model, '_keep_in_fp32_modules', None) or []
     return [name for name in names if name]
+
+
+def _mark_missing_language_head(model, missing: list[str]) -> None:
+    """A zero ``lm_head`` cannot rewrite a prompt.
+
+    ComfyUI's MiniMax Qwen3-VL encoder file keeps the hidden states and omits
+    the vocabulary projection. Encoding still works. Generation does not.
+    """
+    if any(name == 'lm_head.weight' or name.endswith('.lm_head.weight') for name in missing):
+        model._dgenerate_no_lm_head = True
 
 
 def _materialize_missing_tensors(model, dtype: torch.dtype | None) -> list[str]:
@@ -1531,6 +1542,7 @@ def _assign_gguf_text_encoder(model, state: dict, dtype: torch.dtype, rename, tr
 
     model.tie_weights()
     missing = _materialize_missing_tensors(model, dtype)
+    _mark_missing_language_head(model, missing)
     if missing:
         _messages.debug_log(
             f'GGUF text encoder holds no weights for {len(missing)} tensors '

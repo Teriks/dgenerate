@@ -295,6 +295,8 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         self.assertTrue(_enums.model_type_supports_pipeline_prompt_enhance('krea2'))
         self.assertTrue(_enums.model_type_supports_pipeline_prompt_enhance('kandinsky5-image'))
         self.assertTrue(_enums.model_type_supports_pipeline_prompt_enhance('kandinsky5-video'))
+        self.assertTrue(_enums.model_type_supports_pipeline_prompt_enhance('minimax-h3-video'))
+        self.assertTrue(_enums.model_type_supports_pipeline_prompt_enhance('minimax-h3-image'))
         self.assertIn('krea2', _enums.PIPELINE_PROMPT_ENHANCE_MODEL_TYPES)
         self.assertFalse(_enums.model_type_supports_pipeline_prompt_enhance(_enums.ModelType.SD))
         self.assertFalse(_enums.model_type_supports_pipeline_prompt_enhance(_enums.ModelType.KOLORS))
@@ -344,6 +346,87 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         self.assertNotIn('first frame', video)
         self.assertIn('first frame', i2v)
         self.assertIn('description of the shot', i2v)
+
+    def test_minimax_keeps_the_user_language(self):
+        name = 'Qwen3VLForConditionalGeneration'
+        video = _promptenhance.auto_system_prompt(
+            _enums.ModelType.MINIMAX_H3, False, encoder_name=name)
+        keyframe = _promptenhance.auto_system_prompt(
+            _enums.ModelType.MINIMAX_H3, True, encoder_name=name)
+        image = _promptenhance.auto_system_prompt(
+            _enums.ModelType.MINIMAX_H3_IMAGE, False, encoder_name=name)
+        referenced = _promptenhance.auto_system_prompt(
+            _enums.ModelType.MINIMAX_H3_IMAGE, True, encoder_name=name)
+        self.assertIn('video generation model', video)
+        self.assertIn("in the user's language", video)
+        self.assertIn('Match the language of the user\'s request', video)
+        self.assertNotIn('Write in English', video)
+        self.assertNotIn('first frame', video)
+        self.assertIn('first frame', keyframe)
+        opening = object()
+        ending = object()
+        both, both_note = _promptenhance._minimax_keyframe_views(
+            types.SimpleNamespace(images=[opening], end_images=[ending]))
+        self.assertEqual(both, [opening, ending])
+        self.assertIn('<Picture 1> is the opening frame', both_note)
+        self.assertIn('<Picture 2> is the last frame', both_note)
+        only_end, end_note = _promptenhance._minimax_keyframe_views(
+            types.SimpleNamespace(images=None, end_images=[ending]))
+        self.assertEqual(only_end, [ending])
+        self.assertIn('<Picture 1> is the last frame', end_note)
+        self.assertNotIn('<Picture 2>', end_note)
+        keyed = _promptenhance.auto_system_prompt(
+            _enums.ModelType.MINIMAX_H3, True, encoder_name=name,
+            reference_note=both_note)
+        self.assertIn('<Picture 1>', keyed)
+        self.assertIn('<Picture 2>', keyed)
+        self.assertNotIn('first frame', keyed)
+        noted = _promptenhance.auto_system_prompt(
+            _enums.ModelType.MINIMAX_H3, True, encoder_name=name,
+            reference_note=(
+                '- The references, in order: <Picture 1>. '
+                '<Video 1> is shown as its opening frame. '
+                'Refer to them with those labels. Keep the labels exactly.'))
+        self.assertIn('<Picture 1>', noted)
+        self.assertIn('<Video 1>', noted)
+        self.assertNotIn('first frame', noted)
+        picture = types.SimpleNamespace(image=object())
+        clip = types.SimpleNamespace(frames=[object()], audio=object())
+        sound = types.SimpleNamespace(audio=object())
+        views, note = _promptenhance._minimax_reference_views([picture, clip, sound])
+        self.assertEqual(views, [picture.image, clip.frames[0]])
+        self.assertIn('<Picture 1>', note)
+        self.assertIn('<Audio 1> is the soundtrack of the next video', note)
+        self.assertIn('<Video 1>', note)
+        self.assertIn('<Audio 2> is sound only', note)
+        self.assertIn('image generation model', image)
+        self.assertNotIn('Picture 1', image)
+        self.assertIn('Picture 1, Picture 2', referenced)
+        self.assertIn('about 80 to 150 characters', video)
+        sampling = _promptenhance.sampling_for(_enums.ModelType.MINIMAX_H3, name)
+        self.assertEqual(sampling.temperature, 0.35)
+        english = (
+            'A white cat asleep on a blue chair beside a window, warm evening light. '
+            'A paper sign on the wall reads 「OPEN」.')
+        chinese = '三只猫和一只狗坐在木桌旁，桌上的纸牌写着「营业中」，傍晚的窗光'
+        chinese_rewrite = '三只猫和一只狗坐在木桌旁，傍晚的窗光。'
+        self.assertEqual(
+            _promptenhance.finalize_multilingual_rewrite(
+                chinese, chinese_rewrite, _enums.ModelType.MINIMAX_H3),
+            chinese_rewrite)
+        self.assertEqual(
+            _promptenhance.finalize_multilingual_rewrite(
+                chinese, 'Three cats at a wooden table.', _enums.ModelType.MINIMAX_H3_IMAGE),
+            chinese)
+        self.assertEqual(
+            _promptenhance.finalize_multilingual_rewrite(
+                english, '一只白猫在窗边睡觉。', _enums.ModelType.MINIMAX_H3),
+            english)
+        picture = object()
+        args = types.SimpleNamespace(images=[picture], reference_images=[object()])
+        self.assertEqual(
+            _promptenhance._condition_images(args, _enums.ModelType.MINIMAX_H3),
+            [picture])
 
     def test_condition_images_follow_the_reference_slot(self):
         picture = object()
@@ -831,6 +914,16 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         replacement = torch.nn.Parameter(restored, requires_grad=layer.weight.requires_grad)
         self.assertEqual(tuple(replacement.shape), (2, 2))
 
+    def test_vision_embedding_stays_on_its_own_device(self):
+        home = torch.device('cpu')
+        compute = torch.device('cuda')
+        vision = _promptenhance._resident_hook('model.visual.pos_embed', home, compute)
+        language = _promptenhance._resident_hook('model.language_model.layers.40', home, compute)
+        self.assertIsInstance(vision, _promptenhance._LayerDeviceHook)
+        self.assertEqual(vision.device, home)
+        self.assertIsInstance(language, _promptenhance._ExecuteOnDeviceHook)
+        self.assertEqual(language.device, compute)
+
     def test_layer_visit_inside_inference_mode_stores_real_weights(self):
         layer = torch.nn.Linear(2, 2, bias=False)
         hook = _promptenhance._ExecuteOnDeviceHook(torch.device('cpu'), torch.device('cpu'))
@@ -909,6 +1002,31 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         args = _pipeline_args()
         _promptenhance.enhance_diffusion_arguments(Wrapper(), args)
         self.assertEqual(args.prompt.positive, 'fox')
+
+    def test_diffusion_arguments_pass_the_system_prompt(self):
+        class Wrapper:
+            model_type = _enums.ModelType.MINIMAX_H3_IMAGE
+            device = 'cpu'
+            model_cpu_offload = False
+            model_sequential_offload = False
+            model_group_offload = False
+            _pipeline = object()
+            _local_files_only = False
+
+        custom = _pipeline_args()
+        custom.pipeline_prompt_enhance = 'Be brief.'
+        with unittest.mock.patch.object(
+                _promptenhance, 'rewrite_prompt', return_value='rewritten') as rewrite:
+            _promptenhance.enhance_diffusion_arguments(Wrapper(), custom)
+        self.assertEqual(rewrite.call_args.args[2], 'Be brief.')
+        self.assertEqual(custom.prompt.positive, 'rewritten')
+
+        builtin = _pipeline_args()
+        with unittest.mock.patch.object(
+                _promptenhance, 'rewrite_prompt', return_value='auto') as rewrite:
+            _promptenhance.enhance_diffusion_arguments(Wrapper(), builtin)
+        self.assertIsNone(rewrite.call_args.args[2])
+        self.assertEqual(builtin.prompt.positive, 'auto')
 
     def test_qwen25_token_floor_is_not_rejected_before_the_encoder_loads(self):
         def names(attr):
@@ -1019,6 +1137,31 @@ class TestPipelinePromptEnhance(unittest.TestCase):
             _promptenhance._headroom_bytes(
                 _promptenhance.PromptEnhanceOverrides(gpu_headroom=1.5)),
             int(1.5 * 1024 ** 3))
+
+    def test_packed_matmul_reserves_the_bf16_copy_and_the_stored_weight(self):
+        class Packed(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.quant_format = 'int8'
+                self.in_features = 4
+                self.out_features = 8
+                self.weight = torch.nn.Parameter(
+                    torch.zeros(8, 4, dtype=torch.int8), requires_grad=False)
+
+        class Encoder(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.head = Packed()
+                self.plain = torch.nn.Linear(4, 4, bias=False)
+
+        workspace = _promptenhance._packed_matmul_workspace(Encoder())
+        self.assertEqual(workspace, 8 * 4 + 8 * 4 * 2)
+        self.assertEqual(
+            _promptenhance._split_reserve_bytes(None, Encoder()),
+            2 * 1024 ** 3 + workspace)
+        self.assertEqual(
+            _promptenhance._packed_matmul_workspace(torch.nn.Linear(4, 4)),
+            0)
 
     def test_gpu_budget_keeps_a_layer_prefix(self):
         class ToyDecoderLayer(torch.nn.Module):
@@ -1131,6 +1274,12 @@ class TestPipelinePromptEnhance(unittest.TestCase):
                 'examples/kandinsky5/pipeline_prompt_enhance/text-to-video-config.dgen',
                 'examples/kandinsky5/pipeline_prompt_enhance/image-to-video-config.dgen',
             ),
+            'minimax-h3-video': (
+                'examples/minimax_h3_video/pipeline_prompt_enhance/text-to-video-config.dgen',
+            ),
+            'minimax-h3-image': (
+                'examples/minimax_h3_image/pipeline_prompt_enhance/text-to-image-config.dgen',
+            ),
             'kandinsky6-video': (
                 'examples/kandinsky6/pipeline_prompt_enhance/text-to-video-config.dgen',
             ),
@@ -1193,6 +1342,15 @@ class TestPipelinePromptEnhance(unittest.TestCase):
 
 
 class TestHeadGeneration(unittest.TestCase):
+    def test_missing_language_head_is_refused(self):
+        encoder = torch.nn.Linear(4, 4)
+        encoder._dgenerate_no_lm_head = True
+        with self.assertRaises(_pipelines.UnsupportedPipelineConfigError) as raised:
+            _promptenhance._generate_with_head(
+                None, encoder, object(), 'fox', 'system', None, 1,
+                False, None, _promptenhance.Sampling(0, 1, 0, 0))
+        self.assertIn('language-model head', str(raised.exception))
+
     def test_processor_without_chat_template_uses_its_tokenizer(self):
         class Inner:
             def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True,
@@ -1315,6 +1473,52 @@ class TestHeadGeneration(unittest.TestCase):
         finally:
             import shutil
             shutil.rmtree(folder, ignore_errors=True)
+
+    def test_rewrite_parks_the_vae_and_keeps_the_text_encoder(self):
+        if not torch.cuda.is_available():
+            self.skipTest('needs CUDA')
+        encoder = torch.nn.Linear(4, 4).to('cuda')
+        vae = torch.nn.Linear(4, 4).to('cuda')
+        pipe = type('Pipe', (), {'components': {
+            'text_encoder': encoder,
+            'vae': vae,
+        }})()
+        parked = _promptenhance._park_modules_for_rewrite(pipe)
+        self.assertEqual(encoder.weight.device.type, 'cuda')
+        self.assertEqual(vae.weight.device.type, 'cpu')
+        self.assertEqual([name for name, _module, _device in parked], ['vae'])
+        _promptenhance._restore_parked_modules(parked)
+        self.assertEqual(vae.weight.device.type, 'cuda')
+
+    def test_minimax_image_place_waits_until_after_the_rewrite(self):
+        import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+
+        pipe = type('Pipe', (), {})()
+        with _minimax_image.defer_place():
+            _minimax_image.place(pipe, 'cuda', False, True, False)
+        self.assertEqual(
+            pipe._dgenerate_minimax_image_place,
+            ('cuda', False, True, False))
+
+    def test_cpu_offload_weights_move_for_the_rewrite(self):
+        if not torch.cuda.is_available():
+            self.skipTest('needs CUDA')
+        import accelerate
+
+        layer = torch.nn.Sequential(torch.nn.Linear(4, 4))
+        weight = layer[0].weight.detach().clone()
+        accelerate.cpu_offload(layer, 'cpu')
+        self.assertEqual(layer[0].weight.device.type, 'meta')
+        try:
+            with _promptenhance._fast_encoder(layer, 'cuda', offload=True):
+                self.assertEqual(layer[0].weight.device.type, 'cuda')
+                self.assertTrue(torch.equal(layer[0].weight.detach().cpu(), weight))
+            self.assertEqual(layer[0].weight.device.type, 'meta')
+            output = layer(torch.ones(1, 4))
+            self.assertEqual(tuple(output.shape), (1, 4))
+        finally:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
     def test_loaded_qwen_processor_is_used_for_the_image(self):
         processor = type('QwenProcessor', (), {

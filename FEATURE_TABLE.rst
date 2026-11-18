@@ -777,6 +777,12 @@ Diffusion Model Feature Support Tables
    * - ``kandinsky5-video``
      - ✅
 
+   * - ``minimax-h3-video``
+     - ✅
+
+   * - ``minimax-h3-image``
+     - ✅
+
    * - ``kandinsky6-video``
      - ❌
 

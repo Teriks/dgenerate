@@ -40,6 +40,10 @@ from .prompt_upscale_directive import PromptUpscaleDirective
 
 from .to_diffusers_directive import ToDiffusersDirective
 from .auto1111_metadata_directive import Auto1111MetadataDirective
+from .quantize_directive import QuantizeDirective
+from .assistant_directive import AssistantDirective
+from .kernel_warmup_directive import KernelWarmupDirective
+from .transpile_directive import TranspileDirective
 
 __doc__ = """
 Batch processing / dgenerate config scripts.

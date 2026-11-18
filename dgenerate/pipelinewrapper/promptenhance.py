@@ -75,6 +75,8 @@ def _multilingual_tokenizer(model_type, encoder_name: str | None) -> bool:
         or _enums.model_type_is_hyimage_21_refiner(model_type)
         or _enums.model_type_is_kandinsky5_image(model_type)
         or _enums.model_type_is_kandinsky5_video(model_type)
+        or _enums.model_type_is_minimax_h3(model_type)
+        or _enums.model_type_is_minimax_h3_image(model_type)
         or _enums.model_type_is_flux2_klein_kv(model_type))
 
 
@@ -155,6 +157,8 @@ def _keep_user_language(model_type) -> bool:
         or _enums.model_type_is_hyimage_21_refiner(model_type)
         or _enums.model_type_is_kandinsky5_image(model_type)
         or _enums.model_type_is_kandinsky5_video(model_type)
+        or _enums.model_type_is_minimax_h3(model_type)
+        or _enums.model_type_is_minimax_h3_image(model_type)
         or _enums.model_type_is_flux2(model_type)
         or _enums.model_type_is_flux2_klein_kv(model_type))
 
@@ -398,6 +402,8 @@ def _encoder_sees_images(model_type, encoder_name: str | None) -> bool:
         or _enums.model_type_is_qwen_image_21(model_type)
         or _enums.model_type_is_kandinsky5_image(model_type)
         or _enums.model_type_is_kandinsky5_video(model_type)
+        or _enums.model_type_is_minimax_h3(model_type)
+        or _enums.model_type_is_minimax_h3_image(model_type)
         or _enums.model_type_is_flux2(model_type))
 
 
@@ -481,7 +487,7 @@ def t2i_system_prompt(min_tokens: int, max_tokens: int, *, brief: bool = False,
 def video_system_prompt(min_tokens: int, max_tokens: int, *, has_image: bool,
                         brief: bool = False, model_type=None,
                         encoder_name: str | None = None) -> str:
-    """Text-to-video or image-to-video prompt for Kandinsky 5."""
+    """Text-to-video or image-to-video prompt for Kandinsky 5 and MiniMax-H3."""
     length = _t2i_length_line(
         min_tokens, max_tokens, model_type=model_type, encoder_name=encoder_name,
         subject='the shot')
@@ -1167,12 +1173,13 @@ def resolve_system_prompt(value):
 def auto_system_prompt(model_type, has_image: bool, *,
                        encoder_name: str | None = None,
                        overrides: PromptEnhanceOverrides | None = None,
-                       image_count: int = 1) -> str:
+                       image_count: int = 1,
+                       reference_note: str | None = None) -> str:
     """Built-in prompt for this model, encoder, and token budget.
 
     The length is the sampler's minimum and maximum. Multilingual enhance is selected
     by ``--model-type`` (Qwen-Image family, HunyuanImage 2.1 and its refiner, Kandinsky 5,
-    ``flux2``, ``flux2-klein-kv``). Z-Image and
+    MiniMax-H3 video and image, ``flux2``, ``flux2-klein-kv``). Z-Image and
     Krea 2 rewrite in English. Token budgets may include a CJK character count when the
     rewrite is not forced to English.
     Edit wording is used only when this encoder can see the picture.
@@ -1185,20 +1192,35 @@ def auto_system_prompt(model_type, has_image: bool, *,
     Qwen2.5-VL uses that shorter prompt, cooler sampling, and a user-turn language reminder.
     """
     max_tokens, min_tokens = merged_generation_limits(model_type, encoder_name, overrides)
-    if model_type is not None and _enums.model_type_is_kandinsky5_video(model_type):
-        return video_system_prompt(
-            min_tokens, max_tokens, has_image=has_image,
+    if model_type is not None and (
+            _enums.model_type_is_kandinsky5_video(model_type)
+            or _enums.model_type_is_minimax_h3(model_type)):
+        prompt = video_system_prompt(
+            min_tokens, max_tokens, has_image=has_image and reference_note is None,
             brief=_brief_encoder(model_type, encoder_name),
             model_type=model_type, encoder_name=encoder_name)
+        if reference_note:
+            prompt = prompt.replace(
+                'Output only the prompt.',
+                reference_note + '\nOutput only the prompt.')
+        return prompt
     if _wants_edit_prompt(model_type, encoder_name, has_image):
         return edit_system_prompt(
             min_tokens, max_tokens,
             placeholders=_uses_image_placeholders(model_type) and image_count >= 1,
             model_type=model_type, encoder_name=encoder_name)
-    return t2i_system_prompt(
+    prompt = t2i_system_prompt(
         min_tokens, max_tokens,
         brief=_brief_encoder(model_type, encoder_name),
         model_type=model_type, encoder_name=encoder_name)
+    if (has_image and model_type is not None
+            and _enums.model_type_is_minimax_h3_image(model_type)):
+        prompt = prompt.replace(
+            'Output only the prompt.',
+            '- Refer to the reference images in order as Picture 1, Picture 2, and so on. '
+            'Keep those labels exactly.\n'
+            'Output only the prompt.')
+    return prompt
 
 
 def _log_text_only_encoder() -> None:
@@ -1599,7 +1621,158 @@ def log_enhanced_prompt(prompt) -> None:
         _messages.log(f'Pipeline prompt enhance: {text}')
 
 
-def enhance_diffusion_arguments(wrapper, user_args) -> None:
+def _first_still(value):
+    """The first non-tensor still in one image slot."""
+    if not value:
+        return None
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            still = _first_still(item)
+            if still is not None:
+                return still
+        return None
+    if torch.is_tensor(value):
+        return None
+    return value
+
+
+def _minimax_keyframe_views(user_args) -> tuple[list, str | None]:
+    """Stills and a label note for MiniMax-H3 keyframes.
+
+    Packed order matches the encoder: the opening still is ``<Picture 1>``,
+    and a last frame beside it is ``<Picture 2>``. A last frame alone is the
+    only keyframe, so it is ``<Picture 1>``.
+    """
+    opening = _first_still(getattr(user_args, 'images', None))
+    ending = _first_still(getattr(user_args, 'end_images', None))
+    if opening is not None and ending is not None:
+        parts = ['<Picture 1> is the opening frame', '<Picture 2> is the last frame']
+        images = [opening, ending]
+    elif opening is not None:
+        parts = ['<Picture 1> is the opening frame']
+        images = [opening]
+    elif ending is not None:
+        parts = ['<Picture 1> is the last frame']
+        images = [ending]
+    else:
+        return [], None
+    note = (
+        '- The keyframes, in order: ' + '. '.join(parts) + '. '
+        'Refer to them with those labels. Keep the labels exactly.')
+    return images, note
+
+
+def _minimax_reference_views(references) -> tuple[list, str | None]:
+    """Stills and a label note for one MiniMax-H3 ``reference=`` list.
+
+    Images and the opening frame of each video are shown, in packed order.
+    Audio is named and not shown. A video that carries sound is ``<Audio N>``
+    and then ``<Video N>``, which is how the denoiser packs those rows.
+    """
+    images = []
+    parts = []
+    image_count = video_count = audio_count = 0
+    for reference in references:
+        if hasattr(reference, 'frames'):
+            soundtrack = getattr(reference, 'audio', None) is not None
+            if soundtrack:
+                audio_count += 1
+                parts.append(
+                    f'<Audio {audio_count}> is the soundtrack of the next video and is not shown')
+            video_count += 1
+            parts.append(f'<Video {video_count}> is shown as its opening frame')
+            frame = _opening_frame(reference.frames)
+            if frame is not None:
+                images.append(frame)
+            continue
+        if hasattr(reference, 'image'):
+            image_count += 1
+            parts.append(f'<Picture {image_count}>')
+            frame = _opening_frame(reference.image)
+            if frame is not None:
+                images.append(frame)
+            continue
+        audio_count += 1
+        parts.append(f'<Audio {audio_count}> is sound only and is not shown')
+    if not parts:
+        return [], None
+    note = (
+        '- The references, in order: ' + '. '.join(parts) + '. '
+        'Refer to them with those labels. Keep the labels exactly.')
+    return images, note
+
+
+def _opening_frame(value):
+    """One still from a reference image or the first frame of a reference video."""
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)):
+        return _opening_frame(value[0]) if value else None
+    if not torch.is_tensor(value):
+        try:
+            import numpy
+            if not isinstance(value, numpy.ndarray):
+                return value
+        except ImportError:
+            return value
+    array = value.detach().cpu().numpy() if torch.is_tensor(value) else value
+    try:
+        import numpy
+        from PIL import Image
+    except ImportError:
+        return None
+    if not isinstance(array, numpy.ndarray):
+        return None
+    if array.ndim == 4:
+        array = array[0]
+    if array.ndim != 3:
+        return None
+    if array.shape[0] in (1, 3) and array.shape[-1] not in (1, 3):
+        array = numpy.moveaxis(array, 0, -1)
+    if array.dtype != numpy.uint8:
+        array = array.astype(numpy.uint8)
+    return Image.fromarray(array)
+
+
+def _park_modules_for_rewrite(pipe):
+    """Move every resident module except the text encoder off the rewrite device.
+
+    MiniMax leaves the VAE on the generation device at load time. The rewrite
+    still runs on that device; it only needs the text encoder there.
+    """
+    parked = []
+    for name, module in _pipelines.get_pipeline_modules(pipe).items():
+        if name == 'text_encoder' or name.startswith('text_encoder_'):
+            continue
+        if getattr(module, '_DGENERATE_ORIGINAL_TO_DISABLED', None) is not None:
+            continue
+        if getattr(module, '_hf_hook', None) is not None:
+            continue
+        if _putil.is_loaded_in_8bit_bnb(module):
+            continue
+        try:
+            device = next(module.parameters()).device
+        except (StopIteration, AttributeError):
+            continue
+        if device.type == 'meta' or device.type == 'cpu':
+            continue
+        _move_module(module, 'cpu')
+        parked.append((name, module, device))
+    if parked and torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    return parked
+
+
+def _restore_parked_modules(parked) -> None:
+    if not parked:
+        return
+    for _name, module, device in parked:
+        _move_module(module, device)
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
+def enhance_diffusion_arguments(wrapper, user_args, references=None) -> None:
     """Rewrite ``user_args.prompt`` with the pipeline text encoder, in place."""
     setting = user_args.pipeline_prompt_enhance
     if not setting or _enums.model_type_is_ltx2(wrapper.model_type):
@@ -1608,23 +1781,42 @@ def enhance_diffusion_arguments(wrapper, user_args) -> None:
     if prompt is None or not (prompt.positive or '').strip():
         return
     images = _condition_images(user_args, wrapper.model_type)
-    system_prompt = setting if isinstance(setting, str) else None
+    reference_note = None
+    if _enums.model_type_is_minimax_h3(wrapper.model_type):
+        if references:
+            images, reference_note = _minimax_reference_views(references)
+        else:
+            keyframes, reference_note = _minimax_keyframe_views(user_args)
+            if keyframes:
+                images = keyframes
     pipe = wrapper._pipeline
     offload = bool(
         wrapper.model_cpu_offload or wrapper.model_sequential_offload or wrapper.model_group_offload)
     overrides = PromptEnhanceOverrides.from_args(user_args)
-    rewritten = rewrite_prompt(
-        pipe,
-        prompt.positive,
-        system_prompt,
-        images,
-        wrapper.device,
-        user_args.pipeline_prompt_enhance_seed
-        if user_args.pipeline_prompt_enhance_seed is not None else user_args.seed,
-        local_files_only=bool(getattr(wrapper, '_local_files_only', False)),
-        offload=offload,
-        model_type=wrapper.model_type,
-        overrides=overrides)
+    custom_prompt = resolve_system_prompt(setting)
+    system_prompt = custom_prompt if isinstance(custom_prompt, str) else None
+    # The rewrite runs on wrapper.device. MiniMax has already put the VAE on
+    # that device; move it off so the text encoder can use the GPU.
+    parked = None
+    if (_enums.model_type_is_minimax_h3(wrapper.model_type)
+            or _enums.model_type_is_minimax_h3_image(wrapper.model_type)):
+        parked = _park_modules_for_rewrite(pipe)
+    try:
+        rewritten = rewrite_prompt(
+            pipe,
+            prompt.positive,
+            system_prompt,
+            images,
+            wrapper.device,
+            user_args.pipeline_prompt_enhance_seed
+            if user_args.pipeline_prompt_enhance_seed is not None else user_args.seed,
+            local_files_only=bool(getattr(wrapper, '_local_files_only', False)),
+            offload=offload,
+            model_type=wrapper.model_type,
+            overrides=overrides,
+            reference_note=reference_note)
+    finally:
+        _restore_parked_modules(parked)
     log_enhanced_prompt(rewritten)
     revised = prompt.__class__.copy(prompt)
     revised.positive = rewritten
@@ -1656,7 +1848,8 @@ def rewrite_prompt(pipe,
                    offload: bool = False,
                    model_type=None,
                    overrides: PromptEnhanceOverrides | None = None,
-                   ltx_enhance: bool = False) -> str:
+                   ltx_enhance: bool = False,
+                   reference_note: str | None = None) -> str:
     encoder = getattr(pipe, 'text_encoder', None)
     tokenizer = _pipeline_tokenizer(pipe)
     if encoder is None or tokenizer is None:
@@ -1673,7 +1866,7 @@ def rewrite_prompt(pipe,
         image_count = len(images or [])
         system_prompt = auto_system_prompt(
             model_type, has_images, encoder_name=name, overrides=overrides,
-            image_count=image_count)
+            image_count=image_count, reference_note=reference_note)
     sampling = merged_sampling(model_type, name, overrides)
     max_new, _min_new = merged_generation_limits(model_type, name, overrides)
     text = None
@@ -1754,11 +1947,14 @@ def _condition_images(user_args, model_type=None):
 
     Condition seeds are stored on ``reference_images``. The HunyuanImage
     refiner encodes its input image as a VAE latent, so the rewriter stays
-    text-only.
+    text-only. MiniMax-H3 video keyframes and references are passed in
+    separately, labelled Picture, Video, and Audio in the encoder's order.
     """
     if model_type is not None and _enums.model_type_is_hyimage_21_refiner(model_type):
         return []
-    sources = [user_args.images or (), getattr(user_args, 'reference_images', None) or ()]
+    sources = [user_args.images or ()]
+    if model_type is None or not _enums.model_type_is_minimax_h3(model_type):
+        sources.append(getattr(user_args, 'reference_images', None) or ())
     images = []
     for source in sources:
         for image in source:
@@ -1924,6 +2120,38 @@ def _headroom_bytes(overrides: PromptEnhanceOverrides | None) -> int:
 
 # Activations, the KV cache, and the one CPU-stored layer visiting the GPU.
 _DEFAULT_GPU_HEADROOM_BYTES = 2 * 1024 ** 3
+
+
+def _packed_matmul_workspace(module) -> int:
+    """Bytes a packed matmul allocates on the GPU beside its stored weight.
+
+    The speed test builds a bf16 copy of one matrix and keeps that block for
+    the rest of the rewrite. A CPU-stored matrix is uploaded for the same
+    test, so the reserve is the packed weight plus the bf16 copy. The flat
+    2 GiB headroom does not cover a 32B vocabulary head.
+    """
+    largest = 0
+    bf16_size = torch.empty((), dtype=torch.bfloat16).element_size()
+    for child in module.modules():
+        weight = getattr(child, 'weight', None)
+        out_features = getattr(child, 'out_features', None)
+        in_features = getattr(child, 'in_features', None)
+        if (not torch.is_tensor(weight) or weight.ndim != 2
+                or not isinstance(out_features, int) or not isinstance(in_features, int)
+                or not hasattr(child, 'quant_format')):
+            continue
+        if out_features <= 0 or in_features <= 0:
+            continue
+        packed = weight.numel() * weight.element_size()
+        dense = out_features * in_features * bf16_size
+        largest = max(largest, packed + dense)
+    return largest
+
+
+def _split_reserve_bytes(headroom_bytes: int | None, encoder) -> int:
+    """Configured headroom plus the packed-matmul workspace."""
+    configured = _DEFAULT_GPU_HEADROOM_BYTES if headroom_bytes is None else max(0, headroom_bytes)
+    return configured + _packed_matmul_workspace(encoder)
 
 
 def _gpu_budget_bytes(device: torch.device, headroom_bytes: int | None = None) -> int:
@@ -2106,23 +2334,36 @@ def _hook_rotary_inputs(encoder):
         add_hook_to_module(module, _LayerDeviceHook(home))
 
 
+def _resident_hook(name: str, home: torch.device, compute_device: torch.device):
+    """How one placed module runs.
+
+    A language layer stored on CPU visits the GPU for its matmul. The vision
+    tower does not: its forward builds index tensors on the tower's own device
+    and multiplies them by the embedding output. Moving only the embedding to
+    the GPU leaves those indexes on CPU.
+    """
+    if _is_vision(name) or home.type == compute_device.type:
+        return _LayerDeviceHook(home)
+    return _ExecuteOnDeviceHook(compute_device, home)
+
+
 def _hook_resident_layers(model, units, compute_device: torch.device):
     from accelerate.hooks import add_hook_to_module
     covered = {id(module) for _, module in units}
-    targets = [module for _, module in units]
-    for child in model.children():
-        if id(child) in covered or any(id(module) in covered for module in child.modules()):
-            continue
-        if any(tensor.numel() for tensor in child.parameters()):
-            targets.append(child)
-    for module in targets:
+    for name, module in units:
         home = _module_device(module)
         if home is None:
             continue
-        if home.type == compute_device.type:
-            add_hook_to_module(module, _LayerDeviceHook(home))
-        else:
-            add_hook_to_module(module, _ExecuteOnDeviceHook(compute_device, home))
+        add_hook_to_module(module, _resident_hook(name, home, compute_device))
+    for name, child in model.named_children():
+        if id(child) in covered or any(id(module) in covered for module in child.modules()):
+            continue
+        if not any(tensor.numel() for tensor in child.parameters()):
+            continue
+        home = _module_device(child)
+        if home is None:
+            continue
+        add_hook_to_module(child, _resident_hook(name, home, compute_device))
 
 
 def _embedding_device(model) -> torch.device:
@@ -2341,6 +2582,40 @@ def _borrowed_disk_weights(encoder):
         _restore_disk_offload(encoder, state)
 
 
+def _hook_offloads(hook) -> bool:
+    """True when an accelerate hook, or one link of a chained hook, offloads weights."""
+    if hook is None:
+        return False
+    if getattr(hook, 'offload', False):
+        return True
+    for inner in getattr(hook, 'hooks', ()) or ():
+        if _hook_offloads(inner):
+            return True
+    return False
+
+
+def _has_offload_hook(module) -> bool:
+    """CPU offload leaves parameters on the meta device until the hook loads them."""
+    return any(_hook_offloads(getattr(candidate, '_hf_hook', None)) for candidate in module.modules())
+
+
+def _give_meta_tensors_storage(module):
+    """Replace leftover empty tensors so ``Module.to`` can move the encoder.
+
+    Offload hooks restore the weights they parked. A tensor that was empty
+    before that hook still has no storage, and ``.to()`` refuses to copy it.
+    """
+    import accelerate
+
+    named = list(module.named_parameters(recurse=True)) + list(module.named_buffers(recurse=True))
+    for name, tensor in named:
+        if tensor.device.type != 'meta':
+            continue
+        value = torch.zeros(tensor.shape, dtype=tensor.dtype)
+        accelerate.utils.set_module_tensor_to_device(
+            module, name, 'cpu', value=value, dtype=tensor.dtype)
+
+
 @contextlib.contextmanager
 def _fast_encoder_from_memory(encoder, device, offload: bool,
                               headroom_bytes: int | None = None,
@@ -2359,8 +2634,11 @@ def _fast_encoder_from_memory(encoder, device, offload: bool,
         yield
         return
     from accelerate.hooks import remove_hook_from_module
-    hooked = original_to is not None
-    move = original_to if hooked else encoder.to
+    # MiniMax and FLUX.3 offload with accelerate.cpu_offload and leave .to()
+    # in place. Those hooks park parameters on the meta device. Removing them
+    # copies the weights back before a layer is moved.
+    hooked = original_to is not None or _has_offload_hook(encoder)
+    move = original_to if original_to is not None else encoder.to
     # offload=False means denoising still needs this module on the GPU, so the
     # split is only for the rewrite and the module goes back afterward.
     return_to_cpu = offload or hooked
@@ -2368,7 +2646,8 @@ def _fast_encoder_from_memory(encoder, device, offload: bool,
         with _real_weights():
             _release_inference_tensors_now(encoder)
             remove_hook_from_module(encoder, recurse=True)
-            original_to('cpu')
+            _give_meta_tensors_storage(encoder)
+            move('cpu')
             _release_inference_tensors_now(encoder)
 
     def _park(force_cpu: bool = False):
@@ -2379,6 +2658,7 @@ def _fast_encoder_from_memory(encoder, device, offload: bool,
             with _real_weights():
                 _release_inference_tensors_now(encoder)
                 remove_hook_from_module(encoder, recurse=True)
+                _give_meta_tensors_storage(encoder)
                 move(destination)
                 _release_inference_tensors_now(encoder)
         finally:
@@ -2387,7 +2667,16 @@ def _fast_encoder_from_memory(encoder, device, offload: bool,
         if hooked and destination == 'cpu':
             _restore_encoder_offload(encoder, target)
 
-    budget = _gpu_budget_bytes(target, headroom_bytes)
+    if not hooked:
+        _give_meta_tensors_storage(encoder)
+    configured = _DEFAULT_GPU_HEADROOM_BYTES if headroom_bytes is None else max(0, headroom_bytes)
+    workspace = _packed_matmul_workspace(encoder)
+    if workspace >= 512 * 1024 ** 2:
+        _messages.debug_log(
+            f'{label}: reserving {_memory.bytes_best_human_unit(workspace)} '
+            f'for the packed weight check, on top of '
+            f'{_memory.bytes_best_human_unit(configured)} headroom.')
+    budget = _gpu_budget_bytes(target, configured + workspace)
     if _module_nbytes(encoder) <= budget:
         try:
             with _real_weights():
@@ -2774,6 +3063,10 @@ def _generate_with_head(pipe, encoder, tokenizer, prompt, system_prompt, images,
                         local_files_only: bool, counter, sampling,
                         max_new_tokens=MAX_NEW_TOKENS, min_new_tokens=MIN_NEW_TOKENS,
                         model_type=None, encoder_name: str | None = None) -> str:
+    if getattr(encoder, '_dgenerate_no_lm_head', False):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            '--pipeline-prompt-enhance cannot rewrite with this text encoder. '
+            'The file has no language-model head.')
     processor = tokenizer
     user_prompt = prompt
     if images:

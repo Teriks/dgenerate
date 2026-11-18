@@ -321,7 +321,7 @@ def _skip_nabla_sparse_attention(pipe) -> None:
         'length, so attention is running dense.')
 
 
-def _enhance_loaded_video_prompt(wrapper, pipe, user_args) -> None:
+def _enhance_loaded_video_prompt(wrapper, pipe, user_args, references=None) -> None:
     """Rewrite the prompt with the loaded pipeline text encoder.
 
     The still-image call path does this in ``PipelineWrapper``. Video
@@ -335,7 +335,11 @@ def _enhance_loaded_video_prompt(wrapper, pipe, user_args) -> None:
     previous = wrapper._pipeline
     wrapper._pipeline = pipe
     try:
-        _promptenhance.enhance_diffusion_arguments(wrapper, user_args)
+        if references:
+            _promptenhance.enhance_diffusion_arguments(
+                wrapper, user_args, references=references)
+        else:
+            _promptenhance.enhance_diffusion_arguments(wrapper, user_args)
     finally:
         wrapper._pipeline = previous
 

@@ -27,6 +27,7 @@ import huggingface_hub
 import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
 import dgenerate.batchprocess.util as _b_util
+import dgenerate.quantize.hfcard as _hfcard
 import dgenerate.quantize.quantexport as _quantexport
 import dgenerate.quantize.repoquant as _repoquant
 import dgenerate.subcommands.subcommand as _subcommand
@@ -221,6 +222,13 @@ class QuantizeSubCommand(_subcommand.SubCommand):
 
     dgenerate --sub-command quantize --list-formats
 
+    --hf-upload publishes the written files. --hf-upload-card adds a model card.
+    --hf-upload-card-preview prints that card and does not quantize or upload.
+
+    dgenerate --sub-command quantize ./model --formats q4 -o quants --hf-upload user/model-q4 --hf-upload-card
+
+    dgenerate --sub-command quantize ./model --hf-upload-card-preview --quantizer "sdnq;type=uint4;group-size=32;use-svd=true"
+
     See: dgenerate --sub-command quantize --help
     """
 
@@ -307,7 +315,39 @@ class QuantizeSubCommand(_subcommand.SubCommand):
             help='Revision, when the model is a Hugging Face repository.')
         self._parser.add_argument(
             '-atk', '--auth-token', default=None,
-            help='Hugging Face token for a gated repository.')
+            help='Hugging Face token for a gated repository and for --hf-upload. '
+                 'When this is omitted, HF_TOKEN or a saved huggingface-cli login is used.')
+        self._parser.add_argument(
+            '--hf-upload', default=None, metavar='REPO',
+            help='Upload the written files to this Hugging Face model repository. '
+                 'Accepts a repo ID for example: user/repo-name. A huggingface.co URL for that '
+                 'repository is accepted. A new repository is created when it does not '
+                 'exist. It is public unless --hf-private is set or the account default '
+                 'is private. An existing repository keeps its visibility. One --quantizer repository '
+                 'and no --formats uploads that diffusers folder at the repo root, so it can be '
+                 'loaded as a model. Several files upload under the names written to '
+                 '--output. Pass --hf-upload-card to write a README.md model card. '
+                 'The token is --auth-token, HF_TOKEN, or a saved login.')
+        self._parser.add_argument(
+            '--hf-upload-card', nargs='?', const='', default=None, metavar='CARD',
+            help='README.md to write with the quant files, and to upload with --hf-upload. '
+                 'Omitted, no model card is written. With no value, the card is built from '
+                 'the source model, the formats, the quantizer settings, and the command. '
+                 'extra:TEXT and extra-file:PATH insert that text into the generated card, '
+                 'after the introduction. file:PATH uses that UTF-8 file as the whole card. '
+                 'text:TEXT uses that text as the whole card. Quote the value when it contains '
+                 'spaces, as in --hf-upload-card "extra:Use guidance 3.5."')
+        self._parser.add_argument(
+            '--hf-upload-card-preview', action='store_true',
+            help='Print the model card and do not quantize or upload. Pass --output to also '
+                 'write README.md there. With no --hf-upload-card, the preview is the generated '
+                 'card. extra: and extra-file: are inserted into that card. file: and text: '
+                 'are printed as the whole card. With --hf-upload, the card names that '
+                 'repository and nothing is uploaded.')
+        self._parser.add_argument(
+            '--hf-private', action='store_true',
+            help='Create the --hf-upload repository as private when it does not already exist. '
+                 'An existing repository keeps its visibility.')
         self._parser.add_argument(
             '-ofm', '--offline-mode', action='store_true',
             help='Use weights already on disk. Do not download a repository.')
@@ -328,8 +368,8 @@ class QuantizeSubCommand(_subcommand.SubCommand):
             raise self.argument_error(
                 'Pass --formats, for example --formats q4 q8 fp8, '
                 'or --quantizer with an sdnq or bnb URI. --list-formats prints the file formats.')
-        if not args.output:
-            raise self.argument_error('Pass --output for the directory the quant files are written to.')
+        if args.hf_private and not args.hf_upload:
+            raise self.argument_error('--hf-private applies to --hf-upload.')
 
         try:
             file_formats = _quantexport.resolve_formats(args.formats) if args.formats else []
@@ -343,6 +383,33 @@ class QuantizeSubCommand(_subcommand.SubCommand):
                 quantizers.append(spec)
             token = _hfhub.resolve_auth_token(args.auth_token)
             local_files_only = self.local_files_only or args.offline_mode
+            repo_id = _hfcard.normalize_repo_id(args.hf_upload) if args.hf_upload else None
+            card_spec = None if args.hf_upload_card is None else _hfcard.parse_upload_card(args.hf_upload_card)
+            if (card_spec is not None and card_spec.kind in {'file', 'extra-file'}
+                    and not os.path.isfile(card_spec.value)):
+                raise _quantexport.QuantExportError(
+                    f'"{card_spec.value}" is not a file. '
+                    f'--hf-upload-card {card_spec.kind}: needs a UTF-8 file.')
+            self._reject_incompatible_sources(args, quantizers)
+            if repo_id and not args.hf_upload_card_preview and not token:
+                raise _quantexport.QuantExportError(
+                    'Pass --auth-token, set HF_TOKEN, or run huggingface-cli login '
+                    'before --hf-upload.')
+            if args.hf_upload_card_preview:
+                card = self._readme_text(
+                    args, file_formats, quantizers, repo_id, card_spec, preview=True)
+                _messages.log(card.rstrip())
+                if args.output:
+                    os.makedirs(args.output, exist_ok=True)
+                    readme = os.path.join(args.output, 'README.md')
+                    with open(readme, 'w', encoding='utf-8', newline='\n') as handle:
+                        handle.write(card)
+                    _messages.log(f'Wrote {readme}.')
+                _messages.log('Card preview: not quantizing and not uploading.')
+                return 0
+            if not args.output:
+                raise self.argument_error(
+                    'Pass --output for the directory the quant files are written to.')
             written = []
             if _quantexport.single_weight_reference(args.model):
                 if args.subfolders:
@@ -374,7 +441,9 @@ class QuantizeSubCommand(_subcommand.SubCommand):
                         source_dir=os.path.dirname(path)))
                 root = None
                 components = []
+                component_classes = [(name, _hfcard.component_class(config))]
             else:
+                component_classes = []
                 if args.weight_name and args.variant:
                     raise _quantexport.QuantExportError(
                         'Pass --weight-name or --variant, not both.')
@@ -396,6 +465,7 @@ class QuantizeSubCommand(_subcommand.SubCommand):
                     state = _quantexport.load_component_state(
                         folder, args.variant, weight_name)
                     config = _quantexport.load_component_config(folder)
+                    component_classes.append((name, _hfcard.component_class(config)))
                     count = len(state)
                     noun = 'tensor' if count == 1 else 'tensors'
                     _messages.log(
@@ -413,9 +483,132 @@ class QuantizeSubCommand(_subcommand.SubCommand):
                     root,
                     [(name, folder) for name, folder, _weight in components],
                     spec, args.output, args.variant))
+            if repo_id or card_spec is not None:
+                if not component_classes:
+                    for name, folder, _weight in components:
+                        component_classes.append((
+                            name, _hfcard.component_class(
+                                _quantexport.load_component_config(folder))))
+                self._publish(
+                    args, file_formats, quantizers, repo_id, token, card_spec,
+                    written, component_classes, _hfcard.pipeline_class(root))
         except _quantexport.QuantExportError as error:
             raise self.argument_error(str(error)) from error
 
         if not written:
             raise self.argument_error('No quant files were written.')
         return 0
+
+    @staticmethod
+    def _reject_incompatible_sources(args, quantizers) -> None:
+        single = _quantexport.single_weight_reference(args.model)
+        if not single:
+            cleaned = str(args.model).split('?', 1)[0].split('#', 1)[0].lower()
+            single = cleaned.endswith((
+                '.safetensors', '.bin', '.pt', '.pth', '.ckpt', '.index.json'))
+        if single:
+            if args.subfolders:
+                raise _quantexport.QuantExportError(
+                    'A single weight file already selects one component. '
+                    'Do not pass --subfolders.')
+            if args.weight_name:
+                raise _quantexport.QuantExportError(
+                    'A single weight file already names the weights. Do not pass --weight-name.')
+            if args.variant:
+                raise _quantexport.QuantExportError(
+                    'A single weight file already names the weights. Do not pass --variant.')
+            if quantizers:
+                raise _quantexport.QuantExportError(
+                    '--quantizer writes a diffusers repository and needs the whole model, '
+                    'not one weight file.')
+            return
+        if args.weight_name and args.variant:
+            raise _quantexport.QuantExportError(
+                'Pass --weight-name or --variant, not both.')
+        if quantizers and args.weight_name:
+            raise _quantexport.QuantExportError(
+                '--quantizer loads the component diffusers would load and honors --variant. '
+                '--weight-name applies to --formats.')
+
+    def _model_card(self, args, file_formats, quantizers, repo_id, *,
+                    preview: bool,
+                    component_classes=None,
+                    pipeline=None,
+                    files=None,
+                    extra=None) -> str:
+        return _hfcard.build_model_card(
+            model=args.model,
+            repo_id=repo_id,
+            revision=args.revision,
+            subfolders=args.subfolders,
+            formats_requested=args.formats,
+            formats=file_formats,
+            quantizers=quantizers,
+            comfy=args.comfy,
+            llama=args.llama,
+            variant=args.variant,
+            weight_name=args.weight_name,
+            command=_hfcard.quantize_command_line(
+                args.model,
+                subfolders=args.subfolders,
+                formats=args.formats,
+                quantizer_uris=args.quantizer,
+                comfy=args.comfy,
+                llama=args.llama,
+                output=args.output,
+                weight_name=args.weight_name,
+                variant=args.variant,
+                revision=args.revision,
+                hf_upload=args.hf_upload,
+                hf_upload_card=args.hf_upload_card,
+                hf_private=args.hf_private,
+                offline=args.offline_mode),
+            component_classes=component_classes,
+            pipeline=pipeline,
+            files=files,
+            extra=extra,
+            preview=preview)
+
+    def _readme_text(self, args, file_formats, quantizers, repo_id, card_spec, *,
+                     preview: bool,
+                     component_classes=None,
+                     pipeline=None,
+                     files=None) -> str:
+        if card_spec is None or card_spec.kind in {'generate', 'extra', 'extra-file'}:
+            extra = _hfcard.read_card_text(card_spec) if card_spec is not None and card_spec.kind != 'generate' else None
+            return self._model_card(
+                args, file_formats, quantizers, repo_id, preview=preview,
+                component_classes=component_classes, pipeline=pipeline,
+                files=files, extra=extra)
+        return _hfcard.read_provided_card(card_spec)
+
+    def _publish(self, args, file_formats, quantizers, repo_id, token, card_spec,
+                 written, component_classes, pipeline) -> None:
+        include_card = card_spec is not None
+        folder, patterns = _hfcard.upload_layout(
+            args.output, written, include_card=include_card)
+        if include_card:
+            if card_spec.kind in {'generate', 'extra', 'extra-file'}:
+                files = _hfcard.listed_files(folder, patterns)
+            else:
+                files = None
+            card = self._readme_text(
+                args, file_formats, quantizers, repo_id, card_spec, preview=False,
+                component_classes=component_classes, pipeline=pipeline, files=files)
+            readme = os.path.join(folder, 'README.md')
+            with open(readme, 'w', encoding='utf-8', newline='\n') as handle:
+                handle.write(card)
+            _messages.log(f'Wrote {readme}.')
+        if not repo_id:
+            return
+        names = [name for name, _klass in component_classes]
+        message = _hfcard.commit_message(args.model, file_formats, quantizers, names)
+        # --offline-mode keeps the source download local. The upload the user
+        # asked for still has to reach the Hub.
+        with _hfhub.offline_mode_context(False):
+            url = _hfcard.upload_quantized(
+                folder, repo_id, token,
+                private=args.hf_private,
+                commit_message_text=message,
+                allow_patterns=patterns)
+        _messages.log(f'Uploaded {url}.')

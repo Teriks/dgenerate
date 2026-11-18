@@ -147,6 +147,10 @@ def call_minimax_h3(wrapper, user_args):
     pipe, _held = _vp._video_pipeline(wrapper, workflow)
     _configure_schedulers(
         pipe, user_args.scheduler_uri, getattr(user_args, 'second_model_scheduler_uri', None))
+    import dgenerate.pipelinewrapper.videopipelines.single_image_video as _single_image_video
+    _single_image_video._enhance_loaded_video_prompt(
+        wrapper, pipe, user_args, references=references or None)
+    positive, _negative = _vp._prompt_text(user_args)
     if control_uris:
         import dgenerate.pipelinewrapper.minimaxh3control as _control
 

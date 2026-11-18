@@ -22,7 +22,5 @@
 """
 Write GGUF and ComfyUI safetensors quants from a diffusers component.
 
-The ``quantize`` sub-command is the command-line entry. Loading those files
-still goes through :py:mod:`dgenerate.pipelinewrapper.ggufcompat` and
-:py:mod:`dgenerate.pipelinewrapper.safetensorscompat`.
+The ``quantize`` sub-command is the command-line entry.
 """

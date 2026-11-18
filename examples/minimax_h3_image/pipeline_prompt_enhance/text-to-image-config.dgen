@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# The Qwen3-VL encoder rewrites the prompt in the language it was written in.
+# With reference images the rewrite keeps the Picture 1, Picture 2 labels.
+
+MiniMaxAI/MiniMax-H3-Image
+--model-type minimax-h3-image
+--dtype bfloat16
+--model-sequential-offload
+--pipeline-prompt-enhance
+--gen-seeds 1
+--output-path minimax-h3-image-pipeline-prompt-enhance
+--output-size 2048
+--prompts "A red fox standing in a snowy pine forest at sunrise, sharp detail"

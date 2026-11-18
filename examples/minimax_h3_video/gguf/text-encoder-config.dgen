@@ -1,8 +1,10 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Curve Q4_0 transformer and the ComfyUI int8 ConvRot Qwen3-VL encoder.
-# https://huggingface.co/Comfy-Org/MiniMax-H3
+# Curve Q4_0 transformer and an int8 Qwen3-VL encoder that keeps the
+# language-model head.
+# https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF
+# https://huggingface.co/Teriks/MiniMax-H3-Qwen3VL-text-encoder
 # Packed int8 layers stay packed. No quantizer on the encoder line.
 
 MiniMaxAI/MiniMax-H3
@@ -10,7 +12,7 @@ MiniMaxAI/MiniMax-H3
 --dtype bfloat16
 --model-sequential-offload
 --transformer https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q4_0.gguf
---text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors"
+--text-encoders "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Teriks/MiniMax-H3-Qwen3VL-text-encoder/blob/main/text_encoder-int8_tensorwise.safetensors"
 --inference-steps 30
 --video-lengths 5
 --video-fps 24
