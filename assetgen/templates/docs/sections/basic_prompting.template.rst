@@ -36,7 +36,7 @@ In a ``.dgen`` file:
 
     --prompts "a sign that says hello\; world; blurry"
 
-Bash:
+In ``bash``:
 
 .. code-block:: bash
 
@@ -45,13 +45,13 @@ Bash:
     dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "a sign that says hello\; world; blurry"
 
-cmd:
+In ``cmd``:
 
 .. code-block:: text
 
     dgenerate sd2-community/stable-diffusion-2-1 --prompts "a sign that says hello\; world; blurry"
 
-PowerShell:
+In ``powershell``:
 
 .. code-block:: powershell
 
@@ -68,8 +68,9 @@ In a config template, ``prompt(pos, neg)`` escapes the semicolons for you.
 
     --prompts {{ prompt('a sign that says hello; world', 'blurry; rain') }}
 
-``read_text(path, encoding='utf-8')`` reads a whole text file. The encoding
-is the file's own encoding. The result is a Unicode string:
+``read_text(file, encoding='utf-8')`` reads a whole text file. ``encoding``
+is how that file was saved. UTF-8 is the default. The return value is the
+file's text:
 
 .. code-block:: jinja
 

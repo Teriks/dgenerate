@@ -4446,7 +4446,7 @@ In a ``.dgen`` file:
 
     --prompts "a sign that says hello\; world; blurry"
 
-Bash:
+In ``bash``:
 
 .. code-block:: bash
 
@@ -4455,13 +4455,13 @@ Bash:
     dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "a sign that says hello\; world; blurry"
 
-cmd:
+In ``cmd``:
 
 .. code-block:: text
 
     dgenerate sd2-community/stable-diffusion-2-1 --prompts "a sign that says hello\; world; blurry"
 
-PowerShell:
+In ``powershell``:
 
 .. code-block:: powershell
 
@@ -4478,8 +4478,9 @@ In a config template, ``prompt(pos, neg)`` escapes the semicolons for you.
 
     --prompts {{ prompt('a sign that says hello; world', 'blurry; rain') }}
 
-``read_text(path, encoding='utf-8')`` reads a whole text file. The encoding
-is the file's own encoding. The result is a Unicode string:
+``read_text(file, encoding='utf-8')`` reads a whole text file. ``encoding``
+is how that file was saved. UTF-8 is the default. The return value is the
+file's text:
 
 .. code-block:: jinja
 
@@ -19438,8 +19439,8 @@ The dgenerate specific jinja2 functions/filters are:
     
         Read a whole text file and return its contents as a string.
     
-        "encoding" is the file's encoding. The text is decoded into a Unicode string, so a caption saved as cp1252
-        or utf-16 can be used in a prompt. Newlines are translated to \n.
+        "encoding" is how the file was saved. The default is UTF-8. A caption saved as cp1252 or utf-16 needs that
+        encoding. Newlines are translated to \n.
     
         \setp caption read_text('caption.txt', encoding='cp1252')
     
