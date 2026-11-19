@@ -371,7 +371,7 @@ def _submit_config(arguments: str | dict) -> tuple[bool, str, int]:
     return consider_submission(config)
 
 
-def _tool_log_args(arguments: str) -> str:
+def _tool_log_args(arguments: str, *, full: bool = False) -> str:
     text = (arguments or '').strip()
     try:
         data = json.loads(text) if text else {}
@@ -381,7 +381,7 @@ def _tool_log_args(arguments: str) -> str:
         data = dict(data)
         data['url'] = redact_url(str(data['url']))
         text = json.dumps(data, ensure_ascii=False)
-    if len(text) <= 200:
+    if full or len(text) <= 200:
         return text
     return text[:200] + '...'
 
@@ -480,6 +480,7 @@ class ChatModel:
         self.model_path = model_path
         self.think = think
         self.effort = effort if effort in ('low', 'medium', 'xhigh') else 'medium'
+        self.debug_tools = False
         self._server = _create_server(model_path, n_ctx, gpu_layers, verbose, embedding=False)
 
     def complete(self,
@@ -644,8 +645,9 @@ class ChatModel:
                 fn = call.get('function') or {}
                 name = fn.get('name') or ''
                 args = fn.get('arguments') or ''
+                full = getattr(self, 'debug_tools', False)
                 if on_tool:
-                    on_tool(f'{name} {_tool_log_args(args)}')
+                    on_tool(f'{name} {_tool_log_args(args, full=full)}')
                 if name == 'submit_config':
                     accepted, payload, invocations = _submit_config(args)
                     result = 'Accepted.' if accepted else payload
@@ -656,7 +658,7 @@ class ChatModel:
                 else:
                     result = run_tool(name, args)
                 if on_tool:
-                    on_tool(f'  -> {_truncate_tool_result(result)}')
+                    on_tool(f'  -> {_format_tool_result(result, full=full)}')
                 messages.append({
                     'role': 'tool',
                     'tool_call_id': call.get('id') or '',
@@ -700,6 +702,16 @@ class ChatModel:
                     max_tool_rounds=max_tool_rounds,
                     _shrink=True, _nested=True, **sampling)
         raise ModelError(f'Chat completion failed: {message}')
+
+
+def _format_tool_result(text: str, *, full: bool = False) -> str:
+    """The progress line for a tool result. Debug keeps every line."""
+    if full:
+        body = (text or '').strip() or '(empty)'
+        if '\n' in body:
+            return '\n' + body
+        return body
+    return _truncate_tool_result(text)
 
 
 def _truncate_tool_result(text: str, limit: int = 120) -> str:

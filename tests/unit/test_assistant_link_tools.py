@@ -735,6 +735,44 @@ class TestChatModelToolLoop(unittest.TestCase):
         self.assertFalse(any('secret' in line for line in log))
         self.assertTrue(any('fetch_link' in line for line in log))
 
+    def test_debug_tools_keeps_the_whole_result(self):
+        chat = ChatModel.__new__(ChatModel)
+        chat.think = False
+        chat.effort = 'medium'
+        chat.debug_tools = True
+        calls = {'n': 0}
+        log = []
+        result = 'URL: https://civitai.com/models/1\nbaseModel: Krea 2\n' + ('x' * 300)
+
+        class Server:
+            def handle_chat_completions(self, body, on_chunk=None):
+                calls['n'] += 1
+                if calls['n'] == 1:
+                    return {
+                        'choices': [{
+                            'message': {
+                                'tool_calls': [{
+                                    'id': 'call_1',
+                                    'function': {
+                                        'name': 'fetch_link',
+                                        'arguments': json.dumps({
+                                            'url': 'https://civitai.com/models/1?token=secret',
+                                        }),
+                                    },
+                                }],
+                            },
+                        }],
+                    }
+                return {'choices': [{'message': {'content': '```dgen\nsd\n```'}}]}
+
+        chat._server = Server()
+        with patch('dgenerate.assistant.models.run_tool', return_value=result):
+            chat.complete([{'role': 'user', 'content': 'hi'}], link_tools=True, on_tool=log.append)
+        logged = '\n'.join(log)
+        self.assertNotIn('secret', logged)
+        self.assertIn('baseModel: Krea 2', logged)
+        self.assertIn('x' * 300, logged)
+
     def test_tools_rejection_falls_back_and_is_logged(self):
         import io
         from contextlib import redirect_stderr

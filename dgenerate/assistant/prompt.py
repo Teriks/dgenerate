@@ -176,7 +176,14 @@ replaces them, so save one with \\set name {{{{ quote(first(last_images)) }}}}. 
 Never guess names dgenerate writes. Other options are last_ variables, for example \
 --prompts {{{{ format_prompt(last_prompts) }}}}. Use only names in the template \
 reference. Image models, including Flux Kontext and Flux Fill, and image-to-video \
-take last_images or the user's photo, never last_animations.
+take last_images or the user's photo, never last_animations. An image, last frame, \
+video, control, or reference input uses the repo and transformer the model list \
+names for that input, and the quant file and LoRA named with it. Pass the file. \
+A still from the previous step is --image-seeds {{{{ quote(first(last_images)) }}}}. \
+A video from the previous step uses last_animations. Do not keep the text-only \
+repo and say the input is unsupported. A family that takes the input on the same \
+repo, including LTX-2.5, LTX-Video, Motif, and Kandinsky 6, keeps that repo and \
+still receives the file.
 - Example prompts are placeholders. Write a new prompt in the style in the prompt \
 guide, keeping what the user asked for. Text in the image goes in single quotes, \
 like a sign that says 'OPEN'. (word:1.3) and word+ work only with --prompt-weighter. \
@@ -225,9 +232,13 @@ Link tool:
 - Call fetch_link for CivitAI or Hugging Face URLs in the Request or the editor config. \
 After a Hugging Face repo result, you may call it once more on a raw or blob URL for a \
 markdown note listed there. Do not call it for links that appear only in the reference \
-or examples, except once on the repo of the closest example's blob or resolve URL when \
-the request asks for a GGUF or Comfy quant that filename does not use. \
-Call fetch_link once on that repo (https://huggingface.co/org/name) and copy a weight path it lists. \
+or examples. A request for a GGUF or a Comfy quant, or for a quantized text encoder, \
+uses the file the model list already names when that file is already that kind. \
+Do not fetch that repo to choose a quant. Do not fetch a LoRA or embedding repo when \
+the model list already names its weight-name. \
+Call fetch_link once on that repo (https://huggingface.co/org/name) only when the request \
+asks for a quant suffix or precision that filename does not use, such as Q5, Q8, fp8, \
+nvfp4, or int8 when the named file is Q4_K_S, and copy a weight path it lists. \
 Keep that repo and folder. Do not call a tree page when the file list is already present. \
 Offline, fetch_link lists only the files already in the Hugging Face cache. If the requested \
 quant is not in that list, keep the example file.
@@ -306,8 +317,10 @@ PROMPT_GUIDES = {
     'kandinsky6-video': ('One paragraph: action, look, camera, and sound. Lite distilled is 10 steps '
                          'and guidance 1. Full and Pro are 50 steps and guidance 5. Lite, full Lite, '
                          'and Pro distilled are public. kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers is '
-                         'gated and needs HF_TOKEN. --video-fps 24. --output-size 864x480. One still is '
-                         'the first frame. No --loras. Omit --pipeline-prompt-enhance unless asked. '
+                         'gated and needs HF_TOKEN. --video-fps 24. --output-size 864x480. Lite distilled, full Lite, '
+                         'Pro distilled, and Pro each take one still as the first frame on that same checkpoint. '
+                         'Do not switch to a Kandinsky 5 repo. A mask, a second image, a video, and a control image '
+                         'are rejected. No --loras. Omit --pipeline-prompt-enhance unless asked. '
                          'No value, or one system prompt. --pipeline-prompt-enhance-* sampling applies '
                          'to that rewrite.'),
     'qwen-image-edit': ('An instruction that says what should change. The image seed is '
@@ -488,9 +501,13 @@ Text-to-video is hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v. \
 Its GGUF is --transformer https://huggingface.co/jayn7/HunyuanVideo-1.5_T2V_480p-GGUF/blob/main/480p/hunyuanvideo1.5_480p_t2v-Q4_K_S.gguf. \
 Distilled text-to-video is hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v_distilled, guidance 1, \
 --transformer https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/blob/main/split_files/diffusion_models/hunyuanvideo1.5_480p_t2v_cfg_distilled_fp8_scaled.safetensors. \
-A still is hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v and keeps that repository transformer.
+An image input, including a still from the previous step, is hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v \
+with --image-seeds and that repository's transformer. Do not use the t2v repo or its GGUF for an image. \
+No video seed, no last-frame=, and no second image.
 - Motif video: Motif-Technologies/Motif-Video-2B, --model-type motif-video, --dtype bfloat16, \
---model-sequential-offload, guidance 5, --video-fps 24. Public. A still is the first frame. \
+--model-sequential-offload, guidance 5, --video-fps 24. Public. \
+Text and a first-frame still both use this repo. Pass the still with --image-seeds. The GGUF works for either. \
+No last frame, no video seed, and no second image. \
 GGUF: --transformer https://huggingface.co/Motif-Technologies/Motif-Video-2B-GGUF/blob/main/motifv-2b-dev-Q4_K_M.gguf.
 - Kandinsky 5 video: --model-type kandinsky5-video, --dtype bfloat16, --model-sequential-offload, \
 guidance 5, 50 steps, --video-fps 24. Public. \
@@ -498,8 +515,10 @@ Text-to-video Lite is kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers at 76
 Text-to-video Pro is kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers at 1024x768. \
 Its GGUF is --transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sft-5s-GGUF/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf \
 on that Pro parent. \
-A still is kandinskylab/Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers at 768x512 and keeps that repository transformer. \
-Lite image-to-video is kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers.
+An image input, including a still from the previous step, is kandinskylab/Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers at 768x512 \
+and keeps that repository transformer. Lite image-to-video is kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers. \
+Do not use a T2V repo or the Pro T2V GGUF for an image. There is no I2V GGUF in the examples. \
+No video seed, no last-frame=, and no second image.
 - Kandinsky 5 image: --model-type kandinsky5-image. \
 Text-to-image is kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers, guidance 3.5, 50 steps, 1024. \
 An edit is kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers with --image-seeds. Public.
@@ -509,7 +528,10 @@ Lite distilled is kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers, PiflowSc
 Full Lite is kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers, 50 steps, guidance 5. Public. \
 Pro distilled is kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers, 10 steps, guidance 1. Public. \
 Pro is kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, 50 steps, guidance 5. Gated. \
-One still is the first frame. No --loras. \
+Lite distilled, full Lite, Pro distilled, and Pro each take one still as the first frame on that same checkpoint. \
+Pass it with --image-seeds, including a still from the previous step. A mask, a second image, a video seed, \
+and a control image are rejected. Do not switch to a Kandinsky 5 I2V repo. The Pro GGUF and the Lite distilled \
+INT8 stay on their own parents and still take that still. No --loras. \
 Omit --pipeline-prompt-enhance unless asked. No value, or one system prompt. \
 --pipeline-prompt-enhance-* sampling applies. It turns on expand_prompts. \
 GGUF: --transformer https://huggingface.co/realrebelai/Kandinsky-6.0-Pro-5s_GGUFs/blob/main/Diffusion Model/Full/Kandinsky-6.0-Pro-5s-Q4_K_S.gguf \
@@ -529,6 +551,7 @@ INT8: --transformer https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffus
 References (ref2va) GGUF: --transformer https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/ref2va/MiniMax-H3-ref2va-curve-Q4_0.gguf. \
 INT8: --transformer https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors. \
 Do not put a ref2va file on a text or keyframe run, or an fl2va file on reference=. \
+Do not drop a keyframe, reference=, or control video and write a text-only run. \
 Text encoder, already quantized, no quantizer: --text-encoders \
 "Qwen3VLForConditionalGeneration;model=https://huggingface.co/Teriks/MiniMax-H3-Qwen3VL-text-encoder/blob/main/text_encoder-int8_tensorwise.safetensors".
 - MiniMax-H3-Image: --model-type minimax-h3-image, --dtype bfloat16, --model-sequential-offload. \
@@ -550,7 +573,8 @@ Other LTX options use the --ltx- prefix. A named duration is that many seconds. 
 --video-lengths so the duration head chooses it. \
 --ltx-latent-upscale is the two-stage pass in that generation; --output-size must be divisible by 64. \
 The last frame is last-frame= on --image-seeds, at strength 1. strength= is the condition weight. \
---image-seed-strengths fills groups that omit strength=. Describe the sound. \
+--image-seed-strengths fills groups that omit strength=. A video seed stays on this same repo. \
+With --ltx-ic-lora the plain path is the control clip, not the first frame. Describe the sound. \
 Lightricks/LTX-Video is the older video-only model. Use it only when named, as --model-type ltx-video. \
 GGUF: --transformer https://huggingface.co/city96/LTX-Video-gguf/blob/main/ltx-video-2b-v0.9-Q4_K_S.gguf. \
 Never write Lightricks/LTX-Video with --model-type ltx2. --model-type ltx2 belongs on \
@@ -591,16 +615,25 @@ Use that same Gemma 3 encoder with the 19B dev GGUF. Keep 30 steps, guidance 4, 
 Public. --video-lengths is seconds and snaps to 4k+1 frames \
 (5 seconds at 16 fps is 81). Width and height must be divisible by 16. \
 Put the negative after ; in --prompts. \
-A still is image-to-video on Wan-AI/Wan2.1-I2V-14B-480P-Diffusers. \
+A still, including one written by the previous invocation, is image-to-video on Wan-AI/Wan2.1-I2V-14B-480P-Diffusers. \
 Its GGUF is --transformer https://huggingface.co/city96/Wan2.1-I2V-14B-480P-gguf/blob/main/wan2.1-i2v-14b-480p-Q4_K_S.gguf \
 on that same parent. \
 Its FP8 is --transformer https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_i2v_480p_14B_fp8_scaled.safetensors. \
 last-frame= needs Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers at 1280x720 \
 and --transformer https://huggingface.co/city96/Wan2.1-FLF2V-14B-720P-gguf/blob/main/wan2.1-flf2v-14b-720p-Q4_K_S.gguf \
 or https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors. \
+Do not put last-frame= on the I2V or T2V repo. \
 A Wan 2.1 I2V repo only embeds the first frame. \
-A video seed path is video-to-video and rejects --video-lengths; trim with frame-end=. \
-control=, mask=, and reference= are VACE. The full checkpoint is Wan-AI/Wan2.1-VACE-1.3B-diffusers. \
+Animating that still uses --image-seeds {{ quote(first(last_images)) }}. \
+Wan-AI/Wan2.1-T2V-14B-Diffusers does not take an image. Do not use the T2V repo \
+to animate a generated still, and do not say image conditioning is unsupported. \
+The LightX2V 4-step I2V LoRA is lightx2v/Wan2.1-Distill-Loras with \
+weight-name=wan2.1_i2v_lora_rank64_lightx2v_4step.safetensors, --inference-steps 4, \
+and --guidance-scales 1. The T2V weight wan2.1_t2v_14b_lora_rank64_lightx2v_4step.safetensors \
+belongs only on the T2V parent. \
+A video seed path is video-to-video on the T2V repo and rejects --video-lengths; trim with frame-end=. \
+control=, mask=, and reference= are VACE. Do not put them on a T2V or I2V repo. \
+The full checkpoint is Wan-AI/Wan2.1-VACE-1.3B-diffusers. \
 The 14B quant files stay on Wan-AI/Wan2.1-VACE-14B-diffusers: \
 --transformer https://huggingface.co/QuantStack/Wan2.1_14B_VACE-GGUF/blob/main/Wan2.1_14B_VACE-Q4_K_S.gguf \
 or https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_vace_14B_fp16.safetensors. \
@@ -609,7 +642,9 @@ Its GGUF experts are --transformer https://huggingface.co/QuantStack/Wan2.2-T2V-
 and --wan-second-transformer https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/LowNoise/Wan2.2-T2V-A14B-LowNoise-Q4_K_S.gguf. \
 Its FP8 experts are --transformer https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors \
 and --wan-second-transformer https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors. \
-A Wan 2.2 still is Wan-AI/Wan2.2-I2V-A14B-Diffusers with that same guidance. \
+An image input, including a still from the previous step, is Wan-AI/Wan2.2-I2V-A14B-Diffusers \
+with that same guidance and the I2V experts. Do not use the T2V repo or its experts for an image. \
+A video seed stays on the T2V repo. \
 Its GGUF experts are --transformer https://huggingface.co/QuantStack/Wan2.2-I2V-A14B-GGUF/blob/main/HighNoise/Wan2.2-I2V-A14B-HighNoise-Q4_K_S.gguf \
 and --wan-second-transformer https://huggingface.co/QuantStack/Wan2.2-I2V-A14B-GGUF/blob/main/LowNoise/Wan2.2-I2V-A14B-LowNoise-Q4_K_S.gguf. \
 Its FP8 experts are --transformer https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors \
@@ -795,14 +830,20 @@ def first_draft_recipes(request: str, editor: str | None = None,
     ]
     if re.search(r'\b(animat\w*|video|ltx|wan|clip)\b', request, re.IGNORECASE):
         lines += [
+            'When the model list names a different repo or transformer for an image, last frame, video, '
+            'control, or reference input, use that one and pass the input. Copy its quant file and LoRA. '
+            'Do not keep the text-only repo and say the input is unsupported. '
             'Unless the user names Wan or LTX-Video, animate with Lightricks/LTX-2.5-Diffusers, '
             '--model-type ltx2, --guidance-scales 1, --video-fps 24, --model-sequential-offload, '
             '--animation-format mp4. Width and height must be divisible by 32.',
             'Lightricks/LTX-Video is --model-type ltx-video only. Do not write --model-type ltx2 on that repo.',
             'Lightricks/LTX-2, Lightricks/LTX-2.3, and Lightricks/LTX-2.5-Diffusers are --model-type ltx2. '
             'Do not write --model-type ltx-video on those repos. Keep a 2.3 repo when that is the one written.',
-            'Wan text or image to video is --model-type wan, a Wan-AI repo, --guidance-scales 5, '
-            '--video-fps 16, --output-size 832x480, and a negative prompt after ;. No HF_TOKEN. '
+            'Wan text-to-video is Wan-AI/Wan2.1-T2V-14B-Diffusers or the 1.3B repo, --model-type wan, '
+            '--guidance-scales 5, --video-fps 16, --output-size 832x480, and a negative prompt after ;. No HF_TOKEN. '
+            'Wan image-to-video, including animating a still from the previous step, is '
+            'Wan-AI/Wan2.1-I2V-14B-480P-Diffusers with --image-seeds {{ quote(first(last_images)) }}. '
+            'Do not use the T2V repo for that step. '
             'Wan-Animate is --model-type wan-animate. Wan-Animate-2 is --model-type wan-animate-2. '
             'Do not pass --video-lengths to either.',
             'LTX-only options use the --ltx- prefix, including '
@@ -813,7 +854,7 @@ def first_draft_recipes(request: str, editor: str | None = None,
             'For a sharper clip, --ltx-latent-upscale in the same generation; --output-size must be divisible by 64.',
             'The last frame is last-frame= on --image-seeds, at strength 1. strength= is the condition weight. '
             '--image-seed-strengths fills LTX groups that omit strength=.',
-            'Image-to-video uses --image-seeds {{ quote(first(last_images)) }} and describes the sound.',
+            'LTX image-to-video uses --image-seeds {{ quote(first(last_images)) }} and describes the sound.',
         ]
     if _GATED_HF.search(request):
         lines.append(

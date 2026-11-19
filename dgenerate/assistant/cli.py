@@ -276,6 +276,8 @@ def create_parser(prog: str) -> _b_util.DirectiveArgumentParser:
                         help=r"Terminal color before the model's reply. Off by default. Cyan is \033[36m.")
     parser.add_argument('-ptl', '--progress-tool', default='', type=_control_code, metavar='CODE',
                         help=r'Terminal color before a tool call. Off by default. Yellow is \033[33m.')
+    parser.add_argument('-dbg', '--debug', action='store_true',
+                        help='Print each tool call and its full result. A token in a URL is still removed.')
     parser.add_argument('-v', '--verbose', action='store_true', help='Show llama.cpp output.')
     return parser
 
@@ -382,6 +384,7 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
         chat = _models.ChatModel(_models.resolve_gguf(args.model, args.offline), n_ctx=args.ctx,
                                  gpu_layers=args.gpu_layers, think=args.think, effort=args.reasoning_effort,
                                  verbose=args.verbose)
+        chat.debug_tools = args.debug
 
         messages = [
             {'role': 'system', 'content': system},

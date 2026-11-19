@@ -60,6 +60,7 @@ _SETTINGS_CTX = 'assistant_ctx'
 _SETTINGS_THINK = 'assistant_think'
 _SETTINGS_EFFORT = 'assistant_reasoning_effort'
 _SETTINGS_EDIT = 'assistant_editor_in_context'
+_SETTINGS_DEBUG = 'assistant_debug_tools'
 _SETTINGS_FREE_SHELL = 'assistant_free_shell_memory'
 _FREE_SHELL_MESSAGE = (
     'Freeing CPU/GPU memory used by the dgenerate shell process. '
@@ -277,6 +278,7 @@ Options
 • Reason before answering takes longer. Use it for a long edit or a link. Reasoning Effort applies only while it is on.
 • Free shell CPU/GPU memory unloads models the console has already loaded, so the assistant has room to run.
 • The config is checked before it is written. Progress shows the check, each link lookup, and the reply.
+• Show full tool calls (debug mode) prints each tool's arguments and its whole result. A token in a URL is still removed.
 """
 
 
@@ -449,12 +451,14 @@ class _AssistantForm(tk.Toplevel):
             checks, text='Reason before answering (slower)', variable=self._think_var)
         self._think_check.grid(row=0, column=0, sticky=tk.W)
         self._think_var.trace_add('write', self._remember_think)
-        ttk.Label(checks, text='Reasoning Effort').grid(row=0, column=1, sticky=tk.E, padx=(18, 6))
+        effort = ttk.Frame(checks)
+        effort.grid(row=0, column=1, rowspan=2, sticky=tk.NW, padx=(18, 0))
+        ttk.Label(effort, text='Reasoning Effort').grid(row=0, column=0, sticky=tk.W, padx=(0, 6))
         self._effort_var = tk.StringVar()
         self._effort_combo = _combobox.ComboBox(
-            checks, textvariable=self._effort_var, width=12,
+            effort, textvariable=self._effort_var, width=12,
             values=[_EFFORT_LABELS[name] for name in _catalog.REASONING_EFFORTS])
-        self._effort_combo.grid(row=0, column=2, sticky=tk.W)
+        self._effort_combo.grid(row=0, column=1, sticky=tk.W)
         saved_effort = _saved_model(_SETTINGS_EFFORT, _catalog.DEFAULT_REASONING_EFFORT)
         if saved_effort not in _catalog.REASONING_EFFORTS:
             saved_effort = _catalog.DEFAULT_REASONING_EFFORT
@@ -467,6 +471,12 @@ class _AssistantForm(tk.Toplevel):
             checks, text='Editor in context (edit mode)', variable=self._edit_var)
         self._edit_check.grid(row=1, column=0, sticky=tk.W, pady=(4, 0))
         self._edit_var.trace_add('write', self._sync_edit_mode)
+        self._debug_var = tk.BooleanVar(value=_saved_bool(_SETTINGS_DEBUG))
+        self._debug_check = ttk.Checkbutton(
+            effort, text='Show full tool calls (debug mode)', variable=self._debug_var)
+        self._debug_check.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
+        self._debug_var.trace_add(
+            'write', lambda *_: _remember(_SETTINGS_DEBUG, bool(self._debug_var.get())))
 
         ttk.Label(self, text='Progress', anchor=tk.W).grid(row=3, column=0, sticky=tk.EW)
         self._log_text = _scrolledtext.ScrolledText(self)
@@ -879,6 +889,8 @@ class _AssistantForm(tk.Toplevel):
             command += ['--edit', edit_path]
         if self._think_var.get():
             command += ['--think', '--reasoning-effort', self._selected_effort()]
+        if self._debug_var.get():
+            command.append('--debug')
         return command
 
     def _clear_edit_file(self):

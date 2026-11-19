@@ -15988,7 +15988,7 @@ The help output of ``assistant`` is as follows:
                      [-thk] [-eff {low,medium,xhigh}] [-temp TEMPERATURE] [-tp TOP_P] [-tk TOP_K] [-mp MIN_P]
                      [-pres PRESENCE_PENALTY] [-rpen REPEAT_PENALTY] [-mtok MAX_TOKENS] [-nc]
                      [-mrep MAX_REPAIRS] [-sctx] [-ofm] [-nlt] [-ppl CODE] [-pth CODE] [-ptk CODE] [-ptl CODE]
-                     [-v]
+                     [-dbg] [-v]
                      [request ...]
     
     Write a dgenerate config from a plain language request, using a local Qwen model with retrieval over the
@@ -16114,6 +16114,9 @@ The help output of ``assistant`` is as follows:
       -ptl, --progress-tool CODE
             Terminal color before a tool call. Off by default. Yellow is \033[33m.
             ----------------------------------------------------------------------
+      -dbg, --debug
+            Print each tool call and its full result. A token in a URL is still removed.
+            ----------------------------------------------------------------------------
       -v, --verbose
             Show llama.cpp output.
             ----------------------
