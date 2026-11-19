@@ -3554,7 +3554,7 @@ manually with pipx, (or pip if you want) as described below.
 Manual Install
 --------------
 
-Install Python 3.14. dgenerate requires Python >=3.11, except 3.14.1, and older than 3.15.
+Install Python 3.14. dgenerate requires Python >=3.11.5, except 3.14.1, and older than 3.15.
 Use 3.14.8. Do not install 3.14.1.
 
 https://www.python.org/ftp/python/3.14.8/python-3.14.8-amd64.exe
@@ -3801,7 +3801,7 @@ When done editing ``~/.bashrc`` do:
     source ~/.bashrc
 
 
-Install Python >=3.11, except 3.14.1, and older than 3.15 (Debian / Ubuntu) and pipx
+Install Python >=3.11.5, except 3.14.1, and older than 3.15 (Debian / Ubuntu) and pipx
 -------------------------------------------------------------------------------------
 
 .. code-block:: bash
@@ -3990,7 +3990,7 @@ You need to first install ROCm support, follow: https://rocm.docs.amd.com/projec
 
 Then use the ROCm index above when installing via ``pip`` or ``pipx``.
 
-Install Python >=3.11, except 3.14.1, and older than 3.15 (Debian / Ubuntu) and pipx
+Install Python >=3.11.5, except 3.14.1, and older than 3.15 (Debian / Ubuntu) and pipx
 -------------------------------------------------------------------------------------
 
 .. code-block:: bash
@@ -4138,7 +4138,7 @@ Rendering can be performed in CPU only mode, and with hardware acceleration usin
 
 The default device on MacOS is ``mps`` unless specified otherwise.
 
-dgenerate requires Python >=3.11, except 3.14.1, and older than 3.15.
+dgenerate requires Python >=3.11.5, except 3.14.1, and older than 3.15.
 
 You can install on MacOS by first installing python from the universal ``pkg`` installer
 located at: https://www.python.org/downloads/release/python-3136/

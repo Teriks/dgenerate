@@ -11,7 +11,7 @@ manually with pipx, (or pip if you want) as described below.
 Manual Install
 --------------
 
-Install Python 3.14. dgenerate requires Python >=3.11, except 3.14.1, and older than 3.15.
+Install Python 3.14. dgenerate requires Python >=3.11.5, except 3.14.1, and older than 3.15.
 Use 3.14.8. Do not install 3.14.1.
 
 https://www.python.org/ftp/python/3.14.8/python-3.14.8-amd64.exe

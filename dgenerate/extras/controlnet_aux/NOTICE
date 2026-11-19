@@ -4,3 +4,11 @@ And includes the bugfix: https://github.com/huggingface/controlnet_aux/pull/109
 
 This also includes a compatibility fix for ZoeDepth
 so it can work with the latest version of timm
+
+The vendored EfficientNet checkout at
+normalbae/nets/submodules/efficientnet_repo
+(https://github.com/rwightman/gen-efficientnet-pytorch)
+had requirements.txt and setup.py removed. Those files
+declared their own torch and torchvision requirements.
+NormalBae loads that checkout locally through torch.hub,
+so it is not installed as its own package.

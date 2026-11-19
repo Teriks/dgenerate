@@ -13,7 +13,7 @@ Rendering can be performed in CPU only mode, and with hardware acceleration usin
 
 The default device on MacOS is ``mps`` unless specified otherwise.
 
-dgenerate requires Python >=3.11, except 3.14.1, and older than 3.15.
+dgenerate requires Python >=3.11.5, except 3.14.1, and older than 3.15.
 
 You can install on MacOS by first installing python from the universal ``pkg`` installer
 located at: https://www.python.org/downloads/release/python-3136/

@@ -49,7 +49,7 @@ When done editing ``~/.bashrc`` do:
     source ~/.bashrc
 
 
-Install Python >=3.11, except 3.14.1, and older than 3.15 (Debian / Ubuntu) and pipx
+Install Python >=3.11.5, except 3.14.1, and older than 3.15 (Debian / Ubuntu) and pipx
 -------------------------------------------------------------------------------------
 
 .. code-block:: bash
@@ -238,7 +238,7 @@ You need to first install ROCm support, follow: https://rocm.docs.amd.com/projec
 
 Then use the ROCm index above when installing via ``pip`` or ``pipx``.
 
-Install Python >=3.11, except 3.14.1, and older than 3.15 (Debian / Ubuntu) and pipx
+Install Python >=3.11.5, except 3.14.1, and older than 3.15 (Debian / Ubuntu) and pipx
 -------------------------------------------------------------------------------------
 
 .. code-block:: bash
