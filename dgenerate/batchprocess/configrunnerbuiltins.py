@@ -551,12 +551,12 @@ def read_text(file: str, encoding: str = 'utf-8') -> str:
     """
     Read a whole text file and return its contents as a string.
 
-    "encoding" is how the file was saved. The default is UTF-8. A caption
-    saved as cp1252 or utf-16 needs that encoding. Newlines are translated
-    to \\n.
+    The default encoding is UTF-8, which is what config files and the shell
+    use. Name encoding only when the file was saved as something else.
+    Newlines are translated to \\n.
 
     NOWRAP!
-    \\setp caption read_text('caption.txt', encoding='cp1252')
+    \\setp caption read_text('caption.txt')
 
     NOWRAP!
     --prompts {{ prompt(read_text('caption.txt')) }}

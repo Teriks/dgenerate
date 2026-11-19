@@ -68,14 +68,15 @@ In a config template, ``prompt(pos, neg)`` escapes the semicolons for you.
 
     --prompts {{ prompt('a sign that says hello; world', 'blurry; rain') }}
 
-``read_text(file, encoding='utf-8')`` reads a whole text file. ``encoding``
-is how that file was saved. UTF-8 is the default. The return value is the
-file's text:
+``read_text(file)`` reads a whole text file as UTF-8, which is the encoding
+config files and the shell use. The return value is the file's text:
 
 .. code-block:: jinja
 
-    \setp caption read_text('caption.txt', encoding='cp1252')
+    \setp caption read_text('caption.txt')
     --prompts {{ prompt(caption) }}
+
+Name ``encoding`` only when that file was saved as something else.
 
 
 Multiple Prompts
