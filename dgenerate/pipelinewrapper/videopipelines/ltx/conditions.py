@@ -236,7 +236,7 @@ def _fit_ltx_inputs(pipe, held, mode, user_args, width, height):
         primary, width, height, user_args.aspect_correct, align)
     target = (target_w, target_h)
     if primary != target:
-        _messages.log(
+        _messages.debug_log(
             f'Resizing LTX conditioning media from {primary[0]}x{primary[1]} '
             f'to {target_w}x{target_h}.')
     for attr in ('reference_video_frames', 'video_frames', 'images',
@@ -266,7 +266,7 @@ def _resize_ltx_control_clip(frames, width, height, aspect_correct, align: int):
     target = (target_w, target_h)
     if source == target:
         return frames
-    _messages.log(
+    _messages.debug_log(
         f'Resizing LTX IC-LoRA control clip from {source[0]}x{source[1]} '
         f'to {target[0]}x{target[1]}.')
     return _media.resize_media(frames, target)

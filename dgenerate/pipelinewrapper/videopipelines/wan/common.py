@@ -141,7 +141,7 @@ def _fit_output_media(user_args, primary: str, companions, width, height,
         source, width, height, user_args.aspect_correct, align)
     target = (target_w, target_h)
     if source != target:
-        _messages.log(
+        _messages.debug_log(
             f'Resizing {label} from {source[0]}x{source[1]} to {target_w}x{target_h}.')
     setattr(user_args, primary, _media.resize_media(frames, target))
     for attr, nearest in companions:
