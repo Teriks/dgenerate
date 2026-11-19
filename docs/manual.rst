@@ -52,33 +52,25 @@ Help Output
                      [-q QUANTIZER_URI] [--quantizer-help [QUANTIZER_NAME ...]] [-qm SUBMODULE [SUBMODULE ...]]
                      [-q2 QUANTIZER_URI] [-qm2 SUBMODULE [SUBMODULE ...]]
                      [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]]
-                     [-fu CSV_FLOAT [CSV_FLOAT ...]] [-hd] [--hi-diffusion-no-win-attn]
-                     [--hi-diffusion-no-raunet] [--sada] [--sada-max-downsamples INTEGER [INTEGER ...]]
-                     [--sada-sxs INTEGER [INTEGER ...]] [--sada-sys INTEGER [INTEGER ...]]
-                     [--sada-acc-ranges INTEGER [INTEGER ...]] [--sada-lagrange-terms INTEGER [INTEGER ...]]
-                     [--sada-lagrange-ints INTEGER [INTEGER ...]] [--sada-lagrange-steps INTEGER [INTEGER ...]]
-                     [--sada-max-fixes INTEGER [INTEGER ...]] [--sada-max-intervals INTEGER [INTEGER ...]]
+                     [-fu CSV_FLOAT [CSV_FLOAT ...]] [-hd] [-hdnw] [-hdnr] [-sda] [-sdmd INTEGER [INTEGER ...]]
+                     [-sdsx INTEGER [INTEGER ...]] [-sdsy INTEGER [INTEGER ...]] [-sdar INTEGER [INTEGER ...]]
+                     [-sdlt INTEGER [INTEGER ...]] [-sdli INTEGER [INTEGER ...]] [-sdls INTEGER [INTEGER ...]]
+                     [-sdmf INTEGER [INTEGER ...]] [-sdmi INTEGER [INTEGER ...]]
                      [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-dc] [-dci INTEGER [INTEGER ...]]
                      [-dcb INTEGER [INTEGER ...]] [-rdc] [-rdci INTEGER [INTEGER ...]]
-                     [-rdcb INTEGER [INTEGER ...]] [-tc] [--cache-dit] [--dype]
-                     [--dype-methods METHOD [METHOD ...]] [--dype-base-resolutions PIXELS [PIXELS ...]]
-                     [--dype-mscales MODE [MODE ...]] [--dype-axis-scalings MODE [MODE ...]]
-                     [--cache-dit-config FILE] [-tcr [FLOAT ...]] [--spectrum] [--spectrum-weights [FLOAT ...]]
-                     [--spectrum-orders [INT ...]] [--spectrum-lambdas [FLOAT ...]]
-                     [--spectrum-warmup-steps [INT ...]] [--spectrum-window-sizes [FLOAT ...]]
-                     [--spectrum-flex-windows [FLOAT ...]] [--regione] [--regione-warmup-steps [INT ...]]
-                     [--regione-post-steps [INT ...]] [--regione-refresh-steps [INT ...]]
-                     [--regione-thresholds [FLOAT ...]] [--regione-cache-thresholds [FLOAT ...]]
-                     [--regione-erosion-dilation] [--regione-no-erosion-dilation] [-ra] [-rif]
-                     [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
+                     [-rdcb INTEGER [INTEGER ...]] [-tc] [-cd] [-dy] [-dym METHOD [METHOD ...]]
+                     [-dybr PIXELS [PIXELS ...]] [-dyms MODE [MODE ...]] [-dyax MODE [MODE ...]] [-cdc FILE]
+                     [-tcr [FLOAT ...]] [-spc] [-spcw [FLOAT ...]] [-spco [INT ...]] [-spcl [FLOAT ...]]
+                     [-spcu [INT ...]] [-spcws [FLOAT ...]] [-spcf [FLOAT ...]] [-rgn] [-rgnw [INT ...]]
+                     [-rgnp [INT ...]] [-rgnr [INT ...]] [-rgnt [FLOAT ...]] [-rgnc [FLOAT ...]] [-rgne] [-rgnn]
+                     [-ra] [-rif] [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
                      [-rer CSV_INT [CSV_INT ...]] [-rme RAS_METRIC [RAS_METRIC ...]]
                      [-rst INTEGER [INTEGER ...]] [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]]
                      [-rsl INTEGER [INTEGER ...]] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]]
                      [-pagl LAYERS [LAYERS ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
-                     [-rpagl LAYERS [LAYERS ...]] [-mqo | -mco | -mgo] [--torch-compile [SUBMODULE ...]]
-                     [-mqo2 | -mco2 | -mgo2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
-                     [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
-                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [-rpagl LAYERS [LAYERS ...]] [-mqo | -mco | -mgo] [-cmp [SUBMODULE ...]] [-mqo2 | -mco2 |
+                     -mgo2] [-scd MODEL_URI] [-ref MODEL_URI] [-xle]
+                     [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-sizes SIZE [SIZE ...]]
                      [--sdxl-target-sizes SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
@@ -92,74 +84,48 @@ Help Output
                      [--sdxl-refiner-negative-original-sizes SIZE [SIZE ...]]
                      [--sdxl-refiner-negative-target-sizes SIZE [SIZE ...]]
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]] [-hnf FLOAT [FLOAT ...]]
-                     [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE] [-t DTYPE] [-s SIZE |
-                     --qwen21-resolution RESOLUTION] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om | -oam]
-                     [-pw PROMPT_WEIGHTER_URI] [-pw2 PROMPT_WEIGHTER_URI]
-                     [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]]
+                     [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE] [-t DTYPE] [-s SIZE | -q21r RESOLUTION] [-na]
+                     [-o PATH] [-op PREFIX] [-ox] [-oc] [-om | -oam] [-pw PROMPT_WEIGHTER_URI]
+                     [-pw2 PROMPT_WEIGHTER_URI] [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]]
                      [-lp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
                      [-ilp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
                      [-lpp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
                      [--latents-processor-help [LATENTS_PROCESSOR_NAMES ...]]
                      [-pu PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
                      [-pu2 PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
-                     [--second-model-second-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
-                     [--second-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
-                     [--third-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
+                     [-spu2 PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
+                     [-spu PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
+                     [-tpu PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
                      [--prompt-upscaler-help [PROMPT_UPSCALER_NAMES ...]] [-p PROMPT [PROMPT ...]]
-                     [--second-prompts PROMPT [PROMPT ...]] [--third-prompts PROMPT [PROMPT ...]]
-                     [--second-model-prompts PROMPT [PROMPT ...]]
-                     [--second-model-second-prompts PROMPT [PROMPT ...]]
-                     [--flux2-caption-upsample-temperature FLOAT] [--flux2-text-encoder-out-layers LAYERS]
-                     [--z-image-cfg-normalization] [--z-image-cfg-truncation FLOAT]
-                     [--qwen-guidance-scale FLOAT] [--qwen-layered-layers INTEGER]
-                     [--qwen-layered-resolution INTEGER] [--qwen-layered-cfg-normalize]
-                     [--qwen-layered-use-en-prompt] [--max-sequence-length INTEGER] [-cs INTEGER [INTEGER ...]]
+                     [-sp PROMPT [PROMPT ...]] [-tp PROMPT [PROMPT ...]] [-p2 PROMPT [PROMPT ...]]
+                     [-sp2 PROMPT [PROMPT ...]] [-f2t FLOAT] [-f2l LAYERS] [-zcn] [-zct FLOAT] [-qgs FLOAT]
+                     [-qll INTEGER] [-qlr INTEGER] [-qln] [-qle] [-msl INTEGER] [-cs INTEGER [INTEGER ...]]
                      [-se SEED [SEED ...] | -gse COUNT] [-sei] [-af FORMAT] [-if FORMAT] [-nf]
                      [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
                      [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [-cip PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [--last-frame-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [--reference-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [--adapter-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [--wan-pose-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [--wan-face-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [--wan-driving-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [--wan-background-image-processors PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [-lfip PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [-rfip PROCESSOR_URI [PROCESSOR_URI ...]] [-aip PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [-wpip PROCESSOR_URI [PROCESSOR_URI ...]] [-wfip PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [-wdip PROCESSOR_URI [PROCESSOR_URI ...]] [-wbip PROCESSOR_URI [PROCESSOR_URI ...]]
                      [--image-processor-help [PROCESSOR_NAME ...]] [-pp PROCESSOR_URI [PROCESSOR_URI ...]]
                      [-iss FLOAT [FLOAT ...] | -uns INTEGER [INTEGER ...]] [-ic] [-icp PADDING [PADDING ...]]
                      [-icm] [-icf FEATHER [FEATHER ...]] [-gs FLOAT [FLOAT ...]]
                      [-si CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-igs FLOAT [FLOAT ...]]
-                     [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]]
-                     [--video-lengths SECONDS [SECONDS ...]] [--video-fps FPS [FPS ...]]
-                     [--timesteps CSV_INT_OR_EXPRESSION [CSV_INT_OR_EXPRESSION ...]] [--qwen21-no-kv-cache]
-                     [--ltx-audio-guidance-scales FLOAT [FLOAT ...]]
-                     [--ltx-audio-guidance-rescales FLOAT [FLOAT ...]] [--ltx-stg-scales FLOAT [FLOAT ...]]
-                     [--ltx-audio-stg-scales FLOAT [FLOAT ...]] [--ltx-modality-scales FLOAT [FLOAT ...]]
-                     [--ltx-audio-modality-scales FLOAT [FLOAT ...]] [--ltx-stg-blocks BLOCKS [BLOCKS ...]]
-                     [--ltx-no-cross-timestep] [--ltx-latent-upscale [URI]] [--ltx-latent-upscale-mode MODE]
-                     [--ltx-temporal-upscale-rounds ROUNDS]
-                     [--ltx-stage-sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]]
-                     [--ltx-noise-scales FLOAT [FLOAT ...]] [--ltx-stage-guidance-scales FLOAT [FLOAT ...]]
-                     [--ltx-stage-audio-guidance-scales FLOAT [FLOAT ...]]
-                     [--ltx-stage-loras LORA_URI [LORA_URI ...]] [--ltx-video-decoder DECODER]
-                     [--ltx-diffusion-decoder URI] [--ltx-diffusion-decode-tile WIDTHxHEIGHTxFRAMES]
-                     [--ltx-decode-timesteps FLOAT [FLOAT ...]] [--ltx-decode-noise-scales FLOAT [FLOAT ...]]
-                     [--ltx-image-crfs INTEGER [INTEGER ...]] [--ltx-video-min-seconds SECONDS [SECONDS ...]]
-                     [--ltx-video-max-seconds SECONDS [SECONDS ...]] [--pipeline-prompt-enhance [TEXT]]
-                     [--pipeline-prompt-enhance-seeds SEED [SEED ...] |
-                     --pipeline-prompt-enhance-gen-seeds COUNT] [--pipeline-prompt-enhance-temperature FLOAT]
-                     [--pipeline-prompt-enhance-top-p FLOAT] [--pipeline-prompt-enhance-top-k INT]
-                     [--pipeline-prompt-enhance-presence-penalty FLOAT]
-                     [--pipeline-prompt-enhance-max-new-tokens INT]
-                     [--pipeline-prompt-enhance-min-new-tokens INT] [--pipeline-prompt-enhance-gpu-headroom GIB]
-                     [--prompt-upsampler URI] [--wan-low-noise-guidance-scales FLOAT [FLOAT ...]]
-                     [--wan-boundary-ratios FLOAT [FLOAT ...]] [--wan-expand-timesteps]
-                     [--wan-second-transformer TRANSFORMER_URI]
-                     [--wan-conditioning-scales FLOAT_OR_CSV [FLOAT_OR_CSV ...]] [--wan-animate-mode MODE]
-                     [--wan-segment-frame-lengths INTEGER [INTEGER ...]]
-                     [--wan-prev-segment-frames INTEGER [INTEGER ...]]
-                     [--wan-motion-encode-batch-size INTEGER [INTEGER ...]] [--wan-animate-preprocess]
-                     [--wan-animate-preprocess-output] [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]]
+                     [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]] [-vl SECONDS [SECONDS ...]]
+                     [-vf FPS [FPS ...]] [-ts CSV_INT_OR_EXPRESSION [CSV_INT_OR_EXPRESSION ...]] [-q21nk]
+                     [-lxag FLOAT [FLOAT ...]] [-lxar FLOAT [FLOAT ...]] [-lxstg FLOAT [FLOAT ...]]
+                     [-lxast FLOAT [FLOAT ...]] [-lxm FLOAT [FLOAT ...]] [-lxam FLOAT [FLOAT ...]]
+                     [-lxsb BLOCKS [BLOCKS ...]] [-lxnct] [-lxlu [URI]] [-lxlm MODE] [-lxtr ROUNDS]
+                     [-lxss CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-lxns FLOAT [FLOAT ...]]
+                     [-lxsg FLOAT [FLOAT ...]] [-lxsag FLOAT [FLOAT ...]] [-lxsl LORA_URI [LORA_URI ...]]
+                     [-lxvd DECODER] [-lxdd URI] [-lxdt WIDTHxHEIGHTxFRAMES] [-lxdts FLOAT [FLOAT ...]]
+                     [-lxdns FLOAT [FLOAT ...]] [-lxcrf INTEGER [INTEGER ...]] [-lxmin SECONDS [SECONDS ...]]
+                     [-lxmax SECONDS [SECONDS ...]] [-ppe [TEXT]] [-ppes SEED [SEED ...] | -ppeg COUNT]
+                     [-ppet FLOAT] [-ppetp FLOAT] [-ppetk INT] [-ppep FLOAT] [-ppemax INT] [-ppemin INT]
+                     [-ppeh GIB] [-puu URI] [-wnlg FLOAT [FLOAT ...]] [-wnbr FLOAT [FLOAT ...]] [-wnet]
+                     [-wntf TRANSFORMER_URI] [-wncs FLOAT_OR_CSV [FLOAT_OR_CSV ...]] [-wnam MODE]
+                     [-wnsl INTEGER [INTEGER ...]] [-wnpf INTEGER [INTEGER ...]] [-wnmb INTEGER [INTEGER ...]]
+                     [-wnap] [-wnapo] [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]]
                      [-sir CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-ds FLOAT] [-de FLOAT]
                      model_path
     
@@ -1365,7 +1331,7 @@ Help Output
             
             This is supported for --model-type sd, sdxl, and kolors.
             --------------------------------------------------------
-      --hi-diffusion-no-win-attn
+      -hdnw, --hi-diffusion-no-win-attn
             Disable window attention when using HiDiffusion for the primary model?
             
             This disables the MSW-MSA (Multi-Scale Window Multi-Head Self-Attention) component of HiDiffusion.
@@ -1374,7 +1340,7 @@ Help Output
             
             This is supported for --model-type sd, sdxl, and kolors.
             --------------------------------------------------------
-      --hi-diffusion-no-raunet
+      -hdnr, --hi-diffusion-no-raunet
             Disable RAU-Net when using HiDiffusion for the primary model?
             
             This disables the Resolution-Aware U-Net component of HiDiffusion.
@@ -1383,7 +1349,7 @@ Help Output
             
             This is supported for --model-type sd, sdxl, and kolors.
             --------------------------------------------------------
-      --sada
+      -sda, --sada
             Enable SADA (Stability-guided Adaptive Diffusion Acceleration) with model-specific default
             parameters for the primary model.
             
@@ -1418,7 +1384,7 @@ Help Output
             
             SADA is not compatible with HiDiffusion, DeepCache, or TeaCache.
             ----------------------------------------------------------------
-      --sada-max-downsamples INTEGER [INTEGER ...]
+      -sdmd, --sada-max-downsamples INTEGER [INTEGER ...]
             SADA maximum downsample factors for the primary model.
             
             Controls the maximum downsample factor in the SADA algorithm. Lower values can improve quality but
@@ -1436,7 +1402,7 @@ Help Output
             
             Each value supplied will be tried in turn.
             ------------------------------------------
-      --sada-sxs INTEGER [INTEGER ...]
+      -sdsx, --sada-sxs INTEGER [INTEGER ...]
             SADA spatial downsample factors X for the primary model.
             
             Controls the spatial downsample factor in the X dimension. Higher values can increase speedup but
@@ -1454,7 +1420,7 @@ Help Output
             
             Each value supplied will be tried in turn.
             ------------------------------------------
-      --sada-sys INTEGER [INTEGER ...]
+      -sdsy, --sada-sys INTEGER [INTEGER ...]
             SADA spatial downsample factors Y for the primary model.
             
             Controls the spatial downsample factor in the Y dimension. Higher values can increase speedup but
@@ -1472,7 +1438,7 @@ Help Output
             
             Each value supplied will be tried in turn.
             ------------------------------------------
-      --sada-acc-ranges INTEGER [INTEGER ...]
+      -sdar, --sada-acc-ranges INTEGER [INTEGER ...]
             SADA acceleration range start / end steps for the primary model.
             
             Defines the start / end step for SADA acceleration.
@@ -1490,7 +1456,7 @@ Help Output
             
             Each value supplied will be tried in turn.
             ------------------------------------------
-      --sada-lagrange-terms INTEGER [INTEGER ...]
+      -sdlt, --sada-lagrange-terms INTEGER [INTEGER ...]
             SADA Lagrangian interpolation terms for the primary model.
             
             Number of terms to use in Lagrangian interpolation. Set to 0 to disable Lagrangian interpolation.
@@ -1507,7 +1473,7 @@ Help Output
             
             Each value supplied will be tried in turn.
             ------------------------------------------
-      --sada-lagrange-ints INTEGER [INTEGER ...]
+      -sdli, --sada-lagrange-ints INTEGER [INTEGER ...]
             SADA Lagrangian interpolation intervals for the primary model.
             
             Interval for Lagrangian interpolation. Must be compatible with sada-lagrange-steps (lagrange-step %
@@ -1525,7 +1491,7 @@ Help Output
             
             Each value supplied will be tried in turn.
             ------------------------------------------
-      --sada-lagrange-steps INTEGER [INTEGER ...]
+      -sdls, --sada-lagrange-steps INTEGER [INTEGER ...]
             SADA Lagrangian interpolation steps for the primary model.
             
             Step value for Lagrangian interpolation. Must be compatible with sada-lagrange-ints (lagrange-step %
@@ -1543,7 +1509,7 @@ Help Output
             
             Each value supplied will be tried in turn.
             ------------------------------------------
-      --sada-max-fixes INTEGER [INTEGER ...]
+      -sdmf, --sada-max-fixes INTEGER [INTEGER ...]
             SADA maximum fixed memories for the primary model.
             
             Maximum amount of fixed memory to use in SADA optimization.
@@ -1560,7 +1526,7 @@ Help Output
             
             Each value supplied will be tried in turn.
             ------------------------------------------
-      --sada-max-intervals INTEGER [INTEGER ...]
+      -sdmi, --sada-max-intervals INTEGER [INTEGER ...]
             SADA maximum intervals for optimization for the primary model.
             
             Maximum interval between optimizations in the SADA algorithm.
@@ -1668,7 +1634,7 @@ Help Output
             
             This is supported for: --model-type flux, flux-fill, and flux-kontext.
             ----------------------------------------------------------------------
-      --cache-dit
+      -cd, --cache-dit
             Enable Cache-DiT's default training-free cache acceleration for supported Diffusers DiT pipelines.
             
             Cache-DiT's default cache settings are used. This option cannot be combined with --tea-cache,
@@ -1681,7 +1647,7 @@ Help Output
             
             See: https://cache-dit.readthedocs.io/en/latest/
             ------------------------------------------------
-      --dype
+      -dy, --dype
             Enable DyPE's positional scaling methods for supported transformer pipelines.
             
             Flux.1 and Qwen-Image use the upstream architectures. Flux Fill/Kontext, Qwen Edit/Layered, Flux.2,
@@ -1699,7 +1665,7 @@ Help Output
             
             See: https://github.com/guyyariv/DyPE
             -------------------------------------
-      --dype-methods METHOD [METHOD ...]
+      -dym, --dype-methods METHOD [METHOD ...]
             Position encoding methods for DyPE, tried in turn as a combinatoric factor.
             
             yarn applies timestep-aware YARN interpolation (default); ntk applies timestep-aware NTK scaling;
@@ -1707,7 +1673,7 @@ Help Output
             
             See: https://github.com/guyyariv/DyPE
             -------------------------------------
-      --dype-base-resolutions PIXELS [PIXELS ...]
+      -dybr, --dype-base-resolutions PIXELS [PIXELS ...]
             Reference long-side resolution in pixels for DyPE's positional scaling.
             
             Defaults to 1024 for Flux/Flux.2/FLUX.3/Z-Image, 1328 for Qwen-Image, 864 for Kandinsky 6, and 832
@@ -1718,7 +1684,7 @@ Help Output
             
             See: https://github.com/guyyariv/DyPE
             -------------------------------------
-      --dype-mscales MODE [MODE ...]
+      -dyms, --dype-mscales MODE [MODE ...]
             YARN attention magnitude scale modes for DyPE, tried in turn as a combinatoric factor.
             
             constant applies upstream DyPE's fixed scale (default); decay fades the scale out as denoising
@@ -1728,7 +1694,7 @@ Help Output
             
             See: https://github.com/wildminder/ComfyUI-DyPE
             -----------------------------------------------
-      --dype-axis-scalings MODE [MODE ...]
+      -dyax, --dype-axis-scalings MODE [MODE ...]
             Spatial axis scaling modes for DyPE on non-square images, tried in turn as a combinatoric factor.
             
             shared (default) computes the NTK frequency base, NTK factor, and YARN magnitude scale once from the
@@ -1740,7 +1706,7 @@ Help Output
             
             See: https://github.com/wildminder/ComfyUI-DyPE
             -----------------------------------------------
-      --cache-dit-config FILE
+      -cdc, --cache-dit-config FILE
             Cache-DiT YAML settings for cache policies, parallelism, quantization, attention, and layerwise
             offload. Supplying this option also enables Cache-DiT.
             
@@ -1770,7 +1736,7 @@ Help Output
             
             (default: 0.6)
             --------------
-      --spectrum
+      -spc, --spectrum
             Activate Spectrum for the primary model?
             
             Spectrum forecasts denoiser block outputs with Chebyshev polynomials and skips those blocks on later
@@ -1792,7 +1758,7 @@ Help Output
             kandinsky6-video, minimax-h3-video, minimax-h3-image, wan, wan-animate, wan-animate-2, hyvideo-15,
             motif-video, hyimage-21, and hyimage-21-refiner.
             ------------------------------------------------
-      --spectrum-weights [FLOAT ...]
+      -spcw, --spectrum-weights [FLOAT ...]
             Spectrum Chebyshev blend weights to try when --spectrum is enabled.
             
             1 uses only the Chebyshev forecast. 0 uses only the last-step Taylor step. Each value is tried in
@@ -1802,7 +1768,7 @@ Help Output
             
             (default: 0.5)
             --------------
-      --spectrum-orders [INT ...]
+      -spco, --spectrum-orders [INT ...]
             Spectrum Chebyshev polynomial counts to try when --spectrum is enabled.
             
             This is M in the paper, the highest polynomial after T_0. Each value is tried in turn.
@@ -1811,7 +1777,7 @@ Help Output
             
             (default: 4)
             ------------
-      --spectrum-lambdas [FLOAT ...]
+      -spcl, --spectrum-lambdas [FLOAT ...]
             Spectrum ridge penalties to try when --spectrum is enabled.
             
             Each value is tried in turn.
@@ -1820,7 +1786,7 @@ Help Output
             
             (default: 0.1)
             --------------
-      --spectrum-warmup-steps [INT ...]
+      -spcu, --spectrum-warmup-steps [INT ...]
             Leading full denoiser passes before Spectrum may predict a step.
             
             Each value is tried in turn. The paper uses 5 with 50 inference steps. When omitted, 50 or more
@@ -1831,7 +1797,7 @@ Help Output
             
             (default: chosen from the step count)
             -------------------------------------
-      --spectrum-window-sizes [FLOAT ...]
+      -spcws, --spectrum-window-sizes [FLOAT ...]
             Initial Spectrum skip intervals to try when --spectrum is enabled.
             
             2 predicts every other eligible step. Values below 2 do not skip. The interval grows by
@@ -1841,7 +1807,7 @@ Help Output
             
             (default: 2)
             ------------
-      --spectrum-flex-windows [FLOAT ...]
+      -spcf, --spectrum-flex-windows [FLOAT ...]
             Amounts added to the Spectrum skip interval after each full pass.
             
             0 keeps the interval fixed. 0.75 is the paper's moderate schedule and 3 is the aggressive one. When
@@ -1852,7 +1818,7 @@ Help Output
             
             (default: chosen from the step count and guidance)
             --------------------------------------------------
-      --regione
+      -rgn, --regione
             Enable RegionE region-aware acceleration for instruction editing?
             
             RegionE skips redundant denoising on unchanged image regions. Omitting --inference-steps uses 28.
@@ -1863,41 +1829,41 @@ Help Output
             This is supported for: --model-type flux-kontext and qwen-image-edit. Not supported with inpaint
             masks, TeaCache, Cache-DiT, Spectrum, DyPE, SADA, RAS, model CPU offload, or group offload.
             -------------------------------------------------------------------------------------------
-      --regione-warmup-steps [INT ...]
+      -rgnw, --regione-warmup-steps [INT ...]
             RegionE warmup steps to try when --regione is enabled.
             
             Each value is tried in turn. Unset values use pipeline presets.
             
             Supplying any values implies --regione.
             ---------------------------------------
-      --regione-post-steps [INT ...]
+      -rgnp, --regione-post-steps [INT ...]
             RegionE trailing full denoising steps to try when --regione is enabled.
             
             Supplying any values implies --regione.
             ---------------------------------------
-      --regione-refresh-steps [INT ...]
+      -rgnr, --regione-refresh-steps [INT ...]
             RegionE mask refresh steps to try when --regione is enabled.
             
             Supplying any values implies --regione.
             ---------------------------------------
-      --regione-thresholds [FLOAT ...]
+      -rgnt, --regione-thresholds [FLOAT ...]
             RegionE region partition thresholds to try when --regione is enabled.
             
             Each value is tried in turn and should be between 0 and 1.
             
             Supplying any values implies --regione.
             ---------------------------------------
-      --regione-cache-thresholds [FLOAT ...]
+      -rgnc, --regione-cache-thresholds [FLOAT ...]
             RegionE velocity-decay cache thresholds to try when --regione is enabled.
             
             Supplying any values implies --regione.
             ---------------------------------------
-      --regione-erosion-dilation
+      -rgne, --regione-erosion-dilation
             Morphologically erode/dilate the RegionE region mask.
             
             Supplying this flag implies --regione.
             --------------------------------------
-      --regione-no-erosion-dilation
+      -rgnn, --regione-no-erosion-dilation
             Disable RegionE mask erosion/dilation.
             
             Supplying this flag implies --regione.
@@ -2129,7 +2095,7 @@ Help Output
             the next layer copy with the current one. BitsAndBytes, SDNQ, and other quantized modules are left
             where they were loaded. Mutually exclusive with --model-cpu-offload and --model-sequential-offload
             --------------------------------------------------------------------------------------------------
-      --torch-compile [SUBMODULE ...]
+      -cmp, --torch-compile [SUBMODULE ...]
             Compile repeated denoiser, ControlNet, and VAE blocks. The first use of each waits while the graph
             builds. A later change of resolution or frame count compiles once more, then reuses that graph. CUDA
             and XPU need Triton. Quantized modules and models with no repeated blocks stay eager, and dgenerate
@@ -2171,7 +2137,7 @@ Help Output
             in CPU memory. Quantized modules are left where they were loaded. Mutually exclusive with
             --second-model-cpu-offload and --second-model-sequential-offload
             ----------------------------------------------------------------
-      --s-cascade-decoder MODEL_URI
+      -scd, --s-cascade-decoder MODEL_URI
             Specify a Stable Cascade (s-cascade) decoder model path using a URI. This should be a Hugging Face
             repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or
             .safetensors file), or model folder containing model files.
@@ -2207,7 +2173,7 @@ Help Output
             "https://huggingface.co/UserName/repository-name/blob/main/decoder.safetensors". The "revision"
             argument may be used with either syntax.
             ----------------------------------------
-      --sdxl-refiner MODEL_URI
+      -ref, --sdxl-refiner MODEL_URI
             Specify a Stable Diffusion XL (sdxl) refiner model path using a URI. This should be a Hugging Face
             repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or
             .safetensors file), or model folder containing model files.
@@ -2244,7 +2210,7 @@ Help Output
             "https://huggingface.co/UserName/repository-name/blob/main/refiner_model.safetensors". The
             "revision" argument may be used with either syntax.
             ---------------------------------------------------
-      --sdxl-refiner-edit
+      -xle, --sdxl-refiner-edit
             Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode as it would
             normally do for inpainting and ControlNet usage. The main model will perform the full amount of
             inference steps requested by --inference-steps. The output of the main model will be passed to the
@@ -2390,7 +2356,7 @@ Help Output
             the 'floyd' keyword argument in an --image-seeds definition are never resized or processed in any
             way.
             ----
-      --qwen21-resolution RESOLUTION
+      -q21r, --qwen21-resolution RESOLUTION
             Target side length for Qwen-Image 2.1 output resolution inference. Only supported by Qwen-Image 2.1.
             ----------------------------------------------------------------------------------------------------
       -na, --no-aspect
@@ -2540,15 +2506,15 @@ Help Output
             Specify a --prompt-upscaler URI that will affect --second-model-prompts only, by default the prompt
             upscaler specified by --prompt-upscaler will be used.
             -----------------------------------------------------
-      --second-model-second-prompt-upscaler, --second-model-second-prompt-upscalers PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+      -spu2, --second-model-second-prompt-upscaler, --second-model-second-prompt-upscalers PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a --prompt-upscaler URI that will affect --second-model-second-prompts only, by default the
             prompt upscaler specified by --prompt-upscaler will be used.
             ------------------------------------------------------------
-      --second-prompt-upscaler, --second-prompt-upscalers PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+      -spu, --second-prompt-upscaler, --second-prompt-upscalers PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a --prompt-upscaler URI that will affect --second-prompts only, by default the prompt
             upscaler specified by --prompt-upscaler will be used.
             -----------------------------------------------------
-      --third-prompt-upscaler, --third-prompt-upscalers PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+      -tpu, --third-prompt-upscaler, --third-prompt-upscalers PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a --prompt-upscaler URI that will affect --third-prompts only, by default the prompt
             upscaler specified by --prompt-upscaler will be used.
             -----------------------------------------------------
@@ -2568,63 +2534,63 @@ Help Output
             
             (default: [(empty string)])
             ---------------------------
-      --second-prompts PROMPT [PROMPT ...]
+      -sp, --second-prompts PROMPT [PROMPT ...]
             One or more secondary prompts to try using the sdxl (SDXL), sd3 (Stable Diffusion 3) or flux (Flux)
             secondary text encoder. By default the model is passed the primary prompt for this value, this
             option allows you to choose a different prompt. The negative prompt component can be specified with
             the same syntax as --prompts
             ----------------------------
-      --third-prompts PROMPT [PROMPT ...]
+      -tp, --third-prompts PROMPT [PROMPT ...]
             One or more tertiary prompts to try using the sd3 (Stable Diffusion 3) tertiary (T5) text encoder,
             Flux does not support this argument. By default the model is passed the primary prompt for this
             value, this option allows you to choose a different prompt. The negative prompt component can be
             specified with the same syntax as --prompts
             -------------------------------------------
-      --second-model-prompts PROMPT [PROMPT ...]
+      -p2, --second-model-prompts PROMPT [PROMPT ...]
             One or more prompts to try with the SDXL Refiner or Stable Cascade decoder model, by default the
             decoder model gets the primary prompt, this argument overrides that with a prompt of your choosing.
             The negative prompt component can be specified with the same syntax as --prompts
             --------------------------------------------------------------------------------
-      --second-model-second-prompts PROMPT [PROMPT ...]
+      -sp2, --second-model-second-prompts PROMPT [PROMPT ...]
             One or more prompts to try with the SDXL refiner models secondary text encoder (Stable Cascade
             Decoder is not supported), by default the SDXL refiner model gets the primary prompt passed to its
             second text encoder, this argument overrides that with a prompt of your choosing. The negative
             prompt component can be specified with the same syntax as --prompts
             -------------------------------------------------------------------
-      --flux2-caption-upsample-temperature FLOAT
+      -f2t, --flux2-caption-upsample-temperature FLOAT
             Caption upsampling temperature for full Flux.2. Omitting it leaves upsampling off. Flux.2 Klein does
             not accept this argument.
             -------------------------
-      --flux2-text-encoder-out-layers LAYERS
+      -f2l, --flux2-text-encoder-out-layers LAYERS
             Comma-separated Flux.2 text-encoder layer indexes, like 10,20,30. Omitting it keeps the pipeline
             default: 10,20,30 for full Flux.2 and 9,18,27 for Klein.
             --------------------------------------------------------
-      --z-image-cfg-normalization
+      -zcn, --z-image-cfg-normalization
             Enable Z-Image classifier-free guidance normalization. Omitting it leaves normalization off.
             --------------------------------------------------------------------------------------------
-      --z-image-cfg-truncation FLOAT
+      -zct, --z-image-cfg-truncation FLOAT
             Z-Image classifier-free guidance truncation. Omitting it keeps 1, which applies guidance for the
             whole schedule.
             ---------------
-      --qwen-guidance-scale FLOAT
+      -qgs, --qwen-guidance-scale FLOAT
             Distilled guidance embedded in the Qwen-Image transformer. Omitting it leaves that guidance unset.
             --guidance-scales remains the true CFG scale.
             ---------------------------------------------
-      --qwen-layered-layers INTEGER
+      -qll, --qwen-layered-layers INTEGER
             How many layers Qwen-Image layered writes. Omitting it keeps 4. Only for --model-type
             qwen-image-layered.
             -------------------
-      --qwen-layered-resolution INTEGER
+      -qlr, --qwen-layered-resolution INTEGER
             Square resolution bucket for Qwen-Image layered: 640 or 1024. Omitting it keeps 640. Only for
             --model-type qwen-image-layered.
             --------------------------------
-      --qwen-layered-cfg-normalize
+      -qln, --qwen-layered-cfg-normalize
             Enable CFG normalization for Qwen-Image layered. Omitting it leaves normalization off.
             --------------------------------------------------------------------------------------
-      --qwen-layered-use-en-prompt
+      -qle, --qwen-layered-use-en-prompt
             Ask Qwen-Image layered to treat the prompt as English. Omitting it leaves that off.
             -----------------------------------------------------------------------------------
-      --max-sequence-length INTEGER
+      -msl, --max-sequence-length INTEGER
             The maximum amount of prompt tokens sent to the text encoder. For Stable Diffusion 3 and Flux this
             is the T5 encoder, an integer between 1 and 512 inclusive (default: 256 for SD3, 512 for Flux). For
             --model-type ltx2 this is Gemma, an integer between 1 and 1024 inclusive. Omitting it on ltx2 leaves
@@ -2852,34 +2818,34 @@ Help Output
             To obtain more information about what image processors are available and how to use them, see:
             --image-processor-help.
             -----------------------
-      --last-frame-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+      -lfip, --last-frame-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on the last-frame= clip in --image-seeds.
             Video models accept one chain. This is an alternative to a second --seed-image-processors chain.
             See: --image-processor-help.
             ----------------------------
-      --reference-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+      -rfip, --reference-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on reference= images in --image-seeds. Use +
             to separate a chain per reference image. MiniMax-H3 also runs each chain on a reference video, one
             frame at a time. The processed frame size is what the video VAE encodes. An audio reference is left
             unchanged. See: --image-processor-help.
             ---------------------------------------
-      --adapter-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+      -aip, --adapter-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on adapter= / adapter: IP adapter images in
             --image-seeds. Use + to separate a chain per adapter group. See: --image-processor-help.
             ----------------------------------------------------------------------------------------
-      --wan-pose-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+      -wpip, --wan-pose-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on the wan-pose= clip, or on wan-driving=
             when wan-pose= is omitted. One chain. See: --image-processor-help.
             ------------------------------------------------------------------
-      --wan-face-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+      -wfip, --wan-face-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on the wan-face= clip, or on wan-driving=
             when wan-face= is omitted. One chain. See: --image-processor-help.
             ------------------------------------------------------------------
-      --wan-driving-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+      -wdip, --wan-driving-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on the wan-driving= clip before pose/face
             derivation. One chain. See: --image-processor-help.
             ---------------------------------------------------
-      --wan-background-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+      -wbip, --wan-background-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on the wan-background= clip. One chain. See:
             --image-processor-help.
             -----------------------
@@ -3079,7 +3045,7 @@ Help Output
             
             (default: omitted)
             ------------------
-      --video-lengths SECONDS [SECONDS ...]
+      -vl, --video-lengths SECONDS [SECONDS ...]
             One or more clip lengths in seconds for video model types. Each value will be tried in turn, and
             each combination writes one clip.
             
@@ -3100,7 +3066,7 @@ Help Output
             
             (default: model chooses)
             ------------------------
-      --video-fps FPS [FPS ...]
+      -vf, --video-fps FPS [FPS ...]
             One or more output frame rates for video model types. Each value will be tried in turn.
             
             Defaults to 24 for --model-type ltx2, ltx-video, motif-video, wan-animate-2, kandinsky5-video,
@@ -3109,17 +3075,17 @@ Help Output
             
             (default: model type default)
             -----------------------------
-      --timesteps CSV_INT_OR_EXPRESSION [CSV_INT_OR_EXPRESSION ...]
+      -ts, --timesteps CSV_INT_OR_EXPRESSION [CSV_INT_OR_EXPRESSION ...]
             One or more comma-separated timestep schedules or "expr: ..." expressions. Expressions receive the
             scheduler default array as "timesteps". The schedule length sets the inference step count. Supported
             where the pipeline accepts a timestep schedule, for example SD 1.5/2/XL, Kolors, Wan video-to-video,
             LTX-2, Motif-Video, Hunyuan Video 1.5, Kandinsky 5 video, and Kandinsky 6 video. Cannot be combined
             with --sigmas.
             --------------
-      --qwen21-no-kv-cache
+      -q21nk, --qwen21-no-kv-cache
             Disable the Qwen-Image 2.1 key/value attention cache.
             -----------------------------------------------------
-      --ltx-audio-guidance-scales FLOAT [FLOAT ...]
+      -lxag, --ltx-audio-guidance-scales FLOAT [FLOAT ...]
             One or more audio CFG scales to try, for --model-type ltx2. Each value will be tried in turn.
             
             LTX encodes one prompt for both picture and soundtrack, then applies a separate audio guidance
@@ -3131,7 +3097,7 @@ Help Output
             
             (default: copy video guidance)
             ------------------------------
-      --ltx-audio-guidance-rescales FLOAT [FLOAT ...]
+      -lxar, --ltx-audio-guidance-rescales FLOAT [FLOAT ...]
             One or more audio guidance rescale factors to try, for --model-type ltx2. Each value will be tried
             in turn.
             
@@ -3140,42 +3106,42 @@ Help Output
             
             (default: copy --guidance-rescales)
             -----------------------------------
-      --ltx-stg-scales FLOAT [FLOAT ...]
+      -lxstg, --ltx-stg-scales FLOAT [FLOAT ...]
             One or more video spatio-temporal guidance scales for --model-type ltx2. Each value will be tried in
             turn. 0 disables STG. LTX-2.5 full-transformer runs use 1, on transformer block 28
             (--ltx-stg-blocks).
             
             (default: pipeline default, STG off)
             ------------------------------------
-      --ltx-audio-stg-scales FLOAT [FLOAT ...]
+      -lxast, --ltx-audio-stg-scales FLOAT [FLOAT ...]
             Audio spatio-temporal guidance scales for --model-type ltx2. Each value will be tried in turn. Omit
             this option and audio copies --ltx-stg-scales.
             
             (default: copy --ltx-stg-scales)
             --------------------------------
-      --ltx-modality-scales FLOAT [FLOAT ...]
+      -lxm, --ltx-modality-scales FLOAT [FLOAT ...]
             Video modality-isolation guidance scales for --model-type ltx2. Each value will be tried in turn. 1
             disables it. LTX-2.5 full-transformer runs use 3.
             
             (default: pipeline default, modality guidance off)
             --------------------------------------------------
-      --ltx-audio-modality-scales FLOAT [FLOAT ...]
+      -lxam, --ltx-audio-modality-scales FLOAT [FLOAT ...]
             Audio modality-isolation guidance scales for --model-type ltx2. Each value will be tried in turn.
             Omit this option and audio copies --ltx-modality-scales.
             
             (default: copy --ltx-modality-scales)
             -------------------------------------
-      --ltx-stg-blocks BLOCKS [BLOCKS ...]
+      -lxsb, --ltx-stg-blocks BLOCKS [BLOCKS ...]
             Transformer block indices for spatio-temporal guidance. One comma-separated list, for example 28.
             Several lists are tried in turn. When --ltx-stg-scales is greater than 0 and this is omitted, block
             28 is used.
             
             (default: 28 when STG is on)
             ----------------------------
-      --ltx-no-cross-timestep
+      -lxnct, --ltx-no-cross-timestep
             Use the LTX-2.0 cross-modality timestep. LTX-2.3 and LTX-2.5 leave this on.
             ---------------------------------------------------------------------------
-      --ltx-latent-upscale [URI]
+      -lxlu, --ltx-latent-upscale [URI]
             Run LTX-2 as one two-stage generation, the way --sdxl-refiner runs after the base pass.
             --output-size is the finished clip, and both sides are rounded down to a multiple of 64. The first
             pass denoises at half of that size, the checkpoint latent upsampler doubles the video latents, and a
@@ -3187,38 +3153,38 @@ Help Output
             guidance defaults to 1. See --ltx-stage-sigmas, --ltx-noise-scales, --ltx-stage-guidance-scales, and
             --ltx-stage-loras.
             ------------------
-      --ltx-latent-upscale-mode MODE
+      -lxlm, --ltx-latent-upscale-mode MODE
             How --ltx-latent-upscale operates. spatial (default) doubles width and height. temporal runs the
             LTX-2.5 DFR spatial stages and then doubles the frame rate and frame count once using the
             temporal_latent_upsampler selected by its URI.
             ----------------------------------------------
-      --ltx-temporal-upscale-rounds ROUNDS
+      -lxtr, --ltx-temporal-upscale-rounds ROUNDS
             Number of temporal DFR rounds (1 doubles the frames; 2 quadruples them). Applies only with
             --ltx-latent-upscale-mode temporal.
             -----------------------------------
-      --ltx-stage-sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
+      -lxss, --ltx-stage-sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
             Sigma schedule for the --ltx-latent-upscale refine pass. Same syntax as --sigmas. Each schedule will
             be tried in turn. The default is the published 3-value stage-2 table.
             ---------------------------------------------------------------------
-      --ltx-noise-scales FLOAT [FLOAT ...]
+      -lxns, --ltx-noise-scales FLOAT [FLOAT ...]
             Noise mixed back into the upscaled latents before the refine pass. Each value will be tried in turn.
             The default is the first stage-2 sigma.
             ---------------------------------------
-      --ltx-stage-guidance-scales FLOAT [FLOAT ...]
+      -lxsg, --ltx-stage-guidance-scales FLOAT [FLOAT ...]
             Video guidance for the --ltx-latent-upscale refine pass. Each value will be tried in turn. The
             default is 1 (unguided), which is what the distilled refine is trained for.
             ---------------------------------------------------------------------------
-      --ltx-stage-audio-guidance-scales FLOAT [FLOAT ...]
+      -lxsag, --ltx-stage-audio-guidance-scales FLOAT [FLOAT ...]
             Audio guidance for the --ltx-latent-upscale refine pass. Each value will be tried in turn. Omit this
             option and audio copies --ltx-stage-guidance-scales.
             ----------------------------------------------------
-      --ltx-stage-loras LORA_URI [LORA_URI ...]
+      -lxsl, --ltx-stage-loras LORA_URI [LORA_URI ...]
             LoRAs loaded for the --ltx-latent-upscale refine pass only, then removed. Several URIs are all
             loaded for that pass. Same URI as --loras. The LTX-2.5 full-transformer recipe uses
             Lightricks/LTX-2.5-Diffusers;weight-name=ltx-2.5-22b-distilled-lora-450-bf16.safetensors. The
             distilled two-stage recipe does not set this.
             ---------------------------------------------
-      --ltx-video-decoder DECODER
+      -lxvd, --ltx-video-decoder DECODER
             How an LTX-2 clip is decoded. conv is the convolutional VAE. diffusion is the diffusion decoder in
             the checkpoint's diffusion_decoder folder. The decode is part of the same generation. Linux uses the
             NATTEN kernel downloaded through the kernels package; leave DIFFUSERS_DISABLE_REMOTE_CODE unset.
@@ -3226,27 +3192,27 @@ Help Output
             triton-windows extra. Without Triton the same window is gathered in PyTorch. The FlexAttention mask
             does not fit in GPU memory.
             ---------------------------
-      --ltx-diffusion-decoder URI
+      -lxdd, --ltx-diffusion-decoder URI
             Optional URI for the LTX-2 diffusion decoder used by --ltx-video-decoder diffusion. When omitted,
             the decoder is loaded from the main checkpoint's diffusion_decoder subfolder. The URI accepts
             revision, subfolder, and dtype, for example repo/model;subfolder=diffusion_decoder;dtype=bfloat16.
             --------------------------------------------------------------------------------------------------
-      --ltx-diffusion-decode-tile WIDTHxHEIGHTxFRAMES
+      -lxdt, --ltx-diffusion-decode-tile WIDTHxHEIGHTxFRAMES
             Tile size for --ltx-video-decoder diffusion. The value is WIDTHxHEIGHTxFRAMES, WIDTHxFRAMES, or a
             frame count. 384x384x24 is used when this is omitted and the NATTEN kernel is unavailable. Sizes
             snap to 8 pixels and 2 frames. Omit it when NATTEN is available and the decoder is not tiled.
             ---------------------------------------------------------------------------------------------
-      --ltx-decode-timesteps FLOAT [FLOAT ...]
+      -lxdts, --ltx-decode-timesteps FLOAT [FLOAT ...]
             Decode timestep for the LTX video decode. Several values are tried in turn.
             ---------------------------------------------------------------------------
-      --ltx-decode-noise-scales FLOAT [FLOAT ...]
+      -lxdns, --ltx-decode-noise-scales FLOAT [FLOAT ...]
             Decode noise scale for the LTX video decode. Several values are tried in turn.
             ------------------------------------------------------------------------------
-      --ltx-image-crfs INTEGER [INTEGER ...]
+      -lxcrf, --ltx-image-crfs INTEGER [INTEGER ...]
             H.264 CRF used to recompress an LTX conditioning still before it is encoded. Each value will be
             tried in turn. Omit this option to keep the pipeline default (18 on LTX-2.5). 0 skips recompression.
             ----------------------------------------------------------------------------------------------------
-      --ltx-video-min-seconds SECONDS [SECONDS ...]
+      -lxmin, --ltx-video-min-seconds SECONDS [SECONDS ...]
             Lower bounds, in seconds, for the LTX-2.5 duration head. Give the same number of values as
             --ltx-video-max-seconds. The value in each position is used with the upper bound in that position:
             
@@ -3259,7 +3225,7 @@ Help Output
             
             (default: None; 1 when only an upper bound is given)
             ----------------------------------------------------
-      --ltx-video-max-seconds SECONDS [SECONDS ...]
+      -lxmax, --ltx-video-max-seconds SECONDS [SECONDS ...]
             Upper bounds, in seconds, for the LTX-2.5 duration head. Give the same number of values as
             --ltx-video-min-seconds. The value in each position is used with the lower bound in that position:
             
@@ -3272,7 +3238,7 @@ Help Output
             
             (default: None; 20 when only a lower bound is given)
             ----------------------------------------------------
-      --pipeline-prompt-enhance [TEXT]
+      -ppe, --pipeline-prompt-enhance [TEXT]
             Rewrite the prompt with the text encoder already loaded for this pipeline, before denoising. With no
             value, dgenerate picks a built-in system prompt. A value is used as that system prompt. file:path
             reads that prompt from a UTF-8 text file (quote the value on the shell when the path contains
@@ -3301,47 +3267,47 @@ Help Output
             including --pipeline-prompt-enhance-seeds, turns enhancement on with the built-in system prompt when
             this flag is omitted. This is separate from --prompt-upscaler.
             --------------------------------------------------------------
-      --pipeline-prompt-enhance-seeds SEED [SEED ...]
+      -ppes, --pipeline-prompt-enhance-seeds SEED [SEED ...]
             One or more seeds for prompt enhancement. Each value is tried in turn with the other arguments,
             including --seeds. These seeds are used only by the enhancer. The image or video still uses --seeds
             or --gen-seeds. When omitted, the enhancer uses that generation seed. Also turns
             --pipeline-prompt-enhance on when that flag is omitted. FLUX.3 and Kandinsky 6 video apply this to
             that generation's rewrite.
             --------------------------
-      --pipeline-prompt-enhance-gen-seeds COUNT
+      -ppeg, --pipeline-prompt-enhance-gen-seeds COUNT
             Generate COUNT random seeds for prompt enhancement. This may not be used with
             --pipeline-prompt-enhance-seeds. The generated seeds override --seeds and --gen-seeds for the
             enhancer only. Also turns --pipeline-prompt-enhance on when that flag is omitted. FLUX.3 and
             Kandinsky 6 video apply this to that generation's rewrite.
             ----------------------------------------------------------
-      --pipeline-prompt-enhance-temperature FLOAT
+      -ppet, --pipeline-prompt-enhance-temperature FLOAT
             Sampling temperature for --pipeline-prompt-enhance. Image families use the pipeline text encoder.
             LTX-2 passes this to the Gemma enhancer or text-encoder fallback. Omitting it keeps the default for
             that model type. Any --pipeline-prompt-enhance-* option turns prompt enhancement on when the flag
             itself is omitted. FLUX.3 and Kandinsky 6 video apply this to that generation's rewrite.
             ----------------------------------------------------------------------------------------
-      --pipeline-prompt-enhance-top-p FLOAT
+      -ppetp, --pipeline-prompt-enhance-top-p FLOAT
             Nucleus top-p for --pipeline-prompt-enhance. Must be greater than 0 and at most 1. Also turns
             --pipeline-prompt-enhance on when that flag is omitted. FLUX.3 and Kandinsky 6 video apply this to
             that generation's rewrite.
             --------------------------
-      --pipeline-prompt-enhance-top-k INT
+      -ppetk, --pipeline-prompt-enhance-top-k INT
             Top-k for --pipeline-prompt-enhance. 0 turns top-k off. Also turns --pipeline-prompt-enhance on when
             that flag is omitted. FLUX.3 and Kandinsky 6 video apply this to that generation's rewrite.
             -------------------------------------------------------------------------------------------
-      --pipeline-prompt-enhance-presence-penalty FLOAT
+      -ppep, --pipeline-prompt-enhance-presence-penalty FLOAT
             Presence penalty for --pipeline-prompt-enhance sampling. Also turns --pipeline-prompt-enhance on
             when that flag is omitted. FLUX.3 and Kandinsky 6 video apply this to that generation's rewrite.
             ------------------------------------------------------------------------------------------------
-      --pipeline-prompt-enhance-max-new-tokens INT
+      -ppemax, --pipeline-prompt-enhance-max-new-tokens INT
             Maximum new tokens for one --pipeline-prompt-enhance rewrite. Also turns --pipeline-prompt-enhance
             on when that flag is omitted. FLUX.3 and Kandinsky 6 video apply this to that generation's rewrite.
             ---------------------------------------------------------------------------------------------------
-      --pipeline-prompt-enhance-min-new-tokens INT
+      -ppemin, --pipeline-prompt-enhance-min-new-tokens INT
             Minimum new tokens before end-of-sequence is allowed. Also turns --pipeline-prompt-enhance on when
             that flag is omitted. FLUX.3 and Kandinsky 6 video apply this to that generation's rewrite.
             -------------------------------------------------------------------------------------------
-      --pipeline-prompt-enhance-gpu-headroom GIB
+      -ppeh, --pipeline-prompt-enhance-gpu-headroom GIB
             GiB of free GPU memory to leave unused when splitting the text encoder across GPU and CPU, on top of
             10 percent of free memory. The default is 2. Packed integer weights also reserve room for the bf16
             copy of the largest matrix, which the speed test allocates on the GPU. Raise it when the rewrite
@@ -3349,7 +3315,7 @@ Help Output
             when that flag is omitted. FLUX.3 splits the prompt upsampler. Kandinsky 6 video splits the text
             encoder.
             --------
-      --prompt-upsampler URI
+      -puu, --prompt-upsampler URI
             Prompt upsampler URI. The arguments match --transformer: revision, variant, subfolder, dtype,
             quantizer, and compile. weight-name selects one .gguf or .safetensors file in the repository or
             folder. mmproj is the llama.cpp vision tower loaded beside a GGUF: that file's path or URL,
@@ -3366,43 +3332,43 @@ Help Output
             text encoder, including kandinsky6-video, reject this option. A value on --pipeline-prompt-enhance
             replaces the built-in system prompt for that generation on LTX-2, FLUX.3, and Kandinsky 6.
             ------------------------------------------------------------------------------------------
-      --wan-low-noise-guidance-scales FLOAT [FLOAT ...]
+      -wnlg, --wan-low-noise-guidance-scales FLOAT [FLOAT ...]
             CFG scales for the Wan 2.2 MoE low-noise expert. When omitted, that expert copies --guidance-scales.
             ----------------------------------------------------------------------------------------------------
-      --wan-boundary-ratios FLOAT [FLOAT ...]
+      -wnbr, --wan-boundary-ratios FLOAT [FLOAT ...]
             MoE expert switch points for Wan 2.2. Values are 0 to 1. When omitted the checkpoint value is kept.
             ---------------------------------------------------------------------------------------------------
-      --wan-expand-timesteps
+      -wnet, --wan-expand-timesteps
             Enable per-token timestep expansion on Wan 2.2.
             -----------------------------------------------
-      --wan-second-transformer TRANSFORMER_URI
+      -wntf, --wan-second-transformer TRANSFORMER_URI
             Replacement URI for the Wan 2.2 MoE low-noise transformer, the same grammar as --transformer,
             including GGUF files.
             ---------------------
-      --wan-conditioning-scales FLOAT_OR_CSV [FLOAT_OR_CSV ...]
+      -wncs, --wan-conditioning-scales FLOAT_OR_CSV [FLOAT_OR_CSV ...]
             VACE conditioning scales. A single float is one scale. A comma-separated list is a per-VACE-layer
             scale. Multiple values are tried in turn.
             -----------------------------------------
-      --wan-animate-mode MODE
+      -wnam, --wan-animate-mode MODE
             Wan-Animate mode. animate is character animation. replace needs wan-background= and mask= clips.
             ------------------------------------------------------------------------------------------------
-      --wan-segment-frame-lengths INTEGER [INTEGER ...]
+      -wnsl, --wan-segment-frame-lengths INTEGER [INTEGER ...]
             Wan-Animate segment lengths. Each value must be 4N+1. The default is 77.
             ------------------------------------------------------------------------
-      --wan-prev-segment-frames INTEGER [INTEGER ...]
+      -wnpf, --wan-prev-segment-frames INTEGER [INTEGER ...]
             Previous-segment overlap frames for Wan-Animate. 1 or 5 is recommended. The default is 1.
             -----------------------------------------------------------------------------------------
-      --wan-motion-encode-batch-size INTEGER [INTEGER ...]
+      -wnmb, --wan-motion-encode-batch-size INTEGER [INTEGER ...]
             Motion-encoder batch size for Wan-Animate. Larger values use more memory and can be faster.
             Wan-Animate-2 does not use this.
             --------------------------------
-      --wan-animate-preprocess
+      -wnap, --wan-animate-preprocess
             Derive wan-pose= and wan-face= from a wan-driving= clip. Pose uses the openpose processor. Face uses
             the yolo processor in crop mode (Bingsu/adetailer face_yolov8n.pt, square crop-scale=1.4). The
             derived frames are kept in memory. Custom plugins can be used instead with
             --wan-pose-image-processors and --wan-face-image-processors on wan-driving=.
             ----------------------------------------------------------------------------
-      --wan-animate-preprocess-output
+      -wnapo, --wan-animate-preprocess-output
             Write the pose and face clips derived by --wan-animate-preprocess to the directory given by
             --output-path. A name that already exists receives a _duplicate_ suffix. Off by default.
             ----------------------------------------------------------------------------------------

@@ -2780,6 +2780,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-hdnw',
             '--hi-diffusion-no-win-attn',
             action='store_true', default=False, dest='hi_diffusion_no_win_attn',
             help=f"""Disable window attention when using HiDiffusion for the primary model?
@@ -2796,6 +2797,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-hdnr',
             '--hi-diffusion-no-raunet',
             action='store_true', default=False, dest='hi_diffusion_no_raunet',
             help=f"""Disable RAU-Net when using HiDiffusion for the primary model?
@@ -2813,6 +2815,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     # SADA (Stability-guided Adaptive Diffusion Acceleration) arguments
     actions.append(
         parser.add_argument(
+            '-sda',
             '--sada',
             action='store_true', default=False, dest='sada',
             help=f"""Enable SADA (Stability-guided Adaptive Diffusion Acceleration) with model-specific default parameters for the primary model.
@@ -2856,6 +2859,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-sdmd',
             '--sada-max-downsamples',
             metavar='INTEGER',
             nargs='+', dest='sada_max_downsamples', type=_type_sada_max_downsamples,
@@ -2883,6 +2887,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-sdsx',
             '--sada-sxs',
             metavar='INTEGER',
             nargs='+', dest='sada_sxs', type=_type_sada_sxs,
@@ -2910,6 +2915,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-sdsy',
             '--sada-sys',
             metavar='INTEGER',
             nargs='+', dest='sada_sys', type=_type_sada_sys,
@@ -2937,6 +2943,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-sdar',
             '--sada-acc-ranges',
             metavar='INTEGER',
             nargs='+', dest='sada_acc_ranges', type=_type_sada_acc_ranges,
@@ -2962,6 +2969,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-sdlt',
             '--sada-lagrange-terms',
             metavar='INTEGER',
             nargs='+', dest='sada_lagrange_terms', type=_type_sada_lagrange_terms,
@@ -2988,6 +2996,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-sdli',
             '--sada-lagrange-ints',
             metavar='INTEGER',
             nargs='+', dest='sada_lagrange_ints', type=_type_sada_lagrange_ints,
@@ -3014,6 +3023,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-sdls',
             '--sada-lagrange-steps',
             metavar='INTEGER',
             nargs='+', dest='sada_lagrange_steps', type=_type_sada_lagrange_steps,
@@ -3040,6 +3050,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-sdmf',
             '--sada-max-fixes',
             metavar='INTEGER',
             nargs='+', dest='sada_max_fixes', type=_type_sada_max_fixes,
@@ -3066,6 +3077,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-sdmi',
             '--sada-max-intervals',
             metavar='INTEGER',
             nargs='+', dest='sada_max_intervals', type=_type_sada_max_intervals,
@@ -3239,6 +3251,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-cd',
             '--cache-dit',
             action='store_true', default=False, dest='cache_dit',
             help=f"""Enable Cache-DiT's default training-free cache acceleration for supported Diffusers DiT pipelines.
@@ -3256,6 +3269,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-dy',
             '--dype',
             action='store_true', default=False, dest='dype',
             help=f"""Enable DyPE's positional scaling methods for supported transformer pipelines.
@@ -3284,6 +3298,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-dym',
             '--dype-methods', metavar='METHOD', nargs='+',
             choices=_pipelinewrapper.constants.DYPE_METHODS,
             default=None, dest='dype_methods',
@@ -3301,6 +3316,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-dybr',
             '--dype-base-resolutions', metavar='PIXELS', nargs='+',
             type=_type_positive_int, default=None, dest='dype_base_resolutions',
             help="""Reference long-side resolution in pixels for DyPE's positional scaling.
@@ -3320,6 +3336,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-dyms',
             '--dype-mscales', metavar='MODE', nargs='+',
             choices=_pipelinewrapper.constants.DYPE_MSCALES,
             default=None, dest='dype_mscales',
@@ -3339,6 +3356,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-dyax',
             '--dype-axis-scalings', metavar='MODE', nargs='+',
             choices=_pipelinewrapper.constants.DYPE_AXIS_SCALINGS,
             default=None, dest='dype_axis_scalings',
@@ -3361,6 +3379,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-cdc',
             '--cache-dit-config', metavar='FILE', default=None, dest='cache_dit_config',
             help=f"""Cache-DiT YAML settings for cache policies, parallelism, quantization, attention,
                      and layerwise offload. Supplying this option also enables Cache-DiT.
@@ -3401,6 +3420,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-spc',
             '--spectrum',
             action='store_true', default=False, dest='spectrum',
             help=f"""Activate Spectrum for the primary model?
@@ -3431,6 +3451,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-spcw',
             '--spectrum-weights', metavar='FLOAT',
             nargs='*', type=_type_unit_float, default=None, dest='spectrum_weights',
             help=f"""Spectrum Chebyshev blend weights to try when --spectrum is enabled.
@@ -3447,6 +3468,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-spco',
             '--spectrum-orders', metavar='INT',
             nargs='*', type=_type_spectrum_order, default=None, dest='spectrum_orders',
             help=f"""Spectrum Chebyshev polynomial counts to try when --spectrum is enabled.
@@ -3463,6 +3485,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-spcl',
             '--spectrum-lambdas', metavar='FLOAT',
             nargs='*', type=_type_non_negative_float, default=None, dest='spectrum_lambdas',
             help=f"""Spectrum ridge penalties to try when --spectrum is enabled.
@@ -3478,6 +3501,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-spcu',
             '--spectrum-warmup-steps', metavar='INT',
             nargs='*', type=_type_non_negative_integer, default=None, dest='spectrum_warmup_steps',
             help=f"""Leading full denoiser passes before Spectrum may predict a step.
@@ -3496,6 +3520,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-spcws',
             '--spectrum-window-sizes', metavar='FLOAT',
             nargs='*', type=_type_spectrum_window, default=None, dest='spectrum_window_sizes',
             help=f"""Initial Spectrum skip intervals to try when --spectrum is enabled.
@@ -3513,6 +3538,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-spcf',
             '--spectrum-flex-windows', metavar='FLOAT',
             nargs='*', type=_type_non_negative_float, default=None, dest='spectrum_flex_windows',
             help=f"""Amounts added to the Spectrum skip interval after each full pass.
@@ -3532,6 +3558,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-rgn',
             '--regione',
             action='store_true', default=False, dest='regione',
             help=f"""Enable RegionE region-aware acceleration for instruction editing?
@@ -3552,6 +3579,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-rgnw',
             '--regione-warmup-steps', metavar='INT',
             nargs='*', type=_type_non_negative_integer, default=None, dest='regione_warmup_steps',
             help="""RegionE warmup steps to try when --regione is enabled.
@@ -3565,6 +3593,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-rgnp',
             '--regione-post-steps', metavar='INT',
             nargs='*', type=_type_non_negative_integer, default=None, dest='regione_post_steps',
             help="""RegionE trailing full denoising steps to try when --regione is enabled.
@@ -3576,6 +3605,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-rgnr',
             '--regione-refresh-steps', metavar='INT',
             nargs='*', type=_type_non_negative_integer, default=None, dest='regione_refresh_steps',
             help="""RegionE mask refresh steps to try when --regione is enabled.
@@ -3587,6 +3617,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-rgnt',
             '--regione-thresholds', metavar='FLOAT',
             nargs='*', type=_type_unit_float, default=None, dest='regione_thresholds',
             help="""RegionE region partition thresholds to try when --regione is enabled.
@@ -3600,6 +3631,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-rgnc',
             '--regione-cache-thresholds', metavar='FLOAT',
             nargs='*', type=_type_non_negative_float, default=None, dest='regione_cache_thresholds',
             help="""RegionE velocity-decay cache thresholds to try when --regione is enabled.
@@ -3611,6 +3643,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-rgne',
             '--regione-erosion-dilation',
             action='store_true', dest='regione_erosion_dilation', default=None,
             help="""Morphologically erode/dilate the RegionE region mask.
@@ -3622,6 +3655,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-rgnn',
             '--regione-no-erosion-dilation',
             action='store_false', dest='regione_erosion_dilation',
             help="""Disable RegionE mask erosion/dilation.
@@ -3992,6 +4026,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-cmp',
             '--torch-compile', nargs='*', action=_TorchCompileAction, default=False,
             type=_type_torch_compile_module, metavar='SUBMODULE',
             help="""Compile repeated denoiser, ControlNet, and VAE blocks. The first use of each
@@ -4066,6 +4101,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-scd',
             '--s-cascade-decoder', action='store', default=None, metavar="MODEL_URI", dest='s_cascade_decoder_uri',
             help=f"""Specify a Stable Cascade (s-cascade) decoder model path using a URI.
                     This should be a Hugging Face repository slug / blob link, path to model file
@@ -4109,6 +4145,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-ref',
             '--sdxl-refiner', action='store', default=None, metavar="MODEL_URI", dest='sdxl_refiner_uri',
             help=f"""Specify a Stable Diffusion XL (sdxl) refiner model path using a URI.
                     This should be a Hugging Face repository slug / blob link, path to model file
@@ -4153,6 +4190,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xle',
             '--sdxl-refiner-edit', action='store_true', default=None,
             help="""Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode
                     as it would normally do for inpainting and ControlNet usage. The main model will perform
@@ -4417,6 +4455,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     )
     actions.append(
         output_size_group.add_argument(
+            '-q21r',
             '--qwen21-resolution', type=_type_positive_int, default=None, metavar="RESOLUTION",
             dest='qwen21_resolution',
             help="Target side length for Qwen-Image 2.1 output resolution inference. Only supported by Qwen-Image 2.1.")
@@ -4678,6 +4717,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-spu2',
             '--second-model-second-prompt-upscaler',
             '--second-model-second-prompt-upscalers',
             metavar='PROMPT_UPSCALER_URI', dest='second_model_second_prompt_upscaler_uri', action='store', nargs='+',
@@ -4689,6 +4729,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-spu',
             '--second-prompt-upscaler',
             '--second-prompt-upscalers',
             metavar='PROMPT_UPSCALER_URI', dest='second_prompt_upscaler_uri', action='store', nargs='+',
@@ -4700,6 +4741,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-tpu',
             '--third-prompt-upscaler',
             '--third-prompt-upscalers',
             metavar='PROMPT_UPSCALER_URI', dest='third_prompt_upscaler_uri', action='store', nargs='+',
@@ -4739,6 +4781,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-sp',
             '--second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
             type=_type_secondary_prompts,
             help="""One or more secondary prompts to try using the sdxl (SDXL), sd3 
@@ -4751,6 +4794,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-tp',
             '--third-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
             type=_type_secondary_prompts,
             help="""One or more tertiary prompts to try using the sd3 (Stable Diffusion 3) 
@@ -4763,6 +4807,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-p2',
             '--second-model-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
             type=_type_secondary_prompts,
             help="""One or more prompts to try with the SDXL Refiner or Stable Cascade decoder model,
@@ -4774,6 +4819,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-sp2',
             '--second-model-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
             type=_type_secondary_prompts,
             help="""One or more prompts to try with the SDXL refiner models secondary
@@ -4787,6 +4833,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-f2t',
             '--flux2-caption-upsample-temperature', action='store', metavar='FLOAT', default=None,
             type=_type_non_negative_float, dest='flux2_caption_upsample_temperature',
             help="""Caption upsampling temperature for full Flux.2. Omitting it leaves
@@ -4796,6 +4843,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-f2l',
             '--flux2-text-encoder-out-layers', action='store', metavar='LAYERS', default=None,
             type=_type_flux2_text_encoder_out_layers, dest='flux2_text_encoder_out_layers',
             help="""Comma-separated Flux.2 text-encoder layer indexes, like 10,20,30.
@@ -4806,6 +4854,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-zcn',
             '--z-image-cfg-normalization', action='store_true', default=None,
             dest='z_image_cfg_normalization',
             help="""Enable Z-Image classifier-free guidance normalization.
@@ -4815,6 +4864,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-zct',
             '--z-image-cfg-truncation', action='store', metavar='FLOAT', default=None,
             type=_type_non_negative_float, dest='z_image_cfg_truncation',
             help="""Z-Image classifier-free guidance truncation. Omitting it keeps 1,
@@ -4824,6 +4874,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-qgs',
             '--qwen-guidance-scale', action='store', metavar='FLOAT', default=None,
             type=_type_non_negative_float, dest='qwen_guidance_scale',
             help="""Distilled guidance embedded in the Qwen-Image transformer.
@@ -4834,6 +4885,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-qll',
             '--qwen-layered-layers', action='store', metavar='INTEGER', default=None,
             type=_type_positive_int, dest='qwen_layered_layers',
             help="""How many layers Qwen-Image layered writes. Omitting it keeps 4.
@@ -4843,6 +4895,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-qlr',
             '--qwen-layered-resolution', action='store', metavar='INTEGER', default=None,
             type=_type_qwen_layered_resolution, dest='qwen_layered_resolution',
             help="""Square resolution bucket for Qwen-Image layered: 640 or 1024.
@@ -4852,6 +4905,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-qln',
             '--qwen-layered-cfg-normalize', action='store_true', default=None,
             dest='qwen_layered_cfg_normalize',
             help="""Enable CFG normalization for Qwen-Image layered.
@@ -4861,6 +4915,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-qle',
             '--qwen-layered-use-en-prompt', action='store_true', default=None,
             dest='qwen_layered_use_en_prompt',
             help="""Ask Qwen-Image layered to treat the prompt as English.
@@ -4870,6 +4925,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-msl',
             '--max-sequence-length', action='store', metavar='INTEGER', default=None, type=_max_sequence_length,
             help="""The maximum amount of prompt tokens sent to the text encoder.
                     For Stable Diffusion 3 and Flux this is the T5 encoder, an integer
@@ -5202,6 +5258,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lfip',
             '--last-frame-image-processors',
             type=_type_image_processor,
             action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
@@ -5215,6 +5272,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-rfip',
             '--reference-image-processors',
             type=_type_image_processor,
             action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
@@ -5230,6 +5288,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-aip',
             '--adapter-image-processors',
             type=_type_image_processor,
             action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
@@ -5242,6 +5301,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wpip',
             '--wan-pose-image-processors',
             type=_type_image_processor,
             action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
@@ -5254,6 +5314,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wfip',
             '--wan-face-image-processors',
             type=_type_image_processor,
             action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
@@ -5266,6 +5327,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wdip',
             '--wan-driving-image-processors',
             type=_type_image_processor,
             action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
@@ -5278,6 +5340,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wbip',
             '--wan-background-image-processors',
             type=_type_image_processor,
             action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
@@ -5592,6 +5655,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-vl',
             '--video-lengths', action='store', nargs='+', default=None,
             dest='video_lengths', type=_type_video_length, metavar="SECONDS",
             help="""One or more clip lengths in seconds for video model types.
@@ -5623,6 +5687,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-vf',
             '--video-fps', action='store', nargs='+', default=None,
             dest='video_fps', type=_type_video_fps, metavar="FPS",
             help="""One or more output frame rates for video model types.
@@ -5639,6 +5704,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     )
 
     actions.append(parser.add_argument(
+        '-ts',
         '--timesteps', action='store', nargs='+', default=None,
         dest='timesteps', metavar='CSV_INT_OR_EXPRESSION', type=_type_video_timesteps,
         help='One or more comma-separated timestep schedules or "expr: ..." expressions. '
@@ -5649,12 +5715,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
               'Cannot be combined with --sigmas.'))
 
     actions.append(parser.add_argument(
+        '-q21nk',
         '--qwen21-no-kv-cache', action='store_const', const=False, default=None,
         dest='qwen21_use_kv_cache',
         help='Disable the Qwen-Image 2.1 key/value attention cache.'))
 
     actions.append(
         parser.add_argument(
+            '-lxag',
             '--ltx-audio-guidance-scales', action='store', nargs='+', default=None,
             dest='ltx_audio_guidance_scales', metavar="FLOAT", type=_type_guidance_scale,
             help="""One or more audio CFG scales to try, for --model-type ltx2.
@@ -5676,6 +5744,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxar',
             '--ltx-audio-guidance-rescales', action='store', nargs='+', default=None,
             dest='ltx_audio_guidance_rescales', metavar="FLOAT", type=_type_guidance_scale,
             help="""One or more audio guidance rescale factors to try, for
@@ -5692,6 +5761,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxstg',
             '--ltx-stg-scales', action='store', nargs='+', default=None,
             dest='ltx_stg_scales', metavar="FLOAT", type=_type_guidance_scale,
             help="""One or more video spatio-temporal guidance scales for
@@ -5706,6 +5776,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxast',
             '--ltx-audio-stg-scales', action='store', nargs='+', default=None,
             dest='ltx_audio_stg_scales', metavar="FLOAT", type=_type_guidance_scale,
             help="""Audio spatio-temporal guidance scales for --model-type ltx2.
@@ -5719,6 +5790,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxm',
             '--ltx-modality-scales', action='store', nargs='+', default=None,
             dest='ltx_modality_scales', metavar="FLOAT", type=_type_guidance_scale,
             help="""Video modality-isolation guidance scales for --model-type ltx2.
@@ -5732,6 +5804,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxam',
             '--ltx-audio-modality-scales', action='store', nargs='+', default=None,
             dest='ltx_audio_modality_scales', metavar="FLOAT", type=_type_guidance_scale,
             help="""Audio modality-isolation guidance scales for --model-type ltx2.
@@ -5745,6 +5818,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxsb',
             '--ltx-stg-blocks', action='store', nargs='+', default=None,
             dest='ltx_stg_blocks', metavar="BLOCKS", type=_type_stg_blocks,
             help="""Transformer block indices for spatio-temporal guidance.
@@ -5759,6 +5833,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxnct',
             '--ltx-no-cross-timestep', action='store_false', default=None,
             dest='ltx_use_cross_timestep',
             help="""Use the LTX-2.0 cross-modality timestep. LTX-2.3 and LTX-2.5
@@ -5768,6 +5843,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxlu',
             '--ltx-latent-upscale', action='store', nargs='?', const=True, default=False,
             dest='ltx_latent_upscale', metavar="URI",
             help="""Run LTX-2 as one two-stage generation, the way --sdxl-refiner
@@ -5790,6 +5866,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxlm',
             '--ltx-latent-upscale-mode', action='store', default='spatial',
             dest='ltx_latent_upscale_mode', choices=['spatial', 'temporal'], metavar='MODE',
             help="""How --ltx-latent-upscale operates. spatial (default) doubles width and height.
@@ -5800,6 +5877,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxtr',
             '--ltx-temporal-upscale-rounds', action='store', default=1,
             dest='ltx_temporal_upscale_rounds', type=int, choices=[1, 2], metavar='ROUNDS',
             help="""Number of temporal DFR rounds (1 doubles the frames; 2 quadruples them).
@@ -5809,6 +5887,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxss',
             '--ltx-stage-sigmas', action='store', nargs='+', default=None,
             dest='ltx_stage_sigmas', metavar="CSV_FLOAT_OR_EXPRESSION", type=_type_sigmas,
             help="""Sigma schedule for the --ltx-latent-upscale refine pass. Same
@@ -5819,6 +5898,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxns',
             '--ltx-noise-scales', action='store', nargs='+', default=None,
             dest='ltx_noise_scales', metavar="FLOAT", type=_type_guidance_scale,
             help="""Noise mixed back into the upscaled latents before the refine
@@ -5829,6 +5909,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxsg',
             '--ltx-stage-guidance-scales', action='store', nargs='+', default=None,
             dest='ltx_stage_guidance_scales', metavar="FLOAT", type=_type_guidance_scale,
             help="""Video guidance for the --ltx-latent-upscale refine pass.
@@ -5840,6 +5921,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxsag',
             '--ltx-stage-audio-guidance-scales', action='store', nargs='+', default=None,
             dest='ltx_stage_audio_guidance_scales', metavar="FLOAT", type=_type_guidance_scale,
             help="""Audio guidance for the --ltx-latent-upscale refine pass.
@@ -5850,6 +5932,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxsl',
             '--ltx-stage-loras', nargs='+', action='store', default=None,
             dest='ltx_stage_lora_uris', metavar="LORA_URI",
             help="""LoRAs loaded for the --ltx-latent-upscale refine pass only, then
@@ -5862,6 +5945,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxvd',
             '--ltx-video-decoder', action='store', default=None, metavar="DECODER",
             dest='ltx_video_decoder', choices=['conv', 'diffusion'],
             help="""How an LTX-2 clip is decoded. conv is the convolutional VAE.
@@ -5878,6 +5962,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxdd',
             '--ltx-diffusion-decoder', action='store', default=None, metavar='URI',
             dest='ltx_diffusion_decoder',
             help="""Optional URI for the LTX-2 diffusion decoder used by
@@ -5890,6 +5975,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxdt',
             '--ltx-diffusion-decode-tile', action='store', default=None, metavar='WIDTHxHEIGHTxFRAMES',
             dest='ltx_diffusion_decode_tile', type=_type_ltx_diffusion_decode_tile,
             help="""Tile size for --ltx-video-decoder diffusion. The value is
@@ -5902,6 +5988,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxdts',
             '--ltx-decode-timesteps', action='store', nargs='+', default=None,
             dest='ltx_decode_timesteps', metavar="FLOAT", type=_type_guidance_scale,
             help="""Decode timestep for the LTX video decode. Several values are
@@ -5911,6 +5998,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxdns',
             '--ltx-decode-noise-scales', action='store', nargs='+', default=None,
             dest='ltx_decode_noise_scales', metavar="FLOAT", type=_type_guidance_scale,
             help="""Decode noise scale for the LTX video decode. Several values
@@ -5920,6 +6008,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxcrf',
             '--ltx-image-crfs', action='store', nargs='+', default=None,
             dest='ltx_image_crfs', metavar="INTEGER", type=_type_image_crf,
             help="""H.264 CRF used to recompress an LTX conditioning still before
@@ -5931,6 +6020,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxmin',
             '--ltx-video-min-seconds', action='store', nargs='+', default=None,
             dest='ltx_video_min_seconds', metavar="SECONDS", type=_type_video_fps,
             help="""Lower bounds, in seconds, for the LTX-2.5 duration head.
@@ -5956,6 +6046,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lxmax',
             '--ltx-video-max-seconds', action='store', nargs='+', default=None,
             dest='ltx_video_max_seconds', metavar="SECONDS", type=_type_video_fps,
             help="""Upper bounds, in seconds, for the LTX-2.5 duration head.
@@ -5981,6 +6072,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-ppe',
             '--pipeline-prompt-enhance', action='store', nargs='?', const=True, default=None,
             dest='pipeline_prompt_enhance', metavar="TEXT",
             help=f"""Rewrite the prompt with the text encoder already loaded for this
@@ -6031,6 +6123,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         enhance_seed_options.add_argument(
+            '-ppes',
             '--pipeline-prompt-enhance-seeds', action='store', nargs='+', default=None,
             dest='pipeline_prompt_enhance_seeds', metavar='SEED', type=_type_seeds,
             help="""One or more seeds for prompt enhancement. Each value is tried
@@ -6045,6 +6138,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         enhance_seed_options.add_argument(
+            '-ppeg',
             '--pipeline-prompt-enhance-gen-seeds', action='store', default=None,
             dest='pipeline_prompt_enhance_seeds', metavar='COUNT', type=_type_gen_seeds,
             help="""Generate COUNT random seeds for prompt enhancement.
@@ -6058,6 +6152,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-ppet',
             '--pipeline-prompt-enhance-temperature', action='store', default=None,
             dest='pipeline_prompt_enhance_temperature', metavar='FLOAT',
             type=_type_non_negative_float,
@@ -6072,6 +6167,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     )
     actions.append(
         parser.add_argument(
+            '-ppetp',
             '--pipeline-prompt-enhance-top-p', action='store', default=None,
             dest='pipeline_prompt_enhance_top_p', metavar='FLOAT', type=float,
             help="""Nucleus top-p for --pipeline-prompt-enhance. Must be greater
@@ -6082,6 +6178,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     )
     actions.append(
         parser.add_argument(
+            '-ppetk',
             '--pipeline-prompt-enhance-top-k', action='store', default=None,
             dest='pipeline_prompt_enhance_top_k', metavar='INT',
             type=_type_non_negative_integer,
@@ -6093,6 +6190,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     )
     actions.append(
         parser.add_argument(
+            '-ppep',
             '--pipeline-prompt-enhance-presence-penalty', action='store', default=None,
             dest='pipeline_prompt_enhance_presence_penalty', metavar='FLOAT', type=float,
             help="""Presence penalty for --pipeline-prompt-enhance sampling.
@@ -6103,6 +6201,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     )
     actions.append(
         parser.add_argument(
+            '-ppemax',
             '--pipeline-prompt-enhance-max-new-tokens', action='store', default=None,
             dest='pipeline_prompt_enhance_max_new_tokens', metavar='INT',
             type=_type_positive_int,
@@ -6114,6 +6213,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     )
     actions.append(
         parser.add_argument(
+            '-ppemin',
             '--pipeline-prompt-enhance-min-new-tokens', action='store', default=None,
             dest='pipeline_prompt_enhance_min_new_tokens', metavar='INT',
             type=_type_non_negative_integer,
@@ -6125,6 +6225,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     )
     actions.append(
         parser.add_argument(
+            '-ppeh',
             '--pipeline-prompt-enhance-gpu-headroom', action='store', default=None,
             dest='pipeline_prompt_enhance_gpu_headroom', metavar='GIB',
             type=_type_non_negative_float,
@@ -6142,6 +6243,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-puu',
             '--prompt-upsampler', action='store', default=None, metavar="URI",
             dest='prompt_upsampler',
             help="""Prompt upsampler URI. The arguments match --transformer:
@@ -6174,6 +6276,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wnlg',
             '--wan-low-noise-guidance-scales', action='store', nargs='+', default=None,
             dest='wan_low_noise_guidance_scales', metavar="FLOAT", type=_type_guidance_scale,
             help="""CFG scales for the Wan 2.2 MoE low-noise expert. When
@@ -6183,6 +6286,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wnbr',
             '--wan-boundary-ratios', action='store', nargs='+', default=None,
             dest='wan_boundary_ratios', metavar="FLOAT", type=_type_guidance_scale,
             help="""MoE expert switch points for Wan 2.2. Values are 0 to 1.
@@ -6192,6 +6296,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wnet',
             '--wan-expand-timesteps', action='store_true', default=None,
             dest='wan_expand_timesteps',
             help="""Enable per-token timestep expansion on Wan 2.2."""
@@ -6200,6 +6305,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wntf',
             '--wan-second-transformer', action='store', default=None,
             metavar="TRANSFORMER_URI", dest='wan_second_transformer_uri',
             help="""Replacement URI for the Wan 2.2 MoE low-noise transformer,
@@ -6209,6 +6315,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wncs',
             '--wan-conditioning-scales', action='store', nargs='+', default=None,
             dest='wan_conditioning_scales', metavar="FLOAT_OR_CSV",
             type=_type_wan_conditioning_scale,
@@ -6220,6 +6327,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wnam',
             '--wan-animate-mode', action='store', default=None, metavar="MODE",
             dest='wan_animate_mode', choices=['animate', 'replace'],
             help="""Wan-Animate mode. animate is character animation.
@@ -6229,6 +6337,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wnsl',
             '--wan-segment-frame-lengths', action='store', nargs='+', default=None,
             dest='wan_segment_frame_lengths', metavar="INTEGER",
             type=_type_segment_frames,
@@ -6239,6 +6348,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wnpf',
             '--wan-prev-segment-frames', action='store', nargs='+', default=None,
             dest='wan_prev_segment_frames', metavar="INTEGER",
             type=_type_segment_frames,
@@ -6249,6 +6359,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wnmb',
             '--wan-motion-encode-batch-size', action='store', nargs='+', default=None,
             dest='wan_motion_encode_batch_sizes', metavar="INTEGER",
             type=_type_segment_frames,
@@ -6260,6 +6371,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wnap',
             '--wan-animate-preprocess', action='store_true', default=False,
             dest='wan_animate_preprocess',
             help="""Derive wan-pose= and wan-face= from a wan-driving= clip.
@@ -6274,6 +6386,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-wnapo',
             '--wan-animate-preprocess-output', action='store_true', default=False,
             dest='wan_animate_preprocess_output',
             help="""Write the pose and face clips derived by --wan-animate-preprocess
