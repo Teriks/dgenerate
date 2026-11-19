@@ -463,7 +463,7 @@ class DgenerateConsole(tk.Tk):
                 command=lambda: self._show_selected_image_in_directory(self._output_text.text))
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Make Window', command=self._toggle_output_float)
-        self._output_float_menu_index = self._output_text_context.index('end') - 1
+        self._output_float_menu_index = self._output_text_context.index('end')
 
         # Patch the output text context menu to enable/disable Preview Selected Image
         og_output_popup = self._output_text_context.tk_popup
@@ -507,7 +507,7 @@ class DgenerateConsole(tk.Tk):
                                         variable=self._tearoff_image_pane.get_window_visible_var())
         self._view_menu.add_separator()
         self._view_menu.add_command(label='Console Output Window', command=self._toggle_output_float)
-        self._output_view_menu_index = self._view_menu.index('end') - 1
+        self._output_view_menu_index = self._view_menu.index('end')
 
         # Misc Config
 
