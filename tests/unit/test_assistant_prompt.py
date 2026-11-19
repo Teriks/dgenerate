@@ -207,6 +207,9 @@ class TestAssistantPrompt(unittest.TestCase):
         self.assertLess(i2v_gguf, t2v_gguf)
         self.assertIn('Wan-AI/Wan2.1-T2V-14B-Diffusers', prompt[t2v_gguf:t2v_gguf + 400])
         self.assertIn('A Wan GGUF or FP8 file loads only on the parent named with it.', prompt)
+        self.assertIn('umt5-xxl-encoder-Q4_K_S.gguf', prompt)
+        self.assertIn('umt5_xxl_fp8_e4m3fn_scaled.safetensors', prompt)
+        self.assertIn('do not say a quantized UMT5 file is unavailable', prompt)
         self.assertLess(i2v, prompt.index('wan2.1_i2v_480p_14B_fp8_scaled.safetensors'))
         self.assertLess(
             prompt.index('Wan-AI/Wan2.1-T2V-14B-Diffusers'),

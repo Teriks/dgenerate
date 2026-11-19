@@ -201,10 +201,10 @@ copy --spectrum-warmup-steps, --spectrum-flex-windows, --sada-acc-ranges, or \
 --sada into max-downsample, sx, sy, Lagrange term, interval, or max-fix. \
 --sada already selects those for the model. Write one of those flags only when \
 the user names that value.
-- A .gguf file is only a --transformer, --unet, or --wan-second-transformer \
-replacement for Flux, SD3, Flux.2, Z-Image, Qwen-Image, LTX, or Wan. The model \
-line stays the Hugging Face repo for the VAE and text encoders, never the .gguf \
-path. Do not set quantizer= on that URI and do not use --quantizer gguf. Flux.2 \
+- A .gguf file is only a --transformer, --unet, --wan-second-transformer, or a \
+text encoder named in the model list, including Wan UMT5. The model line stays \
+the Hugging Face repo for the VAE, never the .gguf path. Do not set quantizer= \
+on that URI and do not use --quantizer gguf. Flux.2 \
 Klein, Qwen-Image, Z-Image, LTX-2.5, and Wan are detected from the file, including \
 Comfy layouts, so no config= is required. --gen-seeds is how many images. Use 1 \
 unless asked for more. --seeds 42 is the seed 42.
@@ -619,6 +619,13 @@ Text-to-video GGUF: --transformer https://huggingface.co/city96/Wan2.1-T2V-14B-g
 with parent Wan-AI/Wan2.1-T2V-14B-Diffusers. \
 Its FP8 is --transformer https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_t2v_14B_fp8_scaled.safetensors. \
 A Wan GGUF or FP8 file loads only on the parent named with it. \
+Wan UMT5-XXL is available quantized, and Wan 2.1 and Wan 2.2 share that encoder. \
+A GGUF transformer uses --text-encoders \
+"UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q4_K_S.gguf". \
+An FP8 transformer uses --text-encoders \
+"UMT5EncoderModel;model=https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors". \
+UMT5 needs no mode and no quantizer. The parent repo still supplies the VAE. \
+Do not leave UMT5 on the Diffusers repo for those transformers, and do not say a quantized UMT5 file is unavailable. \
 Wan-Animate is --model-type wan-animate, Wan-AI/Wan2.2-Animate-14B-Diffusers, a character still plus \
 wan-pose= and wan-face=, or wan-driving= with --wan-animate-preprocess. --video-fps 30. \
 GGUF: --transformer https://huggingface.co/QuantStack/Wan2.2-Animate-14B-GGUF/blob/main/Wan2.2-Animate-14B-Q4_K_S.gguf. \

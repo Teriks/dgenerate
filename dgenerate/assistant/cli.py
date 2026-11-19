@@ -333,8 +333,6 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
             return 2
 
     files = _prompt.request_files(request, os.getcwd(), run_dir)
-    link_text = request + ('\n' + editor if editor else '')
-    request_links = _link_tools.find_link_urls(link_text)
     # Tools replace streaming. The config check is always offered. fetch_link stays
     # available offline and reads the Hugging Face cache.
     use_link_tools = not args.no_link_tools
@@ -373,9 +371,6 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
         if args.show_context:
             log(context)
         log(f'Retrieved {len(context)} characters of context')
-
-        if use_link_tools and request_links:
-            log(f'Link tool enabled ({len(request_links)} URL(s) in the request). The model can call fetch_link.')
 
         user = _prompt.user_message(request, context, files, editor=editor)
         needed = _models.context_tokens_needed(system, user, tool_text, reserve=reserve)
