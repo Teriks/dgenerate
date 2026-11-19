@@ -354,7 +354,8 @@ class TestSpectrum(unittest.TestCase):
         self.assertTrue(_pipelinewrapper.model_type_supports_dype('krea2'))
         for model_type in ('qwen-image-21', 'krea2', 'kandinsky5-image',
                            'kandinsky5-video', 'hyvideo-15', 'motif-video',
-                           'hyimage-21', 'hyimage-21-refiner'):
+                           'hyimage-21', 'hyimage-21-refiner',
+                           'minimax-h3-video', 'minimax-h3-image'):
             self.assertTrue(_pipelinewrapper.model_type_supports_spectrum(model_type))
         self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('sd'))
         self.assertFalse(_pipelinewrapper.model_type_supports_spectrum('ltx2'))
@@ -430,3 +431,74 @@ class TestSpectrum(unittest.TestCase):
             config.spectrum = True
             with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
                 config._check_optimization_features(lambda name: name)
+
+    def test_packed_timesteps_advance_and_signature_stays(self):
+        # The first entry stays 0, the way a pinned MiniMax conditioning row does.
+        # The generated row is what makes the next call a new step.
+        pipe = _Pipeline()
+        hidden = torch.zeros(1, 2, 4)
+        full_steps = []
+        with _spectrum.apply(pipe, 6, _settings(flex_window=0.0)):
+            import inspect
+            self.assertIn('hidden', inspect.signature(pipe.transformer.forward).parameters)
+            for generated in (1.0, 0.8, 0.6, 0.4, 0.2, 0.0):
+                before = pipe.transformer.cache_block.calls
+                pipe.transformer(hidden, timestep=torch.tensor([0.0, generated]))
+                full_steps.append(pipe.transformer.cache_block.calls > before)
+        self.assertEqual(full_steps, [True, True, False, True, False, True])
+
+    def test_repeated_packed_timestep_stays_one_step(self):
+        # Two forwards with the same vector are one step, as a guidance pair is.
+        # Four pairs with warmup 2 and window 2 are actual, actual, forecast, actual.
+        pipe = _Pipeline()
+        hidden = torch.zeros(1, 2, 4)
+        with _spectrum.apply(pipe, 4, _settings(flex_window=0.0)):
+            for generated in (1.0, 1.0, 0.75, 0.75, 0.5, 0.5, 0.25, 0.25):
+                pipe.transformer(hidden, timestep=torch.tensor([0.0, generated]))
+        self.assertEqual(pipe.transformer.cache_block.calls, 6)
+        self.assertEqual(pipe.transformer.early.calls, 6)
+
+    def test_transformer_ref_is_a_denoiser(self):
+        denoiser = _Denoiser()
+        pipe = torch.nn.Module()
+        pipe.transformer_ref = denoiser
+        hidden = torch.zeros(1, 2, 4)
+        with _spectrum.apply(pipe, 4, _settings(warmup_steps=4, flex_window=0.0)):
+            pipe.transformer_ref(hidden, timestep=torch.tensor(1.0))
+            pipe.transformer_ref(hidden, timestep=torch.tensor(0.0))
+        self.assertEqual(denoiser.cache_block.calls, 2)
+
+    def test_minimax_video_schedules_one_fewer_step(self):
+        import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+
+        class MiniMaxH3Transformer3DModel(torch.nn.Module):
+            pass
+
+        class MiniMaxH3ImageTransformer2DModel(torch.nn.Module):
+            pass
+
+        video = torch.nn.Module()
+        video.transformer = MiniMaxH3Transformer3DModel()
+        image = torch.nn.Module()
+        image.transformer = MiniMaxH3ImageTransformer2DModel()
+        reference = torch.nn.Module()
+        reference.transformer_ref = MiniMaxH3Transformer3DModel()
+        self.assertEqual(_spectrum.scheduled_steps(video, 30), 29)
+        self.assertEqual(_spectrum.scheduled_steps(reference, 30), 29)
+        self.assertEqual(_spectrum.scheduled_steps(image, 6), 6)
+
+        video_defaults = _featuredefaults.spectrum_defaults('minimax-h3-video')
+        self.assertEqual(video_defaults['warmup_steps'], 4)
+        self.assertEqual(video_defaults['flex_window'], 0.0)
+        image_defaults = _featuredefaults.spectrum_defaults('minimax-h3-image')
+        self.assertEqual(image_defaults['warmup_steps'], 2)
+        self.assertEqual(image_defaults['flex_window'], 0.0)
+
+        pipe = type('W', (), {'_model_type': _pipelinewrapper.ModelType.MINIMAX_H3_IMAGE})()
+        import dgenerate.pipelinewrapper.arguments as _diffusion_arguments
+        import dgenerate.pipelinewrapper.wrapper as _wrapper
+        args = _diffusion_arguments.GenerationArguments()
+        args.spectrum = True
+        settings = _wrapper.PipelineWrapper._spectrum_settings(pipe, args)
+        self.assertEqual(settings.fallback_steps, 6)
+        self.assertEqual(settings.warmup_steps, 2)

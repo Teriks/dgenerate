@@ -43,7 +43,8 @@ _ACTIVE: contextvars.ContextVar[SpectrumSettings | None] = contextvars.ContextVa
 
 _BLOCK_LISTS = (
     'transformer_blocks', 'single_transformer_blocks', 'visual_transformer_blocks', 'blocks', 'layers')
-_DENOISER_ATTRS = ('transformer', 'transformer_2', 'unet')
+# ``transformer_ref`` is the MiniMax-H3 ref2va denoiser.
+_DENOISER_ATTRS = ('transformer', 'transformer_2', 'transformer_ref', 'unet')
 _RESIDUAL_ARGS = (
     'down_block_additional_residuals',
     'mid_block_additional_residual',
@@ -416,15 +417,52 @@ def _timestep_key(timestep):
             return None
         return _timestep_key(timestep[0])
     if torch.is_tensor(timestep):
-        if timestep.numel() == 0:
+        flat = timestep.detach().flatten().float()
+        if flat.numel() == 0:
             return None
-        value = float(timestep.detach().flatten()[0].float().item())
+        # MiniMax-H3 passes the distinct row timesteps, sorted. A pinned
+        # conditioning row keeps the first value fixed while the generated
+        # row moves, so the step identity is the whole short vector.
+        # A batch of equal values stays the scalar, which is how a second
+        # classifier-free pass joins the step.
+        if 1 < flat.numel() <= 8 and not bool(torch.all(flat == flat[0])):
+            return tuple(round(float(item), 5) for item in flat.tolist())
+        value = float(flat[0].item())
     else:
         try:
             value = float(timestep)
         except (TypeError, ValueError):
             return None
     return round(value, 5)
+
+
+def _publish_signature(wrapper, original) -> None:
+    """Keep ``inspect.signature`` on a replaced ``forward``.
+
+    MiniMax-H3's modular denoiser forwards only parameters that the signature
+    still lists. A ``*args, **kwargs`` wrapper would drop the packed layout.
+    """
+    try:
+        wrapper.__signature__ = inspect.signature(original)
+    except (TypeError, ValueError):
+        pass
+
+
+def scheduled_steps(pipeline, num_inference_steps: int) -> int:
+    """Denoiser forwards Spectrum should schedule for this call.
+
+    MiniMax-H3 video's ``num_inference_steps`` includes the terminal sigma.
+    The model runs once per earlier sigma. The image checkpoint's six steps
+    are already model calls.
+    """
+    steps = max(int(num_inference_steps), 1)
+    for name in _DENOISER_ATTRS:
+        module = getattr(pipeline, name, None)
+        if isinstance(module, nn.Module):
+            if type(module).__name__ == 'MiniMaxH3Transformer3DModel':
+                return max(steps - 1, 1)
+            return steps
+    return steps
 
 
 def _hidden_and_encoder(original, args, kwargs):
@@ -625,12 +663,23 @@ class _DenoiserPatch:
 
         def wrapper(*args, **kwargs):
             state.begin(_bind_timestep(self.original, args, kwargs))
-            return self.original(*args, **kwargs)
+            # A forecast step tells MiniMax-H3's control branch to stay idle.
+            # The cached block output already includes the hint from the last
+            # real pass, and the output heads still run below.
+            denoiser._dgenerate_spectrum_actual = state.actual_forward
+            try:
+                return self.original(*args, **kwargs)
+            finally:
+                if hasattr(denoiser, '_dgenerate_spectrum_actual'):
+                    del denoiser._dgenerate_spectrum_actual
 
+        _publish_signature(wrapper, self.original)
         denoiser.forward = wrapper
 
     def restore(self) -> None:
         self.denoiser.forward = self.original
+        if hasattr(self.denoiser, '_dgenerate_spectrum_actual'):
+            del self.denoiser._dgenerate_spectrum_actual
         for block in self.blocks:
             block.restore()
         for face in self.faces:
@@ -738,9 +787,11 @@ def _patch_denoiser(denoiser: nn.Module, state: _StepState):
 
 def _denoisers(pipeline) -> list[nn.Module]:
     found = []
+    seen = set()
     for name in _DENOISER_ATTRS:
         module = getattr(pipeline, name, None)
-        if isinstance(module, nn.Module):
+        if isinstance(module, nn.Module) and id(module) not in seen:
+            seen.add(id(module))
             found.append(module)
     return found
 

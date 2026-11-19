@@ -695,6 +695,22 @@ class TestMiniMaxH3(unittest.TestCase):
             model, hidden, audio, text, timestep, steps, tags, positions,
             videos, audios, texts, torch.randn(1, 2, 16), 1.0, None, False)
         self.assertFalse(torch.allclose(base[0], changed[0], atol=1e-5))
+        ran = {'n': 0}
+        original_run = model.control_blocks[0].run
+
+        def _count_run(*args, **kwargs):
+            ran['n'] += 1
+            return original_run(*args, **kwargs)
+
+        model.control_blocks[0].run = _count_run
+        model._dgenerate_spectrum_actual = False
+        idle = _control._control_forward(
+            model, hidden, audio, text, timestep, steps, tags, positions,
+            videos, audios, texts, torch.randn(1, 2, 16), 1.0, None, False)
+        self.assertEqual(ran['n'], 0)
+        self.assertTrue(torch.allclose(base[0], idle[0], atol=1e-5))
+        self.assertTrue(torch.allclose(base[1], idle[1], atol=1e-5))
+        del model._dgenerate_spectrum_actual
         state = {
             key: value.detach().clone()
             for key, value in model.state_dict().items() if key.startswith('control_')}
@@ -703,6 +719,85 @@ class TestMiniMaxH3(unittest.TestCase):
         self.assertFalse(list(unexpected))
         self.assertIn('control_blocks.0.before_proj.weight', state)
         self.assertNotIn('control_blocks.1.before_proj.weight', state)
+
+    def test_spectrum_forecasts_packed_blocks_and_keeps_the_heads(self):
+        import inspect
+
+        import diffusers
+        import dgenerate.extras.spectrum as _spectrum
+
+        config = {
+            'num_attention_heads': 2,
+            'attention_head_dim': 24,
+            'hidden_size': 48,
+            'num_layers': 2,
+            'num_refiner_layers': 1,
+            'ffn_dim': 48,
+            'in_channels': 4,
+            'audio_in_channels': 4,
+            'patch_size': [1, 2, 2],
+            'text_dim': 16,
+            'freq_dim': 8,
+            'time_embed_hidden_dim': 16,
+            'time_embed_dim': 8,
+            'rope_freq_dim': 4,
+        }
+        model = diffusers.MiniMaxH3Transformer3DModel.from_config(config).eval()
+        pipe = torch.nn.Module()
+        pipe.transformer = model
+        hidden = torch.randn(1, 2, 16)
+        audio = torch.randn(1, 2, 4)
+        text = torch.randn(1, 2, 16)
+        tags = torch.tensor([1, 1, 2, 2, 0, 0])
+        positions = torch.zeros(6, 3)
+        videos = torch.tensor([4, 5])
+        audios = torch.tensor([2, 3])
+        texts = torch.tensor([0, 1])
+        block_calls = {'n': 0}
+        head_calls = {'n': 0}
+        original_block = model.transformer_blocks[0].forward
+        original_head = model.proj_out.forward
+
+        def _count_block(*args, **kwargs):
+            block_calls['n'] += 1
+            return original_block(*args, **kwargs)
+
+        def _count_head(*args, **kwargs):
+            head_calls['n'] += 1
+            return original_head(*args, **kwargs)
+
+        model.transformer_blocks[0].forward = _count_block
+        model.proj_out.forward = _count_head
+        settings = _spectrum.SpectrumSettings(
+            weight=1.0, order=1, lam=1e-6, warmup_steps=2,
+            window_size=2.0, flex_window=0.0, fallback_steps=8)
+        full = []
+        with torch.no_grad(), _spectrum.apply(pipe, 6, settings):
+            self.assertIn('hidden_states', inspect.signature(model.forward).parameters)
+            self.assertIn('audio_hidden_states', inspect.signature(model.forward).parameters)
+            for generated in (1.0, 0.8, 0.6, 0.4, 0.2, 0.0):
+                row = torch.tensor([generated, generated, 0.0, 0.0, generated, generated])
+                unique, inverse = torch.unique(row, sorted=True, return_inverse=True)
+                before = block_calls['n']
+                video_out, audio_out = model(
+                    hidden, audio, text, unique, inverse, tags, positions,
+                    videos, audios, texts, return_dict=False)
+                self.assertEqual(tuple(video_out.shape), (1, 2, 16))
+                self.assertEqual(tuple(audio_out.shape), (1, 2, 4))
+                self.assertTrue(torch.isfinite(video_out).all())
+                self.assertTrue(torch.isfinite(audio_out).all())
+                full.append(block_calls['n'] > before)
+        self.assertEqual(full, [True, True, False, True, False, True])
+        self.assertEqual(block_calls['n'], 4)
+        self.assertEqual(head_calls['n'], 6)
+        restored = block_calls['n']
+        row = torch.tensor([0.3, 0.3, 0.0, 0.0, 0.3, 0.3])
+        unique, inverse = torch.unique(row, sorted=True, return_inverse=True)
+        with torch.no_grad():
+            model(
+                hidden, audio, text, unique, inverse, tags, positions,
+                videos, audios, texts, return_dict=False)
+        self.assertEqual(block_calls['n'], restored + 1)
 
 
 if __name__ == '__main__':

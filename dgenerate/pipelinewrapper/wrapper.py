@@ -6026,6 +6026,11 @@ class PipelineWrapper:
             guidance_scale=args.guidance_scale)
         warmup = _types.default(args.spectrum_warmup_steps, defaults['warmup_steps'])
         flex = _types.default(args.spectrum_flex_window, defaults['flex_window'])
+        fallback = args.inference_steps
+        if fallback is None and _enums.model_type_is_minimax_h3_image(self._model_type):
+            # The image call drops num_inference_steps. The six heads are the schedule.
+            import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+            fallback = _minimax_image.INFERENCE_STEPS
         return _spectrum.SpectrumSettings(
             weight=float(_types.default(args.spectrum_weight, defaults['weight'])),
             order=int(_types.default(args.spectrum_order, defaults['order'])),
@@ -6035,7 +6040,7 @@ class PipelineWrapper:
                 args.spectrum_window_size, defaults['window_size'])),
             flex_window=None if flex is None else float(flex),
             fallback_steps=int(_types.default(
-                args.inference_steps, _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)),
+                fallback, _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)),
         )
 
     def _auto_pipeline_prompt_enhance_check(self, args: _arguments.GenerationArguments):

@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Spectrum on the six-step image grid. The default schedule warms up for
+# 2 steps and forecasts 2. The output head for the current step still runs.
+
+MiniMaxAI/MiniMax-H3-Image
+--model-type minimax-h3-image
+--dtype bfloat16
+--model-sequential-offload
+--spectrum
+--gen-seeds 1
+--output-path minimax-h3-image-spectrum
+--output-size 2048
+--prompts "A red fox standing in a snowy pine forest at sunrise, sharp detail"

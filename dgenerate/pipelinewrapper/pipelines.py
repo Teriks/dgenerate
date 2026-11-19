@@ -2516,6 +2516,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
                     steps = int(steps)
                 except (TypeError, ValueError):
                     steps = settings.fallback_steps
+            steps = _spectrum.scheduled_steps(pipeline, steps)
             cfg = _spectrum.cfg_multiplier(pipeline, call_kwargs)
             settings = _spectrum.resolve_settings(settings, steps, cfg)
             _spectrum.warn_schedule(pipeline, steps, settings, cfg=cfg)

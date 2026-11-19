@@ -1789,9 +1789,9 @@ Help Output
             This is supported for: --model-type sd3, sd3-pix2pix, sdxl, sdxl-pix2pix, kolors, flux, flux-fill,
             flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
             qwen-image-layered, qwen-image-21, krea2, kandinsky5-image, kandinsky5-video, flux3,
-            kandinsky6-video, wan, wan-animate, wan-animate-2, hyvideo-15, motif-video, hyimage-21, and
-            hyimage-21-refiner.
-            -------------------
+            kandinsky6-video, minimax-h3-video, minimax-h3-image, wan, wan-animate, wan-animate-2, hyvideo-15,
+            motif-video, hyimage-21, and hyimage-21-refiner.
+            ------------------------------------------------
       --spectrum-weights [FLOAT ...]
             Spectrum Chebyshev blend weights to try when --spectrum is enabled.
             
@@ -5151,6 +5151,10 @@ pass a negative prompt. The only scheduler name is ``MiniMaxH3Scheduler``.
 shift 3, and does not inherit ``--scheduler``. Omitting either keeps that
 checkpoint scheduler. ``--inference-steps`` defaults to
 30. That count includes the terminal sigma, so the model runs 29 evaluations.
+``--spectrum`` forecasts the packed hidden state and skips the transformer
+blocks on later steps. The video and audio output heads still run.
+``ref2va`` forecasts ``transformer_ref``. A forecast step leaves a Fun control
+branch idle, because the last real pass already included its hint.
 
 The frame rate is 24. ``--video-lengths`` is seconds and snaps up to the next
 ``17n+5`` frames. A request can be 5 to 15 seconds. The clip comes out between
@@ -5213,7 +5217,8 @@ can replace the built-in system prompt, see ``--help`` for usage details.
 See `examples/minimax_h3_video/text_to_video/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/text_to_video/config.dgen>`_,
 `examples/minimax_h3_video/keyframes/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/keyframes/config.dgen>`_,
 `examples/minimax_h3_video/references/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/references/config.dgen>`_,
-and `examples/minimax_h3_video/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/controlnet/config.dgen>`_.
+`examples/minimax_h3_video/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/controlnet/config.dgen>`_,
+and `examples/minimax_h3_video/spectrum/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/spectrum/config.dgen>`_.
 
 .. code-block:: shell
 
@@ -6506,13 +6511,14 @@ The default size is 2048. Width and height are multiples of 32. A request smalle
 ``--image-seeds`` are reference images, with no mask and no strength. Several references use the ``images:`` prefix and are one generation, for example ``images: a.png, b.png``. They may differ in size. The checkpoint resizes each one. The prompt refers to them in order as Picture 1, Picture 2, and so on. The prompt is encoded verbatim.
 ``--pipeline-prompt-enhance`` rewrites it first, in the language of the prompt. With reference images the rewrite keeps the Picture 1, Picture 2 labels.
 
-Cache-DiT caches ``transformer_blocks``.
+Cache-DiT caches ``transformer_blocks``. ``--spectrum`` forecasts that packed state and skips the block stack. The output head for the current step still runs. On these six steps the default schedule warms up for 2 and forecasts 2.
 
 See `examples/minimax_h3_image/text_to_image/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/text_to_image/config.dgen>`_,
 `examples/minimax_h3_image/references/one-reference-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/references/one-reference-config.dgen>`_,
 `examples/minimax_h3_image/references/two-references-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/references/two-references-config.dgen>`_,
 `examples/minimax_h3_image/gguf/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/gguf/config.dgen>`_,
-and `examples/minimax_h3_image/comfy_quant/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/comfy_quant/config.dgen>`_.
+`examples/minimax_h3_image/comfy_quant/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/comfy_quant/config.dgen>`_,
+and `examples/minimax_h3_image/spectrum/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/spectrum/config.dgen>`_.
 
 Other call arguments
 --------------------

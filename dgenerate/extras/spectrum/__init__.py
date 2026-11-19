@@ -16,6 +16,7 @@ from dgenerate.extras.spectrum.runtime import (
     resolve_settings,
     schedule_counts,
     schedule_for,
+    scheduled_steps,
     warn_schedule,
 )
 
@@ -31,5 +32,6 @@ __all__ = [
     'resolve_settings',
     'schedule_counts',
     'schedule_for',
+    'scheduled_steps',
     'warn_schedule',
 ]

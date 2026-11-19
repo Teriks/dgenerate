@@ -416,23 +416,28 @@ def _control_forward(
         adaln_indices = timestep_indices * MINIMAX_H3_MODALITY_NUM + token_tags
         rotary = transformer.rope(position_ids)
 
-        proj = transformer.control_proj_in
-        control = proj(control_rows.to(device=proj.weight.device, dtype=get_parameter_dtype(proj)))
-        stream = packed.index_copy(1, video_indices, control.to(text.dtype))
-        for block in transformer.control_blocks:
-            stream = block.run(stream, packed, control_temb, adaln_indices, rotary)
-        hints = torch.unbind(stream)[:-1]
-        if (not transformer._dgenerate_control_apply_audio) and audio_indices.numel():
-            keep = torch.ones(sequence_length, dtype=hints[0].dtype, device=hints[0].device)
-            keep[audio_indices.to(keep.device)] = 0
-            hints = tuple(hint * keep[None, :, None] for hint in hints)
-        places = {
-            layer: index for index, layer in enumerate(transformer._dgenerate_control_places)}
+        # A Spectrum forecast already holds the last real block output, hints
+        # included. Running the branch again would add them a second time.
+        hints = None
+        places = {}
+        if getattr(transformer, '_dgenerate_spectrum_actual', True):
+            proj = transformer.control_proj_in
+            control = proj(control_rows.to(device=proj.weight.device, dtype=get_parameter_dtype(proj)))
+            stream = packed.index_copy(1, video_indices, control.to(text.dtype))
+            for block in transformer.control_blocks:
+                stream = block.run(stream, packed, control_temb, adaln_indices, rotary)
+            hints = torch.unbind(stream)[:-1]
+            if (not transformer._dgenerate_control_apply_audio) and audio_indices.numel():
+                keep = torch.ones(sequence_length, dtype=hints[0].dtype, device=hints[0].device)
+                keep[audio_indices.to(keep.device)] = 0
+                hints = tuple(hint * keep[None, :, None] for hint in hints)
+            places = {
+                layer: index for index, layer in enumerate(transformer._dgenerate_control_places)}
         hidden = packed
         for index, block in enumerate(transformer.transformer_blocks):
             hidden = block(hidden, main_temb, adaln_indices, rotary)
             hint_index = places.get(index)
-            if hint_index is not None and scale:
+            if hints is not None and hint_index is not None and scale:
                 hint = hints[hint_index].to(device=hidden.device, dtype=hidden.dtype)
                 hidden = hidden + hint * scale
 

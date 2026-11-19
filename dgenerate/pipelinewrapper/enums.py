@@ -1191,6 +1191,8 @@ SPECTRUM_MODEL_TYPES: tuple[str, ...] = _model_type_names(
     ModelType.KANDINSKY5_VIDEO,
     ModelType.FLUX3,
     ModelType.KANDINSKY6_VIDEO,
+    ModelType.MINIMAX_H3,
+    ModelType.MINIMAX_H3_IMAGE,
     ModelType.WAN,
     ModelType.WAN_ANIMATE,
     ModelType.WAN_ANIMATE_2,
@@ -1207,7 +1209,9 @@ def model_type_supports_spectrum(model_type: ModelType | str) -> bool:
     Spectrum can forecast this denoiser's transformer blocks, or an SDXL or
     Kolors UNet's up-block output.
 
-    Stable Diffusion stays on DeepCache. LTX is not covered.
+    MiniMax-H3 forecasts the packed sequence after the last block. The output
+    heads still run on that step. Stable Diffusion stays on DeepCache. LTX is
+    not covered.
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool

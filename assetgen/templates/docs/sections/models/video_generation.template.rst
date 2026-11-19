@@ -144,6 +144,10 @@ pass a negative prompt. The only scheduler name is ``MiniMaxH3Scheduler``.
 shift 3, and does not inherit ``--scheduler``. Omitting either keeps that
 checkpoint scheduler. ``--inference-steps`` defaults to
 30. That count includes the terminal sigma, so the model runs 29 evaluations.
+``--spectrum`` forecasts the packed hidden state and skips the transformer
+blocks on later steps. The video and audio output heads still run.
+``ref2va`` forecasts ``transformer_ref``. A forecast step leaves a Fun control
+branch idle, because the last real pass already included its hint.
 
 The frame rate is 24. ``--video-lengths`` is seconds and snaps up to the next
 ``17n+5`` frames. A request can be 5 to 15 seconds. The clip comes out between
@@ -206,7 +210,8 @@ can replace the built-in system prompt, see ``--help`` for usage details.
 See `examples/minimax_h3_video/text_to_video/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/text_to_video/config.dgen>`_,
 `examples/minimax_h3_video/keyframes/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/keyframes/config.dgen>`_,
 `examples/minimax_h3_video/references/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/references/config.dgen>`_,
-and `examples/minimax_h3_video/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/controlnet/config.dgen>`_.
+`examples/minimax_h3_video/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/controlnet/config.dgen>`_,
+and `examples/minimax_h3_video/spectrum/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_video/spectrum/config.dgen>`_.
 
 .. code-block:: shell
 

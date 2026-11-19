@@ -371,13 +371,14 @@ The default size is 2048. Width and height are multiples of 32. A request smalle
 ``--image-seeds`` are reference images, with no mask and no strength. Several references use the ``images:`` prefix and are one generation, for example ``images: a.png, b.png``. They may differ in size. The checkpoint resizes each one. The prompt refers to them in order as Picture 1, Picture 2, and so on. The prompt is encoded verbatim.
 ``--pipeline-prompt-enhance`` rewrites it first, in the language of the prompt. With reference images the rewrite keeps the Picture 1, Picture 2 labels.
 
-Cache-DiT caches ``transformer_blocks``.
+Cache-DiT caches ``transformer_blocks``. ``--spectrum`` forecasts that packed state and skips the block stack. The output head for the current step still runs. On these six steps the default schedule warms up for 2 and forecasts 2.
 
 See `examples/minimax_h3_image/text_to_image/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/text_to_image/config.dgen>`_,
 `examples/minimax_h3_image/references/one-reference-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/references/one-reference-config.dgen>`_,
 `examples/minimax_h3_image/references/two-references-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/references/two-references-config.dgen>`_,
 `examples/minimax_h3_image/gguf/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/gguf/config.dgen>`_,
-and `examples/minimax_h3_image/comfy_quant/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/comfy_quant/config.dgen>`_.
+`examples/minimax_h3_image/comfy_quant/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/comfy_quant/config.dgen>`_,
+and `examples/minimax_h3_image/spectrum/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/spectrum/config.dgen>`_.
 
 Other call arguments
 --------------------

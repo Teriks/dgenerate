@@ -145,6 +145,21 @@ def _known_sampling(model_type, *, distilled=None, inference_steps=None,
         steps = 50
     if guidance is None and _enums.model_type_is_kandinsky5_image(model_type):
         guidance = 3.5
+    if _enums.model_type_is_minimax_h3_image(model_type):
+        # The image checkpoint always evaluates the transformer six times.
+        import dgenerate.pipelinewrapper.minimaxh3image as _minimax_image
+        if steps is None:
+            steps = _minimax_image.INFERENCE_STEPS
+        if guidance is None:
+            guidance = 1.0
+    if _enums.model_type_is_minimax_h3(model_type):
+        # ``--inference-steps`` counts the terminal sigma. The model runs once fewer.
+        import dgenerate.pipelinewrapper.minimaxh3 as _minimax
+        if steps is None:
+            steps = _minimax.DEFAULT_STEPS
+        steps = max(int(steps) - 1, 1)
+        if guidance is None:
+            guidance = 1.0
     return steps, guidance
 
 
