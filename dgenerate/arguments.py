@@ -4204,6 +4204,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xt2if',
             '--sdxl-t2i-adapter-factors', nargs='+', action='store', metavar="FLOAT", default=None,
             type=_type_adapter_factor,
             help="""One or more SDXL specific T2I adapter factors to try, this controls the amount of
@@ -4215,6 +4216,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xla',
             '--sdxl-aesthetic-scores', metavar="FLOAT", action='store', nargs='+', default=[], type=float,
             help="""One or more Stable Diffusion XL (sdxl) "aesthetic-score" micro-conditioning parameters.
                     Used to simulate an aesthetic score of the generated image by influencing the positive text
@@ -4225,6 +4227,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlc',
             '--sdxl-crops-coords-top-left', metavar="COORD", action='store', nargs='+', default=[],
             type=_type_image_coordinate,
             help="""One or more Stable Diffusion XL (sdxl) "negative-crops-coords-top-left" micro-conditioning
@@ -4238,6 +4241,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlo',
             '--sdxl-original-sizes', dest='sdxl_original_sizes', metavar="SIZE", action='store',
             nargs='+', default=[], type=_type_size,
             help="""One or more Stable Diffusion XL (sdxl) "original-size" micro-conditioning parameters in
@@ -4250,6 +4254,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlt',
             '--sdxl-target-sizes', dest='sdxl_target_sizes', metavar="SIZE", action='store',
             nargs='+', default=[], type=_type_size,
             help="""One or more Stable Diffusion XL (sdxl) "target-size" micro-conditioning parameters in
@@ -4262,6 +4267,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlna',
             '--sdxl-negative-aesthetic-scores', metavar="FLOAT", action='store', nargs='+', default=[], type=float,
             help="""One or more Stable Diffusion XL (sdxl) "negative-aesthetic-score" micro-conditioning parameters.
                     Part of SDXL's micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952].
@@ -4271,6 +4277,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlno',
             '--sdxl-negative-original-sizes', metavar="SIZE", action='store', nargs='+', default=[], type=_type_size,
             help="""One or more Stable Diffusion XL (sdxl) "negative-original-sizes" micro-conditioning parameters.
                     Negatively condition the generation process based on a specific image resolution. Part of SDXL's
@@ -4281,6 +4288,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlnt',
             '--sdxl-negative-target-sizes', metavar="SIZE", action='store', nargs='+', default=[], type=_type_size,
             help="""One or more Stable Diffusion XL (sdxl) "negative-original-sizes" micro-conditioning parameters.
                     To negatively condition the generation process based on a target image resolution. It should be as same
@@ -4292,6 +4300,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlnc',
             '--sdxl-negative-crops-coords-top-left', metavar="COORD", action='store', nargs='+', default=[],
             type=_type_image_coordinate,
             help="""One or more Stable Diffusion XL (sdxl) "negative-crops-coords-top-left" micro-conditioning
@@ -4304,6 +4313,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlra',
             '--sdxl-refiner-aesthetic-scores', metavar="FLOAT", action='store', nargs='+', default=[], type=float,
             help="See: --sdxl-aesthetic-scores, applied to SDXL refiner pass."
         )
@@ -4311,6 +4321,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlrc',
             '--sdxl-refiner-crops-coords-top-left', metavar="COORD", action='store', nargs='+', default=[],
             type=_type_image_coordinate,
             help="See: --sdxl-crops-coords-top-left, applied to SDXL refiner pass."
@@ -4319,6 +4330,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlro',
             '--sdxl-refiner-original-sizes', metavar="SIZE", action='store', nargs='+', default=[], type=_type_size,
             help="See: --sdxl-refiner-original-sizes, applied to SDXL refiner pass."
         )
@@ -4326,6 +4338,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlrt',
             '--sdxl-refiner-target-sizes', metavar="SIZE", action='store', nargs='+', default=[], type=_type_size,
             help="See: --sdxl-refiner-target-sizes, applied to SDXL refiner pass."
         )
@@ -4333,6 +4346,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlrna',
             '--sdxl-refiner-negative-aesthetic-scores', metavar="FLOAT", action='store', nargs='+', default=[],
             type=float,
             help="See: --sdxl-negative-aesthetic-scores, applied to SDXL refiner pass."
@@ -4341,6 +4355,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlrno',
             '--sdxl-refiner-negative-original-sizes', metavar="SIZE", action='store', nargs='+', default=[],
             type=_type_size,
             help="See: --sdxl-negative-original-sizes, applied to SDXL refiner pass."
@@ -4349,6 +4364,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlrnt',
             '--sdxl-refiner-negative-target-sizes', metavar="SIZE", action='store', nargs='+', default=[],
             type=_type_size,
             help="See: --sdxl-negative-target-sizes, applied to SDXL refiner pass."
@@ -4357,6 +4373,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-xlrnc',
             '--sdxl-refiner-negative-crops-coords-top-left', metavar="COORD", action='store', nargs='+', default=[],
             type=_type_image_coordinate,
             help="See: --sdxl-negative-crops-coords-top-left, applied to SDXL refiner pass."

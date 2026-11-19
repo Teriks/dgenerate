@@ -69,24 +69,16 @@ Help Output
                      [-rsl INTEGER [INTEGER ...]] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]]
                      [-pagl LAYERS [LAYERS ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
                      [-rpagl LAYERS [LAYERS ...]] [-mqo | -mco | -mgo] [-cmp [SUBMODULE ...]] [-mqo2 | -mco2 |
-                     -mgo2] [-scd MODEL_URI] [-ref MODEL_URI] [-xle]
-                     [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
-                     [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-sizes SIZE [SIZE ...]]
-                     [--sdxl-target-sizes SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
-                     [--sdxl-negative-original-sizes SIZE [SIZE ...]]
-                     [--sdxl-negative-target-sizes SIZE [SIZE ...]]
-                     [--sdxl-negative-crops-coords-top-left COORD [COORD ...]]
-                     [--sdxl-refiner-aesthetic-scores FLOAT [FLOAT ...]]
-                     [--sdxl-refiner-crops-coords-top-left COORD [COORD ...]]
-                     [--sdxl-refiner-original-sizes SIZE [SIZE ...]]
-                     [--sdxl-refiner-target-sizes SIZE [SIZE ...]]
-                     [--sdxl-refiner-negative-aesthetic-scores FLOAT [FLOAT ...]]
-                     [--sdxl-refiner-negative-original-sizes SIZE [SIZE ...]]
-                     [--sdxl-refiner-negative-target-sizes SIZE [SIZE ...]]
-                     [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]] [-hnf FLOAT [FLOAT ...]]
-                     [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE] [-t DTYPE] [-s SIZE | -q21r RESOLUTION] [-na]
-                     [-o PATH] [-op PREFIX] [-ox] [-oc] [-om | -oam] [-pw PROMPT_WEIGHTER_URI]
-                     [-pw2 PROMPT_WEIGHTER_URI] [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]]
+                     -mgo2] [-scd MODEL_URI] [-ref MODEL_URI] [-xle] [-xt2if FLOAT [FLOAT ...]]
+                     [-xla FLOAT [FLOAT ...]] [-xlc COORD [COORD ...]] [-xlo SIZE [SIZE ...]]
+                     [-xlt SIZE [SIZE ...]] [-xlna FLOAT [FLOAT ...]] [-xlno SIZE [SIZE ...]]
+                     [-xlnt SIZE [SIZE ...]] [-xlnc COORD [COORD ...]] [-xlra FLOAT [FLOAT ...]]
+                     [-xlrc COORD [COORD ...]] [-xlro SIZE [SIZE ...]] [-xlrt SIZE [SIZE ...]]
+                     [-xlrna FLOAT [FLOAT ...]] [-xlrno SIZE [SIZE ...]] [-xlrnt SIZE [SIZE ...]]
+                     [-xlrnc COORD [COORD ...]] [-hnf FLOAT [FLOAT ...]] [-rgr FLOAT [FLOAT ...]] [-sc]
+                     [-d DEVICE] [-t DTYPE] [-s SIZE | -q21r RESOLUTION] [-na] [-o PATH] [-op PREFIX] [-ox]
+                     [-oc] [-om | -oam] [-pw PROMPT_WEIGHTER_URI] [-pw2 PROMPT_WEIGHTER_URI]
+                     [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]]
                      [-lp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
                      [-ilp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
                      [-lpp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
@@ -2217,87 +2209,87 @@ Help Output
             refiner model and processed with an image seed strength in img2img mode determined by (1.0 -
             high-noise-fraction)
             --------------------
-      --sdxl-t2i-adapter-factors FLOAT [FLOAT ...]
+      -xt2if, --sdxl-t2i-adapter-factors FLOAT [FLOAT ...]
             One or more SDXL specific T2I adapter factors to try, this controls the amount of time-steps for
             which a T2I adapter applies guidance to an image, this is a value between 0.0 and 1.0. A value of
             0.5 for example indicates that the T2I adapter is only active for half the amount of time-steps it
             takes to completely render an image.
             ------------------------------------
-      --sdxl-aesthetic-scores FLOAT [FLOAT ...]
+      -xla, --sdxl-aesthetic-scores FLOAT [FLOAT ...]
             One or more Stable Diffusion XL (sdxl) "aesthetic-score" micro-conditioning parameters. Used to
             simulate an aesthetic score of the generated image by influencing the positive text condition. Part
             of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952].
             -------------------------------------------
-      --sdxl-crops-coords-top-left COORD [COORD ...]
+      -xlc, --sdxl-crops-coords-top-left COORD [COORD ...]
             One or more Stable Diffusion XL (sdxl) "negative-crops-coords-top-left" micro-conditioning
             parameters in the format "0,0". --sdxl-crops-coords-top-left can be used to generate an image that
             appears to be "cropped" from the position --sdxl-crops-coords-top-left downwards. Favorable,
             well-centered images are usually achieved by setting --sdxl-crops-coords-top-left to "0,0". Part of
             SDXL's micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952].
             ----------------------------------------------------------------------------------------------------
-      --sdxl-original-sizes SIZE [SIZE ...]
+      -xlo, --sdxl-original-sizes SIZE [SIZE ...]
             One or more Stable Diffusion XL (sdxl) "original-size" micro-conditioning parameters in the format
             (WIDTH)x(HEIGHT). If not the same as --sdxl-target-sizes the image will appear to be down or
             up-sampled. --sdxl-original-sizes defaults to --output-size or the size of any input images if not
             specified. Part of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952]
             ------------------------------------------
-      --sdxl-target-sizes SIZE [SIZE ...]
+      -xlt, --sdxl-target-sizes SIZE [SIZE ...]
             One or more Stable Diffusion XL (sdxl) "target-size" micro-conditioning parameters in the format
             (WIDTH)x(HEIGHT). For most cases, --sdxl-target-sizes should be set to the desired height and width
             of the generated image. If not specified it will default to --output-size or the size of any input
             images. Part of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952]
             ------------------------------------------
-      --sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]
+      -xlna, --sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]
             One or more Stable Diffusion XL (sdxl) "negative-aesthetic-score" micro-conditioning parameters.
             Part of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952]. Can be used to simulate an aesthetic score of the
             generated image by influencing the negative text condition.
             -----------------------------------------------------------
-      --sdxl-negative-original-sizes SIZE [SIZE ...]
+      -xlno, --sdxl-negative-original-sizes SIZE [SIZE ...]
             One or more Stable Diffusion XL (sdxl) "negative-original-sizes" micro-conditioning parameters.
             Negatively condition the generation process based on a specific image resolution. Part of SDXL's
             micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952]. For
             more information, refer to this issue thread: https://github.com/huggingface/diffusers/issues/4208
             --------------------------------------------------------------------------------------------------
-      --sdxl-negative-target-sizes SIZE [SIZE ...]
+      -xlnt, --sdxl-negative-target-sizes SIZE [SIZE ...]
             One or more Stable Diffusion XL (sdxl) "negative-original-sizes" micro-conditioning parameters. To
             negatively condition the generation process based on a target image resolution. It should be as same
             as the "--sdxl-target-sizes" for most cases. Part of SDXL's micro-conditioning as explained in
             section 2.2 of [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue
             thread: https://github.com/huggingface/diffusers/issues/4208.
             -------------------------------------------------------------
-      --sdxl-negative-crops-coords-top-left COORD [COORD ...]
+      -xlnc, --sdxl-negative-crops-coords-top-left COORD [COORD ...]
             One or more Stable Diffusion XL (sdxl) "negative-crops-coords-top-left" micro-conditioning
             parameters in the format "0,0". Negatively condition the generation process based on a specific crop
             coordinates. Part of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue thread:
             https://github.com/huggingface/diffusers/issues/4208.
             -----------------------------------------------------
-      --sdxl-refiner-aesthetic-scores FLOAT [FLOAT ...]
+      -xlra, --sdxl-refiner-aesthetic-scores FLOAT [FLOAT ...]
             See: --sdxl-aesthetic-scores, applied to SDXL refiner pass.
             -----------------------------------------------------------
-      --sdxl-refiner-crops-coords-top-left COORD [COORD ...]
+      -xlrc, --sdxl-refiner-crops-coords-top-left COORD [COORD ...]
             See: --sdxl-crops-coords-top-left, applied to SDXL refiner pass.
             ----------------------------------------------------------------
-      --sdxl-refiner-original-sizes SIZE [SIZE ...]
+      -xlro, --sdxl-refiner-original-sizes SIZE [SIZE ...]
             See: --sdxl-refiner-original-sizes, applied to SDXL refiner pass.
             -----------------------------------------------------------------
-      --sdxl-refiner-target-sizes SIZE [SIZE ...]
+      -xlrt, --sdxl-refiner-target-sizes SIZE [SIZE ...]
             See: --sdxl-refiner-target-sizes, applied to SDXL refiner pass.
             ---------------------------------------------------------------
-      --sdxl-refiner-negative-aesthetic-scores FLOAT [FLOAT ...]
+      -xlrna, --sdxl-refiner-negative-aesthetic-scores FLOAT [FLOAT ...]
             See: --sdxl-negative-aesthetic-scores, applied to SDXL refiner pass.
             --------------------------------------------------------------------
-      --sdxl-refiner-negative-original-sizes SIZE [SIZE ...]
+      -xlrno, --sdxl-refiner-negative-original-sizes SIZE [SIZE ...]
             See: --sdxl-negative-original-sizes, applied to SDXL refiner pass.
             ------------------------------------------------------------------
-      --sdxl-refiner-negative-target-sizes SIZE [SIZE ...]
+      -xlrnt, --sdxl-refiner-negative-target-sizes SIZE [SIZE ...]
             See: --sdxl-negative-target-sizes, applied to SDXL refiner pass.
             ----------------------------------------------------------------
-      --sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]
+      -xlrnc, --sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]
             See: --sdxl-negative-crops-coords-top-left, applied to SDXL refiner pass.
             -------------------------------------------------------------------------
       -hnf, --sdxl-high-noise-fractions FLOAT [FLOAT ...]
