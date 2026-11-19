@@ -15898,7 +15898,7 @@ Supported ``--embed-model`` values. The default is
 * ``Qwen/Qwen3-Embedding-4B-GGUF/Qwen3-Embedding-4B-Q8_0.gguf`` (4.3 GB, stronger retrieval)
 * ``Qwen/Qwen3-Embedding-8B-GGUF/Qwen3-Embedding-8B-Q8_0.gguf`` (8.1 GB, strongest retrieval)
 
-The Console UI Generate Code menu offers the same lists and does not accept a
+The Console UI Assistant window offers the same lists and does not accept a
 model file of your own.
 
 ``--ctx`` is the chat context size in tokens, 49152 by default. ``--gpu-layers``
@@ -15943,9 +15943,11 @@ Passing ``-ofm`` / ``--offline-mode`` before ``--sub-command`` does the same thi
 
 ``-v`` / ``--verbose`` shows llama.cpp output on stderr.
 
-The Console UI Generate Code menu runs this sub-command. Its model list is the
-same set of Qwen GGUFs. The Context tokens field is ``--ctx``, saved with the
-other Generate Code options, and 49152 by default. It can be raised up to the
+The Console UI Assistant window runs this sub-command. Help in that window
+describes the request, including pasted CivitAI and Hugging Face links.
+Its model list is the same set of Qwen GGUFs. The Context tokens field is
+``--ctx``, saved with the other Assistant options, and 49152 by default.
+It can be raised up to the
 model's native 262144 tokens. Extra VRAM, beside that field, is the additional
 video memory the context cache needs at the current token count. It updates as
 the field changes. 49152 tokens is 3 GiB, and 262144 tokens is 16 GiB.

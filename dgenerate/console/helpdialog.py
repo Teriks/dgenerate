@@ -36,7 +36,8 @@ class HelpDialog:
                  help_text: str,
                  size: tuple = (850, 600),
                  dock_to_right: bool = True,
-                 position_widget=None
+                 position_widget=None,
+                 wrap: str = tk.NONE
                  ):
         """
         Create and show a help dialog.
@@ -47,6 +48,7 @@ class HelpDialog:
         :param size: Window size.
         :param dock_to_right: If True, dock the dialog to the right of the position_widget
         :param position_widget: Widget to use for positioning calculations (defaults to parent)
+        :param wrap: Text wrap mode. ``tk.NONE`` keeps long lines for a horizontal scrollbar.
         """
         self.parent = parent
         self.position_widget = position_widget if position_widget is not None else parent
@@ -54,6 +56,7 @@ class HelpDialog:
         self.help_text = help_text
         self.dock_to_right = dock_to_right
         self.size = size
+        self.wrap = wrap
 
         self.top = None
         self.text_widget = None
@@ -74,15 +77,19 @@ class HelpDialog:
         v_scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL)
         v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        h_scrollbar = ttk.Scrollbar(frame, orient=tk.HORIZONTAL)
-        h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        h_scrollbar = None
+        if self.wrap == tk.NONE:
+            h_scrollbar = ttk.Scrollbar(frame, orient=tk.HORIZONTAL)
+            h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
+        text_pad = {'padx': 12, 'pady': 8} if self.wrap != tk.NONE else {}
         self.text_widget = _themetext.ThemeText(
             frame,
-            wrap=tk.NONE,
+            wrap=self.wrap,
             state='disabled',
             yscrollcommand=v_scrollbar.set,
-            xscrollcommand=h_scrollbar.set
+            xscrollcommand=h_scrollbar.set if h_scrollbar is not None else None,
+            **text_pad
         )
 
         self.text_widget.config(state='normal')
@@ -97,7 +104,8 @@ class HelpDialog:
                 self.text_widget))
 
         v_scrollbar.config(command=self.text_widget.yview)
-        h_scrollbar.config(command=self.text_widget.xview)
+        if h_scrollbar is not None:
+            h_scrollbar.config(command=self.text_widget.xview)
         self.text_widget.pack(expand=True, fill='both')
 
         self._create_context_menu()
@@ -203,7 +211,8 @@ def show_help_dialog(parent,
                      help_text: str,
                      size: tuple = (850, 600),
                      dock_to_right: bool = True,
-                     position_widget=None) -> HelpDialog:
+                     position_widget=None,
+                     wrap: str = tk.NONE) -> HelpDialog:
     """
     Convenience function to create and show a help dialog.
     
@@ -213,6 +222,7 @@ def show_help_dialog(parent,
     :param size: Window size.
     :param dock_to_right: If ``True``, dock the dialog to the right of the position_widget
     :param position_widget: Widget to use for positioning calculations (defaults to parent)
+    :param wrap: Text wrap mode. ``tk.NONE`` keeps long lines for a horizontal scrollbar.
     :return: HelpDialog instance
     """
-    return HelpDialog(parent, title, help_text, size, dock_to_right, position_widget)
+    return HelpDialog(parent, title, help_text, size, dock_to_right, position_widget, wrap)

@@ -29,6 +29,7 @@ import sys
 import tempfile
 import threading
 import tkinter as tk
+import tkinter.font as tkfont
 import uuid
 import tkinter.ttk as ttk
 
@@ -40,6 +41,7 @@ import psutil
 import dgenerate.assistant.catalog as _catalog
 import dgenerate.console.combobox as _combobox
 import dgenerate.console.filedialog as _filedialog
+import dgenerate.console.helpdialog as _helpdialog
 import dgenerate.console.scrolledtext as _scrolledtext
 import dgenerate.console.spinbox as _spinbox
 import dgenerate.console.terminaltext as _terminaltext
@@ -185,6 +187,97 @@ def _request_intro_task(editing: bool) -> str:
 _INTRO_HISTORY = (
     'Previous prompts are saved, use the up and down arrow keys '
     'on the first and last line to recall them.')
+
+# Section titles in _ASSISTANT_HELP. Each one is a line by itself.
+_ASSISTANT_HELP_HEADINGS = (
+    'How to run it',
+    'What to write',
+    'How to describe it',
+    'Files',
+    'CivitAI',
+    'Hugging Face',
+    'Offline mode',
+    'Options',
+)
+
+_ASSISTANT_HELP = """\
+The Assistant writes a dgenerate config from your request and puts that config in the editor.
+
+How to run it
+
+• Generate replaces the editor with a new config.
+• Editor in context (edit mode) revises the config already in the editor. Describe the change. The rest of the config stays, and the button reads Edit.
+• Ctrl+Enter runs the request.
+• On the first line, Up Arrow recalls an older request. On the last line, Down Arrow steps forward.
+
+What to write
+
+Describe the picture or the clip. Name a model family when you care which one is used.
+
+Families: SD 1.5, SDXL, SD3, Flux, Flux Fill, Flux Kontext, Flux.2, Flux.2 Klein, Flux.3, Krea 2, Qwen-Image, Qwen-Image-Edit, Z-Image, Wan, Wan-Animate, LTX-Video, LTX-2.5, Kandinsky 5, Kandinsky 6, Kolors, Hunyuan-DiT, HunyuanImage 2.1, HunyuanVideo 1.5.
+
+You can also name:
+
+• Size, steps, seed, and how many images. One image is the default.
+• Video length in seconds, a scheduler, a LoRA scale, or ControlNet.
+• More than one step, such as a picture followed by an upscale, or a still followed by a video.
+
+How to describe it
+
+• A still: the subject, the action, the setting, the light, and the style.
+• A video: the action, in the order it happens.
+• An edit: what should change, what should stay, and which picture to edit.
+• What to avoid goes in the negative prompt. Flux and some other models have none.
+• A prompt you paste is kept as the picture description.
+• Emphasis written as (subject:1.3) is kept on models that support a prompt weighter.
+
+Files
+
+An image, video, or audio path is an input. Quote a path that contains spaces, or right-click the request and choose Insert Path.
+
+A missing file stays in the config so you can see its path. Paths are relative to the console's working directory.
+
+CivitAI
+
+Paste a full https link to civitai.com or civitai.red.
+
+• A model page.
+• A version of that page. modelVersionId in the link selects the version.
+• An /api/download link. fileId on the link selects that file.
+
+The page supplies the base model, the kind of file, the trigger words, and the download address.
+
+• A checkpoint becomes the model.
+• A LoRA or an embedding is added to the checkpoint for that base, and the trigger words go in the prompt.
+• Leave your token out of the link. Set CIVIT_AI_TOKEN, and dgenerate appends it when the config runs.
+• A model dgenerate cannot run is explained in a comment.
+
+Hugging Face
+
+Paste a full https link.
+
+• A repository, such as https://huggingface.co/org/name.
+• One file, as a blob or resolve link.
+
+A repository link lists the weight files, including other GGUF and Comfy quant files, and can read a model card note such as a trigger word.
+
+• Name the quant you want, such as Q4_K_M, Q5, fp8, nvfp4, or int8. With no quant named, the file from the closest example is kept.
+• A link to one file uses that file.
+• Copy the organization and the repository name as they are published.
+• A gated repository needs HF_TOKEN, or --auth-token, before it can be downloaded.
+
+Offline mode
+
+Offline Mode, in the Run menu, skips CivitAI. A Hugging Face link then lists only files already in the local cache. A quant that is not cached is skipped, and the example file is kept.
+
+Options
+
+• Chat model and Embedding model are local Qwen models. They download from Hugging Face the first time you generate.
+• Context tokens is the room for your request, the editor, and the retrieved examples. Extra VRAM is the video memory that size adds. Default and Max set the usual size and the largest size.
+• Reason before answering takes longer. Use it for a long edit or a link. Reasoning Effort applies only while it is on.
+• Free shell CPU/GPU memory unloads models the console has already loaded, so the assistant has room to run.
+• The config is checked before it is written. Progress shows the check, each link lookup, and the reply.
+"""
 
 
 class _AssistantForm(tk.Toplevel):
@@ -396,7 +489,49 @@ class _AssistantForm(tk.Toplevel):
         self._generate_button.pack(side=tk.LEFT, padx=5)
         self._cancel_button = ttk.Button(buttons, text='Cancel', command=self._cancel, state=tk.DISABLED)
         self._cancel_button.pack(side=tk.LEFT, padx=5)
+        self._help_button = ttk.Button(buttons, text='Help', command=self._show_help)
+        self._help_button.pack(side=tk.LEFT, padx=5)
+        self._help_dialog = None
         self._sync_edit_mode()
+
+    def _show_help(self):
+        existing = self._help_dialog
+        if existing is not None:
+            try:
+                if existing.top.winfo_exists():
+                    existing.top.lift()
+                    existing.top.focus_force()
+                    return
+            except tk.TclError:
+                pass
+        self._help_dialog = _helpdialog.show_help_dialog(
+            parent=self,
+            title='Assistant',
+            help_text=_ASSISTANT_HELP,
+            size=(680, 640),
+            dock_to_right=False,
+            position_widget=self,
+            wrap=tk.WORD)
+        self._style_assistant_help(self._help_dialog.text_widget)
+
+    def _style_assistant_help(self, widget):
+        heading_font = tkfont.Font(font=widget.cget('font'))
+        size = heading_font.cget('size')
+        if isinstance(size, int) and size > 0:
+            heading_font.configure(weight='bold', size=size + 1)
+        else:
+            heading_font.configure(weight='bold')
+        widget.tag_configure('heading', font=heading_font, spacing1=12, spacing3=2)
+        widget.tag_configure('bullet', lmargin1=16, lmargin2=30, spacing1=1)
+        widget.configure(state='normal')
+        last_line = int(widget.index('end-1c').split('.')[0])
+        for line_no in range(1, last_line + 1):
+            line = widget.get(f'{line_no}.0', f'{line_no}.end')
+            if line in _ASSISTANT_HELP_HEADINGS:
+                widget.tag_add('heading', f'{line_no}.0', f'{line_no}.end')
+            elif line.startswith('• '):
+                widget.tag_add('bullet', f'{line_no}.0', f'{line_no}.end')
+        widget.configure(state='disabled')
 
     def _fit_intro(self, event):
         if event.widget is self:

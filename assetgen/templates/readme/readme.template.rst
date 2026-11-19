@@ -80,7 +80,7 @@ A local Qwen model writes a dgenerate config from a plain language request. It r
 
     dgenerate --sub-command assistant -o cat.dgen "generate a cute cat, 30 steps"
 
-This needs the ``xllamacpp`` extra. The Console UI Generate Code menu runs the same command. See the `assistant sub-command <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#sub-command-assistant>`_ in the manual.
+This needs the ``xllamacpp`` extra. The Console UI Assistant menu runs the same command. See the `assistant sub-command <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#sub-command-assistant>`_ in the manual.
 
 Getting Started
 ===============
@@ -138,7 +138,7 @@ Interactive GUI
 Features a syntax-highlighting console / editor:
 
 * REPL / code editor for the built in shell language to assist with building complex workflows
-* Generate Code writes a config script from a plain language request with a local Qwen model
+* Assistant writes a config script from a plain language request with a local Qwen model
 * Preview plays finished GIF, WebP, APNG, and MP4 clips, including audio. The timeline under the picture has play, scrub, a speaker button (sound waves, or a red X when muted), and a volume slider
 * Vulkan is the default preview on Windows and Linux with the ``console_ui_vulkan`` extra. ``console_ui_opengl`` is the Windows and Linux fallback when Vulkan is not installed. On macOS the preview is Metal and does not need an extra; set ``DGENERATE_CONSOLE_UI_METAL=0`` and ``DGENERATE_CONSOLE_UI_VULKAN=1`` to use Vulkan
 * Smooth zoom / pan, and a bounding box / coordinate picker
