@@ -31,7 +31,7 @@ dependencies = [
     "packaging==25.0",
     "PyInstaller==6.15.0",
     "Pillow==13.0.0",
-    "certifi==2026.10.23",
+    "certifi>=2026.10.23",
 ]
 
 [project.scripts]
