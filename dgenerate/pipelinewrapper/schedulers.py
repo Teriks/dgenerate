@@ -235,6 +235,8 @@ _scheduler_option_args = {
         "euler_update_form": ["blend", "velocity"]
     },
 
+    diffusers.PiflowScheduler: {},
+
     diffusers.HeunDiscreteScheduler: {
         "beta_schedule": ["linear", "scaled_linear"],
         "prediction_type": ["epsilon", "sample", "v_prediction"],
