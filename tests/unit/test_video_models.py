@@ -585,6 +585,41 @@ class TestVideoModels(unittest.TestCase):
                 scheduler_uri=uri)
             allowed.check()
 
+    def test_kandinsky6_scheduler_and_quantizer_map(self):
+        rejected = _config(
+            model_path='org/kandinsky6',
+            model_type=_pipelinewrapper.ModelType.KANDINSKY6_VIDEO,
+            scheduler_uri='EulerDiscreteScheduler')
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            rejected.check()
+        self.assertIn('PiflowScheduler', str(raised.exception))
+
+        for uri in (
+            'PiflowScheduler',
+            'FlowMatchEulerDiscreteScheduler',
+            'FlowMatchEulerDiscreteScheduler;shift=3.0',
+        ):
+            allowed = _config(
+                model_path='org/kandinsky6',
+                model_type=_pipelinewrapper.ModelType.KANDINSKY6_VIDEO,
+                scheduler_uri=uri)
+            allowed.check()
+
+        mapped = _config(
+            model_path='org/kandinsky6',
+            model_type=_pipelinewrapper.ModelType.KANDINSKY6_VIDEO,
+            quantizer_uri='bnb;bits=4',
+            quantizer_map=['transformer', 'text_encoder', 'text_encoder_2'])
+        mapped.check()
+
+        connectors = _config(
+            model_path='org/kandinsky6',
+            model_type=_pipelinewrapper.ModelType.KANDINSKY6_VIDEO,
+            quantizer_uri='bnb;bits=4',
+            quantizer_map=['connectors'])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
+            connectors.check()
+
     def test_scheduler_uri_applied_before_distilled_check(self):
         class Scheduler:
             def __init__(self):

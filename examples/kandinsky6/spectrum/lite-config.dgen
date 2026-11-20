@@ -1,8 +1,8 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Spectrum on the fused video/audio blocks. A predicted step replays the last
-# real audio stream instead of forecasting it.
+# Spectrum on the fused video/audio blocks. A skipped step forecasts the audio
+# stream from the cache-point block along with the video feature.
 
 kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers
 --model-type kandinsky6-video

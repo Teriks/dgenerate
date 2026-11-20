@@ -3725,7 +3725,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                     'transformer', 'text_encoder', 'connectors'
                 }
                 allowed = 'transformer, text_encoder, or connectors'
-                if _pipelinewrapper.model_type_is_kandinsky5_video(self.model_type):
+                if (_pipelinewrapper.model_type_is_kandinsky5_video(self.model_type)
+                        or _pipelinewrapper.model_type_is_kandinsky6_video(self.model_type)):
                     video_quant_names = {'transformer', 'text_encoder', 'text_encoder_2'}
                     allowed = 'transformer, text_encoder, or text_encoder_2'
             unknown = [name for name in self.quantizer_map if name not in video_quant_names]
@@ -3831,6 +3832,11 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif _pipelinewrapper.model_type_is_kandinsky5_video(self.model_type):
             allowed = _videopipelines.single_image_video.KANDINSKY5_VIDEO_SCHEDULER_NAMES
             family = 'Kandinsky 5.0 Video'
+            extra = ''
+        elif _pipelinewrapper.model_type_is_kandinsky6_video(self.model_type):
+            allowed = frozenset({
+                'FlowMatchEulerDiscreteScheduler', 'PiflowScheduler'})
+            family = 'Kandinsky 6'
             extra = ''
         elif _pipelinewrapper.model_type_is_minimax_h3(self.model_type):
             allowed = frozenset({'MiniMaxH3Scheduler'})

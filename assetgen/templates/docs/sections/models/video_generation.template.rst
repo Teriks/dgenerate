@@ -3,6 +3,9 @@
 Video Generation
 ================
 
+This section covers LTX-2.5, LTX-Video, HunyuanVideo 1.5, Motif-Video,
+MiniMax-H3, Kandinsky 5.0 Video, Kandinsky 6, and Wan.
+
 ``--model-type ltx2`` and ``ltx-video`` generate a clip in one pipeline call.
 One combination of prompt, seed, guidance, steps, image seed, ``--video-lengths``,
 ``--video-fps``, ``--ltx-audio-guidance-scales``, and ``--ltx-audio-guidance-rescales``
@@ -36,6 +39,9 @@ aspect ratio by default; the image is resized to the generation canvas. Video
 VAEs are tiled automatically, so ``--vae-tiling`` is rejected. ``--vae-slicing``
 is available to reduce VAE memory use. These integrations generate video frames
 only; they do not synthesize audio.
+
+Kandinsky 6 is separate from that group. One checkpoint does text-to-video and
+first-frame image-to-video, and the clip includes audio. See `Kandinsky 6`_.
 
 Library
 -------
@@ -119,8 +125,8 @@ tried in turn. The number of selected timesteps replaces ``--inference-steps``
 for that run. Do not combine
 ``--timesteps`` with ``--sigmas``; Motif uses a timestep schedule rather
 than a sigma schedule. ``--timesteps`` also works with Wan video-to-video,
-LTX-2, Hunyuan Video 1.5, Kandinsky 5 video, and the SD 1.5/2/XL and Kolors
-image models.
+LTX-2, Hunyuan Video 1.5, Kandinsky 5 video, Kandinsky 6 video, and the
+SD 1.5/2/XL and Kolors image models.
 
 The standard examples use ``bfloat16``, sequential CPU offload, 50 steps, and
 ``832x480``. Offload options and ``--torch-compile`` are available. A GGUF
@@ -269,12 +275,112 @@ compatible I2V GGUF checkpoint is not provided in these examples.
 * `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky5/text_to_video_gguf/config.dgen>`_
 * `Kandinsky 5 video LoRA examples <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/kandinsky5/lora>`_
 
-For all three model types, ``--transformer`` replaces only the denoising
-transformer; the parent Diffusers checkpoint continues to provide the VAE and
-text encoders. ``--quantizer-map`` can target the transformer and the
-family-specific text components. These models do not support video batching
-with ``--batch-size`` greater than 1. The Console UI provides separate T2V and
-I2V recipes where the corresponding checkpoints are available.
+For HunyuanVideo 1.5, Motif-Video, and Kandinsky 5 video, ``--transformer``
+replaces only the denoising transformer; the parent Diffusers checkpoint
+continues to provide the VAE and text encoders. ``--quantizer-map`` can target
+the transformer and the family-specific text components. These models do not
+support video batching with ``--batch-size`` greater than 1. The Console UI
+provides separate T2V and I2V recipes where the corresponding checkpoints are
+available.
+
+.. _kandinsky-6:
+
+Kandinsky 6
+-----------
+
+Use ``--model-type kandinsky6-video`` with a Kandinsky 6.0 checkpoint. One
+pipeline writes the picture and a 44.1 kHz soundtrack. Text-to-video and
+first-frame image-to-video use that same repository. There is no separate
+image-to-video checkpoint. A Kandinsky 6 super-resolution repository is
+rejected.
+
+No image seed is text to video. One still image is the first frame. A mask,
+a second image, a video seed, ``last-frame=``, ``control=``, and
+``reference=`` are rejected. ``--loras`` is rejected: no Kandinsky 6 LoRA
+loader or checkpoint is published.
+
+``--video-fps`` defaults to 24. ``--video-lengths`` is seconds and snaps to
+``temporal*k+1`` frames. The video VAE's temporal compression is 4, so five
+seconds is 121 frames, the length these checkpoints were trained for. Width
+and height are aligned down to a multiple of 16. The examples use
+``864x480``. Omit ``--video-lengths`` and the pipeline chooses the length.
+The soundtrack is muxed into an mp4. GIF, WebP, and
+``--animation-format frames`` drop that audio. There is no separate audio
+prompt or audio guidance scale. Describe the sound in the same prompt.
+
+``--scheduler`` accepts ``FlowMatchEulerDiscreteScheduler`` and
+``PiflowScheduler``. Omitting it keeps the checkpoint scheduler. A distilled
+checkpoint ships ``PiflowScheduler``. When that scheduler is loaded, omitted
+guidance is 1 and omitted steps are 10. Any other loaded scheduler uses
+guidance 5 and 50 steps. Values you set are used as written. Guidance 1 is
+unguided.
+
+* Lite distilled, public: ``kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers``. 10 steps, guidance 1.
+* Lite, public: ``kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers``. 50 steps, guidance 5.
+* Pro distilled, public: ``kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers``. 10 steps, guidance 1. The transformer is about 60 GB.
+* Pro, gated: ``kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers``. 50 steps, guidance 5.
+
+``--transformer`` replaces the denoiser. The repository still supplies
+Qwen2.5-VL, CLIP, the video VAE, the audio VAE, and the vocoder. A GGUF or a
+Comfy safetensors file loads that way. The Pro Q4_K_S GGUF stays on the gated
+Pro repository, so that config needs a Hugging Face token.
+``--text-encoders`` replaces Qwen2.5-VL in the first slot. ``+`` keeps CLIP
+from the repository. A packed quant stays packed: do not put a quantizer on
+that URI. ``--quantizer-map`` may name ``transformer``, ``text_encoder``, or
+``text_encoder_2``.
+
+``--spectrum`` forecasts the fused video and audio blocks. A skipped step
+forecasts the audio stream from the cache-point block along with the video
+feature. ``--dype`` scales the height and width position axes and leaves the
+time axis on the checkpoint table. The reference long side defaults to 864.
+``--cache-dit`` and ``--torch-compile`` are available. The examples use
+sequential CPU offload. ``--model-cpu-offload`` and ``--model-group-offload``
+are available as well. The video VAE is tiled already, so ``--vae-tiling`` is
+rejected. ``--vae-slicing`` is available. ``--batch-size`` greater than 1 is
+rejected. ``--timesteps`` sets an explicit timestep schedule.
+
+``--pipeline-prompt-enhance`` turns on the pipeline's ``expand_prompts``
+rewrite. With no value, text-to-video and image-to-video each keep their own
+expansion instruction. A value replaces that instruction for the clip. The
+prompt is still appended as ``Rewrite Prompt:``. Braces in the value stay
+literal. A first frame is shown to the rewrite. The
+``--pipeline-prompt-enhance-*`` options apply to that rewrite. The video still
+uses ``--seeds`` or ``--gen-seeds``. ``--prompt-upsampler`` is rejected: the
+rewrite uses the loaded Qwen2.5-VL encoder. When ``--max-sequence-length`` is
+omitted, the rewrite uses 1024 tokens. The same system-prompt value is
+described under `Decode, prompts, and duration`_.
+
+.. code-block:: shell
+
+    dgenerate kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers \\
+        --model-type kandinsky6-video --dtype bfloat16 \\
+        --model-sequential-offload --inference-steps 10 --guidance-scales 1 \\
+        --video-lengths 5 --video-fps 24 --animation-format mp4 \\
+        --output-size 864x480 \\
+        --prompts "A red kite glides above a windswept coastal meadow at golden hour. Audio: wind and distant surf."
+
+    dgenerate kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers \\
+        --model-type kandinsky6-video --dtype bfloat16 \\
+        --model-sequential-offload --inference-steps 10 --guidance-scales 1 \\
+        --image-seeds examples/media/man-fighting-pose.jpg \\
+        --video-lengths 5 --video-fps 24 --animation-format mp4 \\
+        --output-size 864x480 \\
+        --prompts "The person slowly lowers their arms and turns toward the camera. Audio: cloth movement, a quiet room."
+
+* `Text-to-video, Lite distilled <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky6/text_to_video/config.dgen>`_
+* `Text-to-video, Lite <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky6/text_to_video/full-config.dgen>`_
+* `Text-to-video, Pro distilled <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky6/text_to_video_pro/config.dgen>`_
+* `Image-to-video <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky6/image_to_video/config.dgen>`_
+* `Pro GGUF transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky6/gguf/pro-config.dgen>`_
+* `Pro GGUF text encoder <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky6/gguf/text-encoder-config.dgen>`_
+* `Lite distilled int8 transformer <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky6/comfy_quant/lite-distill-config.dgen>`_
+* `Spectrum <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky6/spectrum/lite-config.dgen>`_
+* `DyPE <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky6/dype/lite-config.dgen>`_
+* `Prompt rewrite <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/kandinsky6/pipeline_prompt_enhance/text-to-video-config.dgen>`_
+* `Library usage <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/library_usage/kandinsky6_video/main.py>`_
+
+The Console UI recipes cover Lite, Pro, the GGUF transformer, and the int8
+transformer, each with and without an image seed.
 
 LTX-2.5 (``ltx2``)
 ------------------
@@ -715,7 +821,9 @@ that built-in prompt when ``--pipeline-prompt-enhance`` itself is omitted.
 
 FLUX.3 and Kandinsky 6 take the same system-prompt value and the same
 sampling options. With no value, FLUX.3 keeps the upsampler's system prompt
-and decodes greedily. Kandinsky 6 keeps its expansion instruction.
+and decodes greedily. Kandinsky 6 keeps its expansion instruction. Kandinsky 6
+rejects ``--prompt-upsampler`` and rewrites with the loaded Qwen2.5-VL
+encoder. See `Kandinsky 6`_.
 
 ``--prompt-upsampler`` names a different upsampler and turns enhancement on
 by itself. The model is a Transformers causal or image-to-text model. The
