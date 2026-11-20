@@ -4459,7 +4459,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     --model-type values (if*).
                     
                     If only one integer value is provided, that is the value for both dimensions.
-                    X/Y dimension values should be separated by "x". 
+                    Two dimensions are width then height, separated by "x", for example 512x768. 
                     
                     This value defaults to 512x512 for Stable Diffusion when no --image-seeds are
                     specified (IE txt2img mode), 1024x1024 for Stable Cascade and Stable Diffusion 3/XL or

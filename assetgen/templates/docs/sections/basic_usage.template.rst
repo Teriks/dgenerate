@@ -8,7 +8,8 @@ It utilizes the ``sd2-community/stable-diffusion-2-1`` model repo on `Hugging Fa
 
 45 uniquely named images will be generated ``(5 x 3 x 3)``
 
-Also Adjust output size to ``512x512`` and output generated images to the ``astronaut`` folder in the current working directory.
+Also set ``--output-size`` to ``512x512`` and write generated images to the ``astronaut`` folder in the current working directory.
+The size is width then height, so ``512x768`` is 512 wide and 768 tall. One number, such as ``1024`` in the SDXL example, sets both dimensions.
 
 When ``--output-path`` is not specified, the default output location is the ``output`` folder
 in the current working directory, if the path that is specified does not exist then it will be created.

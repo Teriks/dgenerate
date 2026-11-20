@@ -133,7 +133,9 @@ def _create_arg_parser(prog, description):
 
     actions.append(parser.add_argument(
         '-r', '--resize', default=None, type=_arguments._type_size,
-        help='Perform naive image resizing, the best resampling algorithm is auto selected.'))
+        help="""Perform naive image resizing, the best resampling algorithm is auto selected.
+                Two dimensions are width then height, separated by "x", for example 512x768.
+                If only one integer value is provided, that is the value for both dimensions."""))
 
     actions.append(parser.add_argument(
         '-na', '--no-aspect', action='store_true',

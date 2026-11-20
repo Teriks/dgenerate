@@ -2337,8 +2337,8 @@ Help Output
             will result in an image output of an equal size to the inputs, except for upscalers and Deep Floyd
             --model-type values (if*).
             
-            If only one integer value is provided, that is the value for both dimensions. X/Y dimension values
-            should be separated by "x".
+            If only one integer value is provided, that is the value for both dimensions. Two dimensions are
+            width then height, separated by "x", for example 512x768.
             
             This value defaults to 512x512 for Stable Diffusion when no --image-seeds are specified (IE txt2img
             mode), 1024x1024 for Stable Cascade and Stable Diffusion 3/XL or Flux model types, and 64x64 for
@@ -4312,7 +4312,8 @@ It utilizes the ``sd2-community/stable-diffusion-2-1`` model repo on `Hugging Fa
 
 45 uniquely named images will be generated ``(5 x 3 x 3)``
 
-Also Adjust output size to ``512x512`` and output generated images to the ``astronaut`` folder in the current working directory.
+Also set ``--output-size`` to ``512x512`` and write generated images to the ``astronaut`` folder in the current working directory.
+The size is width then height, so ``512x768`` is 512 wide and 768 tall. One number, such as ``1024`` in the SDXL example, sets both dimensions.
 
 When ``--output-path`` is not specified, the default output location is the ``output`` folder
 in the current working directory, if the path that is specified does not exist then it will be created.
@@ -15112,8 +15113,10 @@ The help output of ``image-process`` is as follows:
             Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.
             -------------------------------------------------------------------------------------
       -r, --resize RESIZE
-            Perform naive image resizing, the best resampling algorithm is auto selected.
-            -----------------------------------------------------------------------------
+            Perform naive image resizing, the best resampling algorithm is auto selected. Two dimensions are
+            width then height, separated by "x", for example 512x768. If only one integer value is provided,
+            that is the value for both dimensions.
+            --------------------------------------
       -na, --no-aspect
             Make --resize ignore aspect ratio.
             ----------------------------------
@@ -15144,6 +15147,8 @@ The help output of ``image-process`` is as follows:
 
 
 Overview of specifying ``image-process`` inputs and outputs
+
+``--resize`` is width then height, so ``512x768`` is 512 wide and 768 tall. One number sets both dimensions.
 
 .. code-block:: bash
 

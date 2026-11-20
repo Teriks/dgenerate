@@ -34,6 +34,8 @@ The help output of ``image-process`` is as follows:
 
 Overview of specifying ``image-process`` inputs and outputs
 
+``--resize`` is width then height, so ``512x768`` is 512 wide and 768 tall. One number sets both dimensions.
+
 .. code-block:: bash
 
     #!/usr/bin/env bash
