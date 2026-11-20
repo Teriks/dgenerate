@@ -15619,7 +15619,9 @@ login.
 
 ``--hf-upload-card`` writes a ``README.md`` model card. With no value, the
 card is built from the source model, the formats, every quantizer setting,
-and the command that produced the files. Quote a value when it contains
+and the command that produced the files. Files already in ``--output`` or
+in the ``--hf-upload`` repository stay in that card, so a later upload does
+not replace the list with only this run. Quote a value when it contains
 spaces. Without this option, the upload has no model card.
 
 * ``extra:TEXT`` and ``extra-file:PATH`` insert that text into the generated
@@ -15814,11 +15816,12 @@ The help output of ``quantize`` is as follows:
       --hf-upload-card [CARD]
             README.md to write with the quant files, and to upload with --hf-upload. Omitted, no model card is
             written. With no value, the card is built from the source model, the formats, the quantizer
-            settings, and the command. extra:TEXT and extra-file:PATH insert that text into the generated card,
-            after the introduction. file:PATH uses that UTF-8 file as the whole card. text:TEXT uses that text
-            as the whole card. Quote the value when it contains spaces, as in --hf-upload-card "extra:Use
-            guidance 3.5."
-            --------------
+            settings, and the command. Files already in --output or in the --hf-upload repository stay in that
+            card, so a later upload does not replace the list with only this run. extra:TEXT and extra-file:PATH
+            insert that text into the generated card, after the introduction. file:PATH uses that UTF-8 file as
+            the whole card. text:TEXT uses that text as the whole card. Quote the value when it contains spaces,
+            as in --hf-upload-card "extra:Use guidance 3.5."
+            ------------------------------------------------
       --hf-upload-card-preview
             Print the model card and do not quantize or upload. Pass --output to also write README.md there.
             With no --hf-upload-card, the preview is the generated card. extra: and extra-file: are inserted

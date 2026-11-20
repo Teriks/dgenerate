@@ -413,7 +413,9 @@ login.
 
 ``--hf-upload-card`` writes a ``README.md`` model card. With no value, the
 card is built from the source model, the formats, every quantizer setting,
-and the command that produced the files. Quote a value when it contains
+and the command that produced the files. Files already in ``--output`` or
+in the ``--hf-upload`` repository stay in that card, so a later upload does
+not replace the list with only this run. Quote a value when it contains
 spaces. Without this option, the upload has no model card.
 
 * ``extra:TEXT`` and ``extra-file:PATH`` insert that text into the generated

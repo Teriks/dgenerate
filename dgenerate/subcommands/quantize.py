@@ -333,6 +333,8 @@ class QuantizeSubCommand(_subcommand.SubCommand):
             help='README.md to write with the quant files, and to upload with --hf-upload. '
                  'Omitted, no model card is written. With no value, the card is built from '
                  'the source model, the formats, the quantizer settings, and the command. '
+                 'Files already in --output or in the --hf-upload repository stay in that '
+                 'card, so a later upload does not replace the list with only this run. '
                  'extra:TEXT and extra-file:PATH insert that text into the generated card, '
                  'after the introduction. file:PATH uses that UTF-8 file as the whole card. '
                  'text:TEXT uses that text as the whole card. Quote the value when it contains '
@@ -535,17 +537,22 @@ class QuantizeSubCommand(_subcommand.SubCommand):
                     component_classes=None,
                     pipeline=None,
                     files=None,
-                    extra=None) -> str:
+                    extra=None,
+                    formats_requested=None,
+                    comfy=None,
+                    llama=None,
+                    mixed_names=False,
+                    keeps_existing=False) -> str:
         return _hfcard.build_model_card(
             model=args.model,
             repo_id=repo_id,
             revision=args.revision,
             subfolders=args.subfolders,
-            formats_requested=args.formats,
+            formats_requested=args.formats if formats_requested is None else formats_requested,
             formats=file_formats,
             quantizers=quantizers,
-            comfy=args.comfy,
-            llama=args.llama,
+            comfy=args.comfy if comfy is None else comfy,
+            llama=args.llama if llama is None else llama,
             variant=args.variant,
             weight_name=args.weight_name,
             command=_hfcard.quantize_command_line(
@@ -567,19 +574,29 @@ class QuantizeSubCommand(_subcommand.SubCommand):
             pipeline=pipeline,
             files=files,
             extra=extra,
-            preview=preview)
+            preview=preview,
+            mixed_names=mixed_names,
+            keeps_existing=keeps_existing)
 
     def _readme_text(self, args, file_formats, quantizers, repo_id, card_spec, *,
                      preview: bool,
                      component_classes=None,
                      pipeline=None,
-                     files=None) -> str:
+                     files=None,
+                     formats_requested=None,
+                     comfy=None,
+                     llama=None,
+                     mixed_names=False,
+                     keeps_existing=False) -> str:
         if card_spec is None or card_spec.kind in {'generate', 'extra', 'extra-file'}:
             extra = _hfcard.read_card_text(card_spec) if card_spec is not None and card_spec.kind != 'generate' else None
             return self._model_card(
                 args, file_formats, quantizers, repo_id, preview=preview,
                 component_classes=component_classes, pipeline=pipeline,
-                files=files, extra=extra)
+                files=files, extra=extra,
+                formats_requested=formats_requested,
+                comfy=comfy, llama=llama,
+                mixed_names=mixed_names, keeps_existing=keeps_existing)
         return _hfcard.read_provided_card(card_spec)
 
     def _publish(self, args, file_formats, quantizers, repo_id, token, card_spec,
@@ -588,13 +605,39 @@ class QuantizeSubCommand(_subcommand.SubCommand):
         folder, patterns = _hfcard.upload_layout(
             args.output, written, include_card=include_card)
         if include_card:
+            card_formats = file_formats
+            card_components = component_classes
+            card_comfy = None
+            card_llama = None
+            card_requested = None
+            mixed_names = False
+            keeps_existing = False
             if card_spec.kind in {'generate', 'extra', 'extra-file'}:
-                files = _hfcard.listed_files(folder, patterns)
+                files = _hfcard.repository_files(args.output, repo_id, token)
+                written_rel = _written_paths(args.output, written)
+                keeps_existing = any(path not in written_rel for path, _size in files)
+                discovered = _hfcard.formats_in_filenames(files)
+                if any(fmt not in file_formats for fmt in discovered):
+                    card_formats = _hfcard.order_formats(list(file_formats) + discovered)
+                    card_requested = []
+                known = {name for name, _klass in card_components}
+                extra_components = [
+                    (name, None) for name in _hfcard.components_in_filenames(files)
+                    if name not in known]
+                if extra_components:
+                    card_components = list(card_components) + extra_components
+                markers = _hfcard.naming_markers(files)
+                mixed_names = len(markers) > 1
+                if mixed_names:
+                    card_comfy = False
+                    card_llama = False
             else:
                 files = None
             card = self._readme_text(
-                args, file_formats, quantizers, repo_id, card_spec, preview=False,
-                component_classes=component_classes, pipeline=pipeline, files=files)
+                args, card_formats, quantizers, repo_id, card_spec, preview=False,
+                component_classes=card_components, pipeline=pipeline, files=files,
+                formats_requested=card_requested, comfy=card_comfy, llama=card_llama,
+                mixed_names=mixed_names, keeps_existing=keeps_existing)
             readme = os.path.join(folder, 'README.md')
             with open(readme, 'w', encoding='utf-8', newline='\n') as handle:
                 handle.write(card)
@@ -612,3 +655,19 @@ class QuantizeSubCommand(_subcommand.SubCommand):
                 commit_message_text=message,
                 allow_patterns=patterns)
         _messages.log(f'Uploaded {url}.')
+
+
+def _written_paths(output: str, written: list[str]) -> set[str]:
+    """Paths this run wrote, relative to ``output``."""
+    root = os.path.abspath(output)
+    paths = set()
+    for path in written:
+        absolute = os.path.abspath(path)
+        if os.path.isdir(absolute):
+            for dirpath, _dirnames, names in os.walk(absolute):
+                for name in names:
+                    paths.add(os.path.relpath(
+                        os.path.join(dirpath, name), root).replace('\\', '/'))
+        else:
+            paths.add(os.path.relpath(absolute, root).replace('\\', '/'))
+    return paths

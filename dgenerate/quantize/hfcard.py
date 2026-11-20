@@ -259,6 +259,119 @@ def upload_layout(output_dir: str,
     return output_dir, patterns
 
 
+def repository_files(output_dir: str,
+                     repo_id: str | None = None,
+                     token: str | None = None) -> list[tuple[str, int]]:
+    """Quant files already in ``output_dir`` and, when it exists, in the Hub repository.
+
+    A local path wins when both have it, because that file is the one about to
+    be uploaded. ``README.md`` is omitted. A missing repository, or a token that
+    cannot read it, contributes nothing.
+    """
+    found = {}
+    if repo_id and token:
+        for path, size in _remote_files(repo_id, token):
+            found[path] = size
+    if output_dir and os.path.isdir(output_dir):
+        for path, size in listed_files(output_dir, None):
+            found[path] = size
+    return sorted(found.items())
+
+
+def _remote_files(repo_id: str, token: str) -> list[tuple[str, int]]:
+    try:
+        info = huggingface_hub.HfApi(token=token).model_info(repo_id, files_metadata=True)
+    except Exception:
+        return []
+    rows = []
+    for sibling in info.siblings or []:
+        name = sibling.rfilename
+        if not name or name == 'README.md' or os.path.basename(name).startswith('.'):
+            continue
+        rows.append((name.replace('\\', '/'), int(sibling.size or 0)))
+    return rows
+
+
+def parse_quant_filename(relative: str) -> tuple[str, str, str] | None:
+    """``(component, format, marker)`` for a quant file name, or ``None``.
+
+    ``marker`` is ``comfy``, ``llama``, or ``''``.
+    """
+    base = os.path.basename(relative.replace('\\', '/'))
+    if base.endswith('.gguf'):
+        stem = base[:-len('.gguf')]
+    elif base.endswith('.safetensors'):
+        stem = base[:-len('.safetensors')]
+    else:
+        return None
+    marker = ''
+    for suffix in ('-comfy', '-llama'):
+        if stem.endswith(suffix):
+            marker = suffix[1:]
+            stem = stem[:-len(suffix)]
+            break
+    formats = (
+        list(_quantexport.gguf_format_names())
+        + list(_quantexport.comfy_format_names())
+        + ['float16', 'float32'])
+    for fmt in sorted(formats, key=len, reverse=True):
+        tail = '-' + fmt
+        if stem.endswith(tail) and len(stem) > len(tail):
+            return stem[:-len(tail)], fmt, marker
+    return None
+
+
+def order_formats(names: list[str]) -> list[str]:
+    """GGUF types first, then Comfy safetensors formats, without duplicates."""
+    gguf = list(_quantexport.gguf_format_names())
+    comfy = list(_quantexport.comfy_format_names())
+
+    def order(fmt: str) -> tuple:
+        if fmt in gguf:
+            return 0, gguf.index(fmt)
+        if fmt in comfy:
+            return 1, comfy.index(fmt)
+        return 2, fmt
+
+    found = []
+    for fmt in names:
+        if fmt not in found:
+            found.append(fmt)
+    found.sort(key=order)
+    return found
+
+
+def formats_in_filenames(files: list[tuple[str, int]]) -> list[str]:
+    """Formats named by quant files, GGUF types first, then Comfy safetensors formats."""
+    found = []
+    for path, _size in files:
+        parsed = parse_quant_filename(path)
+        if parsed is not None:
+            found.append(parsed[1])
+    return order_formats(found)
+
+
+def components_in_filenames(files: list[tuple[str, int]]) -> list[str]:
+    """Component stems named by quant files, in first-seen order."""
+    found = []
+    for path, _size in files:
+        parsed = parse_quant_filename(path)
+        if parsed and parsed[0] not in found:
+            found.append(parsed[0])
+    return found
+
+
+def naming_markers(files: list[tuple[str, int]]) -> set[str]:
+    """``comfy``, ``llama``, and ``plain`` for the quant files that use each layout."""
+    markers = set()
+    for path, _size in files:
+        parsed = parse_quant_filename(path)
+        if parsed is None:
+            continue
+        markers.add(parsed[2] or 'plain')
+    return markers
+
+
 def listed_files(root: str, patterns: list[str] | None) -> list[tuple[str, int]]:
     """Relative paths and sizes that an upload of ``root`` would send, excluding the model card."""
     found = []
@@ -293,7 +406,9 @@ def build_model_card(*,
                      pipeline: str | None = None,
                      files: list[tuple[str, int]] | None = None,
                      extra: str | None = None,
-                     preview: bool = False) -> str:
+                     preview: bool = False,
+                     mixed_names: bool = False,
+                     keeps_existing: bool = False) -> str:
     """README.md for the quantized files. A preview has no measured file sizes."""
     source = _source(model)
     if pipeline is None and preview and os.path.isdir(model):
@@ -326,14 +441,16 @@ def build_model_card(*,
     lines.extend(_source_section(
         source, revision, pipeline, component_classes, subfolders,
         formats_requested, variant, weight_name))
-    lines.extend(_quant_section(formats, quantizers, comfy, llama, formats_requested))
+    lines.extend(_quant_section(
+        formats, quantizers, comfy, llama, formats_requested, mixed_names))
     lines.append('## Command')
     lines.append('')
     lines.append('```bash')
     lines.append(command)
     lines.append('```')
     lines.append('')
-    lines.extend(_files_section(formats, quantizers, comfy, llama, subfolders, files))
+    lines.extend(_files_section(
+        formats, quantizers, comfy, llama, subfolders, files, keeps_existing))
     return '\n'.join(lines).rstrip() + '\n'
 
 
@@ -638,7 +755,8 @@ def _source_section(source, revision, pipeline, component_classes, subfolders,
     return lines
 
 
-def _quant_section(formats, quantizers, comfy, llama, formats_requested) -> list[str]:
+def _quant_section(formats, quantizers, comfy, llama, formats_requested,
+                   mixed_names: bool = False) -> list[str]:
     lines = ['## Quantization', '']
     if quantizers and not formats:
         lines.append(
@@ -655,7 +773,12 @@ def _quant_section(formats, quantizers, comfy, llama, formats_requested) -> list
             'Keep the original repository as the model and pass the quant file '
             'with the matching component option, so the config still comes from the repository.')
     lines.append('')
-    if comfy and quantizers:
+    if mixed_names:
+        lines.append(
+            'Files with `-comfy` in the name use ComfyUI tensor names. '
+            'Files with `-llama` in the name use llama.cpp tensor names. '
+            'The other files keep the names the component stored.')
+    elif comfy and quantizers:
         lines.append(
             'GGUF and Comfy safetensors files use ComfyUI tensor names (`--comfy`). '
             'SDNQ and bitsandbytes repositories keep diffusers tensor names.')
@@ -745,8 +868,14 @@ def _bool_text(value: bool) -> str:
     return 'true' if value else 'false'
 
 
-def _files_section(formats, quantizers, comfy, llama, subfolders, files) -> list[str]:
+def _files_section(formats, quantizers, comfy, llama, subfolders, files,
+                   keeps_existing: bool = False) -> list[str]:
     lines = ['## Files', '']
+    if keeps_existing:
+        lines.append(
+            'This list is every quant file in the repository, '
+            'including files written by earlier quantize runs.')
+        lines.append('')
     if files is not None:
         if not files:
             lines.append('No files were listed.')

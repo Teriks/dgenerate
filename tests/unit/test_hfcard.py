@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import huggingface_hub
+
 import dgenerate.quantize.hfcard as hfcard
 import dgenerate.quantize.repoquant as repoquant
 import dgenerate.subcommands.exceptions as subcommand_exceptions
@@ -291,6 +293,62 @@ class TestQuantizeUploadCommand(unittest.TestCase):
         self.assertNotIn('hf_upload_secret_token_value', captured['upload']['commit_message'])
         self.assertIn('--hf-upload-card', card)
         self.assertNotIn('--hf-upload-card generate', card)
+
+    def test_later_upload_keeps_earlier_files_on_the_card(self):
+        captured = {}
+
+        class FakeApi:
+            def __init__(self, token=None):
+                captured['token'] = token
+
+            def create_repo(self, **kwargs):
+                pass
+
+            def model_info(self, repo_id, files_metadata=False):
+                raise huggingface_hub.errors.RepositoryNotFoundError(repo_id)
+
+            def upload_folder(self, **kwargs):
+                captured['upload'] = kwargs
+
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as output:
+            earlier = os.path.join(output, 'transformer-Q4_K.gguf')
+            with open(earlier, 'wb') as handle:
+                handle.write(b'x' * 4096)
+            comfy = os.path.join(output, 'transformer-float8_e4m3fn-comfy.safetensors')
+            with open(comfy, 'wb') as handle:
+                handle.write(b'y' * 8192)
+            folder = os.path.join(root, 'transformer')
+            os.makedirs(folder)
+            import torch
+            import safetensors.torch
+            safetensors.torch.save_file(
+                {'blocks.0.attn.to_q.weight': torch.randn(32, 256)},
+                os.path.join(folder, 'diffusion_pytorch_model.safetensors'))
+            with open(os.path.join(folder, 'config.json'), 'w', encoding='utf-8') as handle:
+                json.dump({'model_type': 'flux'}, handle)
+            with patch('dgenerate.quantize.hfcard.huggingface_hub.HfApi', FakeApi):
+                status = _command([
+                    root, '--subfolders', 'transformer', '--formats', 'q8',
+                    '-o', output, '--hf-upload', 'me/tiny-q8',
+                    '--hf-upload-card',
+                    '--auth-token', 'hf_upload_secret_token_value',
+                ])()
+            self.assertEqual(status, 0)
+            with open(os.path.join(output, 'README.md'), encoding='utf-8') as handle:
+                card = handle.read()
+        self.assertIn('| `transformer-Q4_K.gguf` | 4.0 KB |', card)
+        self.assertIn('| `transformer-float8_e4m3fn-comfy.safetensors` | 8.0 KB |', card)
+        self.assertIn('| `transformer-Q8_0.gguf` |', card)
+        self.assertIn('| `Q4_K` | GGUF |', card)
+        self.assertIn('| `Q8_0` | GGUF |', card)
+        self.assertIn('| `float8_e4m3fn` | ComfyUI safetensors quant |', card)
+        self.assertIn('earlier quantize runs', card)
+        self.assertIn('`-comfy`', card)
+        self.assertIn('transformer-Q8_0.gguf', captured['upload']['allow_patterns'])
+        self.assertNotIn('transformer-Q4_K.gguf', captured['upload']['allow_patterns'])
+        self.assertNotIn(
+            'transformer-float8_e4m3fn-comfy.safetensors',
+            captured['upload']['allow_patterns'])
 
     def test_upload_without_a_card_writes_no_readme(self):
         captured = {}
