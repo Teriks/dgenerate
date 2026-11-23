@@ -309,7 +309,7 @@ class ThemeMenuTest(unittest.TestCase):
             self.assertEqual(
                 int(user32.SendMessageW(
                     ctypes.c_void_p(hook.hwnd), themechrome._WM_NCHITTEST, 0, packed)),
-                themechrome._HTCLIENT if themechrome._remote_session() else themechrome._HTCAPTION)
+                themechrome._HTCLIENT)
 
     def test_context_menu_highlights_and_keeps_its_grab(self):
         from dgenerate.console import thememenu

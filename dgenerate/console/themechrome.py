@@ -21,8 +21,10 @@
 
 """Themed window frame for Windows and Linux.
 
-The window keeps a real frame so the operating system moves and resizes it.
+The window keeps a real frame so the operating system resizes it.
 The stock title bar is removed and this module paints one in the client area.
+The painted title does not start a move by itself. On Windows the click is
+handed back to the system so the frame and its contents move together.
 On Windows the left, right, and bottom borders stay the native resize border.
 On Linux the window manager owns the drag. macOS keeps the system frame and
 tints its title bar from the window color.
@@ -1070,13 +1072,13 @@ def _frame_origin(window):
 def _move_hit(hit, menu_open):
     """Hit code for a painted title.
 
-    Remote Desktop does not start a move from ``HTCAPTION``. The click has to
-    land on the title widget, which posts the move itself. That is the path
-    the output window already uses.
+    ``HTCAPTION`` does not start a move from this subclass. The click has to
+    land on the title widget, which hands the move back to Windows. Moving
+    the window by setting its geometry leaves the client area behind the frame.
     """
     if hit is None:
         return None
-    if menu_open or (hit == _HTCAPTION and _remote_session()):
+    if menu_open or hit == _HTCAPTION:
         return _HTCLIENT
     return hit
 
@@ -1084,7 +1086,9 @@ def _move_hit(hit, menu_open):
 def _press_drag(window, event):
     if _dismiss_context_menu():
         return 'break'
-    if platform.system() == 'Windows' and _remote_session():
+    if platform.system() == 'Windows':
+        if window._chrome['zoomed']:
+            _toggle_zoom(window)
         hwnd = _hwnd(window)
         if hwnd:
             user32 = _user32

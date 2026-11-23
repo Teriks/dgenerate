@@ -81,7 +81,7 @@ class ThemeChromeTest(unittest.TestCase):
 
         self.assertEqual(
             themechrome._move_hit(themechrome._HTCAPTION, False),
-            themechrome._HTCLIENT if themechrome._remote_session() else themechrome._HTCAPTION)
+            themechrome._HTCLIENT)
         self.assertEqual(themechrome._move_hit(themechrome._HTTOP, False), themechrome._HTTOP)
 
         window.resizable(False, False)
@@ -100,7 +100,7 @@ class ThemeChromeTest(unittest.TestCase):
         event = _Event()
         event.x_root = window.winfo_x() + 8
         event.y_root = window.winfo_y() + 8
-        if themechrome._remote_session():
+        if platform.system() == 'Windows':
             themechrome._press_drag(window, event)
             self.assertIsNone(window._chrome.get('drag'))
         else:
@@ -175,9 +175,7 @@ class ThemeChromeTest(unittest.TestCase):
         self.assertEqual(hit(right - 1, top + 80), themechrome._HTRIGHT)
         self.assertEqual(hit((left + right) // 2, bottom - 1), themechrome._HTBOTTOM)
         self.assertEqual(hit(left + inset + 24, top), themechrome._HTTOP)
-        self.assertEqual(
-            hit(left + inset + 24, top + inset + 6),
-            themechrome._HTCLIENT if themechrome._remote_session() else themechrome._HTCAPTION)
+        self.assertEqual(hit(left + inset + 24, top + inset + 6), themechrome._HTCLIENT)
         hook.buttons = ((right - 36, top + 2, right - inset - 2, top + 24),)
         self.assertEqual(hit(right - 20, top + 10), themechrome._HTCLIENT)
         title = window._chrome['title']
@@ -185,7 +183,7 @@ class ThemeChromeTest(unittest.TestCase):
         title_y = title.winfo_rooty() + max(title.winfo_height() - 4, inset + 2)
         self.assertEqual(
             hit(title_x, title_y, ctypes.c_void_p(int(title.winfo_id()))),
-            themechrome._HTCLIENT if themechrome._remote_session() else themechrome._HTTRANSPARENT)
+            themechrome._HTCLIENT)
         limits = themechrome._MinMaxInfo()
         user32.SendMessageW(
             outer, themechrome._WM_GETMINMAXINFO, 0, ctypes.addressof(limits))
