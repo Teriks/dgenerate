@@ -83,6 +83,19 @@ class ThemeChromeTest(unittest.TestCase):
             themechrome._move_hit(themechrome._HTCAPTION, False),
             themechrome._HTCLIENT)
         self.assertEqual(themechrome._move_hit(themechrome._HTTOP, False), themechrome._HTTOP)
+        self.assertEqual(
+            themechrome._resize_command(themechrome._HTBOTTOMLEFT),
+            themechrome._SC_SIZE | themechrome._WMSZ_BOTTOMLEFT)
+        self.assertEqual(
+            themechrome._resize_command(themechrome._HTBOTTOMRIGHT),
+            themechrome._SC_SIZE | themechrome._WMSZ_BOTTOMRIGHT)
+        self.assertEqual(
+            themechrome._resize_command(themechrome._HTBOTTOM),
+            themechrome._SC_SIZE | themechrome._WMSZ_BOTTOM)
+        self.assertLess(
+            themechrome._resize_command(themechrome._HTBOTTOMRIGHT) & 0xFFF0,
+            themechrome._SC_MOVE)
+        self.assertIsNone(themechrome._resize_command(themechrome._HTCAPTION))
 
         window.resizable(False, False)
         self.assertEqual(window._chrome['resize'], (0, 0))

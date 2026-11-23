@@ -114,6 +114,17 @@ _SC_MAXIMIZE = 0xF030
 _SC_RESTORE = 0xF120
 _SC_MOVE = 0xF010
 _SC_SIZE = 0xF000
+# WM_SYSCOMMAND keeps the sizing edge in the low four bits of SC_SIZE.
+# Those bits are WMSZ_* values. HT* codes do not fit: HTBOTTOMLEFT is 16,
+# and SC_SIZE combined with it is SC_MOVE.
+_WMSZ_LEFT = 1
+_WMSZ_RIGHT = 2
+_WMSZ_TOP = 3
+_WMSZ_TOPLEFT = 4
+_WMSZ_TOPRIGHT = 5
+_WMSZ_BOTTOM = 6
+_WMSZ_BOTTOMLEFT = 7
+_WMSZ_BOTTOMRIGHT = 8
 _SM_REMOTESESSION = 0x1000
 _SPI_GETWORKAREA = 0x0030
 _WS_THICKFRAME = 0x00040000
@@ -1551,8 +1562,9 @@ def _work_area(window):
 def _remote_session():
     """True when this Windows session is being viewed over Remote Desktop.
 
-    The system move does not start from a painted title in that session.
-    The move has to be posted as a system command instead.
+    A border click does not start a move or a size in that session. Both have
+    to be posted as system commands. The size command uses ``WMSZ_*`` in its
+    low four bits; a raw ``HT*`` code aliases the bottom corners to a move.
     """
     if platform.system() != 'Windows':
         return False
@@ -1562,16 +1574,40 @@ def _remote_session():
     return bool(user32.GetSystemMetrics(_SM_REMOTESESSION))
 
 
-def _begin_system_drag(hwnd, command):
+def _resize_command(hit):
+    """``SC_SIZE`` for a border hit, or None when the hit is not an edge.
+
+    Remote Desktop starts the size from this command. The direction lives in
+    the low four bits and must be a ``WMSZ_*`` value. ``HTBOTTOMLEFT`` is 16
+    and ``HTBOTTOMRIGHT`` is 17, so combining either with ``SC_SIZE`` sets the
+    ``SC_MOVE`` bit and the corner drags the window. The other edges land on
+    direction codes Windows ignores, so the border does not resize.
+    """
+    direction = {
+        _HTLEFT: _WMSZ_LEFT,
+        _HTRIGHT: _WMSZ_RIGHT,
+        _HTTOP: _WMSZ_TOP,
+        _HTTOPLEFT: _WMSZ_TOPLEFT,
+        _HTTOPRIGHT: _WMSZ_TOPRIGHT,
+        _HTBOTTOM: _WMSZ_BOTTOM,
+        _HTBOTTOMLEFT: _WMSZ_BOTTOMLEFT,
+        _HTBOTTOMRIGHT: _WMSZ_BOTTOMRIGHT,
+    }.get(int(hit))
+    if direction is None:
+        return None
+    return _SC_SIZE | direction
+
+
+def _begin_system_drag(hwnd, command, point=0):
     now = _time.monotonic()
     previous = _drag_posted.get(int(hwnd), 0)
     if now - previous < 0.2:
         return
     _drag_posted[int(hwnd)] = now
-    _post_syscommand(hwnd, command)
+    _post_syscommand(hwnd, command, point)
 
 
-def _post_syscommand(hwnd, command):
+def _post_syscommand(hwnd, command, point=0):
     """Queue a system command instead of sending it.
 
     ``SendMessage`` runs the subclass procedure before the button handler
@@ -1582,7 +1618,8 @@ def _post_syscommand(hwnd, command):
     user32.PostMessageW.restype = ctypes.c_int
     user32.PostMessageW.argtypes = (
         ctypes.c_void_p, ctypes.c_uint, ctypes.c_ssize_t, ctypes.c_ssize_t)
-    user32.PostMessageW(ctypes.c_void_p(hwnd), _WM_SYSCOMMAND, command, 0)
+    user32.PostMessageW(
+        ctypes.c_void_p(hwnd), _WM_SYSCOMMAND, command, int(point))
 
 
 def _window_long(hwnd, index):
@@ -2499,10 +2536,9 @@ def _size_wndproc(hwnd, msg, wparam, lparam, subclass_id, refdata):
             _toggle_zoom(hook.window)
         return 0
     if root and msg == _WM_NCLBUTTONDOWN and _remote_session():
-        hit = int(wparam)
-        if hit in (_HTLEFT, _HTRIGHT, _HTTOP, _HTTOPLEFT, _HTTOPRIGHT,
-                   _HTBOTTOM, _HTBOTTOMLEFT, _HTBOTTOMRIGHT):
-            _begin_system_drag(key, _SC_SIZE | hit)
+        command = _resize_command(int(wparam))
+        if command is not None:
+            _begin_system_drag(key, command, lparam)
             return 0
     if msg == _WM_NCHITTEST:
         bounds = _window_rect(hook.hwnd)
