@@ -143,8 +143,11 @@ _WM_GETMINMAXINFO = 0x0024
 # Past the monitor. Windows otherwise stops the right edge at the primary
 # screen's tracking size while the left edge can still move.
 _TRACK_LIMIT = 32000
+_SM_CYCAPTION = 4
 _SM_CXFRAME = 32
 _SM_CXPADDEDBORDER = 92
+# A size change that must not raise or focus the window.
+_SWP_NOZORDER_NOACTIVATE = 0x0014
 _DWMWA_WINDOW_CORNER_PREFERENCE = 33
 _DWMWA_BORDER_COLOR = 34
 _DWMWCP_ROUND = 2
@@ -869,6 +872,7 @@ def _ensure_patched() -> None:
     original_toplevel = tk.Toplevel.__init__
     original_withdraw = tk.Wm.wm_withdraw
     original_deiconify = tk.Wm.wm_deiconify
+    original_geometry = tk.Wm.wm_geometry
 
     def base_init(self, master, widgetName, cnf={}, kw={}, extra=()):
         if widgetName != 'toplevel' and master is not None:
@@ -911,6 +915,20 @@ def _ensure_patched() -> None:
             self._chrome_hidden = False
         return original_deiconify(self)
 
+    def wm_geometry(self, value=None):
+        result = original_geometry(self, value)
+        if isinstance(value, str):
+            # Position-only requests start with + or -. The size is what Tk
+            # was asked for, before Windows adds the stock caption.
+            size = value.split('+', 1)[0].split('-', 1)[0]
+            if 'x' in size:
+                width, _, height = size.partition('x')
+                try:
+                    self._chrome_asked = (int(width), int(height))
+                except ValueError:
+                    pass
+        return result
+
     def toplevel_init(self, master=None, cnf={}, **kw):
         original_toplevel(self, master, cnf, **kw)
         # Tk maps a new window immediately, at a small default size. Hide it
@@ -937,6 +955,8 @@ def _ensure_patched() -> None:
     tk.Wm.withdraw = wm_withdraw
     tk.Wm.wm_deiconify = wm_deiconify
     tk.Wm.deiconify = wm_deiconify
+    tk.Wm.wm_geometry = wm_geometry
+    tk.Wm.geometry = wm_geometry
     tk.Toplevel.__init__ = toplevel_init
 
 
@@ -1817,6 +1837,7 @@ def _on_map(window, event):
     _apply_taskbar_style(window)
     _sync_size_hook(window)
     _refresh_frame(window)
+    _correct_opening_height(window)
     chrome = window._chrome
     if chrome.get('placed'):
         return
@@ -2078,6 +2099,71 @@ def _refresh_frame(window):
         ctypes.c_void_p(int(hwnd)), None, 0, 0, 0, 0,
         _SWP_NOMOVE_NOSIZE_NOZORDER_NOACTIVATE | _SWP_FRAMECHANGED)
     _paint_native_border(window)
+
+
+def _native_caption_extra(hwnd, inset):
+    """Height Windows adds for a caption this frame does not keep.
+
+    Tk sizes a window that has a minimum size, or is transient, as if the
+    stock caption and resize border were still outside the client. This
+    frame takes the caption into the client and keeps only ``inset`` at the
+    bottom, so the client opens that much too tall.
+    """
+    user32 = _user32
+    try:
+        user32.GetDpiForWindow.restype = ctypes.c_uint
+        user32.GetDpiForWindow.argtypes = (ctypes.c_void_p,)
+        user32.GetSystemMetricsForDpi.restype = ctypes.c_int
+        user32.GetSystemMetricsForDpi.argtypes = (ctypes.c_int, ctypes.c_uint)
+        dpi = int(user32.GetDpiForWindow(ctypes.c_void_p(int(hwnd))) or 96)
+        caption = int(user32.GetSystemMetricsForDpi(_SM_CYCAPTION, dpi))
+        frame = int(user32.GetSystemMetricsForDpi(_SM_CXFRAME, dpi))
+        pad = int(user32.GetSystemMetricsForDpi(_SM_CXPADDEDBORDER, dpi))
+    except (AttributeError, OSError):
+        caption = int(user32.GetSystemMetrics(_SM_CYCAPTION))
+        frame = int(user32.GetSystemMetrics(_SM_CXFRAME))
+        pad = int(user32.GetSystemMetrics(_SM_CXPADDEDBORDER))
+    return caption + 2 * max(frame + pad, 0) - int(inset)
+
+
+def _correct_opening_height(window):
+    """Drop the stock caption out of the height Tk just applied.
+
+    A later geometry change is not padded, and neither is a window the user
+    has resized. Only the height that appears on the first map is.
+    """
+    if platform.system() != 'Windows':
+        return
+    chrome = getattr(window, '_chrome', None)
+    hook = getattr(window, '_size_hook', None)
+    if chrome is None or hook is None or chrome.get('opening_sized') or chrome.get('zoomed'):
+        return
+    try:
+        if window.wm_state() != 'normal':
+            return
+        actual = int(window.winfo_height())
+        asked = getattr(window, '_chrome_asked', None)
+        target = int(asked[1]) if asked else int(window.winfo_reqheight())
+    except (tk.TclError, TypeError, ValueError, IndexError):
+        return
+    if actual <= 1 or target <= 1:
+        return
+    chrome['opening_sized'] = True
+    extra = _native_caption_extra(hook.hwnd, _edge_inset(hook))
+    if extra <= 0 or actual != target + extra:
+        return
+    rect = _window_rect(hook.hwnd)
+    if rect is None:
+        return
+    left, top, right, bottom = rect
+    user32 = _user32
+    user32.SetWindowPos.argtypes = (
+        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
+        ctypes.c_int, ctypes.c_int, ctypes.c_uint)
+    user32.SetWindowPos(
+        ctypes.c_void_p(int(hook.hwnd)), None,
+        int(left), int(top), int(right - left), int(bottom - top - extra),
+        _SWP_NOZORDER_NOACTIVATE)
 
 
 def _native_resize_band(hwnd):

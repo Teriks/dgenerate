@@ -126,6 +126,49 @@ class ThemeChromeTest(unittest.TestCase):
             self.assertEqual(window.winfo_y(), 50)
         themechrome._release_pointer(window)
 
+    def test_opening_height_is_not_padded_by_the_stock_caption(self):
+        if platform.system() != 'Windows':
+            self.skipTest('caption padding is windows only')
+        window = tk.Toplevel(_ROOT)
+        self.addCleanup(window.destroy)
+        window.withdraw()
+        tk.Label(window, text='one line').pack(anchor='w', padx=8, pady=8)
+        window.update_idletasks()
+        width, height = window.winfo_reqwidth(), window.winfo_reqheight()
+        window.minsize(width, height)
+        window.geometry(f'{width}x{height}+40+40')
+        window.deiconify()
+        window.update()
+        self.assertEqual(window.winfo_height(), height)
+
+        window.geometry(f'{width}x{height + 40}+40+40')
+        window.update()
+        self.assertEqual(window.winfo_height(), height + 40)
+
+        plain = tk.Toplevel(_ROOT)
+        self.addCleanup(plain.destroy)
+        plain.withdraw()
+        tk.Label(plain, text='plain').pack()
+        plain.update_idletasks()
+        plain_height = plain.winfo_reqheight()
+        plain.geometry(f'{plain.winfo_reqwidth()}x{plain_height}+80+80')
+        plain.deiconify()
+        plain.update()
+        self.assertEqual(plain.winfo_height(), plain_height)
+
+        owned = tk.Toplevel(_ROOT)
+        self.addCleanup(owned.destroy)
+        owned.withdraw()
+        owned.resizable(False, False)
+        owned.transient(_ROOT)
+        tk.Label(owned, text='owned').pack(padx=8, pady=8)
+        owned.update_idletasks()
+        owned_height = owned.winfo_reqheight()
+        owned.geometry(f'+120+120')
+        owned.deiconify()
+        owned.update()
+        self.assertEqual(owned.winfo_height(), owned_height)
+
     def test_windows_keeps_a_native_resize_border(self):
         if platform.system() != 'Windows':
             self.skipTest('native hit testing is windows only')
