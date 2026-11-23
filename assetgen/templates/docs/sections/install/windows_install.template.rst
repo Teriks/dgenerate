@@ -12,9 +12,9 @@ Manual Install
 --------------
 
 Install Python 3.14. dgenerate requires Python >=3.11.5, except 3.14.1, and older than 3.15.
-Use 3.14.8. Do not install 3.14.1.
+Use 3.14.10. Do not install 3.14.1.
 
-https://www.python.org/ftp/python/3.14.8/python-3.14.8-amd64.exe
+https://www.python.org/ftp/python/3.14.10/python-3.14.10-amd64.exe
 
 Make sure you select the option "Add to PATH" in the python installer,
 otherwise invoke python directly using it's full path while installing the tool.
