@@ -27,6 +27,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
 import tkinter
 import tkinter as tk
 import tkinter.messagebox as messagebox
@@ -545,6 +546,105 @@ def _choose_update_action(parent, message: str) -> str:
     return choice['value']
 
 
+def _download_installer(parent, tag: str, install_dir: str):
+    """Download on a worker thread so the console keeps handling events.
+
+    :return: ``('ok', path)``, ``('cancel', None)``, ``('missing', None)``
+        or ``('failed', None)``. The directory is removed unless the
+        download completed.
+    """
+    state = {'done': False, 'status': 'cancel', 'path': None,
+             'cancel': threading.Event()}
+    dialog = tk.Toplevel(parent)
+    dialog.withdraw()
+    dialog.title('Update')
+    dialog.resizable(False, False)
+    dialog.transient(parent)
+    dialog.grab_set()
+
+    frame = ttk.Frame(dialog, padding=16)
+    frame.pack(fill=tk.BOTH, expand=True)
+    ttk.Label(frame, text='Downloading the installer...').pack(anchor=tk.W)
+    bar = ttk.Progressbar(frame, mode='indeterminate', length=360)
+    bar.pack(fill=tk.X, pady=(12, 0))
+    bar.start(15)
+
+    def finish(status, path=None):
+        if state['done']:
+            return
+        state['done'] = True
+        state['status'] = status
+        state['path'] = path
+        state['cancel'].set()
+        try:
+            bar.stop()
+            dialog.destroy()
+        except tk.TclError:
+            pass
+
+    def show_progress(done, total):
+        def update():
+            if state['done']:
+                return
+            try:
+                if not dialog.winfo_exists():
+                    return
+                if total and str(bar['mode']) != 'determinate':
+                    bar.stop()
+                    bar.configure(mode='determinate', maximum=total, value=done)
+                elif total:
+                    bar.configure(value=done)
+            except tk.TclError:
+                state['cancel'].set()
+
+        try:
+            parent.after(0, update)
+        except tk.TclError:
+            state['cancel'].set()
+
+    def worker():
+        status, path = 'failed', None
+        try:
+            if state['cancel'].is_set():
+                status = 'cancel'
+                return
+            found = _d_resources.fetch_release_installer_download(tag)
+            if state['cancel'].is_set():
+                status = 'cancel'
+                return
+            if found is None:
+                status = 'missing'
+                return
+            asset_name, download_url = found
+            path = os.path.join(install_dir, asset_name)
+            ok = _d_resources.download_release_installer(
+                download_url, path,
+                progress=show_progress, cancel=state['cancel'].is_set)
+            status = 'ok' if ok else ('cancel' if state['cancel'].is_set() else 'failed')
+            if status != 'ok':
+                path = None
+        finally:
+            if status != 'ok':
+                shutil.rmtree(install_dir, ignore_errors=True)
+            try:
+                parent.after(0, lambda status=status, path=path: finish(status, path))
+            except tk.TclError:
+                pass
+
+    ttk.Button(frame, text='Cancel', command=lambda: finish('cancel')).pack(
+        anchor=tk.E, pady=(12, 0))
+    dialog.protocol('WM_DELETE_WINDOW', lambda: finish('cancel'))
+    dialog.update_idletasks()
+    parent.update_idletasks()
+    x = parent.winfo_rootx() + max(0, (parent.winfo_width() - dialog.winfo_width()) // 2)
+    y = parent.winfo_rooty() + max(0, (parent.winfo_height() - dialog.winfo_height()) // 2)
+    dialog.geometry(f'+{x}+{y}')
+    dialog.deiconify()
+    threading.Thread(target=worker, name='dgenerate-installer-download', daemon=True).start()
+    parent.wait_window(dialog)
+    return state['status'], state['path']
+
+
 def start_network_installer(console, tag: str, page_url: str, message: str,
                             installer_args: list[str] | None = None):
     """
@@ -564,40 +664,24 @@ def start_network_installer(console, tag: str, page_url: str, message: str,
     if action != 'install':
         return
 
-    # The installer download runs on the UI thread, and the window is not
-    # destroyed until it finishes. Stop the shell first, including anything
-    # it spawned, so a live download cannot hold the window open.
-    # restart=True only kills now. If the download fails and this call
-    # returns to the main loop, the shell is started again. A successful
-    # install destroys the window before that can happen.
+    # Stop the shell first, including anything it spawned, so a live run
+    # cannot hold the window open. restart=True only kills now. If the
+    # download fails and this call returns to the main loop, the shell is
+    # started again. A successful install destroys the window first.
     console.kill_shell_process(restart=True)
 
-    download = _d_resources.fetch_release_installer_download(tag)
-    if download is None:
+    install_dir = tempfile.mkdtemp(prefix='dgenerate_install_')
+    status, installer_path = _download_installer(console, tag, install_dir)
+    if status == 'cancel':
+        return
+    if status != 'ok':
         messagebox.showerror(
             'Update',
             'Could not find an installer for this platform, '
             'or the release could not be reached.\n\n'
-            f'See {page_url}')
+            f'See {page_url}' if status == 'missing' else
+            f'Download failed. Try again later or install manually from {page_url}')
         return
-
-    asset_name, download_url = download
-    install_dir = tempfile.mkdtemp(prefix='dgenerate_install_')
-    installer_path = os.path.join(install_dir, asset_name)
-
-    try:
-        console.config(cursor='watch')
-        console.update_idletasks()
-        if not _d_resources.download_release_installer(download_url, installer_path):
-            messagebox.showerror(
-                'Update',
-                f'Download failed. Try again later or install manually from {page_url}')
-            return
-    finally:
-        try:
-            console.config(cursor='')
-        except tk.TclError:
-            pass
 
     _prepare_installer(installer_path)
 

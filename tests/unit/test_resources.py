@@ -211,5 +211,75 @@ class TestNetworkInstallFlag(unittest.TestCase):
             self.assertFalse(resources.is_network_install())
 
 
+class TestDownloadReleaseInstaller(unittest.TestCase):
+    def _serve(self, handler):
+        import threading
+        from http.server import HTTPServer
+
+        server = HTTPServer(('127.0.0.1', 0), handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.shutdown)
+        self.addCleanup(server.server_close)
+        return server
+
+    def test_reports_progress_and_writes_the_file(self):
+        import os
+        import tempfile
+        from http.server import BaseHTTPRequestHandler
+
+        body = b'installer-bytes'
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, format, *args):
+                return
+
+        server = self._serve(Handler)
+        progress = []
+        with tempfile.TemporaryDirectory() as directory:
+            dest = os.path.join(directory, 'installer')
+            ok = resources.download_release_installer(
+                f'http://127.0.0.1:{server.server_address[1]}/installer',
+                dest,
+                progress=lambda done, total: progress.append((done, total)))
+            self.assertTrue(ok)
+            with open(dest, 'rb') as downloaded:
+                self.assertEqual(downloaded.read(), body)
+        self.assertEqual(progress, [(len(body), len(body))])
+
+    def test_cancel_stops_between_chunks(self):
+        import os
+        import tempfile
+        from http.server import BaseHTTPRequestHandler
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = b'x' * (1024 * 256 + 10)
+                self.send_response(200)
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, format, *args):
+                return
+
+        server = self._serve(Handler)
+        with tempfile.TemporaryDirectory() as directory:
+            dest = os.path.join(directory, 'installer')
+            ok = resources.download_release_installer(
+                f'http://127.0.0.1:{server.server_address[1]}/installer',
+                dest,
+                cancel=lambda: True)
+            self.assertFalse(ok)
+            with open(dest, 'rb') as downloaded:
+                self.assertLess(len(downloaded.read()), 1024 * 256 + 10)
+
+
 if __name__ == '__main__':
     unittest.main()

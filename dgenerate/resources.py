@@ -537,23 +537,37 @@ def fetch_release_installer_download(tag: str) -> tuple[str, str] | None:
     return None
 
 
-def download_release_installer(download_url: str, dest_path: str) -> bool:
+def download_release_installer(download_url: str, dest_path: str,
+                               progress=None, cancel=None) -> bool:
     """
     Download a release installer asset to ``dest_path``.
+
+    ``progress`` is called with ``(bytes_read, total_bytes)`` as the file
+    arrives. ``total_bytes`` is 0 when the server does not say how large it
+    is. ``cancel`` is called between chunks and stops the download when it
+    returns true. Both are called from the thread that downloads.
     """
     try:
         with requests.get(
                 download_url,
                 headers={**_GITHUB_API_HEADERS, 'Accept': 'application/octet-stream'},
                 stream=True,
-                timeout=(10, 600)) as response:
+                timeout=(10, 60)) as response:
             response.raise_for_status()
+            total = int(response.headers.get('Content-Length') or 0)
+            done = 0
             with open(dest_path, 'wb') as fo:
                 for chunk in response.iter_content(chunk_size=1024 * 256):
-                    if chunk:
-                        fo.write(chunk)
+                    if cancel is not None and cancel():
+                        return False
+                    if not chunk:
+                        continue
+                    fo.write(chunk)
+                    done += len(chunk)
+                    if progress is not None:
+                        progress(done, total)
         return True
-    except (OSError, requests.exceptions.RequestException):
+    except (OSError, requests.exceptions.RequestException, ValueError):
         return False
 
 
