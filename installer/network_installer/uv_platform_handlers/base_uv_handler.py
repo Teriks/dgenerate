@@ -532,11 +532,14 @@ class BasePlatformHandler(ABC):
                 self.log_callback(f"Warning: site-packages directory not found at {site_packages}")
                 return False
 
-            # Use Python's compileall module to compile all Python files
-            # Run the compilation directly with the venv python to avoid uv run
+            # Use Python's compileall module to compile all Python files.
+            # Run the compilation directly with the venv python to avoid uv run.
+            # -j is required: the default is one worker, which is very slow on
+            # Windows where each .pyc write is scanned by antivirus.
+            jobs = self._compileall_jobs()
             compile_cmd = [
                 str(self.get_venv_python()),
-                '-m', 'compileall', str(site_packages), '-q'
+                '-m', 'compileall', '-j', str(jobs), '-q', str(site_packages),
             ]
 
             self.log_callback(f"Running bytecode compilation: {' '.join(compile_cmd)}")
@@ -559,6 +562,26 @@ class BasePlatformHandler(ABC):
         except Exception as e:
             self.log_callback(f"Error during bytecode compilation: {e}")
             return False
+
+    def _compileall_jobs(self) -> int:
+        """Pick a ``compileall -j`` worker count for this machine.
+
+        ``-j 0`` (one process per logical CPU) is a poor fit on Windows.
+        Each worker is a spawned ``python.exe``, and antivirus scans every
+        ``.pyc`` as it is written, so a full pool spends more time starting
+        processes than compiling. About half the logical CPUs — at least
+        four when the machine has more than four — overlaps that latency.
+        Windows refuses a process pool larger than 61. Other platforms use
+        one worker per CPU, capped so a very wide machine does not spawn
+        dozens of interpreters for an I/O-bound compile.
+        """
+        cpus = os.cpu_count() or 1
+        if self.system == 'windows':
+            jobs = max(1, min(cpus, 61))
+            if jobs > 4:
+                jobs = max(4, jobs // 2)
+            return jobs
+        return max(1, min(cpus, 32))
 
     def compile_bytecode_external(self, uv_exe: Path) -> bool:
         """
