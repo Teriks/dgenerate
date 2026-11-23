@@ -2126,6 +2126,23 @@ def _native_caption_extra(hwnd, inset):
     return caption + 2 * max(frame + pad, 0) - int(inset)
 
 
+def _drop_caption_from_minimum(window, extra):
+    """Keep the minimum in the same coordinates as the captionless frame.
+
+    Tk's minimum still includes the stock caption. The first resize would
+    otherwise grow the window back to that taller minimum.
+    """
+    try:
+        min_width, min_height = window.minsize()
+        min_width, min_height = int(min_width), int(min_height)
+    except (tk.TclError, TypeError, ValueError):
+        return
+    if min_height <= extra:
+        return
+    window.minsize(min_width, min_height - extra)
+    _sync_size_hook(window)
+
+
 def _correct_opening_height(window):
     """Drop the stock caption out of the height Tk just applied.
 
@@ -2164,6 +2181,7 @@ def _correct_opening_height(window):
         ctypes.c_void_p(int(hook.hwnd)), None,
         int(left), int(top), int(right - left), int(bottom - top - extra),
         _SWP_NOZORDER_NOACTIVATE)
+    _drop_caption_from_minimum(window, extra)
 
 
 def _native_resize_band(hwnd):
