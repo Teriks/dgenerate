@@ -402,3 +402,26 @@ class ThemeMenuTest(unittest.TestCase):
         else:
             self.assertFalse(thememenu._CUSTOM)
             self.assertTrue(issubclass(thememenu.MenuBar, tk.Menu))
+
+    def test_right_click_finds_the_smaller_widget(self):
+        from dgenerate.console import thememenu
+
+        outer = tk.Frame(_ROOT, width=200, height=200)
+        outer.place(x=0, y=0)
+        inner = tk.Frame(outer, width=40, height=40)
+        inner.place(x=10, y=10)
+        outer_menu = thememenu.ThemeMenu(outer, tearoff=0)
+        inner_menu = thememenu.ThemeMenu(inner, tearoff=0)
+        self.addCleanup(outer_menu.destroy)
+        self.addCleanup(inner_menu.destroy)
+        self.addCleanup(outer.destroy)
+        self.addCleanup(_ROOT.withdraw)
+        _ROOT.deiconify()
+        _ROOT.update()
+        x = inner.winfo_rootx() + 5
+        y = inner.winfo_rooty() + 5
+        self.assertIs(thememenu._context_menu_at(x, y), inner_menu)
+        self.assertIs(
+            thememenu._context_menu_at(outer.winfo_rootx() + 80, outer.winfo_rooty() + 80),
+            outer_menu)
+        self.assertIsNone(thememenu._context_menu_at(-1, -1))

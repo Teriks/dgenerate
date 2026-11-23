@@ -215,6 +215,7 @@ class ThemeMenu:
         self._owner_destroy = None
         if isinstance(master, tk.Misc):
             self._owner_destroy = master.bind('<Destroy>', self._on_owner_destroy, add='+')
+            _arm_right_click(master)
         _menus.append(self)
 
     def _on_owner_destroy(self, event):
@@ -1154,6 +1155,114 @@ def _inside(widget, x, y):
         return False
     left, top, width, height = rect
     return left <= x < left + width and top <= y < top + height
+
+
+_right_was_down = False
+_right_job = None
+
+
+def _context_menu_at(x, y):
+    """The context menu under a screen point, or none.
+
+    Bar menus are skipped. The smallest widget wins, so a menu on a field
+    inside a larger form is the one that opens.
+    """
+    best = None
+    best_area = None
+    for menu in _menus:
+        if getattr(menu, '_bar', None) is not None:
+            continue
+        master = getattr(menu, 'master', None)
+        if not isinstance(master, tk.Misc) or not _inside(master, x, y):
+            continue
+        try:
+            if not int(master.winfo_viewable()):
+                continue
+            area = master.winfo_width() * master.winfo_height()
+        except tk.TclError:
+            continue
+        if best is None or area < best_area:
+            best = menu
+            best_area = area
+    return best
+
+
+def _deliver_right_click():
+    """Open the context menu under the pointer, if a right-click binding did not.
+
+    uv's Tk does not turn a right-click on the editor into ``<Button-3>``
+    while a dialog is the active window. python.org's Tk does, and that
+    binding opens the menu on its own.
+    """
+    if _open:
+        return
+    for menu in _menus:
+        master = getattr(menu, 'master', None)
+        if not isinstance(master, tk.Misc):
+            continue
+        try:
+            x, y = master.winfo_pointerxy()
+        except tk.TclError:
+            continue
+        target = _context_menu_at(x, y)
+        if target is not None:
+            target.tk_popup(x, y)
+        return
+
+
+def _right_button_down():
+    """Whether the right mouse button is down. Reads it without an AppKit callback."""
+    if getattr(_aqua_buttons_down, 'lib', None) is None:
+        _aqua_buttons_down()
+    lib = getattr(_aqua_buttons_down, 'lib', None)
+    if not lib:
+        return False
+    # kCGMouseButtonRight.
+    return bool(lib.CGEventSourceButtonState(0, 1))
+
+
+def _poll_right_click():
+    global _right_was_down, _right_job
+    _right_job = None
+    down = _right_button_down()
+    if down and not _right_was_down:
+        _deliver_right_click()
+    _right_was_down = down
+    _arm_right_click(None)
+
+
+def _arm_right_click(widget):
+    """Poll the right button where uv's Tk swallows ``<Button-3>``.
+
+    The poll runs on Tk's timer, so it keeps the interpreter lock. An AppKit
+    event monitor calls back into Python while that lock is released and
+    aborts the process.
+    """
+    global _right_job
+    if _right_job is not None or platform.system() != 'Darwin':
+        return
+    import sys
+    if 'Python.framework' in getattr(sys, 'base_prefix', ''):
+        return
+    if widget is not None:
+        try:
+            if widget.tk.call('tk', 'windowingsystem') != 'aqua':
+                return
+        except tk.TclError:
+            return
+    anchor = widget
+    if anchor is None:
+        for menu in _menus:
+            master = getattr(menu, 'master', None)
+            if isinstance(master, tk.Misc):
+                anchor = master
+                break
+    if anchor is None:
+        return
+    try:
+        _right_job = anchor.after(16, _poll_right_click)
+    except tk.TclError:
+        _right_job = None
 
 
 def _popup_origin(popup):
