@@ -20,6 +20,7 @@ Note that the name of the ``pip`` executable may be named ``pip3`` on some syste
     # With extras. quant is not an extra. These are:
     # ncnn, xllamacpp, bitsandbytes, console_ui_vulkan, console_ui_opengl
     # console_ui_opengl is Windows and Linux only. macOS uses Metal.
+    # Any of those names combine inside the brackets.
 
     pip install "dgenerate[ncnn,console_ui_vulkan] @ git+https://github.com/Teriks/dgenerate@BRANCH_NAME" --extra-index-url https://download.pytorch.org/whl/cu132
 

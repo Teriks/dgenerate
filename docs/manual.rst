@@ -3563,6 +3563,10 @@ Install dgenerate:
     # * console_ui_vulkan (default Console UI preview on Windows and Linux (opt-in on macOS with DGENERATE_CONSOLE_UI_VULKAN=1);
     #   plays video and audio. The network installer selects this extra.
     #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
+    #
+    # Extras combine inside the brackets, for example
+    # dgenerate[ncnn,xllamacpp,console_ui_vulkan]
+    # An install that includes xllamacpp still uses the xllamacpp index below.
 
     # The commands below use the CUDA 13.2 torch index.
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
@@ -3662,6 +3666,11 @@ a cloned repository like this:
     # * console_ui_vulkan (default Console UI preview on Windows and Linux (opt-in on macOS with DGENERATE_CONSOLE_UI_VULKAN=1);
     #   plays video and audio. The network installer selects this extra.
     #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
+    #
+    # Extras combine inside the brackets, for example
+    # dgenerate[ncnn,xllamacpp,console_ui_vulkan]
+    # dev combines with them, for example .[dev,ncnn,xllamacpp]
+    # An install that includes xllamacpp still uses the xllamacpp index below.
 
     # The commands below use the CUDA 13.2 torch index.
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
@@ -3792,6 +3801,10 @@ Install dgenerate
     # * console_ui_vulkan (default Console UI preview on Windows and Linux (opt-in on macOS with DGENERATE_CONSOLE_UI_VULKAN=1);
     #   plays video and audio. The network installer selects this extra.
     #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
+    #
+    # Extras combine inside the brackets, for example
+    # dgenerate[ncnn,xllamacpp,bitsandbytes,console_ui_vulkan]
+    # An install that includes xllamacpp still uses the xllamacpp index below.
 
     # The commands below use the CUDA 13.2 torch index.
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
@@ -3882,6 +3895,9 @@ virtual environment you can do so like this:
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
     # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
+    #
+    # dev combines with the other extras, for example .[dev,ncnn,xllamacpp]
+    # An install that includes xllamacpp still uses the xllamacpp index below.
 
     pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu132/
 
@@ -3991,8 +4007,18 @@ Install dgenerate
 
     #!/usr/bin/env bash
 
-    # possible dgenerate package extras: ncnn, xllamacpp
-    # xllamacpp is used for the llama prompt upscaler plugin
+    # possible dgenerate package extras:
+
+    # * ncnn
+    # * xllamacpp (used for the llama prompt upscaler plugin)
+    # * bitsandbytes (the version --quantizer bnb uses; sdnq is already installed)
+    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
+    # * console_ui_vulkan (default Console UI preview; plays video and audio.
+    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
+    #
+    # Extras combine inside the brackets, for example
+    # dgenerate[ncnn,xllamacpp,bitsandbytes,console_ui_vulkan]
+    # An install that includes xllamacpp still uses the xllamacpp index below.
 
     # install with just support for torch
 
@@ -4015,12 +4041,15 @@ Install dgenerate
     --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
 
-    # bitsandbytes is the bitsandbytes extra. It installs the version dgenerate
-    # pins, which is what --quantizer bnb uses. sdnq is installed with
-    # dgenerate and does not need this extra.
+    # bitsandbytes alone
 
     pipx install "dgenerate[bitsandbytes]" \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
+
+    # ncnn, xllamacpp, bitsandbytes, and the Vulkan preview together
+
+    pipx install "dgenerate[ncnn,xllamacpp,bitsandbytes,console_ui_vulkan]" \
+    --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple"
 
 
     # You can install without pipx into your own environment like so
@@ -4037,6 +4066,10 @@ Install dgenerate
 
 
     pip3 install "dgenerate[bitsandbytes]==6.0.0" --extra-index-url https://download.pytorch.org/whl/rocm7.2/
+
+    # ncnn, xllamacpp, bitsandbytes, and the Vulkan preview together
+
+    pip3 install "dgenerate[ncnn,xllamacpp,bitsandbytes,console_ui_vulkan]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
 
 Linux with opencv-python-headless (libGL.so.1 issues)
 =====================================================
@@ -4139,6 +4172,8 @@ global python site packages.
     # * console_ui_vulkan (optional. Metal is the macOS preview and does not
     #   need an extra. Set DGENERATE_CONSOLE_UI_METAL=0 and
     #   DGENERATE_CONSOLE_UI_VULKAN=1 to use Vulkan. Needs MoltenVK / a Vulkan loader)
+    #
+    # Extras combine inside the brackets. Leave out any you do not want.
 
     pipx install dgenerate==6.0.0
 
@@ -4201,6 +4236,8 @@ of your own creation.
     # * console_ui_vulkan (optional. Metal is the macOS preview and does not
     #   need an extra. Set DGENERATE_CONSOLE_UI_METAL=0 and
     #   DGENERATE_CONSOLE_UI_VULKAN=1 to use Vulkan. Needs MoltenVK / a Vulkan loader)
+    #
+    # Extras combine inside the brackets. Leave out any you do not want.
 
     pip3 install dgenerate==6.0.0
 
@@ -4251,6 +4288,7 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
     # CUDA 13.2+ uses the URL below. CUDA 13.0 through 13.1 uses
     # https://download.pytorch.org/whl/cu130
     # CUDA 12.6 through 12.9 uses https://download.pytorch.org/whl/cu126
+    # Extras combine inside the brackets, for example dgenerate[ncnn,xllamacpp]==6.0.0
     !source /content/.venv/bin/activate; pip install dgenerate==6.0.0 --extra-index-url https://download.pytorch.org/whl/cu132
 
 4.) Finally you can run dgenerate, you must prefix all calls to dgenerate with an activation of the virtual environment, as
@@ -4296,6 +4334,7 @@ Note that the name of the ``pip`` executable may be named ``pip3`` on some syste
     # With extras. quant is not an extra. These are:
     # ncnn, xllamacpp, bitsandbytes, console_ui_vulkan, console_ui_opengl
     # console_ui_opengl is Windows and Linux only. macOS uses Metal.
+    # Any of those names combine inside the brackets.
 
     pip install "dgenerate[ncnn,console_ui_vulkan] @ git+https://github.com/Teriks/dgenerate@BRANCH_NAME" --extra-index-url https://download.pytorch.org/whl/cu132
 

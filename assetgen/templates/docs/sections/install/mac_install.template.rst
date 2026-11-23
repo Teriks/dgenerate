@@ -56,6 +56,8 @@ global python site packages.
     # * console_ui_vulkan (optional. Metal is the macOS preview and does not
     #   need an extra. Set DGENERATE_CONSOLE_UI_METAL=0 and
     #   DGENERATE_CONSOLE_UI_VULKAN=1 to use Vulkan. Needs MoltenVK / a Vulkan loader)
+    #
+    # Extras combine inside the brackets. Leave out any you do not want.
 
     pipx install dgenerate==@VERSION
 
@@ -118,6 +120,8 @@ of your own creation.
     # * console_ui_vulkan (optional. Metal is the macOS preview and does not
     #   need an extra. Set DGENERATE_CONSOLE_UI_METAL=0 and
     #   DGENERATE_CONSOLE_UI_VULKAN=1 to use Vulkan. Needs MoltenVK / a Vulkan loader)
+    #
+    # Extras combine inside the brackets. Leave out any you do not want.
 
     pip3 install dgenerate==@VERSION
 

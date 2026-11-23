@@ -26,6 +26,7 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
     # CUDA 13.2+ uses the URL below. CUDA 13.0 through 13.1 uses
     # https://download.pytorch.org/whl/cu130
     # CUDA 12.6 through 12.9 uses https://download.pytorch.org/whl/cu126
+    # Extras combine inside the brackets, for example dgenerate[ncnn,xllamacpp]==@VERSION
     !source /content/.venv/bin/activate; pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu132
 
 4.) Finally you can run dgenerate, you must prefix all calls to dgenerate with an activation of the virtual environment, as

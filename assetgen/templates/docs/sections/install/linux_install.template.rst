@@ -82,6 +82,10 @@ Install dgenerate
     # * console_ui_vulkan (default Console UI preview on Windows and Linux (opt-in on macOS with DGENERATE_CONSOLE_UI_VULKAN=1);
     #   plays video and audio. The network installer selects this extra.
     #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
+    #
+    # Extras combine inside the brackets, for example
+    # dgenerate[ncnn,xllamacpp,bitsandbytes,console_ui_vulkan]
+    # An install that includes xllamacpp still uses the xllamacpp index below.
 
     # The commands below use the CUDA 13.2 torch index.
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
@@ -172,6 +176,9 @@ virtual environment you can do so like this:
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
     # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
+    #
+    # dev combines with the other extras, for example .[dev,ncnn,xllamacpp]
+    # An install that includes xllamacpp still uses the xllamacpp index below.
 
     pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu132/
 
@@ -281,8 +288,18 @@ Install dgenerate
 
     #!/usr/bin/env bash
 
-    # possible dgenerate package extras: ncnn, xllamacpp
-    # xllamacpp is used for the llama prompt upscaler plugin
+    # possible dgenerate package extras:
+
+    # * ncnn
+    # * xllamacpp (used for the llama prompt upscaler plugin)
+    # * bitsandbytes (the version --quantizer bnb uses; sdnq is already installed)
+    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
+    # * console_ui_vulkan (default Console UI preview; plays video and audio.
+    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
+    #
+    # Extras combine inside the brackets, for example
+    # dgenerate[ncnn,xllamacpp,bitsandbytes,console_ui_vulkan]
+    # An install that includes xllamacpp still uses the xllamacpp index below.
 
     # install with just support for torch
 
@@ -305,12 +322,15 @@ Install dgenerate
     --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
 
-    # bitsandbytes is the bitsandbytes extra. It installs the version dgenerate
-    # pins, which is what --quantizer bnb uses. sdnq is installed with
-    # dgenerate and does not need this extra.
+    # bitsandbytes alone
 
     pipx install "dgenerate[bitsandbytes]" \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
+
+    # ncnn, xllamacpp, bitsandbytes, and the Vulkan preview together
+
+    pipx install "dgenerate[ncnn,xllamacpp,bitsandbytes,console_ui_vulkan]" \
+    --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple"
 
 
     # You can install without pipx into your own environment like so
@@ -327,4 +347,8 @@ Install dgenerate
 
 
     pip3 install "dgenerate[bitsandbytes]==@VERSION" --extra-index-url https://download.pytorch.org/whl/rocm7.2/
+
+    # ncnn, xllamacpp, bitsandbytes, and the Vulkan preview together
+
+    pip3 install "dgenerate[ncnn,xllamacpp,bitsandbytes,console_ui_vulkan]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
 

@@ -62,6 +62,10 @@ Install dgenerate:
     # * console_ui_vulkan (default Console UI preview on Windows and Linux (opt-in on macOS with DGENERATE_CONSOLE_UI_VULKAN=1);
     #   plays video and audio. The network installer selects this extra.
     #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
+    #
+    # Extras combine inside the brackets, for example
+    # dgenerate[ncnn,xllamacpp,console_ui_vulkan]
+    # An install that includes xllamacpp still uses the xllamacpp index below.
 
     # The commands below use the CUDA 13.2 torch index.
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
@@ -161,6 +165,11 @@ a cloned repository like this:
     # * console_ui_vulkan (default Console UI preview on Windows and Linux (opt-in on macOS with DGENERATE_CONSOLE_UI_VULKAN=1);
     #   plays video and audio. The network installer selects this extra.
     #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
+    #
+    # Extras combine inside the brackets, for example
+    # dgenerate[ncnn,xllamacpp,console_ui_vulkan]
+    # dev combines with them, for example .[dev,ncnn,xllamacpp]
+    # An install that includes xllamacpp still uses the xllamacpp index below.
 
     # The commands below use the CUDA 13.2 torch index.
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
