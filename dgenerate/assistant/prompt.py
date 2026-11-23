@@ -368,12 +368,14 @@ Public. Refine in the same invocation with --sdxl-refiner stabilityai/stable-dif
 - SDXL inpainting (needs --image-seeds "image;mask"): diffusers/stable-diffusion-xl-1.0-inpainting-0.1, \
 --model-type sdxl --variant fp16 --dtype float16. Public.
 - Stable Diffusion 3 Medium: stabilityai/stable-diffusion-3-medium-diffusers, --model-type sd3 --variant fp16. Gated. \
-GGUF: --transformer https://huggingface.co/city96/stable-diffusion-3-medium-gguf/blob/main/sd3_medium-Q4_K_S.gguf.
+GGUF: --transformer https://huggingface.co/city96/stable-diffusion-3-medium-gguf/blob/main/sd3_medium-Q4_K_S.gguf. \
+INT8: --transformer https://huggingface.co/Teriks/stable-diffusion-3-medium-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors.
 - Stable Diffusion 3.5 Large: stabilityai/stable-diffusion-3.5-large, --model-type sd3. Gated. \
 GGUF: --transformer https://huggingface.co/city96/stable-diffusion-3.5-large-gguf/blob/main/sd3.5_large-Q4_0.gguf. \
 FP8: --transformer https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/sd3.5_large_fp8_scaled.safetensors.
 - Stable Diffusion 3.5 Medium: stabilityai/stable-diffusion-3.5-medium, --model-type sd3. Gated. \
-GGUF: --transformer https://huggingface.co/city96/stable-diffusion-3.5-medium-gguf/blob/main/sd3.5_medium-Q4_K_S.gguf.
+GGUF: --transformer https://huggingface.co/city96/stable-diffusion-3.5-medium-gguf/blob/main/sd3.5_medium-Q4_K_S.gguf. \
+INT8: --transformer https://huggingface.co/Teriks/stable-diffusion-3.5-medium-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors.
 - Stable Cascade: stabilityai/stable-cascade-prior, --model-type s-cascade, \
 with --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16". Public.
 - Flux Schnell: black-forest-labs/FLUX.1-schnell, 4 steps, guidance 0, --model-type flux --dtype bfloat16. Public. \
@@ -396,7 +398,8 @@ NVFP4: --transformer https://huggingface.co/Comfy-Org/Krea-2/blob/main/diffusion
 A Krea 2 LoRA uses the matching repo on the invocation line and the LoRA on --loras. \
 Not FLUX.1-Krea-dev, and not Flux.2.
 - Flux inpainting and outpainting: black-forest-labs/FLUX.1-Fill-dev, --model-type flux-fill. Gated. \
-GGUF: --transformer https://huggingface.co/YarvixPA/FLUX.1-Fill-dev-GGUF/blob/main/flux1-fill-dev-Q4_K_S.gguf.
+GGUF: --transformer https://huggingface.co/YarvixPA/FLUX.1-Fill-dev-GGUF/blob/main/flux1-fill-dev-Q4_K_S.gguf. \
+INT8: --transformer https://huggingface.co/Teriks/FLUX.1-Fill-dev-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors.
 - Flux image editing: black-forest-labs/FLUX.1-Kontext-dev, --model-type flux-kontext. Gated. \
 GGUF: --transformer https://huggingface.co/QuantStack/FLUX.1-Kontext-dev-GGUF/blob/main/flux1-kontext-dev-Q4_K_S.gguf. \
 FP8: --transformer https://huggingface.co/Comfy-Org/flux1-kontext-dev_ComfyUI/blob/main/split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors.
@@ -453,7 +456,9 @@ NVFP4: --transformer https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/blob/ma
 - Flux.2 Klein KV: black-forest-labs/FLUX.2-klein-9b-kv, --model-type flux2-klein-kv --dtype bfloat16. \
 Gated. Reference images are --image-seeds with no mask and no strength. No guidance scale. \
 GGUF: --transformer https://huggingface.co/QuantStack/FLUX.2-Klein-9B-KV-GGUF/blob/main/Flux-2-Klein-9B-KV-Q4_K_S.gguf. \
-Width 4096 uses the Klein 9B transformer config, which matches this checkpoint.
+INT8: --transformer https://huggingface.co/Teriks/FLUX.2-klein-9B-KV-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors. \
+Width 4096 uses the Klein 9B transformer config, which matches this checkpoint. \
+FLUX.2 GGUF keeps Diffusers tensor names. The Teriks INT8 file uses ComfyUI names.
 - FLUX.3 Image Klein distilled: black-forest-labs/flux-3-image-klein, --model-type flux3 \
 --dtype bfloat16, 16 steps, guidance 1, --model-sequential-offload, --output-size 1024. \
 Gated. No negative prompt. --image-seeds are references, no mask and no strength. \
@@ -486,6 +491,9 @@ This is not Qwen/Qwen-Image.
 - Kolors: Kwai-Kolors/Kolors-diffusers, --model-type kolors --variant fp16. Public.
 - Hunyuan-DiT: Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers, --model-type hydit --dtype float16, \
 guidance 5, 50 steps, 1024. Public. No quantizer and no offload. \
+GGUF: --transformer https://huggingface.co/Teriks/HunyuanDiT-v1.2-quants/blob/main/transformer-Q4_K.gguf. \
+INT8: --transformer https://huggingface.co/Teriks/HunyuanDiT-v1.2-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors. \
+The GGUF keeps Diffusers tensor names. The safetensors file uses ComfyUI names. \
 This is not HunyuanVideo (--model-type hyvideo-15) and not HunyuanImage.
 - HunyuanImage 2.1: hunyuanvideo-community/HunyuanImage-2.1-Diffusers, --model-type hyimage-21 \
 --dtype bfloat16, guidance 3.5, 50 steps, 2048, --model-sequential-offload. Public. \
@@ -515,13 +523,28 @@ Text-to-video Lite is kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers at 76
 Text-to-video Pro is kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers at 1024x768. \
 Its GGUF is --transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sft-5s-GGUF/blob/main/kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf \
 on that Pro parent. \
+INT8 for that Pro parent: --transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sft-5s-GGUF/blob/main/transformer-int8_tensorwise-comfy.safetensors. \
 An image input, including a still from the previous step, is kandinskylab/Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers at 768x512 \
-and keeps that repository transformer. Lite image-to-video is kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers. \
-Do not use a T2V repo or the Pro T2V GGUF for an image. There is no I2V GGUF in the examples. \
+and keeps that repository transformer. There is no quant file for the non-distilled I2V Pro checkpoint. \
+Lite image-to-video is kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers. \
+Do not use a T2V repo or the Pro T2V GGUF for an image. \
+Lite text-to-video GGUF: --transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Lite-sft-5s-quants/blob/main/transformer-Q4_K.gguf \
+on the Lite T2V parent. \
+Lite image-to-video GGUF: --transformer https://huggingface.co/Teriks/Kandinsky-5.0-I2V-Lite-5s-quants/blob/main/transformer-Q4_K.gguf \
+on the Lite I2V parent. \
+Pro distilled text-to-video is kandinskylab/Kandinsky-5.0-T2V-Pro-distilled-5s-Diffusers, 16 steps, \
+--transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-distilled-5s-quants/blob/main/transformer-Q4_K.gguf. \
+Pro distilled image-to-video is kandinskylab/Kandinsky-5.0-I2V-Pro-distilled-5s-Diffusers, \
+--transformer https://huggingface.co/Teriks/Kandinsky-5.0-I2V-Pro-distilled-5s-quants/blob/main/transformer-Q4_K.gguf. \
+These Kandinsky 5 GGUFs keep Diffusers tensor names. Do not add -comfy to those filenames. \
+The matching INT8 file in each Teriks repo is transformer-int8_tensorwise-comfy.safetensors. \
 No video seed, no last-frame=, and no second image.
 - Kandinsky 5 image: --model-type kandinsky5-image. \
 Text-to-image is kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers, guidance 3.5, 50 steps, 1024. \
-An edit is kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers with --image-seeds. Public.
+GGUF: --transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2I-Lite-quants/blob/main/transformer-Q4_K.gguf. \
+An edit is kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers with --image-seeds. Public. \
+GGUF: --transformer https://huggingface.co/Teriks/Kandinsky-5.0-I2I-Lite-quants/blob/main/transformer-Q4_K.gguf. \
+INT8 for either is transformer-int8_tensorwise-comfy.safetensors in that same Teriks repo. Diffusers GGUF names, no -comfy.
 - Kandinsky 6 video: --model-type kandinsky6-video, --dtype bfloat16, --model-sequential-offload, \
 --video-fps 24, --output-size 864x480, 5 seconds, audio included. \
 Lite distilled is kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers, PiflowScheduler, 10 steps, guidance 1. Public. \
@@ -537,6 +560,10 @@ Omit --pipeline-prompt-enhance unless asked. No value, or one system prompt. \
 GGUF: --transformer https://huggingface.co/realrebelai/Kandinsky-6.0-Pro-5s_GGUFs/blob/main/Diffusion Model/Full/Kandinsky-6.0-Pro-5s-Q4_K_S.gguf \
 on the Pro parent, 50 steps, guidance 5. That parent is gated, so the config still needs HF_TOKEN. \
 INT8 Lite distilled: --transformer https://huggingface.co/kabachuha/Kandinsky-6.0-Lite-distill-5s-int8-convrot/blob/main/Kandinsky-6.0-Lite-Distilled-5s-int8-convrot.safetensors. \
+Lite distilled GGUF: --transformer https://huggingface.co/Teriks/Kandinsky-6.0-Lite-distill-5s-quants/blob/main/transformer-Q4_K.gguf \
+on the Lite distilled parent. Diffusers tensor names, no -comfy. \
+Pro distilled GGUF: --transformer https://huggingface.co/Teriks/Kandinsky-6.0-Pro-distill-5s-quants/blob/main/transformer-Q4_K.gguf \
+on the Pro distilled parent. \
 This is not Kandinsky 5.
 - MiniMax-H3: --model-type minimax-h3-video, --dtype bfloat16, --model-sequential-offload. \
 Repository MiniMaxAI/MiniMax-H3. Public. 24 fps, 30 steps, audio in the mp4. \
@@ -577,6 +604,7 @@ The last frame is last-frame= on --image-seeds, at strength 1. strength= is the 
 With --ltx-ic-lora the plain path is the control clip, not the first frame. Describe the sound. \
 Lightricks/LTX-Video is the older video-only model. Use it only when named, as --model-type ltx-video. \
 GGUF: --transformer https://huggingface.co/city96/LTX-Video-gguf/blob/main/ltx-video-2b-v0.9-Q4_K_S.gguf. \
+INT8: --transformer https://huggingface.co/Teriks/LTX-Video-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors. \
 Never write Lightricks/LTX-Video with --model-type ltx2. --model-type ltx2 belongs on \
 Lightricks/LTX-2.5-Diffusers, Lightricks/LTX-2.3, and Lightricks/LTX-2. \
 Never write those three with --model-type ltx-video. \
@@ -615,6 +643,10 @@ Use that same Gemma 3 encoder with the 19B dev GGUF. Keep 30 steps, guidance 4, 
 Public. --video-lengths is seconds and snaps to 4k+1 frames \
 (5 seconds at 16 fps is 81). Width and height must be divisible by 16. \
 Put the negative after ; in --prompts. \
+The 1.3B GGUF is --transformer https://huggingface.co/Teriks/Wan2.1-T2V-1.3B-quants/blob/main/transformer-Q4_K-comfy.gguf \
+on Wan-AI/Wan2.1-T2V-1.3B-Diffusers. \
+Its INT8 is --transformer https://huggingface.co/Teriks/Wan2.1-T2V-1.3B-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors. \
+Those filenames use ComfyUI tensor names. Do not put them on the 14B parent. \
 A still, including one written by the previous invocation, is image-to-video on Wan-AI/Wan2.1-I2V-14B-480P-Diffusers. \
 Its GGUF is --transformer https://huggingface.co/city96/Wan2.1-I2V-14B-480P-gguf/blob/main/wan2.1-i2v-14b-480p-Q4_K_S.gguf \
 on that same parent. \
@@ -634,6 +666,8 @@ belongs only on the T2V parent. \
 A video seed path is video-to-video on the T2V repo and rejects --video-lengths; trim with frame-end=. \
 control=, mask=, and reference= are VACE. Do not put them on a T2V or I2V repo. \
 The full checkpoint is Wan-AI/Wan2.1-VACE-1.3B-diffusers. \
+Its GGUF is --transformer https://huggingface.co/Teriks/Wan2.1-VACE-1.3B-quants/blob/main/transformer-Q4_K-comfy.gguf \
+and its INT8 is --transformer https://huggingface.co/Teriks/Wan2.1-VACE-1.3B-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors. \
 The 14B quant files stay on Wan-AI/Wan2.1-VACE-14B-diffusers: \
 --transformer https://huggingface.co/QuantStack/Wan2.1_14B_VACE-GGUF/blob/main/Wan2.1_14B_VACE-Q4_K_S.gguf \
 or https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_vace_14B_fp16.safetensors. \
@@ -669,7 +703,13 @@ Omitting steps uses 20 and omitting guidance uses 1 (WanAnimatePipeline). --vide
 replace mode needs wan-background= and mask=. \
 Wan-Animate-2 is --model-type wan-animate-2, a character still plus wan-driving= only. \
 Omitting steps uses 40 on Wan-AI/Wan2.2-Animate-2-14B-Diffusers and 10 on the distilled repo. \
---video-fps 24. --video-lengths is rejected. No pose, face, or background keywords.
+--video-fps 24. --video-lengths is rejected. No pose, face, or background keywords. \
+Base GGUF: --transformer https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-Q4_K-comfy.gguf \
+on Wan-AI/Wan2.2-Animate-2-14B-Diffusers. \
+INT8: --transformer https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors. \
+Distilled GGUF: --transformer https://huggingface.co/Teriks/Wan-Animate-2-14B-Distilled-quants/blob/main/transformer-Q4_K-comfy.gguf \
+on Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers, 10 steps. \
+Those files use ComfyUI tensor names.
 - 4x upscaling with diffusion: stabilityai/stable-diffusion-x4-upscaler, --model-type upscaler-x4 --variant fp16. Public.
 - 2x latent upscaling: stabilityai/sd-x2-latent-upscaler, --model-type upscaler-x2. Public.
 - Instruction editing: timbrooks/instruct-pix2pix (--model-type pix2pix), \

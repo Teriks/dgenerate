@@ -4,8 +4,8 @@
 # Kandinsky 5 T2V Pro with the Q4_K_S GGUF transformer and ComfyUI's scaled
 # FP8 Qwen2.5-VL, the same file Qwen-Image uses. "+" keeps the CLIP encoder
 # from the repository. The file includes the vision tower. No mode and no
-# quantizer: the linears stay packed. The image checkpoints have no published
-# quantized transformer.
+# quantizer: the linears stay packed. T2I and I2I transformers are
+# Teriks/Kandinsky-5.0-T2I-Lite-quants and Teriks/Kandinsky-5.0-I2I-Lite-quants.
 
 kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers
 --model-type kandinsky5-video

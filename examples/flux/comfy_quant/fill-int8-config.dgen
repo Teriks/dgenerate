@@ -1,0 +1,29 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# FLUX.1 Fill Dev transformer, int8 tensorwise, ComfyUI tensor names.
+# https://huggingface.co/Teriks/FLUX.1-Fill-dev-quants
+# The YarvixPA GGUF is a different file. Inpaint needs image;mask.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+\setp image "https://huggingface.co/datasets/diffusers/diffusers-images-docs/resolve/main/cup.png"
+\setp mask "https://huggingface.co/datasets/diffusers/diffusers-images-docs/resolve/main/cup_mask.png"
+
+black-forest-labs/FLUX.1-Fill-dev
+--model-type flux-fill
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Teriks/FLUX.1-Fill-dev-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors
+--inference-steps 50
+--guidance-scales 30
+--gen-seeds 1
+--output-path flux-fill-int8
+--output-size 768
+--image-seeds "{{ image }};{{ mask }}"
+--prompts "a white paper cup"

@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Kandinsky 6 Pro distilled GGUF, Diffusers tensor names (no -comfy).
+# https://huggingface.co/Teriks/Kandinsky-6.0-Pro-distill-5s-quants
+# The realrebelai Pro GGUF is the non-distilled Pro checkpoint.
+
+kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers
+--model-type kandinsky6-video
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Teriks/Kandinsky-6.0-Pro-distill-5s-quants/blob/main/transformer-Q4_K.gguf
+--inference-steps 10
+--guidance-scales 1
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky6-pro-distilled-gguf
+--output-size 864x480
+--prompts "A red kite glides above a windswept coastal meadow at golden hour. Audio: wind and distant surf."

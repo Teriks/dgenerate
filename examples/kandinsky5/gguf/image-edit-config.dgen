@@ -1,0 +1,17 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Kandinsky 5 I2I Lite GGUF, Diffusers tensor names (no -comfy).
+# https://huggingface.co/Teriks/Kandinsky-5.0-I2I-Lite-quants
+
+kandinskylab/Kandinsky-5.0-I2I-Lite-sft-Diffusers
+--model-type kandinsky5-image
+--image-seeds ../../media/monalisa.png
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Teriks/Kandinsky-5.0-I2I-Lite-quants/blob/main/transformer-Q4_K.gguf
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path kandinsky5-i2i-gguf
+--prompts "Change the scene to a sunny spring morning while keeping the subject and composition"

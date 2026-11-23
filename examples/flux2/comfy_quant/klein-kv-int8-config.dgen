@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Flux.2 Klein KV transformer, int8 tensorwise, ComfyUI tensor names.
+# https://huggingface.co/Teriks/FLUX.2-klein-9B-KV-quants
+# The QuantStack GGUF stays Diffusers-named. This safetensors file is the Comfy quant.
+# Reference images are --image-seeds with no mask. There is no guidance scale.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+black-forest-labs/FLUX.2-klein-9b-kv
+--model-type flux2-klein-kv
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Teriks/FLUX.2-klein-9B-KV-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 4
+--image-seeds "../../media/beach.jpg"
+--gen-seeds 1
+--output-path flux2-klein-kv-int8
+--output-size 1024
+--prompts "The same beach at night, moonlight on the water, photo"

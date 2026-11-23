@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Kandinsky 5 T2V Pro sft transformer, int8 tensorwise, ComfyUI tensor names.
+# https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sft-5s-GGUF
+# The Q4_K_S GGUF in that repo keeps its original filename.
+
+kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers
+--model-type kandinsky5-video
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sft-5s-GGUF/blob/main/transformer-int8_tensorwise-comfy.safetensors
+--inference-steps 50
+--guidance-scales 5
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky5-t2v-pro-int8
+--output-size 1024x768
+--prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement; Static, 2D cartoon, cartoon, 2d animation, paintings, images, worst quality, low quality, ugly, deformed, walking backwards"

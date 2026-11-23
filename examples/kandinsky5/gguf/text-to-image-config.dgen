@@ -1,0 +1,17 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Kandinsky 5 T2I Lite GGUF, Diffusers tensor names (no -comfy).
+# https://huggingface.co/Teriks/Kandinsky-5.0-T2I-Lite-quants
+
+kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers
+--model-type kandinsky5-image
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2I-Lite-quants/blob/main/transformer-Q4_K.gguf
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path kandinsky5-t2i-gguf
+--output-size 1024
+--prompts "A tiny bookshop inside a hollow tree, warm lamps glowing through the windows"

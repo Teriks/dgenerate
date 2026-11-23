@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Kandinsky 5 T2V Lite GGUF, Diffusers tensor names (no -comfy).
+# https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Lite-sft-5s-quants
+# Do not put this file on the Pro parent.
+
+kandinskylab/Kandinsky-5.0-T2V-Lite-sft-5s-Diffusers
+--model-type kandinsky5-video
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Lite-sft-5s-quants/blob/main/transformer-Q4_K.gguf
+--inference-steps 50
+--guidance-scales 5
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky5-t2v-lite-gguf
+--output-size 768x512
+--prompts "A red kite glides above a windswept coastal meadow at golden hour, smooth cinematic camera movement; Static, 2D cartoon, cartoon, 2d animation, paintings, images, worst quality, low quality, ugly, deformed, walking backwards"

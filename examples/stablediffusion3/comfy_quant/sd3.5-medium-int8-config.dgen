@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# SD3.5 Medium transformer, int8 tensorwise, ComfyUI tensor names.
+# https://huggingface.co/Teriks/stable-diffusion-3.5-medium-quants
+# This is not the Large fp8 file.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+stabilityai/stable-diffusion-3.5-medium
+--model-type sd3
+--dtype bfloat16
+--model-cpu-offload
+--transformer https://huggingface.co/Teriks/stable-diffusion-3.5-medium-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors
+--inference-steps 28
+--guidance-scales 5
+--gen-seeds 1
+--output-path sd35-medium-int8
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

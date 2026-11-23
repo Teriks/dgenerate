@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Kandinsky 5 I2V Lite GGUF, Diffusers tensor names (no -comfy).
+# https://huggingface.co/Teriks/Kandinsky-5.0-I2V-Lite-5s-quants
+# There is no quant for the non-distilled I2V Pro checkpoint.
+
+kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers
+--model-type kandinsky5-video
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/Teriks/Kandinsky-5.0-I2V-Lite-5s-quants/blob/main/transformer-Q4_K.gguf
+--inference-steps 50
+--guidance-scales 5
+--video-lengths 5
+--video-fps 24
+--animation-format mp4
+--gen-seeds 1
+--output-path kandinsky5-i2v-lite-gguf
+--output-size 768x512
+--image-seeds "../../media/beach.jpg"
+--prompts "A lone sailboat drifts along the coast as the tide rolls in, gentle cinematic camera movement; worst quality, blurry, jittery, distorted"
