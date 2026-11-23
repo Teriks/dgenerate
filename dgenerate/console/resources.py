@@ -24,6 +24,7 @@ import io
 import os
 import platform
 import re
+import queue
 import shutil
 import subprocess
 import tempfile
@@ -547,7 +548,11 @@ def _choose_update_action(parent, message: str) -> str:
 
 
 def _download_installer(parent, tag: str, install_dir: str):
-    """Download on a worker thread so the console keeps handling events.
+    """Download beside the Tk thread so the console keeps handling events.
+
+    The worker never calls Tk. Progress is queued, and this thread applies
+    it. On macOS a network call from a worker can wait for the main thread,
+    and a Tk call from that worker can wait for the network call.
 
     :return: ``('ok', path)``, ``('cancel', None)``, ``('missing', None)``
         or ``('failed', None)``. The directory is removed unless the
@@ -555,12 +560,12 @@ def _download_installer(parent, tag: str, install_dir: str):
     """
     state = {'done': False, 'status': 'cancel', 'path': None,
              'cancel': threading.Event()}
+    events = queue.Queue()
     dialog = tk.Toplevel(parent)
     dialog.withdraw()
     dialog.title('Update')
     dialog.resizable(False, False)
     dialog.transient(parent)
-    dialog.grab_set()
 
     frame = ttk.Frame(dialog, padding=16)
     frame.pack(fill=tk.BOTH, expand=True)
@@ -576,29 +581,43 @@ def _download_installer(parent, tag: str, install_dir: str):
         state['status'] = status
         state['path'] = path
         state['cancel'].set()
+        if status != 'ok':
+            shutil.rmtree(install_dir, ignore_errors=True)
         try:
             bar.stop()
             dialog.destroy()
         except tk.TclError:
             pass
 
-    def show_progress(done, total):
-        def update():
-            if state['done']:
-                return
-            try:
-                if not dialog.winfo_exists():
-                    return
-                if total and str(bar['mode']) != 'determinate':
-                    bar.stop()
-                    bar.configure(mode='determinate', maximum=total, value=done)
-                elif total:
-                    bar.configure(value=done)
-            except tk.TclError:
-                state['cancel'].set()
-
+    def apply_progress(done, total):
+        if state['done']:
+            return
         try:
-            parent.after(0, update)
+            if not dialog.winfo_exists():
+                return
+            if total and str(bar['mode']) != 'determinate':
+                bar.stop()
+                bar.configure(mode='determinate', maximum=total, value=done)
+            elif total:
+                bar.configure(value=done)
+        except tk.TclError:
+            state['cancel'].set()
+
+    def poll():
+        if state['done']:
+            return
+        try:
+            while True:
+                kind, payload = events.get_nowait()
+                if kind == 'progress':
+                    apply_progress(*payload)
+                else:
+                    finish(*payload)
+                    return
+        except queue.Empty:
+            pass
+        try:
+            parent.after(50, poll)
         except tk.TclError:
             state['cancel'].set()
 
@@ -617,19 +636,32 @@ def _download_installer(parent, tag: str, install_dir: str):
                 return
             asset_name, download_url = found
             path = os.path.join(install_dir, asset_name)
+
+            def report(done, total):
+                events.put(('progress', (done, total)))
+
             ok = _d_resources.download_release_installer(
                 download_url, path,
-                progress=show_progress, cancel=state['cancel'].is_set)
+                progress=report, cancel=state['cancel'].is_set)
             status = 'ok' if ok else ('cancel' if state['cancel'].is_set() else 'failed')
             if status != 'ok':
                 path = None
         finally:
             if status != 'ok':
                 shutil.rmtree(install_dir, ignore_errors=True)
-            try:
-                parent.after(0, lambda status=status, path=path: finish(status, path))
-            except tk.TclError:
-                pass
+            events.put(('done', (status, path)))
+
+    def begin():
+        if state['done']:
+            return
+        # The shell is stopped after this dialog is on screen. restart=True
+        # only kills now. A failed download returns to the main loop, which
+        # starts the shell again. A successful install closes the console.
+        if hasattr(parent, 'kill_shell_process'):
+            parent.kill_shell_process(restart=True)
+        threading.Thread(
+            target=worker, name='dgenerate-installer-download', daemon=True).start()
+        poll()
 
     ttk.Button(frame, text='Cancel', command=lambda: finish('cancel')).pack(
         anchor=tk.E, pady=(12, 0))
@@ -640,7 +672,8 @@ def _download_installer(parent, tag: str, install_dir: str):
     y = parent.winfo_rooty() + max(0, (parent.winfo_height() - dialog.winfo_height()) // 2)
     dialog.geometry(f'+{x}+{y}')
     dialog.deiconify()
-    threading.Thread(target=worker, name='dgenerate-installer-download', daemon=True).start()
+    dialog.grab_set()
+    dialog.after(1, begin)
     parent.wait_window(dialog)
     return state['status'], state['path']
 
@@ -663,12 +696,6 @@ def start_network_installer(console, tag: str, page_url: str, message: str,
         return
     if action != 'install':
         return
-
-    # Stop the shell first, including anything it spawned, so a live run
-    # cannot hold the window open. restart=True only kills now. If the
-    # download fails and this call returns to the main loop, the shell is
-    # started again. A successful install destroys the window first.
-    console.kill_shell_process(restart=True)
 
     install_dir = tempfile.mkdtemp(prefix='dgenerate_install_')
     status, installer_path = _download_installer(console, tag, install_dir)
@@ -694,6 +721,19 @@ def start_network_installer(console, tag: str, page_url: str, message: str,
 
     subprocess.Popen([installer_path, *installer_args], **popen_kwargs)
     console.destroy()
+
+
+def _schedule_network_installer(console, tag, page_url, message, installer_args=None):
+    """Open the update dialog after the menu action has returned.
+
+    Aqua runs the menu item from the menu tracking session. A dialog opened
+    there never receives the click, and the cursor stays the spinning wheel
+    until that session ends.
+    """
+    console.after(
+        0,
+        lambda: start_network_installer(
+            console, tag, page_url, message, installer_args))
 
 
 def add_help_menu_links(menu: tk.Menu, console=None):
@@ -738,7 +778,7 @@ def add_help_menu_links(menu: tk.Menu, console=None):
         if release_info.network_install and console is not None:
             menu.add_command(
                 label=f'Newer Release Available! ({tag_name})',
-                command=lambda tag=tag_name, url=page_url: start_network_installer(
+                command=lambda tag=tag_name, url=page_url: _schedule_network_installer(
                     console,
                     tag,
                     url,
@@ -771,7 +811,7 @@ def add_help_menu_links(menu: tk.Menu, console=None):
                     menu.add_command(
                         label='Pre-Release Update Available!',
                         command=lambda url=page_url, branch=release_info.branch:
-                        start_network_installer(
+                        _schedule_network_installer(
                             console,
                             'pre-release',
                             url,
