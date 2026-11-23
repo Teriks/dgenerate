@@ -148,5 +148,5 @@ Features a syntax-highlighting console / editor:
 
 ----
 
-.. image:: https://raw.githubusercontent.com/Teriks/dgenerate-readme-embeds/master/ui5.gif
+.. image:: https://raw.githubusercontent.com/Teriks/dgenerate-readme-embeds/master/ui6.gif
    :alt: Console UI Demo
