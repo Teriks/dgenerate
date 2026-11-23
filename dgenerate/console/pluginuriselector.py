@@ -25,9 +25,11 @@ import tkinter.ttk as ttk
 import typing
 
 import dgenerate.console.appearance as _appearance
+import dgenerate.console.themescrollbar as _themescrollbar
 import dgenerate.console.formentries.pluginschemaentry as _pluginschemaentry
 import dgenerate.console.util as _util
-from dgenerate.console.mousewheelbind import bind_mousewheel, handle_canvas_scroll, un_bind_mousewheel
+from dgenerate.console.mousewheelbind import (
+    bind_mousewheel, drop_queued_yview, handle_canvas_scroll, un_bind_mousewheel, yview_command)
 
 
 class _PluginUriSelect(tk.Toplevel):
@@ -62,15 +64,13 @@ class _PluginUriSelect(tk.Toplevel):
 
         self.canvas = tk.Canvas(viewport, highlightthickness=0, borderwidth=0)
         self.canvas.pack(fill=tk.BOTH, expand=True)
-        self.scrollbar = ttk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollbar = _themescrollbar.scrollbar(
+            outer_frame, orient="vertical", command=yview_command(self.canvas))
         self.scrollable_frame = ttk.Frame(self.canvas, padding=(10, 10))
 
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(
-                scrollregion=self.canvas.bbox("all")
-            )
-        )
+        self._form_size = None
+        self._canvas_width = None
+        self.scrollable_frame.bind('<Configure>', self._on_form_configure)
 
         self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
@@ -114,7 +114,10 @@ class _PluginUriSelect(tk.Toplevel):
         self.plugin_frame.grid_columnconfigure(1, weight=1)
         self.scrollable_frame.grid_columnconfigure(0, weight=1)
 
-        self.bind("<Configure>", self._on_resize)
+        # See recipesform: a toplevel Configure binding runs for every
+        # field when the form scrolls on macOS.
+        self._scroll_outer = outer_frame
+        outer_frame.bind('<Configure>', self._on_resize)
 
         self.bind_mousewheel()
 
@@ -140,13 +143,28 @@ class _PluginUriSelect(tk.Toplevel):
         un_bind_mousewheel(self.canvas.unbind_all)
 
     def _on_plugin_change(self, *args):
+        drop_queued_yview(self.canvas)
         self.canvas.yview_moveto(0)
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         _appearance.apply(self)
 
+    def _on_form_configure(self, event):
+        if event.widget is not self.scrollable_frame:
+            return
+        size = (event.width, event.height)
+        if size == self._form_size:
+            return
+        self._form_size = size
+        self.canvas.configure(scrollregion=self.canvas.bbox('all'))
+
     def _on_resize(self, event):
-        canvas_width = self.winfo_width() - self.scrollbar.winfo_width() - 30
-        self.canvas.itemconfig(self.canvas_window, width=canvas_width)
+        if event.widget is not self._scroll_outer:
+            return
+        width = event.width - self.scrollbar.winfo_width() - 2
+        if width <= 1 or width == self._canvas_width:
+            return
+        self._canvas_width = width
+        self.canvas.itemconfig(self.canvas_window, width=width)
 
     def _on_mouse_wheel(self, event):
         if 'popdown' in str(event.widget).lower():

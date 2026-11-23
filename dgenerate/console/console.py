@@ -26,9 +26,11 @@ import os
 import pathlib
 import platform
 import re
+import select
 import signal
 import subprocess
 import sys
+import threading
 import tkinter as tk
 import tkinter.ttk as ttk
 
@@ -54,7 +56,11 @@ import dgenerate.console.recipesform as _recipesform
 import dgenerate.console.resources as _resources
 import dgenerate.console.showindirectory as _showindirectory
 import dgenerate.console.submodelselect as _submodelselect
+import dgenerate.console.themechrome as _themechrome
+import dgenerate.console.themedialog as _themedialog
+import dgenerate.console.thememenu as _thememenu
 import dgenerate.console.themetext as _themetext
+import dgenerate.console.themescrollbar as _themescrollbar
 import dgenerate.console.transpileform as _transpileform
 import dgenerate.console.initdgeneditor as _initdgeneditor
 import dgenerate.console.util as _util
@@ -104,9 +110,12 @@ class DgenerateConsole(tk.Tk):
 
     def __init__(self):
         super().__init__()
+        # Tk shows the window at its default size before geometry is set.
+        self.withdraw()
 
         # Set up proper font defaults to prevent bitmap font fallbacks
         _fonts.set_tkinter_font_defaults()
+        _themechrome.install(self)
 
         # Fit ttk buttons to their text (classic Button behavior) on all platforms.
         _appearance.install_button_fitting(self)
@@ -127,8 +136,20 @@ class DgenerateConsole(tk.Tk):
             position_top = (screen_height // 2) - (height // 2)
 
             self.geometry(f"{width}x{height}+{position_left}+{position_top}")
+            chrome = getattr(self, '_chrome', None)
+            if chrome is not None:
+                chrome['placed'] = True
         else:
-            self.geometry(f"{width}x{height}")
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
+            fit_width = min(width, max(screen_width - 48, 320))
+            fit_height = min(height, max(screen_height - 80, 240))
+            position_left = max((screen_width - fit_width) // 2, 0)
+            position_top = max((screen_height - fit_height) // 2, 0)
+            self.geometry(f"{fit_width}x{fit_height}+{position_left}+{position_top}")
+            chrome = getattr(self, '_chrome', None)
+            if chrome is not None:
+                chrome['placed'] = True
 
         _resources.set_window_icon(self)
 
@@ -139,8 +160,8 @@ class DgenerateConsole(tk.Tk):
         # Create main menu
 
         # File menu
-        self._menu_bar = tk.Menu(self)
-        self._file_menu = tk.Menu(self._menu_bar, tearoff=0)
+        self._menu_bar = _thememenu.MenuBar(self)
+        self._file_menu = _thememenu.ThemeMenu(self._menu_bar, tearoff=0)
         self._last_known_working_dir = os.getcwd()
 
         def handle_new_window():
@@ -164,12 +185,12 @@ class DgenerateConsole(tk.Tk):
         self._transpile_dialog = None
 
         # Edit menu
-        self._edit_menu = tk.Menu(self._menu_bar, tearoff=0)
+        self._edit_menu = _thememenu.ThemeMenu(self._menu_bar, tearoff=0)
         self._create_edit_menu(self._edit_menu)
 
         # Run menu
 
-        self._run_menu = tk.Menu(self._menu_bar, tearoff=0)
+        self._run_menu = _thememenu.ThemeMenu(self._menu_bar, tearoff=0)
 
         self._run_menu.add_command(
             label='Run',
@@ -217,11 +238,11 @@ class DgenerateConsole(tk.Tk):
             'write',
             multiline_check_trace)
 
-        self._options_menu = tk.Menu(self._menu_bar, tearoff=0)
-        self._appearance_menu = tk.Menu(self._menu_bar, tearoff=0)
-        self._console_modes_menu = tk.Menu(self._menu_bar, tearoff=0)
-        self._startup_menu = tk.Menu(self._menu_bar, tearoff=0)
-        self._theme_menu = tk.Menu(self._menu_bar, tearoff=0)
+        self._options_menu = _thememenu.ThemeMenu(self._menu_bar, tearoff=0)
+        self._appearance_menu = _thememenu.ThemeMenu(self._menu_bar, tearoff=0)
+        self._console_modes_menu = _thememenu.ThemeMenu(self._menu_bar, tearoff=0)
+        self._startup_menu = _thememenu.ThemeMenu(self._menu_bar, tearoff=0)
+        self._theme_menu = _thememenu.ThemeMenu(self._menu_bar, tearoff=0)
         self._theme_menu_var = tk.StringVar(value='dgenerate')
 
         self._theme_menu_var.trace_add('write',
@@ -282,11 +303,11 @@ class DgenerateConsole(tk.Tk):
 
         # View Menu
 
-        self._view_menu = tk.Menu(self._menu_bar, tearoff=0)
+        self._view_menu = _thememenu.ThemeMenu(self._menu_bar, tearoff=0)
 
         # Help menu
 
-        self._help_menu = tk.Menu(self._menu_bar, tearoff=0)
+        self._help_menu = _thememenu.ThemeMenu(self._menu_bar, tearoff=0)
 
         _resources.add_help_menu_links(self._help_menu, self)
 
@@ -296,14 +317,23 @@ class DgenerateConsole(tk.Tk):
         self._menu_bar.add_cascade(label='Edit', menu=self._edit_menu)
         self._menu_bar.add_cascade(label='Run', menu=self._run_menu)
         if self._show_assistant:
-            self._menu_bar.add_command(
-                label='Assistant',
-                command=self._input_text_generate_with_assistant)
+            if platform.system() == 'Darwin':
+                # The Mac menu bar only displays menus. A command added
+                # directly to it is not shown.
+                assistant_menu = _thememenu.ThemeMenu(self._menu_bar, tearoff=0)
+                assistant_menu.add_command(
+                    label='Assistant',
+                    command=self._input_text_generate_with_assistant)
+                self._menu_bar.add_cascade(label='Assistant', menu=assistant_menu)
+            else:
+                self._menu_bar.add_command(
+                    label='Assistant',
+                    command=self._input_text_generate_with_assistant)
         self._menu_bar.add_cascade(label='Options', menu=self._options_menu)
         self._menu_bar.add_cascade(label='View', menu=self._view_menu)
         self._menu_bar.add_cascade(label='Help', menu=self._help_menu)
 
-        self.config(menu=self._menu_bar)
+        self._menu_bar.install()
 
         # Split window layout
 
@@ -388,8 +418,15 @@ class DgenerateConsole(tk.Tk):
         self._input_text.text.focus_set()
 
         # Create the input text context menu
-        self._input_text_context = tk.Menu(self._input_text, tearoff=0)
+        self._input_text_context = _thememenu.ThemeMenu(self._input_text, tearoff=0)
         self._create_edit_menu(self._input_text_context)
+        self._input_text_context.add_separator()
+        self._input_text_context.add_checkbutton(
+            label='Multiline',
+            variable=self._multi_line_input_check_var)
+        self._input_text_context.add_checkbutton(
+            label='Wrap Text',
+            variable=self._word_wrap_input_check_var)
 
         if platform.system() == 'Darwin':
             # these are not native
@@ -428,7 +465,7 @@ class DgenerateConsole(tk.Tk):
 
         self.bind('<Control-a>', handle_ctrl_a)
 
-        self._output_text_context = tk.Menu(self._output_text, tearoff=0)
+        self._output_text_context = _thememenu.ThemeMenu(self._output_text, tearoff=0)
 
         self._output_text_context.add_command(label='Clear', command=self._clear_output_text)
         self._output_text_context.add_separator()
@@ -464,6 +501,10 @@ class DgenerateConsole(tk.Tk):
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Make Window', command=self._toggle_output_float)
         self._output_float_menu_index = self._output_text_context.index('end')
+        self._output_text_context.add_separator()
+        self._output_text_context.add_checkbutton(
+            label='Wrap Text',
+            variable=self._word_wrap_output_check_var)
 
         # Patch the output text context menu to enable/disable Preview Selected Image
         og_output_popup = self._output_text_context.tk_popup
@@ -577,6 +618,8 @@ class DgenerateConsole(tk.Tk):
 
         self._load_command_history()
         self._load_settings()
+        self._update_input_wrap()
+        self._update_output_wrap()
 
         multiline_enter_mode = 'Command+i' if platform.system() == 'Darwin' else 'the insert key'
         run_key = 'Command+r' if platform.system() == 'Darwin' else 'Ctrl+Space'
@@ -628,6 +671,7 @@ class DgenerateConsole(tk.Tk):
 
         self._update_cwd_title(os.getcwd())
         _appearance.install(self)
+        self.deiconify()
 
     def _update_shell_options_state(self):
         self._shell_procmon.popen_args = \
@@ -661,12 +705,27 @@ class DgenerateConsole(tk.Tk):
         sel_bg = self._input_text.text.cget('selectbackground')
         sel_fg = self._input_text.text.cget('selectforeground')
 
+        window_bg = bg
+        window_chrome = None
+        if name in DgenerateCodeView.THEMES:
+            editor = DgenerateCodeView.THEMES[name].get('editor', {})
+            window_bg = editor.get('window_bg', bg)
+            window_chrome = editor.get('window_chrome', None)
+
         _themetext.configure(
             bg=bg,
             fg=fg,
             selectbackground=sel_bg,
-            selectforeground=sel_fg
+            selectforeground=sel_fg,
+            borderwidth=self._input_text.text.cget('borderwidth'),
+            highlightthickness=self._input_text.text.cget('highlightthickness'),
+            relief=self._input_text.text.cget('relief'),
         )
+        _themedialog.apply(self, bg, fg, sel_bg, sel_fg,
+                           window_background=window_bg, window_chrome=window_chrome)
+        _themechrome.apply(bg, fg, window_background=window_bg, window_chrome=window_chrome)
+        _themescrollbar.apply(self, bg, fg)
+        _thememenu.apply(self, window_bg, fg, sel_bg, sel_fg)
 
         error_color = fg
 
@@ -941,6 +1000,8 @@ class DgenerateConsole(tk.Tk):
         self._output_floated.set(False)
         self._dock_output()
 
+    _OUTPUT_WINDOW_TITLE = 'Console Output'
+
     def _float_output(self):
         if self._output_is_floating:
             return
@@ -953,11 +1014,17 @@ class DgenerateConsole(tk.Tk):
             self._paned_window_vertical.remove(output)
             self.update_idletasks()
             self.wm_manage(output)
-            output.tk.call('wm', 'title', output._w, 'Console Output')
+            output.tk.call('wm', 'title', output._w, self._OUTPUT_WINDOW_TITLE)
             output.tk.call('wm', 'minsize', output._w, 320, 160)
             output.tk.call('wm', 'geometry', output._w, self._output_float_geometry)
             output.tk.call('wm', 'protocol', output._w, 'WM_DELETE_WINDOW',
                            self._dock_output_callback)
+            if platform.system() == 'Darwin':
+                # Docking withdraws the frame so Aqua can forget it. The
+                # next manage leaves that withdrawn state in place.
+                output.tk.call('wm', 'deiconify', output._w)
+                output.tk.call('raise', output._w)
+            _themechrome.adopt(output)
         except tk.TclError:
             self._output_is_floating = False
             self._output_floated.set(False)
@@ -973,20 +1040,35 @@ class DgenerateConsole(tk.Tk):
             return
         self._output_is_floating = True
         self._sync_output_window_labels()
+        if platform.system() == 'Darwin':
+            self._settle_output_windows()
         self._output_text.text.focus_set()
 
-    def _dock_output(self):
-        if not self._output_is_floating:
-            return
+    def _settle_output_windows(self):
+        title = self._OUTPUT_WINDOW_TITLE
         output = self._output_pane
-        try:
-            self._output_float_geometry = output.tk.call('wm', 'geometry', output._w)
-        except tk.TclError:
-            pass
-        self.wm_forget(output)
-        self._paned_window_vertical.add(output)
-        self._output_is_floating = False
-        self._sync_output_window_labels()
+        if self._output_is_floating:
+            _themechrome.claim_output_window(output, title)
+        else:
+            _themechrome.close_leftover_windows(title)
+        self.update_idletasks()
+        if self._output_is_floating:
+            _themechrome.claim_output_window(output, title)
+        else:
+            _themechrome.close_leftover_windows(title)
+
+        def again(title=title, output=output):
+            try:
+                if self._output_is_floating:
+                    _themechrome.claim_output_window(output, title)
+                else:
+                    _themechrome.close_leftover_windows(title)
+            except tk.TclError:
+                pass
+
+        self.after_idle(again)
+
+    def _restore_output_sash(self):
         sash = self._output_sash
         if sash is None:
             return
@@ -998,6 +1080,43 @@ class DgenerateConsole(tk.Tk):
                 pass
 
         self.after_idle(restore_sash)
+
+    def _dock_output(self):
+        if not self._output_is_floating:
+            return
+        output = self._output_pane
+        try:
+            self._output_float_geometry = output.tk.call('wm', 'geometry', output._w)
+        except tk.TclError:
+            pass
+        if platform.system() == 'Darwin':
+            # Forget while a menu is still attached, or while this frame is
+            # the key window, leaves a geometry idle that crashes Aqua.
+            for child in list(output.winfo_children()):
+                if isinstance(child, tk.Toplevel):
+                    try:
+                        child.destroy()
+                    except tk.TclError:
+                        pass
+            try:
+                self.focus_set()
+                output.tk.call('wm', 'withdraw', output._w)
+                self.update_idletasks()
+            except tk.TclError:
+                pass
+        # Drop the themed frame before forget, or its title bar is packed
+        # back into the pane with the log.
+        _themechrome.release(output)
+        self.wm_forget(output)
+        self._paned_window_vertical.add(output)
+        self._output_is_floating = False
+        if platform.system() == 'Darwin':
+            # wm forget leaves the Aqua window on screen, and the next
+            # manage creates another one beside it. Tk orders the old
+            # window back in on the following update, so hide it again.
+            self._settle_output_windows()
+        self._sync_output_window_labels()
+        self._restore_output_sash()
 
     def _copy_output_text_selection(self):
         self._output_text.text.event_generate('<<Copy>>')
@@ -1223,6 +1342,8 @@ class DgenerateConsole(tk.Tk):
             return
 
         dialog = tk.Toplevel(self)
+        # Measuring the window paints it. Hide it until it is placed.
+        dialog.withdraw()
         self._settings_dialog = dialog
         dialog.title('Window Sash Size')
         dialog.transient(self)
@@ -1277,6 +1398,7 @@ class DgenerateConsole(tk.Tk):
         dialog.geometry(
             f'+{self.winfo_rootx() + (self.winfo_width() - dialog.winfo_width()) // 2}'
             f'+{self.winfo_rooty() + (self.winfo_height() - dialog.winfo_height()) // 2}')
+        dialog.deiconify()
         dialog.grab_set()
         sash_width_entry.focus_set()
 
@@ -1396,7 +1518,7 @@ class DgenerateConsole(tk.Tk):
         menu.add_separator()
 
         # Search submenu
-        search_submenu = tk.Menu(menu, tearoff=0)
+        search_submenu = _thememenu.ThemeMenu(menu, tearoff=0)
         search_submenu.add_command(label='Find',
                                    accelerator='Ctrl+F',
                                    command=lambda:
@@ -1420,7 +1542,7 @@ class DgenerateConsole(tk.Tk):
         menu.add_separator()
 
         # Code submenu
-        code_submenu = tk.Menu(menu, tearoff=0)
+        code_submenu = _thememenu.ThemeMenu(menu, tearoff=0)
         code_submenu.add_command(label='Recipe',
                                  command=self._input_text_insert_recipe)
         code_submenu.add_command(label='Argument',
@@ -1432,7 +1554,7 @@ class DgenerateConsole(tk.Tk):
         menu.add_cascade(label='Insert Code', menu=code_submenu)
 
         # URI submenu
-        uri_submenu = tk.Menu(menu, tearoff=0)
+        uri_submenu = _thememenu.ThemeMenu(menu, tearoff=0)
         uri_submenu.add_command(label='Image Seed URI',
                                 command=self._input_text_insert_image_seed)
         uri_submenu.add_command(label='Karras Scheduler URI',
@@ -1452,7 +1574,7 @@ class DgenerateConsole(tk.Tk):
         menu.add_cascade(label='Insert URI', menu=uri_submenu)
 
         # Path submenu
-        path_submenu = tk.Menu(menu, tearoff=0)
+        path_submenu = _thememenu.ThemeMenu(menu, tearoff=0)
         path_submenu.add_command(label='File Path (Open)',
                                  command=self._input_text_insert_file_path)
         path_submenu.add_command(label='File Path (Save)',
@@ -1572,7 +1694,96 @@ class DgenerateConsole(tk.Tk):
             return None
 
 
+# AppKit prints this to stderr when a window-move ends without a start.
+# Tk already drops the event when it can. The log that still gets out is
+# written by AppKit itself, so it never reaches the console pane.
+_APPKIT_MOVE_WARNING = b'Window move completed without beginning'
+
+
+def _consume_stderr(buf: bytes, marker: bytes = _APPKIT_MOVE_WARNING) -> tuple[bytes, bytes]:
+    """Return bytes to forward, and the tail that might still be the warning."""
+    out = []
+    while True:
+        found = buf.find(marker)
+        if found == -1:
+            keep = len(marker) - 1
+            if len(buf) > keep:
+                out.append(buf[:-keep])
+                buf = buf[-keep:]
+            return b''.join(out), buf
+        line_start = buf.rfind(b'\n', 0, found) + 1
+        line_end = buf.find(b'\n', found)
+        if line_end == -1:
+            if line_start:
+                out.append(buf[:line_start])
+                buf = buf[line_start:]
+            return b''.join(out), buf
+        if line_start:
+            out.append(buf[:line_start])
+        buf = buf[line_end + 1:]
+
+
+def _flush_held_stderr(buf: bytes, marker: bytes = _APPKIT_MOVE_WARNING) -> bytes:
+    """Release a held tail once no more bytes are arriving."""
+    if marker not in buf:
+        return buf
+    return buf[:buf.rfind(b'\n', 0, buf.find(marker)) + 1]
+
+
+def _silence_appkit_window_move_warning() -> None:
+    """Drop AppKit's window-move warning from this process's stderr."""
+    if sys.platform != 'darwin' or getattr(_silence_appkit_window_move_warning, 'installed', False):
+        return
+    try:
+        saved = os.dup(2)
+        read_fd, write_fd = os.pipe()
+    except OSError:
+        return
+    os.set_inheritable(saved, False)
+    os.set_inheritable(read_fd, False)
+    os.set_inheritable(write_fd, False)
+    os.set_blocking(read_fd, False)
+
+    def write_all(data: bytes) -> None:
+        while data:
+            wrote = os.write(saved, data)
+            data = data[wrote:]
+
+    def forward():
+        buf = b''
+        try:
+            while True:
+                ready, _, _ = select.select([read_fd], [], [], 0.05)
+                if not ready:
+                    pending = _flush_held_stderr(buf)
+                    if pending:
+                        write_all(pending)
+                    buf = b''
+                    continue
+                try:
+                    chunk = os.read(read_fd, 8192)
+                except BlockingIOError:
+                    continue
+                if not chunk:
+                    pending = _flush_held_stderr(buf)
+                    if pending:
+                        write_all(pending)
+                    return
+                buf += chunk
+                out, buf = _consume_stderr(buf)
+                if out:
+                    write_all(out)
+        except OSError:
+            return
+
+    threading.Thread(target=forward, name='stderr-filter', daemon=True).start()
+    os.dup2(write_fd, 2)
+    os.close(write_fd)
+    _silence_appkit_window_move_warning.installed = True
+
+
 def main(args: collections.abc.Sequence[str]):
+    _silence_appkit_window_move_warning()
     if platform.system() == 'Windows':
         if getattr(sys, 'frozen', False):
             # The application is running as a bundled pyinstaller executable

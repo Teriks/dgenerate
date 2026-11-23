@@ -27,6 +27,8 @@ import typing
 import dataclasses
 
 import dgenerate.console.appearance as _appearance
+import dgenerate.console.themedialog as _themedialog
+import dgenerate.console.themescrollbar as _themescrollbar
 
 import dgenerate.console.util as _util
 import dgenerate.console.helpdialog as _helpdialog
@@ -409,7 +411,7 @@ class HighlightManager:
             widget.tag_remove('invalid', '1.0', tk.END)
             if invalid:
                 widget.tag_add('invalid', '1.0', tk.END)
-        elif _appearance.is_aqua(widget):
+        elif _appearance.native_controls(widget):
             widget.configure(
                 foreground=(_appearance.error_foreground()
                             if invalid else _appearance.text_foreground()))
@@ -417,7 +419,7 @@ class HighlightManager:
             if invalid:
                 widget.config(bg='#ffcccc')
             else:
-                widget.config(bg='white')
+                widget.config(bg=_themedialog.background() or 'white')
 
 
 class DialogState:
@@ -434,9 +436,10 @@ class DialogState:
         self.current_match = SearchResult(found=False)
 
 
-# Aqua push buttons and checkboxes do not report a real size until the window
-# is mapped. These are the native control chrome, in Tk points, added to the
-# label width and line height when that happens.
+# While ttk is still the aqua theme, push buttons and checkboxes do not report
+# a real size until the window is mapped. These are the native control chrome,
+# in Tk points, added to the label width and line height when that happens.
+# The editor theme switches those controls to clam, which reports a size.
 _AQUA_BUTTON_CHROME = 28
 _AQUA_CHECK_CHROME = 22
 _AQUA_CONTROL_EXTRA = 12
@@ -449,6 +452,10 @@ class FindDialog(tk.Toplevel):
                  replace_mode: bool = False, state: typing.Optional[DialogState] = None,
                  prefer_saved_find: bool = False):
         super().__init__(master)
+        # Aqua maps a new window at the center of the screen as soon as it
+        # exists. Hide it until the saved position is applied, or it appears
+        # there and then jumps.
+        self.withdraw()
 
         self.master = master
         self.text_widget = text_widget
@@ -494,7 +501,7 @@ class FindDialog(tk.Toplevel):
 
         self.find_entry = tk.Text(self.find_frame, height=1, width=40, wrap='none')
         self.find_entry.grid(row=0, column=0, sticky='nsew')
-        if _appearance.is_aqua(self.find_entry):
+        if _appearance.native_controls(self.find_entry):
             self.find_entry.configure(
                 background=_appearance.field_background(),
                 foreground=_appearance.text_foreground())
@@ -503,7 +510,8 @@ class FindDialog(tk.Toplevel):
         else:
             self.find_entry.tag_config('invalid', background='#ffcccc', foreground='#800000')
 
-        self.find_scrollbar = ttk.Scrollbar(self.find_frame, orient='vertical', command=self.find_entry.yview)
+        self.find_scrollbar = _themescrollbar.scrollbar(
+            self.find_frame, orient='vertical', command=self.find_entry.yview)
         self.find_entry.configure(yscrollcommand=self.find_scrollbar.set)
 
         self.replace_entry = None
@@ -520,7 +528,7 @@ class FindDialog(tk.Toplevel):
 
             self.replace_entry = tk.Text(self.replace_frame, height=1, width=40, wrap='none')
             self.replace_entry.grid(row=0, column=0, sticky='nsew')
-            if _appearance.is_aqua(self.replace_entry):
+            if _appearance.native_controls(self.replace_entry):
                 self.replace_entry.configure(
                     background=_appearance.field_background(),
                     foreground=_appearance.text_foreground())
@@ -530,7 +538,7 @@ class FindDialog(tk.Toplevel):
                 self.replace_entry.tag_config(
                     'invalid', background='#ffcccc', foreground='#800000')
 
-            self.replace_scrollbar = ttk.Scrollbar(
+            self.replace_scrollbar = _themescrollbar.scrollbar(
                 self.replace_frame, orient='vertical', command=self.replace_entry.yview)
             self.replace_entry.configure(yscrollcommand=self.replace_scrollbar.set)
             control_row = 2
@@ -811,14 +819,14 @@ class FindDialog(tk.Toplevel):
     def _content_size(self) -> tuple[int, int]:
         """Size that fits this layout on the current platform.
 
-        Windows and Linux report ttk sizes before the window is shown. Aqua
-        does not, so the control row is measured from its labels plus the
-        native button and checkbox chrome.
+        Clam, including the editor theme on macOS, reports ttk sizes before
+        the window is shown. Native Aqua controls do not, so that control row
+        is measured from its labels plus the button and checkbox chrome.
         """
         self.update_idletasks()
         width = self.winfo_reqwidth()
         height = self.winfo_reqheight()
-        if not _appearance.is_aqua(self):
+        if not _appearance.native_controls(self):
             return width, height
 
         font = tkfont.nametofont('TkDefaultFont')

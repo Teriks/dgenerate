@@ -109,6 +109,38 @@ def package_importable(python_exe: Path, module: str) -> bool:
     return result.returncode == 0
 
 
+def rename_opencv_avfoundation_classes(venv_path: Path) -> None:
+    """Give OpenCV's libavdevice its own AVFoundation class names.
+
+    PyAV ships another libavdevice. Both register AVFFrameReceiver and
+    AVFAudioReceiver, and the Objective-C runtime warns when a process loads
+    both. dgenerate decodes video with PyAV, so OpenCV's copy can keep those
+    classes under different names. The new names are the same length.
+    """
+    if platform.system() != "Darwin":
+        return
+    replacements = (
+        (b"AVFFrameReceiver", b"CV2FrameReceiver"),
+        (b"AVFAudioReceiver", b"CV2AudioReceiver"),
+    )
+    dylibs = list(venv_path.glob("lib/python*/site-packages/cv2/.dylibs/libavdevice*.dylib"))
+    for dylib in dylibs:
+        data = dylib.read_bytes()
+        updated = data
+        for old, new in replacements:
+            updated = updated.replace(old, new)
+        if updated == data:
+            continue
+        dylib.write_bytes(updated)
+        signed = subprocess.run(
+            ["codesign", "--force", "--sign", "-", str(dylib)],
+            capture_output=True, text=True)
+        if signed.returncode != 0:
+            print(f"Warning: Could not re-sign {dylib.name}: {signed.stderr or signed.stdout}")
+            continue
+        print(f"Renamed OpenCV AVFoundation classes in {dylib.name} so they do not clash with PyAV")
+
+
 def install_xllamacpp_for_machine(script_dir: Path, python_exe: Path) -> None:
     """Ensure the xllamacpp extra is present, then swap in a GPU wheel when one applies."""
     if not package_importable(python_exe, 'xllamacpp'):
@@ -209,6 +241,7 @@ def main():
 
     if result.returncode == 0:
         install_xllamacpp_for_machine(script_dir, python_exe)
+        rename_opencv_avfoundation_classes(venv_path)
         if 'console_ui_vulkan' in extras and not package_importable(python_exe, 'vulkan'):
             print(
                 "Warning: console_ui_vulkan was requested but vulkan did not import; "

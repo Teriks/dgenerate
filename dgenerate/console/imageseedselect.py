@@ -25,6 +25,8 @@ import tkinter.font as tkfont
 import typing
 
 import dgenerate.console.appearance as _appearance
+import dgenerate.console.themedialog as _themedialog
+import dgenerate.console.themescrollbar as _themescrollbar
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.formentries.entry as _entry
 import dgenerate.console.helpdialog as _helpdialog
@@ -42,15 +44,17 @@ _LINE = '#d0d0d0'
 
 
 def _card(widget):
-    if _appearance.is_aqua(widget):
+    if _appearance.native_controls(widget):
         return 'systemTextBackgroundColor'
-    return _CARD
+    themed = _themedialog.background()
+    return themed if themed else _CARD
 
 
 def _line(widget):
-    if _appearance.is_aqua(widget):
+    if _appearance.native_controls(widget):
         return 'systemSeparatorColor'
-    return _LINE
+    themed = _themedialog.edge()
+    return themed if themed else _LINE
 
 
 def _seed(**kwargs) -> str:
@@ -399,7 +403,8 @@ class _ImageSeedSelect(tk.Toplevel):
 
         self._canvas = tk.Canvas(viewport, width=740, height=560, highlightthickness=0, borderwidth=0)
         self._canvas.pack(fill=tk.BOTH, expand=True)
-        self._scroll = ttk.Scrollbar(outer, command=self._canvas.yview)
+        self._scroll = _themescrollbar.scrollbar(
+            outer, command=_mousewheelbind.yview_command(self._canvas))
         self._canvas.configure(yscrollcommand=self._scroll.set)
         self._inner = ttk.Frame(self._canvas, padding=(12, 10))
         self._inner.grid_columnconfigure(0, weight=1)
@@ -421,7 +426,13 @@ class _ImageSeedSelect(tk.Toplevel):
         _appearance.install(self)
         _util.position_toplevel(master, self, position=position)
 
-    def _fit_scroll(self, _event):
+    def _fit_scroll(self, event):
+        if event.widget is not self._inner:
+            return
+        size = (event.width, event.height)
+        if size == getattr(self, '_inner_size', None):
+            return
+        self._inner_size = size
         self._canvas.configure(scrollregion=self._canvas.bbox('all'))
 
     def _fit_inner_width(self, event):

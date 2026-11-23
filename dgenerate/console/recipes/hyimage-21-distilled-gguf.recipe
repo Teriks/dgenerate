@@ -1,0 +1,34 @@
+title: HunyuanImage 2.1 Distilled (GGUF)
+
+# Distilled transformer (guidance + meanflow embedded). Pair with the Distilled Diffusers slug.
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default":"hunyuanvideo-community/HunyuanImage-2.1-Distilled-Diffusers", "optional":false, "file-types":["models"]}]
+--model-type hyimage-21
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter":["FlowMatchEulerDiscreteScheduler"]}]
+@spectrum[{"id": "sp", "divider-after": true}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@torchcompile[{"model-type":"hyimage-21"}]
+@quantizer[{"model-type":"hyimage-21", "map-default":"text_encoder"}]
+@textencoders[{"model-type":"hyimage-21","arg":"--text-encoders", "divider-after":true}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q4_k_m.gguf", "divider-after":true, "suggestions":[{"label":"q4_k_m", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q4_k_m.gguf"}, {"label":"q2_k", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q2_k.gguf"}, {"label":"q3_k_m", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q3_k_m.gguf"}, {"label":"q3_k_l", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q3_k_l.gguf"}, {"label":"q4_0", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q4_0.gguf"}, {"label":"q4_1", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q4_1.gguf"}, {"label":"q4_k_s", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q4_k_s.gguf"}, {"label":"q5_0", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q5_0.gguf"}, {"label":"q5_1", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q5_1.gguf"}, {"label":"q5_k_m", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q5_k_m.gguf"}, {"label":"q5_k_s", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q5_k_s.gguf"}, {"label":"q6_k", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q6_k.gguf"}, {"label":"q8_0", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-q8_0.gguf"}, {"label":"iq4_nl", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-iq4_nl.gguf"}, {"label":"iq4_xs", "value":"https://huggingface.co/calcuis/hunyuanimage-gguf/blob/main/hunyuanimage2.1-distilled-v2-iq4_xs.gguf"}]}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
+@float[{"label":"Distilled Guidance Scale", "arg":"--guidance-scales", "default":3.25, "min":0}]
+@switch[{"id":"pipeline-prompt-enhance", "label":"Pipeline Prompt Enhance", "arg":"--pipeline-prompt-enhance", "divider-before":true}]
+@stringfile[{"label":"Enhancer System Prompt", "arg":"--pipeline-prompt-enhance", "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@seeds[{"label":"Enhancer Seeds", "optional":true, "default":"", "seeds-arg":"--pipeline-prompt-enhance-seeds", "count-arg":"--pipeline-prompt-enhance-gen-seeds", "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@float[{"label":"Enhancer Temperature", "arg":"--pipeline-prompt-enhance-temperature", "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@float[{"label":"Enhancer Top-P", "arg":"--pipeline-prompt-enhance-top-p", "min":0, "max":1, "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@int[{"label":"Enhancer Top-K", "arg":"--pipeline-prompt-enhance-top-k", "min":0, "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@float[{"label":"Enhancer Presence Penalty", "arg":"--pipeline-prompt-enhance-presence-penalty", "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@int[{"label":"Enhancer Max New Tokens", "arg":"--pipeline-prompt-enhance-max-new-tokens", "min":1, "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@int[{"label":"Enhancer Min New Tokens", "arg":"--pipeline-prompt-enhance-min-new-tokens", "min":0, "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@float[{"label":"Enhancer GPU Headroom (GiB)", "arg":"--pipeline-prompt-enhance-gpu-headroom", "min":0, "divider-after":true, "enabled-when":{"id":"pipeline-prompt-enhance","equals":true}}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@imageformat[{}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"2048x2048"}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here"

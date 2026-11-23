@@ -1,0 +1,34 @@
+title: Hunyuan-DiT (ComfyUI Quant + Encoders)
+# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
+# ComfyUI safetensors quants of the transformer, BERT, and mT5.
+
+# Hunyuan-DiT 1.x text-to-image with optional LoRA, ControlNet, and IP-Adapter.
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default":"Tencent-Hunyuan/HunyuanDiT-v1.2-Diffusers", "optional":false, "file-types":["models"]}]
+--model-type hydit
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@torchcompile[{"model-type":"hydit"}]
+@quantizer[{"model-type":"hydit"}]
+@textencoders[{"model-type":"hydit", "arg":"--text-encoders", "divider-after":true, "defaults":["BertModel;model=https://huggingface.co/Teriks/HunyuanDiT-v1.2-quants/blob/main/text_encoder-int8_tensorwise.safetensors", "T5EncoderModel;model=https://huggingface.co/Teriks/HunyuanDiT-v1.2-quants/blob/main/text_encoder_2-int8_tensorwise-comfy.safetensors"], "suggestions":[[{"label":"int8_tensorwise", "value":"BertModel;model=https://huggingface.co/Teriks/HunyuanDiT-v1.2-quants/blob/main/text_encoder-int8_tensorwise.safetensors"}, {"label":"float8_e4m3fn", "value":"BertModel;model=https://huggingface.co/Teriks/HunyuanDiT-v1.2-quants/blob/main/text_encoder-float8_e4m3fn.safetensors"}], [{"label":"int8_tensorwise", "value":"T5EncoderModel;model=https://huggingface.co/Teriks/HunyuanDiT-v1.2-quants/blob/main/text_encoder_2-int8_tensorwise-comfy.safetensors"}, {"label":"float8_e4m3fn", "value":"T5EncoderModel;model=https://huggingface.co/Teriks/HunyuanDiT-v1.2-quants/blob/main/text_encoder_2-float8_e4m3fn-comfy.safetensors"}]]}]
+@submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model":"LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
+@submodelbuilder[{"label":"Control Net", "arg":"--control-nets", "model":"Control Net"}]
+@submodelbuilder[{"id":"ip-adapter", "label":"IP Adapter", "arg":"--ip-adapters", "model":"IP Adapter"}]
+@submodelbuilder[{"label":"Image Encoder", "arg":"--image-encoder", "model":"Image Encoder", "enabled-when":{"id":"ip-adapter","not-empty":true}}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Teriks/HunyuanDiT-v1.2-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors", "divider-after":true, "suggestions":[{"label":"int8_tensorwise", "value":"https://huggingface.co/Teriks/HunyuanDiT-v1.2-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors"}, {"label":"float8_e4m3fn", "value":"https://huggingface.co/Teriks/HunyuanDiT-v1.2-quants/blob/main/transformer-float8_e4m3fn-comfy.safetensors"}]}]
+@imageseed[{"id":"image-seed", "label":"Control / IP Adapter Image", "arg":"--image-seeds", "file-types":["images-in"], "default":"", "hide-float":true}]
+@imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor", "enabled-when":{"id":"image-seed","not-empty":true}}]
+@imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor", "divider-after":true, "enabled-when":{"id":"image-seed","not-empty":true}}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@imageformat[{}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here"

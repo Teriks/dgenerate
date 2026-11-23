@@ -23,6 +23,7 @@ import tkinter.ttk as ttk
 import tkinter.font as tkfont
 
 import dgenerate.console.appearance as _appearance
+import dgenerate.console.themescrollbar as _themescrollbar
 
 import tklinenums
 
@@ -64,10 +65,10 @@ class DgenerateCodeView(ttk.Frame):
             borderwidth=0,
         )
 
-        self.y_scrollbar = ttk.Scrollbar(self, orient='vertical', command=self.text.yview)
-        self.x_scrollbar = ttk.Scrollbar(self, orient='horizontal', command=self.text.xview)
+        self.y_scrollbar = _themescrollbar.scrollbar(self, orient='vertical', command=self.text.yview)
+        self.x_scrollbar = _themescrollbar.scrollbar(self, orient='horizontal', command=self.text.xview)
 
-        self.y_scrollbar.grid(row=0, column=2, sticky="ns")
+        self.y_scrollbar.grid(row=0, column=2, rowspan=2, sticky="ns")
         self.x_scrollbar.grid(row=1, column=1, sticky="we")
 
         self.text.grid(row=0, column=1, sticky='nsew')
@@ -647,7 +648,7 @@ class DgenerateCodeView(ttk.Frame):
         if color_theme is None or color_theme.lower() == 'none':
             self._highlighting = False
             self._syntax_highlighter.remove_tags()
-            if _appearance.is_aqua(self.text):
+            if _appearance.native_controls(self.text):
                 self.text.configure(
                     foreground=_appearance.text_foreground(),
                     background=_appearance.field_background())
@@ -668,9 +669,19 @@ class DgenerateCodeView(ttk.Frame):
 
     def enable_word_wrap(self):
         self.text.config(wrap='word')
+        self._show_horizontal_scrollbar(False)
 
     def disable_word_wrap(self):
         self.text.config(wrap='none')
+        self._show_horizontal_scrollbar(True)
+
+    def _show_horizontal_scrollbar(self, show):
+        if show:
+            self.y_scrollbar.grid(row=0, column=2, rowspan=2, sticky='ns')
+            self.x_scrollbar.grid(row=1, column=1, sticky='we')
+        else:
+            self.x_scrollbar.grid_remove()
+            self.y_scrollbar.grid(row=0, column=2, rowspan=1, sticky='ns')
 
     def _comment_selected_text(self, event):
         """Comment out selected text by adding # to the beginning of each line."""

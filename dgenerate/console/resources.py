@@ -506,6 +506,8 @@ def _choose_update_action(parent, message: str) -> str:
     """
     choice = {'value': 'cancel'}
     dialog = tk.Toplevel(parent)
+    # Measuring the window paints it. Hide it until it is placed.
+    dialog.withdraw()
     dialog.title('Update')
     dialog.resizable(False, False)
     dialog.transient(parent)
@@ -538,6 +540,7 @@ def _choose_update_action(parent, message: str) -> str:
     x = parent.winfo_rootx() + max(0, (parent.winfo_width() - dialog.winfo_width()) // 2)
     y = parent.winfo_rooty() + max(0, (parent.winfo_height() - dialog.winfo_height()) // 2)
     dialog.geometry(f'+{x}+{y}')
+    dialog.deiconify()
     parent.wait_window(dialog)
     return choice['value']
 

@@ -62,6 +62,8 @@ class TestGenerateCodeContextField(unittest.TestCase):
                     form.withdraw()
                     form.update_idletasks()
                     self.assertEqual(form.minsize()[0], form.winfo_reqwidth())
+                    for border in (form._request_border, form._log_border):
+                        self.assertEqual(int(border.cget('highlightthickness')), 1)
                     edge = form.winfo_rootx() + form.winfo_reqwidth()
                     buttons = _named_buttons(form, {'Default', 'Max'})
                     self.assertEqual(sorted(b.cget('text') for b in buttons), ['Default', 'Max'])

@@ -68,6 +68,8 @@ class _TextEncoderUriDialog(tk.Toplevel):
                  position: tuple[int, int] | None = None,
                  size: tuple[int, int] | None = None):
         super().__init__(master)
+        # Measuring the window paints it. Hide it until it is placed.
+        self.withdraw()
         self.title('Build Text Encoder URI')
         self.transient(master)
         self.resizable(True, True)

@@ -108,6 +108,8 @@ class TkTextHighlighter:
             "Generic.Strong": "strong",
             "Generic.Subheading": "subheading",
         }
+        self._editor_options = None
+        self._editor_mapped = False
 
     @staticmethod
     def _parse_table(source, map_, fallback=None):
@@ -174,11 +176,31 @@ class TkTextHighlighter:
             color_theme = toml.load(color_theme)
 
         editor, tags = self._parse_theme(color_theme)
-        self.text.configure(**editor)
+        # A theme may omit the selection text color. The platform default is
+        # black, which disappears on a dark selection such as ayu-dark.
+        editor = {key: value for key, value in editor.items() if value is not None}
+        if 'selectforeground' not in editor and 'foreground' in editor:
+            editor['selectforeground'] = editor['foreground']
+        self._editor_options = editor
+        # Aqua replaces selection colors that were set before the widget is
+        # on screen. Applying them again when it is mapped makes the first
+        # show match a later theme change.
+        if not self._editor_mapped:
+            self._editor_mapped = True
+            self.text.bind('<Map>', self._apply_editor, add='+')
+        self._apply_editor()
         for key, value in tags.items():
             if isinstance(value, str):
                 self.text.tag_configure(f"Token.{key}", foreground=value)
         self.highlight_visible()
+
+    def _apply_editor(self, _event=None):
+        if not self._editor_options:
+            return
+        try:
+            self.text.configure(**self._editor_options)
+        except tk.TclError:
+            pass
 
     def remove_tags(self, start='1.0', end='end'):
         for tag in self.text.tag_names(index=None):

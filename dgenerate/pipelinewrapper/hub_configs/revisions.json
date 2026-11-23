@@ -16,7 +16,7 @@
   ],
   "MiniMaxAI/MiniMax-H3": [
     "MiniMaxAI/MiniMax-H3",
-    "0919fb684102ef115126612f3fbb84d1027e7317",
+    "1cc7549f2cf0af8ff2f09b24f3c57303c8aa6317",
     "744ffacdd97c7c00"
   ],
   "MiniMaxAI/MiniMax-H3-Image": [
@@ -136,27 +136,27 @@
   ],
   "black-forest-labs/FLUX.1-Depth-dev": [
     "black-forest-labs/FLUX.1-Depth-dev",
-    "fb5e9b1bae41b8c8adcea4ea2a87b74dd298f07a",
+    "2bac885524b51f94bb794a31d9fba21d4c64e409",
     "744ffacdd97c7c00"
   ],
   "black-forest-labs/FLUX.1-Fill-dev": [
     "black-forest-labs/FLUX.1-Fill-dev",
-    "358293da0354175698b67ec8299acf928313a78a",
+    "7326a96224b2513681b5d97281c83af967926bb6",
     "744ffacdd97c7c00"
   ],
   "black-forest-labs/FLUX.1-dev": [
     "black-forest-labs/FLUX.1-dev",
-    "3de623fc3c33e44ffbe2bad470d0f45bccf2eb21",
+    "45d95c497444bbaebe766e1528792fc9158c0c3a",
     "744ffacdd97c7c00"
   ],
   "black-forest-labs/FLUX.1-schnell": [
     "black-forest-labs/FLUX.1-schnell",
-    "741f7c3ce8b383c54771c7003378a50191e9efe9",
+    "169573f54945f633efbe126a40a5676b4228363c",
     "744ffacdd97c7c00"
   ],
   "black-forest-labs/FLUX.2-dev": [
     "black-forest-labs/FLUX.2-dev",
-    "26afe3a78bb242c0a8bb181dcc8937bb16e5c66c",
+    "e8af80c9dd820ab07ee4171d024f03e5c4b3024b",
     "744ffacdd97c7c00"
   ],
   "black-forest-labs/FLUX.2-klein-4B": [
@@ -166,17 +166,17 @@
   ],
   "black-forest-labs/FLUX.2-klein-9b-kv": [
     "black-forest-labs/FLUX.2-klein-9b-kv",
-    "a6dfb36eca3a3906eb2fd460795adfb844e5fcce",
+    "6c882f3fd7da58b360c43079d32affdc953d8670",
     "744ffacdd97c7c00"
   ],
   "black-forest-labs/FLUX.2-klein-base-9B": [
     "black-forest-labs/FLUX.2-klein-base-9B",
-    "32773329fbe7e81a90ef971740e8ba4b0364ecf3",
+    "8e4154e4c94c6eb08644d0761d404e1c28d325c2",
     "744ffacdd97c7c00"
   ],
   "black-forest-labs/flux-3-image-klein": [
     "black-forest-labs/flux-3-image-klein",
-    "09561231f44e41381c461caf53d5452005a60ac9",
+    "3b767ff9b5261d71645e2ec49d87d298d955238d",
     "744ffacdd97c7c00"
   ],
   "black-forest-labs/flux-3-image-klein-base": [

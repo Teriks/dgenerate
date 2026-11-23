@@ -34,6 +34,8 @@ import uuid
 import tkinter.ttk as ttk
 
 import dgenerate.console.appearance as _appearance
+import dgenerate.console.themedialog as _themedialog
+import dgenerate.console.thememenu as _thememenu
 import typing
 
 import psutil
@@ -299,6 +301,9 @@ class _AssistantForm(tk.Toplevel):
                  position: tuple[int, int] = None,
                  size: tuple[int, int] = None):
         super().__init__(master)
+        # Measuring the window paints it. Hide it until it is placed, or
+        # macOS shows it and then shifts it onto the saved position.
+        self.withdraw()
         self.title('Assistant')
         self.configure(padx=5, pady=5)
         self.transient(master)
@@ -337,6 +342,8 @@ class _AssistantForm(tk.Toplevel):
         open_size = size if size else (720, 520)
         open_size = (max(open_size[0], min_width), open_size[1])
         _util.position_toplevel(master, self, size=open_size, position=position)
+        self._fit_intro_now()
+        self.after_idle(self._fit_intro_now)
 
         self._request_text.text.focus_set()
 
@@ -355,11 +362,11 @@ class _AssistantForm(tk.Toplevel):
         self._intro_history = ttk.Label(
             self._intro, anchor=tk.W, justify=tk.LEFT, text=_INTRO_HISTORY)
         self._intro_history.grid(row=1, column=0, sticky=tk.EW)
-        self.bind('<Configure>', self._fit_intro, add='+')
+        self._intro.bind('<Configure>', self._fit_intro)
 
-        self._request_text = _scrolledtext.ScrolledText(self)
+        self._request_border, self._request_text = self._bordered_text()
         self._request_text.text.configure(height=6)
-        self._request_text.grid(row=1, column=0, sticky=tk.NSEW, pady=(4, 8))
+        self._request_border.grid(row=1, column=0, sticky=tk.NSEW, pady=(4, 8))
         self._request_text.text.bind('<Control-Return>', lambda e: (self._generate(), 'break')[1])
         self._request_text.text.bind('<Up>', self._show_previous_prompt)
         self._request_text.text.bind('<Down>', self._show_next_prompt)
@@ -479,9 +486,9 @@ class _AssistantForm(tk.Toplevel):
             'write', lambda *_: _remember(_SETTINGS_DEBUG, bool(self._debug_var.get())))
 
         ttk.Label(self, text='Progress', anchor=tk.W).grid(row=3, column=0, sticky=tk.EW)
-        self._log_text = _scrolledtext.ScrolledText(self)
+        self._log_border, self._log_text = self._bordered_text()
         self._log_text.text.configure(height=8, state=tk.DISABLED)
-        self._log_text.grid(row=4, column=0, sticky=tk.NSEW, pady=(2, 8))
+        self._log_border.grid(row=4, column=0, sticky=tk.NSEW, pady=(2, 8))
         self._log_terminal = _terminaltext.StyledTerminalText(
             self._log_text.text, _LOG_STYLE_TAGS)
         self._log_context_menu = self._create_log_context_menu()
@@ -519,7 +526,7 @@ class _AssistantForm(tk.Toplevel):
             title='Assistant',
             help_text=_ASSISTANT_HELP,
             size=(680, 640),
-            dock_to_right=False,
+            dock_to_right=True,
             position_widget=self,
             wrap=tk.WORD)
         self._style_assistant_help(self._help_dialog.text_widget)
@@ -544,10 +551,20 @@ class _AssistantForm(tk.Toplevel):
         widget.configure(state='disabled')
 
     def _fit_intro(self, event):
-        if event.widget is self:
-            wrap = max(event.width - 24, 200)
-            self._intro_task.configure(wraplength=wrap)
-            self._intro_history.configure(wraplength=wrap)
+        if event.widget is not self._intro or event.width <= 1:
+            return
+        self._apply_intro_wrap(event.width)
+
+    def _fit_intro_now(self):
+        width = self._intro.winfo_width()
+        if width <= 1:
+            return
+        self._apply_intro_wrap(width)
+
+    def _apply_intro_wrap(self, width):
+        wrap = max(width, 200)
+        self._intro_task.configure(wraplength=wrap)
+        self._intro_history.configure(wraplength=wrap)
 
     def _load_prompt_history(self):
         if self._max_prompt_history == 0:
@@ -719,14 +736,14 @@ class _AssistantForm(tk.Toplevel):
             'Insert Path', state=tk.NORMAL if not disabled else tk.DISABLED)
 
     def _create_request_context_menu(self) -> tk.Menu:
-        menu = tk.Menu(self._request_text, tearoff=0)
+        menu = _thememenu.ThemeMenu(self._request_text, tearoff=0)
         menu.add_command(label='Cut', accelerator='Ctrl+X', command=self._request_cut)
         menu.add_command(label='Copy', accelerator='Ctrl+C', command=self._request_copy)
         menu.add_command(label='Paste', accelerator='Ctrl+V', command=self._request_paste)
         menu.add_command(label='Delete', accelerator='DEL', command=self._request_delete)
         menu.add_command(label='Select All', accelerator='Ctrl+A', command=self._request_select_all)
         menu.add_separator()
-        path_submenu = tk.Menu(menu, tearoff=0)
+        path_submenu = _thememenu.ThemeMenu(menu, tearoff=0)
         path_submenu.add_command(
             label='File Path (Open)', command=self._request_insert_file_path)
         path_submenu.add_command(
@@ -774,7 +791,7 @@ class _AssistantForm(tk.Toplevel):
             'Select All', state=tk.NORMAL if has_content else tk.DISABLED)
 
     def _create_log_context_menu(self) -> tk.Menu:
-        menu = tk.Menu(self._log_text, tearoff=0)
+        menu = _thememenu.ThemeMenu(self._log_text, tearoff=0)
         menu.add_command(label='Copy', accelerator='Ctrl+C', command=self._log_copy)
         menu.add_command(label='Select All', accelerator='Ctrl+A', command=self._log_select_all)
         menu.configure(postcommand=self._update_log_context_menu)
@@ -801,9 +818,32 @@ class _AssistantForm(tk.Toplevel):
                 return color
         return fallback
 
+    def _bordered_text(self):
+        """A scrolled text with a 1px edge, so the box reads against the dialog."""
+        border = tk.Frame(self, borderwidth=0, highlightthickness=1, takefocus=0)
+        scrolled = _scrolledtext.ScrolledText(border)
+        scrolled.pack(fill=tk.BOTH, expand=True)
+        return border, scrolled
+
+    def _paint_text_border(self, border):
+        edge = _themedialog.edge()
+        fill = _themedialog.background()
+        if edge and fill:
+            border.configure(
+                background=fill,
+                highlightbackground=edge,
+                highlightcolor=edge,
+                highlightthickness=1,
+                borderwidth=0,
+            )
+            return
+        _appearance.configure_viewport(border)
+
     def _theme_text_boxes(self):
         if not self.winfo_exists():
             return
+        for border in (self._request_border, self._log_border):
+            self._paint_text_border(border)
         for text in (self._request_text.text, self._log_text.text):
             try:
                 text.configure(insertbackground=text.cget('fg'))

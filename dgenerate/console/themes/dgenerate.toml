@@ -9,6 +9,8 @@ caret = "#000000" # Caret color: black
 caret_width = 1
 border_width = 0
 focus_border_width = 0
+window_bg = "#f2f2f2" # Window and dialog fill
+window_chrome = "#e3e3e3" # Title bar and border
 
 # General syntax colors
 [general]

@@ -33,6 +33,7 @@ def configure(*args, **kwargs):
     _cur_args = args
     _cur_kwargs = kwargs
     for c in list(_configure):
+        c._theme_options = kwargs
         c.configure(*args, **kwargs)
     for listener in list(_listeners):
         listener()
@@ -56,8 +57,20 @@ def unlisten(callback):
 class ThemeText(tk.Text):
     def __init__(self, master=None, cnf={}, **kw):
         super().__init__(master, cnf, **kw)
+        self._theme_options = dict(_cur_kwargs)
         self.configure(*_cur_args, **_cur_kwargs)
+        # Same as the editor: Aqua drops selection colors set before the
+        # widget is mapped, so they are applied again on the first show.
+        self.bind('<Map>', self._reapply_theme, add='+')
         _configure.add(self)
+
+    def _reapply_theme(self, _event=None):
+        if not self._theme_options:
+            return
+        try:
+            tk.Text.configure(self, **self._theme_options)
+        except tk.TclError:
+            pass
 
     def destroy(self):
         _configure.remove(self)

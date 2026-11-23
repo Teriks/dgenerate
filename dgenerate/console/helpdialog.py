@@ -24,7 +24,9 @@ import tkinter.ttk as ttk
 
 import dgenerate.console.appearance as _appearance
 import dgenerate.console.finddialog as _finddialog
+import dgenerate.console.themescrollbar as _themescrollbar
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
+import dgenerate.console.thememenu as _thememenu
 import dgenerate.console.themetext as _themetext
 
 
@@ -74,12 +76,12 @@ class HelpDialog:
         frame = ttk.Frame(self.top)
         frame.pack(expand=True, fill='both')
 
-        v_scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL)
+        v_scrollbar = _themescrollbar.scrollbar(frame, orient=tk.VERTICAL)
         v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         h_scrollbar = None
         if self.wrap == tk.NONE:
-            h_scrollbar = ttk.Scrollbar(frame, orient=tk.HORIZONTAL)
+            h_scrollbar = _themescrollbar.scrollbar(frame, orient=tk.HORIZONTAL)
             h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
         text_pad = {'padx': 12, 'pady': 8} if self.wrap != tk.NONE else {}
@@ -114,7 +116,7 @@ class HelpDialog:
 
     def _create_context_menu(self):
         """Create the right-click context menu for the text widget."""
-        self.context_menu = tk.Menu(self.text_widget, tearoff=0)
+        self.context_menu = _thememenu.ThemeMenu(self.text_widget, tearoff=0)
         self.context_menu.add_command(label="Copy", command=self._copy_text)
         self.context_menu.add_command(label="Copy All", command=self._copy_all_text)
         self.context_menu.add_command(

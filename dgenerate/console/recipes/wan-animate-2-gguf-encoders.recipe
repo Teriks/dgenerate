@@ -1,0 +1,49 @@
+title: Wan-Animate-2 (GGUF + Encoders)
+# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
+# Base transformer GGUF with the UMT5-XXL encoder GGUF.
+
+# Wan-Animate-2. The seed is the character still. wan-driving= is the
+# motion clip. The distilled checkpoint samples in 10 steps; the base
+# checkpoint samples in 40. --video-lengths is rejected.
+# Transformer blocks are compiled on every load. --torch-compile is not required.
+
+\setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
+
+\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+\setp character "@file[{"label":"Character Image", "optional":false, "mode":"input", "file-types":["images-in"]}]"
+\setp driving_clip "@file[{"label":"Driving Clip", "optional":false, "mode":"input", "file-types":["videos-in"], "divider-after":true}]"
+
+\set image_seeds {{ format_image_seed(seed_images=character, wan_driving_video=driving_clip) }}
+\set image_seeds {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Wan-AI/Wan2.2-Animate-2-14B-Diffusers", "optional":false, "file-types":["models"]}]
+--model-type wan-animate-2 {{ image_seeds }} {{ auth_token }}
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["DPMSolverMultistepScheduler", "FlowMatchEulerDiscreteScheduler", "EulerDiscreteScheduler", "UniPCMultistepScheduler"]}]
+@spectrum[{"id": "sp", "divider-after": true}]
+@switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["tc", "sada", "sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
+@dype[{"exclude":["cd", "sp"],"divider-after":true}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@quantizer[{"model-type":"wan-animate-2"}]
+@textencoders[{"model-type":"wan-animate-2", "arg":"--text-encoders", "divider-after":true, "defaults":["UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q4_K_S.gguf"], "suggestions":[[{"label":"Q4_K_S", "value":"UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q4_K_S.gguf"}, {"label":"Q3_K_S", "value":"UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q3_K_S.gguf"}, {"label":"Q3_K_M", "value":"UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q3_K_M.gguf"}, {"label":"Q4_K_M", "value":"UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q4_K_M.gguf"}, {"label":"Q5_K_S", "value":"UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q5_K_S.gguf"}, {"label":"Q5_K_M", "value":"UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q5_K_M.gguf"}, {"label":"Q6_K", "value":"UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q6_K.gguf"}, {"label":"Q8_0", "value":"UMT5EncoderModel;model=https://huggingface.co/city96/umt5-xxl-encoder-gguf/blob/main/umt5-xxl-encoder-Q8_0.gguf"}]]}]
+@switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
+@submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
+@switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-Q4_K-comfy.gguf", "divider-after":true, "suggestions":[{"label":"Q4_K", "value":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-Q4_K-comfy.gguf"}, {"label":"Q2_K", "value":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-Q2_K-comfy.gguf"}, {"label":"Q3_K", "value":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-Q3_K-comfy.gguf"}, {"label":"Q4_0", "value":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-Q4_0-comfy.gguf"}, {"label":"Q4_1", "value":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-Q4_1-comfy.gguf"}, {"label":"Q5_0", "value":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-Q5_0-comfy.gguf"}, {"label":"Q5_1", "value":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-Q5_1-comfy.gguf"}, {"label":"Q5_K", "value":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-Q5_K-comfy.gguf"}, {"label":"Q6_K", "value":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-Q6_K-comfy.gguf"}, {"label":"Q8_0", "value":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-Q8_0-comfy.gguf"}, {"label":"IQ4_NL", "value":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-IQ4_NL-comfy.gguf"}, {"label":"IQ4_XS", "value":"https://huggingface.co/Teriks/Wan-Animate-2-14B-quants/blob/main/transformer-IQ4_XS-comfy.gguf"}]}]
+@int[{"label":"Segment Frame Length", "arg":"--wan-segment-frame-lengths", "default":81, "min":1}]
+@int[{"label":"Previous Segment Frames", "arg":"--wan-prev-segment-frames", "default":1, "min":1, "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":40, "min":1}]
+@float[{"label":"Video FPS", "arg":"--video-fps", "default":"24", "min":1, "divider-after":true}]
+@dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@switchradio[{"labels":["Output Dgenerate Image Metadata", "Output Automatic1111 Image Metadata"], "args":["--output-metadata", "--output-auto1111-metadata"]}]
+@switch[{"label":"Output Configs", "arg":"--output-configs"}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"640x800", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--wan-driving-image-processors", "label":"Driving Clip Processor"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here"

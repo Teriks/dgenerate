@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import platform
 import tkinter
 import tkinter.ttk as ttk
 
@@ -60,9 +61,23 @@ def _highlight_border(widget):
 
 
 def valid_colors(widget):
-    if _highlight_border(widget):
-        widget.config(
-            highlightthickness=0)
+    if not _highlight_border(widget):
+        return
+    if platform.system() == 'Darwin':
+        # The theme edge is the field's only border. Clearing the ring
+        # would leave a Mac entry with no edge at all.
+        from dgenerate.console import themedialog
+        edge = themedialog.edge()
+        if edge:
+            widget.config(
+                highlightbackground=edge,
+                highlightcolor=edge,
+                highlightthickness=1,
+                relief='flat',
+                borderwidth=0,
+            )
+            return
+    widget.config(highlightthickness=0)
 
 
 def invalid_colors(widget):

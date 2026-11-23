@@ -108,6 +108,8 @@ class TranspileDialog:
         self._exporting = False
 
         self.top = tk.Toplevel(parent)
+        # Measuring the window paints it. Hide it until it is placed.
+        self.top.withdraw()
         self.top.title('Transpile')
         self.top.transient(parent)
         self.top.resizable(False, False)
@@ -203,6 +205,7 @@ class TranspileDialog:
         self.top.geometry(
             f'+{parent.winfo_rootx() + (parent.winfo_width() - self.top.winfo_width()) // 2}'
             f'+{parent.winfo_rooty() + (parent.winfo_height() - self.top.winfo_height()) // 2}')
+        self.top.deiconify()
         self.top.grab_set()
 
     def close(self):

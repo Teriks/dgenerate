@@ -27,11 +27,13 @@ import tkinter.ttk as ttk
 import typing
 
 import dgenerate.console.appearance as _appearance
+import dgenerate.console.themescrollbar as _themescrollbar
 import dgenerate.console.formentries as _formentries
 import dgenerate.console.formentries.entry as _form_entry
 import dgenerate.console.resources as _resources
 import dgenerate.console.util as _util
-from dgenerate.console.mousewheelbind import bind_mousewheel, handle_canvas_scroll, un_bind_mousewheel
+from dgenerate.console.mousewheelbind import (
+    bind_mousewheel, drop_queued_yview, handle_canvas_scroll, un_bind_mousewheel, yview_command)
 from dgenerate.console.combobox import ComboBox
 
 _dialog_state = _util.DialogState(save_position=True, save_size=True)
@@ -362,15 +364,13 @@ class _RecipesForm(tk.Toplevel):
 
         self.canvas = tk.Canvas(viewport, highlightthickness=0, borderwidth=0)
         self.canvas.pack(fill=tk.BOTH, expand=True)
-        self.scrollbar = ttk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollbar = _themescrollbar.scrollbar(
+            outer_frame, orient="vertical", command=yview_command(self.canvas))
         self.scrollable_frame = ttk.Frame(self.canvas, padding=(10, 10))
 
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(
-                scrollregion=self.canvas.bbox("all")
-            )
-        )
+        self._form_size = None
+        self._canvas_width = None
+        self.scrollable_frame.bind('<Configure>', self._on_form_configure)
 
         self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
@@ -386,7 +386,12 @@ class _RecipesForm(tk.Toplevel):
         ttk.Button(self, text='Insert', command=self._apply_templates).grid(
             row=3, column=0, padx=5, pady=5)
 
-        self.bind("<Configure>", self._on_resize)
+        # macOS sends Configure for every field when this form moves.
+        # A binding on the toplevel runs for each of those, which is what
+        # makes a thumb drag stall. The outer frame is not in the fields'
+        # bind tags, so it only hears its own resize.
+        self._scroll_outer = outer_frame
+        outer_frame.bind('<Configure>', self._on_resize)
 
         # Bind mouse wheel events
         self.bind_mousewheel()
@@ -410,9 +415,26 @@ class _RecipesForm(tk.Toplevel):
             entry.on_form_scroll()
         handle_canvas_scroll(self.canvas, event)
 
+    def _on_form_configure(self, event):
+        # A scroll moves this frame and macOS reports that as Configure.
+        # Recomputing the scroll region then rebuilds the form on every
+        # pixel of a thumb drag. Only a real size change needs it.
+        if event.widget is not self.scrollable_frame:
+            return
+        size = (event.width, event.height)
+        if size == self._form_size:
+            return
+        self._form_size = size
+        self.canvas.configure(scrollregion=self.canvas.bbox('all'))
+
     def _on_resize(self, event):
-        canvas_width = self.winfo_width() - self.scrollbar.winfo_width() - 20
-        self.canvas.itemconfig(self.canvas_window, width=canvas_width)
+        if event.widget is not self._scroll_outer:
+            return
+        width = event.width - self.scrollbar.winfo_width() - 2
+        if width <= 1 or width == self._canvas_width:
+            return
+        self._canvas_width = width
+        self.canvas.itemconfig(self.canvas_window, width=width)
 
     def get_entry_by_id(self, entry_id: str) -> typing.Optional[_formentries._Entry]:
         return self._id_map.get(entry_id, None)
@@ -423,6 +445,7 @@ class _RecipesForm(tk.Toplevel):
         else:
             self._last_known_selection = selection
 
+        drop_queued_yview(self.canvas)
         self.canvas.yview_moveto(0)
 
         for widget in self.scrollable_frame.winfo_children():

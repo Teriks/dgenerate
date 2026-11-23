@@ -2,11 +2,14 @@
 bg = "#fafafa"  # Background (light gray)
 fg = "#575f66"  # Default text (dark gray)
 select_bg = "#d1e4f4"  # Selected text (light blue)
+select_fg = "#575f66"  # Selected text (dark gray)
 inactive_select_bg = "#e7e8e9"  # Inactive selection (light gray)
 caret = "#575f66"  # Caret color (dark gray)
 caret_width = 1  # Caret width (1 pixel)
 border_width = 0  # No border
 focus_border_width = 0  # No focus border
+window_bg = "#f3f4f5"  # Window and dialog fill
+window_chrome = "#e7e8e9"  # Title bar and border
 
 [general]
 comment = "#abb0b6"  # Comments (medium gray)

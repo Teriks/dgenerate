@@ -63,6 +63,7 @@ class TestCanvasScroll(unittest.TestCase):
             )
             before = canvas.yview()[0]
             _wheel.handle_canvas_scroll(canvas, event)
+            root.update()
             self.assertGreater(canvas.yview()[0], before)
         finally:
             root.destroy()
@@ -87,7 +88,39 @@ class TestCanvasScroll(unittest.TestCase):
             )
             before = canvas.yview()[0]
             _wheel.handle_canvas_scroll(canvas, event)
+            root.update()
             self.assertGreater(canvas.yview()[0], before)
+        finally:
+            root.destroy()
+
+    def test_a_burst_of_scrolls_moves_once(self):
+        root = tk.Tk()
+        try:
+            root.geometry('200x80+20+20')
+            canvas = tk.Canvas(root, width=180, height=60, highlightthickness=0)
+            canvas.pack()
+            canvas.create_rectangle(0, 0, 20, 4000, outline='')
+            root.update()
+            canvas.configure(scrollregion=canvas.bbox('all'))
+            event = types.SimpleNamespace(
+                delta=-1,
+                num=0,
+                x_root=canvas.winfo_rootx() + 4,
+                y_root=canvas.winfo_rooty() + 4,
+            )
+            calls = []
+            real = tk.Canvas.yview_scroll
+
+            def spy(self, *args, **kwargs):
+                calls.append(args)
+                return real(self, *args, **kwargs)
+
+            canvas.yview_scroll = spy.__get__(canvas, tk.Canvas)
+            for _ in range(8):
+                _wheel.handle_canvas_scroll(canvas, event)
+            root.update()
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][0], 8)
         finally:
             root.destroy()
 

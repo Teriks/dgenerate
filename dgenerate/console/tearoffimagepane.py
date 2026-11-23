@@ -26,6 +26,7 @@ import typing
 from typing import Optional, Callable
 
 import dgenerate.console.filedialog as _filedialog
+import dgenerate.console.thememenu as _thememenu
 import dgenerate.console.resources as _resources
 import dgenerate.console.showindirectory as _showindirectory
 from dgenerate.console.imageviewer import PLAYS_MEDIA, ImageViewer
@@ -193,7 +194,7 @@ class TearOffImagePane:
                              master: tk.Misc,
                              image_viewer: ImageViewer,
                              menu_type: typing.Literal['pane', 'window'] = 'pane') -> tk.Menu:
-        context_menu = tk.Menu(master, tearoff=0)
+        context_menu = _thememenu.ThemeMenu(master, tearoff=0)
 
         self._install_common_context_options(context_menu, image_viewer)
 

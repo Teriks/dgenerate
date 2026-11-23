@@ -21,8 +21,9 @@
 import tkinter as tk
 import tkinter.ttk as ttk
 import tkinter.font as tkfont
-import dgenerate.console.themetext as _themetext
 import dgenerate.console.fonts as _fonts
+import dgenerate.console.themetext as _themetext
+import dgenerate.console.themescrollbar as _themescrollbar
 
 
 class ScrolledText(ttk.Frame):
@@ -51,11 +52,12 @@ class ScrolledText(ttk.Frame):
             tabs=tkfont.Font(font=kwargs["font"]).measure(" " * 4),
         )
 
-        self.y_scrollbar = ttk.Scrollbar(self, orient='vertical', command=self.text.yview)
+        self.y_scrollbar = _themescrollbar.scrollbar(self, orient='vertical', command=self.text.yview)
         self.y_scrollbar.pack(side='right', fill='y')
 
-        self.x_scrollbar = ttk.Scrollbar(self, orient='horizontal', command=self.text.xview)
-        self.x_scrollbar.pack(side='bottom', fill='x')
+        self.x_scrollbar = _themescrollbar.scrollbar(self, orient='horizontal', command=self.text.xview)
+        if str(self.text.cget('wrap')) == 'none':
+            self.x_scrollbar.pack(side='bottom', fill='x')
 
         self.text['yscrollcommand'] = self.y_scrollbar.set
         self.text['xscrollcommand'] = self.x_scrollbar.set
@@ -64,6 +66,9 @@ class ScrolledText(ttk.Frame):
 
     def enable_word_wrap(self):
         self.text.config(wrap='word')
+        self.x_scrollbar.pack_forget()
 
     def disable_word_wrap(self):
         self.text.config(wrap='none')
+        if not self.x_scrollbar.winfo_manager():
+            self.x_scrollbar.pack(side='bottom', fill='x', before=self.text)

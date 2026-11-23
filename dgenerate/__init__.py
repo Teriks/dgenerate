@@ -64,6 +64,12 @@ if __am_dgenerate_app:
         sys.stderr = __dev_null
         __stderr_null = True
 
+# pip never runs a post-install script. On macOS, rename OpenCV's
+# AVFoundation classes before cv2 or PyAV are imported. See cv2avnames.
+if sys.platform == 'darwin':
+    from dgenerate.cv2avnames import rename_opencv_avfoundation_classes as _rename_cv2_av_classes
+    _rename_cv2_av_classes()
+
 # handle --console meta argument
 
 if __am_dgenerate_app and '--console' in sys.argv:

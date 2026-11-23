@@ -49,6 +49,21 @@ def is_aqua(widget) -> bool:
         return False
 
 
+def native_controls(widget) -> bool:
+    """True when ttk is still drawing AppKit controls.
+
+    The editor theme switches ttk to clam, and those controls take the theme
+    colors. This stays true only while the window is still on the aqua theme,
+    which is the system appearance before that switch.
+    """
+    if widget is None or not is_aqua(widget):
+        return False
+    try:
+        return ttk.Style(widget).theme_use() == 'aqua'
+    except tk.TclError:
+        return False
+
+
 def field_background() -> str:
     """Background for a text field that should follow the system appearance."""
     return 'systemTextBackgroundColor'
@@ -76,9 +91,29 @@ def configure_viewport(frame) -> None:
     The edge has to live on the frame around the canvas. A canvas highlight
     border is part of the scrolled surface, so it slides away with the fields
     and only one side of it is visible at either end of the scroll.
-    Aqua uses an opaque label color so the edge follows light and dark mode.
-    Elsewhere this is the button-shadow gray of a native control border.
+    Once the editor theme is applied, the edge is the theme border. Before
+    that, Aqua uses an opaque label color so the edge follows light and dark
+    mode, and other platforms use the button-shadow gray of a native control
+    border.
     """
+    from dgenerate.console import themedialog
+
+    edge = themedialog.edge()
+    if edge:
+        fill = themedialog.background()
+        try:
+            frame.configure(
+                highlightthickness=1,
+                highlightbackground=edge,
+                highlightcolor=edge,
+                borderwidth=0,
+                takefocus=0,
+            )
+            if fill:
+                frame.configure(background=fill)
+            return
+        except tk.TclError:
+            pass
     if is_aqua(frame):
         colors = ('systemSecondaryLabelColor', 'systemTertiaryLabelColor', 'systemLabelColor')
     else:
@@ -102,9 +137,10 @@ def install(widget) -> None:
     Apply dynamic Aqua system colors to a window's classic widgets.
 
     Tk resolves semantic system colors against the current macOS appearance and
-    redraws windows when that appearance changes. No effect on Windows or X11.
+    redraws windows when that appearance changes. No effect on Windows or X11,
+    and no effect once the editor theme has switched ttk off the aqua theme.
     """
-    if widget is None or not is_aqua(widget):
+    if widget is None or not native_controls(widget):
         return
     style = ttk.Style(widget)
     layout = style.layout('TCheckbutton')
@@ -148,8 +184,8 @@ def _remove_checkbutton_focus(layout):
 
 
 def apply(widget) -> None:
-    """Repaint one window's classic containers. No effect outside Aqua."""
-    if widget is None or not is_aqua(widget):
+    """Repaint one window's classic containers. No effect outside native Aqua."""
+    if widget is None or not native_controls(widget):
         return
     _paint(widget)
     if isinstance(widget, tk.Menu):

@@ -27,6 +27,7 @@ import tkinter.ttk as ttk
 import typing
 
 import dgenerate.console.appearance as _appearance
+import dgenerate.console.thememenu as _thememenu
 import dgenerate.console.finddialog as _finddialog
 import dgenerate.console.resources as _resources
 from dgenerate.console.codeview import DgenerateCodeView
@@ -75,6 +76,8 @@ def open_init_dgen_editor(
         return
 
     dialog = tk.Toplevel(parent)
+    # Measuring the window paints it. Hide it until it is placed.
+    dialog.withdraw()
     _editor_window = dialog
     dialog.title('Startup Configuration (init.dgen)')
     dialog.transient(parent)
@@ -146,7 +149,7 @@ def open_init_dgen_editor(
             'Find In Startup Configuration',
             code_view.text))
 
-    context_menu = tk.Menu(code_view.text, tearoff=0)
+    context_menu = _thememenu.ThemeMenu(code_view.text, tearoff=0)
     context_menu.add_command(
         label='Cut',
         accelerator='Ctrl+X',
@@ -246,4 +249,5 @@ def open_init_dgen_editor(
         f'{width}x{height}+'
         f'{parent.winfo_rootx() + (parent.winfo_width() - width) // 2}+'
         f'{parent.winfo_rooty() + (parent.winfo_height() - height) // 2}')
+    dialog.deiconify()
     dialog.grab_set()

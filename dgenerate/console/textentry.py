@@ -25,6 +25,7 @@ import tkinter.font as tkfont
 import tkinter.ttk as ttk
 
 import dgenerate.console.appearance as _appearance
+import dgenerate.console.thememenu as _thememenu
 import dgenerate.console.combobox as _combobox
 
 
@@ -249,12 +250,12 @@ class TextEntry(tk.Entry):
     """
     
     def __init__(self, parent, **kwargs):
-        if _appearance.is_aqua(parent) and not any(
+        if _appearance.native_controls(parent) and not any(
                 key in kwargs for key in ('bg', 'background')):
             kwargs['background'] = _appearance.field_background()
         super().__init__(parent, **kwargs)
 
-        self.context_menu = tk.Menu(self, tearoff=0)
+        self.context_menu = _thememenu.ThemeMenu(self, tearoff=0)
         self.context_menu.add_command(label="Cut", command=self.__context_cut)
         self.context_menu.add_command(label="Copy", command=self.__context_copy)
         self.context_menu.add_command(label="Paste", command=self.__context_paste)

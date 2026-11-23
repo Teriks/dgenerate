@@ -98,6 +98,10 @@ def position_toplevel(master,
     else:
         toplevel.geometry(f"{prefix}+{position[0]}+{position[1]}")
 
+    # Commit the position while the window is hidden. On Aqua a deiconify
+    # that races the geometry request paints the window at the center and
+    # then moves it.
+    toplevel.update_idletasks()
     toplevel.deiconify()
 
 
