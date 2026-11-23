@@ -132,7 +132,12 @@ def open_init_dgen_editor(
     editor_frame.columnconfigure(0, weight=1)
     editor_frame.rowconfigure(0, weight=1)
 
-    code_view = DgenerateCodeView(editor_frame, undo=True)
+    editor_border = tk.Frame(editor_frame, borderwidth=0, highlightthickness=1, takefocus=0)
+    editor_border.grid(row=0, column=0, sticky='nsew')
+    editor_border.columnconfigure(0, weight=1)
+    editor_border.rowconfigure(0, weight=1)
+
+    code_view = DgenerateCodeView(editor_border, undo=True)
     code_view.grid(row=0, column=0, sticky='nsew')
     code_view.enable_line_numbers()
     code_view.disable_word_wrap()
@@ -180,7 +185,7 @@ def open_init_dgen_editor(
             '<Control-a>',
             lambda event: (code_view.gen_selectall_event(), 'break')[1])
 
-    button_frame = ttk.Frame(dialog, padding=(12, 0, 12, 12))
+    button_frame = ttk.Frame(dialog, padding=(12, 12, 12, 12))
 
     def current_text() -> str:
         return code_view.text.get('1.0', 'end-1c')
@@ -242,6 +247,7 @@ def open_init_dgen_editor(
     dialog.bind('<Escape>', lambda event: close_dialog(force=False))
 
     _appearance.install(dialog)
+    _appearance.configure_viewport(editor_border)
     dialog.update_idletasks()
     width = min(720, max(560, parent.winfo_width() * 3 // 5))
     height = min(560, max(480, parent.winfo_height() * 2 // 5))
