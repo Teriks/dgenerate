@@ -69,7 +69,7 @@ Full Flux.2
 
 ``black-forest-labs/FLUX.2-dev`` is gated. Guidance 4 and 50 steps. The text encoder is Mistral.
 
-``--flux2-text-encoder-out-layers`` defaults to ``10,20,30``. ``--flux2-caption-upsample-temperature`` turns on caption upsampling. Klein rejects that argument.
+``--flux2-text-encoder-out-layers`` defaults to ``10,20,30``. ``--flux2-caption-upsample-temperature`` turns on caption upsampling. Klein rejects that argument. Each is one value. Omitting it leaves the pipeline default, and it does not multiply the number of images.
 
 See `examples/flux2/basic/dev-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/flux2/basic/dev-config.dgen>`_.
 
@@ -96,7 +96,9 @@ Flux.2 Klein
 ------------
 
 Klein encodes prompts with Qwen3. ``--flux2-text-encoder-out-layers`` defaults
-to ``9,18,27``.
+to ``9,18,27``. That option is one value. Omitting it leaves the pipeline
+default, and it does not multiply the number of images. Caption upsampling
+is full Flux.2 only.
 
 * Base 9B: ``black-forest-labs/FLUX.2-klein-base-9B``. Gated. Guidance 4, 50 steps.
 * Base 4B: ``black-forest-labs/FLUX.2-klein-base-4B``. Public. Guidance 4, 50 steps.
@@ -106,6 +108,8 @@ to ``9,18,27``.
 Text to image has no image seed. References, when you use them, are ``--image-seeds`` with no mask, the same as full Flux.2.
 
 Inpaint is the same Klein repository with ``--image-seeds "image.png;mask.png"``. White mask pixels are repainted.
+
+``--inpaint-crop`` with one padding integer, and without feathering or masked paste, is passed as ``padding_mask_crop``. The pipeline then crops and pastes. A two-sided or four-sided padding, a feather, or masked paste stays on dgenerate's crop.
 
 The init image also stays packed as a condition every step, so weak edits are normal at low strength. Use ``--image-seed-strengths 1`` and guidance nearer 8.
 
@@ -143,6 +147,8 @@ Z-Image
 ``--model-type z-image`` is text to image, img2img, and inpaint.
 
 A negative prompt is optional. Classifier-free guidance is on when guidance is greater than 0.
+
+``--z-image-cfg-normalization`` turns on CFG normalization. ``--z-image-cfg-truncation`` replaces the default of ``1``, which applies guidance for the whole schedule. Each is one value. Omitting one leaves the pipeline default, and it does not multiply the number of images. Z-Image Omni uses these same flags.
 
 * Turbo: ``Tongyi-MAI/Z-Image-Turbo``. 8 steps, ``--guidance-scales 0``. Public.
 * Base: ``Tongyi-MAI/Z-Image``. Public. Guidance around 4, and 28 to 50 steps.
@@ -192,7 +198,7 @@ Z-Image Omni
 
 The **Z-Image-Omni-Base** checkpoint is not on Hugging Face yet. Tongyi-MAI lists it as to be released. Use a local ``ZImageOmniPipeline`` directory until ``Tongyi-MAI/Z-Image-Omni-Base`` is published.
 
-About 50 steps and ``--guidance-scales`` around 4 match the intended Omni-Base schedule. CFG flags are the same ``--z-image-`` options.
+About 50 steps and ``--guidance-scales`` around 4 match the intended Omni-Base schedule. ``--z-image-cfg-normalization`` and ``--z-image-cfg-truncation`` are the same flags as on `Z-Image`_.
 
 Qwen-Image
 ----------
@@ -201,7 +207,7 @@ Qwen-Image
 
 50 steps and guidance 4 are the usual settings. ``--dtype bfloat16`` and ``FlowMatchEulerDiscreteScheduler``.
 
-``--guidance-scales`` is true CFG (``true_cfg_scale``). ``--qwen-guidance-scale`` is the distilled guidance embedded in the transformer. Omit it to leave that guidance unset.
+``--guidance-scales`` is true CFG (``true_cfg_scale``). ``--qwen-guidance-scale`` is the distilled guidance embedded in the transformer. Omit it to leave that guidance unset. It is one value and does not multiply the number of images. Qwen-Image Edit and Qwen-Image Layered use the same scale.
 
 True CFG runs when ``--guidance-scales`` is above 1. A negative prompt is optional. If you do not write one and guidance is above 1, dgenerate passes a single space, which is what the pipeline expects.
 
@@ -233,7 +239,7 @@ ControlNet stays ``--model-type qwen-image`` with ``--control-nets``. More than 
 
 Text to image uses the seed image as the control image with ``InstantX/Qwen-Image-ControlNet-Union``.
 
-Inpaint uses ``--image-seeds "image.png;mask.png"`` with ``InstantX/Qwen-Image-ControlNet-Inpainting``. That image and mask are ``control_image`` and ``control_mask``.
+Inpaint uses ``--image-seeds "image.png;mask.png"`` with ``InstantX/Qwen-Image-ControlNet-Inpainting``. That image and mask are ``control_image`` and ``control_mask``. ``--inpaint-crop`` with one padding integer, and without feathering or masked paste, is passed as ``padding_mask_crop``. The pipeline then crops and pastes. A two-sided or four-sided padding, a feather, or masked paste stays on dgenerate's crop.
 
 White mask pixels are repainted. Black are kept. Prefer a small white region. Wiping most of the frame often yields a black fill. The shipped example inverts ``horse1-mask.jpg`` so the horse is painted.
 
@@ -325,7 +331,7 @@ required. There is no strength.
 * A mask on the original edit checkpoint selects edit-inpaint. Strength
   applies only to that inpaint.
 
-``--guidance-scales`` is still true CFG.
+``--guidance-scales`` is still true CFG. ``--qwen-guidance-scale`` is the same distilled guidance as on `Qwen-Image`_. Edit-inpaint passes ``--inpaint-crop`` with one padding integer, and without feathering or masked paste, as ``padding_mask_crop``. The pipeline then crops and pastes. A two-sided or four-sided padding, a feather, or masked paste stays on dgenerate's crop.
 
 See `examples/qwen_image/edit/base-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/edit/base-config.dgen>`_,
 `examples/qwen_image/edit_plus/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen_image/edit_plus/config.dgen>`_,
@@ -334,7 +340,7 @@ and `examples/qwen_image/edit_inpaint/config.dgen <https://github.com/Teriks/dge
 Qwen-Image Layered
 ------------------
 
-``--model-type qwen-image-layered`` is ``Qwen/Qwen-Image-Layered``. One image in, one file per layer out.
+``--model-type qwen-image-layered`` is ``Qwen/Qwen-Image-Layered``. One image in, one file per layer out. ``--qwen-guidance-scale`` is the same distilled guidance as on `Qwen-Image`_.
 
 ``--qwen-layered-layers`` defaults to 4. ``--qwen-layered-resolution`` is 640 or 1024, and defaults to 640. ``--qwen-layered-cfg-normalize`` and ``--qwen-layered-use-en-prompt`` are off unless you set them.
 
@@ -379,22 +385,3 @@ See `examples/minimax_h3_image/text_to_image/config.dgen <https://github.com/Ter
 `examples/minimax_h3_image/gguf/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/gguf/config.dgen>`_,
 `examples/minimax_h3_image/comfy_quant/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/comfy_quant/config.dgen>`_,
 and `examples/minimax_h3_image/spectrum/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/minimax_h3_image/spectrum/config.dgen>`_.
-
-Other call arguments
---------------------
-
-These are one value. Omitting one leaves the pipeline default, and it does not
-multiply the number of images.
-
-* ``--flux2-caption-upsample-temperature`` is full Flux.2 caption upsampling.
-  Klein rejects it.
-* ``--flux2-text-encoder-out-layers`` selects the text-encoder layers.
-  Full Flux.2 defaults to ``10,20,30``. Klein defaults to ``9,18,27``.
-* ``--z-image-cfg-normalization`` turns on Z-Image CFG normalization.
-  ``--z-image-cfg-truncation`` replaces the default of ``1``.
-* ``--qwen-guidance-scale`` is the distilled guidance embedded in the Qwen-Image
-  transformer. ``--guidance-scales`` stays the true CFG scale.
-* ``--inpaint-crop`` with one padding integer, and without feathering or masked
-  paste, is passed as ``padding_mask_crop`` on Klein and Qwen inpaint. The
-  pipeline then crops and pastes. A two-sided or four-sided padding, a feather,
-  or masked paste stays on dgenerate's crop.

@@ -4971,45 +4971,22 @@ See :ref:`video-generation`.
 Video Generation
 ================
 
-This section covers LTX-2.5, LTX-Video, HunyuanVideo 1.5, Motif-Video,
-MiniMax-H3, Kandinsky 5.0 Video, Kandinsky 6, and Wan.
+Each model below writes one clip per pipeline call. Conditioning stays in
+``--image-seeds``. ``--video-lengths`` is seconds and ``--video-fps`` is the
+frame rate. One combination of prompt, seed, guidance, steps, and those video
+arguments writes one animation file.
 
-``--model-type ltx2`` and ``ltx-video`` generate a clip in one pipeline call.
-One combination of prompt, seed, guidance, steps, image seed, ``--video-lengths``,
-``--video-fps``, ``--ltx-audio-guidance-scales``, and ``--ltx-audio-guidance-rescales``
-writes one animation file. LTX does not run once per input frame.
+* HunyuanVideo 1.5 (``hyvideo-15``)
+* Motif-Video (``motif-video``)
+* MiniMax-H3 (``minimax-h3-video``)
+* Kandinsky 5 (``kandinsky5-video``)
+* Kandinsky 6 (``kandinsky6-video``)
+* LTX-2.5 (``ltx2``) and LTX-Video (``ltx-video``)
+* Wan 2.1 / 2.2 (``wan``, ``wan-animate``, and ``wan-animate-2``)
 
-``--video-lengths`` is a length in seconds. ``--video-fps`` is the frame rate.
-``--ltx-audio-guidance-scales`` and ``--ltx-audio-guidance-rescales`` are the audio CFG
-and audio rescale. All of those are combinatorial arguments, the same way
-``--prompts`` and ``--seeds`` are. The frame count inside a clip is not a
-separate product factor.
-
-Audio from LTX-2.5 is muxed into an mp4. GIF, WebP, and ``--animation-format frames`` drop that audio.
-
-Conditioning stays in ``--image-seeds``.
-
-HunyuanVideo 1.5, Motif-Video, and Kandinsky 5.0 Video each provide a
-text-to-video pipeline and a separate single-image-to-video pipeline. With no
-image seed, a prompt generates a clip from noise. With one still image in
-``--image-seeds``, the image conditions the clip's opening. These models do not
-accept multiple reference images, video seeds, ``last-frame=``, or the Wan VACE
-conditioning keywords. The checkpoint's ``model_index.json`` selects the
-pipeline variant; use a checkpoint published for the mode you want.
-
-They share the video options ``--video-lengths`` (seconds), ``--video-fps``,
-``--output-size``, ``--animation-format``, and the usual prompt, seed, guidance,
-and step arguments. One argument combination writes one clip. The requested
-duration is converted to a frame count using the selected frame rate and the
-checkpoint VAE's temporal stride. Width and height are aligned down to a
-multiple of 16 when needed. For image-to-video, the first image supplies the
-aspect ratio by default; the image is resized to the generation canvas. Video
-VAEs are tiled automatically, so ``--vae-tiling`` is rejected. ``--vae-slicing``
-is available to reduce VAE memory use. These integrations generate video frames
-only; they do not synthesize audio.
-
-Kandinsky 6 is separate from that group. One checkpoint does text-to-video and
-first-frame image-to-video, and the clip includes audio. See `Kandinsky 6`_.
+HunyuanVideo 1.5, Motif-Video, and Kandinsky 5 write frames only.
+MiniMax-H3, Kandinsky 6, and LTX-2.5 also write a soundtrack. That audio is
+muxed into an mp4. GIF, WebP, and ``--animation-format frames`` drop it.
 
 Library
 -------
@@ -5057,17 +5034,41 @@ checkpoint determines which pipeline is loaded. The defaults are 15 fps,
 guidance 6, and 50 inference steps. ``FlowMatchEulerDiscreteScheduler`` is the
 supported scheduler. Hunyuan also accepts ``--sigmas`` when specifying a custom
 FlowMatch schedule; the number of sigmas determines the number of denoising
-steps. ``--loras`` loads a HunyuanVideo 1.5 LoRA onto the transformer, including
+steps.
+
+Hunyuan opening still
+~~~~~~~~~~~~~~~~~~~~~
+
+With no image seed, a prompt generates a clip from noise. With one still in
+``--image-seeds``, that image is the opening frame. A video seed, more than
+one reference, ``last-frame=``, and the Wan VACE keywords are rejected.
+``--video-lengths`` is seconds. The duration becomes a frame count from
+``--video-fps`` and the checkpoint VAE's temporal stride. Width and height
+are aligned down to a multiple of 16. When ``--output-size`` is omitted, the
+still supplies the aspect ratio, and the image is resized to the canvas.
+The video VAE is tiled, so ``--vae-tiling`` is rejected. ``--vae-slicing``
+is available. There is no soundtrack. ``--batch-size`` greater than 1 is
+rejected.
+
+``--transformer`` replaces the denoising transformer. The parent checkpoint
+still supplies the VAE and text encoders. ``--quantizer-map`` can name the
+transformer and the Hunyuan text components.
+
+LoRA and offload
+~~~~~~~~~~~~~~~~
+
+``--loras`` loads a HunyuanVideo 1.5 LoRA onto the transformer, including
 original-layout checkpoints and Musubi ``lora_unet_`` files. A ComfyUI quantized
 transformer keeps those adapters active instead of fusing them into the packed
 weights.
 
 The examples use ``bfloat16``, sequential CPU offload, 50 steps, and an
-``848x480`` canvas. Sequential offload is a useful starting point on consumer
-GPUs; it reduces peak GPU memory at the cost of transferring model components
-between CPU and GPU. ``--model-cpu-offload`` and ``--model-group-offload`` are
-also available. ``--torch-compile`` compiles the repeated transformer blocks;
-the first run can take longer while compilation happens.
+``848x480`` canvas. Sequential offload reduces peak GPU memory by moving
+components between CPU and GPU. ``--model-cpu-offload`` and
+``--model-group-offload`` are also available. ``--torch-compile`` compiles
+the repeated transformer blocks. The first run can take longer while
+compilation happens. The Console UI has separate text-to-video and
+image-to-video recipes.
 
 * `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo_15/text_to_video/config.dgen>`_
 * `4-step LoRA <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/hyvideo_15/lora/lightx2v-4step-config.dgen>`_
@@ -5082,24 +5083,48 @@ The same repository supports text-to-video and first-frame image-to-video; the
 mode selects the corresponding pipeline. Defaults are 24 fps, guidance 5, and
 50 inference steps. Motif supports ``FlowMatchEulerDiscreteScheduler`` and
 ``DPMSolverMultistepScheduler``. ``--max-sequence-length`` controls the prompt
-token limit (default 512). ``--loras`` loads Diffusers-format and Musubi
-Motif-Video LoRAs onto the transformer.
+token limit (default 512).
 
-``--timesteps`` sets an explicit timestep schedule for Motif. Give one or
-more comma-separated integer schedules, such as ``1000,700,300,0``, or
-``expr:`` expressions evaluated with the scheduler's default array named
-``timesteps`` (for example, ``expr: timesteps[::2]``). Multiple schedules are
-tried in turn. The number of selected timesteps replaces ``--inference-steps``
-for that run. Do not combine
-``--timesteps`` with ``--sigmas``; Motif uses a timestep schedule rather
-than a sigma schedule. ``--timesteps`` also works with Wan video-to-video,
-LTX-2, Hunyuan Video 1.5, Kandinsky 5 video, Kandinsky 6 video, and the
-SD 1.5/2/XL and Kolors image models.
+Motif opening still
+~~~~~~~~~~~~~~~~~~~
 
-The standard examples use ``bfloat16``, sequential CPU offload, 50 steps, and
-``832x480``. Offload options and ``--torch-compile`` are available. A GGUF
-transformer can be used with either text-to-video or image-to-video while
-keeping the parent Diffusers repository as the model path.
+With no image seed, a prompt generates a clip from noise. With one still in
+``--image-seeds``, that image is the opening frame. A video seed, more than
+one reference, ``last-frame=``, and the Wan VACE keywords are rejected.
+``--video-lengths`` is seconds. The duration becomes a frame count from
+``--video-fps`` and the checkpoint VAE's temporal stride. Width and height
+are aligned down to a multiple of 16. When ``--output-size`` is omitted, the
+still supplies the aspect ratio, and the image is resized to the canvas.
+The video VAE is tiled, so ``--vae-tiling`` is rejected. ``--vae-slicing``
+is available. There is no soundtrack. ``--batch-size`` greater than 1 is
+rejected.
+
+``--transformer`` replaces the denoising transformer. The parent checkpoint
+still supplies the VAE and text encoders. ``--quantizer-map`` can name the
+transformer and the Motif text components. A GGUF transformer can be used
+for either mode while the model path stays the parent Diffusers repository.
+
+Timestep schedule
+~~~~~~~~~~~~~~~~~
+
+``--timesteps`` sets an explicit timestep schedule. Give one or more
+comma-separated integer schedules, such as ``1000,700,300,0``, or ``expr:``
+expressions evaluated with the scheduler's default array named ``timesteps``
+(for example, ``expr: timesteps[::2]``). Multiple schedules are tried in turn.
+The number of selected timesteps replaces ``--inference-steps`` for that run.
+Motif uses a timestep schedule rather than a sigma schedule, so leave
+``--sigmas`` unset when ``--timesteps`` is set. The same option also applies
+to Wan video-to-video, LTX-2, HunyuanVideo 1.5, Kandinsky 5 video, Kandinsky 6
+video, and the SD 1.5/2/XL and Kolors image models.
+
+LoRA and GGUF
+~~~~~~~~~~~~~
+
+``--loras`` loads Diffusers-format and Musubi Motif-Video LoRAs onto the
+transformer. The standard examples use ``bfloat16``, sequential CPU offload,
+50 steps, and ``832x480``. ``--model-cpu-offload``, ``--model-group-offload``,
+and ``--torch-compile`` are available. The Console UI has separate
+text-to-video and image-to-video recipes.
 
 * `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/text_to_video/config.dgen>`_
 * `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/motif_video/image_to_video/config.dgen>`_
@@ -5122,6 +5147,10 @@ checkpoint scheduler. ``--inference-steps`` defaults to
 blocks on later steps. The video and audio output heads still run.
 ``ref2va`` forecasts ``transformer_ref``. A forecast step leaves a Fun control
 branch idle, because the last real pass already included its hint.
+See `examples/minimax_h3_video/spectrum/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/spectrum/config.dgen>`_.
+
+Frame snap
+~~~~~~~~~~
 
 The frame rate is 24. ``--video-lengths`` is seconds and snaps up to the next
 ``17n+5`` frames. A request can be 5 to 15 seconds. The clip comes out between
@@ -5130,20 +5159,54 @@ option and the clip is 124 frames, 5.17 seconds. Height and width are multiples 
 ``--output-size`` and the canvas follows the first keyframe, or 16:9 when
 there is no keyframe.
 
-The image seed selects the workflow:
+Text and keyframes
+~~~~~~~~~~~~~~~~~~
 
 * No image seed is text to video and audio. This loads ``transformer/``.
 * One still image is the opening keyframe. ``last-frame=`` is the closing
   keyframe, alone or with the opening image. This also loads ``transformer/``.
-* ``reference=`` is an ordered list of images, videos, and audio clips and
-  loads ``transformer_ref/``. At most 9 images, 3 videos, 3 audio clips, and
-  12 references in total. An audio reference has to be paired with an image
-  or a video. A keyframe and ``reference=`` cannot be combined. A video
-  reference keeps the frame rate and soundtrack reported by the file.
-  With neither ``--reference-image-processors`` nor ``resize=``, an image
-  reference is scaled to a 2048 short edge and a video reference is placed on
-  the 768 canvas. With either one, that frame size, snapped to a multiple of
-  32, is what the video VAE encodes. An audio reference is left unchanged.
+
+See `examples/minimax_h3_video/text_to_video/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/text_to_video/config.dgen>`_
+and `examples/minimax_h3_video/keyframes/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/keyframes/config.dgen>`_.
+
+.. code-block:: shell
+
+    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
+        --model-sequential-offload --inference-steps 30 --video-lengths 5 \\
+        --animation-format mp4 --output-size 1344x768 \\
+        --prompts "A red fox trotting through a snowy pine forest, snow crunching underfoot"
+
+    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
+        --model-sequential-offload --video-lengths 5 --animation-format mp4 \\
+        --output-size 1024x576 \\
+        --image-seeds "examples/media/man-fighting-pose.jpg;last-frame=examples/media/beach.jpg" \\
+        --prompts "The man in the opening frame walks onto the beach in the closing frame"
+
+References
+~~~~~~~~~~
+
+``reference=`` is an ordered list of images, videos, and audio clips and
+loads ``transformer_ref/``. At most 9 images, 3 videos, 3 audio clips, and
+12 references in total. An audio reference has to be paired with an image
+or a video. A keyframe and ``reference=`` cannot be combined. A video
+reference keeps the frame rate and soundtrack reported by the file.
+With neither ``--reference-image-processors`` nor ``resize=``, an image
+reference is scaled to a 2048 short edge and a video reference is placed on
+the 768 canvas. With either one, that frame size, snapped to a multiple of
+32, is what the video VAE encodes. An audio reference is left unchanged.
+
+See `examples/minimax_h3_video/references/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/references/config.dgen>`_.
+
+.. code-block:: shell
+
+    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
+        --model-sequential-offload --video-lengths 5 --animation-format mp4 \\
+        --output-size 1024x576 \\
+        --image-seeds "reference=examples/media/man-fighting-pose.jpg, examples/media/rickroll-roll.gif" \\
+        --prompts "The man in the image dances with the motion in the video"
+
+Fun control
+~~~~~~~~~~~
 
 ``--control-nets`` loads one MiniMax-H3 Fun control branch on top of the text
 to video transformer. This is not a Diffusers ControlNet. The published weights
@@ -5157,6 +5220,21 @@ of 32. The branch was trained on text to video, so a keyframe or ``reference=``
 cannot be combined with it.
 
 ``latents=`` replaces the video noise. ``audio-latents=`` replaces the audio noise.
+
+See `examples/minimax_h3_video/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/controlnet/config.dgen>`_.
+
+.. code-block:: shell
+
+    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
+        --model-sequential-offload --video-lengths 5 --animation-format mp4 \\
+        --output-size 1024x576 \\
+        --control-nets "alibaba-pai/MiniMax-H3-Fun-Controlnet-Union-2.0;weight-name=MiniMax-H3-Fun-Controlnet-Union-2.0.safetensors" \\
+        --control-image-processors "openpose;include-hand=true;include-face=true" \\
+        --image-seeds examples/media/rickroll-roll.gif \\
+        --prompts "A person dancing, following the pose in the control video"
+
+Weights
+~~~~~~~
 
 ``--transformer`` replaces the denoiser and leaves Qwen3-VL and the VAEs on
 the model path. The file can be Diffusers weights, a ComfyUI safetensors file,
@@ -5173,6 +5251,9 @@ The examples use sequential CPU offload. ``--model-cpu-offload``,
 encoder and transformer the same way: each visits the GPU for its forward
 and returns to CPU.
 
+Prompt rewrite
+~~~~~~~~~~~~~~
+
 ``--pipeline-prompt-enhance`` rewrites the prompt with that Qwen3-VL encoder
 before the prompt is encoded. The rewrite stays in the language of the prompt.
 The opening frame is shown as Picture 1 and the last frame as Picture 2.
@@ -5181,41 +5262,8 @@ an image is Picture N, a video is Video N shown as its opening frame, and
 audio is Audio N with no picture. The rewrite keeps those labels. An argument value
 can replace the built-in system prompt, see ``--help`` for usage details.
 
-See `examples/minimax_h3_video/text_to_video/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/text_to_video/config.dgen>`_,
-`examples/minimax_h3_video/keyframes/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/keyframes/config.dgen>`_,
-`examples/minimax_h3_video/references/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/references/config.dgen>`_,
-`examples/minimax_h3_video/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/controlnet/config.dgen>`_,
-and `examples/minimax_h3_video/spectrum/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_video/spectrum/config.dgen>`_.
-
-.. code-block:: shell
-
-    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
-        --model-sequential-offload --inference-steps 30 --video-lengths 5 \\
-        --animation-format mp4 --output-size 1344x768 \\
-        --prompts "A red fox trotting through a snowy pine forest, snow crunching underfoot"
-
-    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
-        --model-sequential-offload --video-lengths 5 --animation-format mp4 \\
-        --output-size 1024x576 \\
-        --image-seeds "examples/media/man-fighting-pose.jpg;last-frame=examples/media/beach.jpg" \\
-        --prompts "The man in the opening frame walks onto the beach in the closing frame"
-
-    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
-        --model-sequential-offload --video-lengths 5 --animation-format mp4 \\
-        --output-size 1024x576 \\
-        --image-seeds "reference=examples/media/man-fighting-pose.jpg, examples/media/rickroll-roll.gif" \\
-        --prompts "The man in the image dances with the motion in the video"
-
-    dgenerate MiniMaxAI/MiniMax-H3 --model-type minimax-h3-video --dtype bfloat16 \\
-        --model-sequential-offload --video-lengths 5 --animation-format mp4 \\
-        --output-size 1024x576 \\
-        --control-nets "alibaba-pai/MiniMax-H3-Fun-Controlnet-Union-2.0;weight-name=MiniMax-H3-Fun-Controlnet-Union-2.0.safetensors" \\
-        --control-image-processors "openpose;include-hand=true;include-face=true" \\
-        --image-seeds examples/media/rickroll-roll.gif \\
-        --prompts "A person dancing, following the pose in the control video"
-
-Kandinsky 5.0 Video
--------------------
+Kandinsky 5
+------------
 
 Use ``--model-type kandinsky5-video`` with a Kandinsky 5.0 video checkpoint.
 Text-to-video checkpoints include Lite and Pro variants; image-to-video
@@ -5225,6 +5273,23 @@ intended mode. Defaults are 24 fps, guidance 5, and 50 inference steps, with
 121 frames at 24 fps. T2V Lite also has 10-second checkpoints; match the
 requested duration to the duration for which the checkpoint was trained.
 
+Kandinsky opening still
+~~~~~~~~~~~~~~~~~~~~~~~
+
+With no image seed, a prompt generates a clip from noise. With one still in
+``--image-seeds``, that image is the opening frame. A video seed, more than
+one reference, ``last-frame=``, and the Wan VACE keywords are rejected.
+``--video-lengths`` is seconds. The duration becomes a frame count from
+``--video-fps`` and the checkpoint VAE's temporal stride. Width and height
+are aligned down to a multiple of 16. When ``--output-size`` is omitted, the
+still supplies the aspect ratio, and the image is resized to the canvas.
+The video VAE is tiled, so ``--vae-tiling`` is rejected. ``--vae-slicing``
+is available. There is no soundtrack. ``--batch-size`` greater than 1 is
+rejected.
+
+Distilled checkpoints
+~~~~~~~~~~~~~~~~~~~~~
+
 Checkpoint variants can have different guidance and step expectations. The
 16-step distilled T2V Lite checkpoint should be run with 16 inference steps and
 guidance 1, as should the distilled Pro checkpoints; no-CFG checkpoints should
@@ -5233,23 +5298,24 @@ the T2V Pro sft transformer. ``--torch-compile`` and Cache-DiT can be
 used to reduce denoising cost. The examples use sequential CPU offload; the
 other model offload modes are available as well.
 
-LoRAs are supported through ``--loras``. The examples include camera-orbit and
-object-rotation LoRAs for T2V Lite/Pro and I2V Lite/Pro; preserve each LoRA's
-trigger phrase in the prompt. GGUF is currently demonstrated for T2V only; a
-compatible I2V GGUF checkpoint is not provided in these examples.
+``--transformer`` replaces the denoising transformer. The parent checkpoint
+still supplies the VAE and text encoders. ``--quantizer-map`` can name the
+transformer and the Kandinsky 5 text components. GGUF is demonstrated for
+text-to-video. The Console UI has separate text-to-video and image-to-video
+recipes.
 
 * `Text-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text_to_video/config.dgen>`_
 * `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/image_to_video/config.dgen>`_
 * `T2V GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky5/text_to_video_gguf/config.dgen>`_
-* `Kandinsky 5 video LoRA examples <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/kandinsky5/lora>`_
 
-For HunyuanVideo 1.5, Motif-Video, and Kandinsky 5 video, ``--transformer``
-replaces only the denoising transformer; the parent Diffusers checkpoint
-continues to provide the VAE and text encoders. ``--quantizer-map`` can target
-the transformer and the family-specific text components. These models do not
-support video batching with ``--batch-size`` greater than 1. The Console UI
-provides separate T2V and I2V recipes where the corresponding checkpoints are
-available.
+Camera LoRAs
+~~~~~~~~~~~~
+
+LoRAs are supported through ``--loras``. The examples include camera-orbit and
+object-rotation LoRAs for T2V Lite/Pro and I2V Lite/Pro; preserve each LoRA's
+trigger phrase in the prompt.
+
+* `Kandinsky 5 video LoRA examples <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/kandinsky5/lora>`_
 
 .. _kandinsky-6:
 
@@ -5260,12 +5326,15 @@ Use ``--model-type kandinsky6-video`` with a Kandinsky 6.0 checkpoint. One
 pipeline writes the picture and a 44.1 kHz soundtrack. Text-to-video and
 first-frame image-to-video use that same repository. There is no separate
 image-to-video checkpoint. A Kandinsky 6 super-resolution repository is
-rejected.
+rejected. ``--loras`` is rejected: no Kandinsky 6 LoRA loader or checkpoint
+is published.
+
+Text and first frame
+~~~~~~~~~~~~~~~~~~~~
 
 No image seed is text to video. One still image is the first frame. A mask,
 a second image, a video seed, ``last-frame=``, ``control=``, and
-``reference=`` are rejected. ``--loras`` is rejected: no Kandinsky 6 LoRA
-loader or checkpoint is published.
+``reference=`` are rejected.
 
 ``--video-fps`` defaults to 24. ``--video-lengths`` is seconds and snaps to
 ``temporal*k+1`` frames. The video VAE's temporal compression is 4, so five
@@ -5275,48 +5344,6 @@ and height are aligned down to a multiple of 16. The examples use
 The soundtrack is muxed into an mp4. GIF, WebP, and
 ``--animation-format frames`` drop that audio. There is no separate audio
 prompt or audio guidance scale. Describe the sound in the same prompt.
-
-``--scheduler`` accepts ``FlowMatchEulerDiscreteScheduler`` and
-``PiflowScheduler``. Omitting it keeps the checkpoint scheduler. A distilled
-checkpoint ships ``PiflowScheduler``. When that scheduler is loaded, omitted
-guidance is 1 and omitted steps are 10. Any other loaded scheduler uses
-guidance 5 and 50 steps. Values you set are used as written. Guidance 1 is
-unguided.
-
-* Lite distilled, public: ``kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers``. 10 steps, guidance 1.
-* Lite, public: ``kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers``. 50 steps, guidance 5.
-* Pro distilled, public: ``kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers``. 10 steps, guidance 1. The transformer is about 60 GB.
-* Pro, gated: ``kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers``. 50 steps, guidance 5.
-
-``--transformer`` replaces the denoiser. The repository still supplies
-Qwen2.5-VL, CLIP, the video VAE, the audio VAE, and the vocoder. A GGUF or a
-Comfy safetensors file loads that way. The Pro Q4_K_S GGUF stays on the gated
-Pro repository, so that config needs a Hugging Face token.
-``--text-encoders`` replaces Qwen2.5-VL in the first slot. ``+`` keeps CLIP
-from the repository. A packed quant stays packed: do not put a quantizer on
-that URI. ``--quantizer-map`` may name ``transformer``, ``text_encoder``, or
-``text_encoder_2``.
-
-``--spectrum`` forecasts the fused video and audio blocks. A skipped step
-forecasts the audio stream from the cache-point block along with the video
-feature. ``--dype`` scales the height and width position axes and leaves the
-time axis on the checkpoint table. The reference long side defaults to 864.
-``--cache-dit`` and ``--torch-compile`` are available. The examples use
-sequential CPU offload. ``--model-cpu-offload`` and ``--model-group-offload``
-are available as well. The video VAE is tiled already, so ``--vae-tiling`` is
-rejected. ``--vae-slicing`` is available. ``--batch-size`` greater than 1 is
-rejected. ``--timesteps`` sets an explicit timestep schedule.
-
-``--pipeline-prompt-enhance`` turns on the pipeline's ``expand_prompts``
-rewrite. With no value, text-to-video and image-to-video each keep their own
-expansion instruction. A value replaces that instruction for the clip. The
-prompt is still appended as ``Rewrite Prompt:``. Braces in the value stay
-literal. A first frame is shown to the rewrite. The
-``--pipeline-prompt-enhance-*`` options apply to that rewrite. The video still
-uses ``--seeds`` or ``--gen-seeds``. ``--prompt-upsampler`` is rejected: the
-rewrite uses the loaded Qwen2.5-VL encoder. When ``--max-sequence-length`` is
-omitted, the rewrite uses 1024 tokens. The same system-prompt value is
-described under `Decode, prompts, and duration`_.
 
 .. code-block:: shell
 
@@ -5339,23 +5366,95 @@ described under `Decode, prompts, and duration`_.
 * `Text-to-video, Lite <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky6/text_to_video/full-config.dgen>`_
 * `Text-to-video, Pro distilled <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky6/text_to_video_pro/config.dgen>`_
 * `Image-to-video <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky6/image_to_video/config.dgen>`_
+
+Scheduler and checkpoints
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``--scheduler`` accepts ``FlowMatchEulerDiscreteScheduler`` and
+``PiflowScheduler``. Omitting it keeps the checkpoint scheduler. A distilled
+checkpoint ships ``PiflowScheduler``. When that scheduler is loaded, omitted
+guidance is 1 and omitted steps are 10. Any other loaded scheduler uses
+guidance 5 and 50 steps. Values you set are used as written. Guidance 1 is
+unguided.
+
+* Lite distilled, public: ``kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers``. 10 steps, guidance 1.
+* Lite, public: ``kandinskylab/Kandinsky-6.0-Lite-5s-Diffusers``. 50 steps, guidance 5.
+* Pro distilled, public: ``kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers``. 10 steps, guidance 1. The transformer is about 60 GB.
+* Pro, gated: ``kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers``. 50 steps, guidance 5.
+
+Replacement modules
+~~~~~~~~~~~~~~~~~~~
+
+``--transformer`` replaces the denoiser. The repository still supplies
+Qwen2.5-VL, CLIP, the video VAE, the audio VAE, and the vocoder. A GGUF or a
+Comfy safetensors file loads that way. The Pro Q4_K_S GGUF stays on the gated
+Pro repository, so that config needs a Hugging Face token.
+``--text-encoders`` replaces Qwen2.5-VL in the first slot. ``+`` keeps CLIP
+from the repository. A packed quant stays packed: do not put a quantizer on
+that URI. ``--quantizer-map`` may name ``transformer``, ``text_encoder``, or
+``text_encoder_2``.
+
 * `Pro GGUF transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky6/gguf/pro-config.dgen>`_
 * `Pro GGUF text encoder <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky6/gguf/text-encoder-config.dgen>`_
 * `Lite distilled int8 transformer <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky6/comfy_quant/lite-distill-config.dgen>`_
+
+Spectrum and DyPE
+~~~~~~~~~~~~~~~~~
+
+``--spectrum`` forecasts the fused video and audio blocks. A skipped step
+forecasts the audio stream from the cache-point block along with the video
+feature. ``--dype`` scales the height and width position axes and leaves the
+time axis on the checkpoint table. The reference long side defaults to 864.
+``--cache-dit`` and ``--torch-compile`` are available. The examples use
+sequential CPU offload. ``--model-cpu-offload`` and ``--model-group-offload``
+are available as well. The video VAE is tiled already, so ``--vae-tiling`` is
+rejected. ``--vae-slicing`` is available. ``--batch-size`` greater than 1 is
+rejected. ``--timesteps`` sets an explicit timestep schedule.
+
 * `Spectrum <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky6/spectrum/lite-config.dgen>`_
 * `DyPE <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky6/dype/lite-config.dgen>`_
+
+Prompt expansion
+~~~~~~~~~~~~~~~~
+
+``--pipeline-prompt-enhance`` turns on the pipeline's ``expand_prompts``
+rewrite. With no value, text-to-video and image-to-video each keep their own
+expansion instruction. A value replaces that instruction for the clip. The
+prompt is still appended as ``Rewrite Prompt:``. Braces in the value stay
+literal. A first frame is shown to the rewrite. The
+``--pipeline-prompt-enhance-*`` options apply to that rewrite. The video still
+uses ``--seeds`` or ``--gen-seeds``. ``--prompt-upsampler`` is rejected: the
+rewrite uses the loaded Qwen2.5-VL encoder. When ``--max-sequence-length`` is
+omitted, the rewrite uses 1024 tokens. The same system-prompt value is
+described under `Decode, prompts, and duration`_.
+
 * `Prompt rewrite <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/kandinsky6/pipeline_prompt_enhance/text-to-video-config.dgen>`_
 * `Library usage <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/library_usage/kandinsky6_video/main.py>`_
 
 The Console UI recipes cover Lite, Pro, the GGUF transformer, and the int8
 transformer, each with and without an image seed.
 
-LTX-2.5 (``ltx2``)
-------------------
+LTX
+---
 
-Repository: ``Lightricks/LTX-2.5-Diffusers``.
+``--model-type ltx2`` and ``ltx-video`` each write one clip per pipeline call.
+One combination of prompt, seed, guidance, steps, image seed, ``--video-lengths``,
+``--video-fps``, ``--ltx-audio-guidance-scales``, and ``--ltx-audio-guidance-rescales``
+writes one animation file. LTX does not run once per input frame.
 
-The same ``--model-type ltx2`` also runs the original 19B checkpoint,
+``--ltx-audio-guidance-scales`` and ``--ltx-audio-guidance-rescales`` are the audio
+CFG and audio rescale. Both are combinatorial, the same way ``--prompts`` and
+``--seeds`` are. The frame count inside a clip is not a separate product factor.
+
+Audio from LTX-2.5 is muxed into an mp4. GIF, WebP, and ``--animation-format frames``
+drop that audio. LTX-Video writes frames only. Conditioning stays in ``--image-seeds``.
+
+LTX-2.5
+~~~~~~~
+
+``--model-type ltx2`` loads ``Lightricks/LTX-2.5-Diffusers``.
+
+The same model type also runs the original 19B checkpoint,
 ``Lightricks/LTX-2``. Use that repository for a named 19B, LTX-2.0, or
 Gemma 3 checkpoint. The 19B repository supplies Gemma 3, the 2-layer text
 connectors, and the video and audio VAEs. It has no duration head. Its
@@ -5396,10 +5495,10 @@ is LTX-2.5, and ``LTXPipeline`` is :ref:`ltx-video-legacy`.
 
 .. _ltx-video-legacy:
 
-LTX-Video (legacy)
-------------------
+LTX-Video
+~~~~~~~~~
 
-``Lightricks/LTX-Video`` is the earlier 2B checkpoint. ``model_index.json`` selects
+``Lightricks/LTX-Video`` is the legacy 2B checkpoint. ``model_index.json`` selects
 ``LTXPipeline``. It writes a picture only. There is no soundtrack, no duration
 head, and no IC-LoRA.
 
@@ -5443,7 +5542,7 @@ The Console UI recipes are ``LTX-Video`` and ``LTX-Video (GGUF)``.
 * `examples/ltx_video/gguf/text-encoder-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx_video/gguf/text-encoder-config.dgen>`_
 
 Video conditioning
-------------------
+~~~~~~~~~~~~~~~~~~
 
 The main ``--image-seeds`` path and ``last-frame=`` each accept a video or an animated image
 as well as a still. Both LTX-2.5 and the earlier LTX-Video accept this. A file with a
@@ -5525,7 +5624,7 @@ See `examples/ltx2/video_conditioning <https://github.com/Teriks/dgenerate/tree/
 and `examples/ltx_video/video_conditioning/video-extension-config.dgen <examples/ltx_video/video_conditioning/video-extension-config.dgen_>`_.
 
 IC-LoRA control
----------------
+~~~~~~~~~~~~~~~
 
 An IC-LoRA (in-context LoRA) guides LTX-2.5 with a reference video, for example canny
 edges, a depth map, or a pose skeleton. Load it with ``--ltx-ic-lora``. The reference clip
@@ -5577,7 +5676,7 @@ builds an ``--ltx-ic-lora`` URI, and ``Edit -> Insert URI -> Image Seed URI`` ac
 closing clip for ``last-frame=``. The LTX recipes also take a separate processor for the first and last frame.
 
 Guidance, steps, and sigmas
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The loaded scheduler decides which path runs. dgenerate does not pick a path from
 the repository name or a ``--transformer`` subfolder. ``--transformer`` replaces
@@ -5624,7 +5723,7 @@ distilled checkpoint always uses its sigma table length regardless of
   for audio unless ``--ltx-audio-guidance-scales`` is set.
 
 ``--sigmas`` (CSV list or ``expr:``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This path wins over both of the above.
 
@@ -5642,7 +5741,7 @@ This path wins over both of the above.
 :ref:`specifying-sigmas` and `examples/ltx2/sigmas/sigmas-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/sigmas/sigmas-config.dgen>`_.
 
 ``--guidance-rescales``
-~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^
 
 LTX accepts this. A value you set is sent as video guidance rescale, and as
 audio rescale unless ``--ltx-audio-guidance-rescales`` is set. If you omit it,
@@ -5650,19 +5749,33 @@ the pipeline keeps its own default (``0.7``). The rescale only applies while
 classifier-free guidance is on (guidance greater than 1).
 
 ``--max-sequence-length``
-~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 LTX accepts this as Gemma's prompt token budget, from 1 to 1024. If you omit
 it, the pipeline keeps 1024.
 
 ``--vae-slicing``
-~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^
 
 LTX accepts this on the video VAE and the audio VAE. ``--vae-tiling`` is
 rejected: the video VAE is always tiled.
 
-Audio
------
+Spatio-temporal guidance
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+``--ltx-stg-scales`` is spatio-temporal guidance. ``0`` turns it off. When it is on
+and ``--ltx-stg-blocks`` is omitted, block ``28`` is used.
+``--ltx-modality-scales`` is modality-isolation guidance. ``1`` turns it off.
+``--ltx-audio-stg-scales`` and ``--ltx-audio-modality-scales`` copy the video values
+when omitted. ``--ltx-no-cross-timestep`` selects the LTX-2.0 cross-modality timestep.
+LTX-2.3 and LTX-2.5 leave that timestep on.
+
+A full-transformer one-pass call uses video guidance ``3``, audio guidance ``7``,
+STG ``1``, and modality guidance ``3``. The distilled checkpoint stays at guidance ``1``
+and does not use those extra terms.
+
+Soundtrack
+~~~~~~~~~~
 
 One prompt drives both the picture and the soundtrack. Gemma encodes that
 string once; the text connectors split the packed hidden states into video
@@ -5681,8 +5794,8 @@ the pipeline default ``0.7`` is left in place.
 Diffusers suggests keeping audio guidance higher than video guidance when
 you set them yourself. See `examples/ltx2/audio/audio-guidance-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/audio/audio-guidance-config.dgen>`_.
 
-Chaining
---------
+Clip chaining
+~~~~~~~~~~~~~
 
 ``last_images`` and ``last_animations`` work the same way they do for image models. A still written by an
 earlier invocation can be the first frame of an LTX clip, and an animation written by an earlier
@@ -5690,7 +5803,7 @@ invocation can be its opening clip.
 The pipeline cache counts the video checkpoint and moves the previous pipeline back to CPU before the clip runs.
 
 Submodels
----------
+~~~~~~~~~
 
 ``--unet`` is rejected. ``--vae`` and ``--text-encoders`` work like they do
 for image models, including ``+`` to keep a slot's checkpoint default.
@@ -5722,7 +5835,7 @@ See `examples/ltx2/lora/cinemagraph-config.dgen <https://github.com/Teriks/dgene
 and `examples/ltx_video/lora/crush-config.dgen <examples/ltx_video/lora/crush-config.dgen_>`_.
 
 Two-stage generation
-~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^
 
 ``--ltx-latent-upscale`` runs both stages in the same generation, the way
 ``--sdxl-refiner`` follows a base pass. ``--output-size`` is the finished clip,
@@ -5747,22 +5860,8 @@ and ``shift-terminal=0.1``, and put the distilled LoRA on the refine pass only:
 
 See `examples/ltx2/two_stage/full-transformer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/two_stage/full-transformer-config.dgen>`_.
 
-Guidance
-~~~~~~~~
-
-``--ltx-stg-scales`` is spatio-temporal guidance. ``0`` turns it off. When it is on
-and ``--ltx-stg-blocks`` is omitted, block ``28`` is used.
-``--ltx-modality-scales`` is modality-isolation guidance. ``1`` turns it off.
-``--ltx-audio-stg-scales`` and ``--ltx-audio-modality-scales`` copy the video values
-when omitted. ``--ltx-no-cross-timestep`` selects the LTX-2.0 cross-modality timestep.
-LTX-2.3 and LTX-2.5 leave that timestep on.
-
-A full-transformer one-pass call uses video guidance ``3``, audio guidance ``7``,
-STG ``1``, and modality guidance ``3``. The distilled checkpoint stays at guidance ``1``
-and does not use those extra terms.
-
 Decode, prompts, and duration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``--ltx-video-decoder diffusion`` decodes with the checkpoint diffusion decoder
 instead of the convolutional VAE, in the same generation. ``conv`` is the default.
@@ -5929,7 +6028,7 @@ reference the IC-LoRA reads. ``ltx-index`` does not move that reference.
 See `examples/ltx2/image_conditioning/indexed-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx2/image_conditioning/indexed-config.dgen>`_.
 
 What LTX rejects
-----------------
+~~~~~~~~~~~~~~~~
 
 ControlNets, T2I adapters, IP adapters, textual inversions, a replacement UNet,
 an image encoder, the SDXL refiner, Stable Cascade, Adetailer, PAG and PAG scales,
@@ -6278,7 +6377,7 @@ Full Flux.2
 
 ``black-forest-labs/FLUX.2-dev`` is gated. Guidance 4 and 50 steps. The text encoder is Mistral.
 
-``--flux2-text-encoder-out-layers`` defaults to ``10,20,30``. ``--flux2-caption-upsample-temperature`` turns on caption upsampling. Klein rejects that argument.
+``--flux2-text-encoder-out-layers`` defaults to ``10,20,30``. ``--flux2-caption-upsample-temperature`` turns on caption upsampling. Klein rejects that argument. Each is one value. Omitting it leaves the pipeline default, and it does not multiply the number of images.
 
 See `examples/flux2/basic/dev-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/basic/dev-config.dgen>`_.
 
@@ -6305,7 +6404,9 @@ Flux.2 Klein
 ------------
 
 Klein encodes prompts with Qwen3. ``--flux2-text-encoder-out-layers`` defaults
-to ``9,18,27``.
+to ``9,18,27``. That option is one value. Omitting it leaves the pipeline
+default, and it does not multiply the number of images. Caption upsampling
+is full Flux.2 only.
 
 * Base 9B: ``black-forest-labs/FLUX.2-klein-base-9B``. Gated. Guidance 4, 50 steps.
 * Base 4B: ``black-forest-labs/FLUX.2-klein-base-4B``. Public. Guidance 4, 50 steps.
@@ -6315,6 +6416,8 @@ to ``9,18,27``.
 Text to image has no image seed. References, when you use them, are ``--image-seeds`` with no mask, the same as full Flux.2.
 
 Inpaint is the same Klein repository with ``--image-seeds "image.png;mask.png"``. White mask pixels are repainted.
+
+``--inpaint-crop`` with one padding integer, and without feathering or masked paste, is passed as ``padding_mask_crop``. The pipeline then crops and pastes. A two-sided or four-sided padding, a feather, or masked paste stays on dgenerate's crop.
 
 The init image also stays packed as a condition every step, so weak edits are normal at low strength. Use ``--image-seed-strengths 1`` and guidance nearer 8.
 
@@ -6352,6 +6455,8 @@ Z-Image
 ``--model-type z-image`` is text to image, img2img, and inpaint.
 
 A negative prompt is optional. Classifier-free guidance is on when guidance is greater than 0.
+
+``--z-image-cfg-normalization`` turns on CFG normalization. ``--z-image-cfg-truncation`` replaces the default of ``1``, which applies guidance for the whole schedule. Each is one value. Omitting one leaves the pipeline default, and it does not multiply the number of images. Z-Image Omni uses these same flags.
 
 * Turbo: ``Tongyi-MAI/Z-Image-Turbo``. 8 steps, ``--guidance-scales 0``. Public.
 * Base: ``Tongyi-MAI/Z-Image``. Public. Guidance around 4, and 28 to 50 steps.
@@ -6401,7 +6506,7 @@ Z-Image Omni
 
 The **Z-Image-Omni-Base** checkpoint is not on Hugging Face yet. Tongyi-MAI lists it as to be released. Use a local ``ZImageOmniPipeline`` directory until ``Tongyi-MAI/Z-Image-Omni-Base`` is published.
 
-About 50 steps and ``--guidance-scales`` around 4 match the intended Omni-Base schedule. CFG flags are the same ``--z-image-`` options.
+About 50 steps and ``--guidance-scales`` around 4 match the intended Omni-Base schedule. ``--z-image-cfg-normalization`` and ``--z-image-cfg-truncation`` are the same flags as on `Z-Image`_.
 
 Qwen-Image
 ----------
@@ -6410,7 +6515,7 @@ Qwen-Image
 
 50 steps and guidance 4 are the usual settings. ``--dtype bfloat16`` and ``FlowMatchEulerDiscreteScheduler``.
 
-``--guidance-scales`` is true CFG (``true_cfg_scale``). ``--qwen-guidance-scale`` is the distilled guidance embedded in the transformer. Omit it to leave that guidance unset.
+``--guidance-scales`` is true CFG (``true_cfg_scale``). ``--qwen-guidance-scale`` is the distilled guidance embedded in the transformer. Omit it to leave that guidance unset. It is one value and does not multiply the number of images. Qwen-Image Edit and Qwen-Image Layered use the same scale.
 
 True CFG runs when ``--guidance-scales`` is above 1. A negative prompt is optional. If you do not write one and guidance is above 1, dgenerate passes a single space, which is what the pipeline expects.
 
@@ -6442,7 +6547,7 @@ ControlNet stays ``--model-type qwen-image`` with ``--control-nets``. More than 
 
 Text to image uses the seed image as the control image with ``InstantX/Qwen-Image-ControlNet-Union``.
 
-Inpaint uses ``--image-seeds "image.png;mask.png"`` with ``InstantX/Qwen-Image-ControlNet-Inpainting``. That image and mask are ``control_image`` and ``control_mask``.
+Inpaint uses ``--image-seeds "image.png;mask.png"`` with ``InstantX/Qwen-Image-ControlNet-Inpainting``. That image and mask are ``control_image`` and ``control_mask``. ``--inpaint-crop`` with one padding integer, and without feathering or masked paste, is passed as ``padding_mask_crop``. The pipeline then crops and pastes. A two-sided or four-sided padding, a feather, or masked paste stays on dgenerate's crop.
 
 White mask pixels are repainted. Black are kept. Prefer a small white region. Wiping most of the frame often yields a black fill. The shipped example inverts ``horse1-mask.jpg`` so the horse is painted.
 
@@ -6534,7 +6639,7 @@ required. There is no strength.
 * A mask on the original edit checkpoint selects edit-inpaint. Strength
   applies only to that inpaint.
 
-``--guidance-scales`` is still true CFG.
+``--guidance-scales`` is still true CFG. ``--qwen-guidance-scale`` is the same distilled guidance as on `Qwen-Image`_. Edit-inpaint passes ``--inpaint-crop`` with one padding integer, and without feathering or masked paste, as ``padding_mask_crop``. The pipeline then crops and pastes. A two-sided or four-sided padding, a feather, or masked paste stays on dgenerate's crop.
 
 See `examples/qwen_image/edit/base-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/edit/base-config.dgen>`_,
 `examples/qwen_image/edit_plus/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/qwen_image/edit_plus/config.dgen>`_,
@@ -6543,7 +6648,7 @@ and `examples/qwen_image/edit_inpaint/config.dgen <https://github.com/Teriks/dge
 Qwen-Image Layered
 ------------------
 
-``--model-type qwen-image-layered`` is ``Qwen/Qwen-Image-Layered``. One image in, one file per layer out.
+``--model-type qwen-image-layered`` is ``Qwen/Qwen-Image-Layered``. One image in, one file per layer out. ``--qwen-guidance-scale`` is the same distilled guidance as on `Qwen-Image`_.
 
 ``--qwen-layered-layers`` defaults to 4. ``--qwen-layered-resolution`` is 640 or 1024, and defaults to 640. ``--qwen-layered-cfg-normalize`` and ``--qwen-layered-use-en-prompt`` are off unless you set them.
 
@@ -6588,25 +6693,6 @@ See `examples/minimax_h3_image/text_to_image/config.dgen <https://github.com/Ter
 `examples/minimax_h3_image/gguf/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/gguf/config.dgen>`_,
 `examples/minimax_h3_image/comfy_quant/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/comfy_quant/config.dgen>`_,
 and `examples/minimax_h3_image/spectrum/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/minimax_h3_image/spectrum/config.dgen>`_.
-
-Other call arguments
---------------------
-
-These are one value. Omitting one leaves the pipeline default, and it does not
-multiply the number of images.
-
-* ``--flux2-caption-upsample-temperature`` is full Flux.2 caption upsampling.
-  Klein rejects it.
-* ``--flux2-text-encoder-out-layers`` selects the text-encoder layers.
-  Full Flux.2 defaults to ``10,20,30``. Klein defaults to ``9,18,27``.
-* ``--z-image-cfg-normalization`` turns on Z-Image CFG normalization.
-  ``--z-image-cfg-truncation`` replaces the default of ``1``.
-* ``--qwen-guidance-scale`` is the distilled guidance embedded in the Qwen-Image
-  transformer. ``--guidance-scales`` stays the true CFG scale.
-* ``--inpaint-crop`` with one padding integer, and without feathering or masked
-  paste, is passed as ``padding_mask_crop`` on Klein and Qwen inpaint. The
-  pipeline then crops and pastes. A two-sided or four-sided padding, a feather,
-  or masked paste stays on dgenerate's crop.
 
 Animation Slicing
 =================
@@ -12499,8 +12585,8 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     # Kandinsky 5 T2V Pro with the Q4_K_S GGUF transformer and ComfyUI's scaled
     # FP8 Qwen2.5-VL, the same file Qwen-Image uses. "+" keeps the CLIP encoder
     # from the repository. The file includes the vision tower. No mode and no
-    # quantizer: the linears stay packed. The image checkpoints have no published
-    # quantized transformer.
+    # quantizer: the linears stay packed. T2I and I2I transformers are
+    # Teriks/Kandinsky-5.0-T2I-Lite-quants and Teriks/Kandinsky-5.0-I2I-Lite-quants.
     
     kandinskylab/Kandinsky-5.0-T2V-Pro-sft-5s-Diffusers
     --model-type kandinsky5-video
