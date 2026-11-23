@@ -173,6 +173,8 @@ class _NcCalcSizeParams(ctypes.Structure):
 
 
 _macos_windows = []
+_macos_dialogs = []
+_macos_link_job = None
 _macos_colors = None
 _macos_patched = False
 _objc_lib = None
@@ -251,6 +253,7 @@ def _macos_watch(window):
     def on_map(event, window=window):
         if event.widget is window and window in _macos_windows:
             _macos_titlebar(window)
+            _macos_add_dialog(window)
 
     window.bind('<Map>', on_map, add='+')
     try:
@@ -258,6 +261,250 @@ def _macos_watch(window):
             _macos_titlebar(window)
     except tk.TclError:
         pass
+
+
+def _macos_owner(window):
+    """The transient master, or the opener's toplevel as Windows owns it."""
+    try:
+        path = str(window.tk.call('wm', 'transient', window._w))
+        if path:
+            return window.nametowidget(path)
+        if window.master is None:
+            return None
+        owner = window.master.winfo_toplevel()
+        return None if owner is window else owner
+    except (tk.TclError, KeyError):
+        return None
+
+
+def _macos_menu_open(widget):
+    """A menu popup holds the grab. Relinking now reorders windows under it."""
+    try:
+        for path in widget.tk.splitlist(widget.tk.call('grab', 'current')):
+            top = widget.tk.call('winfo', 'toplevel', path)
+            if int(widget.tk.call('wm', 'overrideredirect', top)):
+                return True
+    except (tk.TclError, ValueError):
+        return False
+    return False
+
+
+def _macos_add_dialog(window):
+    """Keep a dialog an AppKit child window of its owner, except to drag it.
+
+    A child window always stays above its owner, as an owned window does on
+    Windows. The window server cannot drag a child window by itself, so the
+    app moves it on every mouse event and the drag lags. The output window
+    is not a child, and its drag is smooth. The dialog is detached while the
+    pointer is over its title bar or resize border, before a press there
+    can start a drag. Menus and tooltips are overrideredirect and skipped.
+    """
+    try:
+        if not window.winfo_exists() or _app_window(window):
+            return
+        if int(window.tk.call('wm', 'overrideredirect', window._w)):
+            return
+    except (tk.TclError, ValueError):
+        return
+    owner = _macos_owner(window)
+    if owner is None:
+        return
+    window._macos_owner = owner
+    if window not in _macos_dialogs:
+        _macos_dialogs.append(window)
+    if not getattr(window, '_macos_raises', False):
+        window._macos_raises = True
+
+        def on_activate(event, window=window):
+            if event.widget is window:
+                _macos_raise_child(window)
+
+        window.bind('<Activate>', on_activate, add='+')
+    _macos_arm_dialog_links(window)
+
+
+def _macos_ordered_windows():
+    """This app's windows, front first."""
+    app = _macos_msg(ctypes.c_void_p)(
+        _macos_objc().objc_getClass(b'NSApplication'), _macos_sel(b'sharedApplication'))
+    windows = _macos_msg(ctypes.c_void_p)(app, _macos_sel(b'orderedWindows'))
+    count = int(_macos_msg(ctypes.c_ulong)(windows, _macos_sel(b'count')))
+    at = _macos_msg(ctypes.c_void_p, ctypes.c_ulong)
+    return [at(windows, _macos_sel(b'objectAtIndex:'), index) for index in range(count)]
+
+
+def _macos_children_in_front(ns_window, parent):
+    """Other child windows of ``parent`` stacked above ``ns_window``, front first."""
+    try:
+        parent_of = _macos_msg(ctypes.c_void_p)
+        front = []
+        for window in _macos_ordered_windows():
+            if window == ns_window:
+                return front
+            if window and parent_of(window, _macos_sel(b'parentWindow')) == parent:
+                front.append(window)
+    except (OSError, AttributeError):
+        pass
+    return []
+
+
+def _macos_unlink_children(parent, ns_windows):
+    """Remove these child windows of ``parent`` and keep their stacking.
+
+    AppKit orders a removed child behind its old parent, and keeps the
+    children that remain directly above the parent. A single dialog cannot
+    be detached under a sibling, so the owner's dialogs are detached
+    together and stacked again above it in the order they had.
+    """
+    parent_of = _macos_msg(ctypes.c_void_p)
+    linked = [w for w in ns_windows if parent_of(w, _macos_sel(b'parentWindow')) == parent]
+    if not linked:
+        return
+    try:
+        stack = [w for w in _macos_ordered_windows() if w in ns_windows]
+    except (OSError, AttributeError):
+        stack = list(ns_windows)
+    unlink = _macos_msg(None, ctypes.c_void_p)
+    for window in linked:
+        unlink(parent, _macos_sel(b'removeChildWindow:'), window)
+    order = _macos_msg(None, ctypes.c_long, ctypes.c_long)
+    number = _macos_msg(ctypes.c_long)
+    below = parent
+    for window in reversed(stack):
+        # NSWindowAbove.
+        order(window, _macos_sel(b'orderWindow:relativeTo:'), 1,
+              int(number(below, _macos_sel(b'windowNumber'))))
+        below = window
+
+
+def _macos_link_children(parent, ns_windows):
+    """Make these windows children of ``parent`` in the order they are stacked.
+
+    AppKit puts each added child above the others, so they are added from
+    the back. A dialog behind another one stays behind it.
+    """
+    try:
+        stack = [w for w in _macos_ordered_windows() if w in ns_windows]
+    except (OSError, AttributeError):
+        return
+    parent_of = _macos_msg(ctypes.c_void_p)
+    unlink = _macos_msg(None, ctypes.c_void_p)
+    link = _macos_msg(None, ctypes.c_void_p, ctypes.c_long)
+    for window in stack:
+        if parent_of(window, _macos_sel(b'parentWindow')) == parent:
+            unlink(parent, _macos_sel(b'removeChildWindow:'), window)
+    for window in reversed(stack):
+        # NSWindowAbove.
+        link(parent, _macos_sel(b'addChildWindow:ordered:'), window, 1)
+
+
+def _macos_raise_child(window):
+    """Bring an activated dialog above its sibling dialogs.
+
+    A click does not reorder child windows. Tk relinks a transient dialog
+    when it activates, but not one that is only owned.
+    """
+    if _macos_menu_open(window):
+        return
+    ns_window = _macos_ns_window(window)
+    if not ns_window:
+        return
+    try:
+        parent = _macos_msg(ctypes.c_void_p)(ns_window, _macos_sel(b'parentWindow'))
+        if not parent or not _macos_children_in_front(ns_window, parent):
+            return
+        _macos_msg(None, ctypes.c_void_p)(parent, _macos_sel(b'removeChildWindow:'), ns_window)
+        # NSWindowAbove: AppKit puts an added child above its siblings.
+        _macos_msg(None, ctypes.c_void_p, ctypes.c_long)(
+            parent, _macos_sel(b'addChildWindow:ordered:'), ns_window, 1)
+    except (OSError, AttributeError):
+        return
+
+
+def _macos_arm_dialog_links(widget):
+    global _macos_link_job
+    if _macos_link_job is not None:
+        return
+    try:
+        _macos_link_job = widget._root().after(30, _macos_update_dialog_links)
+    except tk.TclError:
+        _macos_link_job = None
+
+
+def _macos_on_frame(window, x, y):
+    """The pointer is on the title bar or resize border, not the content."""
+    left, top = window.winfo_rootx(), window.winfo_rooty()
+    right, bottom = left + window.winfo_width(), top + window.winfo_height()
+    if not (left - 8 <= x < right + 8 and top - 40 <= y < bottom + 8):
+        return False
+    return not (left + 4 <= x < right - 4 and top + 4 <= y < bottom - 4)
+
+
+def _macos_buttons_down():
+    """A mouse button is held, so a drag may be under way.
+
+    A fast drag leaves the pointer off the title bar, and Tk reports the
+    window where it was. Relinking then would move the dialog mid-drag.
+    """
+    try:
+        event = _macos_objc().objc_getClass(b'NSEvent')
+        return bool(_macos_msg(ctypes.c_ulong)(event, _macos_sel(b'pressedMouseButtons')))
+    except (OSError, AttributeError):
+        return False
+
+
+def _macos_shown(window):
+    return window.wm_state() == 'normal' and bool(int(window.winfo_viewable()))
+
+
+def _macos_update_dialog_links():
+    global _macos_link_job
+    _macos_link_job = None
+    for dialog in list(_macos_dialogs):
+        try:
+            if not dialog.winfo_exists():
+                _macos_dialogs.remove(dialog)
+        except tk.TclError:
+            _macos_dialogs.remove(dialog)
+    if not _macos_dialogs:
+        return
+    anchor = _macos_dialogs[0]
+    if not _macos_menu_open(anchor) and not _macos_buttons_down():
+        try:
+            x, y = anchor.winfo_pointerxy()
+        except tk.TclError:
+            x = y = -1
+        groups = {}
+        for dialog in _macos_dialogs:
+            owner = getattr(dialog, '_macos_owner', None)
+            try:
+                if owner is None or not owner.winfo_exists():
+                    continue
+                if not _macos_shown(dialog) or not int(owner.winfo_viewable()):
+                    continue
+                on_frame = _macos_on_frame(dialog, x, y)
+            except tk.TclError:
+                continue
+            ns_window = _macos_ns_window(dialog)
+            above = _macos_ns_window(owner)
+            if not ns_window or not above:
+                continue
+            group = groups.setdefault(above, [[], False])
+            group[0].append(ns_window)
+            group[1] = group[1] or on_frame
+        parent_of = _macos_msg(ctypes.c_void_p)
+        for above, (ns_windows, detach) in groups.items():
+            try:
+                if detach:
+                    _macos_unlink_children(above, ns_windows)
+                    continue
+                if all(parent_of(w, _macos_sel(b'parentWindow')) == above
+                       for w in ns_windows):
+                    continue
+                _macos_link_children(above, ns_windows)
+            except (OSError, AttributeError):
+                continue
+    _macos_arm_dialog_links(anchor)
 
 
 def _macos_unwatch(window):

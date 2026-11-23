@@ -424,7 +424,7 @@ class ThemeMenu:
                 # On X11 a transient override-redirect window is withdrawn
                 # by the window manager as soon as it is mapped.
                 if popup.tk.call('tk', 'windowingsystem') != 'x11':
-                    popup.transient(master)
+                    popup.transient(_popup_owner(popup, master))
             except tk.TclError:
                 pass
         popup.bind('<Deactivate>', _on_deactivate)
@@ -466,6 +466,8 @@ class ThemeMenu:
         if entry.menu in _open and entry.menu._parent is self:
             return
         self._close_children()
+        if self._popup is None:
+            return
         left, top = _popup_origin(self._popup)
         x = left + self._popup.winfo_width() - 1
         y = top + entry.row.winfo_y()
@@ -824,6 +826,24 @@ def _take_pointer(popup):
             pass
 
 
+def _popup_owner(popup, master):
+    """The window a menu popup is made transient to.
+
+    On Aqua, showing a transient window makes its owner the key window. A
+    menu opened over the console while a dialog has focus would activate
+    the console, so the popup belongs to the window that had focus.
+    """
+    try:
+        if popup.tk.call('tk', 'windowingsystem') != 'aqua' or _return_focus is None:
+            return master
+        top = _return_focus.winfo_toplevel()
+        if not top.winfo_exists() or int(top.tk.call('wm', 'overrideredirect', top._w)):
+            return master
+        return top
+    except (tk.TclError, ValueError):
+        return master
+
+
 def _own_popup(popup, master):
     """Keep the menu above its window without floating over other applications.
 
@@ -887,7 +907,23 @@ def _foreground(widget):
         return _windows_foreground(widget)
     if platform.system() == 'Linux':
         return _linux_foreground(widget)
+    if platform.system() == 'Darwin':
+        return _aqua_foreground(widget)
     return _focus_foreground(widget)
+
+
+def _aqua_foreground(widget):
+    """True while this app is active.
+
+    A right click does not make its window key, so with a dialog open the
+    focus can stay in the dialog while a menu is shown over the console.
+    Clicks elsewhere in the app reach the menu's global grab. Focus is
+    empty once another application is active.
+    """
+    try:
+        return widget.focus_get() is not None
+    except (tk.TclError, KeyError):
+        return False
 
 
 def _focus_foreground(widget):
