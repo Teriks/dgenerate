@@ -45,6 +45,10 @@ _pointer_job = None
 _foreground_job = None
 _switching = False
 _opening_click = False
+# Aqua can drop the click that should dismiss a menu after a scroll.
+# The pointer poll remembers that the buttons came up, then closes when
+# one goes down outside the menu.
+_buttons_released = False
 _colors = {
     'background': '#f0f0f0',
     'foreground': '#000000',
@@ -303,10 +307,11 @@ class ThemeMenu:
         return
 
     def show(self, x, y, parent=None):
-        global _return_focus, _opening_click
+        global _return_focus, _opening_click, _buttons_released
         # The click that opened this menu is still being dispatched. It must
         # not also count as a click outside the menu.
         _opening_click = True
+        _buttons_released = False
         if not _open and _return_focus is None:
             try:
                 _return_focus = self._toplevel().focus_get()
@@ -399,6 +404,7 @@ class ThemeMenu:
                 widget.bind('<Enter>', lambda event, item=entry: self._hover(item))
                 widget.bind('<Motion>', lambda event, item=entry: self._hover(item))
                 widget.bind('<Button-1>', lambda event, item=entry: self._activate(item))
+                _bind_scroll(widget)
             self._paint_entry(entry, False)
         popup.update_idletasks()
         width = max(popup.winfo_reqwidth(), 160)
@@ -437,6 +443,7 @@ class ThemeMenu:
         popup.bind('<Return>', lambda event: self._activate(self._active) if self._active else None)
         popup.bind('<Left>', lambda event: self._left())
         popup.bind('<Right>', lambda event: self._right())
+        _bind_scroll(popup)
 
     def _hover(self, entry):
         if self._popup is None or entry.kind == 'separator':
@@ -699,7 +706,8 @@ def _cancel_owner_job(job):
 
 
 def _close_all(restore_focus=True):
-    global _return_focus, _motion_job, _pointer_job, _foreground_job
+    global _return_focus, _motion_job, _pointer_job, _foreground_job, _buttons_released
+    _buttons_released = False
     _cancel_owner_job(_motion_job)
     _motion_job = None
     _cancel_owner_job(_pointer_job)
@@ -1162,6 +1170,91 @@ def _local_point(popup, x, y):
     return None
 
 
+def _bind_scroll(widget):
+    """A scroll must not be delivered to the window under the menu.
+
+    On Aqua that scroll starts a gesture in the window underneath, and the
+    menu's grab then swallows the click that should have closed it.
+    """
+
+    def hold(_event, widget=widget):
+        try:
+            popup = widget.winfo_toplevel()
+        except tk.TclError:
+            return 'break'
+        _take_pointer(popup)
+        return 'break'
+
+    for sequence in ('<MouseWheel>', '<Button-4>', '<Button-5>', '<TouchpadScroll>'):
+        try:
+            widget.bind(sequence, hold)
+        except tk.TclError:
+            pass
+
+
+def _note_buttons(down, x, y):
+    """Close when a button goes down outside the menu.
+
+    The opening click is still down until the buttons have been seen up.
+    """
+    global _buttons_released
+    if not _open:
+        return
+    if not down:
+        _buttons_released = True
+        return
+    if not _buttons_released or _opening_click or _switching:
+        return
+    if _pointer_over_menu(x, y):
+        return
+    _close_all()
+
+
+def _pointer_over_menu(x, y):
+    for menu in _open:
+        popup = menu._popup
+        if popup is not None and _local_point(popup, x, y) is not None:
+            return True
+    for bar in _bars:
+        for button, _menu in getattr(bar, '_slots', ()):
+            if _inside(button, x, y):
+                return True
+    return False
+
+
+def _reassert_pointer(popup):
+    try:
+        current = popup.grab_current()
+    except tk.TclError:
+        return
+    for menu in _open:
+        if menu._popup is not None and current is menu._popup:
+            return
+    _take_pointer(popup)
+
+
+def _aqua_buttons_down():
+    """Whether the left, right, or middle button is down on Aqua."""
+    lib = getattr(_aqua_buttons_down, 'lib', None)
+    if lib is False:
+        return False
+    if lib is None:
+        import ctypes
+        try:
+            lib = ctypes.CDLL(
+                '/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics')
+            lib.CGEventSourceButtonState.restype = ctypes.c_bool
+            lib.CGEventSourceButtonState.argtypes = (ctypes.c_int, ctypes.c_uint)
+        except (OSError, AttributeError):
+            _aqua_buttons_down.lib = False
+            return False
+        _aqua_buttons_down.lib = lib
+    for button in (0, 1, 2):
+        if lib.CGEventSourceButtonState(0, button):
+            return True
+    return False
+
+
 def _arm_pointer_watch():
     """Follow the pointer while a menu is open on Aqua.
 
@@ -1208,6 +1301,10 @@ def _poll_pointer():
         return
     if x >= 0 and y >= 0:
         _track(x, y)
+        _note_buttons(_aqua_buttons_down(), x, y)
+        if not _open:
+            return
+        _reassert_pointer(popup)
     _arm_pointer_watch()
 
 

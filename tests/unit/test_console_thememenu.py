@@ -343,6 +343,32 @@ class ThemeMenuTest(unittest.TestCase):
         self.assertIs(menu._active, menu._entries[0])
         thememenu._close_all()
 
+    def test_click_outside_after_the_buttons_come_up_closes_the_menu(self):
+        from dgenerate.console import thememenu
+        from dgenerate.console.thememenu import ThemeMenu
+
+        parent = tk.Toplevel(_ROOT)
+        self.addCleanup(parent.destroy)
+        entry = tk.Entry(parent)
+        entry.pack()
+        menu = ThemeMenu(entry, tearoff=0)
+        self.addCleanup(menu.destroy)
+        menu.add_command(label='Copy')
+        parent.deiconify()
+        parent.update()
+        menu.tk_popup(80, 80)
+        parent.update()
+        thememenu._note_buttons(True, 1, 1)
+        self.assertIn(menu, thememenu._open)
+        thememenu._note_buttons(False, 1, 1)
+        row = menu._entries[0].row
+        thememenu._note_buttons(
+            True, row.winfo_rootx() + 4, row.winfo_rooty() + 4)
+        self.assertIn(menu, thememenu._open)
+        thememenu._note_buttons(False, 1, 1)
+        thememenu._note_buttons(True, 1, 1)
+        self.assertNotIn(menu, thememenu._open)
+
     def test_destroyed_owner_closes_the_context_menu(self):
         from dgenerate.console import thememenu
         from dgenerate.console.thememenu import ThemeMenu
