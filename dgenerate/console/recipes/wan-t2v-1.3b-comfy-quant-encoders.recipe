@@ -1,4 +1,4 @@
-title: Wan 2.1 Text to Video 1.3B (ComfyUI Quant) + Encoders
+title: Wan 2.1 Text to Video 1.3B (ComfyUI Quant + Encoders)
 # Transformer weights are from Teriks/Wan2.1-T2V-1.3B-quants.
 # Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 

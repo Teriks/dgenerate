@@ -425,3 +425,18 @@ class ThemeMenuTest(unittest.TestCase):
             thememenu._context_menu_at(outer.winfo_rootx() + 80, outer.winfo_rooty() + 80),
             outer_menu)
         self.assertIsNone(thememenu._context_menu_at(-1, -1))
+
+    def test_argument_help_uses_the_themed_menu(self):
+        from dgenerate.console import thememenu
+        from dgenerate.console.formentries.entry import _bind_argument_help
+
+        label = tk.Label(_ROOT, text='Steps')
+        self.addCleanup(label.destroy)
+        before = {id(menu) for menu in thememenu._menus}
+        _bind_argument_help(label, '--inference-steps', 'How many steps.', _ROOT)
+        added = [menu for menu in thememenu._menus if id(menu) not in before]
+        self.assertEqual(len(added), 1)
+        menu = added[0]
+        self.addCleanup(menu.destroy)
+        self.assertIsInstance(menu, thememenu.ThemeMenu)
+        self.assertEqual(menu._entries[0].label, 'Help for --inference-steps')

@@ -93,6 +93,26 @@ class ThemeDialogTest(unittest.TestCase):
         self.assertEqual(str(viewer.cget('background')), 'black')
         self.assertEqual(str(sash.cget('background')).lower(), '#808080')
 
+    def test_open_combobox_list_takes_the_new_background(self):
+        if platform.system() not in ('Windows', 'Linux', 'Darwin'):
+            self.skipTest('dialog theming is windows, linux, and macos')
+        from dgenerate.console import themedialog
+
+        box = ttk.Combobox(_ROOT, state='readonly', values=['alpha', 'beta'])
+        self.addCleanup(box.destroy)
+        themedialog.apply(_ROOT, '#282a36', '#f8f8f2', '#44475a', '#f8f8f2')
+        listbox = box.tk.call('ttk::combobox::PopdownWindow', box._w) + '.f.l'
+        box.tk.call('ttk::combobox::Post', box._w)
+        self.addCleanup(lambda: box.tk.call('ttk::combobox::Unpost', box._w))
+
+        themedialog.apply(
+            _ROOT, '#ffffff', '#000000', '#cce8ff', '#000000',
+            window_background='#112233', window_chrome='#445566')
+        self.assertEqual(box.tk.call(listbox, 'cget', '-background'), '#ffffff')
+        self.assertEqual(box.tk.call(listbox, 'cget', '-foreground'), '#000000')
+        self.assertEqual(box.tk.call(listbox, 'cget', '-selectbackground'), '#cce8ff')
+        self.assertEqual(box.tk.call(listbox, 'cget', '-selectforeground'), '#000000')
+
     def test_viewport_border_uses_the_editor_edge(self):
         from dgenerate.console import appearance, themedialog
 

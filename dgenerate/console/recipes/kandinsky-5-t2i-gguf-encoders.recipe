@@ -1,4 +1,4 @@
-title: Kandinsky 5 Image (GGUF) + Encoders
+title: Kandinsky 5 Image (GGUF + Encoders)
 # Transformer weights are from Teriks/Kandinsky-5.0-T2I-Lite-quants.
 # Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 

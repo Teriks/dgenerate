@@ -24,6 +24,7 @@ import tkinter.ttk as ttk
 
 import dgenerate.console.helpdialog as _helpdialog
 import dgenerate.console.resources as _resources
+import dgenerate.console.thememenu as _thememenu
 import dgenerate.textprocessing as _textprocessing
 import typing
 
@@ -242,7 +243,7 @@ _HELP_TIP = None
 def _bind_argument_help(label, option: str, help_text: str, form) -> None:
     label.configure(cursor='question_arrow')
 
-    menu = tkinter.Menu(label, tearoff=0)
+    menu = _thememenu.ThemeMenu(label, tearoff=0)
 
     def show_help():
         _hide_help_tip()

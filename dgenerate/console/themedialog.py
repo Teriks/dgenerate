@@ -360,12 +360,37 @@ def _options(widget, palette):
 
 def _walk(widget, palette):
     _paint(widget, palette)
+    _recolor_combobox_popdown(widget, palette)
     try:
         children = widget.winfo_children()
     except tk.TclError:
         return
     for child in children:
         _walk(child, palette)
+
+
+def _recolor_combobox_popdown(widget, palette):
+    """Recolor a combobox list that is already open.
+
+    Tk builds that list as a child toplevel. It is absent from
+    ``winfo_children``, so the normal walk never reaches its listbox, and
+    the list keeps the colors it was created with.
+    """
+    if not isinstance(widget, ttk.Combobox):
+        return
+    listbox = f'{widget._w}.popdown.f.l'
+    try:
+        if not widget.tk.getboolean(widget.tk.call('winfo', 'exists', listbox)):
+            return
+        widget.tk.call(
+            listbox, 'configure',
+            '-background', palette['field'],
+            '-foreground', palette['foreground'],
+            '-selectbackground', palette['selectbackground'],
+            '-selectforeground', palette['selectforeground'],
+        )
+    except tk.TclError:
+        pass
 
 
 def _paint(widget, palette):

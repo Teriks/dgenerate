@@ -1,4 +1,4 @@
-title: Flux.2 Klein KV (ComfyUI Quant) + Encoders
+title: Flux.2 Klein KV (ComfyUI Quant + Encoders)
 # Transformer weights are from Teriks/FLUX.2-klein-9B-KV-quants.
 # Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 

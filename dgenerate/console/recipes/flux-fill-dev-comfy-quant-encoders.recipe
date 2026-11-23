@@ -1,4 +1,4 @@
-title: Flux Fill Dev (ComfyUI Quant) + Encoders
+title: Flux Fill Dev (ComfyUI Quant + Encoders)
 # Transformer weights are from Teriks/FLUX.1-Fill-dev-quants.
 # Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 

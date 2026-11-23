@@ -1,4 +1,4 @@
-title: Wan 2.1 VACE 1.3B (GGUF) + Encoders
+title: Wan 2.1 VACE 1.3B (GGUF + Encoders)
 # Transformer weights are from Teriks/Wan2.1-VACE-1.3B-quants.
 # Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
