@@ -1,8 +1,4 @@
 title: Flux.2 Dev (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
-
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
 
 # The repo is gated. An image seed with no mask is a reference image and takes no strength. A mask is rejected.
 

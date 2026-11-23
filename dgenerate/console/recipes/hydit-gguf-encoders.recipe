@@ -1,5 +1,4 @@
 title: Hunyuan-DiT (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 # Transformer GGUF with the BERT safetensors quant and the mT5 GGUF.
 
 # Hunyuan-DiT 1.x text-to-image with optional LoRA, ControlNet, and IP-Adapter.

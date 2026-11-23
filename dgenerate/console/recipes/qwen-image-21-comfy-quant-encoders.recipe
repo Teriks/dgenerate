@@ -1,8 +1,4 @@
 title: Qwen-Image 2.1 (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
-
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
 
 # Select a ComfyUI quantized transformer compatible with the chosen Qwen-Image 2.1 checkpoint.
 

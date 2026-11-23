@@ -1,8 +1,5 @@
 title: Krea 2 Turbo (ComfyUI Quant)
 
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
-
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"krea/Krea-2-Turbo", "optional":false, "file-types":["models"]}]
 --model-type krea2
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]

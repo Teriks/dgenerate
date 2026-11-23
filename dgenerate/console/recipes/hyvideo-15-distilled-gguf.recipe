@@ -1,7 +1,5 @@
 title: HunyuanVideo 1.5 Text to Video Distilled (GGUF)
 
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
 # ComfyUI publishes the CFG distilled weights; the distilled repository
 # matches them, with guidance 1.
 

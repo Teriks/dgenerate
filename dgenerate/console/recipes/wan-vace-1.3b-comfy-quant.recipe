@@ -1,5 +1,4 @@
 title: Wan 2.1 VACE 1.3B (ComfyUI Quant)
-# Transformer weights are from Teriks/Wan2.1-VACE-1.3B-quants.
 
 # Wan VACE control. control= is the control clip, mask= is optional,
 # reference= is a still. --wan-conditioning-scales is a scalar or

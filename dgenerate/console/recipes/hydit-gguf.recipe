@@ -1,5 +1,4 @@
 title: Hunyuan-DiT (GGUF)
-# Diffusers-named transformer GGUF from Teriks/HunyuanDiT-v1.2-quants.
 
 # Hunyuan-DiT 1.x text-to-image with optional LoRA, ControlNet, and IP-Adapter.
 

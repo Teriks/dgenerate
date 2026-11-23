@@ -2,8 +2,6 @@ title: Flux Krea Dev (ComfyUI Quant)
 
 # Flux Krea requires a huggingface auth token to access
 # you must request access to the repository
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
 # Krea Dev is tuned for 28 steps at guidance 4.5. It is the model
 # upstream DyPE was tuned on, so DyPE works well above 1024 pixels.
 

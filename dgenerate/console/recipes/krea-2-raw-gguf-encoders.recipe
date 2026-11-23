@@ -1,5 +1,4 @@
 title: Krea 2 Raw (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # Choose the Raw base checkpoint and a GGUF transformer with matching weights.
 

@@ -1,5 +1,4 @@
 title: Kandinsky 5 Image (Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 # Qwen2.5-VL GGUF. CLIP stays on the checkpoint.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"kandinskylab/Kandinsky-5.0-T2I-Lite-sft-Diffusers", "optional":false, "file-types":["models"]}]

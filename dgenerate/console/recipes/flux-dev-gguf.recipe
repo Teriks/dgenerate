@@ -2,7 +2,6 @@ title: Flux Dev (GGUF)
 
 # Flux requires a huggingface auth token to access
 # you must request access to the repository
-# Parent repo supplies the VAE and text encoders. The DiT is a city96 GGUF.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

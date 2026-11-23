@@ -1,5 +1,4 @@
 title: Wan-Animate (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # Wan-Animate with a GGUF transformer. The seed is the character still.
 # wan-pose= and wan-face= are required, or wan-driving= with --wan-animate-preprocess.

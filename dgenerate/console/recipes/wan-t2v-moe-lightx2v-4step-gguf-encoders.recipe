@@ -1,5 +1,4 @@
 title: Wan 2.2 Text to Video (4-step LoRA, GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # LightX2V 4-step LoRAs for undistilled Wan 2.2 14B text-to-video with GGUF experts.
 # The first LoRA is the high-noise expert. The second uses component=transformer_2

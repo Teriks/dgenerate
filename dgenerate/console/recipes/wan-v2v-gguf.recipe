@@ -1,10 +1,9 @@
 title: Wan 2.1 Video to Video (GGUF)
 
-# Wan video-to-video with a GGUF transformer. The repository still
-# supplies the VAE and text encoder. The seed is a video clip in
-# --image-seeds. --video-lengths is rejected; trim with --frame-start
-# and --frame-end. Wan 2.2 MoE can take --wan-second-transformer for
-# the low-noise expert.
+# Wan video-to-video with a GGUF transformer. The seed is a video clip in
+# --image-seeds. --video-lengths is rejected; trim with --frame-start and
+# --frame-end. Wan 2.2 MoE can take --wan-second-transformer for the low-noise
+# expert.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

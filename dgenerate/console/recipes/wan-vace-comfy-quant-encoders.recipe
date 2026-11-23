@@ -1,5 +1,4 @@
 title: Wan 2.1 VACE (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # The transformer is a ComfyUI repackaged safetensors file. Comfy-Org ships
 # Wan 2.1 VACE 14B as fp16 in the repack; pick another file if you prefer fp8 on 1.3B.

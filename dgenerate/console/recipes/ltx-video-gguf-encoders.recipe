@@ -1,10 +1,8 @@
 title: LTX-Video (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
-# Earlier LTX-Video (2B) with a city96 GGUF transformer. No audio.
+# Earlier LTX-Video (2B). No audio.
 # LTX-2.5 options such as latent upscale, STG, and audio guidance are not
 # accepted by this checkpoint.
-# Parent repo still supplies the VAE.
 # First frame and last frame are optional, each can be a still or a video clip.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"

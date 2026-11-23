@@ -1,8 +1,4 @@
 title: Wan 2.1 Image to Video (4-step LoRA, ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
-
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
 
 # LightX2V 4-step LoRA for the undistilled Wan 2.1 14B 480p image-to-video model.
 # Guidance stays at 1. UniPC flow-shift=5 with 4 steps is the LightX2V schedule.

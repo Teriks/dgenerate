@@ -1,9 +1,7 @@
 title: Wan 2.2 Image to Video (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
-# Wan 2.2 image to video with GGUF experts. The repository still
-# supplies the VAE and image encoder.
-# last-frame= needs a FLF2V transformer. This I2V checkpoint only embeds the first frame.
+# Wan 2.2 image to video with GGUF experts. last-frame= needs a FLF2V
+# transformer. This I2V checkpoint only embeds the first frame.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

@@ -2,7 +2,6 @@ title: Stable Diffusion 3.5 (GGUF + DistillT5)
 
 # Stable Diffusion 3 requires a huggingface auth token to access
 # you must request access to the repository
-# Parent repo supplies the VAE and text encoders. The DiT is a city96 GGUF.
 
 # DistillT5 replaces T5-XXL.
 

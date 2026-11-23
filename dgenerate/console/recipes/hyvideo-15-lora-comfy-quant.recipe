@@ -5,7 +5,7 @@ title: HunyuanVideo 1.5 Text to Video (4-step LoRA, ComfyUI Quant)
 
 # LightX2V 4-step LoRA for the undistilled 480p text-to-video transformer.
 # Guidance stays at 1. dgenerate merges the LoRA matrices and the file's
-# .diff / .diff_b weight updates.
+# .diff /.diff_b weight updates.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v", "optional":false, "file-types":["models"]}]
 --model-type hyvideo-15

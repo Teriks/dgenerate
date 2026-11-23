@@ -1,5 +1,4 @@
 title: Flux.2 Klein KV (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # The repo is gated. Reference images have no mask and no strength.
 # There is no guidance scale.

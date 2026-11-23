@@ -1,5 +1,4 @@
 title: Hunyuan-DiT (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 # ComfyUI safetensors quants of the transformer, BERT, and mT5.
 
 # Hunyuan-DiT 1.x text-to-image with optional LoRA, ControlNet, and IP-Adapter.

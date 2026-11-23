@@ -1,5 +1,4 @@
 title: Qwen-Image (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # Guidance here is true CFG. An empty negative prompt still applies it
 # when guidance is above 1.

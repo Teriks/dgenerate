@@ -1,5 +1,4 @@
 title: Stable Diffusion 3.5 Medium (ComfyUI Quant)
-# Transformer weights are from Teriks/stable-diffusion-3.5-medium-quants.
 
 # Stable Diffusion 3 requires a huggingface auth token to access
 # you must request access to the repository

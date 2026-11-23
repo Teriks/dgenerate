@@ -1,5 +1,4 @@
 title: Hunyuan-DiT (ComfyUI Quant)
-# ComfyUI safetensors quant of the transformer from Teriks/HunyuanDiT-v1.2-quants.
 
 # Hunyuan-DiT 1.x text-to-image with optional LoRA, ControlNet, and IP-Adapter.
 

@@ -1,9 +1,7 @@
 title: Wan 2.1 Text to Video (4-step LoRA, GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # LightX2V 4-step LoRA for the undistilled Wan 2.1 14B text-to-video model.
 # Guidance stays at 1. UniPC flow-shift=5 with 4 steps is the LightX2V schedule.
-# The DiT is a city96 GGUF; the repository still supplies the VAE.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

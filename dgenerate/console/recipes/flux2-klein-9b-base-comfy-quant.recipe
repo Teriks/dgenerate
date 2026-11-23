@@ -1,8 +1,7 @@
 title: Flux.2 Klein 9B Base (ComfyUI Quant)
 
-# The repo is gated. Official FP8 transformer, and a float8 Qwen3-8B text
-# encoder that keeps the language-model head. Clear Text Encoder File to use
-# the repository text encoder. The text encoder is already quantized.
+# The repo is gated. The float8 Qwen3-8B text encoder keeps the language-model
+# head. The text encoder is already quantized.
 
 # Four steps is the short schedule. Distilled Klein ignores guidance above 1.
 # An image seed with no mask is a reference and takes no strength. A mask on that seed is inpaint; set inpaint strength to 1.

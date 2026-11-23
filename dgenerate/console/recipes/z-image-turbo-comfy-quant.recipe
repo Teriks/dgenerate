@@ -1,8 +1,5 @@
 title: Z-Image Turbo (ComfyUI Quant)
 
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
-
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Tongyi-MAI/Z-Image-Turbo", "optional":false, "file-types":["models"]}]
 --model-type z-image
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]

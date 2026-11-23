@@ -1,5 +1,4 @@
 title: Flux.2 Klein 9B (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # The repo is gated. An image seed with no mask is a reference and takes no strength. A mask on that seed is inpaint; set inpaint strength to 1.
 

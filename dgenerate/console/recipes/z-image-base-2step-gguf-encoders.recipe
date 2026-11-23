@@ -1,8 +1,7 @@
 title: Z-Image Base 2-step LoRA (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
-# GGUF transformer plus the 2-step distill LoRA. Tongyi-MAI/Z-Image supplies the
-# VAE. Base and Turbo GGUF share one transformer module shape.
+# GGUF transformer plus the 2-step distill LoRA. Base and Turbo GGUF share one
+# transformer module shape.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Tongyi-MAI/Z-Image", "optional":false, "file-types":["models"]}]
 --model-type z-image

@@ -1,9 +1,7 @@
 title: HunyuanVideo 1.5 Text to Video (4-step LoRA, GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # LightX2V 4-step LoRA for the undistilled 480p text-to-video transformer.
-# Guidance stays at 1. The DiT is a jayn7 GGUF; the repository still supplies
-# the VAE.
+# Guidance stays at 1.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_t2v", "optional":false, "file-types":["models"]}]
 --model-type hyvideo-15

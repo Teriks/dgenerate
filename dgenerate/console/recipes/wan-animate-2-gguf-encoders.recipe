@@ -1,6 +1,4 @@
 title: Wan-Animate-2 (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
-# Base transformer GGUF with the UMT5-XXL encoder GGUF.
 
 # Wan-Animate-2. The seed is the character still. wan-driving= is the
 # motion clip. The distilled checkpoint samples in 10 steps; the base

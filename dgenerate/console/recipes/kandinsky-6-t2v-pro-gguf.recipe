@@ -1,7 +1,6 @@
 title: Kandinsky 6 Video Pro (GGUF)
 
-# Q4_K_S GGUF of the 50-step Pro transformer. The Diffusers repo supplies the
-# Qwen2.5-VL encoder, CLIP, Hunyuan video VAE, audio VAE, and vocoder.
+# Q4_K_S GGUF of the 50-step Pro transformer.
 # Use 50 steps and guidance 5 with FlowMatchEulerDiscreteScheduler.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers", "optional":false, "file-types":["models"]}]

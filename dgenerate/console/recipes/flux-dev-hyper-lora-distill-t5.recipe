@@ -4,7 +4,7 @@ title: Flux Dev Hyper LoRA (DistillT5)
 # you must request access to the repository
 #
 # ByteDance Hyper-SD 8-step LoRA. Fuse scale 0.125, guidance 3.5.
-# DistillT5 replaces T5-XXL. The VAE is the tiny Flux autoencoder.
+# DistillT5 replaces T5-XXL.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

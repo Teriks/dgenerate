@@ -1,7 +1,5 @@
 title: Flux.3 Klein (ComfyUI Quant)
 
-# Official int8 ConvRot transformer from the gated ComfyUI repository.
-# The pipeline repo still supplies the text encoder, upsampler, and VAE.
 # --image-seeds are reference images (up to 10) and take no mask or strength.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"

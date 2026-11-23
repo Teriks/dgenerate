@@ -1,12 +1,8 @@
 title: Qwen-Image Edit 2509 (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # Edit 2509 (edit-plus): multi-image conditioning, no inpaint strength. Pair
 # Qwen/Qwen-Image-Edit-2509 with a qwen_image_edit_2509_* transformer.
 # For the original Qwen/Qwen-Image-Edit repo, use the other Comfy quant recipe.
-
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Qwen/Qwen-Image-Edit-2509", "optional":false, "file-types":["models"]}]
 --model-type qwen-image-edit

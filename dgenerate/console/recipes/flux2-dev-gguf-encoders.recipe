@@ -1,5 +1,4 @@
 title: Flux.2 Dev (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 # The text encoder is the Flux.2-trimmed Mistral Small 3.2 GGUF. FP8 and FP4 are the ComfyUI cuts of the same encoder.
 
 # The repo is gated. An image seed with no mask is a reference image and takes no strength. A mask is rejected.

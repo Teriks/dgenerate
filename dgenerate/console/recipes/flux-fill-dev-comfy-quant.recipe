@@ -1,5 +1,4 @@
 title: Flux Fill Dev (ComfyUI Quant)
-# Transformer weights are from Teriks/FLUX.1-Fill-dev-quants.
 
 # Flux requires a huggingface auth token to access
 # you must request access to the repository

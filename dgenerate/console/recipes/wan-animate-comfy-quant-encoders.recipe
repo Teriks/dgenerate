@@ -1,8 +1,4 @@
 title: Wan-Animate (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
-
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
 
 # Wan-Animate with a ComfyUI quantized transformer. The seed is the character still.
 # wan-pose= and wan-face= are required, or wan-driving= with --wan-animate-preprocess.

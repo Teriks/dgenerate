@@ -1,5 +1,4 @@
 title: Kandinsky 6 Video Pro Distilled (GGUF)
-# Transformer weights are from Teriks/Kandinsky-6.0-Pro-distill-5s-quants.
 
 # 29B distilled Pro. 10 steps, guidance 1, PiFlow. About 60 GB of transformer weights.
 

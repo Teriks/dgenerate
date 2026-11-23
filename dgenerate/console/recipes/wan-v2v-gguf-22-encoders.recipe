@@ -1,10 +1,8 @@
 title: Wan 2.2 Video to Video (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
-# Wan 2.2 video-to-video with GGUF experts. The repository still
-# supplies the VAE. The seed is a video clip in
-# --image-seeds. --video-lengths is rejected; trim with --frame-start
-# and --frame-end.
+# Wan 2.2 video-to-video with GGUF experts. The seed is a video clip in
+# --image-seeds. --video-lengths is rejected; trim with --frame-start and
+# --frame-end.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

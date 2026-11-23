@@ -1,7 +1,6 @@
 title: Wan 2.1 VACE (GGUF)
 
 # Wan VACE with a GGUF transformer. control= is the control clip.
-# The repository still supplies the VAE and text encoder.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

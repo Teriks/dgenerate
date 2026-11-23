@@ -1,5 +1,4 @@
 title: LTX-2.5 Distilled (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 # Gemma 4 text encoder GGUF with the LTX-2.5 projection weights.
 
 # Omitting Scheduler keeps the published 8-value sigma table. Inference Steps

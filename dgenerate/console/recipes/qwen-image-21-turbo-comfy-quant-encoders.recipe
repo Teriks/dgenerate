@@ -1,10 +1,6 @@
 title: Qwen-Image 2.1 Turbo (ComfyUI Quant + Encoders)
 
 # The Turbo checkpoint uses its configured short sigma schedule.
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
-
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"Qwen/Qwen-Image-2.1-Turbo", "optional":false, "file-types":["models"]}]
 --model-type qwen-image-21

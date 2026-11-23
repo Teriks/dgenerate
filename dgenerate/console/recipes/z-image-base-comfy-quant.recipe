@@ -1,8 +1,6 @@
 title: Z-Image Base (ComfyUI Quant)
 
-# The transformer is a ComfyUI quantized safetensors file (INT8 ConvRot on
-# Comfy-Org/Z-Image). Quantized layers stay packed and use hardware matmuls
-# where available. Use base sampling (CFG on), not Turbo's 8-step schedule.
+# Use base sampling (CFG on), not Turbo's 8-step schedule.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Tongyi-MAI/Z-Image", "optional":false, "file-types":["models"]}]
 --model-type z-image

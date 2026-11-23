@@ -1,5 +1,4 @@
 title: HunyuanImage 2.1 (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # GGUF diffusion transformer (calcuis/hunyuanimage-gguf or similar). Match the base / distilled / refiner Diffusers slug.
 

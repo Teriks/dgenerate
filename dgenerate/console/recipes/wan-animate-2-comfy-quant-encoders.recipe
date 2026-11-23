@@ -1,6 +1,4 @@
 title: Wan-Animate-2 (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
-# Int8 and FP8 transformer safetensors with the FP8 UMT5-XXL encoder.
 
 # Wan-Animate-2. The seed is the character still. wan-driving= is the
 # motion clip. The distilled checkpoint samples in 10 steps; the base

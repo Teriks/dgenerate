@@ -1,5 +1,4 @@
 title: Qwen-Image Layered (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # One image in. Each layer is written as its own file.
 

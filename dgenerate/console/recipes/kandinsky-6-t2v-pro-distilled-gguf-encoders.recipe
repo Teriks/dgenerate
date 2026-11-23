@@ -1,6 +1,4 @@
 title: Kandinsky 6 Video Pro Distilled (GGUF + Encoders)
-# Transformer weights are from Teriks/Kandinsky-6.0-Pro-distill-5s-quants.
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # 29B distilled Pro. 10 steps, guidance 1, PiFlow. About 60 GB of transformer weights.
 

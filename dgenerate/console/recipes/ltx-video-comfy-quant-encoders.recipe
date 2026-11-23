@@ -1,6 +1,4 @@
 title: LTX-Video (ComfyUI Quant + Encoders)
-# Transformer weights are from Teriks/LTX-Video-quants.
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # Earlier LTX-Video (2B) with the published transformer. No audio.
 # LTX-2.5 options such as latent upscale, STG, and audio guidance are not

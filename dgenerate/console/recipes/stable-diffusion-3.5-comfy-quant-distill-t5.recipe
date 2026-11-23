@@ -1,13 +1,7 @@
 title: Stable Diffusion 3.5 (ComfyUI Quant + DistillT5)
 
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
-# ComfyUI quantizes SD3.5 Large. The parent repo supplies the VAE and
-# text encoders.
-
 # Stable Diffusion 3 requires a huggingface auth token to access
 # you must request access to the repository
-# Parent repo supplies the VAE and text encoders. The DiT is a ComfyUI quantized file.
 
 # DistillT5 replaces T5-XXL.
 

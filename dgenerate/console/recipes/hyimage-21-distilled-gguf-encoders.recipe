@@ -1,5 +1,4 @@
 title: HunyuanImage 2.1 Distilled (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # Distilled transformer (guidance + meanflow embedded). Pair with the Distilled Diffusers slug.
 

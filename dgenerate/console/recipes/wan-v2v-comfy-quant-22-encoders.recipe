@@ -1,12 +1,7 @@
 title: Wan 2.2 Video to Video (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
-
-# Wan 2.2 video-to-video with ComfyUI quantized T2V experts. The repository still
-# supplies the VAE. The seed is a video clip in
-# --image-seeds. --video-lengths is rejected; trim with --frame-start
+# Wan 2.2 video-to-video with ComfyUI quantized T2V experts. The seed is a video
+# clip in --image-seeds. --video-lengths is rejected; trim with --frame-start
 # and --frame-end.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"

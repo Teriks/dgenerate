@@ -1,5 +1,4 @@
 title: HunyuanImage 2.1 (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # Comfy-Org transformer safetensors (fp8_e4m3fn keeps packed FP8).
 # Match pipeline slug to transformer file — see Comfy-Org/Hunyuan-Image-2.1 split_files/diffusion_models.

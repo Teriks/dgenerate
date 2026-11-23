@@ -1,5 +1,4 @@
 title: HunyuanVideo 1.5 Image to Video Distilled (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"hunyuanvideo-community/HunyuanVideo-1.5-Diffusers-480p_i2v_distilled", "optional":false, "file-types":["models"]}]
 --model-type hyvideo-15

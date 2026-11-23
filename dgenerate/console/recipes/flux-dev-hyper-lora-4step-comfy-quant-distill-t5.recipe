@@ -2,9 +2,8 @@ title: Flux Dev Hyper LoRA (4-step, ComfyUI Quant + DistillT5)
 
 # Flux requires a huggingface auth token to access
 # you must request access to the repository
-# Lingyuzhou 4-step LoRA on a ComfyUI quantized transformer
-# (FP8, INT8 ConvRot, or NVFP4). Packed layers are not fused. DistillT5 replaces T5-XXL.
-# The VAE is the tiny Flux autoencoder.
+# Lingyuzhou 4-step LoRA. Packed layers are not fused. DistillT5 replaces
+# T5-XXL.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

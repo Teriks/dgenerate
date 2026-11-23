@@ -2,10 +2,8 @@ title: Flux Dev Hyper LoRA (ComfyUI Quant)
 
 # Flux requires a huggingface auth token to access
 # you must request access to the repository
-# ByteDance Hyper-SD 8-step LoRA on a ComfyUI quantized transformer
-# (FP8, INT8 ConvRot, or NVFP4). Packed layers are not fused; the 0.125
-# fuse scale stays on the adapter.
-# The VAE is the tiny Flux autoencoder.
+# ByteDance Hyper-SD 8-step LoRA. Packed layers are not fused; the 0.125 fuse
+# scale stays on the adapter.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

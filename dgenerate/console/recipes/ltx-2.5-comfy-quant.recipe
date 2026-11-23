@@ -1,8 +1,5 @@
 title: LTX-2.5 Non-distilled (ComfyUI Quant)
 
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
-
 # Latent Upscale runs stage 1 at half of Output Size, so Output Size must be
 # divisible by 64. Temporal mode needs guidance/audio guidance 1, no rescale or
 # STG/modality guidance, and no IC-LoRA control clip.

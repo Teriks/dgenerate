@@ -1,11 +1,6 @@
 title: Wan 2.1 First-Last Frame (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
-
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
 
 # Wan first-last-frame with a ComfyUI quantized transformer. last-frame= is required.
-# The repository still supplies the VAE and image encoder.
 # Wan 2.2 MoE can take --wan-second-transformer for the low-noise expert.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"

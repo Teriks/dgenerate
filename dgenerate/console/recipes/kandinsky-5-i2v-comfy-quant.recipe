@@ -1,5 +1,4 @@
 title: Kandinsky 5 Video Image to Video (ComfyUI Quant)
-# Transformer weights are from Teriks/Kandinsky-5.0-I2V-Lite-5s-quants.
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers", "optional":false, "file-types":["models"]}]
 --model-type kandinsky5-video

@@ -1,7 +1,6 @@
 title: Wan 2.1 Text to Video (GGUF)
 
-# Wan text to video with a GGUF transformer. The repository still
-# supplies the VAE and text encoder. --video-lengths is seconds.
+# Wan text to video with a GGUF transformer. --video-lengths is seconds.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

@@ -2,9 +2,9 @@ title: Flux Dev Hyper LoRA (GGUF + DistillT5)
 
 # Flux requires a huggingface auth token to access
 # you must request access to the repository
-# ByteDance Hyper-SD 8-step LoRA on a city96 GGUF DiT.
+# ByteDance Hyper-SD 8-step LoRA.
 # Fuse scale 0.125 stays on the adapter; packed weights are not fused.
-# DistillT5 replaces T5-XXL. The VAE is the tiny Flux autoencoder.
+# DistillT5 replaces T5-XXL.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

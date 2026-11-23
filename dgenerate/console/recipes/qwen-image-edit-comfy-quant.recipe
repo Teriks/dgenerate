@@ -4,7 +4,6 @@ title: Qwen-Image Edit (ComfyUI Quant)
 # Edit 2509 / edit-plus uses a different pipeline; see the 2509 Comfy quant recipe.
 
 # The transformer is a ComfyUI quantized safetensors file (FP8).
-# Quantized layers stay packed and use hardware matmuls where available.
 
 # The image seed is required. A mask selects edit-inpaint.
 # Strength applies only to inpaint.

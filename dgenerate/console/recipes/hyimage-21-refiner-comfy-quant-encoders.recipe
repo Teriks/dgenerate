@@ -1,5 +1,4 @@
 title: HunyuanImage 2.1 Refiner (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # Refiner transformer + refiner Diffusers slug. Requires a condition image (--image-seeds).
 

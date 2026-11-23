@@ -1,11 +1,7 @@
 title: Wan 2.2 Image to Video (ComfyUI Quant)
 
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
-
-# Wan 2.2 image to video with ComfyUI quantized experts. The repository still
-# supplies the VAE, text encoder, and image encoder.
-# last-frame= needs a FLF2V transformer. This I2V checkpoint only embeds the first frame.
+# Wan 2.2 image to video with ComfyUI quantized experts. last-frame= needs a
+# FLF2V transformer. This I2V checkpoint only embeds the first frame.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

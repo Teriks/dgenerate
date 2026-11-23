@@ -1,5 +1,4 @@
 title: Kandinsky 5 Video Pro (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # Q4_K_S GGUF of the T2V Pro sft transformer (10.1 GiB). Q8_0 is in the same
 # repository.

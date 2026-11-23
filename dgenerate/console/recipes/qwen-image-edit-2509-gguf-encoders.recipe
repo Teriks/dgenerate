@@ -1,5 +1,4 @@
 title: Qwen-Image Edit 2509 (GGUF + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
 # Edit 2509 (edit-plus). Pair Qwen/Qwen-Image-Edit-2509 with a 2509 GGUF transformer.
 # For Qwen/Qwen-Image-Edit, use the other edit GGUF recipe. Image seed is required.

@@ -4,7 +4,6 @@ title: Flux Krea Dev (GGUF)
 # you must request access to the repository
 # Krea Dev is tuned for 28 steps at guidance 4.5. It is the model
 # upstream DyPE was tuned on, so DyPE works well above 1024 pixels.
-# Parent repo supplies the VAE and text encoders. The DiT is a QuantStack GGUF.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 

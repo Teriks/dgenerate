@@ -1,6 +1,4 @@
 title: Wan-Animate-2 Distilled (ComfyUI Quant)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
-# Distilled int8 and FP8 transformer safetensors from Teriks/Wan-Animate-2-14B-Distilled-quants. It samples in 10 steps.
 
 # Wan-Animate-2. The seed is the character still. wan-driving= is the
 # motion clip. The distilled checkpoint samples in 10 steps; the base

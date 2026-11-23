@@ -1,15 +1,9 @@
 title: Flux.2 Klein 4B (ComfyUI Quant + Encoders)
-# Text encoder fields are filled with a quantized checkpoint. Clear a field to load that encoder from the repository.
 
-# The transformer is a ComfyUI quantized safetensors file (FP8, INT8 ConvRot, or
-# NVFP4). Quantized layers stay packed and use hardware matmuls where available.
 # The transformer dropdown offers the official FP8 and NVFP4 files.
-# ComfyUI FP4 Qwen3 text encoder file.
-# Clear the text encoder field to use the repository text encoder.
 
 # Four steps is the short schedule. Distilled Klein ignores guidance above 1.
 # An image seed with no mask is a reference and takes no strength. A mask on that seed is inpaint; set inpaint strength to 1.
-
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "black-forest-labs/FLUX.2-klein-4B", "optional":false, "file-types":["models"]}]
 --model-type flux2
