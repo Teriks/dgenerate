@@ -106,6 +106,16 @@
 
     Default output height for HunyuanImage 2.1 txt2img.
 
+.. data:: DEFAULT_MINIMAX_H3_IMAGE_OUTPUT_WIDTH
+    :annotation: = 2048
+
+    Default output width for MiniMax-H3-Image.
+
+.. data:: DEFAULT_MINIMAX_H3_IMAGE_OUTPUT_HEIGHT
+    :annotation: = 2048
+
+    Default output height for MiniMax-H3-Image.
+
 .. data:: DEFAULT_FLOYD_IF_OUTPUT_WIDTH
     :annotation: = 64
 
@@ -608,8 +618,8 @@
 .. data:: DEFAULT_LTX_PROMPT_ENHANCER
     :annotation: = 'google/gemma-4-E2B-it'
 
-    Default ``--prompt-upsampler`` model for ``--model-type ltx2`` when ``--pipeline-prompt-enhance`` is on
-    and no enhancer URI was given.
+    Default ``--prompt-upsampler`` model for ``--model-type ltx2`` when
+    ``--pipeline-prompt-enhance`` is on and no upsampler URI was given.
 
 .. data:: PIPELINE_CACHE_MEMORY_CONSTRAINTS
     :annotation: = ['pipeline_size > (available * 0.75)']

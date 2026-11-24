@@ -49,8 +49,7 @@ under it. The picture stays above that bar. The bar has a play button, a scrub
 track, elapsed time, duration, a speaker button, and a volume slider. The
 speaker draws sound waves while audio is on, and a red X while muted. Click it
 to mute or unmute. Drag the slider to set the loudness; raising it above zero
-turns mute off. Space pauses and resumes. Mute and volume are saved in
-``console_settings.json`` as ``preview_muted`` and ``preview_volume``.
+turns mute off. Space pauses and resumes.
 
 Zoom and pan in those previews are hardware accelerated. (Mouse Wheel or
 Ctrl+/Ctrl-), (Alt+LeftClick or Middle Click), respectively.
