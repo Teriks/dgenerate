@@ -19,43 +19,46 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""MIOpen find mode and log level for ROCm convolutions."""
+"""MIOpen find mode and log level for one generation."""
 
+import contextlib
 import os
-import sys
 
-# MIOpen caches both values on first use. Set them before the first convolution.
-# Find mode 2 is FAST: it does not probe GemmFwdRest, which warns when PyTorch's
-# workspace is smaller than that solver wants and then uses another solver.
+# MIOpen caches both values the first time it reads them. Enter this before
+# the first convolution. Find mode 2 is FAST: it does not probe GemmFwdRest,
+# which warns when PyTorch's workspace is smaller than that solver wants.
 # Log level 3 is Error. Log level 4 is Warning.
-_FIND_MODE = '2'
+_FIND_MODE = 'MIOPEN_FIND_MODE'
+_LOG_LEVEL = 'MIOPEN_LOG_LEVEL'
+_FIND_FAST = '2'
 _LOG_ERROR = '3'
 _LOG_WARNING = '4'
 
-_log_level_owned = False
+
+def _blank(name: str) -> bool:
+    return not os.environ.get(name, '').strip()
 
 
-def argv_is_verbose(argv: list[str] | None = None) -> bool:
-    """True when ``argv`` contains ``-v`` or ``--verbose``."""
-    if argv is None:
-        argv = sys.argv[1:]
-    return any(arg == '-v' or arg == '--verbose' for arg in argv)
-
-
-def configure(verbose: bool) -> None:
+@contextlib.contextmanager
+def applied(verbose: bool):
     """
     Use MIOpen's fast convolution find, and hide its warnings unless ``verbose``.
 
-    An ``MIOPEN_FIND_MODE`` or ``MIOPEN_LOG_LEVEL`` already set in the environment
-    is left alone. A log level this function set earlier is updated when ``verbose``
-    changes, which covers ``-v`` on a config line after import.
+    A value already in the environment is left in place. Values this sets are
+    removed when the context ends.
     """
-    global _log_level_owned
-
-    if not os.environ.get('MIOPEN_FIND_MODE', '').strip():
-        os.environ['MIOPEN_FIND_MODE'] = _FIND_MODE
-
-    if os.environ.get('MIOPEN_LOG_LEVEL', '').strip() and not _log_level_owned:
-        return
-    os.environ['MIOPEN_LOG_LEVEL'] = _LOG_WARNING if verbose else _LOG_ERROR
-    _log_level_owned = True
+    previous = {}
+    if _blank(_FIND_MODE):
+        previous[_FIND_MODE] = os.environ.get(_FIND_MODE)
+        os.environ[_FIND_MODE] = _FIND_FAST
+    if _blank(_LOG_LEVEL):
+        previous[_LOG_LEVEL] = os.environ.get(_LOG_LEVEL)
+        os.environ[_LOG_LEVEL] = _LOG_WARNING if verbose else _LOG_ERROR
+    try:
+        yield
+    finally:
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value

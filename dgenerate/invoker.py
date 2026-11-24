@@ -500,11 +500,9 @@ def invoke_dgenerate_events(
         return
 
     message_level = _messages.DEBUG if arguments.verbose else _messages.INFO
-    # MIOpen reads this on the first convolution. A -v inside a config is
-    # known here, after import already chose a level from the process arguments.
-    _miopenenv.configure(arguments.verbose)
 
-    with _messages.with_level(message_level), \
+    with _miopenenv.applied(arguments.verbose), \
+            _messages.with_level(message_level), \
             _globalconfig.restore_config_context():
 
         if arguments.global_config is not None:
