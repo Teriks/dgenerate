@@ -169,6 +169,10 @@ class TestVideoModels(unittest.TestCase):
             lora_uris = None
             lora_fuse_scale = None
 
+            def _set_pipeline_strength(self, user_args, kwargs):
+                _pipelinewrapper.PipelineWrapper._set_pipeline_strength(
+                    self, user_args, kwargs)
+
         with unittest.mock.patch.object(
                 _video_loading, '_create_cached_video_pipeline',
                 return_value=Held()), \

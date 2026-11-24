@@ -1842,7 +1842,6 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     Formats a ``--image-seeds`` URI to its shortest possible string form.
 
     :raise ValueError: if ``mask_images`` is specified without ``seed_images`` or ``control_images``.
-                       if keyword arguments are present without ``seed_image`` or ``control_images``.
                        if ``frame_start`` or ``frame_end`` are negative values.
                        if ``frame_start`` is greater than ``frame_end``.
                        if ``adapter_images`` are used with ``floyd_image``.

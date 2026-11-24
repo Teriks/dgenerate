@@ -459,8 +459,8 @@ class TestFormatImageSeedURI(unittest.TestCase):
         self.assertEqual(result, "seed.png")
 
     def test_reference_without_seed(self):
-        with self.assertRaises(ValueError):
-            format_image_seed_uri(reference_images="style.png")
+        result = format_image_seed_uri(reference_images="style.png")
+        self.assertEqual(result, "reference=style.png")
 
     def test_reference_with_floyd(self):
         result = format_image_seed_uri(

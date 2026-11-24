@@ -1010,7 +1010,7 @@ class TestPipelinePromptEnhance(unittest.TestCase):
             model_cpu_offload = False
             model_sequential_offload = False
             model_group_offload = False
-            _pipeline = object()
+            _pipeline = type('Pipe', (), {'components': {}})()
             _local_files_only = False
 
         custom = _pipeline_args()
