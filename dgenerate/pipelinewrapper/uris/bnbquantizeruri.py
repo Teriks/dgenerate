@@ -25,6 +25,7 @@ import transformers
 
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.pipelinewrapper.bnbrocm as _bnbrocm
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.uris.exceptions as _exceptions
 
@@ -121,6 +122,10 @@ class BNBQuantizerUri:
                 f'{_textprocessing.oxford_comma(BNBQuantizerUri._valid_dtypes, "or")}.')
         return s
 
+    def _prepare_runtime(self) -> None:
+        if self.bits == 8:
+            _bnbrocm.use_dequantized_int8_matmul()
+
     def _config_args(self, compute_dtype: str | torch.dtype | None) -> dict:
         compute_dtype = _enums.get_torch_dtype(compute_dtype)
 
@@ -140,6 +145,7 @@ class BNBQuantizerUri:
         :param compute_dtype: default 4 bit compute dtype when ``bits4-compute-dtype`` is not specified.
         :return: ``diffusers.BitsAndBytesConfig``
         """
+        self._prepare_runtime()
         return diffusers.BitsAndBytesConfig(**self._config_args(compute_dtype))
 
     def to_transformers_config(self, compute_dtype: str | torch.dtype | None = None) -> transformers.BitsAndBytesConfig:
@@ -151,6 +157,7 @@ class BNBQuantizerUri:
         :param compute_dtype: default 4 bit compute dtype when ``bits4-compute-dtype`` is not specified.
         :return: ``transformers.BitsAndBytesConfig``
         """
+        self._prepare_runtime()
         return transformers.BitsAndBytesConfig(**self._config_args(compute_dtype))
 
     @staticmethod
