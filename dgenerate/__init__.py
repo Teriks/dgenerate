@@ -87,6 +87,11 @@ if __am_dgenerate_app and '--console' in sys.argv:
 import dgenerate.msvcenv as _msvcenv
 _msvcenv.activate_msvc_environment()
 
+# Before diffusers imports torch. The console process exits above, so a shell
+# child configures MIOpen from its own arguments instead of inheriting these.
+import dgenerate.miopenenv as _miopenenv
+_miopenenv.configure(_miopenenv.argv_is_verbose())
+
 import collections.abc
 import warnings
 

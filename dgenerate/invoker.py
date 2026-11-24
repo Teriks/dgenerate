@@ -31,6 +31,7 @@ import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.latentsprocessors as _latentsprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
+import dgenerate.miopenenv as _miopenenv
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.promptweighters as _promptweighters
 import dgenerate.promptupscalers as _promptupscalers
@@ -499,6 +500,9 @@ def invoke_dgenerate_events(
         return
 
     message_level = _messages.DEBUG if arguments.verbose else _messages.INFO
+    # MIOpen reads this on the first convolution. A -v inside a config is
+    # known here, after import already chose a level from the process arguments.
+    _miopenenv.configure(arguments.verbose)
 
     with _messages.with_level(message_level), \
             _globalconfig.restore_config_context():
