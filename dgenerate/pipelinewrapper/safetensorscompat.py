@@ -2439,6 +2439,7 @@ def _shape_key(candidate: str, module, x: torch.Tensor) -> tuple:
     return candidate, str(x.device), rows, module.out_features, module.in_features
 
 
+@torch.compiler.disable
 def _verify(candidate: str, module, x: torch.Tensor, output: torch.Tensor, software) -> bool:
     """
     Accept ``candidate`` for this layer shape if it matches the dequantized
@@ -2478,8 +2479,13 @@ def _verify(candidate: str, module, x: torch.Tensor, output: torch.Tensor, softw
     return faster
 
 
+@torch.compiler.disable
 def _hardware_matmul(module: 'ComfyQuantLinear', x: torch.Tensor, software) -> torch.Tensor | None:
-    """``x @ W.T`` on low precision hardware, or ``None`` to use ``software``."""
+    """``x @ W.T`` on low precision hardware, or ``None`` to use ``software``.
+
+    Stays eager inside ``torch.compile``. The accuracy check reads ``Tensor.item``
+    and formats the timing in Python, which Dynamo cannot trace.
+    """
     if x.device.type not in _HARDWARE_DEVICE_TYPES or x.shape[0] == 0:
         return None
     if os.environ.get(SOFTWARE_MATMUL_ENVVAR) == '1':

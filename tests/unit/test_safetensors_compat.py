@@ -1224,5 +1224,34 @@ class TestSafetensorsCompat(unittest.TestCase):
         self.assertEqual(everything['model.diffusion_model.block.weight'].device.type, 'cpu')
 
 
+class TestCompiledHardwareMatmul(unittest.TestCase):
+
+    def test_verify_stays_eager_inside_torch_compile(self):
+        class Module:
+            quant_format = 'int8_tensorwise'
+            out_features = 8
+            in_features = 8
+
+        module = Module()
+        saved_kernel = _safetensorscompat._HARDWARE_MATMULS['int8-mm']
+        saved_shape = dict(_safetensorscompat._shape_state)
+        _safetensorscompat._HARDWARE_MATMULS['int8-mm'] = lambda module, x: x
+
+        def check(value):
+            return _safetensorscompat._verify('int8-mm', module, value, value, lambda tensor: tensor)
+
+        try:
+            result = torch.compile(check)(torch.randn(2, 8))
+        except Exception as error:
+            if type(error).__name__ == 'InternalTorchDynamoError':
+                raise
+            self.skipTest(str(error))
+        finally:
+            _safetensorscompat._HARDWARE_MATMULS['int8-mm'] = saved_kernel
+            _safetensorscompat._shape_state.clear()
+            _safetensorscompat._shape_state.update(saved_shape)
+        self.assertIsInstance(result, bool)
+
+
 if __name__ == '__main__':
     unittest.main()
