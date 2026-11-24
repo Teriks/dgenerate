@@ -55,15 +55,15 @@ class TestPromptDelimiterEscape(unittest.TestCase):
         self.assertEqual(Prompt.parse(values[0]).positive, 'a sign that says hello; world')
         self.assertEqual(Prompt.parse(values[1]).negative, 'artwork')
 
-    def test_prompt_function_escapes_semicolons_in_both_parts(self):
-        from dgenerate.batchprocess.configrunnerbuiltins import prompt
+    def test_quote_prompt_escapes_semicolons_in_both_parts(self):
+        from dgenerate.batchprocess.configrunnerbuiltins import quote_prompt
 
-        formatted = prompt('a sign that says hello; world', 'blurry; rain')
+        formatted = quote_prompt('a sign that says hello; world', 'blurry; rain')
         again = Prompt.parse(shell_parse(formatted)[0])
         self.assertEqual(again.positive, 'a sign that says hello; world')
         self.assertEqual(again.negative, 'blurry; rain')
 
-        positive_only = Prompt.parse(shell_parse(prompt('hello; world'))[0])
+        positive_only = Prompt.parse(shell_parse(quote_prompt('hello; world'))[0])
         self.assertEqual(positive_only.positive, 'hello; world')
         self.assertIsNone(positive_only.negative)
 

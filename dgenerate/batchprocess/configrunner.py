@@ -177,7 +177,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'unquote': _configrunnerbuiltins.unquote,
             'quote': _configrunnerbuiltins.quote,
             'format_prompt': _configrunnerbuiltins.format_prompt,
-            'prompt': _configrunnerbuiltins.prompt,
+            'quote_prompt': _configrunnerbuiltins.quote_prompt,
             'format_size': _configrunnerbuiltins.format_size,
             'format_image_seed': _configrunnerbuiltins.format_image_seed,
             'format_image_processors': _configrunnerbuiltins.format_image_processors,

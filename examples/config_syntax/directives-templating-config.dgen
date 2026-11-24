@@ -123,10 +123,10 @@ sd2-community/stable-diffusion-2-1 --prompts "prompt 1" "prompt 2" "prompt 3"
 
 sd2-community/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
 
-# prompt() builds a quoted prompt from text. Semicolons in either part
+# quote_prompt() builds a quoted prompt from text. Semicolons in either part
 # stay in that part; the function writes the \; for you.
 
-sd2-community/stable-diffusion-2-1 --prompts {{ prompt('a sign that says hello; world', 'blurry') }}
+sd2-community/stable-diffusion-2-1 --prompts {{ quote_prompt('a sign that says hello; world', 'blurry') }}
 
 
 # Execute additional config with full templating.

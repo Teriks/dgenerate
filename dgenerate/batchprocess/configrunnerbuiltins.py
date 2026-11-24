@@ -66,7 +66,7 @@ def format_prompt(
     return ' '.join(_format_prompt_single(p) for p in prompts)
 
 
-def prompt(pos: str, neg: str | None = None) -> str:
+def quote_prompt(pos: str, neg: str | None = None) -> str:
     """
     Shell-quote a prompt from positive text and an optional negative text.
 
@@ -76,7 +76,7 @@ def prompt(pos: str, neg: str | None = None) -> str:
     """
     if not isinstance(pos, str) or not pos.strip():
         raise _batchprocessor.BatchProcessError(
-            'prompt() requires positive prompt text.')
+            'quote_prompt() requires positive prompt text.')
     negative = neg if isinstance(neg, str) and neg.strip() else None
     return _textprocessing.shell_quote(str(_prompt.Prompt(positive=pos, negative=negative)))
 
@@ -559,7 +559,7 @@ def read_text(file: str, encoding: str = 'utf-8') -> str:
     \\setp caption read_text('caption.txt')
 
     NOWRAP!
-    --prompts {{ prompt(read_text('caption.txt')) }}
+    --prompts {{ quote_prompt(read_text('caption.txt')) }}
     """
     try:
         return pathlib.Path(file).read_text(encoding=encoding)

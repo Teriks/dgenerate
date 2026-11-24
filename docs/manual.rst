@@ -4469,12 +4469,12 @@ Quote the prompt in PowerShell. An unquoted ``;`` starts a new statement.
 Do not write ``\\\\;``. Bash removes one of those backslashes and PowerShell
 does not, so the two shells would not agree.
 
-In a config template, ``prompt(pos, neg)`` escapes the semicolons for you.
+In a config template, ``quote_prompt(pos, neg)`` escapes the semicolons for you.
 ``neg`` can be omitted. The result is already shell-quoted:
 
 .. code-block:: jinja
 
-    --prompts {{ prompt('a sign that says hello; world', 'blurry; rain') }}
+    --prompts {{ quote_prompt('a sign that says hello; world', 'blurry; rain') }}
 
 ``read_text(file)`` reads a whole text file as UTF-8, which is the encoding
 config files and the shell use. The return value is the file's text:
@@ -4482,7 +4482,7 @@ config files and the shell use. The return value is the file's text:
 .. code-block:: jinja
 
     \setp caption read_text('caption.txt')
-    --prompts {{ prompt(caption) }}
+    --prompts {{ quote_prompt(caption) }}
 
 Name ``encoding`` only when that file was saved as something else.
 
@@ -19553,7 +19553,7 @@ The dgenerate specific jinja2 functions/filters are:
         A semicolon that belongs in the text is written \;, matching Prompt.parse.
     
     ===============================================================================
-    prompt(pos: str, neg: str | None = None) -> str:
+    quote_prompt(pos: str, neg: str | None = None) -> str:
     
         Shell-quote a prompt from positive text and an optional negative text.
     
@@ -19644,7 +19644,7 @@ The dgenerate specific jinja2 functions/filters are:
     
         \setp caption read_text('caption.txt', encoding='cp1252')
     
-        --prompts {{ prompt(read_text('caption.txt')) }}
+        --prompts {{ quote_prompt(read_text('caption.txt')) }}
     
     ==============================================================================================================
     scale_size(size: str | tuple, scale: float | int | str | collections.abc.Sequence = 1, format_size: bool = True) -> str | tuple:
@@ -20388,10 +20388,10 @@ such as VAEs etc. outside of relying on the caching system.
     
     sd2-community/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
     
-    # prompt() builds a quoted prompt from text. Semicolons in either part
+    # quote_prompt() builds a quoted prompt from text. Semicolons in either part
     # stay in that part; the function writes the \; for you.
     
-    sd2-community/stable-diffusion-2-1 --prompts {{ prompt('a sign that says hello; world', 'blurry') }}
+    sd2-community/stable-diffusion-2-1 --prompts {{ quote_prompt('a sign that says hello; world', 'blurry') }}
     
     
     # Execute additional config with full templating.
