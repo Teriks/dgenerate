@@ -1,3 +1,4 @@
+import logging
 import unittest
 
 import dgenerate.pipelinewrapper.uris.bnbquantizeruri as _bnbquantizeruri
@@ -165,5 +166,31 @@ class TestBNBQuantizerUri(unittest.TestCase):
         self.assertEqual(config.load_in_8bit, False)
 
 
+class TestBnbFp16CastWarning(unittest.TestCase):
+
+    def test_cast_warning_is_dropped(self):
+        logger = logging.getLogger('bitsandbytes.autograd._functions')
+        seen = []
+
+        class _Capture(logging.Handler):
+            def emit(self, record):
+                seen.append(record.getMessage())
+
+        handler = _Capture(level=logging.DEBUG)
+        previous = logger.level
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(handler)
+        try:
+            logger.warning(
+                'MatMul8bitLt: inputs will be cast from %s to float16 during quantization',
+                'torch.float32')
+            logger.warning('bitsandbytes reported a real problem')
+        finally:
+            logger.removeHandler(handler)
+            logger.setLevel(previous)
+        self.assertEqual(seen, ['bitsandbytes reported a real problem'])
+
+
 if __name__ == '__main__':
-    unittest.main() 
+    unittest.main()
+ 

@@ -110,6 +110,15 @@ if os.environ.get('DGENERATE_BACKEND_WARNINGS', '0') == '0':
     logging.getLogger("transformers.utils.import_utils").addFilter(
         _SuppressImageProcessorFastDeprecation())
 
+
+class _SuppressBnbFp16Cast(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        # One line per Linear8bitLt when the activation is not float16.
+        return "inputs will be cast from" not in record.getMessage()
+
+
+logging.getLogger("bitsandbytes.autograd._functions").addFilter(_SuppressBnbFp16Cast())
+
 try:
     from dgenerate.resources import __version__
 
