@@ -295,11 +295,14 @@ def _exclude_requires(name):
 
 
 _pyinstaller_requires = 'pyinstaller==6.22.3'
-_sphinx_package_requires = 'sphinx==9.2.0'
 _sphinx_copybutton_requires = 'sphinx-copybutton==0.5.2'
 _sphinx_theme_requires = 'sphinx-rtd-theme==3.1.0'
+# Newest Sphinx each supported interpreter can install.
+# 9.2.0 requires Python >=3.13; 9.1.1 requires >=3.12; 9.0.4 requires >=3.11.
 _sphinx_docs_requires = [
-    _sphinx_package_requires,
+    'sphinx==9.2.0; python_version >= "3.13"',
+    'sphinx==9.1.1; python_version == "3.12"',
+    'sphinx==9.0.4; python_version == "3.11"',
     _sphinx_theme_requires,
     _sphinx_copybutton_requires,
 ]
