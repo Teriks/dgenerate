@@ -19351,7 +19351,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [10134480529904]
+            Value: [60242522570852]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -19639,14 +19639,14 @@ The dgenerate specific jinja2 functions/filters are:
     
         Read a whole text file and return its contents as a string.
     
-        "encoding" is the file's encoding. The text is decoded into a Unicode string, so a caption saved as cp1252
-        or utf-16 can be used in a prompt. Newlines are translated to \n.
+        The default encoding is UTF-8, which is what config files and the shell use. Name encoding only when the
+        file was saved as something else. Newlines are translated to \n.
     
-        \setp caption read_text('caption.txt', encoding='cp1252')
+        \setp caption read_text('caption.txt')
     
         --prompts {{ quote_prompt(read_text('caption.txt')) }}
     
-    ==============================================================================================================
+    ============================================================================================================
     scale_size(size: str | tuple, scale: float | int | str | collections.abc.Sequence = 1, format_size: bool = True) -> str | tuple:
     
         Scale a dimension or an image file's dimensions by a factor.
@@ -19787,6 +19787,13 @@ The dgenerate specific jinja2 functions/filters are:
         Check if CUDA backend is available.
     
     =======================================
+    have_rocm() -> bool:
+    
+        Check if the CUDA device is AMD ROCm.
+    
+        ROCm PyTorch reports CUDA and sets ``torch.version.hip``.
+    
+    =============================================================
     have_xpu() -> bool:
     
         Check if XPU backend is available.
