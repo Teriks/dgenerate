@@ -792,6 +792,15 @@ def have_cuda() -> bool:
     return _torchutil.is_cuda_available()
 
 
+def have_rocm() -> bool:
+    """
+    Check if the CUDA device is AMD ROCm.
+
+    ROCm PyTorch reports CUDA and sets ``torch.version.hip``.
+    """
+    return _torchutil.is_rocm_available()
+
+
 def have_xpu() -> bool:
     """
     Check if XPU backend is available.

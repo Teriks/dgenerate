@@ -201,6 +201,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'platform': _configrunnerbuiltins.platform,
             'frange': _configrunnerbuiltins.frange,
             'have_cuda': _configrunnerbuiltins.have_cuda,
+            'have_rocm': _configrunnerbuiltins.have_rocm,
             'have_xpu': _configrunnerbuiltins.have_xpu,
             'have_mps': _configrunnerbuiltins.have_mps,
             'total_memory': _configrunnerbuiltins.total_memory,

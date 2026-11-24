@@ -8,7 +8,9 @@
     \exit
 {% endif %}
 
-{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
+{% if have_rocm() and have_feature('sdnq') and total_memory(unit='gib') > 24 %}
+    \set optimization --quantizer sdnq;type=int8
+{% elif have_cuda() and not have_rocm() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
     \set optimization --quantizer bnb;bits=8
 {% else %}
     \set optimization --model-sequential-offload

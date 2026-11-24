@@ -41,6 +41,17 @@ def is_cuda_available() -> bool:
     return hasattr(torch, 'cuda') and torch.cuda.is_available()
 
 
+def is_rocm_available() -> bool:
+    """
+    Check if this CUDA device is AMD ROCm.
+
+    ROCm PyTorch reports ``torch.cuda`` and sets ``torch.version.hip``.
+
+    :return: True when a ROCm GPU is available
+    """
+    return is_cuda_available() and bool(getattr(torch.version, 'hip', None))
+
+
 def is_xpu_available() -> bool:
     """
     Check if Intel XPU is available on this system.
