@@ -29,7 +29,7 @@ classifiers = [
 dependencies = [
     "requests==2.34.2",
     "packaging==25.0",
-    "PyInstaller==6.15.0",
+    "PyInstaller==6.22.3",
     "Pillow==13.0.0",
     "certifi>=2026.10.23",
 ]
