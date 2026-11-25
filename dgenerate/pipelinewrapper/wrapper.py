@@ -3423,7 +3423,7 @@ class PipelineWrapper:
 
     def _call_torch_flow_image(self, pipeline_args, user_args: _arguments.GenerationArguments):
         """
-        Call Flux.2, Z-Image, or Qwen-Image.
+        Call a flow-image pipeline.
 
         ``--guidance-scales`` is ``guidance_scale`` except on Qwen-Image, where
         it is ``true_cfg_scale`` and the embedded ``guidance_scale`` stays unset.
@@ -4053,14 +4053,17 @@ class PipelineWrapper:
     @staticmethod
     def _pipeline_uses_flow_default_sigmas(pipeline) -> bool:
         """
-        Flux.1, Flux.2, Z-Image, and Qwen-Image, including Fill, Kontext, Klein,
-        Omni, edit, and layered.
+        Flux.1, Flux.2, FLUX.3, Z-Image, Qwen-Image, Krea 2, and HunyuanImage,
+        including Fill, Kontext, Klein, Omni, edit, and layered.
 
         Their ``__call__`` replaces a missing ``sigmas`` argument with an evenly
-        spaced schedule and then applies a resolution-dependent shift. An
-        expression has to start from that schedule.
+        spaced schedule and then applies a resolution-dependent shift when the
+        pipeline has one. An expression has to start from that schedule.
+        Qwen-Image 2.1 is included here for the linspace fallback. A configured
+        ``sample_sigmas`` list is handled in :py:meth:`_sigmas_eval`.
         """
-        return pipeline.__class__.__name__.startswith(('Flux', 'ZImage', 'QwenImage'))
+        return pipeline.__class__.__name__.startswith(
+            ('Flux', 'ZImage', 'QwenImage', 'Krea2', 'HunyuanImage'))
 
     @staticmethod
     def _sigmas_eval(model_title: str, pipeline, steps: int, val: str | list):
@@ -4077,14 +4080,23 @@ class PipelineWrapper:
         if not isinstance(val, str):
             return val
 
-        if PipelineWrapper._pipeline_uses_flow_default_sigmas(pipeline):
+        name = pipeline.__class__.__name__
+        sample = None
+        if name.startswith('QwenImage21'):
+            import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
+            sample = _featuredefaults.configured_sample_sigmas(pipeline)
+        if sample:
+            # Qwen-Image 2.1 uses this list instead of num_inference_steps
+            # when the caller does not pass sigmas.
+            sigmas = numpy.array(sample, dtype=numpy.float64)
+        elif PipelineWrapper._pipeline_uses_flow_default_sigmas(pipeline):
             # These pipelines pass linspace(1, 1/steps, steps) into
             # set_timesteps and then apply a resolution-dependent shift.
             # The expression replaces that linspace. Reading scheduler.sigmas
             # after set_timesteps would include the shift and the terminal
             # zero, and the pipeline would shift the result again.
-            # Qwen-Image layered writes linspace(1, 0, steps + 1)[:-1],
-            # which is the same sequence.
+            # Qwen-Image layered and HunyuanImage write
+            # linspace(1, 0, steps + 1)[:-1], which is the same sequence.
             sigmas = numpy.linspace(1.0, 1.0 / int(steps), int(steps))
         else:
             try:

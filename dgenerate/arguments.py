@@ -5577,10 +5577,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     For --model-type flux, flux-fill, flux-kontext, flux2,
                     flux2-klein-kv, flux3, z-image, z-image-omni, qwen-image,
-                    qwen-image-edit, and qwen-image-layered, expr: sigmas is the
-                    pipeline default schedule: evenly spaced values from 1 down
-                    to 1/steps. The model applies its resolution-dependent shift to
-                    the expression result.
+                    qwen-image-edit, qwen-image-layered, krea2, hyimage-21, and
+                    hyimage-21-refiner, expr: sigmas is the evenly spaced schedule
+                    from 1 down to 1/steps. The pipeline builds its timesteps from
+                    that result, including any resolution-dependent shift.
+                    --model-type qwen-image-21 uses the checkpoint sample_sigmas
+                    list when one is configured, and that same schedule otherwise.
                     """
         )
     )

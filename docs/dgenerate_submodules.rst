@@ -134,6 +134,20 @@ dgenerate.invoker module
    :show-inheritance:
    :special-members: __call__, __init__
 
+dgenerate.latentsprocessors module
+----------------------------------
+
+.. automodule:: dgenerate.latentsprocessors
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
+dgenerate.latentsprocessors.constants module
+--------------------------------------------
+
+.. include:: latentsprocessors_constants.rst
+
 dgenerate.mediainput module
 ---------------------------
 
@@ -191,7 +205,7 @@ dgenerate.pipelinewrapper module
 dgenerate.pipelinewrapper.constants module
 ------------------------------------------
 
-.. include:: pipeline_wrapper_constants.rst
+.. include:: pipelinewrapper_constants.rst
 
 dgenerate.plugin module
 -----------------------

@@ -1288,6 +1288,11 @@ class TestFlowImagePipelines(unittest.TestCase):
                 'QwenImageLayeredPipeline',
                 'QwenImageControlNetPipeline',
                 'QwenImageControlNetInpaintPipeline',
+                'QwenImage21Pipeline',
+                'Flux3ModularPipeline',
+                'Krea2Pipeline',
+                'HunyuanImagePipeline',
+                'HunyuanImageRefinerPipeline',
         ):
             result = PipelineWrapper._sigmas_eval(
                 'primary', pipe(name, _RejectingScheduler()), steps, 'sigmas * 0.95')
@@ -1302,6 +1307,13 @@ class TestFlowImagePipelines(unittest.TestCase):
         csv = PipelineWrapper._sigmas_eval(
             'primary', pipe('ZImagePipeline', _RejectingScheduler()), steps, [0.2, 0.1])
         self.assertEqual(csv, [0.2, 0.1])
+
+        authored = [1.0, 0.75, 0.5, 0.25]
+        qwen21 = pipe('QwenImage21Pipeline', _RejectingScheduler())
+        qwen21.config = {'sample_sigmas': authored}
+        authored_result = PipelineWrapper._sigmas_eval(
+            'primary', qwen21, steps, 'sigmas * 0.95')
+        np.testing.assert_allclose(authored_result, (np.array(authored) * 0.95).tolist())
 
         with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
             PipelineWrapper._sigmas_eval(

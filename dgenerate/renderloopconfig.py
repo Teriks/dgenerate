@@ -412,10 +412,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     sigmas will be represented as a numpy array, numpy is available through the namespace ``np``, 
     this uses ``asteval``.
 
-    For Flux.1 (including Fill and Kontext), Flux.2, Z-Image, and Qwen-Image,
-    an expression's ``sigmas`` value is the pipeline default schedule: evenly spaced
-    values from 1 down to ``1 / steps``. The model applies its resolution-dependent
-    shift to the expression result.
+    For Flux.1 (including Fill and Kontext), Flux.2, FLUX.3, Z-Image, Qwen-Image
+    (including edit and layered), Krea 2, and HunyuanImage, an expression's
+    ``sigmas`` value is the evenly spaced schedule from 1 down to ``1 / steps``.
+    The pipeline builds its timesteps from that result, including any
+    resolution-dependent shift. Qwen-Image 2.1 uses the checkpoint's
+    ``sample_sigmas`` list when one is configured, and that same schedule otherwise.
     
     Lists of floats and strings representing expressions can be intermixed.
     
@@ -2007,9 +2009,11 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     Desired output size. The command line rejects sizes that are not aligned by 8.
     When set directly, an unaligned size is rounded down to the alignment the model
-    requires and a warning is issued. Models that need more than 8 (Stable Cascade,
-    Stable Diffusion 3, Flux.2, Z-Image, Qwen-Image, and video models) also round
-    8-aligned sizes this way.
+    requires and a warning is issued. Models that need more than 8 also round
+    8-aligned sizes this way: 16 for Stable Diffusion 3, HunyuanDiT, Flux.2, FLUX.3,
+    Z-Image, Qwen-Image, Krea 2, and Kandinsky 5; 32 for Qwen-Image 2.1,
+    HunyuanImage 2.1, and MiniMax-H3-Image; 128 for Stable Cascade. Video models
+    use their VAE alignment.
     This corresponds to the ``--output-size`` argument of the dgenerate command line tool.
     """
 

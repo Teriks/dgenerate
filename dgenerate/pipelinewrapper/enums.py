@@ -794,7 +794,8 @@ def model_type_seed_images_may_differ(model_type: ModelType | str) -> bool:
     """Several images in one seed are independent references, not one canvas.
 
     Stable Cascade, Qwen edit, Qwen-Image 2.1, Flux.2, FLUX.3, and
-    MiniMax-H3-Image resize each image. An img2img batch still has to match.
+    MiniMax-H3-Image accept images of different sizes in one seed.
+    An img2img batch still has to match.
     """
     return (model_type_is_s_cascade_family(model_type)
             or model_type_is_qwen_image_edit(model_type)
@@ -822,10 +823,11 @@ def model_type_supports_adetailer(model_type: ModelType | str) -> bool:
 
 def model_type_is_flow_image_family(model_type: ModelType | str) -> bool:
     """
-    Flux.2, Z-Image, and Qwen-family image transformers.
+    Flow-matching image transformers: Flux.2, FLUX.3, Z-Image, Qwen-Image,
+    Qwen-Image 2.1, Krea 2, Kandinsky 5, HunyuanImage 2.1, and MiniMax-H3-Image.
 
-    These are flow-matching image transformers. Pixel size snaps to
-    ``vae_scale_factor * 2``, which is 16 when the VAE factor is 8.
+    Pixel size snaps to twice the VAE scale: 16 for an 8x VAE, and 32 for
+    Qwen-Image 2.1, HunyuanImage 2.1, and MiniMax-H3-Image.
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool

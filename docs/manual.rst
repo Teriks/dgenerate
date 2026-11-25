@@ -2979,9 +2979,10 @@ Help Output
             --guidance-scales.
             
             For --model-type flux, flux-fill, flux-kontext, flux2, flux2-klein-kv, flux3, z-image, z-image-omni,
-            qwen-image, qwen-image-edit, and qwen-image-layered, expr: sigmas is the pipeline default schedule:
-            evenly spaced values from 1 down to 1/steps. The model applies its resolution-dependent shift to the
-            expression result.
+            qwen-image, qwen-image-edit, qwen-image-layered, krea2, hyimage-21, and hyimage-21-refiner, expr:
+            sigmas is the evenly spaced schedule from 1 down to 1/steps. The pipeline builds its timesteps from
+            that result, including any resolution-dependent shift. --model-type qwen-image-21 uses the checkpoint
+            sample_sigmas list when one is configured, and that same schedule otherwise.
             ------------------
       -igs, --image-guidance-scales FLOAT [FLOAT ...]
             One or more image guidance scale values to try. This can push the generated image towards the
@@ -8155,11 +8156,13 @@ scales the whole schedule.
 
 For most schedulers, ``sigmas`` is the schedule from ``set_timesteps``. For
 ``--model-type flux``, ``flux-fill``, ``flux-kontext``, ``flux2``,
-``flux2-klein-kv``, ``z-image``, ``z-image-omni``, ``qwen-image``,
-``qwen-image-edit``, and ``qwen-image-layered``, ``sigmas`` is the pipeline's
-default schedule: values spaced evenly from 1 down to ``1 / steps``. The model
-applies its resolution-dependent shift to the expression result. Qwen-Image
-layered writes that same sequence.
+``flux2-klein-kv``, ``flux3``, ``z-image``, ``z-image-omni``, ``qwen-image``,
+``qwen-image-edit``, ``qwen-image-layered``, ``krea2``, ``hyimage-21``, and
+``hyimage-21-refiner``, ``sigmas`` is the evenly spaced schedule from 1 down
+to ``1 / steps``. The pipeline builds its timesteps from that result, including
+any resolution-dependent shift. Qwen-Image layered and HunyuanImage write that
+same sequence. ``--model-type qwen-image-21`` uses the checkpoint's
+``sample_sigmas`` list when one is configured, and that same schedule otherwise.
 
 
 Here is an example of manually calculating that Flux schedule and passing it as
@@ -8210,7 +8213,8 @@ CSV from inside of a dgenerate config.
     --prompts "a horse standing inside a barn"
 
 An expression scales the same curve. This is the schedule used by Flux.1,
-Flux Fill, Flux Kontext, Flux.2, Z-Image, and Qwen-Image.
+Flux Fill, Flux Kontext, Flux.2, FLUX.3, Z-Image, Qwen-Image, Krea 2, and
+HunyuanImage.
 
 .. code-block:: jinja
 

@@ -63,7 +63,7 @@ class GenerationArguments(_types.SetFromMixin):
 
     second_model_scheduler_uri: _types.OptionalUri = None
     """
-    SDXL refiner scheduler / Stable Cascade Decoder URI, if not specified, defaults to :py:attr:`GenerationArguments.scheduler`
+    SDXL refiner scheduler / Stable Cascade Decoder URI, if not specified, defaults to :py:attr:`GenerationArguments.scheduler_uri`
     """
 
     prompt_weighter_uri: _types.OptionalUri = None
@@ -142,10 +142,13 @@ class GenerationArguments(_types.SetFromMixin):
     Tensor inputs cannot be resized or processed with image processors.
     
     All input images involved in a generation except for ``ip_adapter_images`` must match in dimension,
-    except in the case of Stable Cascade, which can accept multiple images of any dimension for the purpose of image based
-    prompting similar to IP Adapters.
+    except when several images in one seed are independent references. Stable Cascade, Qwen edit,
+    Qwen-Image 2.1, Flux.2, FLUX.3, and MiniMax-H3-Image accept those images at different sizes.
+    An img2img batch still has to match.
     
-    Incoming images are resized to the pixel alignment the model requires: 8 for most models, 16 for Stable Diffusion 3, Flux.2, Z-Image, and Qwen-Image.
+    Incoming images are resized to the pixel alignment the model requires: 8 for most models,
+    16 for Stable Diffusion 3, HunyuanDiT, Flux.2, FLUX.3, Z-Image, Qwen-Image, Krea 2, and Kandinsky 5,
+    and 32 for Qwen-Image 2.1, HunyuanImage 2.1, and MiniMax-H3-Image.
     Stable Cascade images are used as an image prompt and are not resized.
     
     All other pipelines interpret multiple image inputs as a batching request.
@@ -168,7 +171,9 @@ class GenerationArguments(_types.SetFromMixin):
     
     All input images involved in a generation except for ``ip_adapter_images`` must match in dimension.
     
-    Incoming mask images are resized to the pixel alignment the model requires: 8 for most models, 16 for Stable Diffusion 3, Flux.2, Z-Image, and Qwen-Image.
+    Incoming mask images are resized to the pixel alignment the model requires: 8 for most models,
+    16 for Stable Diffusion 3, HunyuanDiT, Flux.2, FLUX.3, Z-Image, Qwen-Image, Krea 2, and Kandinsky 5,
+    and 32 for Qwen-Image 2.1, HunyuanImage 2.1, and MiniMax-H3-Image.
     """
 
     inpaint_crop: bool = False
@@ -250,7 +255,9 @@ class GenerationArguments(_types.SetFromMixin):
     
     All input images involved in a generation must match in dimension.
     
-    Incoming ControlNet images are resized to the pixel alignment the model requires: 8 for most models, 16 for Stable Diffusion 3, Flux.2, Z-Image, and Qwen-Image.
+    Incoming ControlNet images are resized to the pixel alignment the model requires: 8 for most models,
+    16 for Stable Diffusion 3, HunyuanDiT, Flux.2, FLUX.3, Z-Image, Qwen-Image, Krea 2, and Kandinsky 5,
+    and 32 for Qwen-Image 2.1, HunyuanImage 2.1, and MiniMax-H3-Image.
     """
 
     ip_adapter_images: _types.OptionalImagesSequence = None
@@ -274,7 +281,7 @@ class GenerationArguments(_types.SetFromMixin):
     """
     The output image or tensor of the last stage when performing img2img or 
     inpainting generation with Deep Floyd. When performing txt2img 
-    generation :py:attr:`GenerationArguments.image` is used.
+    generation :py:attr:`GenerationArguments.images` is used.
     
     When a tensor is provided, it represents latent space data from a previous Floyd stage.
     
@@ -286,8 +293,10 @@ class GenerationArguments(_types.SetFromMixin):
     Output image width.
     
     Values that are not aligned are rounded down to the alignment the model requires:
-    8 for most models, 16 for Stable Diffusion 3, Flux.2, Z-Image, and Qwen-Image,
-    and 128 for Stable Cascade. Video models round to their VAE alignment.
+    8 for most models, 16 for Stable Diffusion 3, HunyuanDiT, Flux.2, FLUX.3, Z-Image,
+    Qwen-Image, Krea 2, and Kandinsky 5, 32 for Qwen-Image 2.1, HunyuanImage 2.1,
+    and MiniMax-H3-Image, and 128 for Stable Cascade. Video models round to their
+    VAE alignment.
     A warning is issued to ``stdout`` via :py:mod:`dgenerate.messages` when the value is changed.
     """
 
@@ -296,8 +305,10 @@ class GenerationArguments(_types.SetFromMixin):
     Output image height.
     
     Values that are not aligned are rounded down to the alignment the model requires:
-    8 for most models, 16 for Stable Diffusion 3, Flux.2, Z-Image, and Qwen-Image,
-    and 128 for Stable Cascade. Video models round to their VAE alignment.
+    8 for most models, 16 for Stable Diffusion 3, HunyuanDiT, Flux.2, FLUX.3, Z-Image,
+    Qwen-Image, Krea 2, and Kandinsky 5, 32 for Qwen-Image 2.1, HunyuanImage 2.1,
+    and MiniMax-H3-Image, and 128 for Stable Cascade. Video models round to their
+    VAE alignment.
     A warning is issued to ``stdout`` via :py:mod:`dgenerate.messages` when the value is changed.
     """
 
@@ -520,7 +531,7 @@ class GenerationArguments(_types.SetFromMixin):
     
     Optional SDXL conditioning parameter.
     To negatively condition the generation process based on a target image resolution. It should be as same
-    as the :py:attr:`.GenerationArguments.target_size` for most cases. Part of SDXL's micro-conditioning as 
+    as the :py:attr:`.GenerationArguments.sdxl_target_size` for most cases. Part of SDXL's micro-conditioning as 
     explained in section 2.2 of [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952).
     For more information, refer to this issue thread: https://github.com/huggingface/diffusers/issues/4208.
     """
@@ -602,10 +613,12 @@ class GenerationArguments(_types.SetFromMixin):
     result. In expression form, ``sigmas`` is the distilled 8-value table when the scheduler
     has no dynamic shifting, or the ``set_timesteps`` schedule otherwise.
 
-    For Flux.1 (including Fill and Kontext), Flux.2, Z-Image, and Qwen-Image,
-    an expression's ``sigmas`` value is the pipeline default schedule: evenly spaced
-    values from 1 down to ``1 / steps``. The model applies its resolution-dependent
-    shift to the expression result.
+    For Flux.1 (including Fill and Kontext), Flux.2, FLUX.3, Z-Image, Qwen-Image
+    (including edit and layered), Krea 2, and HunyuanImage, an expression's
+    ``sigmas`` value is the evenly spaced schedule from 1 down to ``1 / steps``.
+    The pipeline builds its timesteps from that result, including any
+    resolution-dependent shift. Qwen-Image 2.1 uses the checkpoint's
+    ``sample_sigmas`` list when one is configured, and that same schedule otherwise.
     """
 
     freeu_params: typing.Optional[tuple[float, float, float, float]] = None
@@ -1274,9 +1287,9 @@ class GenerationArguments(_types.SetFromMixin):
     """
     This value is only relevant for ``pix2pix`` :py:class:`dgenerate.pipelinewrapper.ModelType`.
     
-    Image guidance scale is to push the generated image towards the initial image :py:attr:`.GenerationArguments.image`. 
+    Image guidance scale is to push the generated image towards the initial image :py:attr:`.GenerationArguments.images`. 
     Image guidance scale is enabled by setting :py:attr:`.GenerationArguments.image_guidance_scale` > 1. Higher image 
-    guidance scale encourages to generate images that are closely linked to the source image :py:attr:`.GenerationArguments.image`, 
+    guidance scale encourages to generate images that are closely linked to the source image :py:attr:`.GenerationArguments.images`, 
     usually at the expense of lower image quality.
     """
 

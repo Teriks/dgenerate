@@ -2886,7 +2886,7 @@ def create_pipeline(
     :param dtype: Optional :py:class:`dgenerate.pipelinewrapper.DataType` enum value
     :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
     :param transformer_uri: Optional ``--transformer`` URI string for specifying a specific Transformer.
-        Supported for Stable Diffusion 3, Flux, Flux.2, Z-Image, Qwen-Image, and LTX.
+        Supported for image and video model types that load a diffusion transformer.
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
     :param lora_fuse_scale: Optional ``--lora-fuse-scale`` global LoRA fuse scale value.
@@ -3274,7 +3274,7 @@ def _flow_image_pipeline_class(
         help_mode: bool
 ):
     """
-    Pipeline class for Flux.2, Z-Image, and Qwen-Image, or ``None`` for other types.
+    Pipeline class for a flow-image model type, or ``None`` for other types.
 
     ``model_class_name`` is ``model_index.json`` ``_class_name``. It selects
     Flux.2 Klein versus full Flux.2. Klein stays ``--model-type flux2``.
@@ -3561,7 +3561,7 @@ def get_pipeline_class(
     :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
     :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
     :param transformer_uri: Optional ``--transformer`` URI string for specifying a specific Transformer.
-        Supported for Stable Diffusion 3, Flux, Flux.2, Z-Image, Qwen-Image, and LTX.
+        Supported for image and video model types that load a diffusion transformer.
     :param model_class_name: Optional ``model_index.json`` ``_class_name``. Flux.2 uses it to
         select Klein versus the full pipeline.
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
