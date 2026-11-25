@@ -2,6 +2,7 @@ title: Wan 2.1 VACE (ComfyUI Quant)
 
 # Packed ComfyUI quants of Wan-AI/Wan2.1-VACE-14B-diffusers.
 # int8_tensorwise is ConvRot. float8_e4m3fn is per-tensor scaled.
+# fp16 is the Comfy-Org repack of the same checkpoint.
 
 # Wan VACE with a ComfyUI transformer override. control= is the control clip.
 
@@ -32,7 +33,7 @@ title: Wan 2.1 VACE (ComfyUI Quant)
 @submodelbuilder[{"id":"lora", "label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @float[{"label":"LoRA Fuse Scale","arg":"--lora-fuse-scale","min":0, "enabled-when":{"id":"lora","not-empty":true}}]
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
-@submodelbuilder[{"label": "Transformer", "arg": "--transformer", "model": "Transformer", "default": "https://huggingface.co/Teriks/Wan2.1-VACE-14B-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors", "divider-after": true, "suggestions": [{"label": "int8_tensorwise", "value": "https://huggingface.co/Teriks/Wan2.1-VACE-14B-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors"}, {"label": "float8_e4m3fn", "value": "https://huggingface.co/Teriks/Wan2.1-VACE-14B-quants/blob/main/transformer-float8_e4m3fn-comfy.safetensors"}]}]
+@submodelbuilder[{"label": "Transformer", "arg": "--transformer", "model": "Transformer", "default": "https://huggingface.co/Teriks/Wan2.1-VACE-14B-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors", "divider-after": true, "suggestions": [{"label": "int8_tensorwise", "value": "https://huggingface.co/Teriks/Wan2.1-VACE-14B-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors"}, {"label": "float8_e4m3fn", "value": "https://huggingface.co/Teriks/Wan2.1-VACE-14B-quants/blob/main/transformer-float8_e4m3fn-comfy.safetensors"}, {"label": "fp16", "value": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_vace_14B_fp16.safetensors"}]}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true, "enabled-when":{"any":[{"id":"image-seed","not-empty":true},{"id":"image-seed-2","not-empty":true},{"id":"image-seed-3","not-empty":true},{"id":"image-seed-4","not-empty":true}]}}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
