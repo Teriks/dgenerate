@@ -135,7 +135,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.13'
+          python-version: '3.14'
           architecture: ${{ matrix.platform == 'macos' && 'arm64' || 'x64' }}
 
       - name: Install system dependencies (Linux)
@@ -154,9 +154,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.13-${{ hashFiles('poetry/pyproject.toml', 'poetry/poetry.lock', 'installer/pyproject.toml', 'setup.py') }}
+          key: ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.14-${{ hashFiles('poetry/pyproject.toml', 'poetry/poetry.lock', 'installer/pyproject.toml', 'setup.py') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.13-
+            ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.14-
 
       - name: Install build dependencies
         if: matrix.platform == 'linux'
@@ -427,9 +427,6 @@ jobs:
           2. Run the installer
           
           **Note for Windows users**: Windows Defender may flag the installer as potentially harmful since it's unsigned. If you see a warning, click "More info" and then "Run anyway" to proceed with the installation.
-          
-          If you previously installed dgenerate using the older MSI installer, please uninstall it before installing with the network installer.
-          
           
           ### Linux
           1. Download \`dgenerate-installer-linux-$commit_sha\`
