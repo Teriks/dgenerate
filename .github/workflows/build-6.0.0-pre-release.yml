@@ -17,7 +17,7 @@ jobs:
       should_build: ${{ steps.check.outputs.should_build }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: version_6.0.0
           fetch-depth: 0
@@ -121,7 +121,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: version_6.0.0
 
@@ -133,7 +133,7 @@ jobs:
         shell: bash
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: '3.14'
           architecture: ${{ matrix.platform == 'macos' && 'arm64' || 'x64' }}
@@ -151,7 +151,7 @@ jobs:
           echo "ARCHFLAGS=-arch arm64" >> $GITHUB_ENV
 
       - name: Cache Python dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.14-${{ hashFiles('poetry/pyproject.toml', 'poetry/poetry.lock', 'installer/pyproject.toml', 'setup.py') }}
@@ -212,7 +212,7 @@ jobs:
           fi
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact_name }}-${{ steps.commit.outputs.hash }}
           path: installer/dist/${{ matrix.artifact_name }}-${{ steps.commit.outputs.hash }}${{ matrix.exe_extension }}
@@ -221,7 +221,7 @@ jobs:
 
       - name: Upload wheel artifacts
         if: matrix.platform == 'linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels
           path: dist/
@@ -235,12 +235,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: version_6.0.0
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: artifacts/
 
