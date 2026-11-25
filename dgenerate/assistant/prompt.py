@@ -670,7 +670,7 @@ Its GGUF is --transformer https://huggingface.co/Teriks/Wan2.1-VACE-1.3B-quants/
 and its INT8 is --transformer https://huggingface.co/Teriks/Wan2.1-VACE-1.3B-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors. \
 The 14B quant files stay on Wan-AI/Wan2.1-VACE-14B-diffusers: \
 --transformer https://huggingface.co/QuantStack/Wan2.1_14B_VACE-GGUF/blob/main/Wan2.1_14B_VACE-Q4_K_S.gguf \
-or https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_vace_14B_fp16.safetensors. \
+or https://huggingface.co/Teriks/Wan2.1-VACE-14B-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors. \
 Wan 2.2 text-to-video and video-to-video are Wan-AI/Wan2.2-T2V-A14B-Diffusers, guidance 4, --wan-low-noise-guidance-scales 3. \
 Its GGUF experts are --transformer https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/HighNoise/Wan2.2-T2V-A14B-HighNoise-Q4_K_S.gguf \
 and --wan-second-transformer https://huggingface.co/QuantStack/Wan2.2-T2V-A14B-GGUF/blob/main/LowNoise/Wan2.2-T2V-A14B-LowNoise-Q4_K_S.gguf. \

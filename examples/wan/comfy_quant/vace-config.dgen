@@ -1,7 +1,8 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Wan VACE 14B with Comfy-Org's repackaged VACE transformer (fp16).
+# Wan 2.1 VACE 14B transformer, int8 tensorwise ConvRot, ComfyUI tensor names.
+# https://huggingface.co/Teriks/Wan2.1-VACE-14B-quants
 # Same edge-guided restyle as examples/wan/gguf/vace-config.dgen.
 
 \setp control "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/hiker.mp4"
@@ -11,7 +12,7 @@ Wan-AI/Wan2.1-VACE-14B-diffusers
 --model-type wan
 --dtype bfloat16
 --model-sequential-offload
---transformer https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/blob/main/split_files/diffusion_models/wan2.1_vace_14B_fp16.safetensors
+--transformer https://huggingface.co/Teriks/Wan2.1-VACE-14B-quants/blob/main/transformer-int8_tensorwise-comfy.safetensors
 --inference-steps 30
 --guidance-scales 5
 --video-fps 8
