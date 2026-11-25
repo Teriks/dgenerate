@@ -317,6 +317,13 @@ class TestQuantizeUploadCommand(unittest.TestCase):
             comfy = os.path.join(output, 'transformer-float8_e4m3fn-comfy.safetensors')
             with open(comfy, 'wb') as handle:
                 handle.write(b'y' * 8192)
+            for name, payload in (
+                    ('quantize.log', b'log'),
+                    ('notes.py', b'print(1)\n'),
+                    ('hf-token.txt', b'secret'),
+            ):
+                with open(os.path.join(output, name), 'wb') as handle:
+                    handle.write(payload)
             folder = os.path.join(root, 'transformer')
             os.makedirs(folder)
             import torch
@@ -343,6 +350,9 @@ class TestQuantizeUploadCommand(unittest.TestCase):
         self.assertIn('| `Q8_0` | GGUF |', card)
         self.assertIn('| `float8_e4m3fn` | ComfyUI safetensors quant |', card)
         self.assertIn('earlier quantize runs', card)
+        self.assertNotIn('quantize.log', card)
+        self.assertNotIn('notes.py', card)
+        self.assertNotIn('hf-token.txt', card)
         self.assertIn('`-comfy`', card)
         self.assertIn('transformer-Q8_0.gguf', captured['upload']['allow_patterns'])
         self.assertNotIn('transformer-Q4_K.gguf', captured['upload']['allow_patterns'])

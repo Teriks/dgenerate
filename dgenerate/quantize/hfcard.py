@@ -265,8 +265,9 @@ def repository_files(output_dir: str,
     """Quant files already in ``output_dir`` and, when it exists, in the Hub repository.
 
     A local path wins when both have it, because that file is the one about to
-    be uploaded. ``README.md`` is omitted. A missing repository, or a token that
-    cannot read it, contributes nothing.
+    be uploaded. ``README.md`` is omitted. Logs, scripts, and other files that
+    are not a quant file or part of a diffusers quantizer export are omitted.
+    A missing repository, or a token that cannot read it, contributes nothing.
     """
     found = {}
     if repo_id and token:
@@ -275,7 +276,36 @@ def repository_files(output_dir: str,
     if output_dir and os.path.isdir(output_dir):
         for path, size in listed_files(output_dir, None):
             found[path] = size
-    return sorted(found.items())
+    prefixes = _quant_export_prefixes(found)
+    return sorted(
+        (path, size) for path, size in found.items()
+        if _belongs_on_card(path, prefixes))
+
+
+def _quant_export_prefixes(files: dict) -> set[str]:
+    """Directories that are a diffusers quantizer export, from ``model_index.json``."""
+    prefixes = set()
+    for path in files:
+        normalized = path.replace('\\', '/')
+        if os.path.basename(normalized) == 'model_index.json':
+            prefixes.add(os.path.dirname(normalized).replace('\\', '/'))
+    return prefixes
+
+
+def _belongs_on_card(relative: str, export_prefixes: set[str]) -> bool:
+    """A quant file, or a file inside a diffusers quantizer export.
+
+    Logs, scripts, and other files left in the output directory are not quants.
+    """
+    normalized = relative.replace('\\', '/')
+    if parse_quant_filename(normalized) is not None:
+        return True
+    for prefix in export_prefixes:
+        if prefix == '':
+            return True
+        if normalized == prefix or normalized.startswith(prefix + '/'):
+            return True
+    return False
 
 
 def _remote_files(repo_id: str, token: str) -> list[tuple[str, int]]:
