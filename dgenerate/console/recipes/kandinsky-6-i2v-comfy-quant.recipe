@@ -1,4 +1,4 @@
-title: Kandinsky 6 Video Image to Video (ComfyUI Quant)
+title: Kandinsky 6 Video Lite Distilled Image to Video (ComfyUI Quant)
 
 # Same int8 ConvRot Lite distilled transformer as text-to-video.
 # One still image is the first frame. 10 steps, guidance 1.

@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import contextlib
 import inspect
 import json
 import platform
@@ -415,6 +416,42 @@ class _RecipesForm(tk.Toplevel):
             entry.on_form_scroll()
         handle_canvas_scroll(self.canvas, event)
 
+    @contextlib.contextmanager
+    def keep_in_view(self, widget):
+        """Hold ``widget`` at the same place on screen while the body runs.
+
+        The canvas keeps its scroll offset in pixels. Rows added above
+        ``widget``, such as a scheduler's arguments, would push it down
+        and out of view.
+        """
+        canvas = self.canvas
+        try:
+            before = widget.winfo_rooty() - canvas.winfo_rooty()
+        except tk.TclError:
+            yield
+            return
+        yield
+        try:
+            self.update_idletasks()
+            if not widget.winfo_exists():
+                return
+            after = widget.winfo_rooty() - canvas.winfo_rooty()
+        except tk.TclError:
+            return
+        shift = after - before
+        if not shift:
+            return
+        region = canvas.bbox('all')
+        if not region:
+            return
+        canvas.configure(scrollregion=region)
+        height = region[3] - region[1]
+        if height <= 0:
+            return
+        drop_queued_yview(canvas)
+        top = canvas.canvasy(0) + shift - region[1]
+        canvas.yview_moveto(max(top, 0) / height)
+
     def _on_form_configure(self, event):
         # A scroll moves this frame and macOS reports that as Configure.
         # Recomputing the scroll region then rebuilds the form on every
@@ -577,6 +614,9 @@ class _RecipesForm(tk.Toplevel):
                 if other_entry is not None and other_entry is not entry:
                     exclusions[entry].append(other_entry)
                     exclusions[other_entry].append(entry)
+            for other_entry in entry.exclude_targets():
+                if other_entry is not None and other_entry is not entry:
+                    exclusions[entry].append(other_entry)
 
         # Only entries left enabled by their conditions can exclude others.
         # Entries are visited in form order, so if two exclusive entries are
@@ -592,6 +632,39 @@ class _RecipesForm(tk.Toplevel):
         for entry in self._entries:
             entry.set_row_enabled(enabled[entry])
         self._sync_image_seed_requirement()
+        self._sync_scheduler_requirement()
+
+    def _sync_scheduler_requirement(self) -> None:
+        """A sigma list needs a named scheduler when the model default cannot take one."""
+        import dgenerate.console.sigmaschedule as _schedule
+
+        recipe_type = _form_entry.recipe_model_type(self)
+        # The refiner stage is always an SDXL refiner, also under Kolors.
+        paired = {
+            '--sigmas': ('--scheduler', recipe_type),
+            '--sdxl-refiner-sigmas': ('--second-model-scheduler', 'sdxl'),
+        }
+        schedulers = {getattr(entry, 'arg', None): entry for entry in self._entries
+                      if hasattr(entry, 'set_name_required')}
+        needed = set()
+        for entry in self._entries:
+            pair = paired.get(getattr(entry, 'arg', None))
+            if pair is None or entry._row_inactive:
+                continue
+            scheduler_arg, model_type = pair
+            if (_schedule.default_scheduler_accepts_sigmas(model_type)
+                    or not _form_entry.offered_schedulers(
+                        _schedule.sigma_scheduler_names(model_type),
+                        schedulers.get(scheduler_arg))):
+                continue
+            variable = getattr(entry, 'text_var', None)
+            if variable is not None and str(variable.get()).strip():
+                needed.add(scheduler_arg)
+        for entry in self._entries:
+            require = getattr(entry, 'set_name_required', None)
+            if require is None:
+                continue
+            require(getattr(entry, 'arg', None) in needed)
 
     _GUIDANCE_ARGS = {
         '--control-nets',

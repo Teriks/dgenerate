@@ -22,7 +22,7 @@ title: Wan-Animate
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Wan-AI/Wan2.2-Animate-14B-Diffusers", "optional":false, "file-types":["models"]}]
 --model-type wan-animate {{ image_seeds }} {{ auth_token }}
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
-@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["UniPCMultistepScheduler"]}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
 @spectrum[{"id": "sp", "divider-after": true}]
 @switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["tc", "sada", "sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
 @dype[{"exclude":["cd", "sp"],"divider-after":true}]
@@ -38,7 +38,8 @@ title: Wan-Animate
 @int[{"label":"Previous Segment Frames", "arg":"--wan-prev-segment-frames", "default":1, "min":1}]
 @int[{"label":"Motion Encode Batch Size", "arg":"--wan-motion-encode-batch-size", "min":1}]
 @switch[{"label":"Save Preprocess Clips", "arg":"--wan-animate-preprocess-output", "divider-after":true}]
-@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":20, "min":1}]
+@int[{"label":"Inference Steps","arg":"--inference-steps","default":20,"min":1}]
+@sigmas[{"id":"sigmas","label":"Sigmas","arg":"--sigmas","base":[0.999999,0.95005,0.9001,0.85015,0.8002,0.75025,0.7003,0.65035,0.6004,0.55045,0.5005,0.45055,0.4006,0.35065,0.3007,0.25075,0.2008,0.15085,0.1009,0.05095]}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]
 @float[{"label":"Video FPS", "arg":"--video-fps", "default":"30", "min":1, "divider-after":true}]
 @dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]

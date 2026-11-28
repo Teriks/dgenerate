@@ -89,6 +89,39 @@ def invalid_colors(widget):
             highlightthickness=2)
 
 
+def kept_in_view(form, widget):
+    """``form.keep_in_view(widget)``, or a no-op for a form without one."""
+    import contextlib
+    keep = getattr(form, 'keep_in_view', None)
+    return keep(widget) if keep is not None else contextlib.nullcontext()
+
+
+def recipe_model_type(form) -> str:
+    """``--model-type`` for the open recipe. Omitted recipes are Stable Diffusion."""
+    import re
+    content = getattr(form, '_content', '') or ''
+    quoted = re.search(r'"model-type"\s*:\s*"([^"]+)"', content)
+    if quoted:
+        return quoted.group(1)
+    flag = re.search(r'--model-type\s+([A-Za-z0-9._-]+)', content)
+    if flag:
+        return flag.group(1)
+    for entry in getattr(form, '_entries', ()) or ():
+        value = getattr(entry, 'config', {}).get('model-type')
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return 'sd'
+
+
+def offered_schedulers(names: list[str] | None, scheduler_entry) -> list[str] | None:
+    """``names`` limited to the choices of the recipe's scheduler dropdown, when it has one."""
+    choices = getattr(scheduler_entry, '_choice_names', None)
+    if names is None or choices is None:
+        return names
+    offered = set(choices())
+    return [name for name in names if name in offered]
+
+
 class _Entry:
     NAME = None
 
@@ -176,6 +209,14 @@ class _Entry:
 
     def is_active(self) -> bool:
         return not self.is_empty()
+
+    def exclude_targets(self):
+        """Entries this one disables while it is active.
+
+        Unlike a recipe ``exclude`` id, this is not mutual: the other
+        entry does not disable this one.
+        """
+        return ()
 
     def is_valid(self) -> bool:
         return True

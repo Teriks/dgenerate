@@ -36,6 +36,32 @@ class TestMiniMaxH3Image(unittest.TestCase):
             'Qwen3VLForConditionalGeneration',
             schema['minimax-h3-image'][0]['encoders'])
 
+    def test_scheduler_uri_lasts_one_run(self):
+        import unittest.mock
+
+        import diffusers
+
+        wrapper = _pipelinewrapper.PipelineWrapper.__new__(_pipelinewrapper.PipelineWrapper)
+        original = diffusers.MiniMaxH3Scheduler(shift=3.0)
+        wrapper._model_type = _enums.ModelType.MINIMAX_H3_IMAGE
+        wrapper._pipeline = types.SimpleNamespace(scheduler=original, vae=None)
+        wrapper._sdxl_refiner_pipeline = None
+        wrapper._s_cascade_decoder_pipeline = None
+
+        def run(uri):
+            args = types.SimpleNamespace(
+                scheduler_uri=uri, second_model_scheduler_uri=None,
+                vae_tiling=False, vae_slicing=False)
+            with unittest.mock.patch.object(_pipelines, 'set_vae_tiling_and_slicing'):
+                wrapper._set_scheduler_and_vae_settings(args)
+            return wrapper._pipeline.scheduler
+
+        self.assertEqual(run('MiniMaxH3Scheduler;shift=8').config.shift, 8.0)
+        self.assertIs(run(None), original)
+        overlay = run('MiniMaxH3Scheduler;stochastic-sampling=true')
+        self.assertEqual(overlay.config.shift, 3.0)
+        self.assertTrue(overlay.config.stochastic_sampling)
+
     def test_prepare_call_keeps_the_distilled_schedule(self):
         pipeline_args = {
             'guidance_scale': 1.0,

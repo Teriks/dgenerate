@@ -1,4 +1,4 @@
-title: Kandinsky 6 Video Image to Video (ComfyUI Quant + Encoders)
+title: Kandinsky 6 Video Lite Distilled Image to Video (ComfyUI Quant + Encoders)
 
 # Same int8 ConvRot Lite distilled transformer and W4A8 Qwen2.5-VL encoder as text-to-video.
 # One still image is the first frame. An empty CLIP slot keeps that encoder from the repository.

@@ -1,0 +1,540 @@
+{
+  "sd": {
+    "default": "PNDMScheduler",
+    "schedulers": [
+      "DDIMScheduler",
+      "DDPMScheduler",
+      "DEISMultistepScheduler",
+      "DPMSolverMultistepScheduler",
+      "DPMSolverSDEScheduler",
+      "DPMSolverSinglestepScheduler",
+      "EDMEulerScheduler",
+      "EulerAncestralDiscreteScheduler",
+      "EulerDiscreteScheduler",
+      "HeunDiscreteScheduler",
+      "KDPM2AncestralDiscreteScheduler",
+      "KDPM2DiscreteScheduler",
+      "LCMScheduler",
+      "LMSDiscreteScheduler",
+      "PNDMScheduler",
+      "TCDScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "accepts-sigmas": [
+      "EDMEulerScheduler",
+      "EulerDiscreteScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "noise-config": {
+      "beta-start": 0.00085,
+      "beta-end": 0.012,
+      "beta-schedule": "scaled_linear",
+      "num-train-timesteps": 1000
+    }
+  },
+  "pix2pix": {
+    "default": "PNDMScheduler",
+    "schedulers": [
+      "DDIMScheduler",
+      "DDPMScheduler",
+      "DEISMultistepScheduler",
+      "DPMSolverMultistepScheduler",
+      "DPMSolverSDEScheduler",
+      "DPMSolverSinglestepScheduler",
+      "EDMEulerScheduler",
+      "EulerAncestralDiscreteScheduler",
+      "EulerDiscreteScheduler",
+      "HeunDiscreteScheduler",
+      "KDPM2AncestralDiscreteScheduler",
+      "KDPM2DiscreteScheduler",
+      "LCMScheduler",
+      "LMSDiscreteScheduler",
+      "PNDMScheduler",
+      "TCDScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "accepts-sigmas": [
+      "EDMEulerScheduler",
+      "EulerDiscreteScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "noise-config": {
+      "beta-start": 0.00085,
+      "beta-end": 0.012,
+      "beta-schedule": "scaled_linear",
+      "num-train-timesteps": 1000
+    }
+  },
+  "sdxl": {
+    "default": "EulerDiscreteScheduler",
+    "schedulers": [
+      "DDIMScheduler",
+      "DDPMScheduler",
+      "DEISMultistepScheduler",
+      "DPMSolverMultistepScheduler",
+      "DPMSolverSDEScheduler",
+      "DPMSolverSinglestepScheduler",
+      "EDMEulerScheduler",
+      "EulerAncestralDiscreteScheduler",
+      "EulerDiscreteScheduler",
+      "HeunDiscreteScheduler",
+      "KDPM2AncestralDiscreteScheduler",
+      "KDPM2DiscreteScheduler",
+      "LCMScheduler",
+      "LMSDiscreteScheduler",
+      "PNDMScheduler",
+      "TCDScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "accepts-sigmas": [
+      "EDMEulerScheduler",
+      "EulerDiscreteScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "noise-config": {
+      "beta-start": 0.00085,
+      "beta-end": 0.012,
+      "beta-schedule": "scaled_linear",
+      "num-train-timesteps": 1000
+    }
+  },
+  "sdxl-pix2pix": {
+    "default": "EulerDiscreteScheduler",
+    "schedulers": [
+      "DDIMScheduler",
+      "DDPMScheduler",
+      "DEISMultistepScheduler",
+      "DPMSolverMultistepScheduler",
+      "DPMSolverSDEScheduler",
+      "DPMSolverSinglestepScheduler",
+      "EDMEulerScheduler",
+      "EulerAncestralDiscreteScheduler",
+      "EulerDiscreteScheduler",
+      "HeunDiscreteScheduler",
+      "KDPM2AncestralDiscreteScheduler",
+      "KDPM2DiscreteScheduler",
+      "LCMScheduler",
+      "LMSDiscreteScheduler",
+      "PNDMScheduler",
+      "TCDScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "accepts-sigmas": [
+      "EDMEulerScheduler",
+      "EulerDiscreteScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "noise-config": {
+      "beta-start": 0.00085,
+      "beta-end": 0.012,
+      "beta-schedule": "scaled_linear",
+      "num-train-timesteps": 1000
+    }
+  },
+  "kolors": {
+    "default": "EulerDiscreteScheduler",
+    "schedulers": [
+      "DDIMScheduler",
+      "DDPMScheduler",
+      "DEISMultistepScheduler",
+      "DPMSolverMultistepScheduler",
+      "DPMSolverSDEScheduler",
+      "DPMSolverSinglestepScheduler",
+      "EDMEulerScheduler",
+      "EulerAncestralDiscreteScheduler",
+      "EulerDiscreteScheduler",
+      "HeunDiscreteScheduler",
+      "KDPM2AncestralDiscreteScheduler",
+      "KDPM2DiscreteScheduler",
+      "LCMScheduler",
+      "LMSDiscreteScheduler",
+      "PNDMScheduler",
+      "TCDScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "accepts-sigmas": [
+      "EDMEulerScheduler",
+      "EulerDiscreteScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "noise-config": {
+      "beta-start": 0.00085,
+      "beta-end": 0.014,
+      "beta-schedule": "scaled_linear",
+      "num-train-timesteps": 1100
+    }
+  },
+  "upscaler-x2": {
+    "default": "EulerDiscreteScheduler",
+    "schedulers": [
+      "EulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "EulerDiscreteScheduler"
+    ],
+    "noise-config": {
+      "beta-start": 0.00085,
+      "beta-end": 0.012,
+      "beta-schedule": "scaled_linear",
+      "num-train-timesteps": 1000,
+      "interpolation-type": "log_linear"
+    }
+  },
+  "upscaler-x4": {
+    "default": "DDIMScheduler",
+    "schedulers": [
+      "DDIMScheduler",
+      "DDPMScheduler",
+      "DEISMultistepScheduler",
+      "DPMSolverMultistepScheduler",
+      "DPMSolverSDEScheduler",
+      "DPMSolverSinglestepScheduler",
+      "EDMEulerScheduler",
+      "EulerAncestralDiscreteScheduler",
+      "EulerDiscreteScheduler",
+      "HeunDiscreteScheduler",
+      "KDPM2AncestralDiscreteScheduler",
+      "KDPM2DiscreteScheduler",
+      "LCMScheduler",
+      "LMSDiscreteScheduler",
+      "PNDMScheduler",
+      "TCDScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "accepts-sigmas": [
+      "EDMEulerScheduler",
+      "EulerDiscreteScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "noise-config": {
+      "beta-start": 0.0001,
+      "beta-end": 0.02,
+      "beta-schedule": "scaled_linear",
+      "num-train-timesteps": 1000
+    }
+  },
+  "if": {
+    "default": "DDPMScheduler",
+    "schedulers": [
+      "DDPMScheduler"
+    ],
+    "accepts-sigmas": []
+  },
+  "ifs": {
+    "default": "DDPMScheduler",
+    "schedulers": [
+      "DDPMScheduler"
+    ],
+    "accepts-sigmas": []
+  },
+  "ifs-img2img": {
+    "default": "DDPMScheduler",
+    "schedulers": [
+      "DDPMScheduler"
+    ],
+    "accepts-sigmas": []
+  },
+  "s-cascade": {
+    "default": "DDPMWuerstchenScheduler",
+    "schedulers": [
+      "DDPMWuerstchenScheduler"
+    ],
+    "accepts-sigmas": []
+  },
+  "sd3": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "flow-shift": 3.0
+  },
+  "sd3-pix2pix": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ]
+  },
+  "flux": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "flux-fill": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "flux-kontext": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "flux2": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "flux2-klein-kv": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "z-image": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "z-image-omni": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "qwen-image": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "qwen-image-edit": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "qwen-image-layered": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "ltx2": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ]
+  },
+  "ltx-video": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "wan": {
+    "default": "UniPCMultistepScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler",
+      "UniPCMultistepScheduler"
+    ]
+  },
+  "wan-animate": {
+    "default": "UniPCMultistepScheduler",
+    "schedulers": [
+      "UniPCMultistepScheduler"
+    ],
+    "accepts-sigmas": [
+      "UniPCMultistepScheduler"
+    ]
+  },
+  "wan-animate-2": {
+    "default": "DPMSolverMultistepScheduler",
+    "schedulers": [
+      "DPMSolverMultistepScheduler",
+      "EulerDiscreteScheduler",
+      "FlowMatchEulerDiscreteScheduler",
+      "UniPCMultistepScheduler"
+    ],
+    "accepts-sigmas": [
+      "EulerDiscreteScheduler",
+      "FlowMatchEulerDiscreteScheduler",
+      "UniPCMultistepScheduler"
+    ]
+  },
+  "qwen-image-21": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "krea2": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "kandinsky5-image": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "flow-shift": 5.0
+  },
+  "kandinsky5-video": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "flow-shift": 5.0
+  },
+  "hyvideo-15": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "motif-video": {
+    "default": "DPMSolverMultistepScheduler",
+    "schedulers": [
+      "DPMSolverMultistepScheduler",
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ]
+  },
+  "hydit": {
+    "default": "DDPMScheduler",
+    "schedulers": [
+      "DDPMScheduler"
+    ],
+    "accepts-sigmas": []
+  },
+  "hyimage-21": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "hyimage-21-refiner": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "flux3": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "pipeline-sigmas": "linspace"
+  },
+  "kandinsky6-video": {
+    "default": "FlowMatchEulerDiscreteScheduler",
+    "schedulers": [
+      "FlowMatchEulerDiscreteScheduler",
+      "PiflowScheduler"
+    ],
+    "accepts-sigmas": [
+      "FlowMatchEulerDiscreteScheduler"
+    ],
+    "flow-shift": 5.0
+  },
+  "minimax-h3-video": {
+    "default": "MiniMaxH3Scheduler",
+    "schedulers": [
+      "MiniMaxH3Scheduler"
+    ],
+    "accepts-sigmas": [
+      "MiniMaxH3Scheduler"
+    ]
+  },
+  "minimax-h3-image": {
+    "default": "MiniMaxH3Scheduler",
+    "schedulers": [
+      "MiniMaxH3Scheduler"
+    ],
+    "accepts-sigmas": []
+  }
+}

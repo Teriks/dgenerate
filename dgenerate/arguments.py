@@ -5583,6 +5583,15 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     that result, including any resolution-dependent shift.
                     --model-type qwen-image-21 uses the checkpoint sample_sigmas
                     list when one is configured, and that same schedule otherwise.
+
+                    For --model-type minimax-h3-video, sigmas are the grid before the
+                    shift, between 0 and 1. A terminal 0 is appended when the list does
+                    not end with one, and the video and audio schedulers each apply their
+                    own shift. The step count becomes the number of sigmas including that
+                    0, so the model runs one step fewer. In expr: form, sigmas is
+                    the evenly spaced grid from 1 down to 0 without the terminal 0, so
+                    "expr: sigmas" reproduces the default schedule. --model-type
+                    minimax-h3-image does not accept --sigmas.
                     """
         )
     )
@@ -5728,10 +5737,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         dest='timesteps', metavar='CSV_INT_OR_EXPRESSION', type=_type_video_timesteps,
         help='One or more comma-separated timestep schedules or "expr: ..." expressions. '
               'Expressions receive the scheduler default array as "timesteps". The schedule length '
-              'sets the inference step count. Supported where the pipeline accepts a timestep '
-              'schedule, for example SD 1.5/2/XL, Kolors, Wan video-to-video, LTX-2, Motif-Video, '
-              'Hunyuan Video 1.5, Kandinsky 5 video, and Kandinsky 6 video. '
-              'Cannot be combined with --sigmas.'))
+              'sets the inference step count. Supported where the scheduler accepts a timestep '
+              'schedule: FlowMatch Euler, DDPM, Euler, Heun, DPM-Solver, LCM, and TCD. '
+              'MiniMax, Stable Cascade, and distilled Kandinsky 6 (PiFlow) '
+              'do not take one. Cannot be combined with --sigmas.'))
 
     actions.append(parser.add_argument(
         '-q21nk',

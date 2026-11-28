@@ -3,7 +3,7 @@ title: Motif-Video Text to Video
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"Motif-Technologies/Motif-Video-2B", "optional":false, "file-types":["models"]}]
 --model-type motif-video
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
-@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter":["FlowMatchEulerDiscreteScheduler", "DPMSolverMultistepScheduler"]}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
 @spectrum[{"id": "sp", "divider-after": true}]
 @dype[{"exclude":["sp"], "divider-after":true}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
@@ -16,7 +16,8 @@ title: Motif-Video Text to Video
 @switch[{"label":"LoRA Disk Fuse", "arg":"--lora-disk-fuse", "enabled-when":{"id":"lora","not-empty":true}}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "divider-after":true}]
 @int[{"id":"is","label":"Inference Steps","arg":"--inference-steps","default":50,"min":1,"exclude":["ts"]}]
-@string[{"id":"ts","label":"Timesteps (override)","arg":"--timesteps","default":"","exclude":["is"]}]
+@sigmas[{"id":"sigmas","label":"Sigmas","arg":"--sigmas","base":[1.0,0.979612,0.959224,0.938837,0.918449,0.898061,0.877673,0.857286,0.836898,0.81651,0.796122,0.775735,0.755347,0.734959,0.714571,0.694184,0.673796,0.653408,0.63302,0.612633,0.592245,0.571857,0.551469,0.531082,0.510694,0.490306,0.469918,0.449531,0.429143,0.408755,0.388367,0.36798,0.347592,0.327204,0.306816,0.286429,0.266041,0.245653,0.225265,0.204878,0.18449,0.164102,0.143714,0.123327,0.102939,0.082551,0.062163,0.041776,0.021388,0.001],"exclude":["ts"]}]
+@timesteps[{"id":"ts","label":"Timesteps (override)","arg":"--timesteps","default":"","exclude":["is","sigmas"]}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0, "divider-after":true}]
 @float[{"label":"Video Length (seconds)", "arg":"--video-lengths", "default":5, "min":0.1}]
 @float[{"label":"Video FPS", "arg":"--video-fps", "default":24, "min":1}]

@@ -48,6 +48,25 @@ def _legacy_ltx_timesteps(scheduler, width, height, num_frames, steps,
     """
     The timesteps the earlier LTX text and image pipelines build for this clip.
     """
+    sigmas = numpy.linspace(1.0, 1.0 / int(steps), int(steps))
+    return _legacy_ltx_probe(
+        scheduler, sigmas, width, height, num_frames, spatial, temporal).timesteps
+
+
+def _legacy_ltx_shifted_sigmas(scheduler, sigmas, width, height, num_frames,
+                               spatial=32, temporal=8) -> list[float]:
+    """
+    ``sigmas`` as the earlier LTX text and image pipelines shift them for this clip.
+
+    For a scheduler that :func:`_fix_legacy_ltx_condition_schedule` replaced
+    with one that applies no shift, so the condition pipeline samples a user
+    sigma list the same way the other pipelines do.
+    """
+    probe = _legacy_ltx_probe(scheduler, sigmas, width, height, num_frames, spatial, temporal)
+    return [float(value) for value in probe.sigmas[:-1]]
+
+
+def _legacy_ltx_probe(scheduler, sigmas, width, height, num_frames, spatial, temporal):
     cfg = scheduler.config
     latent_frames = (int(num_frames) - 1) // int(temporal) + 1
     seq = latent_frames * (int(height) // int(spatial)) * (int(width) // int(spatial))
@@ -58,11 +77,10 @@ def _legacy_ltx_timesteps(scheduler, width, height, num_frames, steps,
     slope = (max_shift - base_shift) / (max_seq - base_seq)
     mu = seq * slope + (base_shift - slope * base_seq)
     probe = scheduler.__class__.from_config(cfg)
-    sigmas = numpy.linspace(1.0, 1.0 / int(steps), int(steps))
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', RuntimeWarning)
-        probe.set_timesteps(int(steps), device='cpu', sigmas=sigmas, mu=float(mu))
-    return probe.timesteps
+        probe.set_timesteps(device='cpu', sigmas=sigmas, mu=float(mu))
+    return probe
 
 
 def _legacy_ltx_compression(pipe) -> tuple[int, int]:

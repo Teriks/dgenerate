@@ -105,6 +105,26 @@ def position_toplevel(master,
     toplevel.deiconify()
 
 
+def refit_toplevel(toplevel: tk.Toplevel, width: int, content: tk.Widget | None = None):
+    """Set the window height to its content, keeping the current position and width.
+
+    A fixed geometry does not grow when a row is shown later, which clips
+    the buttons at the bottom. The toplevel's requested height follows its
+    content while a geometry is set, so the window is resized in one step.
+    Clearing the geometry first would flash the window at its natural size.
+    ``width`` is used until the window has a width of its own.
+    """
+    del content
+    if not toplevel.winfo_exists() or not toplevel.winfo_viewable():
+        return
+    toplevel.update_idletasks()
+    x, y = toplevel.winfo_x(), toplevel.winfo_y()
+    current = toplevel.winfo_width()
+    height = max(toplevel.winfo_reqheight(), 1)
+    toplevel.minsize(toplevel.minsize()[0], height)
+    toplevel.geometry(f'{current if current > 1 else width}x{height}+{x}+{y}')
+
+
 class DialogState:
     """State class for managing singleton dialog window state"""
 

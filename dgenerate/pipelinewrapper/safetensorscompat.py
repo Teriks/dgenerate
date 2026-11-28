@@ -2610,6 +2610,7 @@ def _quantizer_classes():
         converted. Their tensors are all integer, so they load as is.
         """
         requires_calibration = False
+        use_keep_in_fp32_modules = True
 
         def validate_environment(self, *args, **kwargs):
             pass

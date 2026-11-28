@@ -66,6 +66,7 @@ class ConsoleSchemaBuilder:
             self._build_promptupscalers_schema()
             self._build_promptweighters_schema()
             self._build_karrasschedulers_schema()
+            self._build_compatible_schedulers_schema()
             self._build_quantizers_schema()
             self._build_directives_schema()
             self._build_functions_schema()
@@ -155,6 +156,45 @@ class ConsoleSchemaBuilder:
 
         with open(schema_file, 'w') as file:
             json.dump(schema, file)
+
+    def _build_compatible_schedulers_schema(self):
+        """Schedulers each --model-type can load, and which of them take a sigma list.
+
+        ``schedulers`` is ``compatible_scheduler_names``. ``default`` is
+        ``default_scheduler_name``. ``accepts-sigmas`` is the subset whose
+        ``set_timesteps`` accepts a custom sigma list, empty when
+        ``model_type_accepts_custom_sigmas`` is false. ``noise-config`` is
+        ``reference_noise_config`` when the model type has one. ``flow-shift``
+        is ``reference_flow_shift`` when the model type has one.
+        ``pipeline-sigmas`` is ``"linspace"`` when the pipeline, not the
+        scheduler, builds the default sigma list
+        (``model_type_uses_flow_default_sigmas``). The console reads this file
+        and does not import the pipeline.
+        """
+        schema_file = self.schemas_dir / 'compatibleschedulers.json'
+        schema = {}
+        for model_type in _pipelinewrapper.supported_model_type_strings():
+            names = _pipelinewrapper.compatible_scheduler_names(model_type)
+            entry = {
+                'default': _pipelinewrapper.default_scheduler_name(model_type),
+                'schedulers': names,
+                'accepts-sigmas': [
+                    name for name in names
+                    if _pipelinewrapper.scheduler_accepts_custom_sigmas(name)
+                    and _pipelinewrapper.model_type_accepts_custom_sigmas(model_type)],
+            }
+            noise = _pipelinewrapper.reference_noise_config(model_type)
+            if noise is not None:
+                entry['noise-config'] = noise
+            flow_shift = _pipelinewrapper.reference_flow_shift(model_type)
+            if flow_shift is not None:
+                entry['flow-shift'] = flow_shift
+            if _pipelinewrapper.model_type_uses_flow_default_sigmas(model_type):
+                entry['pipeline-sigmas'] = 'linspace'
+            schema[model_type] = entry
+        with open(schema_file, 'w') as file:
+            json.dump(schema, file, indent=2)
+            file.write('\n')
 
     def _build_quantizers_schema(self):
         """Build quantizers schema."""

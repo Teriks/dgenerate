@@ -28,10 +28,11 @@ title: Deep Floyd
 --model-type if
 @dropdown[{"label":"Stage 1 Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Stage 1 Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
-@karrasscheduler[{"label":"Stage 1 Scheduler", "arg":"--scheduler", "filter": ["DDPMScheduler"]}]
+@karrasscheduler[{"label":"Stage 1 Scheduler", "arg":"--scheduler"}]
 @switchradio[{"labels":["Stage 1 Model CPU Offload", "Stage 1 Model Sequential Offload", "Stage 1 Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @torchcompile[{"label":"Stage 1 Torch Compile","model-type":"if"}]
-@int[{"label":"Stage 1 Inference Steps", "arg":"--inference-steps", "default":60, "min":1}]
+@int[{"id":"is","label":"Stage 1 Inference Steps", "arg":"--inference-steps", "default":60, "min":1,"exclude":["ts"]}]
+@timesteps[{"id":"ts","label":"Stage 1 Timesteps (override)","arg":"--timesteps","default":"","exclude":["is"]}]
 @float[{"label":"Stage 1 Guidance Scale", "arg":"--guidance-scales", "default":7, "min":0}]
 --output-size 64
 @seeds[{"label":"Seeds"}]
@@ -46,7 +47,7 @@ title: Deep Floyd
 --model-type ifs
 @dropdown[{"label":"Stage 2 Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Stage 2 Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
-@karrasscheduler[{"label":"Stage 2 Scheduler", "arg":"--scheduler", "filter": ["DDPMScheduler"]}]
+@karrasscheduler[{"label":"Stage 2 Scheduler", "arg":"--scheduler"}]
 @switchradio[{"labels":["Stage 2 Model CPU Offload", "Stage 2 Model Sequential Offload", "Stage 2 Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
 @torchcompile[{"label":"Stage 2 Torch Compile","model-type":"ifs"}]
 @int[{"label":"Stage 2 Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]

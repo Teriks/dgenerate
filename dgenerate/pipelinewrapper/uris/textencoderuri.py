@@ -434,7 +434,7 @@ def _load_language_model_from_single_file(model_class, model_path: str, config_p
             value_dtype = torch.float32 if module in keep_fp32 else dtype
         accelerate.utils.set_module_tensor_to_device(model, target, 'cpu', value=value, dtype=value_dtype)
 
-    model.tie_weights()
+    _tie_loaded_weights(model)
     missing = _materialize_missing_tensors(model, dtype)
     _mark_missing_language_head(model, missing)
     if missing:
@@ -480,13 +480,111 @@ def _load_monolithic_state(
         no_split_module_classes,
 ):
     with _flattened_clip_checkpoint_keys(model):
-        return accelerate.load_checkpoint_and_dispatch(
-            model,
-            checkpoint=checkpoint,
-            device_map=device_map,
-            dtype=dtype,
-            no_split_module_classes=no_split_module_classes,
-        )
+        if isinstance(device_map, str):
+            # Placed while the tied groups are intact, so each group shares a device.
+            max_memory = None
+            if device_map != 'sequential':
+                max_memory = accelerate.utils.get_balanced_memory(
+                    model, no_split_module_classes=no_split_module_classes, dtype=dtype,
+                    low_zero=device_map == 'balanced_low_0')
+            device_map = accelerate.infer_auto_device_map(
+                model, max_memory=max_memory,
+                no_split_module_classes=no_split_module_classes, dtype=dtype)
+        aliases = _detach_unloaded_tied_aliases(model, checkpoint)
+        with _recording_loaded_tensors() as loaded:
+            accelerate.load_checkpoint_in_model(
+                model, checkpoint, device_map=device_map, dtype=dtype)
+        for alias, source in aliases:
+            _set_parameter(model, alias, model.get_parameter(source))
+            loaded.add(alias)
+        _warn_unloaded_parameters(model, checkpoint, loaded)
+        if device_map is None:
+            return model
+        return accelerate.dispatch_model(model, device_map=device_map)
+
+
+@contextlib.contextmanager
+def _recording_loaded_tensors():
+    """Within this context, collect the tensor names accelerate reads from a checkpoint."""
+    modeling = accelerate.utils.modeling
+    original = modeling.load_state_dict
+    names = set()
+
+    def load_state_dict(checkpoint_file, device_map=None):
+        loaded = original(checkpoint_file, device_map=device_map)
+        names.update(loaded.keys())
+        return loaded
+
+    modeling.load_state_dict = load_state_dict
+    try:
+        yield names
+    finally:
+        modeling.load_state_dict = original
+
+
+def _warn_unloaded_parameters(model, checkpoint, loaded: set[str]) -> None:
+    """Warn about parameters the file did not supply.
+
+    The model is built with random weights before the load, so these keep
+    that random initialization. Packed ComfyUI linears were filled before
+    the load.
+    """
+    packed = {name for name, module in model.named_modules()
+              if isinstance(module, _safetensorscompat.ComfyQuantLinear)}
+    unloaded = [
+        name for name, _ in model.named_parameters(remove_duplicate=False)
+        if name not in loaded and name.rpartition('.')[0] not in packed]
+    if not unloaded:
+        return
+    shown = ', '.join(unloaded[:5]) + (', ...' if len(unloaded) > 5 else '')
+    _messages.warning(
+        f'Text encoder file "{checkpoint}" holds no weights for {len(unloaded)} '
+        f'parameters, which keep their random initialization: {shown}. '
+        f'The file may not match this encoder class.')
+
+
+def _set_parameter(model, name: str, parameter) -> None:
+    module_name, _, tensor_name = name.rpartition('.')
+    setattr(model.get_submodule(module_name) if module_name else model, tensor_name, parameter)
+
+
+def _detach_unloaded_tied_aliases(model, checkpoint) -> list[tuple[str, str]]:
+    """Put tied aliases the file does not store on the meta device.
+
+    Loading a tensor replaces one parameter of a tied group and breaks the
+    tie. Accelerate then reties the group to its first non-meta member in
+    name order. For T5 and UMT5 that is ``encoder.embed_tokens.weight``, which
+    still holds the random initialization, so the loaded ``shared.weight``
+    would be discarded.
+
+    :return: ``(alias, stored name)`` pairs to retie after the load
+    """
+    header = _safetensorscompat._read_header(checkpoint) or {}
+    aliases = []
+    for group in accelerate.utils.find_tied_parameters(model):
+        source = next((name for name in group if name in header), None)
+        if source is None:
+            continue
+        for name in group:
+            if name not in header:
+                accelerate.utils.set_module_tensor_to_device(model, name, 'meta')
+                aliases.append((name, source))
+    return aliases
+
+
+def _tie_loaded_weights(model) -> None:
+    """Tie each group to the member the file stored.
+
+    Without ``missing_keys``, transformers ties toward its declared source, so
+    a file holding only ``encoder.embed_tokens.weight`` would leave T5
+    ``shared.weight`` on the meta device.
+    """
+    if not isinstance(model, transformers.PreTrainedModel):
+        model.tie_weights()
+        return
+    missing = {name for name, tensor in model.named_parameters(remove_duplicate=False)
+               if tensor.device.type == 'meta'}
+    model.tie_weights(missing_keys=missing)
 
 
 def _keep_in_fp32_module_names(model) -> list[str]:
@@ -1540,7 +1638,7 @@ def _assign_gguf_text_encoder(model, state: dict, dtype: torch.dtype, rename, tr
         accelerate.utils.set_module_tensor_to_device(
             model, target, 'cpu', value=value, dtype=value_dtype)
 
-    model.tie_weights()
+    _tie_loaded_weights(model)
     missing = _materialize_missing_tensors(model, dtype)
     _mark_missing_language_head(model, missing)
     if missing:

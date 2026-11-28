@@ -1416,7 +1416,17 @@ match the model type.
      - ❌
      - ❌
 
-   * - Sigmas and audio guidance
+   * - ``--sigmas`` and ``--timesteps``
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+
+   * - Audio guidance
      - ✅
      - ❌
      - ❌
@@ -1533,7 +1543,8 @@ are tested with LTX-Video. LTX video conditioning covers first and last frames, 
 
 No video model accepts ``--control-loras``. ``--control-nets`` is MiniMax-H3-Fun-Controlnet-Union-2.0 on ``minimax-h3-video`` only. ``--loras`` is supported on every video model type.
 
-Wan video-to-video is the only Wan mode that uses ``--timesteps``. Wan accepts
+``--sigmas`` and ``--timesteps`` need a scheduler that takes them: Wan's default
+``UniPCMultistepScheduler`` takes sigmas only, ``FlowMatchEulerDiscreteScheduler`` takes both. Wan accepts
 ``FlowMatchEulerDiscreteScheduler`` (``shift`` and ``use-dynamic-shifting``) and the checkpoint
 scheduler ``UniPCMultistepScheduler`` (``flow-shift``). A Wan 2.2 LoRA URI can set
 ``component=transformer_2`` to load onto the low-noise expert. ``wan-animate-2`` expects a
@@ -1544,7 +1555,7 @@ HunyuanVideo 1.5 supports text-to-video and single-image-to-video. ``--loras`` a
 Diffusers, original, Comfy, and Musubi layouts. LightX2V files also merge ``.diff`` and
 ``.diff_b`` weight updates, including the condition-type embedding. Motif-Video supports
 text-to-video and first-frame image-to-video; ``--loras`` accepts Diffusers and Musubi
-layouts, and ``--timesteps`` is Motif-Video specific. Kandinsky 5.0 Video has Lite and Pro
+layouts. Kandinsky 5.0 Video has Lite and Pro
 checkpoints for text-to-video and image-to-video. GGUF transformer replacement is available for all three;
 the only published Kandinsky 5.0 Video GGUF checkpoints are T2V Pro. These three pipelines do not return
 audio in dgenerate.

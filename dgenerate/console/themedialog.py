@@ -74,6 +74,13 @@ def background():
     return _colors['background']
 
 
+def field():
+    """Text-field color last applied, or ``None`` when dialogs are not themed."""
+    if _colors is None:
+        return None
+    return _colors['field']
+
+
 def foreground():
     """Editor foreground last applied, or ``None`` when dialogs are not themed."""
     if _colors is None:
@@ -313,6 +320,7 @@ def _options(widget, palette):
         ('*Entry.highlightColor', sel),
         ('*Entry.disabledBackground', palette['disabled_field']),
         ('*Entry.disabledForeground', palette['disabled']),
+        ('*Entry.readonlyBackground', field),
         ('*Text.background', field),
         ('*Text.foreground', fg),
         ('*Text.insertBackground', fg),
@@ -428,6 +436,8 @@ def _paint(widget, palette):
         if klass in ('Entry', 'Spinbox'):
             options['disabledbackground'] = palette['disabled_field']
             options['disabledforeground'] = palette['disabled']
+            if klass == 'Entry':
+                options['readonlybackground'] = fill
             if platform.system() == 'Darwin':
                 options.update(
                     relief='flat',

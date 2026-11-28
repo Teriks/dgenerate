@@ -94,8 +94,12 @@ class TestVideoModels(unittest.TestCase):
 
         self.assertEqual(_ltx._ltx_default_timesteps(Pipe(), False, 4), [1000, 750, 500, 250])
         self.assertEqual(
-            _ltx._ltx_default_timesteps(Pipe(), True, 4),
+            _ltx._ltx_default_timesteps(Pipe(), True, None),
             [round(value * 1000) for value in DISTILLED_SIGMA_VALUES])
+        resampled = _ltx._ltx_distilled_sigmas(list(DISTILLED_SIGMA_VALUES), 4)
+        self.assertEqual(
+            _ltx._ltx_default_timesteps(Pipe(), True, 4),
+            [round(value * 1000) for value in resampled])
 
     @staticmethod
     def _wan_timesteps_call(timesteps, video=True):
@@ -106,6 +110,10 @@ class TestVideoModels(unittest.TestCase):
             num_inference_steps = 2
 
             def set_timesteps(self, num_inference_steps=None, device=None, timesteps=None):
+                if timesteps is not None:
+                    self.timesteps = numpy.array(timesteps)
+                    self.num_inference_steps = len(timesteps)
+                    return
                 self.timesteps = numpy.linspace(999, 0, num_inference_steps)
                 self.num_inference_steps = num_inference_steps
 
@@ -129,6 +137,10 @@ class TestVideoModels(unittest.TestCase):
 
         def invoke(wrapper, pipeline, kwargs, user_args=None):
             captured['kwargs'] = kwargs
+            if 'timesteps' not in kwargs:
+                # The text and image pipelines call set_timesteps(steps).
+                pipeline.scheduler.set_timesteps(kwargs['num_inference_steps'])
+                pipeline.ran_timesteps = [int(value) for value in pipeline.scheduler.timesteps]
 
             class Output:
                 frames = [PIL.Image.new('RGB', (4, 4))]
@@ -199,8 +211,11 @@ class TestVideoModels(unittest.TestCase):
         self.assertEqual(pipe.scheduler.num_inference_steps, 2)
         self.assertEqual(pipe.scheduler.timesteps.tolist(), [5, 1])
 
-        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
-            self._wan_timesteps_call([900, 600, 300], video=False)
+        kwargs, args, pipe = self._wan_timesteps_call([900, 600, 300], video=False)
+        self.assertNotIn('timesteps', kwargs)
+        self.assertEqual(kwargs['num_inference_steps'], 3)
+        self.assertEqual(pipe.ran_timesteps, [900, 600, 300])
+        self.assertNotIn('set_timesteps', pipe.scheduler.__dict__)
 
     def test_timesteps_config_checks(self):
         config = _config(
@@ -301,25 +316,20 @@ class TestVideoModels(unittest.TestCase):
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
             _videopipelines.ltx.ltx_family_for_model_type(ltx2, {'_class_name': 'LTXPipeline'})
 
-    def test_distilled_steps_warning_shows_passed_value(self):
-        default = _pipelinewrapper.constants.DEFAULT_FALLBACK_INFERENCE_STEPS
-        self.assertIsNone(_video_ltx._ltx_ignored_steps_warning(8, 8))
-        suffix = ' Pass --inference-steps 8 to silence this warning.'
-        self.assertIsNone(
-            _video_ltx._ltx_ignored_steps_warning(None, 8))
-        self.assertEqual(
-            _video_ltx._ltx_ignored_steps_warning(default, 8),
-            'The LTX distilled checkpoint uses an 8-value sigma schedule '
-            f'and ignores --inference-steps {default} (the default).{suffix}')
-        self.assertEqual(
-            _video_ltx._ltx_ignored_steps_warning(20, 8),
-            'The LTX distilled checkpoint uses an 8-value sigma schedule '
-            f'and ignores --inference-steps 20.{suffix}')
-        steps, warning = _video_ltx._ltx_distilled_inference_steps(default, 8)
-        self.assertEqual(steps, 8)
-        self.assertIn('--inference-steps 8', warning)
-        steps, warning = _video_ltx._ltx_distilled_inference_steps(8, 8)
-        self.assertEqual((steps, warning), (8, None))
+    def test_distilled_steps_resample_the_table(self):
+        from diffusers.pipelines.ltx2.utils import DISTILLED_SIGMA_VALUES
+        table = [float(value) for value in DISTILLED_SIGMA_VALUES]
+        self.assertEqual(_video_ltx._ltx_distilled_sigmas(table, None), table)
+        self.assertEqual(_video_ltx._ltx_distilled_sigmas(table, len(table)), table)
+        for steps in (2, 4, 13, 30):
+            sigmas = _video_ltx._ltx_distilled_sigmas(table, steps)
+            self.assertEqual(len(sigmas), steps)
+            self.assertAlmostEqual(sigmas[0], table[0])
+            self.assertAlmostEqual(sigmas[-1], table[-1])
+            self.assertTrue(all(a > b for a, b in zip(sigmas, sigmas[1:])))
+        self.assertEqual(_video_ltx._ltx_distilled_sigmas(table, 1), [table[0]])
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _video_ltx._ltx_distilled_sigmas(table, 0)
 
     def test_unknown_video_type_is_rejected(self):
         with self.assertRaises(ValueError):

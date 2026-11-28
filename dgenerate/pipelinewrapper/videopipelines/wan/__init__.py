@@ -23,12 +23,13 @@
 
 from __future__ import annotations
 
-import inspect
+import contextlib
 
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
+import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.sampling as _sampling
 import dgenerate.types as _types
 import dgenerate.pipelinewrapper.videopipelines.media as _media
@@ -36,17 +37,9 @@ import dgenerate.pipelinewrapper.videopipelines as _vp
 import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
 from . import animate, animate2, common
 
-WAN_SCHEDULER_NAMES = frozenset({
-    'FlowMatchEulerDiscreteScheduler',
-    'UniPCMultistepScheduler',
-})
-WAN_ANIMATE_SCHEDULER_NAMES = frozenset({'UniPCMultistepScheduler'})
-WAN_ANIMATE_2_SCHEDULER_NAMES = frozenset({
-    'FlowMatchEulerDiscreteScheduler',
-    'EulerDiscreteScheduler',
-    'UniPCMultistepScheduler',
-    'DPMSolverMultistepScheduler',
-})
+WAN_SCHEDULER_NAMES = frozenset(_schedulers.compatible_scheduler_names('wan'))
+WAN_ANIMATE_SCHEDULER_NAMES = frozenset(_schedulers.compatible_scheduler_names('wan-animate'))
+WAN_ANIMATE_2_SCHEDULER_NAMES = frozenset(_schedulers.compatible_scheduler_names('wan-animate-2'))
 
 
 def wan_family_from_index(index: dict | None) -> str:
@@ -425,23 +418,30 @@ def _call_wan(wrapper, user_args):
 
     custom_timesteps = None
     if user_args.timesteps is not None:
-        if mode != 'wan-video':
+        if not _schedulers.scheduler_accepts_custom_timesteps(pipe.scheduler):
             raise _pipelines.UnsupportedPipelineConfigError(
-                '--timesteps is only used for Wan video-to-video.')
-        if 'timesteps' not in inspect.signature(pipe.scheduler.set_timesteps).parameters:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                'The loaded Wan scheduler does not support custom timesteps.')
+                f'The loaded Wan scheduler, {type(pipe.scheduler).__name__}, '
+                f'does not support custom timesteps.')
         if isinstance(user_args.timesteps, str):
             base_timesteps = _schedules._default_video_timesteps(pipe, 'wan', steps)
             custom_timesteps = _schedules._eval_video_timesteps_expression(
                 user_args.timesteps, base_timesteps)
         else:
             custom_timesteps = [int(value) for value in user_args.timesteps]
-        if not custom_timesteps:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                'Wan timesteps cannot be empty.')
+        _schedules._check_timesteps(custom_timesteps, pipe.scheduler, 'Wan')
         kwargs['num_inference_steps'] = len(custom_timesteps)
         user_args.inference_steps = len(custom_timesteps)
+
+    custom_sigmas = None
+    if user_args.sigmas is not None:
+        if not _schedulers.scheduler_accepts_custom_sigmas(type(pipe.scheduler)):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'The loaded Wan scheduler, {type(pipe.scheduler).__name__}, '
+                f'does not support custom sigmas.')
+        custom_sigmas = type(wrapper)._sigmas_eval('Wan', pipe, steps, user_args.sigmas)
+        steps = _schedules._sigma_step_count(pipe.scheduler, custom_sigmas)
+        kwargs['num_inference_steps'] = steps
+        user_args.inference_steps = steps
 
     if mode == 'wan-image':
         kwargs['image'] = user_args.images[0]
@@ -460,7 +460,14 @@ def _call_wan(wrapper, user_args):
             '--wan-conditioning-scales is only used with a Wan VACE checkpoint.')
 
     # WanVideoToVideoPipeline forwards ``timesteps`` to retrieve_timesteps itself.
-    output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
+    # The other Wan pipelines call set_timesteps(steps), the schedule is
+    # substituted there.
+    with contextlib.ExitStack() as stack:
+        if custom_timesteps is not None and 'timesteps' not in kwargs:
+            stack.enter_context(_schedules._forced_scheduler_timesteps(pipe.scheduler, custom_timesteps))
+        if custom_sigmas is not None:
+            stack.enter_context(_schedules._forced_scheduler_sigmas(pipe.scheduler, custom_sigmas))
+        output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
     frames = _media.frames_from_output(getattr(output, 'frames', output))
     return frames, None, None, fps
 

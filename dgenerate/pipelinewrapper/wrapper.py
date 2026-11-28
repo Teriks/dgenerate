@@ -495,7 +495,9 @@ def _resolve_omitted_sampling(
     if user_args.inference_steps is None:
         sigmas = user_args.sigmas
         if isinstance(sigmas, (list, tuple)) and sigmas and not isinstance(sigmas[0], str):
-            user_args.inference_steps = len(sigmas)
+            # A trailing 0 is where sampling ends, not a step.
+            terminal = len(sigmas) > 1 and float(sigmas[-1]) == 0.0
+            user_args.inference_steps = len(sigmas) - (1 if terminal else 0)
         elif _enums.model_type_is_qwen_image_21(model_type):
             import dgenerate.pipelinewrapper.featuredefaults as _featuredefaults
             sample = _featuredefaults.configured_sample_sigmas(pipeline)
@@ -993,6 +995,11 @@ class PipelineWrapper:
         # Initialize inpaint crop info (used internally for crop/paste operations)
         self._inpaint_crop_info = None
         self._padding_mask_crop = None
+
+        # (pipeline, 'sigmas' | 'timesteps', value) applied at the scheduler
+        # for the current call, see _force_scheduler_schedule
+        self._forced_schedules = []
+        self._forced_active = set()
 
         if adetailer_detector_uris:
             self._parsed_adetailer_detector_uris = []
@@ -2484,9 +2491,26 @@ class PipelineWrapper:
     def _set_accepted_call_argument(self, pipeline_args, name, value, message):
         if value is None:
             return
-        if name not in inspect.signature(self._pipeline.__call__).parameters:
+        if name not in self._call_argument_names(self._pipeline):
             raise _pipelines.UnsupportedPipelineConfigError(message)
         pipeline_args[name] = value
+
+    @staticmethod
+    def _call_argument_names(pipeline) -> set[str]:
+        """Named arguments a pipeline call accepts.
+
+        A modular pipeline takes block inputs, such as ``sigmas``, through ``**kwargs``.
+        """
+        call = pipeline.__call__
+        # Diffusers pipelines wrap __call__ with torch.no_grad(); custom overrides may not.
+        func = getattr(call, '__wrapped__', None) or call
+        spec = inspect.getfullargspec(func)
+        names = set(spec.args) | set(spec.kwonlyargs)
+        if isinstance(pipeline, diffusers.ModularPipeline):
+            names.update(
+                param.name for param in getattr(pipeline.blocks, 'inputs', None) or ()
+                if param.name)
+        return names
 
     def _prepare_inpaint_crop(self, user_args: _arguments.GenerationArguments):
         """
@@ -2921,11 +2945,7 @@ class PipelineWrapper:
 
         pipeline_kwargs = user_args.get_pipeline_wrapper_kwargs()
 
-        call = pipeline.__call__
-        # Diffusers pipelines wrap __call__ with torch.no_grad(); custom overrides may not.
-        func = getattr(call, '__wrapped__', None) or call
-
-        if pipeline_arg_name in inspect.getfullargspec(func).args:
+        if pipeline_arg_name in self._call_argument_names(pipeline):
             if user_arg_name in pipeline_kwargs:
                 # Only provide if the user provided the option
                 # otherwise, defer to the pipelines default value
@@ -2938,11 +2958,71 @@ class PipelineWrapper:
                 return
 
             val = _types.default(getattr(user_args, user_arg_name), None)
+            if val is not None and self._force_scheduler_schedule(
+                    pipeline, pipeline_args, pipeline_arg_name, val, transform):
+                return
             if val is not None:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     f'{option_name} cannot be used with --model-type "{self.model_type_string}" in '
                     f'{_enums.get_pipeline_type_string(self._pipeline_type)} mode with the current '
                     f'combination of arguments and model.')
+
+    def _force_scheduler_schedule(self,
+                                  pipeline,
+                                  pipeline_args: dict,
+                                  name: str,
+                                  val,
+                                  transform: typing.Callable[[typing.Any], typing.Any] | None) -> bool:
+        """Apply ``sigmas`` or ``timesteps`` at the scheduler of ``pipeline``.
+
+        For pipelines whose call has no such argument but whose scheduler
+        accepts one in ``set_timesteps``. Returns False when the scheduler
+        cannot take it. The schedule applies to ``pipeline`` only, see
+        :meth:`PipelineWrapper._forced_schedule_context`.
+        """
+        if name not in ('sigmas', 'timesteps'):
+            return False
+        scheduler = getattr(pipeline, 'scheduler', None)
+        if scheduler is None or not hasattr(scheduler, 'set_timesteps'):
+            return False
+        if name == 'sigmas':
+            if not _schedulers.scheduler_accepts_custom_sigmas(type(scheduler)):
+                return False
+        elif not _schedulers.scheduler_accepts_custom_timesteps(scheduler):
+            return False
+
+        val = val if not transform else transform(val)
+
+        import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
+        # The pipeline sizes its loop and img2img strength from
+        # num_inference_steps, set_timesteps ignores it here.
+        steps = _schedules._sigma_step_count(scheduler, val) if name == 'sigmas' else len(val)
+
+        self._forced_schedules.append((pipeline, name, val))
+        pipeline_args['num_inference_steps'] = int(steps)
+        return True
+
+    @contextlib.contextmanager
+    def _forced_schedule_context(self, pipeline):
+        """Enter the schedules :meth:`_force_scheduler_schedule` recorded for ``pipeline``.
+
+        Enter it outside any context that also patches ``set_timesteps``, such
+        as the denoise range, so that patch sees the custom schedule. A nested
+        entry for a schedule that is already applied does nothing.
+        """
+        import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
+        entries = [entry for entry in self._forced_schedules
+                   if entry[0] is pipeline and id(entry) not in self._forced_active]
+        with contextlib.ExitStack() as stack:
+            for entry in entries:
+                _, name, val = entry
+                if name == 'sigmas':
+                    stack.enter_context(_schedules._forced_scheduler_sigmas(pipeline.scheduler, val))
+                else:
+                    stack.enter_context(_schedules._forced_scheduler_timesteps(pipeline.scheduler, val))
+                self._forced_active.add(id(entry))
+                stack.callback(self._forced_active.discard, id(entry))
+            yield
 
     def _get_sdxl_conditioning_args(self, pipeline, pipeline_args: dict, user_args: _arguments.GenerationArguments,
                                     user_prefix=None):
@@ -3348,20 +3428,7 @@ class PipelineWrapper:
                                              'ip_adapter_image', 'ip_adapter_images',
                                              'IP Adapter images')
 
-        self._set_non_universal_pipeline_arg(
-            self._pipeline,
-            pipeline_args, user_args,
-            'sigmas', 'sigmas',
-            '--sigmas',
-            transform=functools.partial(
-                self._sigmas_eval,
-                'primary',
-                self._pipeline,
-                _types.default(
-                    user_args.inference_steps,
-                    _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)
-            ))
-        self._set_timesteps_pipeline_arg(pipeline_args, user_args)
+        self._set_schedule_pipeline_args(pipeline_args, user_args)
 
         if hasattr(self._pipeline, 'controlnet'):
             pipeline_args['controlnet_conditioning_scale'] = \
@@ -3396,7 +3463,7 @@ class PipelineWrapper:
             height=self._inference_height,
             enabled=user_args.sada,
             **self._get_sada_args(user_args)
-        ), _denoise_range_mod.denoise_range(
+        ), self._forced_schedule_context(self._pipeline), _denoise_range_mod.denoise_range(
             self._pipeline,
             user_args.denoising_start,
             user_args.denoising_end
@@ -3652,20 +3719,7 @@ class PipelineWrapper:
                         f'provided number of input images.')
         pipeline_args['num_images_per_prompt'] = batch_size
 
-        self._set_non_universal_pipeline_arg(
-            self._pipeline,
-            pipeline_args, user_args,
-            'sigmas', 'sigmas',
-            '--sigmas',
-            transform=functools.partial(
-                self._sigmas_eval,
-                'primary',
-                self._pipeline,
-                _types.default(
-                    user_args.inference_steps,
-                    _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)
-            ))
-        self._set_timesteps_pipeline_arg(pipeline_args, user_args)
+        self._set_schedule_pipeline_args(pipeline_args, user_args)
 
         if hasattr(self._pipeline, 'controlnet'):
             pipeline_args['controlnet_conditioning_scale'] = \
@@ -3704,7 +3758,7 @@ class PipelineWrapper:
             flux3_sampling = _promptenhance.rewrite_sampling(
                 getattr(self._pipeline, 'prompt_upsampler', None),
                 user_args, self._device)
-        with _denoise_range_mod.denoise_range(
+        with self._forced_schedule_context(self._pipeline), _denoise_range_mod.denoise_range(
             self._pipeline,
             user_args.denoising_start,
             user_args.denoising_end
@@ -3859,7 +3913,8 @@ class PipelineWrapper:
             if getattr(configured_pipeline, '_cache_dit_ray_pipeline_enabled', False):
                 call_pipeline = _get_cache_dit_ray_pipeline_call_proxy(configured_pipeline)
             with self._dype_context(
-                    configured_pipeline, user_args, pipeline_args=kwargs):
+                    configured_pipeline, user_args, pipeline_args=kwargs), \
+                    self._forced_schedule_context(pipeline):
                 return _pipelines.call_pipeline(pipeline=call_pipeline, **kwargs)
 
     def _call_asdff(self,
@@ -3959,7 +4014,8 @@ class PipelineWrapper:
                 asdff_pipe.crop_control_image = self._adetailer_crop_control_image
 
                 with self._dype_context(
-                        configured_pipeline, user_args, pipeline_args=pipeline_args):
+                        configured_pipeline, user_args, pipeline_args=pipeline_args), \
+                        self._forced_schedule_context(self._pipeline):
                     asdff_output = asdff_pipe(
                         pipeline_args=pipeline_args,
                         model_path=detector_uri.get_model_path(
@@ -4053,7 +4109,8 @@ class PipelineWrapper:
     @staticmethod
     def _pipeline_uses_flow_default_sigmas(pipeline) -> bool:
         """
-        Flux.1, Flux.2, FLUX.3, Z-Image, Qwen-Image, Krea 2, and HunyuanImage,
+        Flux.1, Flux.2, FLUX.3, Z-Image, Qwen-Image, Krea 2, HunyuanImage,
+        HunyuanVideo 1.5, and the earlier LTX-Video text and image pipelines,
         including Fill, Kontext, Klein, Omni, edit, and layered.
 
         Their ``__call__`` replaces a missing ``sigmas`` argument with an evenly
@@ -4061,9 +4118,13 @@ class PipelineWrapper:
         pipeline has one. An expression has to start from that schedule.
         Qwen-Image 2.1 is included here for the linspace fallback. A configured
         ``sample_sigmas`` list is handled in :py:meth:`_sigmas_eval`.
+
+        :param pipeline: a pipeline, or a pipeline class
         """
-        return pipeline.__class__.__name__.startswith(
-            ('Flux', 'ZImage', 'QwenImage', 'Krea2', 'HunyuanImage'))
+        cls = pipeline if isinstance(pipeline, type) else pipeline.__class__
+        return cls.__name__.startswith(
+            ('Flux', 'ZImage', 'QwenImage', 'Krea2', 'HunyuanImage', 'HunyuanVideo15',
+             'LTXPipeline', 'LTXImageToVideoPipeline'))
 
     @staticmethod
     def _sigmas_eval(model_title: str, pipeline, steps: int, val: str | list):
@@ -4078,7 +4139,7 @@ class PipelineWrapper:
             )
 
         if not isinstance(val, str):
-            return val
+            return PipelineWrapper._sigma_array_for_scheduler(pipeline, val)
 
         name = pipeline.__class__.__name__
         sample = None
@@ -4099,20 +4160,7 @@ class PipelineWrapper:
             # linspace(1, 0, steps + 1)[:-1], which is the same sequence.
             sigmas = numpy.linspace(1.0, 1.0 / int(steps), int(steps))
         else:
-            try:
-                pipeline.scheduler.set_timesteps(steps)
-            except Exception as e:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    f'Custom sigmas not supported for the {model_title} model and scheduler combination.'
-                ) from e
-
-            try:
-                sigmas = pipeline.scheduler.sigmas
-            except AttributeError as e:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    f'Selected {model_title} model scheduler '
-                    f'{pipeline.scheduler.__class__.__name__} did not produce sigmas.'
-                ) from e
+            sigmas = PipelineWrapper._expression_base_sigmas(model_title, pipeline.scheduler, int(steps))
 
         interpreter = _eval.standard_interpreter(
             symtable=_eval.safe_builtins()
@@ -4133,8 +4181,268 @@ class PipelineWrapper:
                 f'Sigmas expression for the {model_title} model '
                 f'did not evaluate to an array, got: {val}'
             )
+        return PipelineWrapper._sigma_array_for_scheduler(pipeline, val)
+
+    @staticmethod
+    def _edm_euler_sigmas(scheduler, array: numpy.ndarray):
+        """The Karras ramp that makes EDM Euler produce ``array``.
+
+        EDM Euler treats ``set_timesteps(sigmas=)`` as a ramp in [0, 1] and
+        builds its schedule from it. The console edits the resulting sigma
+        values, so those values are turned back into the ramp. The method
+        calls ``tensor.to`` and does not accept a numpy array.
+        """
+        config = scheduler.config
+        if config.sigma_schedule != 'karras':
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'EDMEulerScheduler with sigma-schedule={config.sigma_schedule} '
+                f'uses only the length of a custom sigma list and ignores the '
+                f'values. Use sigma-schedule=karras with --sigmas.')
+        rho = float(config.rho)
+        min_inv = float(config.sigma_min) ** (1.0 / rho)
+        max_inv = float(config.sigma_max) ** (1.0 / rho)
+        span = min_inv - max_inv
+        if span == 0.0:
+            ramp = numpy.zeros_like(array)
         else:
-            return list(val)
+            ramp = (numpy.power(array, 1.0 / rho) - max_inv) / span
+        return torch.tensor(ramp, dtype=torch.float64)
+
+    @staticmethod
+    def _euler_discrete_sigmas(scheduler, array: numpy.ndarray):
+        """``array`` with the terminal sigma Euler expects at the end.
+
+        Other schedulers treat N sigmas as N steps and append the terminal
+        value themselves. Euler uses the list verbatim, so the last value is
+        where sampling stops. Without a terminal it would run one step fewer
+        and leave the image at the last sigma instead of at 0.
+        """
+        if float(array[-1]) == 0.0:
+            return array
+        if getattr(scheduler.config, 'final_sigmas_type', 'zero') == 'sigma_min':
+            alpha = float(scheduler.alphas_cumprod[0])
+            last = ((1 - alpha) / alpha) ** 0.5
+            if last >= float(array[-1]):
+                return array
+        else:
+            last = 0.0
+        return numpy.append(array, last)
+
+    @staticmethod
+    def _minimax_h3_sigmas(scheduler, array: numpy.ndarray):
+        """``array`` with the terminal 0 MiniMax-H3 requires at the end.
+
+        The values are in [0, 1]. The scheduler shifts them with
+        ``shift_provided_sigmas``, which the MiniMax-H3 video call turns on
+        unless ``--scheduler`` turned it off.
+        """
+        if float(array.max()) > 1.0 or float(array.min()) < 0.0:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'MiniMaxH3Scheduler sigmas are between 0 and 1. '
+                f'Got {float(array.max()):.6g} down to {float(array.min()):.6g}.')
+        if float(array[-1]) == 0.0:
+            return array
+        return numpy.append(array, 0.0)
+
+    # Schedulers whose set_timesteps(sigmas=) does not take the step sigmas
+    # as a numpy array. Each adapter returns what the scheduler expects.
+    _SIGMA_ADAPTERS = {
+        'EDMEulerScheduler': _edm_euler_sigmas,
+        'EulerDiscreteScheduler': _euler_discrete_sigmas,
+        'MiniMaxH3Scheduler': _minimax_h3_sigmas,
+    }
+
+    @staticmethod
+    def _sigmas_for_set_timesteps(scheduler, array: numpy.ndarray):
+        """Value ``set_timesteps(sigmas=)`` should receive for ``array``."""
+        adapter = PipelineWrapper._SIGMA_ADAPTERS.get(scheduler.__class__.__name__)
+        if adapter is None:
+            return array
+        return adapter.__func__(scheduler, array)
+
+    @staticmethod
+    def _expression_base_sigmas(model_title: str, scheduler, steps: int) -> numpy.ndarray:
+        """The ``sigmas`` a sigma expression starts from.
+
+        This is the list that, passed back as ``sigmas``, reproduces the
+        scheduler's default schedule. FlowMatch and UniPC flow sigmas shift a
+        passed list again, so their list is the grid before the shift. The
+        terminal value ``set_timesteps`` appends is not part of it.
+        """
+        config = getattr(scheduler, 'config', None)
+        name = scheduler.__class__.__name__
+        if name == 'FlowMatchEulerDiscreteScheduler' and not getattr(config, 'invert_sigmas', False):
+            start = scheduler._sigma_to_t(scheduler.sigma_max)
+            stop = scheduler._sigma_to_t(scheduler.sigma_min)
+            return numpy.linspace(float(start), float(stop), steps) / config.num_train_timesteps
+        if (name == 'UniPCMultistepScheduler' and getattr(config, 'use_flow_sigmas', False)
+                and not getattr(config, 'use_karras_sigmas', False)):
+            return numpy.linspace(1.0, 1.0 / config.num_train_timesteps, steps + 1)[:-1]
+        if name == 'MiniMaxH3Scheduler':
+            # The step count includes the terminal 0, which is not part of the list.
+            return numpy.linspace(1.0, 0.0, steps)[:-1]
+
+        import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
+        try:
+            with _schedules._preserved_scheduler_state(scheduler):
+                scheduler.set_timesteps(
+                    steps, **PipelineWrapper._dynamic_shift_probe_kwargs(scheduler))
+                sigmas = getattr(scheduler, 'sigmas', None)
+                if sigmas is not None:
+                    sigmas = numpy.array(
+                        sigmas.detach().cpu() if torch.is_tensor(sigmas) else sigmas,
+                        dtype=numpy.float64)
+        except Exception as e:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Custom sigmas not supported for the {model_title} model and scheduler combination.'
+            ) from e
+        if sigmas is None:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Selected {model_title} model scheduler '
+                f'{name} did not produce sigmas.')
+        if len(sigmas) == steps + 1:
+            sigmas = sigmas[:-1]
+        return sigmas
+
+    @staticmethod
+    def _dynamic_shift_probe_kwargs(scheduler) -> dict:
+        """``mu`` for a ``set_timesteps`` call made outside the pipeline.
+
+        With dynamic shifting the pipeline computes ``mu`` from the image size,
+        and ``set_timesteps`` raises without one. The value returned leaves
+        the schedule unshifted: 0 for an exponential shift, 1 for a linear one.
+        """
+        config = getattr(scheduler, 'config', None)
+        if not getattr(config, 'use_dynamic_shifting', False):
+            return {}
+        if 'mu' not in inspect.signature(scheduler.set_timesteps).parameters:
+            return {}
+        linear = getattr(config, 'time_shift_type', 'exponential') == 'linear'
+        return {'mu': 1.0 if linear else 0.0}
+
+    @staticmethod
+    def _noise_sigma_ceiling(scheduler) -> float | None:
+        """Largest sigma a noise scheduler can map to a training timestep.
+
+        Euler-style schedulers interpolate each sigma onto the training
+        sigmas. A sigma above the last one clamps to the last timestep, so
+        several sigmas share a timestep and stepping breaks.
+        """
+        alphas_cumprod = getattr(scheduler, 'alphas_cumprod', None)
+        if alphas_cumprod is None or not hasattr(scheduler, '_sigma_to_t'):
+            return None
+        # Continuous timesteps are 0.25 * log(sigma) and have no upper limit.
+        if getattr(scheduler.config, 'timestep_type', 'discrete') == 'continuous':
+            return None
+        alphas = torch.as_tensor(alphas_cumprod, dtype=torch.float64)
+        return float((((1 - alphas) / alphas) ** 0.5).max())
+
+    @staticmethod
+    def _sigma_array_for_scheduler(pipeline, val):
+        """
+        A 1-D sequence the scheduler can take as ``sigmas``.
+
+        A Python list breaks schedulers that multiply ``sigmas`` by a float,
+        including UniPC with ``use-flow-sigmas``. Flow sigmas also have to
+        stay in (0, 1]; a noise schedule from Euler or DPM starts far above 1.
+        EDM Euler wants a torch tensor instead of this numpy array.
+        """
+        try:
+            array = numpy.asarray(val, dtype=numpy.float64).reshape(-1)
+        except (TypeError, ValueError) as error:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Sigmas must be numbers, got: {val}'
+            ) from error
+        if array.size < 1 or not numpy.isfinite(array).all():
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Sigmas must be finite numbers.')
+
+        scheduler = pipeline.scheduler
+        config = getattr(scheduler, 'config', None)
+        use_flow = bool(getattr(config, 'use_flow_sigmas', False)) if config is not None else False
+        if use_flow and (float(array.max()) > 1.0 + 1e-4 or float(array.min()) <= 0.0):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'{scheduler.__class__.__name__} with use-flow-sigmas expects each '
+                f'sigma between 0 and 1. Got {float(array.max()):.6g} down to '
+                f'{float(array.min()):.6g}. A noise schedule from Euler or DPM '
+                f'starts far above 1 and cannot be passed to this scheduler.')
+
+        ceiling = None if use_flow else PipelineWrapper._noise_sigma_ceiling(scheduler)
+        if ceiling is not None and float(array.max()) > ceiling * (1 + 1e-5):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Sigmas start at {float(array.max()):.6g}, but {scheduler.__class__.__name__} '
+                f'with this checkpoint reaches at most {ceiling:.6g}. Each sigma maps '
+                f'to a training timestep, and there is none above that value. '
+                f'Lower the schedule so it starts at or below {ceiling:.6g}.')
+
+        narrowed = array.astype(numpy.float32)
+        if numpy.any(narrowed[1:] >= narrowed[:-1]):
+            index = int(numpy.argmax(narrowed[1:] >= narrowed[:-1]))
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Sigmas must strictly descend at float32 precision. Values '
+                f'{index + 1} and {index + 2} ({array[index]:.9g} and '
+                f'{array[index + 1]:.9g}) do not.')
+
+        if PipelineWrapper._pipeline_uses_flow_default_sigmas(pipeline):
+            # The pipeline applies its own shift after this array. Probing
+            # set_timesteps here would shift it once already.
+            return array
+
+        import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
+        sequence = PipelineWrapper._sigmas_for_set_timesteps(scheduler, array)
+        try:
+            with _schedules._preserved_scheduler_state(scheduler):
+                accepted = inspect.signature(scheduler.set_timesteps).parameters
+                kwargs = {'device': 'cpu'} if 'device' in accepted else {}
+                kwargs.update(PipelineWrapper._dynamic_shift_probe_kwargs(scheduler))
+                scheduler.set_timesteps(sigmas=sequence, **kwargs)
+        except (ValueError, TypeError) as error:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'--sigmas cannot be used with {scheduler.__class__.__name__}: {error}'
+            ) from error
+        return sequence
+
+    def _set_schedule_pipeline_args(self, pipeline_args: dict, user_args: _arguments.GenerationArguments):
+        """Set ``--sigmas`` and ``--timesteps`` for the primary pipeline."""
+        self._set_non_universal_pipeline_arg(
+            self._pipeline,
+            pipeline_args, user_args,
+            'sigmas', 'sigmas',
+            '--sigmas',
+            transform=functools.partial(
+                self._sigmas_eval,
+                'primary',
+                self._pipeline,
+                _types.default(
+                    user_args.inference_steps,
+                    _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)
+            ))
+        steps = self._schedule_step_count(self._pipeline, pipeline_args, user_args.sigmas)
+        if steps:
+            # The sigma list sets the step count, record it so the refiner
+            # and the output metadata agree with the schedule that ran.
+            pipeline_args['num_inference_steps'] = steps
+            user_args.inference_steps = steps
+        self._set_timesteps_pipeline_arg(pipeline_args, user_args)
+
+    def _schedule_step_count(self, pipeline, pipeline_args: dict, user_sigmas) -> int | None:
+        """Steps the user's sigma list runs on ``pipeline``, or ``None`` without one."""
+        if user_sigmas is None:
+            return None
+        sigmas = pipeline_args.get('sigmas')
+        if sigmas is None:
+            sigmas = self._forced_schedule_value(pipeline, 'sigmas')
+        if sigmas is None:
+            return None
+        import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
+        try:
+            return _schedules._sigma_step_count(pipeline.scheduler, sigmas)
+        except Exception:
+            return None
+
+    def _forced_schedule_value(self, pipeline, name: str):
+        return next((val for forced, forced_name, val in self._forced_schedules
+                     if forced is pipeline and forced_name == name), None)
 
     def _set_timesteps_pipeline_arg(self, pipeline_args: dict, user_args: _arguments.GenerationArguments):
         self._set_non_universal_pipeline_arg(
@@ -4151,6 +4459,8 @@ class PipelineWrapper:
                     _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)
             ))
         timesteps = pipeline_args.get('timesteps')
+        if timesteps is None:
+            timesteps = self._forced_schedule_value(self._pipeline, 'timesteps')
         if timesteps is not None:
             # The schedule length is the step count, record it so the refiner
             # and the output metadata agree with the schedule that ran.
@@ -4160,34 +4470,36 @@ class PipelineWrapper:
     @staticmethod
     def _timesteps_eval(model_title: str, pipeline, steps: int, val: str | list):
         scheduler = pipeline.scheduler
-        if 'timesteps' not in inspect.signature(scheduler.set_timesteps).parameters:
+        if not _schedulers.scheduler_accepts_custom_timesteps(scheduler):
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'The current {model_title} model scheduler '
                 f'"{scheduler.__class__.__name__}" does not support '
                 f'custom timestep schedules. Please ensure that you are using a '
                 f'supported scheduler.')
 
-        if isinstance(val, str):
-            old_state = {
-                name: getattr(scheduler, name)
-                for name in ('timesteps', 'sigmas', 'num_inference_steps')
-                if hasattr(scheduler, name)
-            }
-            try:
-                scheduler.set_timesteps(steps)
+        import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
+        try:
+            with _schedules._preserved_scheduler_state(scheduler):
+                scheduler.set_timesteps(
+                    steps, **PipelineWrapper._dynamic_shift_probe_kwargs(scheduler))
                 timesteps = scheduler.timesteps
-            except Exception as e:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    f'Could not read the default timesteps of the {model_title} model '
-                    f'scheduler "{scheduler.__class__.__name__}" for a timesteps '
-                    f'expression. Pass a CSV list with --timesteps instead.') from e
-            finally:
-                for name, value in old_state.items():
-                    setattr(scheduler, name, value)
+        except Exception as e:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Could not read the default timesteps of the {model_title} model '
+                f'scheduler "{scheduler.__class__.__name__}". Custom timesteps '
+                f'cannot be used with it.') from e
+        if torch.is_tensor(timesteps):
+            integer = not torch.is_floating_point(timesteps)
+            timesteps = timesteps.detach().cpu().numpy()
+        else:
+            integer = numpy.issubdtype(numpy.asarray(timesteps).dtype, numpy.integer)
+        # Second-order schedulers such as Heun repeat each inner timestep.
+        # A custom list names each step once.
+        timesteps = numpy.asarray(timesteps, dtype=float)
+        if timesteps.size > 1:
+            timesteps = timesteps[numpy.concatenate(([True], timesteps[1:] != timesteps[:-1]))]
 
-            if hasattr(timesteps, 'detach'):
-                timesteps = timesteps.detach().cpu().numpy()
-
+        if isinstance(val, str):
             interpreter = _eval.standard_interpreter(
                 symtable=_eval.safe_builtins()
             )
@@ -4205,24 +4517,34 @@ class PipelineWrapper:
                     f'Timesteps expression for the {model_title} model did not '
                     f'evaluate to an array, got: {val}'
                 )
+            expression = True
+        else:
+            expression = False
 
+        # Integer schedulers index the training steps. An expression such as
+        # ``timesteps * 0.9`` is rounded to them; a typed fraction is an error.
+        # Euler, Heun, and FlowMatch interpolate and keep fractions.
+        kind = 'non-negative integers' if integer else 'non-negative numbers'
         result = []
         for item in val:
             try:
                 numeric = float(item)
             except (TypeError, ValueError) as e:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    f'Timesteps for the {model_title} model must be '
-                    f'non-negative integers.') from e
-            if not numpy.isfinite(numeric) or not numeric.is_integer() or numeric < 0:
+                    f'Timesteps for the {model_title} model must be {kind}.') from e
+            if not numpy.isfinite(numeric) or numeric < 0:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    f'Timesteps for the {model_title} model must be '
-                    f'non-negative integers.')
-            result.append(int(numeric))
-        if not result:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'Timesteps for the {model_title} model cannot be empty.')
-        return result
+                    f'Timesteps for the {model_title} model must be {kind}.')
+            if integer:
+                if expression:
+                    numeric = float(round(numeric))
+                elif not numeric.is_integer():
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'Timesteps for the {model_title} model must be {kind}.')
+                result.append(int(numeric))
+            else:
+                result.append(int(numeric) if numeric.is_integer() else numeric)
+        return _schedules._check_timesteps(result, scheduler, f'The {model_title} model')
 
     def _call_torch(self, pipeline_args, user_args: _arguments.GenerationArguments):
         self._check_for_invalid_model_specific_opts(user_args)
@@ -4302,20 +4624,7 @@ class PipelineWrapper:
                                              'guidance_rescale', 'guidance_rescale',
                                              '--guidance-rescales')
 
-        self._set_non_universal_pipeline_arg(
-            self._pipeline,
-            pipeline_args, user_args,
-            'sigmas', 'sigmas',
-            '--sigmas',
-            transform=functools.partial(
-                self._sigmas_eval,
-                'primary',
-                self._pipeline,
-                _types.default(
-                    user_args.inference_steps,
-                    _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)
-            ))
-        self._set_timesteps_pipeline_arg(pipeline_args, user_args)
+        self._set_schedule_pipeline_args(pipeline_args, user_args)
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,
@@ -4474,6 +4783,7 @@ class PipelineWrapper:
                                   height=self._inference_height,
                                   enabled=user_args.sada,
                                   **self._get_sada_args(user_args)), \
+                    self._forced_schedule_context(self._pipeline), \
                     _denoise_range_mod.denoise_range(self._pipeline, user_args.denoising_start, user_args.denoising_end):
 
                 if self._parsed_adetailer_detector_uris:
@@ -4642,6 +4952,24 @@ class PipelineWrapper:
         if user_args.second_model_inference_steps is not None:
             pipeline_args['num_inference_steps'] = user_args.second_model_inference_steps
 
+        self._set_non_universal_pipeline_arg(
+            self._sdxl_refiner_pipeline,
+            pipeline_args, user_args,
+            'sigmas', 'sdxl_refiner_sigmas',
+            '--sdxl-refiner-sigmas',
+            transform=functools.partial(
+                self._sigmas_eval,
+                'refiner',
+                self._sdxl_refiner_pipeline,
+                pipeline_args.get('num_inference_steps', _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)
+            )
+        )
+        steps = self._schedule_step_count(
+            self._sdxl_refiner_pipeline, pipeline_args, user_args.sdxl_refiner_sigmas)
+        if steps:
+            pipeline_args['num_inference_steps'] = steps
+            user_args.second_model_inference_steps = steps
+
         if user_args.sdxl_refiner_pag_scale is not None:
             pipeline_args['pag_scale'] = user_args.sdxl_refiner_pag_scale
 
@@ -4707,19 +5035,6 @@ class PipelineWrapper:
                     )
 
             pipeline_args['num_inference_steps'] = limit
-
-        self._set_non_universal_pipeline_arg(
-            self._sdxl_refiner_pipeline,
-            pipeline_args, user_args,
-            'sigmas', 'sdxl_refiner_sigmas',
-            '--sdxl-refiner-sigmas',
-            transform=functools.partial(
-                self._sigmas_eval,
-                'refiner',
-                self._sdxl_refiner_pipeline,
-                pipeline_args.get('num_inference_steps', _constants.DEFAULT_FALLBACK_INFERENCE_STEPS)
-            )
-        )
 
         with _freeu(self._sdxl_refiner_pipeline, user_args.sdxl_refiner_freeu_params), \
                 _deep_cache_context(self._sdxl_refiner_pipeline,
@@ -5556,19 +5871,25 @@ class PipelineWrapper:
 
     def _set_scheduler_and_vae_settings(self, args):
         scheduler_uri = args.scheduler_uri
-        if _enums.model_type_is_minimax_h3_image(self._model_type) and scheduler_uri:
-            import dgenerate.pipelinewrapper.videopipelines.minimax as _minimax_video
-            self._pipeline.scheduler = _minimax_video._overlay_scheduler(
-                self._pipeline.scheduler, scheduler_uri)
-            scheduler_uri = None
         second_model_scheduler_uri = _types.default(
             args.second_model_scheduler_uri,
             scheduler_uri
         )
-        _schedulers.load_scheduler(
-            pipeline=self._pipeline,
-            scheduler_uri=scheduler_uri
-        )
+        if _enums.model_type_is_minimax_h3_image(self._model_type):
+            import dgenerate.pipelinewrapper.videopipelines.minimax as _minimax_video
+            # Like load_scheduler, the URI overlays the checkpoint's scheduler,
+            # and a run without one gets the checkpoint's scheduler back.
+            if not hasattr(self._pipeline, '_DGENERATE_ORIGINAL_SCHEDULER'):
+                self._pipeline._DGENERATE_ORIGINAL_SCHEDULER = self._pipeline.scheduler
+            original = self._pipeline._DGENERATE_ORIGINAL_SCHEDULER
+            self._pipeline.scheduler = (
+                _minimax_video._overlay_scheduler(original, scheduler_uri)
+                if scheduler_uri else original)
+        else:
+            _schedulers.load_scheduler(
+                pipeline=self._pipeline,
+                scheduler_uri=scheduler_uri
+            )
         if self._sdxl_refiner_pipeline:
             _schedulers.load_scheduler(
                 pipeline=self._sdxl_refiner_pipeline,
@@ -6362,6 +6683,8 @@ class PipelineWrapper:
         # always reset inpaint crop state per call
         self._inpaint_crop_info = None
         self._padding_mask_crop = None
+        self._forced_schedules = []
+        self._forced_active = set()
 
         copy_args = _arguments.GenerationArguments()
 
@@ -6488,6 +6811,36 @@ class PipelineWrapper:
 
     def __repr__(self):
         return str(self)
+
+
+def model_type_uses_flow_default_sigmas(model_type: _enums.ModelType | str) -> bool:
+    """
+    The model type's pipeline builds ``linspace(1, 1/steps, steps)`` when ``--sigmas`` is omitted.
+
+    That list, not the scheduler's own ``set_timesteps(steps)`` grid, is the
+    unshifted default a ``--sigmas`` list replaces.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    # get_pipeline_class does not know the video pipelines.
+    if _enums.model_type_is_hyvideo_15(model_type) or _enums.model_type_is_ltx_video(model_type):
+        return True
+    if _enums.model_type_is_video_family(model_type):
+        return False
+    # Fill and Kontext have no txt2img pipeline.
+    for pipeline_type in (_enums.PipelineType.TXT2IMG,
+                          _enums.PipelineType.IMG2IMG,
+                          _enums.PipelineType.INPAINT):
+        try:
+            cls = _pipelines.get_pipeline_class(
+                model_type=_enums.get_model_type_enum(model_type),
+                pipeline_type=pipeline_type,
+                help_mode=True)
+        except Exception:
+            continue
+        return PipelineWrapper._pipeline_uses_flow_default_sigmas(cls)
+    return False
 
 
 __all__ = _types.module_all()

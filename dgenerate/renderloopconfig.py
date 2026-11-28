@@ -413,7 +413,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     this uses ``asteval``.
 
     For Flux.1 (including Fill and Kontext), Flux.2, FLUX.3, Z-Image, Qwen-Image
-    (including edit and layered), Krea 2, and HunyuanImage, an expression's
+    (including edit and layered), Krea 2, HunyuanImage, HunyuanVideo 1.5, and
+    LTX-Video, an expression's
     ``sigmas`` value is the evenly spaced schedule from 1 down to ``1 / steps``.
     The pipeline builds its timesteps from that result, including any
     resolution-dependent shift. Qwen-Image 2.1 uses the checkpoint's
@@ -473,11 +474,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     sequence of non-negative integers or an ``expr:`` expression evaluated
     against the scheduler's default timestep array (named ``timesteps`` in
     the expression). Values are passed in order to the pipeline's
-    ``timesteps`` argument. The resulting schedule length determines the
-    inference-step count for that invocation, overriding ``--inference-steps``.
-    Do not combine it with ``--sigmas``. When omitted, the scheduler generates
-    the timestep schedule. Only supported for model types whose pipeline accepts
-    ``timesteps`` (scheduler and pipeline dependent).
+    ``timesteps`` argument, or substituted inside the scheduler's
+    ``set_timesteps`` when the pipeline has no such argument. The resulting
+    schedule length determines the inference-step count for that invocation,
+    overriding ``--inference-steps``. Do not combine it with ``--sigmas``.
+    When omitted, the scheduler generates the timestep schedule. Requires a
+    scheduler whose ``set_timesteps`` accepts ``timesteps``.
 
     This corresponds to the ``--timesteps`` command-line argument.
     """
@@ -3466,22 +3468,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                 if not schedule or any(int(step) < 0 for step in schedule):
                     raise RenderLoopConfigError(
                         f'{a_namer("timesteps")} must contain non-empty, non-negative schedules.')
-            if (_pipelinewrapper.model_type_is_wan_animate(self.model_type)
-                    or _pipelinewrapper.model_type_is_wan_animate_2(self.model_type)):
-                raise RenderLoopConfigError(
-                    f'{a_namer("timesteps")} is not supported for Wan-Animate. '
-                    f'Wan takes a timestep schedule in video-to-video mode only.')
-            if ((_pipelinewrapper.model_type_is_s_cascade_family(self.model_type)
-                    and not _pipelinewrapper.model_type_is_s_cascade_decoder(self.model_type))
-                    or _pipelinewrapper.model_type_is_upscaler_family(self.model_type)):
+            if (_pipelinewrapper.model_type_is_s_cascade_family(self.model_type)
+                    and not _pipelinewrapper.model_type_is_s_cascade_decoder(self.model_type)):
                 raise RenderLoopConfigError(
                     f'{a_namer("timesteps")} is not supported for this model type.')
 
     def _check_ltx_requirements(self, a_namer: typing.Callable[[str], str]):
         if _pipelinewrapper.model_type_is_ltx_video(self.model_type):
             ltx2_only = (
-                ('sigmas', self.sigmas),
-                ('timesteps', self.timesteps),
                 ('ltx_ic_lora_uri', self.ltx_ic_lora_uri),
                 ('ltx_audio_guidance_scales', self.ltx_audio_guidance_scales),
                 ('ltx_audio_guidance_rescales', self.ltx_audio_guidance_rescales),
@@ -3740,12 +3734,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'--model-type {_pipelinewrapper.get_model_type_string(self.model_type)}. '
                     f'Use {allowed}.')
 
-        if not (_pipelinewrapper.model_type_is_ltx2(self.model_type)
-                or _pipelinewrapper.model_type_is_hyvideo_15(self.model_type)) and self.sigmas:
-            raise RenderLoopConfigError(
-                f'{a_namer("sigmas")} is not supported for --model-type '
-                f'{_pipelinewrapper.get_model_type_string(self.model_type)}.')
-
         blocked = (
             ('controlnet_uris', self.controlnet_uris),
             ('control_lora_uris', self.control_lora_uris),
@@ -3808,17 +3796,14 @@ class RenderLoopConfig(_types.SetFromMixin):
         schedulers = self.scheduler_uri
         if isinstance(schedulers, str) or schedulers is None:
             schedulers = [schedulers]
-        import dgenerate.pipelinewrapper.videopipelines as _videopipelines
+        allowed = _pipelinewrapper.compatible_scheduler_names(self.model_type)
         if _pipelinewrapper.model_type_is_wan_animate(self.model_type):
-            allowed = _videopipelines.wan.WAN_ANIMATE_SCHEDULER_NAMES
             family = 'Wan-Animate'
             extra = ''
         elif _pipelinewrapper.model_type_is_wan_animate_2(self.model_type):
-            allowed = _videopipelines.wan.WAN_ANIMATE_2_SCHEDULER_NAMES
             family = 'Wan-Animate-2'
             extra = ''
         elif _pipelinewrapper.model_type_is_wan(self.model_type):
-            allowed = _videopipelines.wan.WAN_SCHEDULER_NAMES
             family = 'Wan'
             extra = (
                 ' including shift and use-dynamic-shifting on '
@@ -3826,31 +3811,24 @@ class RenderLoopConfig(_types.SetFromMixin):
                 'and flow-shift on UniPCMultistepScheduler.'
             )
         elif _pipelinewrapper.model_type_is_hyvideo_15(self.model_type):
-            allowed = _videopipelines.single_image_video.HUNYUAN_VIDEO_15_SCHEDULER_NAMES
             family = 'HunyuanVideo 1.5'
             extra = ''
         elif _pipelinewrapper.model_type_is_motif_video(self.model_type):
-            allowed = _videopipelines.single_image_video.MOTIF_VIDEO_SCHEDULER_NAMES
             family = 'Motif-Video'
             extra = ''
         elif _pipelinewrapper.model_type_is_kandinsky5_video(self.model_type):
-            allowed = _videopipelines.single_image_video.KANDINSKY5_VIDEO_SCHEDULER_NAMES
             family = 'Kandinsky 5.0 Video'
             extra = ''
         elif _pipelinewrapper.model_type_is_kandinsky6_video(self.model_type):
-            allowed = frozenset({
-                'FlowMatchEulerDiscreteScheduler', 'PiflowScheduler'})
             family = 'Kandinsky 6'
             extra = ''
         elif _pipelinewrapper.model_type_is_minimax_h3(self.model_type):
-            allowed = frozenset({'MiniMaxH3Scheduler'})
             family = 'MiniMax-H3'
             extra = (
                 ' --scheduler overlays the video scheduler and '
                 '--second-model-scheduler overlays the audio scheduler.'
             )
         else:
-            allowed = _videopipelines.ltx.LTX_SCHEDULER_NAMES
             family = 'LTX'
             extra = ' including URI arguments such as shift and use-dynamic-shifting.'
         for item in schedulers:

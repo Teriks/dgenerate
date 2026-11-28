@@ -525,13 +525,23 @@ Its GGUF is --transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sf
 on that Pro parent. \
 INT8 for that Pro parent: --transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-sft-5s-GGUF/blob/main/transformer-int8_tensorwise-comfy.safetensors. \
 An image input, including a still from the previous step, is kandinskylab/Kandinsky-5.0-I2V-Pro-sft-5s-Diffusers at 768x512 \
-and keeps that repository transformer. There is no quant file for the non-distilled I2V Pro checkpoint. \
+and keeps that repository transformer. \
+Its GGUF is --transformer https://huggingface.co/Teriks/Kandinsky-5.0-I2V-Pro-sft-5s-quants/blob/main/transformer-Q4_K.gguf \
+on that I2V Pro parent. \
 Lite image-to-video is kandinskylab/Kandinsky-5.0-I2V-Lite-5s-Diffusers. \
 Do not use a T2V repo or the Pro T2V GGUF for an image. \
 Lite text-to-video GGUF: --transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Lite-sft-5s-quants/blob/main/transformer-Q4_K.gguf \
 on the Lite T2V parent. \
 Lite image-to-video GGUF: --transformer https://huggingface.co/Teriks/Kandinsky-5.0-I2V-Lite-5s-quants/blob/main/transformer-Q4_K.gguf \
 on the Lite I2V parent. \
+Other Lite text-to-video checkpoints, only when named: kandinskylab/Kandinsky-5.0-T2V-Lite-distilled16steps-5s-Diffusers \
+is 16 steps, guidance 1; kandinskylab/Kandinsky-5.0-T2V-Lite-nocfg-5s-Diffusers is 50 steps, guidance 1. \
+Each of those and Lite sft \
+has a -10s repo, such as kandinskylab/Kandinsky-5.0-T2V-Lite-sft-10s-Diffusers, for --video-lengths 10. \
+Each has its own quants: replace kandinskylab/Kandinsky-5.0- with Teriks/Kandinsky-5.0- and -Diffusers with -quants, \
+then add /blob/main/transformer-Q4_K.gguf, such as \
+--transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Lite-distilled16steps-5s-quants/blob/main/transformer-Q4_K.gguf. \
+Keep each quant on its own parent. Do not put the Lite sft 5s GGUF on them. \
 Pro distilled text-to-video is kandinskylab/Kandinsky-5.0-T2V-Pro-distilled-5s-Diffusers, 16 steps, \
 --transformer https://huggingface.co/Teriks/Kandinsky-5.0-T2V-Pro-distilled-5s-quants/blob/main/transformer-Q4_K.gguf. \
 Pro distilled image-to-video is kandinskylab/Kandinsky-5.0-I2V-Pro-distilled-5s-Diffusers, \
@@ -553,8 +563,8 @@ Pro distilled is kandinskylab/Kandinsky-6.0-Pro-distill-5s-Diffusers, 10 steps, 
 Pro is kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers, 50 steps, guidance 5. Gated. \
 Lite distilled, full Lite, Pro distilled, and Pro each take one still as the first frame on that same checkpoint. \
 Pass it with --image-seeds, including a still from the previous step. A mask, a second image, a video seed, \
-and a control image are rejected. Do not switch to a Kandinsky 5 I2V repo. The Pro GGUF and the Lite distilled \
-INT8 stay on their own parents and still take that still. No --loras. \
+and a control image are rejected. Do not switch to a Kandinsky 5 I2V repo. Every GGUF and \
+INT8 below stays on its own parent and still takes that still. No --loras. \
 Omit --pipeline-prompt-enhance unless asked. No value, or one system prompt. \
 --pipeline-prompt-enhance-* sampling applies. It turns on expand_prompts. \
 GGUF: --transformer https://huggingface.co/realrebelai/Kandinsky-6.0-Pro-5s_GGUFs/blob/main/Diffusion Model/Full/Kandinsky-6.0-Pro-5s-Q4_K_S.gguf \
@@ -562,6 +572,9 @@ on the Pro parent, 50 steps, guidance 5. That parent is gated, so the config sti
 INT8 Lite distilled: --transformer https://huggingface.co/kabachuha/Kandinsky-6.0-Lite-distill-5s-int8-convrot/blob/main/Kandinsky-6.0-Lite-Distilled-5s-int8-convrot.safetensors. \
 Lite distilled GGUF: --transformer https://huggingface.co/Teriks/Kandinsky-6.0-Lite-distill-5s-quants/blob/main/transformer-Q4_K.gguf \
 on the Lite distilled parent. Diffusers tensor names, no -comfy. \
+INT8 full Lite: --transformer https://huggingface.co/kabachuha/Kandinsky-6.0-Lite-5s-int8-convrot/blob/main/Kandinsky-6.0-Lite-5s-int8-convrot.safetensors. \
+Full Lite GGUF: --transformer https://huggingface.co/Teriks/Kandinsky-6.0-Lite-5s-quants/blob/main/transformer-Q4_K.gguf \
+on the full Lite parent, 50 steps, guidance 5. Diffusers tensor names, no -comfy. \
 Pro distilled GGUF: --transformer https://huggingface.co/Teriks/Kandinsky-6.0-Pro-distill-5s-quants/blob/main/transformer-Q4_K.gguf \
 on the Pro distilled parent. \
 This is not Kandinsky 5.
@@ -609,7 +622,8 @@ Never write Lightricks/LTX-Video with --model-type ltx2. --model-type ltx2 belon
 Lightricks/LTX-2.5-Diffusers, Lightricks/LTX-2.3, and Lightricks/LTX-2. \
 Never write those three with --model-type ltx-video. \
 Distilled GGUF: --transformer https://huggingface.co/realrebelai/LTX-2.5_GGUFs/blob/main/LTX-2.5-Distilled-Q4_K_S.gguf, \
-guidance 1, and no --inference-steps. The parent repo stays Lightricks/LTX-2.5-Diffusers. \
+guidance 1, and no --inference-steps unless asked. Another step count resamples the 8-step distilled schedule. \
+The parent repo stays Lightricks/LTX-2.5-Diffusers. \
 Distilled INT8: --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors. \
 Distilled NVFP4: --transformer https://huggingface.co/Lightricks/LTX-2.5/blob/main/diffusion_models/ltx-2.5-22b-distilled-transformer-nvfp4.safetensors. \
 Dev (full) GGUF: --transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF/blob/main/dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf, \

@@ -39,6 +39,7 @@ import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.pipelinewrapper.util as _putil
 import dgenerate.types as _types
+import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.videopipelines as _vp
 import dgenerate.pipelinewrapper.videopipelines.media as _media
 import dgenerate.pipelinewrapper.videopipelines.quantization as _quantization
@@ -50,7 +51,7 @@ import dgenerate.pipelinewrapper.videopipelines.ltx.legacy as _legacy
 from . import components, conditions, decoder, legacy
 
 
-LTX_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
+LTX_SCHEDULER_NAMES = frozenset(_schedulers.compatible_scheduler_names('ltx2'))
 
 
 def audio_sample_rate_from_pipeline(pipe, audio) -> int | None:
@@ -287,6 +288,7 @@ def _call_ltx(wrapper, user_args):
     if guidance is not None:
         guidance = float(guidance)
     user_audio = user_args.ltx_audio_guidance_scale
+    legacy_schedule = None
     if family == 'ltx':
         if user_audio is not None or user_args.ltx_audio_guidance_rescale is not None:
             raise _pipelines.UnsupportedPipelineConfigError(
@@ -302,16 +304,22 @@ def _call_ltx(wrapper, user_args):
             kwargs.get('num_frames', 161),
             kwargs['num_inference_steps'])
         _legacy._require_legacy_ltx_schedule(pipe, *schedule_size)
+        shift_sigmas = None
         if mode == 'ltx-condition':
+            shifting = pipe.scheduler
             timesteps = _legacy._fix_legacy_ltx_condition_schedule(pipe, *schedule_size)
             if timesteps is not None:
                 kwargs['timesteps'] = timesteps
-        if user_args.sigmas is not None:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                '--sigmas is only applied to LTX-2. This checkpoint uses the earlier LTX pipeline.')
-        if user_args.timesteps is not None:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                '--timesteps is only applied to LTX-2. This checkpoint uses the earlier LTX pipeline.')
+
+                def shift_sigmas(sigmas):
+                    return _legacy._legacy_ltx_shifted_sigmas(
+                        shifting, sigmas, *schedule_size[:3], *_legacy._legacy_ltx_compression(pipe))
+        # The earlier LTX pipelines pass their own sigmas, or the timesteps
+        # above, to retrieve_timesteps. A user schedule replaces them at the
+        # scheduler.
+        kwargs['num_inference_steps'], legacy_schedule = _schedules._forced_user_schedule(
+            wrapper, pipe, 'LTX-Video', kwargs['num_inference_steps'], user_args,
+            shift_sigmas=shift_sigmas)
     else:
         distilled = _ltx_is_distilled(pipe)
 
@@ -323,6 +331,7 @@ def _call_ltx(wrapper, user_args):
                     user_args.timesteps, base_timesteps)
             else:
                 kwargs['timesteps'] = [int(value) for value in user_args.timesteps]
+            _schedules._check_timesteps(kwargs['timesteps'], pipe.scheduler, 'LTX-2')
             # _complete_ltx_call moves these onto the scheduler.
             kwargs['num_inference_steps'] = len(kwargs['timesteps'])
             label = 'LTX distilled checkpoint' if distilled else 'LTX full checkpoint'
@@ -352,21 +361,14 @@ def _call_ltx(wrapper, user_args):
         elif distilled:
             from diffusers.pipelines.ltx2.utils import DISTILLED_SIGMA_VALUES
 
-            kwargs['sigmas'] = list(DISTILLED_SIGMA_VALUES)
+            kwargs['sigmas'] = _ltx_distilled_sigmas(
+                list(DISTILLED_SIGMA_VALUES), user_args.inference_steps)
             guidance, audio_guidance = _ltx2_apply_automatic_guidance(
                 guidance, distilled=True, user_args=user_args,
                 user_audio=user_audio, label='LTX distilled checkpoint')
             kwargs['guidance_scale'] = guidance
             kwargs['audio_guidance_scale'] = audio_guidance
-            scheduled = len(kwargs['sigmas'])
-            steps, ignored = _ltx_distilled_inference_steps(
-                user_args.inference_steps, scheduled)
-            if ignored:
-                _messages.warning(ignored)
-            elif steps != user_args.inference_steps:
-                _messages.debug_log(
-                    f'LTX distilled checkpoint uses its {scheduled}-value sigma schedule.')
-            user_args.inference_steps = steps
+            user_args.inference_steps = len(kwargs['sigmas'])
         else:
             steps = _sampling.resolved_inference_steps(pipe, user_args)
             guidance, audio_guidance = _ltx2_apply_automatic_guidance(
@@ -406,7 +408,8 @@ def _call_ltx(wrapper, user_args):
     else:
         _reject_ltx2_only_options(user_args)
 
-    frames, audio, sample_rate = _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family)
+    frames, audio, sample_rate = _complete_ltx_call(
+        wrapper, pipe, held, user_args, kwargs, family, legacy_schedule)
     if user_args.ltx_latent_upscale and user_args.ltx_latent_upscale_mode == 'temporal':
         fps *= 2 ** int(user_args.ltx_temporal_upscale_rounds)
     return frames, audio, sample_rate, fps
@@ -541,7 +544,7 @@ def _ensure_prompt_enhancer(wrapper, pipe, uri_string, compile_requested: bool =
     pipe._dgenerate_prompt_enhancer = uri_string
 
 
-def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
+def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family, legacy_schedule=None):
     # Run enhancement before entering Diffusers' denoising call so its model can
     # be returned to CPU (or released for BNB 8-bit) before video inference.
     enhancement_requested = (
@@ -551,7 +554,7 @@ def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
              or getattr(pipe, 'text_encoder', None) is not None))
     # LTX2Pipeline always passes sigmas to retrieve_timesteps, which rejects
     # timesteps alongside them, so a --timesteps schedule is applied at the
-    # scheduler. The earlier LTX condition pipeline takes its timesteps directly.
+    # scheduler. The earlier LTX pipelines bring legacy_schedule instead.
     custom_timesteps = None
     if family == 'ltx2' and kwargs.get('timesteps') is not None:
         kwargs = dict(kwargs)
@@ -560,8 +563,12 @@ def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
             raise _pipelines.UnsupportedPipelineConfigError(
                 '--timesteps cannot be used with temporal latent upscaling, '
                 'its passes use fixed distilled schedules.')
-    forced_timesteps = (_schedules._forced_scheduler_timesteps(pipe.scheduler, custom_timesteps)
-                        if custom_timesteps is not None else contextlib.nullcontext())
+    if custom_timesteps is not None:
+        forced_timesteps = _schedules._forced_scheduler_timesteps(pipe.scheduler, custom_timesteps)
+    elif legacy_schedule is not None:
+        forced_timesteps = legacy_schedule
+    else:
+        forced_timesteps = contextlib.nullcontext()
 
     _enhance_ltx_prompt_once(wrapper, pipe, kwargs, user_args)
     enhancer = _detach_prompt_enhancer(pipe) if enhancement_requested else None
@@ -1039,32 +1046,30 @@ def _waveform_from_audio_latents(pipe, audio_latents):
     return _media.audio_to_numpy(pipe.vocoder(mel))
 
 
-def _ltx_distilled_inference_steps(requested, scheduled: int) -> tuple[int, str | None]:
+def _ltx_distilled_sigmas(table: list[float], requested) -> list[float]:
     """
-    Step count for a scheduler that has no dynamic shifting.
+    The distilled sigma table, linearly resampled to ``requested`` steps.
 
-    The distilled table length is always used. The global default and any
-    other count except that length are ignored and reported. Passing the
-    table length silences the warning.
+    An omitted count keeps the table. Resampling keeps its shape, matching
+    the Steps control of the console sigma editor.
     """
-    return scheduled, _ltx_ignored_steps_warning(requested, scheduled)
-
-
-def _ltx_ignored_steps_warning(requested, scheduled: int) -> str | None:
-    if requested is None:
-        return None
-    requested = int(requested)
-    if requested == scheduled:
-        return None
-    if requested == _constants.DEFAULT_FALLBACK_INFERENCE_STEPS:
-        passed = f'{requested} (the default)'
-    else:
-        passed = str(requested)
-    return (
-        f'The LTX distilled checkpoint uses an {scheduled}-value sigma schedule '
-        f'and ignores --inference-steps {passed}. '
-        f'Pass --inference-steps {scheduled} to silence this warning.'
-    )
+    if requested is None or int(requested) == len(table):
+        return list(table)
+    steps = int(requested)
+    if steps < 1:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            '--inference-steps must be at least 1.')
+    if steps == 1:
+        return [float(table[0])]
+    last = len(table) - 1
+    sampled = []
+    for index in range(steps):
+        position = index * last / (steps - 1)
+        lower = int(position)
+        upper = min(lower + 1, last)
+        weight = position - lower
+        sampled.append(float(table[lower]) * (1 - weight) + float(table[upper]) * weight)
+    return sampled
 
 
 def _ltx_default_timesteps(pipe, distilled: bool, inference_steps):
@@ -1078,7 +1083,8 @@ def _ltx_default_timesteps(pipe, distilled: bool, inference_steps):
     """
     if distilled:
         from diffusers.pipelines.ltx2.utils import DISTILLED_SIGMA_VALUES
-        sigmas = numpy.asarray(DISTILLED_SIGMA_VALUES, dtype=float)
+        sigmas = numpy.asarray(
+            _ltx_distilled_sigmas(list(DISTILLED_SIGMA_VALUES), inference_steps), dtype=float)
     else:
         steps = _sampling.default_inference_steps_value(pipe, inference_steps)
         sigmas = numpy.linspace(1.0, 1.0 / steps, steps)
@@ -1089,7 +1095,7 @@ def _ltx_default_timesteps(pipe, distilled: bool, inference_steps):
 def _ltx_base_sigmas(pipe, distilled: bool, inference_steps):
     if distilled:
         from diffusers.pipelines.ltx2.utils import DISTILLED_SIGMA_VALUES
-        return list(DISTILLED_SIGMA_VALUES)
+        return _ltx_distilled_sigmas(list(DISTILLED_SIGMA_VALUES), inference_steps)
     steps = _sampling.default_inference_steps_value(pipe, inference_steps)
     try:
         with _schedules._preserved_scheduler_state(pipe.scheduler) as scheduler:

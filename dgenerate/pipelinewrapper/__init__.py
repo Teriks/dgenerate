@@ -177,6 +177,12 @@ from .schedulers import (
     SchedulerArgumentError,
     InvalidSchedulerNameError,
     get_compatible_schedulers,
+    compatible_scheduler_names,
+    default_scheduler_name,
+    model_type_accepts_custom_sigmas,
+    scheduler_accepts_custom_sigmas,
+    reference_noise_config,
+    reference_flow_shift,
     get_scheduler_uri_schema,
     load_scheduler
 )
@@ -287,7 +293,8 @@ from .arguments import GenerationArguments
 from .wrapper import (
     GenerationResult,
     PipelineWrapper,
-    GenerationArgumentsHelpException
+    GenerationArgumentsHelpException,
+    model_type_uses_flow_default_sigmas
 )
 
 __all__ = _types.module_all()

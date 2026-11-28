@@ -61,7 +61,8 @@ simple line.
 
 ``--model-type ltx2`` and ``ltx-video`` accept the same CSV lists and ``expr:`` forms.
 When the loaded scheduler has no dynamic shifting, ``sigmas`` in the expression
-is the distilled 8-value table, not a schedule from ``set_timesteps``.
+is the distilled 8-value table, resampled to ``--inference-steps`` when that is
+set, not a schedule from ``set_timesteps``.
 When the scheduler uses dynamic shifting, ``sigmas`` comes from
 ``set_timesteps`` using ``--inference-steps``. Passing ``--sigmas`` sets the
 step count to the length of the result and uses your ``--guidance-scales``

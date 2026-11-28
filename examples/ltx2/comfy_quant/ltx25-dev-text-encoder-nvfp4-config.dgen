@@ -7,7 +7,7 @@
 # Blackwell; other devices decode the weights for the matmul. The parent
 # repository still supplies the connectors.
 
-# The published scheduler is the distilled 8-value table and would ignore
+# The published scheduler only resamples the distilled 8-value table to
 # --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1 make
 # the step count apply. Video guidance 3, audio guidance 7, STG 1 on block
 # 28, and modality guidance 3.

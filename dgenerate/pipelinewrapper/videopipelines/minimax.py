@@ -23,11 +23,14 @@
 
 from __future__ import annotations
 
+import contextlib
+
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.minimaxh3 as _minimax
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.videopipelines as _vp
 import dgenerate.pipelinewrapper.videopipelines.media as _media
+import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
 
 
 def _overlay_scheduler(scheduler, uri):
@@ -56,27 +59,77 @@ def _overlay_scheduler(scheduler, uri):
 
 
 def _configure_schedulers(pipe, scheduler_uri, audio_scheduler_uri):
-    """``--scheduler`` is the video scheduler. ``--second-model-scheduler`` is audio."""
+    """``--scheduler`` is the video scheduler. ``--second-model-scheduler`` is audio.
+
+    Like ``load_scheduler``, each URI overlays the checkpoint's scheduler, and
+    a run without one gets the checkpoint's scheduler back.
+    """
+    if not hasattr(pipe, '_DGENERATE_ORIGINAL_SCHEDULER'):
+        pipe._DGENERATE_ORIGINAL_SCHEDULER = pipe.scheduler
+    original = pipe._DGENERATE_ORIGINAL_SCHEDULER
+    pipe.scheduler = _overlay_scheduler(original, scheduler_uri) if scheduler_uri else original
     if scheduler_uri:
-        pipe.scheduler = _overlay_scheduler(pipe.scheduler, scheduler_uri)
         _messages.debug_log(
             f'minimax-h3-video scheduler shift={pipe.scheduler.config.shift}.')
-    if audio_scheduler_uri:
-        audio = getattr(pipe, 'audio_scheduler', None)
-        if audio is None:
+
+    audio = getattr(pipe, 'audio_scheduler', None)
+    if audio is None:
+        if audio_scheduler_uri:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'minimax-h3-video has no audio scheduler for --second-model-scheduler.')
-        pipe.audio_scheduler = _overlay_scheduler(audio, audio_scheduler_uri)
+        return
+    if not hasattr(pipe, '_DGENERATE_ORIGINAL_AUDIO_SCHEDULER'):
+        pipe._DGENERATE_ORIGINAL_AUDIO_SCHEDULER = audio
+    original = pipe._DGENERATE_ORIGINAL_AUDIO_SCHEDULER
+    pipe.audio_scheduler = (
+        _overlay_scheduler(original, audio_scheduler_uri) if audio_scheduler_uri else original)
+    if audio_scheduler_uri:
         _messages.debug_log(
             f'minimax-h3-video audio scheduler shift={pipe.audio_scheduler.config.shift}.')
 
 
+def _user_sigmas(wrapper, pipe, user_args):
+    """``--sigmas`` for both schedulers, or ``None``.
+
+    The list ends at 0. ``--inference-steps`` counts that terminal 0.
+    """
+    if user_args.sigmas is None:
+        return None
+    sigmas = type(wrapper)._sigmas_eval(
+        'minimax-h3-video', pipe, int(user_args.inference_steps), user_args.sigmas)
+    user_args.inference_steps = len(sigmas)
+    return sigmas
+
+
+@contextlib.contextmanager
+def _forced_sigmas(pipe, sigmas):
+    """Give both schedulers ``sigmas`` for the call.
+
+    The list is the grid before the shift. The video scheduler shifts it by
+    12 and the audio scheduler by 3, so the two keep one step count. A
+    scheduler with ``shift_provided_sigmas=false`` from ``--scheduler`` or
+    ``--second-model-scheduler`` takes the list as written.
+    """
+    schedulers = (pipe.scheduler, pipe.audio_scheduler)
+    saved = [scheduler.config.shift_provided_sigmas for scheduler in schedulers]
+    try:
+        with contextlib.ExitStack() as stack:
+            for scheduler, value in zip(schedulers, saved):
+                if value is None:
+                    scheduler.register_to_config(shift_provided_sigmas=True)
+                stack.enter_context(_schedules._forced_scheduler_sigmas(scheduler, sigmas))
+            yield
+    finally:
+        for scheduler, value in zip(schedulers, saved):
+            scheduler.register_to_config(shift_provided_sigmas=value)
+
+
 def call_minimax_h3(wrapper, user_args):
     """Generate one MiniMax-H3 clip and its soundtrack."""
-    if user_args.sigmas is not None or user_args.timesteps is not None:
+    if user_args.timesteps is not None:
         raise _pipelines.UnsupportedPipelineConfigError(
-            'minimax-h3-video does not accept --sigmas or --timesteps. '
-            'Use --inference-steps. 30 is the published recipe.')
+            'minimax-h3-video does not accept --timesteps. '
+            'Use --sigmas or --inference-steps. 30 is the published recipe.')
     if getattr(user_args, 'video_frames', None) or getattr(user_args, 'end_video_frames', None):
         raise _pipelines.UnsupportedPipelineConfigError(
             'minimax-h3-video keyframes are still images. Put a video in reference=.')
@@ -95,9 +148,17 @@ def call_minimax_h3(wrapper, user_args):
     user_args.video_fps = _minimax.FPS
     if user_args.inference_steps is None:
         user_args.inference_steps = _minimax.DEFAULT_STEPS
-        _messages.log(
-            f'minimax-h3-video using --inference-steps {_minimax.DEFAULT_STEPS}. '
-            'That count includes the terminal sigma, so the model runs one step fewer.')
+        if user_args.sigmas is None:
+            _messages.log(
+                f'minimax-h3-video using --inference-steps {_minimax.DEFAULT_STEPS}. '
+                'That count includes the terminal sigma, so the model runs one step fewer.')
+    # A concrete --sigmas list sets the step count itself. An expression uses this one.
+    if int(user_args.inference_steps) < 2 and (
+            user_args.sigmas is None or isinstance(user_args.sigmas, str)):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            f'minimax-h3-video --inference-steps counts the terminal sigma, so it must be '
+            f'at least 2 for one model step. Got {int(user_args.inference_steps)}. '
+            f'30 is the published recipe.')
 
     references, reference_canvas = _minimax.build_references(
         list(getattr(user_args, 'reference_media_paths', None) or ()))
@@ -147,6 +208,7 @@ def call_minimax_h3(wrapper, user_args):
     pipe, _held = _vp._video_pipeline(wrapper, workflow)
     _configure_schedulers(
         pipe, user_args.scheduler_uri, getattr(user_args, 'second_model_scheduler_uri', None))
+    sigmas = _user_sigmas(wrapper, pipe, user_args)
     import dgenerate.pipelinewrapper.videopipelines.single_image_video as _single_image_video
     _single_image_video._enhance_loaded_video_prompt(
         wrapper, pipe, user_args, references=references or None)
@@ -200,7 +262,10 @@ def call_minimax_h3(wrapper, user_args):
 
     _vp._set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
     try:
-        with _minimax.honor_reference_canvas(pipe, reference_canvas):
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(_minimax.honor_reference_canvas(pipe, reference_canvas))
+            if sigmas is not None:
+                stack.enter_context(_forced_sigmas(pipe, sigmas))
             result = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
     finally:
         if control_uris and hasattr(pipe, 'transformer'):

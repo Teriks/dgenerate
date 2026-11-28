@@ -1306,7 +1306,7 @@ class TestFlowImagePipelines(unittest.TestCase):
 
         csv = PipelineWrapper._sigmas_eval(
             'primary', pipe('ZImagePipeline', _RejectingScheduler()), steps, [0.2, 0.1])
-        self.assertEqual(csv, [0.2, 0.1])
+        np.testing.assert_allclose(csv, [0.2, 0.1])
 
         authored = [1.0, 0.75, 0.5, 0.25]
         qwen21 = pipe('QwenImage21Pipeline', _RejectingScheduler())
@@ -1338,6 +1338,141 @@ class TestFlowImagePipelines(unittest.TestCase):
         scaled = PipelineWrapper._sigmas_eval('primary', sdxl, 2, 'sigmas * 2')
         self.assertTrue(sdxl.scheduler.called)
         np.testing.assert_allclose(scaled, [0.8, 0.4])
+
+    def test_unipc_sigmas_are_an_array_and_noise_schedules_are_rejected(self):
+        import numpy as np
+        from diffusers import UniPCMultistepScheduler
+
+        from dgenerate.pipelinewrapper.pipelines import UnsupportedPipelineConfigError
+        from dgenerate.pipelinewrapper.wrapper import PipelineWrapper
+
+        pipe = type('StableDiffusionPipeline', (), {})()
+        pipe.scheduler = UniPCMultistepScheduler()
+        with self.assertRaises(UnsupportedPipelineConfigError) as rejected:
+            PipelineWrapper._sigmas_eval('primary', pipe, 4, [1.0, 0.5, 0.25])
+        self.assertIn('use_flow_sigmas', str(rejected.exception))
+
+        pipe.scheduler = UniPCMultistepScheduler(use_flow_sigmas=True)
+        with self.assertRaises(UnsupportedPipelineConfigError) as noise:
+            PipelineWrapper._sigmas_eval(
+                'primary', pipe, 4, [14.614641, 6.678016, 2.918307, 0.029167])
+        self.assertIn('between 0 and 1', str(noise.exception))
+
+        flow = PipelineWrapper._sigmas_eval(
+            'primary', pipe, 4, [1.0, 0.75, 0.5, 0.25])
+        self.assertIsInstance(flow, np.ndarray)
+        self.assertEqual(flow.shape, (4,))
+
+    def test_edm_sigmas_round_trip_through_the_karras_ramp(self):
+        import numpy as np
+        import torch
+        from diffusers import EDMEulerScheduler
+
+        from dgenerate.pipelinewrapper.wrapper import PipelineWrapper
+
+        source = EDMEulerScheduler()
+        source.set_timesteps(8)
+        final = source.sigmas[:-1].detach().cpu().numpy()
+
+        pipe = type('StableDiffusionPipeline', (), {})()
+        pipe.scheduler = EDMEulerScheduler()
+        result = PipelineWrapper._sigmas_eval('primary', pipe, 8, final.tolist())
+        self.assertIsInstance(result, torch.Tensor)
+        pipe.scheduler.set_timesteps(sigmas=result, device='cpu')
+        got = pipe.scheduler.sigmas[:-1].detach().cpu().numpy()
+        np.testing.assert_allclose(got, final, rtol=1e-5, atol=1e-6)
+
+        scaled = PipelineWrapper._sigmas_eval('primary', pipe, 8, (final * 2).tolist())
+        pipe.scheduler.set_timesteps(sigmas=scaled, device='cpu')
+        got = pipe.scheduler.sigmas[:-1].detach().cpu().numpy()
+        np.testing.assert_allclose(got, final * 2, rtol=1e-5, atol=1e-5)
+
+    def test_edm_exponential_rejects_custom_sigmas(self):
+        from diffusers import EDMEulerScheduler
+
+        from dgenerate.pipelinewrapper.pipelines import UnsupportedPipelineConfigError
+        from dgenerate.pipelinewrapper.wrapper import PipelineWrapper
+
+        pipe = type('StableDiffusionPipeline', (), {})()
+        pipe.scheduler = EDMEulerScheduler(sigma_schedule='exponential')
+        with self.assertRaises(UnsupportedPipelineConfigError) as rejected:
+            PipelineWrapper._sigmas_eval('primary', pipe, 3, [40.0, 4.0, 0.4])
+        self.assertIn('sigma-schedule=karras', str(rejected.exception))
+
+    def test_noise_sigmas_must_fit_the_checkpoint_schedule(self):
+        from diffusers import EulerDiscreteScheduler
+
+        from dgenerate.pipelinewrapper.pipelines import UnsupportedPipelineConfigError
+        from dgenerate.pipelinewrapper.wrapper import PipelineWrapper
+
+        pipe = type('StableDiffusionPipeline', (), {})()
+        pipe.scheduler = EulerDiscreteScheduler(
+            beta_start=0.00085, beta_end=0.012, beta_schedule='scaled_linear')
+
+        with self.assertRaises(UnsupportedPipelineConfigError) as high:
+            PipelineWrapper._sigmas_eval('primary', pipe, 4, [20.0, 6.0, 2.0, 0.1])
+        self.assertIn('at most 14.6', str(high.exception))
+
+        with self.assertRaises(UnsupportedPipelineConfigError) as tied:
+            PipelineWrapper._sigmas_eval(
+                'primary', pipe, 4, [14.0, 6.0, 6.0000000001, 0.1])
+        self.assertIn('float32', str(tied.exception))
+
+        accepted = PipelineWrapper._sigmas_eval(
+            'primary', pipe, 4, [14.614641, 6.678016, 2.918307, 0.029167])
+        pipe.scheduler.set_timesteps(sigmas=accepted, device='cpu')
+        timesteps = pipe.scheduler.timesteps.tolist()
+        self.assertEqual(len(timesteps), 4)
+        self.assertEqual(len(set(timesteps)), len(timesteps))
+        self.assertEqual(float(pipe.scheduler.sigmas[-1]), 0.0)
+
+        pipe.scheduler = EulerDiscreteScheduler(
+            beta_start=0.00085, beta_end=0.012, beta_schedule='scaled_linear',
+            timestep_type='continuous', prediction_type='v_prediction')
+        PipelineWrapper._sigmas_eval('primary', pipe, 3, [40.0, 10.0, 1.0])
+
+    def test_an_identity_sigma_expression_keeps_the_default_schedule(self):
+        import numpy as np
+        from diffusers import (
+            EulerDiscreteScheduler,
+            FlowMatchEulerDiscreteScheduler,
+            UniPCMultistepScheduler,
+        )
+
+        from dgenerate.pipelinewrapper.wrapper import PipelineWrapper
+
+        def sigmas_of(scheduler, **kwargs):
+            scheduler.set_timesteps(device='cpu', **kwargs)
+            return scheduler.sigmas.detach().cpu().numpy()
+
+        cases = (
+            (lambda: FlowMatchEulerDiscreteScheduler(shift=3.0), {}),
+            (lambda: FlowMatchEulerDiscreteScheduler(use_dynamic_shifting=True), {'mu': 0.0}),
+            (lambda: UniPCMultistepScheduler(
+                use_flow_sigmas=True, flow_shift=3.0, prediction_type='flow_prediction'), {}),
+            (lambda: EulerDiscreteScheduler(
+                beta_start=0.00085, beta_end=0.012, beta_schedule='scaled_linear'), {}),
+        )
+        for make, extra in cases:
+            with self.subTest(scheduler=make().__class__.__name__, extra=extra):
+                expected = sigmas_of(make(), num_inference_steps=6, **extra)
+                pipe = type('StableDiffusion3Pipeline', (), {})()
+                pipe.scheduler = make()
+                result = PipelineWrapper._sigmas_eval('primary', pipe, 6, 'sigmas')
+                steps = len(result) - (1 if float(result[-1]) == 0.0 else 0)
+                self.assertEqual(steps, 6)
+                got = sigmas_of(pipe.scheduler, sigmas=result, **extra)
+                np.testing.assert_allclose(got, expected, rtol=1e-5, atol=1e-5)
+
+    def test_dynamic_shifting_sigmas_are_probed_with_mu(self):
+        from diffusers import FlowMatchEulerDiscreteScheduler
+
+        from dgenerate.pipelinewrapper.wrapper import PipelineWrapper
+
+        pipe = type('StableDiffusion3Pipeline', (), {})()
+        pipe.scheduler = FlowMatchEulerDiscreteScheduler(use_dynamic_shifting=True)
+        result = PipelineWrapper._sigmas_eval('primary', pipe, 3, [1.0, 0.5, 0.25])
+        self.assertEqual(len(result), 3)
 
     def test_prompt_length_warning_uses_pipeline_limit_for_processors(self):
         class _Inner:
@@ -1636,9 +1771,79 @@ class TestFlowImageTimesteps(unittest.TestCase):
         PipelineWrapper._timesteps_eval('primary', pipe, 3, 'timesteps[1:]')
         self.assertEqual(pipe.scheduler.timesteps.tolist(), [7, 3])
 
-        for invalid in ([], [10.5], [-1], 'timesteps + 0.5', '5'):
+        for invalid in ([], [10.5], [-1], [500, 500], 'timesteps[::-1]', '5'):
             with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
                 PipelineWrapper._timesteps_eval('primary', pipe, 3, invalid)
+
+        # An expression on an integer scheduler rounds to whole timesteps.
+        self.assertEqual(
+            PipelineWrapper._timesteps_eval('primary', pipe, 3, 'timesteps * 0.9 + 0.3'),
+            [900, 450, 0])
+
+    def test_timesteps_follow_each_scheduler(self):
+        import diffusers
+
+        from dgenerate.pipelinewrapper.wrapper import PipelineWrapper
+
+        noise = dict(beta_start=0.00085, beta_end=0.012, beta_schedule='scaled_linear')
+        cases = (
+            diffusers.DDPMScheduler(**noise),
+            diffusers.DPMSolverMultistepScheduler(**noise),
+            diffusers.EulerDiscreteScheduler(**noise),
+            diffusers.HeunDiscreteScheduler(**noise),
+            diffusers.FlowMatchEulerDiscreteScheduler(shift=3.0),
+            diffusers.FlowMatchEulerDiscreteScheduler(use_dynamic_shifting=True),
+        )
+        for scheduler in cases:
+            with self.subTest(scheduler=scheduler.__class__.__name__,
+                              dynamic=scheduler.config.get('use_dynamic_shifting', False)):
+                pipe = type('StableDiffusionPipeline', (), {})()
+                pipe.scheduler = scheduler
+                same = PipelineWrapper._timesteps_eval('primary', pipe, 6, 'timesteps')
+                self.assertEqual(len(same), 6)
+                self.assertTrue(all(a > b for a, b in zip(same, same[1:])))
+
+                limit = 1000 if scheduler.__class__.__name__.startswith('FlowMatch') else 999
+                PipelineWrapper._timesteps_eval('primary', pipe, 3, [limit, 500, 1])
+                with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
+                    PipelineWrapper._timesteps_eval('primary', pipe, 3, [limit + 1, 500, 1])
+                with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
+                    PipelineWrapper._timesteps_eval('primary', pipe, 3, [900, 900, 1])
+
+    def test_flow_match_sigmas_follow_custom_timesteps(self):
+        import diffusers
+        import numpy as np
+
+        import dgenerate.pipelinewrapper.videopipelines.schedules as schedules
+
+        custom = [999, 800, 400, 1]
+        expected = [value / 1000 for value in custom] + [0.0]
+        for make, extra in (
+                (lambda: diffusers.FlowMatchEulerDiscreteScheduler(shift=3.0), {}),
+                (lambda: diffusers.FlowMatchEulerDiscreteScheduler(use_dynamic_shifting=True),
+                 {'mu': 1.2})):
+            scheduler = make()
+            with schedules._flow_timesteps_pinned(scheduler):
+                scheduler.set_timesteps(timesteps=custom, device='cpu', **extra)
+            np.testing.assert_allclose(scheduler.timesteps.numpy(), custom, atol=1e-3)
+            np.testing.assert_allclose(scheduler.sigmas.numpy(), expected, atol=1e-6)
+            self.assertNotIn('set_timesteps', scheduler.__dict__)
+
+            forced = make()
+            with schedules._forced_scheduler_timesteps(forced, custom):
+                forced.set_timesteps(4, device='cpu', **extra)
+            np.testing.assert_allclose(forced.sigmas.numpy(), expected, atol=1e-6)
+
+    def test_video_timesteps_are_checked(self):
+        import diffusers
+
+        import dgenerate.pipelinewrapper.videopipelines.schedules as schedules
+
+        scheduler = diffusers.FlowMatchEulerDiscreteScheduler()
+        self.assertEqual(schedules._check_timesteps([1000, 500, 0], scheduler, 'Wan'), [1000, 500, 0])
+        for invalid in ([], [1001, 500], [500, 600], [500, 500]):
+            with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
+                schedules._check_timesteps(invalid, scheduler, 'Wan')
 
 
 if __name__ == '__main__':

@@ -109,14 +109,22 @@ def get_compatible_schedulers(pipeline_cls: type[diffusers.DiffusionPipeline]) -
 
     compatible_schedulers = set()
 
-    # Get constructor signature
+    # Get constructor signature. String annotations from postponed
+    # evaluation are resolved so a hint like FlowMatchEulerDiscreteScheduler
+    # is the class, not the name.
     init_sig = inspect.signature(pipeline_cls.__init__)
+    try:
+        hints = typing.get_type_hints(pipeline_cls.__init__)
+    except Exception:
+        hints = {}
 
-    for param in init_sig.parameters.values():
-        param_type = param.annotation
+    for name, param in init_sig.parameters.items():
+        param_type = hints.get(name, param.annotation)
 
         # Case 1: Direct scheduler class type hint (e.g., `param: DDIMScheduler`)
-        if inspect.isclass(param_type) and issubclass(param_type, diffusers.schedulers.SchedulerMixin):
+        if (inspect.isclass(param_type)
+                and param_type is not diffusers.schedulers.SchedulerMixin
+                and issubclass(param_type, diffusers.schedulers.SchedulerMixin)):
             compatible_schedulers.add(param_type)
 
         # Case 2: Union type hint (e.g., `Union[DDIMScheduler, EulerScheduler]`)
@@ -130,8 +138,13 @@ def get_compatible_schedulers(pipeline_cls: type[diffusers.DiffusionPipeline]) -
             compatible_schedulers.update(_KARRAS_SCHEDULERS_MAP.values())
 
     # The modular pipeline constructor does not annotate its scheduler.
-    if pipeline_cls.__name__ == 'Flux3ModularPipeline':
-        return [diffusers.FlowMatchEulerDiscreteScheduler]
+    modular = _modular_pipeline_scheduler(pipeline_cls)
+    if modular is not None:
+        return [getattr(diffusers, modular)]
+
+    video = _video_pipeline_scheduler_names(pipeline_cls)
+    if video is not None:
+        return [getattr(diffusers, name) for name in video if hasattr(diffusers, name)]
 
     # Published Wan 2.1 and 2.2 checkpoints use UniPCMultistepScheduler.
     # The pipeline annotation only names FlowMatchEulerDiscreteScheduler, so
@@ -151,6 +164,318 @@ def get_compatible_schedulers(pipeline_cls: type[diffusers.DiffusionPipeline]) -
         compatibles.append(diffusers.TCDScheduler)
 
     return compatibles
+
+
+# Schedulers the video loaders accept. These pipelines do not publish a
+# usable constructor annotation: Motif names the scheduler base class, and
+# Wan-Animate-2 and MiniMax-H3 video are modular pipelines with no scheduler
+# parameter. The image models below are read from the pipeline class.
+_VIDEO_SCHEDULER_NAMES = {
+    'ltx2': ('FlowMatchEulerDiscreteScheduler',),
+    'ltx-video': ('FlowMatchEulerDiscreteScheduler',),
+    'wan': ('FlowMatchEulerDiscreteScheduler', 'UniPCMultistepScheduler'),
+    'wan-animate': ('UniPCMultistepScheduler',),
+    'wan-animate-2': (
+        'DPMSolverMultistepScheduler',
+        'EulerDiscreteScheduler',
+        'FlowMatchEulerDiscreteScheduler',
+        'UniPCMultistepScheduler',
+    ),
+    'hyvideo-15': ('FlowMatchEulerDiscreteScheduler',),
+    'motif-video': (
+        'DPMSolverMultistepScheduler',
+        'FlowMatchEulerDiscreteScheduler',
+    ),
+    'kandinsky5-video': ('FlowMatchEulerDiscreteScheduler',),
+    'kandinsky6-video': ('FlowMatchEulerDiscreteScheduler', 'PiflowScheduler'),
+    'minimax-h3-video': ('MiniMaxH3Scheduler',),
+}
+
+# Video pipeline classes with no usable scheduler annotation, keyed to their
+# entry above. Subclasses, such as the distilled Wan-Animate-2 pipeline, match.
+_VIDEO_PIPELINE_MODEL_TYPES = {
+    'MotifVideoPipeline': 'motif-video',
+    'MotifVideoImage2VideoPipeline': 'motif-video',
+    'WanAnimate2ModularPipeline': 'wan-animate-2',
+    'MiniMaxH3ModularPipeline': 'minimax-h3-video',
+}
+
+
+def _video_pipeline_scheduler_names(pipeline_cls) -> tuple[str, ...] | None:
+    for base in getattr(pipeline_cls, '__mro__', (pipeline_cls,)):
+        model_type = _VIDEO_PIPELINE_MODEL_TYPES.get(getattr(base, '__name__', ''))
+        if model_type is not None:
+            return _VIDEO_SCHEDULER_NAMES[model_type]
+    return None
+
+
+def _model_type_string(model_type) -> str:
+    import dgenerate.pipelinewrapper.enums as _enums
+
+    if isinstance(model_type, str):
+        return _enums.get_model_type_string(_enums.get_model_type_enum(model_type))
+    return _enums.get_model_type_string(model_type)
+
+
+def compatible_scheduler_names(model_type) -> list[str]:
+    """Scheduler class names ``--model-type`` can load.
+
+    Video entries are the schedulers the video loader accepts. Image entries
+    are :func:`get_compatible_schedulers` on the pipeline class that runs.
+    """
+    name = _model_type_string(model_type)
+    video = _VIDEO_SCHEDULER_NAMES.get(name)
+    if video is not None:
+        return list(video)
+    return _image_scheduler_names(name)
+
+
+# The checkpoint fixes the sampling grid. MiniMax-H3 Image has one output
+# head per step of that grid, so --sigmas and --timesteps are rejected.
+_FIXED_SCHEDULE_MODEL_TYPES = frozenset({'minimax-h3-image'})
+
+
+def model_type_accepts_custom_sigmas(model_type) -> bool:
+    """``--sigmas`` can be used with ``--model-type`` when its scheduler accepts them."""
+    return _model_type_string(model_type) not in _FIXED_SCHEDULE_MODEL_TYPES
+
+
+# The constructor annotation for these is the whole Karras enum. The name
+# here is the scheduler the reference checkpoint loads when ``--scheduler``
+# is omitted. SD 2.x checkpoints that ship Euler still have to name it once
+# a sigma list is passed, because the model type's usual default is PNDM.
+_KARRAS_MODEL_DEFAULTS = {
+    'sd': 'PNDMScheduler',
+    'pix2pix': 'PNDMScheduler',
+    'upscaler-x4': 'DDIMScheduler',
+    'sdxl': 'EulerDiscreteScheduler',
+    'sdxl-pix2pix': 'EulerDiscreteScheduler',
+    'kolors': 'EulerDiscreteScheduler',
+}
+
+# Beta schedule of the reference checkpoint for each noise-prediction model
+# type, read from its scheduler_config.json. A noise scheduler cloned from
+# that config cannot reach a sigma above the one at its last training step.
+_REFERENCE_NOISE_CONFIG = {
+    'sd': {'beta-start': 0.00085, 'beta-end': 0.012,
+           'beta-schedule': 'scaled_linear', 'num-train-timesteps': 1000},
+    'pix2pix': {'beta-start': 0.00085, 'beta-end': 0.012,
+                'beta-schedule': 'scaled_linear', 'num-train-timesteps': 1000},
+    'sdxl': {'beta-start': 0.00085, 'beta-end': 0.012,
+             'beta-schedule': 'scaled_linear', 'num-train-timesteps': 1000},
+    'sdxl-pix2pix': {'beta-start': 0.00085, 'beta-end': 0.012,
+                     'beta-schedule': 'scaled_linear', 'num-train-timesteps': 1000},
+    'kolors': {'beta-start': 0.00085, 'beta-end': 0.014,
+               'beta-schedule': 'scaled_linear', 'num-train-timesteps': 1100},
+    'upscaler-x2': {'beta-start': 0.00085, 'beta-end': 0.012,
+                    'beta-schedule': 'scaled_linear', 'num-train-timesteps': 1000,
+                    'interpolation-type': 'log_linear'},
+    'upscaler-x4': {'beta-start': 0.0001, 'beta-end': 0.02,
+                    'beta-schedule': 'scaled_linear', 'num-train-timesteps': 1000},
+}
+
+
+def reference_noise_config(model_type) -> dict | None:
+    """Beta schedule of the model type's reference checkpoint, or ``None``.
+
+    Keys are URI argument names: ``beta-start``, ``beta-end``,
+    ``beta-schedule``, ``num-train-timesteps``, and, when the checkpoint
+    sets it, ``interpolation-type``.
+    """
+    config = _REFERENCE_NOISE_CONFIG.get(_model_type_string(model_type))
+    return dict(config) if config is not None else None
+
+
+# FlowMatch ``shift`` of the reference checkpoint, for model types whose
+# pipeline leaves the default schedule to the scheduler and whose shift is not
+# the class default of 1. A passed sigma list is shifted again by this value.
+_REFERENCE_FLOW_SHIFT = {
+    'sd3': 3.0,
+    'kandinsky5-image': 5.0,
+    'kandinsky5-video': 5.0,
+    'kandinsky6-video': 5.0,
+}
+
+
+def reference_flow_shift(model_type) -> float | None:
+    """FlowMatch ``shift`` of the model type's reference checkpoint, or ``None``."""
+    return _REFERENCE_FLOW_SHIFT.get(_model_type_string(model_type))
+
+
+# Wan's constructor names FlowMatch, but the published checkpoints load UniPC.
+_VIDEO_DEFAULT_SCHEDULER = {
+    'wan': 'UniPCMultistepScheduler',
+}
+
+
+def default_scheduler_name(model_type) -> str | None:
+    """Scheduler class used when ``--scheduler`` is left unset.
+
+    Video entries are the loader's usual checkpoint scheduler. Image entries
+    are the pipeline constructor's scheduler class, or the reference
+    checkpoint when that annotation is the Karras enum.
+    """
+    name = _model_type_string(model_type)
+    video = _VIDEO_SCHEDULER_NAMES.get(name)
+    if video is not None:
+        return _VIDEO_DEFAULT_SCHEDULER.get(name, video[0])
+    if name in _KARRAS_MODEL_DEFAULTS:
+        return _KARRAS_MODEL_DEFAULTS[name]
+    classes = _model_pipeline_classes(name)
+    if not classes:
+        return _modular_default_scheduler(name)
+    return _declared_scheduler_name(classes[0])
+
+
+# set_timesteps lists ``sigmas`` and then raises if one is passed.
+_REJECTS_CUSTOM_SIGMAS = frozenset({'PiflowScheduler'})
+
+
+def scheduler_accepts_custom_sigmas(scheduler) -> bool:
+    """``set_timesteps`` accepts a custom sigma list for this scheduler.
+
+    A declared ``sigmas`` parameter is not enough. PiFlow documents the
+    argument and then rejects anything but its own distilled schedule.
+    """
+    if isinstance(scheduler, str):
+        scheduler_cls = getattr(diffusers, scheduler, None)
+        name = scheduler
+    else:
+        scheduler_cls = scheduler
+        name = getattr(scheduler_cls, '__name__', '').split('.')[-1]
+    if scheduler_cls is None or name in _REJECTS_CUSTOM_SIGMAS:
+        return False
+    try:
+        parameters = inspect.signature(scheduler_cls.set_timesteps).parameters
+    except (TypeError, ValueError):
+        return False
+    return 'sigmas' in parameters
+
+
+def scheduler_accepts_custom_timesteps(scheduler) -> bool:
+    """``set_timesteps`` accepts a custom timestep list for this scheduler.
+
+    PiFlow documents the argument and then rejects it, as it does sigmas.
+    """
+    if isinstance(scheduler, str):
+        scheduler_cls = getattr(diffusers, scheduler, None)
+        name = scheduler
+    else:
+        scheduler_cls = scheduler if inspect.isclass(scheduler) else type(scheduler)
+        name = scheduler_cls.__name__
+    if scheduler_cls is None or name in _REJECTS_CUSTOM_SIGMAS:
+        return False
+    try:
+        parameters = inspect.signature(scheduler_cls.set_timesteps).parameters
+    except (TypeError, ValueError):
+        return False
+    return 'timesteps' in parameters
+
+
+# Modular pipelines take their components from a blocks spec, so the
+# constructor does not annotate a scheduler class.
+_MODULAR_PIPELINE_SCHEDULERS = {
+    'Flux3ModularPipeline': 'FlowMatchEulerDiscreteScheduler',
+    'MiniMaxH3ImageModularPipeline': 'MiniMaxH3Scheduler',
+}
+
+_MODULAR_MODEL_SCHEDULERS = {
+    'flux3': 'FlowMatchEulerDiscreteScheduler',
+    'minimax-h3-image': 'MiniMaxH3Scheduler',
+    'minimax-h3-video': 'MiniMaxH3Scheduler',
+}
+
+
+def _modular_default_scheduler(model_type: str) -> str | None:
+    return _MODULAR_MODEL_SCHEDULERS.get(model_type)
+
+
+def _modular_pipeline_scheduler(pipeline_cls) -> str | None:
+    """Scheduler of a modular pipeline class or of a class it extends.
+
+    A checkpoint's ``modular_model_index.json`` can name a subclass, such as
+    ``Flux3DistilledModularPipeline`` for FLUX.3 Image Klein.
+    """
+    for base in getattr(pipeline_cls, '__mro__', (pipeline_cls,)):
+        name = _MODULAR_PIPELINE_SCHEDULERS.get(getattr(base, '__name__', ''))
+        if name is not None:
+            return name
+    return None
+
+
+def _declared_scheduler_name(pipeline_cls) -> str | None:
+    """Scheduler class named by the pipeline constructor, before compatibles expand."""
+    modular = _modular_pipeline_scheduler(pipeline_cls)
+    if modular is not None:
+        return modular
+
+    init_sig = inspect.signature(pipeline_cls.__init__)
+    try:
+        hints = typing.get_type_hints(pipeline_cls.__init__)
+    except Exception:
+        hints = {}
+    param = init_sig.parameters.get('scheduler')
+    if param is None:
+        return None
+    param_type = hints.get('scheduler', param.annotation)
+    if (inspect.isclass(param_type)
+            and param_type is not diffusers.schedulers.SchedulerMixin
+            and issubclass(param_type, diffusers.schedulers.SchedulerMixin)):
+        return param_type.__name__.split('.')[-1]
+    if _types.is_union(param_type):
+        for sub_type in typing.get_args(param_type):
+            if (inspect.isclass(sub_type)
+                    and sub_type is not diffusers.schedulers.SchedulerMixin
+                    and issubclass(sub_type, diffusers.schedulers.SchedulerMixin)):
+                return sub_type.__name__.split('.')[-1]
+    return None
+
+
+def _model_pipeline_classes(model_type: str) -> list:
+    import dgenerate.pipelinewrapper.enums as _enums
+    import dgenerate.pipelinewrapper.pipelines as _pipelines
+    import dgenerate.pipelinewrapper.textencoderschema as _text_encoder_schema
+
+    classes = list(_text_encoder_schema._pipeline_classes().get(model_type) or [])
+    if classes:
+        return classes
+    preferred = {
+        'flux-fill': _enums.PipelineType.INPAINT,
+        'flux-kontext': _enums.PipelineType.IMG2IMG,
+    }
+    kinds = []
+    if model_type in preferred:
+        kinds.append(preferred[model_type])
+    for kind in (
+            _enums.PipelineType.TXT2IMG,
+            _enums.PipelineType.IMG2IMG,
+            _enums.PipelineType.INPAINT):
+        if kind not in kinds:
+            kinds.append(kind)
+    for kind in kinds:
+        try:
+            found = _pipelines.get_pipeline_class(
+                _enums.get_model_type_enum(model_type), kind, help_mode=True)
+        except Exception:
+            continue
+        if found is diffusers.StableDiffusionPipeline and model_type != 'sd':
+            continue
+        return [found]
+    return []
+
+
+def _image_scheduler_names(model_type: str) -> list[str]:
+    classes = _model_pipeline_classes(model_type)
+    names = set()
+    for pipeline_cls in classes:
+        for scheduler_cls in get_compatible_schedulers(pipeline_cls):
+            if scheduler_cls is None:
+                continue
+            scheduler_name = scheduler_cls.__name__.split('.')[-1]
+            if scheduler_name == 'SchedulerMixin':
+                continue
+            names.add(scheduler_name)
+    return sorted(names)
 
 
 _scheduler_option_args = {

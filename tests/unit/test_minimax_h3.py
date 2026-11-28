@@ -44,7 +44,7 @@ class TestMiniMaxH3(unittest.TestCase):
         wrapper = types.SimpleNamespace(
             controlnet_uris=None, model_cpu_offload=True,
             model_sequential_offload=False, model_group_offload=False, device='cpu')
-        pipe = object()
+        pipe = types.SimpleNamespace(scheduler=None)
 
         def enhance(wrapper, pipe_arg, args, references=None):
             self.assertIs(pipe_arg, pipe)
@@ -411,6 +411,150 @@ class TestMiniMaxH3(unittest.TestCase):
         self.assertTrue(pipe.scheduler.config.stochastic_sampling)
         self.assertEqual(pipe.audio_scheduler.config.shift, 1.5)
         self.assertFalse(pipe.audio_scheduler.config.stochastic_sampling)
+
+    def test_scheduler_uris_last_one_run(self):
+        import dgenerate.pipelinewrapper.videopipelines.minimax as _video
+
+        pipe = self._sigma_pipe()
+        video, audio = pipe.scheduler, pipe.audio_scheduler
+        _video._configure_schedulers(
+            pipe, 'MiniMaxH3Scheduler;shift=8', 'MiniMaxH3Scheduler;shift=1.5')
+        self.assertEqual(pipe.scheduler.config.shift, 8.0)
+        self.assertEqual(pipe.audio_scheduler.config.shift, 1.5)
+        _video._configure_schedulers(pipe, None, None)
+        self.assertIs(pipe.scheduler, video)
+        self.assertIs(pipe.audio_scheduler, audio)
+        _video._configure_schedulers(pipe, 'MiniMaxH3Scheduler;stochastic-sampling=true', None)
+        self.assertEqual(pipe.scheduler.config.shift, 12.0)
+        self.assertTrue(pipe.scheduler.config.stochastic_sampling)
+        self.assertIs(pipe.audio_scheduler, audio)
+
+    def _wrapper(self):
+        return _pipelinewrapper.PipelineWrapper.__new__(_pipelinewrapper.PipelineWrapper)
+
+    def _sigma_pipe(self):
+        import diffusers
+
+        return types.SimpleNamespace(
+            scheduler=diffusers.MiniMaxH3Scheduler(shift=12.0),
+            audio_scheduler=diffusers.MiniMaxH3Scheduler(shift=3.0))
+
+    def test_sigmas_expression_reproduces_both_default_schedules(self):
+        import dgenerate.pipelinewrapper.videopipelines.minimax as _video
+
+        pipe = self._sigma_pipe()
+        defaults = {}
+        for name in ('scheduler', 'audio_scheduler'):
+            getattr(pipe, name).set_timesteps(30)
+            defaults[name] = getattr(pipe, name).sigmas.clone()
+        args = types.SimpleNamespace(sigmas='sigmas', inference_steps=30)
+        sigmas = _video._user_sigmas(self._wrapper(), pipe, args)
+        self.assertEqual(args.inference_steps, 30)
+        for name in ('scheduler', 'audio_scheduler'):
+            scheduler = getattr(pipe, name)
+            with _video._forced_sigmas(pipe, sigmas):
+                scheduler.set_timesteps(30)
+            self.assertTrue(torch.allclose(scheduler.sigmas, defaults[name], atol=1e-6), name)
+
+    def test_sigmas_list_is_shifted_by_each_scheduler(self):
+        import dgenerate.pipelinewrapper.videopipelines.minimax as _video
+
+        pipe = self._sigma_pipe()
+        args = types.SimpleNamespace(sigmas=[1.0, 0.75, 0.5, 0.25], inference_steps=30)
+        sigmas = _video._user_sigmas(self._wrapper(), pipe, args)
+        self.assertEqual([float(value) for value in sigmas], [1.0, 0.75, 0.5, 0.25, 0.0])
+        self.assertEqual(args.inference_steps, 5)
+        shifted = {}
+        for name in ('scheduler', 'audio_scheduler'):
+            scheduler = getattr(pipe, name)
+            with _video._forced_sigmas(pipe, sigmas):
+                scheduler.set_timesteps(args.inference_steps)
+            self.assertEqual(scheduler.num_inference_steps, 4)
+            shifted[name] = [round(float(value), 4) for value in scheduler.sigmas]
+        self.assertEqual(shifted['scheduler'], [1.0, 0.973, 0.9231, 0.8, 0.0])
+        self.assertEqual(shifted['audio_scheduler'], [1.0, 0.9, 0.75, 0.5, 0.0])
+
+    def test_sigmas_follow_shift_provided_sigmas_from_the_scheduler_uri(self):
+        import dgenerate.pipelinewrapper.videopipelines.minimax as _video
+
+        pipe = self._sigma_pipe()
+        _video._configure_schedulers(pipe, 'MiniMaxH3Scheduler;shift-provided-sigmas=false', None)
+        args = types.SimpleNamespace(sigmas=[1.0, 0.75, 0.5, 0.25], inference_steps=30)
+        sigmas = _video._user_sigmas(self._wrapper(), pipe, args)
+        with _video._forced_sigmas(pipe, sigmas):
+            pipe.scheduler.set_timesteps(args.inference_steps)
+            pipe.audio_scheduler.set_timesteps(args.inference_steps)
+            self.assertTrue(pipe.audio_scheduler.config.shift_provided_sigmas)
+        self.assertEqual([round(float(value), 4) for value in pipe.scheduler.sigmas], [1.0, 0.75, 0.5, 0.25, 0.0])
+        self.assertEqual([round(float(value), 4) for value in pipe.audio_scheduler.sigmas], [1.0, 0.9, 0.75, 0.5, 0.0])
+        self.assertFalse(pipe.scheduler.config.shift_provided_sigmas)
+        self.assertIsNone(pipe.audio_scheduler.config.shift_provided_sigmas)
+
+    def test_inference_steps_below_two_are_rejected_before_loading(self):
+        import dgenerate.pipelinewrapper.videopipelines.minimax as _call
+
+        for sigmas in (None, 'sigmas'):
+            user_args = types.SimpleNamespace(
+                sigmas=sigmas, timesteps=None, video_frames=None, end_video_frames=None,
+                prompt=types.SimpleNamespace(positive='a fox', negative=None),
+                guidance_scale=1.0, video_fps=24, inference_steps=1,
+                images=None, end_images=None, reference_media_paths=None,
+                scheduler_uri=None, second_model_scheduler_uri=None,
+                video_length=5, width=1024, height=576, vae_slicing=False,
+                latents=None, audio_latents=None, pipeline_prompt_enhance=False, seed=1)
+            wrapper = types.SimpleNamespace(
+                controlnet_uris=None, model_cpu_offload=True,
+                model_sequential_offload=False, model_group_offload=False, device='cpu')
+            with unittest.mock.patch.object(_videopipelines, '_video_pipeline') as load:
+                with self.assertRaisesRegex(_pipelines.UnsupportedPipelineConfigError, 'at least 2'):
+                    _call.call_minimax_h3(wrapper, user_args)
+            load.assert_not_called()
+
+    def test_sigmas_outside_the_unshifted_grid_are_rejected(self):
+        import dgenerate.pipelinewrapper.videopipelines.minimax as _video
+
+        for sigmas in ([1.5, 0.5], [0.5, 0.75]):
+            with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
+                _video._user_sigmas(
+                    self._wrapper(), self._sigma_pipe(),
+                    types.SimpleNamespace(sigmas=sigmas, inference_steps=30))
+
+    def test_only_minimax_image_fixes_the_schedule(self):
+        self.assertTrue(_pipelinewrapper.model_type_accepts_custom_sigmas('minimax-h3-video'))
+        self.assertFalse(_pipelinewrapper.model_type_accepts_custom_sigmas('minimax-h3-image'))
+        self.assertTrue(_pipelinewrapper.model_type_accepts_custom_sigmas('flux'))
+
+    def test_recipe_sigma_base_reproduces_both_default_schedules(self):
+        import json
+        import pathlib
+        import re
+
+        import dgenerate.console.sigmaschedule as _schedule
+        import dgenerate.pipelinewrapper.videopipelines.minimax as _video
+
+        text = pathlib.Path('dgenerate/console/recipes/minimax-h3-video-t2va.recipe').read_text(encoding='utf-8')
+        base = json.loads(re.search(r'@sigmas\[(\{.*?\})\]', text).group(1))['base']
+        self.assertEqual(base, _schedule.scheduler_curve('MiniMaxH3Scheduler', 29, model_type='minimax-h3-video'))
+        pipe = self._sigma_pipe()
+        defaults = {}
+        for name in ('scheduler', 'audio_scheduler'):
+            getattr(pipe, name).set_timesteps(30)
+            defaults[name] = getattr(pipe, name).sigmas.clone()
+        args = types.SimpleNamespace(sigmas=base, inference_steps=30)
+        sigmas = _video._user_sigmas(self._wrapper(), pipe, args)
+        self.assertEqual(args.inference_steps, 30)
+        for name in ('scheduler', 'audio_scheduler'):
+            scheduler = getattr(pipe, name)
+            with _video._forced_sigmas(pipe, sigmas):
+                scheduler.set_timesteps(30)
+            self.assertTrue(torch.allclose(scheduler.sigmas, defaults[name], atol=1e-5), name)
+
+    def test_console_offers_sigmas_for_video_only(self):
+        import dgenerate.console.sigmaschedule as _schedule
+
+        self.assertEqual(_schedule.sigma_scheduler_names('minimax-h3-video'), ['MiniMaxH3Scheduler'])
+        self.assertEqual(_schedule.sigma_scheduler_names('minimax-h3-image'), [])
+        self.assertFalse(_schedule.default_scheduler_accepts_sigmas('minimax-h3-image'))
 
     def test_quantizer_lora_fuses_to_disk_only_when_asked(self):
         plan = _minimax._quantized_denoiser_lora_plan

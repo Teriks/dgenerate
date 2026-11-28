@@ -493,12 +493,22 @@ Lite distilled is ``Kandinsky-6.0-Lite-distill-5s-Diffusers``, 10 steps,
 guidance 1, audio, 864x480, 24 fps. Lite, full Lite, and Pro distilled are
 public. Pro ``Kandinsky-6.0-Pro-5s-Diffusers`` is gated and needs HF_TOKEN.
 50 steps, guidance 5.
+Full Lite ``Kandinsky-6.0-Lite-5s-Diffusers`` is 50 steps, guidance 5. Its GGUF
+is ``transformer-Q4_K.gguf`` from ``Teriks/Kandinsky-6.0-Lite-5s-quants`` and
+its INT8 is ``Kandinsky-6.0-Lite-5s-int8-convrot.safetensors`` from
+``kabachuha/Kandinsky-6.0-Lite-5s-int8-convrot``. Both stay on that parent.
 One still is the first frame. No ``--loras``.
 ``--pipeline-prompt-enhance`` turns on ``expand_prompts``.
 HunyuanVideo 1.5 is ``--model-type hyvideo-15``. Its GGUF stays on the
 480p text-to-video parent. A still keeps the i2v transformer.
 Kandinsky 5 video is ``--model-type kandinsky5-video``. The Pro GGUF
 ``kandinsky5Pro_t2v_sft_5s-Q4_K_S.gguf`` stays on the Pro text-to-video parent.
+Lite ``distilled16steps`` is 16 steps, guidance 1. ``nocfg`` is guidance 1.
+Each has a ``-10s`` repo, as does Lite sft. Each of those has its own
+``Teriks/Kandinsky-5.0-T2V-Lite-<variant>-quants`` repo, such as
+``Teriks/Kandinsky-5.0-T2V-Lite-nocfg-10s-quants``, and its quants stay on that
+parent. The non-distilled I2V Pro quants are
+``Teriks/Kandinsky-5.0-I2V-Pro-sft-5s-quants``.
 
 torch compile
 -------------
@@ -550,7 +560,8 @@ ltx2 gemma gguf
 
 ltx2, LTX-2, or LTX means an LTX-2.5 recipe. Gemma 3 and
 ``Lightricks/LTX-2`` only when the user names 19B, LTX-2.0, or Gemma 3.
-Distilled LTX-2.5 GGUF keeps guidance 1 and omits ``--inference-steps``.
+Distilled LTX-2.5 GGUF keeps guidance 1 and omits ``--inference-steps``
+unless asked. Another step count resamples the 8-step distilled schedule.
 Dev GGUF is guidance 3, audio guidance 7, and
 ``FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1``.
 Gemma 4 is ``Gemma4UnifiedForConditionalGeneration`` at

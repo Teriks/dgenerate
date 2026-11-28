@@ -6,8 +6,8 @@ title: MiniMax-H3-Video Text to Video (ComfyUI Quant)
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"MiniMaxAI/MiniMax-H3", "optional":false, "file-types":["models"]}]
 --model-type minimax-h3-video
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
-@karrasscheduler[{"label":"Video Scheduler", "arg":"--scheduler", "filter":["MiniMaxH3Scheduler"]}]
-@karrasscheduler[{"label":"Audio Scheduler", "arg":"--second-model-scheduler", "filter":["MiniMaxH3Scheduler"]}]
+@karrasscheduler[{"label":"Video Scheduler", "arg":"--scheduler"}]
+@karrasscheduler[{"label":"Audio Scheduler", "arg":"--second-model-scheduler"}]
 @spectrum[{"id": "sp", "divider-after": true}]
 @switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
@@ -16,6 +16,7 @@ title: MiniMax-H3-Video Text to Video (ComfyUI Quant)
 @textencoders[{"model-type":"minimax-h3-video","arg":"--text-encoders", "divider-after":true}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors", "divider-after":true, "suggestions":[{"label":"fl2va pruned int8", "value":"https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors"}, {"label":"fl2va int8", "value":"https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_fl2va_int8_convrot.safetensors"}, {"label":"fl2va pruned fp8", "value":"https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_fl2va_pruned_fp8_scaled.safetensors"}, {"label":"fl2va pruned w6a8", "value":"https://huggingface.co/Comfy-Org/MiniMax-H3/blob/main/diffusion_models/minimax_h3_fl2va_pruned_w6a8.safetensors"}]}]
 @int[{"label":"Inference Steps","arg":"--inference-steps","default":30,"min":1}]
+@sigmas[{"id":"sigmas","label":"Sigmas","arg":"--sigmas","base":[1.0,0.965517,0.931034,0.896552,0.862069,0.827586,0.793103,0.758621,0.724138,0.689655,0.655172,0.62069,0.586207,0.551724,0.517241,0.482759,0.448276,0.413793,0.37931,0.344828,0.310345,0.275862,0.241379,0.206897,0.172414,0.137931,0.103448,0.068966,0.034483]}]
 @float[{"label":"Video Length (seconds)", "arg":"--video-lengths", "default":5.17, "min":5, "max":15}]
 @float[{"label":"Video FPS", "arg":"--video-fps", "default":24, "min":1}]
 @dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]

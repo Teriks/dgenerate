@@ -494,6 +494,131 @@ class TextEncoderFileTest(unittest.TestCase):
             output = loaded(tokens).last_hidden_state
         self.assertLess(((output - expected).norm() / expected.norm()).item(), 0.08)
 
+    def test_comfy_t5_family_loads_shared_without_tied_alias(self):
+        import safetensors.torch
+
+        families = (
+            ('UMT5EncoderModel', transformers.UMT5Config, transformers.UMT5EncoderModel),
+            ('T5EncoderModel', transformers.T5Config, transformers.T5EncoderModel),
+        )
+        for name, config_class, model_class in families:
+            with self.subTest(name):
+                torch.manual_seed(0)
+                config = config_class(
+                    vocab_size=128, d_model=64, d_kv=16, d_ff=128, num_layers=2, num_heads=4,
+                    feed_forward_proj='gated-gelu')
+                reference = model_class(config).eval()
+                # ComfyUI files store the embedding once, as shared.weight.
+                state = {key: value for key, value in reference.state_dict().items()
+                         if key != 'encoder.embed_tokens.weight'}
+                path = self._temp('.safetensors')
+                config_path = _config_file(config)
+                self._files.append(config_path)
+                safetensors.torch.save_file(_comfy_fp8(state), path)
+
+                with unittest.mock.patch.object(
+                        textencoderuri, '_require_shipped_config', return_value=config_path):
+                    loaded = textencoderuri.TextEncoderUri.parse(
+                        f'{name};model={path}').load(
+                        dtype_fallback=_enums.DataType.FLOAT32, no_cache=True)
+
+                self.assertIs(loaded.shared.weight, loaded.encoder.embed_tokens.weight)
+                torch.testing.assert_close(loaded.shared.weight, reference.shared.weight)
+                tokens = torch.randint(0, 128, (1, 8))
+                with torch.no_grad():
+                    expected = reference(tokens).last_hidden_state
+                    output = loaded(tokens).last_hidden_state
+                self.assertLess(((output - expected).norm() / expected.norm()).item(), 0.08)
+
+    def test_monolithic_t5_warns_about_parameters_the_file_lacks(self):
+        import safetensors.torch
+
+        torch.manual_seed(0)
+        config = transformers.T5Config(
+            vocab_size=128, d_model=64, d_kv=16, d_ff=128, num_layers=2, num_heads=4,
+            feed_forward_proj='gated-gelu')
+        reference = transformers.T5EncoderModel(config).eval()
+        config_path = _config_file(config)
+        self._files.append(config_path)
+        state = {key: value for key, value in reference.state_dict().items()
+                 if key != 'encoder.embed_tokens.weight'}
+        cases = {
+            'complete': (state, None),
+            'missing': ({key: value for key, value in state.items()
+                         if key != 'encoder.final_layer_norm.weight'},
+                        'encoder.final_layer_norm.weight'),
+        }
+        for name, (tensors, missing) in cases.items():
+            with self.subTest(name):
+                path = self._temp('.safetensors')
+                safetensors.torch.save_file(_comfy_fp8(tensors), path)
+                with unittest.mock.patch.object(
+                        textencoderuri, '_require_shipped_config', return_value=config_path), \
+                        unittest.mock.patch.object(textencoderuri._messages, 'warning') as warning:
+                    textencoderuri.TextEncoderUri.parse(
+                        f'T5EncoderModel;model={path}').load(
+                        dtype_fallback=_enums.DataType.FLOAT32, no_cache=True)
+                messages = [call.args[0] for call in warning.call_args_list
+                            if 'random initialization' in call.args[0]]
+                if missing is None:
+                    self.assertEqual(messages, [])
+                else:
+                    self.assertEqual(len(messages), 1)
+                    self.assertIn(missing, messages[0])
+
+    def test_gguf_t5_loads_embed_tokens_without_shared(self):
+        torch.manual_seed(0)
+        config = transformers.T5Config(
+            vocab_size=128, d_model=64, d_kv=16, d_ff=128, num_layers=2, num_heads=4,
+            feed_forward_proj='gated-gelu')
+        reference = transformers.T5EncoderModel(config).eval()
+        path = self._temp('.gguf')
+        config_path = _config_file(config)
+        self._files.append(config_path)
+        _write_gguf(path, 't5encoder', {
+            _replace(key, _T5_TO_GGUF): value
+            for key, value in reference.state_dict().items() if key != 'shared.weight'})
+
+        loaded = textencoderuri._load_gguf_text_encoder(
+            transformers.T5EncoderModel, path, torch.float32, config_path=config_path)
+
+        self.assertIs(loaded.shared.weight, loaded.encoder.embed_tokens.weight)
+        torch.testing.assert_close(loaded.shared.weight, reference.shared.weight)
+
+    def test_tied_language_model_head_follows_embedding(self):
+        import safetensors.torch
+
+        torch.manual_seed(0)
+        config = transformers.Qwen3Config(
+            vocab_size=128, hidden_size=64, intermediate_size=128, num_hidden_layers=2,
+            num_attention_heads=4, num_key_value_heads=2, head_dim=16, tie_word_embeddings=True)
+        reference = transformers.Qwen3ForCausalLM(config).eval()
+        state = {key: value for key, value in reference.state_dict().items()
+                 if key != 'lm_head.weight'}
+        config_path = _config_file(config)
+        self._files.append(config_path)
+        comfy_path = self._temp('.safetensors')
+        safetensors.torch.save_file(_comfy_fp8(state), comfy_path)
+        gguf_path = self._temp('.gguf')
+        _write_gguf(gguf_path, 'qwen3', {
+            _replace(key, _QWEN_TO_GGUF): value for key, value in state.items()})
+
+        loaders = {
+            'comfy': lambda: textencoderuri._load_language_model_from_single_file(
+                transformers.Qwen3ForCausalLM, comfy_path, config_path, torch.float32),
+            'gguf': lambda: textencoderuri._load_gguf_text_encoder(
+                transformers.Qwen3ForCausalLM, gguf_path, torch.float32, config_path=config_path),
+        }
+        for name, load in loaders.items():
+            with self.subTest(name):
+                loaded = load()
+                self.assertIs(loaded.lm_head.weight, loaded.model.embed_tokens.weight)
+                tokens = torch.randint(0, 128, (1, 8))
+                with torch.no_grad():
+                    expected = reference(tokens).logits
+                    output = loaded(tokens).logits
+                self.assertLess(((output - expected).norm() / expected.norm()).item(), 0.08)
+
     def test_comfy_t5_safetensors_stay_packed(self):
         import safetensors.torch
 

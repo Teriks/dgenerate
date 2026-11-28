@@ -48,6 +48,29 @@ class TestFlux3Kandinsky6(unittest.TestCase):
                 __import__('diffusers').Flux3ModularPipeline)]
         self.assertEqual(names, ['FlowMatchEulerDiscreteScheduler'])
 
+    def test_klein_distilled_pipeline_accepts_flow_match(self):
+        import diffusers
+
+        import dgenerate.pipelinewrapper.schedulers as _schedulers
+
+        # FLUX.3 Image Klein's modular_model_index.json names the distilled subclass.
+        distilled = diffusers.Flux3DistilledModularPipeline
+        names = [scheduler.__name__ for scheduler in _schedulers.get_compatible_schedulers(distilled)]
+        self.assertEqual(names, ['FlowMatchEulerDiscreteScheduler'])
+        self.assertEqual(
+            _schedulers._declared_scheduler_name(distilled), 'FlowMatchEulerDiscreteScheduler')
+
+    def test_modular_pipeline_block_inputs_are_call_arguments(self):
+        import diffusers
+
+        import dgenerate.pipelinewrapper.wrapper as _wrapper
+
+        for blocks in (diffusers.Flux3AutoBlocks, diffusers.Flux3DistilledAutoBlocks):
+            with self.subTest(blocks=blocks.__name__):
+                names = _wrapper.PipelineWrapper._call_argument_names(blocks().init_pipeline())
+                self.assertIn('sigmas', names)
+                self.assertIn('timesteps', names)
+
     def test_flux3_pipeline_rejects_mask_and_controlnet(self):
         self.assertIs(
             _pipelines.get_pipeline_class(_enums.ModelType.FLUX3),

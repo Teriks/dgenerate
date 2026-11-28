@@ -144,10 +144,11 @@ comma-separated integer schedules, such as ``1000,700,300,0``, or ``expr:``
 expressions evaluated with the scheduler's default array named ``timesteps``
 (for example, ``expr: timesteps[::2]``). Multiple schedules are tried in turn.
 The number of selected timesteps replaces ``--inference-steps`` for that run.
-Motif uses a timestep schedule rather than a sigma schedule, so leave
-``--sigmas`` unset when ``--timesteps`` is set. The same option also applies
-to Wan video-to-video, LTX-2, HunyuanVideo 1.5, Kandinsky 5 video, Kandinsky 6
-video, and the SD 1.5/2/XL and Kolors image models.
+``--timesteps`` cannot be combined with ``--sigmas``. Both work with any model
+type whose scheduler takes them, including pipelines that do not accept them
+as call arguments; the schedule is applied at the scheduler. Motif's default
+``DPMSolverMultistepScheduler`` takes timesteps only; select
+``FlowMatchEulerDiscreteScheduler`` for ``--sigmas``.
 
 LoRA and GGUF
 ~~~~~~~~~~~~~
@@ -175,6 +176,11 @@ pass a negative prompt. The only scheduler name is ``MiniMaxH3Scheduler``.
 shift 3, and does not inherit ``--scheduler``. Omitting either keeps that
 checkpoint scheduler. ``--inference-steps`` defaults to
 30. That count includes the terminal sigma, so the model runs 29 evaluations.
+``--sigmas`` is the grid before the shift, between 1 and 0. A terminal 0 is
+appended when missing. The video and audio schedulers each shift that one
+list by their own shift, so both keep the same step count. The expression
+symbol ``sigmas`` is ``linspace(1, 0, steps)`` without the terminal 0, which
+reproduces the default schedule. ``--timesteps`` is rejected.
 ``--spectrum`` forecasts the packed hidden state and skips the transformer
 blocks on later steps. The video and audio output heads still run.
 ``ref2va`` forecasts ``transformer_ref``. A forecast step leaves a Fun control
@@ -730,15 +736,12 @@ For ``--model-type ltx2``, omitted guidance becomes ``1`` on a distilled checkpo
 or video ``3`` with audio ``7`` on a full checkpoint. Values you set are used as
 written. An omitted step count uses the pipeline default (``30`` on full
 ``LTX2Pipeline`` when neither ``--timesteps`` nor ``--sigmas`` is set). A
-distilled checkpoint always uses its sigma table length regardless of
-``--inference-steps``.
+distilled checkpoint with an omitted step count runs its 8-value sigma table.
 
 **Scheduler without dynamic shifting (the published LTX-2.5 scheduler)**
 
-* The clip uses Diffusers' distilled 8-value sigma table. ``--inference-steps`` is
-  not sent to the pipeline. dgenerate warns when you passed an explicit step count
-  that does not match the table, and still uses the table. Passing ``--inference-steps 8``
-  matches the table and silences the warning.
+* The clip uses Diffusers' distilled 8-value sigma table. Another ``--inference-steps``
+  count linearly resamples that table to that many steps, keeping its shape.
 * Omitted guidance is ``1`` (unguided). Any explicit guidance value is used as written.
 * Video guidance and audio guidance receive that same number unless
   ``--ltx-audio-guidance-scales`` is set.

@@ -37,6 +37,8 @@ from .stringfileentry import _StringFileEntry
 from .uriwithfloatentry import _UriWithFloatEntry
 from .uriwithfloatargentry import _UriWithFloatArgEntry
 from .seedsentry import _SeedsEntry
+from .sigmaentry import _SigmaEntry
+from .timestepentry import _TimestepEntry
 from .imagesizeentry import _ImageSizeEntry
 from .argswitchradio import _ArgSwitchRadio
 from .argswitchconditionalcheckboxes import _ArgSwitchConditionalCheckboxes

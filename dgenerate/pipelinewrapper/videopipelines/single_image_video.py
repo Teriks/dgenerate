@@ -38,6 +38,7 @@ import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.sampling as _sampling
 import dgenerate.types as _types
+import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.videopipelines.media as _media
 import dgenerate.pipelinewrapper.videopipelines.wan as _wan
 import dgenerate.pipelinewrapper.videopipelines as _vp
@@ -46,10 +47,9 @@ import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
 
 _hyvideo_lora.install_hunyuan_video15_lora_loader()
 
-HUNYUAN_VIDEO_15_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
-MOTIF_VIDEO_SCHEDULER_NAMES = frozenset({
-    'FlowMatchEulerDiscreteScheduler', 'DPMSolverMultistepScheduler'})
-KANDINSKY5_VIDEO_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
+HUNYUAN_VIDEO_15_SCHEDULER_NAMES = frozenset(_schedulers.compatible_scheduler_names('hyvideo-15'))
+MOTIF_VIDEO_SCHEDULER_NAMES = frozenset(_schedulers.compatible_scheduler_names('motif-video'))
+KANDINSKY5_VIDEO_SCHEDULER_NAMES = frozenset(_schedulers.compatible_scheduler_names('kandinsky5-video'))
 
 # family: (text-to-video pipeline, image-to-video pipeline, transformer) Diffusers class names
 _FAMILY_CLASSES = {
@@ -297,11 +297,11 @@ def _vae_encode_in_vae_dtype(vae):
 def _skip_nabla_sparse_attention(pipe) -> None:
     """Run a Nabla checkpoint with dense scaled-dot-product attention.
 
-    Pro Kandinsky video sets ``attention_type`` to ``nabla`` and builds a flex
-    block mask. The flex kernel available here still stores the full score
-    matrix. At 768x512 and 5 seconds that matrix is about 270 GiB. Dense SDPA
-    keeps the scores in the kernel. Lite checkpoints are not Nabla and are
-    left alone.
+    Pro and 10-second Lite Kandinsky video set ``attention_type`` to ``nabla``
+    and build a flex block mask. The flex kernel available here still stores
+    the full score matrix. At 768x512 and 5 seconds that matrix is about
+    270 GiB. Dense SDPA keeps the scores in the kernel. Other checkpoints are
+    not Nabla and are left alone.
     """
     if not hasattr(pipe, 'get_sparse_params') or getattr(pipe, '_dgenerate_nabla_skipped', False):
         return
@@ -317,8 +317,8 @@ def _skip_nabla_sparse_attention(pipe) -> None:
     pipe.get_sparse_params = get_sparse_params
     pipe._dgenerate_nabla_skipped = True
     _messages.warning(
-        'Kandinsky 5 Pro Nabla attention needs a 270 GiB score matrix at this '
-        'length, so attention is running dense.')
+        'Kandinsky 5 Nabla attention needs a score matrix of hundreds of GiB, '
+        'so attention is running dense.')
 
 
 def _enhance_loaded_video_prompt(wrapper, pipe, user_args, references=None) -> None:
@@ -399,9 +399,10 @@ def _call_single_image_video(wrapper, user_args):
     kwargs['num_inference_steps'] = steps
     custom_timesteps = None
     if user_args.timesteps is not None:
-        if 'timesteps' not in inspect.signature(pipe.scheduler.set_timesteps).parameters:
+        if not _schedulers.scheduler_accepts_custom_timesteps(pipe.scheduler):
             raise _pipelines.UnsupportedPipelineConfigError(
-                f'The loaded {family} scheduler does not support custom timesteps.')
+                f'The loaded {family} scheduler, {type(pipe.scheduler).__name__}, '
+                f'does not support custom timesteps.')
         if isinstance(user_args.timesteps, str):
             if family == 'motif-video':
                 base_timesteps = _motif_default_timesteps(pipe, steps, kwargs, call_parameters)
@@ -411,6 +412,7 @@ def _call_single_image_video(wrapper, user_args):
                 user_args.timesteps, base_timesteps)
         else:
             custom_timesteps = [int(value) for value in user_args.timesteps]
+        _schedules._check_timesteps(custom_timesteps, pipe.scheduler, family)
         kwargs['num_inference_steps'] = len(custom_timesteps)
         user_args.inference_steps = len(custom_timesteps)
     if family == 'kandinsky6-video' and user_args.pipeline_prompt_enhance:
@@ -421,17 +423,20 @@ def _call_single_image_video(wrapper, user_args):
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'--max-sequence-length is not supported by {family}.')
         kwargs['max_sequence_length'] = int(user_args.max_sequence_length)
+    custom_sigmas = None
     if user_args.sigmas is not None:
-        if 'sigmas' not in call_parameters:
+        if not _schedulers.scheduler_accepts_custom_sigmas(type(pipe.scheduler)):
             raise _pipelines.UnsupportedPipelineConfigError(
-                f'--sigmas is not supported by {family}; its pipeline accepts a timestep schedule instead.')
-        if isinstance(user_args.sigmas, str):
-            with _schedules._preserved_scheduler_state(pipe.scheduler) as scheduler:
-                scheduler.set_timesteps(kwargs['num_inference_steps'])
-                kwargs['sigmas'] = _schedules._eval_sigma_expression(user_args.sigmas, scheduler.sigmas)
-        else:
-            kwargs['sigmas'] = [float(value) for value in user_args.sigmas]
-        user_args.inference_steps = len(kwargs['sigmas'])
+                f'The loaded {family} scheduler, {type(pipe.scheduler).__name__}, '
+                f'does not support custom sigmas.')
+        custom_sigmas = type(wrapper)._sigmas_eval(
+            family, pipe, kwargs['num_inference_steps'], user_args.sigmas)
+        steps = _schedules._sigma_step_count(pipe.scheduler, custom_sigmas)
+        if 'sigmas' in call_parameters:
+            kwargs['sigmas'] = custom_sigmas
+            custom_sigmas = None
+        kwargs['num_inference_steps'] = steps
+        user_args.inference_steps = steps
 
     _vp._set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
     if family == 'kandinsky5-video':
@@ -439,6 +444,8 @@ def _call_single_image_video(wrapper, user_args):
     with contextlib.ExitStack() as stack:
         if custom_timesteps is not None:
             stack.enter_context(_schedules._forced_scheduler_timesteps(pipe.scheduler, custom_timesteps))
+        if custom_sigmas is not None:
+            stack.enter_context(_schedules._forced_scheduler_sigmas(pipe.scheduler, custom_sigmas))
         if family == 'motif-video' and mode == 'image-to-video':
             stack.enter_context(_vae_encode_in_vae_dtype(pipe.vae))
         if family == 'kandinsky6-video':

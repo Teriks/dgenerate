@@ -35,6 +35,7 @@ import dgenerate.pipelinewrapper.sampling as _sampling
 import dgenerate.types as _types
 import dgenerate.pipelinewrapper.videopipelines.media as _media
 import dgenerate.pipelinewrapper.videopipelines as _vp
+import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
 import dgenerate.pipelinewrapper.videopipelines.wan.common as _common
 
 
@@ -141,6 +142,9 @@ def _call_wan_animate_2(wrapper, user_args):
     if omitted_steps:
         _messages.debug_log(
             f'Wan-Animate-2 using default inference steps {steps}.')
+    # Each segment calls set_timesteps(steps) again.
+    steps, schedule = _schedules._forced_user_schedule(
+        wrapper, pipe, 'Wan-Animate-2', steps, user_args)
 
     fps = float(user_args.video_fps or _constants.DEFAULT_WAN_ANIMATE_2_FPS)
     segment = int(_types.default(
@@ -193,7 +197,8 @@ def _call_wan_animate_2(wrapper, user_args):
         kwargs['max_sequence_length'] = int(user_args.max_sequence_length)
 
     _vp._set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
-    videos = pipe(**kwargs)
+    with schedule:
+        videos = pipe(**kwargs)
     frames = _media.frames_from_output(videos)
     return frames, None, None, fps
 

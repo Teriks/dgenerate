@@ -1771,9 +1771,8 @@ class GenerationArguments(_types.SetFromMixin):
     For LTX this is sent to the pipeline only when the scheduler has dynamic
     shifting and neither :py:attr:`.GenerationArguments.timesteps` nor
     :py:attr:`.GenerationArguments.sigmas` is set. Without dynamic shifting, the
-    distilled 8-value table is used and this value is ignored. A warning names
-    the ignored value, including the global default of 30. Passing 8 matches the
-    table and silences the warning. ``timesteps`` and ``sigmas`` overwrite the
+    distilled 8-value table is linearly resampled to this many steps, and an
+    omitted value keeps the table. ``timesteps`` and ``sigmas`` overwrite the
     step count to the length of the resulting list.
     """
 

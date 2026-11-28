@@ -2981,9 +2981,16 @@ Help Output
             For --model-type flux, flux-fill, flux-kontext, flux2, flux2-klein-kv, flux3, z-image, z-image-omni,
             qwen-image, qwen-image-edit, qwen-image-layered, krea2, hyimage-21, and hyimage-21-refiner, expr:
             sigmas is the evenly spaced schedule from 1 down to 1/steps. The pipeline builds its timesteps from
-            that result, including any resolution-dependent shift. --model-type qwen-image-21 uses the checkpoint
-            sample_sigmas list when one is configured, and that same schedule otherwise.
-            ------------------
+            that result, including any resolution-dependent shift. --model-type qwen-image-21 uses the
+            checkpoint sample_sigmas list when one is configured, and that same schedule otherwise.
+            
+            For --model-type minimax-h3-video, sigmas are the grid before the shift, between 0 and 1. A terminal
+            0 is appended when the list does not end with one, and the video and audio schedulers each apply
+            their own shift. The step count becomes the number of sigmas including that 0, so the model runs one
+            step fewer. In expr: form, sigmas is the evenly spaced grid from 1 down to 0 without the terminal 0,
+            so "expr: sigmas" reproduces the default schedule. --model-type minimax-h3-image does not accept
+            --sigmas.
+            ---------
       -igs, --image-guidance-scales FLOAT [FLOAT ...]
             One or more image guidance scale values to try. This can push the generated image towards the
             initial image when using --model-type *-pix2pix models, it is unsupported for other model types. Use
@@ -3071,10 +3078,10 @@ Help Output
       -ts, --timesteps CSV_INT_OR_EXPRESSION [CSV_INT_OR_EXPRESSION ...]
             One or more comma-separated timestep schedules or "expr: ..." expressions. Expressions receive the
             scheduler default array as "timesteps". The schedule length sets the inference step count. Supported
-            where the pipeline accepts a timestep schedule, for example SD 1.5/2/XL, Kolors, Wan video-to-video,
-            LTX-2, Motif-Video, Hunyuan Video 1.5, Kandinsky 5 video, and Kandinsky 6 video. Cannot be combined
-            with --sigmas.
-            --------------
+            where the scheduler accepts a timestep schedule: FlowMatch Euler, DDPM, Euler, Heun, DPM-Solver,
+            LCM, and TCD. MiniMax, Stable Cascade, and distilled Kandinsky 6 (PiFlow) do not take one. Cannot be
+            combined with --sigmas.
+            -----------------------
       -q21nk, --qwen21-no-kv-cache
             Disable the Qwen-Image 2.1 key/value attention cache.
             -----------------------------------------------------
@@ -5152,10 +5159,11 @@ comma-separated integer schedules, such as ``1000,700,300,0``, or ``expr:``
 expressions evaluated with the scheduler's default array named ``timesteps``
 (for example, ``expr: timesteps[::2]``). Multiple schedules are tried in turn.
 The number of selected timesteps replaces ``--inference-steps`` for that run.
-Motif uses a timestep schedule rather than a sigma schedule, so leave
-``--sigmas`` unset when ``--timesteps`` is set. The same option also applies
-to Wan video-to-video, LTX-2, HunyuanVideo 1.5, Kandinsky 5 video, Kandinsky 6
-video, and the SD 1.5/2/XL and Kolors image models.
+``--timesteps`` cannot be combined with ``--sigmas``. Both work with any model
+type whose scheduler takes them, including pipelines that do not accept them
+as call arguments; the schedule is applied at the scheduler. Motif's default
+``DPMSolverMultistepScheduler`` takes timesteps only; select
+``FlowMatchEulerDiscreteScheduler`` for ``--sigmas``.
 
 LoRA and GGUF
 ~~~~~~~~~~~~~
@@ -5183,6 +5191,11 @@ pass a negative prompt. The only scheduler name is ``MiniMaxH3Scheduler``.
 shift 3, and does not inherit ``--scheduler``. Omitting either keeps that
 checkpoint scheduler. ``--inference-steps`` defaults to
 30. That count includes the terminal sigma, so the model runs 29 evaluations.
+``--sigmas`` is the grid before the shift, between 1 and 0. A terminal 0 is
+appended when missing. The video and audio schedulers each shift that one
+list by their own shift, so both keep the same step count. The expression
+symbol ``sigmas`` is ``linspace(1, 0, steps)`` without the terminal 0, which
+reproduces the default schedule. ``--timesteps`` is rejected.
 ``--spectrum`` forecasts the packed hidden state and skips the transformer
 blocks on later steps. The video and audio output heads still run.
 ``ref2va`` forecasts ``transformer_ref``. A forecast step leaves a Fun control
@@ -5738,15 +5751,12 @@ For ``--model-type ltx2``, omitted guidance becomes ``1`` on a distilled checkpo
 or video ``3`` with audio ``7`` on a full checkpoint. Values you set are used as
 written. An omitted step count uses the pipeline default (``30`` on full
 ``LTX2Pipeline`` when neither ``--timesteps`` nor ``--sigmas`` is set). A
-distilled checkpoint always uses its sigma table length regardless of
-``--inference-steps``.
+distilled checkpoint with an omitted step count runs its 8-value sigma table.
 
 **Scheduler without dynamic shifting (the published LTX-2.5 scheduler)**
 
-* The clip uses Diffusers' distilled 8-value sigma table. ``--inference-steps`` is
-  not sent to the pipeline. dgenerate warns when you passed an explicit step count
-  that does not match the table, and still uses the table. Passing ``--inference-steps 8``
-  matches the table and silences the warning.
+* The clip uses Diffusers' distilled 8-value sigma table. Another ``--inference-steps``
+  count linearly resamples that table to that many steps, keeping its shape.
 * Omitted guidance is ``1`` (unguided). Any explicit guidance value is used as written.
 * Video guidance and audio guidance receive that same number unless
   ``--ltx-audio-guidance-scales`` is set.
@@ -8262,7 +8272,8 @@ simple line.
 
 ``--model-type ltx2`` and ``ltx-video`` accept the same CSV lists and ``expr:`` forms.
 When the loaded scheduler has no dynamic shifting, ``sigmas`` in the expression
-is the distilled 8-value table, not a schedule from ``set_timesteps``.
+is the distilled 8-value table, resampled to ``--inference-steps`` when that is
+set, not a schedule from ``set_timesteps``.
 When the scheduler uses dynamic shifting, ``sigmas`` comes from
 ``set_timesteps`` using ``--inference-steps``. Passing ``--sigmas`` sets the
 step count to the length of the result and uses your ``--guidance-scales``
@@ -9155,7 +9166,7 @@ match. The ``quantizer`` argument is not supported for these files.
     # The encoder file is already quantized. Do not set quantizer. The parent
     # repository still supplies the connectors and both VAEs.
     
-    # The published scheduler is the distilled 8-value table and would ignore
+    # The published scheduler only resamples the distilled 8-value table to
     # --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1 make
     # the step count apply. Video guidance 3, audio guidance 7, STG 1 on block
     # 28, and modality guidance 3.
@@ -9200,7 +9211,7 @@ match. The ``quantizer`` argument is not supported for these files.
     # Blackwell; other devices decode the weights for the matmul. The parent
     # repository still supplies the connectors.
     
-    # The published scheduler is the distilled 8-value table and would ignore
+    # The published scheduler only resamples the distilled 8-value table to
     # --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1 make
     # the step count apply. Video guidance 3, audio guidance 7, STG 1 on block
     # 28, and modality guidance 3.
@@ -11774,7 +11785,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     # already quantized. Do not set quantizer. The parent repository still
     # supplies the connectors and both VAEs.
     
-    # The published scheduler is the distilled 8-value table and would ignore
+    # The published scheduler only resamples the distilled 8-value table to
     # --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1 make
     # the step count apply. Video guidance 3, audio guidance 7, STG 1 on block
     # 28, and modality guidance 3.
@@ -11818,7 +11829,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     # The encoder file is already quantized. Do not set quantizer. The parent
     # repository still supplies the connectors and both VAEs.
     
-    # The published scheduler is the distilled 8-value table and would ignore
+    # The published scheduler only resamples the distilled 8-value table to
     # --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1 make
     # the step count apply. Video guidance 3, audio guidance 7, STG 1 on block
     # 28, and modality guidance 3.
@@ -11863,7 +11874,7 @@ examples use the Q4_K_S GGUF. See :ref:`gguf-checkpoints` and
     # Blackwell; other devices decode the weights for the matmul. The parent
     # repository still supplies the connectors.
     
-    # The published scheduler is the distilled 8-value table and would ignore
+    # The published scheduler only resamples the distilled 8-value table to
     # --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1 make
     # the step count apply. Video guidance 3, audio guidance 7, STG 1 on block
     # 28, and modality guidance 3.

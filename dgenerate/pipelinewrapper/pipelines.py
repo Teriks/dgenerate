@@ -2503,13 +2503,22 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
         nonlocal prompt_warning_issued
 
         def _invoke(call_kwargs):
+            if call_kwargs.get('timesteps') is None:
+                return _invoke_with_spectrum(call_kwargs)
+            import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
+            with _schedules._flow_timesteps_pinned(getattr(pipeline, 'scheduler', None)):
+                return _invoke_with_spectrum(call_kwargs)
+
+        def _invoke_with_spectrum(call_kwargs):
             _reset_sada_cache(pipeline)
             settings = _spectrum.active_settings()
             if settings is None:
                 return pipeline(**call_kwargs)
             sigmas = call_kwargs.get('sigmas')
-            if isinstance(sigmas, (list, tuple)) and sigmas and not isinstance(sigmas[0], str):
-                steps = len(sigmas)
+            if (hasattr(sigmas, '__len__') and not isinstance(sigmas, str)
+                    and len(sigmas) and not isinstance(sigmas[0], str)):
+                # A trailing 0 is where sampling ends, not a step.
+                steps = len(sigmas) - (1 if len(sigmas) > 1 and float(sigmas[-1]) == 0.0 else 0)
             else:
                 steps = call_kwargs.get('num_inference_steps', settings.fallback_steps)
                 try:

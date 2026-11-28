@@ -35,6 +35,7 @@ import dgenerate.pipelinewrapper.sampling as _sampling
 import dgenerate.types as _types
 import dgenerate.pipelinewrapper.videopipelines.media as _media
 import dgenerate.pipelinewrapper.videopipelines as _vp
+import dgenerate.pipelinewrapper.videopipelines.schedules as _schedules
 import dgenerate.pipelinewrapper.videopipelines.wan.common as _common
 
 
@@ -101,6 +102,9 @@ def _call_wan_animate(wrapper, user_args):
     if omitted_steps:
         _messages.debug_log(
             f'Wan-Animate using default inference steps {steps}.')
+    # Each segment calls set_timesteps(steps) again.
+    steps, schedule = _schedules._forced_user_schedule(
+        wrapper, pipe, 'Wan-Animate', steps, user_args)
 
     temporal = _common._temporal_factor(pipe)
     pose = _common._trim_wan_clip(pose, None, temporal)
@@ -134,7 +138,8 @@ def _call_wan_animate(wrapper, user_args):
         kwargs['mask_video'] = user_args.mask_video_frames[:len(pose)]
 
     _vp._set_video_vae_slicing(pipe, bool(user_args.vae_slicing))
-    output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
+    with schedule:
+        output = _vp._invoke(wrapper, pipe, kwargs, user_args=user_args)
     frames = _media.frames_from_output(getattr(output, 'frames', output))
     return frames[:len(pose)], None, None, fps
 

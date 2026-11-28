@@ -11,8 +11,8 @@ title: MiniMax-H3-Video First-Last Frame (GGUF + Encoder)
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default":"MiniMaxAI/MiniMax-H3", "optional":false, "file-types":["models"]}]
 --model-type minimax-h3-video {{ image_seeds }}
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
-@karrasscheduler[{"label":"Video Scheduler", "arg":"--scheduler", "filter":["MiniMaxH3Scheduler"]}]
-@karrasscheduler[{"label":"Audio Scheduler", "arg":"--second-model-scheduler", "filter":["MiniMaxH3Scheduler"]}]
+@karrasscheduler[{"label":"Video Scheduler", "arg":"--scheduler"}]
+@karrasscheduler[{"label":"Audio Scheduler", "arg":"--second-model-scheduler"}]
 @spectrum[{"id": "sp", "divider-after": true}]
 @switchfile[{"id": "cd", "label":"Use Cache-DiT", "arg":"--cache-dit", "exclude":["sp"], "file-implies-switch":true, "file":{"label":"Cache-DiT YAML Config", "arg":"--cache-dit-config", "mode":"input", "optional":true, "file-types":["yaml"], "divider-after":true}}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
@@ -22,6 +22,7 @@ title: MiniMax-H3-Video First-Last Frame (GGUF + Encoder)
 @submodelbuilder[{"label":"Transformer GGUF", "arg":"--transformer", "model":"Transformer", "default":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q4_0.gguf", "divider-after":true, "suggestions":[{"label":"fl2va curve Q4_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q4_0.gguf"}, {"label":"fl2va curve Q5_1", "value":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q5_1.gguf"}, {"label":"fl2va curve Q8_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-curve-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-curve-Q8_0.gguf"}, {"label":"fl2va Q4_0", "value":"https://huggingface.co/joeygambino/MiniMax-H3-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-Q4_0.gguf"}, {"label":"fl2va Q5_1", "value":"https://huggingface.co/joeygambino/MiniMax-H3-GGUF/blob/main/fl2va/MiniMax-H3-fl2va-Q5_1.gguf"}]}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true, "enabled-when":{"any":[{"id":"image-seed","not-empty":true},{"id":"image-seed-2","not-empty":true}]}}]
 @int[{"label":"Inference Steps","arg":"--inference-steps","default":30,"min":1}]
+@sigmas[{"id":"sigmas","label":"Sigmas","arg":"--sigmas","base":[1.0,0.965517,0.931034,0.896552,0.862069,0.827586,0.793103,0.758621,0.724138,0.689655,0.655172,0.62069,0.586207,0.551724,0.517241,0.482759,0.448276,0.413793,0.37931,0.344828,0.310345,0.275862,0.241379,0.206897,0.172414,0.137931,0.103448,0.068966,0.034483]}]
 @float[{"label":"Video Length (seconds)", "arg":"--video-lengths", "default":5.17, "min":5, "max":15}]
 @float[{"label":"Video FPS", "arg":"--video-fps", "default":24, "min":1}]
 @dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
