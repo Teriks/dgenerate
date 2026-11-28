@@ -322,8 +322,8 @@ class TestLinkTools(unittest.TestCase):
         self.assertEqual(named, 'flux-kontext')
 
     def test_missing_huggingface_repo_is_not_a_real_model(self):
-        import httpx
         from huggingface_hub.errors import RepositoryNotFoundError
+        from huggingface_hub.utils import httpx
 
         url = 'https://huggingface.co/someone/FLUX.1-dev-Q4-GGUF'
         response = httpx.Response(404, request=httpx.Request('GET', url))
@@ -342,8 +342,8 @@ class TestLinkTools(unittest.TestCase):
         self.assertNotIn('gated', text.lower())
 
     def test_gated_huggingface_refusal_says_the_repo_is_real(self):
-        import httpx
         from huggingface_hub.errors import GatedRepoError
+        from huggingface_hub.utils import httpx
 
         url = 'https://huggingface.co/black-forest-labs/FLUX.1-dev'
         response = httpx.Response(403, request=httpx.Request('GET', url))

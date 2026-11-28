@@ -15754,8 +15754,8 @@ One ``--quantizer`` repository and no ``--formats`` is uploaded at the repo
 root, so dgenerate can load it as a model. Several files keep the names
 written under ``--output``.
 
-The token is ``--auth-token``, ``HF_TOKEN``, or a saved ``huggingface-cli``
-login.
+The token is ``--auth-token``, ``HF_TOKEN``, or a saved ``hf auth login``
+token.
 
 ``--hf-upload-card`` writes a ``README.md`` model card. With no value, the
 card is built from the source model, the formats, every quantizer setting,
@@ -15942,8 +15942,8 @@ The help output of ``quantize`` is as follows:
             ------------------------------------------------------
       -atk, --auth-token AUTH_TOKEN
             Hugging Face token for a gated repository and for --hf-upload. When this is omitted, HF_TOKEN or a
-            saved huggingface-cli login is used.
-            ------------------------------------
+            token saved by hf auth login is used.
+            -------------------------------------
       --hf-upload REPO
             Upload the written files to this Hugging Face model repository. Accepts a repo ID for example:
             user/repo-name. A huggingface.co URL for that repository is accepted. A new repository is created

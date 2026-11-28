@@ -11,13 +11,20 @@ from huggingface_hub import model_info, snapshot_download
 from huggingface_hub.errors import HfHubHTTPError
 
 try:
-    from httpx import HTTPError as _HttpxHTTPError
+    # huggingface_hub 1.x re-exports httpx here. 2.x re-exports httpx2, whose
+    # HTTPError is a different class, so catching the re-export covers both.
+    from huggingface_hub.utils import httpx as _hf_httpx
+    _HttpxHTTPError = _hf_httpx.HTTPError
 except ImportError:
-    _HttpxHTTPError = HfHubHTTPError
+    try:
+        from httpx import HTTPError as _HttpxHTTPError
+    except ImportError:
+        _HttpxHTTPError = HfHubHTTPError
 
 from requests import HTTPError as _RequestsHTTPError
 
-# huggingface_hub < 1.0 raises requests errors, >= 1.0 raises httpx errors
+# huggingface_hub < 1.0 raises requests errors. 1.x raises httpx errors and
+# 2.x raises httpx2 errors, both reached through the re-export above.
 _HTTP_ERRORS = (HfHubHTTPError, _HttpxHTTPError, _RequestsHTTPError)
 
 

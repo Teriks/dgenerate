@@ -1,3 +1,4 @@
+import functools
 import re
 import types
 import unittest
@@ -576,6 +577,71 @@ class TestPipelinePromptEnhance(unittest.TestCase):
             _promptenhance._TokenCounter('Qwen3Model', _promptenhance.MAX_NEW_TOKENS),
             _promptenhance.sampling_for(_enums.ModelType.Z_IMAGE))
         self.assertEqual(text, 'done')
+
+    def test_tied_generation_reuses_the_cache_under_either_kwarg_name(self):
+        import transformers
+
+        class Tokenizer:
+            def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True,
+                                    return_tensors=None, return_dict=False):
+                if tokenize:
+                    return {'input_ids': torch.tensor([[1, 3, 4]]),
+                            'attention_mask': torch.tensor([[1, 1, 1]])}
+                return 'chat'
+
+            def decode(self, tokens, skip_special_tokens=True):
+                return ' '.join(map(str, tokens))
+
+        config = transformers.Qwen3Config(
+            num_hidden_layers=1, hidden_size=16, num_attention_heads=2, num_key_value_heads=1,
+            head_dim=8, intermediate_size=32, vocab_size=32, eos_token_id=31)
+        torch.manual_seed(0)
+        model = transformers.Qwen3Model(config).eval()
+        cache_name = _promptenhance._cache_kwarg(model)
+        self.assertIn(cache_name, ('cache', 'past_key_values'))
+
+        class Legacy(torch.nn.Module):
+            # Remote code written before the rename only accepts past_key_values.
+            def __init__(self, inner):
+                super().__init__()
+                self.inner = inner
+                self.config = inner.config
+
+            def forward(self, input_ids, attention_mask=None, use_cache=False, past_key_values=None):
+                kwargs = {cache_name: past_key_values} if past_key_values is not None else {}
+                return self.inner(input_ids=input_ids, attention_mask=attention_mask,
+                                  use_cache=use_cache, **kwargs)
+
+        legacy = Legacy(model)
+        self.assertEqual(_promptenhance._cache_kwarg(legacy), 'past_key_values')
+        for wrapped in (model, legacy):
+            steps = []
+            original = wrapped.forward
+
+            @functools.wraps(original)
+            def forward(*args, _original=original, **kwargs):
+                steps.append((kwargs['input_ids'].shape[-1],
+                              any(name in kwargs for name in ('cache', 'past_key_values'))))
+                return _original(*args, **kwargs)
+
+            with unittest.mock.patch.object(wrapped, 'forward', forward):
+                _promptenhance._generate_tied(
+                    wrapped, Tokenizer(), model.embed_tokens, 'fox', 'system', 1,
+                    _promptenhance._TokenCounter('Qwen3Model', 4),
+                    _promptenhance.sampling_for(_enums.ModelType.Z_IMAGE),
+                    max_new_tokens=4, min_new_tokens=4)
+            self.assertEqual(steps[0], (3, False))
+            self.assertEqual(steps[1:], [(1, True)] * (len(steps) - 1))
+            self.assertGreater(len(steps), 1)
+
+    def test_output_cache_reads_the_renamed_field(self):
+        import transformers.modeling_outputs as outputs
+
+        renamed = outputs.BaseModelOutputWithPast(last_hidden_state=torch.zeros(1), cache='kv')
+        self.assertEqual(_promptenhance._output_cache(renamed), 'kv')
+        legacy = types.SimpleNamespace(past_key_values='old')
+        self.assertEqual(_promptenhance._output_cache(legacy), 'old')
+        self.assertIsNone(_promptenhance._output_cache(types.SimpleNamespace()))
 
     def test_offloaded_embedding_stays_off_meta(self):
         class Hook:
@@ -1193,6 +1259,24 @@ class TestPipelinePromptEnhance(unittest.TestCase):
         self.assertIs(args[1], cache)
         self.assertIs(kwargs['past_key_values'], cache)
         self.assertEqual(tuple(item.shape for item in kwargs['kv_cache']), ((2,), (2,)))
+
+        class Layer:
+            def __init__(self):
+                self.keys = torch.zeros(1)
+                self.values = torch.zeros(1)
+                self.device = 'unset'
+
+        class Cache:
+            def __init__(self):
+                self.layers = [Layer()]
+
+        class Module:
+            layer_idx = 0
+
+        modern = Cache()
+        _, kwargs = hook.pre_forward(Module(), hidden, cache=modern)
+        self.assertIs(kwargs['cache'], modern)
+        self.assertEqual(modern.layers[0].device, torch.device('cpu'))
 
     @unittest.skipUnless(torch.cuda.is_available(), 'language RoPE device alignment needs CUDA')
     def test_language_rotary_accepts_cpu_position_ids(self):

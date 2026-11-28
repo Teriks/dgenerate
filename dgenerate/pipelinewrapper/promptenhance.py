@@ -26,6 +26,7 @@ from __future__ import annotations
 import collections.abc
 import contextlib
 import contextvars
+import inspect
 import itertools
 import os
 import re
@@ -2238,7 +2239,7 @@ class _LayerDeviceHook:
     def pre_forward(self, module, *args, **kwargs):
         args = tuple(_move_activation(value, self.device) for value in args)
         for key, value in list(kwargs.items()):
-            if key in ('past_key_values', 'past_key_value'):
+            if key in ('past_key_values', 'past_key_value', 'cache'):
                 _place_layer_cache(module, value, self.device)
                 continue
             if key == 'shared_kv_states':
@@ -2995,6 +2996,21 @@ def _tied_logits(last: torch.Tensor, embed_weight: torch.Tensor) -> torch.Tensor
     return torch.nn.functional.linear(last, embed_weight.detach().float())
 
 
+def _cache_kwarg(model) -> str:
+    # Transformers 5.24 renamed past_key_values to cache. Remote code models keep the old name.
+    try:
+        parameters = inspect.signature(model.forward).parameters
+    except (TypeError, ValueError):
+        return 'past_key_values'
+    return 'cache' if 'cache' in parameters else 'past_key_values'
+
+
+def _output_cache(output):
+    if isinstance(output, dict) and 'cache' in output:
+        return output['cache']
+    return getattr(output, 'past_key_values', None)
+
+
 def _generate_tied(model, tokenizer, embed, prompt, system_prompt, seed, counter, sampling,
                    max_new_tokens=MAX_NEW_TOKENS, min_new_tokens=MIN_NEW_TOKENS) -> str:
     embed_weight = _resident_weight(embed)
@@ -3007,6 +3023,7 @@ def _generate_tied(model, tokenizer, embed, prompt, system_prompt, seed, counter
     model.eval()
     past = None
     use_cache = True
+    cache_kwarg = _cache_kwarg(model)
     step_ids = input_ids
     try:
         with torch.inference_mode():
@@ -3017,7 +3034,7 @@ def _generate_tied(model, tokenizer, embed, prompt, system_prompt, seed, counter
                     'use_cache': use_cache,
                 }
                 if past is not None:
-                    kwargs['past_key_values'] = past
+                    kwargs[cache_kwarg] = past
                 try:
                     output = model(**kwargs)
                 except TypeError:
@@ -3046,7 +3063,7 @@ def _generate_tied(model, tokenizer, embed, prompt, system_prompt, seed, counter
                         device=attention_mask.device, dtype=attention_mask.dtype)
                     attention_mask = torch.cat([attention_mask, ones], dim=-1)
                 if use_cache:
-                    past = getattr(output, 'past_key_values', None)
+                    past = _output_cache(output)
                     if past is None:
                         use_cache = False
                         step_ids = input_ids

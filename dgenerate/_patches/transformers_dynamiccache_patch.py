@@ -63,7 +63,10 @@ if not hasattr(transformers.DynamicCache, 'get_usable_length'):
         #   length, we will need to evict part of the cache (and thus not all cache is usable)
         max_length = self.get_max_length() if hasattr(self, 'get_max_length') else None
         previous_seq_length = self.get_seq_length(layer_idx)
-        if max_length is not None and previous_seq_length + new_seq_length > max_length:
+        # None is the old unlimited value. Transformers 5.20+ uses -1 for that.
+        if max_length is None or max_length < 0:
+            return previous_seq_length
+        if previous_seq_length + new_seq_length > max_length:
             return max_length - new_seq_length
         return previous_seq_length
     

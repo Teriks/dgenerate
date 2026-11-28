@@ -316,7 +316,7 @@ class QuantizeSubCommand(_subcommand.SubCommand):
         self._parser.add_argument(
             '-atk', '--auth-token', default=None,
             help='Hugging Face token for a gated repository and for --hf-upload. '
-                 'When this is omitted, HF_TOKEN or a saved huggingface-cli login is used.')
+                 'When this is omitted, HF_TOKEN or a token saved by hf auth login is used.')
         self._parser.add_argument(
             '--hf-upload', default=None, metavar='REPO',
             help='Upload the written files to this Hugging Face model repository. '
@@ -395,7 +395,7 @@ class QuantizeSubCommand(_subcommand.SubCommand):
             self._reject_incompatible_sources(args, quantizers)
             if repo_id and not args.hf_upload_card_preview and not token:
                 raise _quantexport.QuantExportError(
-                    'Pass --auth-token, set HF_TOKEN, or run huggingface-cli login '
+                    'Pass --auth-token, set HF_TOKEN, or run hf auth login '
                     'before --hf-upload.')
             if args.hf_upload_card_preview:
                 card = self._readme_text(
